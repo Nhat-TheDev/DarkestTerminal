@@ -23,6 +23,7 @@
 - Turn-based, **turn riêng từng nhân vật** (tactical, không phải cả team hành động như 1 khối)
 - Turn queue xen kẽ giữa 4 nhân vật và quái (initiative-based)
 - **Permadeath thật sự** — nhân vật chết là mất hẳn, không hồi sinh
+- Hiệu quả HP/MP/attack/defense/initiative + công thức tăng trưởng theo cấp: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 5
 
 ### 1.3 Survival stats
 - 3 chỉ số: **sợ hãi (fear)**, **đói (hunger)**, **khát (thirst)** — cộng thêm HP, MP riêng
@@ -127,6 +128,7 @@ Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ
 - Monster: công thức scaling atk/def/hp theo độ sâu tầng + 3 AI pattern (aggressive/defensive/erratic)
 - Ngưỡng số cụ thể cho fear/hunger/thirst và 4 bậc fear
 - Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
+- Hiệu quả HP=0/MP thiếu + công thức tăng trưởng attack/defense/maxHp/maxMp theo cấp (level gắn với độ sâu tầng, tối đa cấp 7)
 
 ### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
 - Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định
