@@ -1,10 +1,23 @@
-import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
+import { BoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Character, CombatantRef, Monster, SkillDefinition } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getSkill, getClass } from "../data/classes";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";
+import {
+  PALETTE,
+  CLASS_STYLE,
+  MONSTER_STYLE,
+  BOSS_COLOR,
+  chip,
+  plainChunk,
+  colorChunk,
+  boldColorChunk,
+  hpColorFor,
+  fearColorFor,
+  joinLines,
+} from "./theme";
 
 type UiState =
   | { kind: "room" }
@@ -28,6 +41,7 @@ export class App {
   private header: TextRenderable;
   private party: TextRenderable;
   private main: TextRenderable;
+  private monsters: TextRenderable;
   private log: TextRenderable;
   private footer: TextRenderable;
   private lastLogLength = 0;
@@ -35,39 +49,58 @@ export class App {
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
 
+    const panel = {
+      border: true as const,
+      backgroundColor: PALETTE.panelBg,
+      borderColor: PALETTE.border,
+      titleColor: PALETTE.title,
+    };
+
     this.root = new BoxRenderable(renderer, {
       id: "root",
       width: "100%",
       height: "100%",
       flexDirection: "column",
+      backgroundColor: PALETTE.bg,
     });
     renderer.root.add(this.root);
 
-    this.header = new TextRenderable(renderer, { id: "header", content: "" });
-    const headerBox = new BoxRenderable(renderer, { id: "header-box", border: true, height: 3, title: "DARKEST-TERMINAL" });
+    this.header = new TextRenderable(renderer, { id: "header", content: "", fg: PALETTE.text });
+    const headerBox = new BoxRenderable(renderer, {
+      id: "header-box",
+      ...panel,
+      borderColor: PALETTE.borderAccent,
+      height: 3,
+      title: "DARKEST-TERMINAL",
+    });
     headerBox.add(this.header);
     this.root.add(headerBox);
 
-    const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1 });
+    const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
 
-    const partyBox = new BoxRenderable(renderer, { id: "party-box", border: true, width: 38, title: "Party" });
-    this.party = new TextRenderable(renderer, { id: "party", content: "" });
+    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: 34, title: "Đoàn Thám Hiểm" });
+    this.party = new TextRenderable(renderer, { id: "party", content: "", fg: PALETTE.text });
     partyBox.add(this.party);
     body.add(partyBox);
 
-    const mainBox = new BoxRenderable(renderer, { id: "main-box", border: true, flexGrow: 1, title: "Hầm Ngục" });
-    this.main = new TextRenderable(renderer, { id: "main", content: "" });
+    const mainBox = new BoxRenderable(renderer, { id: "main-box", ...panel, flexGrow: 1, title: "Hầm Ngục" });
+    this.main = new TextRenderable(renderer, { id: "main", content: "", fg: PALETTE.text });
     mainBox.add(this.main);
     body.add(mainBox);
 
-    const logBox = new BoxRenderable(renderer, { id: "log-box", border: true, height: 10, title: "Nhật Ký" });
-    this.log = new TextRenderable(renderer, { id: "log", content: "" });
+    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: 32, title: "Quái Vật" });
+    this.monsters = new TextRenderable(renderer, { id: "monsters", content: "", fg: PALETTE.text });
+    monstersBox.add(this.monsters);
+    body.add(monstersBox);
+
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: 5, title: "Nhật Ký" });
+    this.log = new TextRenderable(renderer, { id: "log", content: "", fg: PALETTE.dim });
     logBox.add(this.log);
     this.root.add(logBox);
 
-    this.footer = new TextRenderable(renderer, { id: "footer", content: "" });
-    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3 });
+    this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
+    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
@@ -116,7 +149,7 @@ export class App {
   }
 
   private handleKey(key: KeyEvent): void {
-    if (key.name === "q" || key.name === "c" && key.ctrl) {
+    if (key.name === "q" || (key.name === "c" && key.ctrl)) {
       process.exit(0);
     }
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
@@ -176,12 +209,21 @@ export class App {
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
-    this.header.content = `${room.name} — Tầng ${s.floor.depth} | ${s.combat ? `Round ${s.combat.roundNumber}` : "Khám phá"}`;
+    this.header.content = joinLines([
+      [
+        boldColorChunk(room.name, PALETTE.title),
+        plainChunk(`  Tầng ${s.floor.depth}  |  `),
+        colorChunk(s.combat ? `Round ${s.combat.roundNumber}` : "Khám phá", PALETTE.dim),
+      ],
+    ]);
 
-    this.party.content = s.party
-      .map((c) => this.renderCharacterLine(c))
-      .join("\n\n");
-
+    const partyLines: TextChunk[][] = [];
+    s.party.forEach((c, i) => {
+      if (i > 0) partyLines.push([]);
+      partyLines.push(...this.renderCharacterLines(c));
+    });
+    this.party.content = joinLines(partyLines);
+    this.monsters.content = joinLines(this.renderMonsterLines());
     this.main.content = this.renderMain();
 
     const fullLog = [...(s.combat?.log ?? [])];
@@ -189,23 +231,72 @@ export class App {
     if (this.ui.kind !== "roundResolved" && this.ui.kind !== "combatOver") {
       this.lastLogLength = fullLog.length;
     }
-    const displayLog = (this.ui.kind === "roundResolved" || this.ui.kind === "combatOver" ? newLines : fullLog).slice(-12);
+    const displayLog = (this.ui.kind === "roundResolved" || this.ui.kind === "combatOver" ? newLines : fullLog).slice(-4);
     this.log.content = (displayLog.length > 0 ? displayLog : [s.message]).join("\n");
 
     this.footer.content = this.renderFooter();
   }
 
-  private renderCharacterLine(c: Character): string {
-    if (!c.isAlive) return `${c.name} (${getClass(c.classId).name}) — ĐÃ CHẾT`;
+  private renderCharacterLines(c: Character): TextChunk[][] {
+    const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+    if (!c.isAlive) {
+      return [[chip(style.abbr, PALETTE.dead), plainChunk(` ${c.name} — Đã ngã xuống`)]];
+    }
+
+    const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name}`)];
+    const line2: TextChunk[] = [
+      plainChunk("  "),
+      colorChunk(`HP ${c.hp}/${c.maxHp}`, hpColorFor(c.hp, c.maxHp)),
+      plainChunk(" "),
+      colorChunk(`MP ${c.mp}/${c.maxMp}`, PALETTE.mp),
+    ];
+
     const tier = getFearTier(c.survival.fear);
-    const statuses = c.activeStatusEffects.map((s) => s.statusEffectId).join(", ") || "-";
-    return [
-      `${c.name} (${getClass(c.classId).name}) Lv${c.level}`,
-      `HP ${c.hp}/${c.maxHp}  MP ${c.mp}/${c.maxMp}`,
-      `ATK ${c.attack} DEF ${c.defense} AGGRO ${c.aggro} SPD ${c.speed}`,
-      `Đói ${Math.round(c.survival.hunger)} Khát ${Math.round(c.survival.thirst)} Sợ ${Math.round(c.survival.fear)} (${FEAR_TIER_LABEL[tier]})`,
-      `Hiệu ứng: ${statuses}`,
-    ].join("\n");
+    const notes: TextChunk[] = [];
+    if (tier >= 2) {
+      notes.push(colorChunk(FEAR_TIER_LABEL[tier]!, fearColorFor(tier)));
+    }
+    if (c.survival.hunger <= 20) notes.push(colorChunk("Đói lả", PALETTE.hpLow));
+    if (c.survival.thirst <= 20) notes.push(colorChunk("Khát khô", PALETTE.hpLow));
+    for (const eff of c.activeStatusEffects) {
+      notes.push(colorChunk(eff.statusEffectId, PALETTE.dim));
+    }
+
+    if (notes.length === 0) return [line1, line2];
+    const line3: TextChunk[] = [plainChunk("  ")];
+    notes.forEach((n, i) => {
+      if (i > 0) line3.push(plainChunk(" · "));
+      line3.push(n);
+    });
+    return [line1, line2, line3];
+  }
+
+  private renderMonsterLines(): TextChunk[][] {
+    const s = this.game.state;
+    if (!s.combat) {
+      const room = getRoom(s.floor, s.currentRoomId);
+      if (room.type !== "combat" && room.type !== "boss") {
+        return [[colorChunk("Không có quái vật.", PALETTE.dim)]];
+      }
+      return [[colorChunk(room.cleared ? "Phòng đã an toàn." : "Chưa chạm trán.", PALETTE.dim)]];
+    }
+    const lines: TextChunk[][] = [];
+    for (const combatant of s.combat.combatants) {
+      if (combatant.ref.kind !== "monster") continue;
+      const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+      const style = m.isBoss ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+      if (m.hp <= 0) {
+        lines.push([chip(style.abbr, PALETTE.dead), plainChunk(` ${m.name} — hạ gục`)]);
+        continue;
+      }
+      lines.push([
+        chip(style.abbr, style.color),
+        plainChunk(` ${m.name}`),
+        plainChunk("\n   "),
+        colorChunk(`HP ${m.hp}/${m.maxHp}`, hpColorFor(m.hp, m.maxHp)),
+      ]);
+    }
+    return lines.length > 0 ? lines : [[colorChunk("Không còn quái vật.", PALETTE.dim)]];
   }
 
   private renderMain(): string {

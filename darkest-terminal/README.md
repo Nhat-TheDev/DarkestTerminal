@@ -42,6 +42,24 @@ bun run typecheck
 - **Procedural generation** — tầng duy nhất được viết tay (`src/data/floor.ts`), không dùng thuật toán ở `docs/technical-decisions.md` §1
 - **FOV / pathfinding / rendering diff-based** — các rủi ro kỹ thuật nêu ở design doc mục 3 chưa cần tới ở quy mô 1 tầng, menu số
 
+## Giao diện
+
+Tông màu tối (nền `#100d0a`/panel `#171310`), mỗi nhân vật/quái có 1 "khối"
+màu riêng (chip nền màu + viết tắt, VD `CV` xanh thép cho Cận Vệ, `XS` xám
+xương cho Xương Sống Canh Gác, boss tô đỏ). HP đổi màu theo ngưỡng
+(xanh/vàng/đỏ), fear từ bậc 2 trở lên mới hiện nhãn màu. 3 panel chính:
+
+- **Đoàn Thám Hiểm**: mỗi nhân vật tối giản còn 2 dòng (tên+chip, HP/MP);
+  dòng 3 chỉ xuất hiện khi có cảnh báo thật sự (fear ≥ bậc 2, đói/khát thấp,
+  đang dính hiệu ứng)
+- **Quái Vật** (mới): danh sách quái đang giao chiến + HP, ẩn khi không có
+  quái trong phòng
+- **Nhật Ký**: thu nhỏ còn 5 dòng cao (trước là 10), chỉ hiện log của round
+  vừa resolve thay vì dồn cả trận
+
+Toàn bộ theme/màu định nghĩa ở `src/ui/theme.ts` — đổi bảng màu hoặc thêm
+class/quái mới thì chỉnh `PALETTE`/`CLASS_STYLE`/`MONSTER_STYLE` ở đó.
+
 ## Cấu trúc code
 
 ```
@@ -49,6 +67,7 @@ src/
   types.ts            # runtime types, đối chiếu ../dungeon-crawler-data-model.ts
   data/                # class/skill, monster, status effect, floor — dữ liệu tĩnh
   engine/              # logic thuần (rng, party, resolver, combat, survival, dungeon, game) — test được không cần UI
+  ui/theme.ts          # bảng màu + helper dựng StyledText (chip, màu theo HP/fear)
   ui/app.ts            # OpenTUI: layout + bàn phím, chỉ đọc/ghi qua Game
   main.ts              # entry point thật (createCliRenderer)
 test/
