@@ -1,0 +1,19 @@
+{
+  "name": "darkest-terminal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype: 1-floor playable slice of the terminal dungeon crawler design.",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.5.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^7.0.2"
+  }
+}
