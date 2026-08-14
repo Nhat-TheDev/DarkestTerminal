@@ -2,8 +2,8 @@
 //
 // Design-time sketch of the core data types described in
 // dungeon-crawler-design-doc.md (section 4). Types only, no game logic —
-// resolver functions that read these and apply real effects are listed as
-// open work in section 5 of the doc.
+// the resolver algorithm that reads these and applies real effects is
+// specified in docs/technical-decisions.md.
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -43,7 +43,10 @@ export type SkillEffectKind =
   | "applyStatusEffect"
   | "removeStatusEffect"
   | "modifyStat"
+  | "modifyCombatStat"
   | "triggerMiniGame";
+
+export type CombatStat = "attack" | "defense" | "initiative";
 
 export interface SkillEffect {
   kind: SkillEffectKind;
@@ -51,6 +54,8 @@ export interface SkillEffect {
   amount?: number;
   /** Target stat, for `modifyStat`. */
   stat?: keyof SurvivalStats;
+  /** Target combat stat, for `modifyCombatStat` (buffs/debuffs like Guard or Curse). */
+  combatStat?: CombatStat;
   /** StatusEffect id, for apply/removeStatusEffect. */
   statusEffectId?: Id;
   /** Mini-game to launch, for `triggerMiniGame` (boss phases, item-triggered games, ...). */
@@ -75,6 +80,8 @@ export interface SkillDefinition {
   slot: 0 | 1 | 2 | 3 | 4;
   /** Character level required to unlock this skill (slots 0-1 should be 1). */
   unlockLevel: number;
+  /** Max casts per combat encounter (ultimates); omit for mp/cooldown-only gating. */
+  usesPerCombat?: number;
 }
 
 export interface CharacterClass {
@@ -82,6 +89,9 @@ export interface CharacterClass {
   name: string;
   description: string;
   baseStats: SurvivalStats;
+  baseAttack: number;
+  baseDefense: number;
+  baseInitiative: number;
   /** Exactly 5 skills total per class (2 starting + 3 unlocked by level). */
   skills: SkillDefinition[];
 }
@@ -92,6 +102,8 @@ export interface Character {
   classId: Id;
   level: number;
   stats: SurvivalStats;
+  attack: number;
+  defense: number;
   unlockedSkillIds: Id[];
   statusEffectIds: Id[];
   /** Permadeath (1.2): once false, stays false — never revived. */
@@ -196,6 +208,9 @@ export interface MiniGameSession {
 // Combat (1.2): per-character turns, initiative queue, boss fights
 // ---------------------------------------------------------------------------
 
+/** See docs/gameplay-decisions.md §2 for what each pattern does. */
+export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
+
 export interface Monster {
   id: Id;
   name: string;
@@ -205,6 +220,7 @@ export interface Monster {
   initiative: number;
   skillIds: Id[];
   isBoss: boolean;
+  aiPattern: MonsterAiPattern;
 }
 
 export type CombatantRef =

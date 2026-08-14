@@ -6,9 +6,9 @@
 
 ## Tóm tắt nhanh
 
-**Đã chốt**: genre & platform, core gameplay loop, combat model, permadeath, 3 survival stat, cấu trúc tầng/phòng, hệ class/skill, 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time), tech stack (OpenTUI), kiến trúc dual-loop, data model (file riêng).
+**Đã chốt**: genre & platform, core gameplay loop, combat model, permadeath, 3 survival stat + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng + thuật toán procedural generation, hệ class/skill (4 class × 5 skill, nội dung cụ thể), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, thuật toán turn queue, resolver logic cho SkillEffect, data model (file riêng).
 
-**Để mở**: tên/nội dung class cụ thể, monster design, quan hệ boss-fight ↔ mini-game, ngưỡng số cho survival stats, ảnh hưởng ngược của fear lên combat, số liệu cụ thể Magic Tiles, thuật toán procedural generation, thuật toán turn queue, resolver logic cho SkillEffect.
+**Để mở**: không còn mục nào ở tầm thiết kế — toàn bộ đã có quyết định cụ thể, xem `docs/*.md`. Các con số balancing (damage, threshold %, ...) vẫn chỉ là điểm khởi đầu, sẽ điều chỉnh khi có bản chơi được để playtest.
 
 ---
 
@@ -29,15 +29,17 @@
 - Fear tăng theo: độ bóng tối của tầng (darkness tăng dần theo độ sâu) + thua mini-game
 - Hunger/thirst giảm dần theo thời gian/hành động
 - Hồi phục qua: item, hoặc nghỉ tại rest room
+- Ngưỡng số cụ thể + fear có ảnh hưởng ngược lại combat: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 3-4
 
 ### 1.4 Cấu trúc tầng (Floor/Room)
 - Mỗi tầng: 5-10 phòng, có **rẽ nhánh** (đồ thị, không phải chuỗi tuyến tính)
 - 1-2 phòng trống dùng để nghỉ ngơi (rest room), hồi survival stats
 - Xuống tầng sâu hơn → darkness tăng → fear tăng theo (ambient)
+- Thuật toán sinh phòng cụ thể: **[`docs/technical-decisions.md`](./docs/technical-decisions.md)** mục 1
 
 ### 1.5 Class & Skill
 - Mỗi class: **5 skill total**, bắt đầu với 2, mở dần 3 skill còn lại khi lên cấp
-- Tên class cụ thể và danh sách skill: chưa quyết định (xem mục 5)
+- 4 class, nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
 
 ### 1.6 Item
 - Hỗ trợ duy trì sinh tồn (hunger/thirst/fear) và hồi HP/MP
@@ -62,6 +64,7 @@ Gợi ý phân bổ (chưa bắt buộc): game rủi ro thấp (Snake/Tetris) ch
 - Có **hit combo** — dùng làm hệ số nhân cho hiệu quả (combo cao → trị debuff triệt để hơn / damage lên boss nhiều hơn)
 - **Điều kiện thắng/thua**: tính điểm liên tục; đủ điểm mục tiêu trong thời gian quy định = thắng, không đủ = thua
 - 3 biến độ khó độc lập để tuning: tốc độ spawn tile, thời lượng ván, điểm mục tiêu
+- Số liệu cụ thể + UI + quan hệ với boss-fight và 3 mini-game còn lại: **[`docs/minigame-decisions.md`](./docs/minigame-decisions.md)**
 
 ---
 
@@ -102,7 +105,7 @@ Lý do:
 
 ## 4. Data model
 
-Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit` sạch, cùng thư mục với file này).
+Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). Đã bổ sung `attack`/`defense`/`baseInitiative`, `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, và `Monster.aiPattern` để khớp với các quyết định ở mục 5.
 
 Các type chính:
 - `Character`, `CharacterClass`, `SkillDefinition`, `SkillEffect` (data-driven)
@@ -115,23 +118,23 @@ Các type chính:
 
 ---
 
-## 5. Để mở (chưa quyết định)
+## 5. Quyết định chi tiết (tách file)
 
-Đã tách placeholder cho từng mục ra file riêng trong `docs/` (chỉ có khung, chưa có nội dung — xem section-start guidance ở mỗi file).
+Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ thể, tách ra 3 file riêng trong `docs/` để mục 1-4 ở trên không quá dài:
 
-### Gameplay / nội dung — xem [`docs/gameplay-todo.md`](./docs/gameplay-todo.md)
-- Tên class cụ thể và danh sách 5 skill/class (mới có ví dụ minh họa, chưa phải nội dung thật)
-- Monster: chỉ số atk/def, AI pattern
-- Ngưỡng số cụ thể cho fear/hunger/thirst (bao nhiêu thì ảnh hưởng gì tới gameplay)
-- Fear có ảnh hưởng ngược lại hiệu suất combat không? (đáng cân nhắc vì permadeath là thật — thua mini-game → fear tăng → nếu fear debuff combat thì rủi ro chồng rủi ro)
+### Gameplay / nội dung — [`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)
+- Tên 4 class + danh sách 5 skill/class đầy đủ (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
+- Monster: công thức scaling atk/def/hp theo độ sâu tầng + 3 AI pattern (aggressive/defensive/erratic)
+- Ngưỡng số cụ thể cho fear/hunger/thirst và 4 bậc fear
+- Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
 
-### Mini-game — xem [`docs/minigame-todo.md`](./docs/minigame-todo.md)
-- Quan hệ boss-fight ↔ mini-game: boss fight có hoàn toàn thay bằng mini-game, hay combat turn-based thường + mini-game xen giữa như 1 "phase"?
-- Magic Tiles: số liệu cụ thể (tốc độ spawn, thời lượng, điểm mục tiêu) — nguyên tắc đã thống nhất là tính theo kỳ vọng người chơi trung bình (không giữ combo liên tục), số cụ thể chưa chốt
-- Magic Tiles: UI hiển thị live progress (điểm hiện tại/mục tiêu hoặc thời gian còn lại) — đã đề xuất, chưa thiết kế chi tiết
-- Snake/Tetris/Brick Breaker: mới đánh giá độ rủi ro kỹ thuật, chưa thiết kế cơ chế cụ thể như Magic Tiles
+### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
+- Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định
+- Magic Tiles: số liệu cụ thể cho cả debuff-cure lẫn boss phase (thời lượng, tốc độ spawn, điểm mục tiêu, công thức combo)
+- Magic Tiles: thiết kế UI live progress (thanh điểm, thanh thời gian, combo counter)
+- Snake/Tetris/Brick Breaker: điều kiện thắng/thua và thông số cụ thể từng game
 
-### Kỹ thuật — xem [`docs/technical-todo.md`](./docs/technical-todo.md)
-- Thuật toán procedural generation cụ thể cho room/floor (constraint-satisfaction: rẽ nhánh + đảm bảo rest room)
-- Thuật toán turn queue/initiative cụ thể (data shape đã có trong `CombatState`, logic tính thứ tự chưa có)
-- Resolver function đọc `SkillEffect`/data và áp dụng effect thật sự (bước tiếp theo tự nhiên sau data model)
+### Kỹ thuật — [`docs/technical-decisions.md`](./docs/technical-decisions.md)
+- Thuật toán procedural generation: dựng random spanning tree trước (đảm bảo liên thông + rẽ nhánh), gán RoomType sau, validate-and-retry cho ràng buộc rest room
+- Thuật toán turn queue/initiative: `baseInitiative` (class/monster) + roll ngẫu nhiên, tính 1 lần khi combat bắt đầu, giữ tĩnh suốt trận
+- Resolver function cho `SkillEffect`: 1 hàm thuần túy switch theo `kind`, dùng chung skill/item, xử lý cả case `triggerMiniGame` (mini-game trả kết quả về dưới dạng effect phái sinh, không có code path riêng)
