@@ -17,14 +17,13 @@ export interface Vector2 {
 }
 
 // ---------------------------------------------------------------------------
-// Survival stats (1.3): HP/MP + fear/hunger/thirst
+// Survival stats (1.3): fear/hunger/thirst only — HP/MP live on
+// Character/Monster directly (see below), since HP/MP are class-defining
+// combat stats while fear/hunger/thirst start identical for every class
+// (docs/gameplay-decisions.md §3).
 // ---------------------------------------------------------------------------
 
 export interface SurvivalStats {
-  hp: number;
-  maxHp: number;
-  mp: number;
-  maxMp: number;
   fear: number;
   hunger: number;
   thirst: number;
@@ -46,13 +45,14 @@ export type SkillEffectKind =
   | "modifyCombatStat"
   | "triggerMiniGame";
 
-export type CombatStat = "attack" | "defense" | "initiative";
+/** attack/defense/aggro/speed — the 4 buffable/debuffable combat stats (1.5). */
+export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
 export interface SkillEffect {
   kind: SkillEffectKind;
   /** Flat amount; meaning depends on `kind` (damage / heal / mp / stat delta). */
   amount?: number;
-  /** Target stat, for `modifyStat`. */
+  /** Target survival stat, for `modifyStat` (fear/hunger/thirst only). */
   stat?: keyof SurvivalStats;
   /** Target combat stat, for `modifyCombatStat` (buffs/debuffs like Guard or Curse). */
   combatStat?: CombatStat;
@@ -84,14 +84,23 @@ export interface SkillDefinition {
   usesPerCombat?: number;
 }
 
+/**
+ * Level-1 combat stats for a class: tấn công/phòng thủ/máu/mana/thu hút/tốc độ
+ * (docs/gameplay-decisions.md §1). fear/hunger/thirst are NOT here — every
+ * character starts with the same values regardless of class (§3).
+ */
 export interface CharacterClass {
   id: Id;
   name: string;
   description: string;
-  baseStats: SurvivalStats;
+  baseMaxHp: number;
+  baseMaxMp: number;
   baseAttack: number;
   baseDefense: number;
-  baseInitiative: number;
+  /** Thu hút — weight in monster target selection (docs/gameplay-decisions.md §2). */
+  baseAggro: number;
+  /** Tốc độ — priority in the resolution-phase turn order (docs/technical-decisions.md §2). */
+  baseSpeed: number;
   /** Exactly 5 skills total per class (2 starting + 3 unlocked by level). */
   skills: SkillDefinition[];
 }
@@ -101,9 +110,15 @@ export interface Character {
   name: string;
   classId: Id;
   level: number;
-  stats: SurvivalStats;
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
   attack: number;
   defense: number;
+  aggro: number;
+  speed: number;
+  survival: SurvivalStats;
   unlockedSkillIds: Id[];
   statusEffectIds: Id[];
   /** Permadeath (1.2): once false, stays false — never revived. */
@@ -205,7 +220,7 @@ export interface MiniGameSession {
 }
 
 // ---------------------------------------------------------------------------
-// Combat (1.2): per-character turns, initiative queue, boss fights
+// Combat (1.2): command phase + speed-ordered resolution phase, boss fights
 // ---------------------------------------------------------------------------
 
 /** See docs/gameplay-decisions.md §2 for what each pattern does. */
@@ -214,10 +229,12 @@ export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
 export interface Monster {
   id: Id;
   name: string;
-  stats: SurvivalStats;
+  hp: number;
+  maxHp: number;
   attack: number;
   defense: number;
-  initiative: number;
+  /** Monsters are never targeted by other monsters, so no aggro stat here. */
+  speed: number;
   skillIds: Id[];
   isBoss: boolean;
   aiPattern: MonsterAiPattern;
@@ -229,17 +246,40 @@ export type CombatantRef =
 
 export interface Combatant {
   ref: CombatantRef;
-  initiative: number;
+  /** Snapshotted from the underlying Character/Monster speed at round start. */
+  speed: number;
   statusEffectIds: Id[];
+}
+
+export type ActionSource =
+  | { kind: "skill"; skillId: Id }
+  | { kind: "item"; itemId: Id };
+
+/**
+ * A player-submitted action, captured during the command phase and executed
+ * later during the resolution phase (docs/technical-decisions.md §2).
+ */
+export interface QueuedAction {
+  actor: CombatantRef;
+  source: ActionSource;
+  targets: CombatantRef[];
 }
 
 export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
-  /** Ordered by initiative; turn order alternates between characters and monsters. */
+  roundNumber: number;
+  /**
+   * "command": player is choosing an action for each living character.
+   * "resolution": turnQueue is being executed in speed order (monsters
+   * choose their action live, at their own turn, instead of pre-committing).
+   */
+  phase: "command" | "resolution";
+  /** One entry per living character, filled during the command phase. */
+  queuedActions: QueuedAction[];
+  /** Built from `combatants` sorted by speed once the command phase ends. */
   turnQueue: CombatantRef[];
   activeTurnIndex: number;
-  roundNumber: number;
   isBossFight: boolean;
 }
 

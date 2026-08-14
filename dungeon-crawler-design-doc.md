@@ -6,7 +6,7 @@
 
 ## Tóm tắt nhanh
 
-**Đã chốt**: genre & platform, core gameplay loop, combat model, permadeath, 3 survival stat + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng + thuật toán procedural generation, hệ class/skill (4 class × 5 skill, nội dung cụ thể), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, thuật toán turn queue, resolver logic cho SkillEffect, data model (file riêng).
+**Đã chốt**: genre & platform, core gameplay loop, combat model (round 2 pha: ra lệnh + thực thi theo tốc độ), permadeath, 6 chỉ số class (tấn công/phòng thủ/máu/mana/thu hút/tốc độ) + targeting theo thu hút, 3 survival stat (cùng giá trị khởi tạo mọi class) + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng + thuật toán procedural generation, hệ class/skill (4 class × 5 skill, nội dung cụ thể), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, resolver logic cho SkillEffect, data model (file riêng).
 
 **Để mở**: không còn mục nào ở tầm thiết kế — toàn bộ đã có quyết định cụ thể, xem `docs/*.md`. Các con số balancing (damage, threshold %, ...) vẫn chỉ là điểm khởi đầu, sẽ điều chỉnh khi có bản chơi được để playtest.
 
@@ -20,10 +20,10 @@
 - Vòng lặp chính: đánh quái (combat) — khám phá (exploration) — sinh tồn (survival management)
 
 ### 1.2 Combat
-- Turn-based, **turn riêng từng nhân vật** (tactical, không phải cả team hành động như 1 khối)
-- Turn queue xen kẽ giữa 4 nhân vật và quái (initiative-based)
+- Turn-based theo round, mỗi round 2 pha: **ra lệnh** (người chơi chọn hành động + mục tiêu cho cả 4 nhân vật trước, không thấy trước quái làm gì) rồi **thực thi** (nhân vật + quái lần lượt ra đòn theo **tốc độ**, cao trước thấp sau)
 - **Permadeath thật sự** — nhân vật chết là mất hẳn, không hồi sinh
-- Hiệu quả HP/MP/attack/defense/initiative + công thức tăng trưởng theo cấp: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 5
+- Thuật toán 2 pha đầy đủ (rule mục tiêu chết trước lượt, thời điểm trừ MP, ...): **[`docs/technical-decisions.md`](./docs/technical-decisions.md)** mục 2
+- Hiệu quả HP/MP/attack/defense/aggro/speed + công thức tăng trưởng theo cấp: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 5
 
 ### 1.3 Survival stats
 - 3 chỉ số: **sợ hãi (fear)**, **đói (hunger)**, **khát (thirst)** — cộng thêm HP, MP riêng
@@ -40,7 +40,8 @@
 
 ### 1.5 Class & Skill
 - Mỗi class: **5 skill total**, bắt đầu với 2, mở dần 3 skill còn lại khi lên cấp
-- 4 class, nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
+- 6 chỉ số định hình mỗi class: **tấn công, phòng thủ, máu, mana, thu hút** (tỉ lệ bị quái chọn làm mục tiêu), **tốc độ** (ưu tiên ra đòn trước)
+- 4 class, bảng chỉ số + nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
 
 ### 1.6 Item
 - Hỗ trợ duy trì sinh tồn (hunger/thirst/fear) và hồi HP/MP
@@ -106,7 +107,7 @@ Lý do:
 
 ## 4. Data model
 
-Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). Đã bổ sung `attack`/`defense`/`baseInitiative`, `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, và `Monster.aiPattern` để khớp với các quyết định ở mục 5.
+Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). `SurvivalStats` giờ chỉ còn `fear`/`hunger`/`thirst`; `attack`/`defense`/`hp`/`maxHp`/`mp`/`maxMp`/`aggro`/`speed` là field phẳng trực tiếp trên `Character`/`Monster`. Đã thêm `QueuedAction`/`ActionSource` + `CombatState.phase`/`queuedActions` cho mô hình round 2 pha (mục 1.2), `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, và `Monster.aiPattern`.
 
 Các type chính:
 - `Character`, `CharacterClass`, `SkillDefinition`, `SkillEffect` (data-driven)
@@ -114,7 +115,7 @@ Các type chính:
 - `ItemDefinition`
 - `Room`, `Floor` (cấu trúc hầm ngục)
 - `MiniGameSession`, `MiniGameResult`, `KeyEvent` (mini-game)
-- `Monster`, `Combatant`, `CombatState` (combat)
+- `Monster`, `Combatant`, `QueuedAction`, `CombatState` (combat)
 - `GameState`, `GameMode` (nối dungeon loop và mini-game loop)
 
 ---
@@ -124,11 +125,11 @@ Các type chính:
 Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ thể, tách ra 3 file riêng trong `docs/` để mục 1-4 ở trên không quá dài:
 
 ### Gameplay / nội dung — [`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)
-- Tên 4 class + danh sách 5 skill/class đầy đủ (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
-- Monster: công thức scaling atk/def/hp theo độ sâu tầng + 3 AI pattern (aggressive/defensive/erratic)
-- Ngưỡng số cụ thể cho fear/hunger/thirst và 4 bậc fear
+- Tên 4 class + bảng 6 chỉ số (attack/defense/maxHp/maxMp/aggro/speed) + danh sách 5 skill/class đầy đủ (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
+- Monster: công thức scaling atk/def/hp theo độ sâu tầng + targeting theo `aggro` (random có trọng số) + 3 AI pattern (aggressive/defensive/erratic)
+- Giá trị khởi tạo + ngưỡng số cụ thể cho fear/hunger/thirst (giống nhau mọi class) và 4 bậc fear
 - Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
-- Hiệu quả HP=0/MP thiếu + công thức tăng trưởng attack/defense/maxHp/maxMp theo cấp (level gắn với độ sâu tầng, tối đa cấp 7)
+- Hiệu quả HP=0/MP thiếu + công thức tăng trưởng attack/defense/maxHp/maxMp theo cấp (level gắn với độ sâu tầng, tối đa cấp 7; `aggro`/`speed` không tăng theo cấp)
 
 ### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
 - Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định
@@ -138,5 +139,5 @@ Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ
 
 ### Kỹ thuật — [`docs/technical-decisions.md`](./docs/technical-decisions.md)
 - Thuật toán procedural generation: dựng random spanning tree trước (đảm bảo liên thông + rẽ nhánh), gán RoomType sau, validate-and-retry cho ràng buộc rest room
-- Thuật toán turn queue/initiative: `baseInitiative` (class/monster) + roll ngẫu nhiên, tính 1 lần khi combat bắt đầu, giữ tĩnh suốt trận
+- Thuật toán round 2 pha: pha ra lệnh (chốt hành động cả 4 nhân vật, trừ MP/lượt ngay lúc đó) rồi pha thực thi (sort theo `speed`, quái quyết định tại chỗ, rule đổi/hủy mục tiêu nếu target đã chết trước lượt)
 - Resolver function cho `SkillEffect`: 1 hàm thuần túy switch theo `kind`, dùng chung skill/item, xử lý cả case `triggerMiniGame` (mini-game trả kết quả về dưới dạng effect phái sinh, không có code path riêng)
