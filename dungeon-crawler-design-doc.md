@@ -117,19 +117,21 @@ Các type chính:
 
 ## 5. Để mở (chưa quyết định)
 
-### Gameplay / nội dung
+Đã tách placeholder cho từng mục ra file riêng trong `docs/` (chỉ có khung, chưa có nội dung — xem section-start guidance ở mỗi file).
+
+### Gameplay / nội dung — xem [`docs/gameplay-todo.md`](./docs/gameplay-todo.md)
 - Tên class cụ thể và danh sách 5 skill/class (mới có ví dụ minh họa, chưa phải nội dung thật)
 - Monster: chỉ số atk/def, AI pattern
 - Ngưỡng số cụ thể cho fear/hunger/thirst (bao nhiêu thì ảnh hưởng gì tới gameplay)
 - Fear có ảnh hưởng ngược lại hiệu suất combat không? (đáng cân nhắc vì permadeath là thật — thua mini-game → fear tăng → nếu fear debuff combat thì rủi ro chồng rủi ro)
 
-### Mini-game
+### Mini-game — xem [`docs/minigame-todo.md`](./docs/minigame-todo.md)
 - Quan hệ boss-fight ↔ mini-game: boss fight có hoàn toàn thay bằng mini-game, hay combat turn-based thường + mini-game xen giữa như 1 "phase"?
 - Magic Tiles: số liệu cụ thể (tốc độ spawn, thời lượng, điểm mục tiêu) — nguyên tắc đã thống nhất là tính theo kỳ vọng người chơi trung bình (không giữ combo liên tục), số cụ thể chưa chốt
 - Magic Tiles: UI hiển thị live progress (điểm hiện tại/mục tiêu hoặc thời gian còn lại) — đã đề xuất, chưa thiết kế chi tiết
 - Snake/Tetris/Brick Breaker: mới đánh giá độ rủi ro kỹ thuật, chưa thiết kế cơ chế cụ thể như Magic Tiles
 
-### Kỹ thuật
+### Kỹ thuật — xem [`docs/technical-todo.md`](./docs/technical-todo.md)
 - Thuật toán procedural generation cụ thể cho room/floor (constraint-satisfaction: rẽ nhánh + đảm bảo rest room)
 - Thuật toán turn queue/initiative cụ thể (data shape đã có trong `CombatState`, logic tính thứ tự chưa có)
 - Resolver function đọc `SkillEffect`/data và áp dụng effect thật sự (bước tiếp theo tự nhiên sau data model)
