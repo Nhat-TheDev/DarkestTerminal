@@ -150,7 +150,8 @@ export class App {
 
   private handleKey(key: KeyEvent): void {
     if (key.name === "q" || (key.name === "c" && key.ctrl)) {
-      process.exit(0);
+      this.quit();
+      return;
     }
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
@@ -192,6 +193,16 @@ export class App {
         break;
     }
     this.render();
+  }
+
+  /**
+   * `process.exit()` alone skips OpenTUI's terminal teardown (leaves mouse
+   * tracking / alternate screen / cursor state stuck) — `renderer.destroy()`
+   * restores the terminal first, then we exit.
+   */
+  private quit(): void {
+    this.renderer.destroy();
+    process.exit(0);
   }
 
   private trySelectSkill(actorRef: CombatantRef, skill: SkillDefinition): void {
