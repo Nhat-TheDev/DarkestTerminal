@@ -18,6 +18,36 @@ import {
   fearColorFor,
   joinLines,
 } from "./theme";
+import { spriteForClass, spriteForMonster, renderSpriteInSlot, MAX_BOSS_HEIGHT, type Sprite } from "./sprites";
+
+const SLOT_WIDTH = 11; // matches the boss sprite's width, the widest sprite
+const SLOT_GAP = 2;
+const DIVIDER_WIDTH = 3;
+const EMPTY_ENEMY_WIDTH = 24;
+/** sprite (bottom-aligned to MAX_BOSS_HEIGHT) + 1 spacer + label line + hp line. */
+const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
+
+function centerText(text: string, width: number): string {
+  if (text.length >= width) return text.slice(0, width);
+  const pad = width - text.length;
+  const left = Math.floor(pad / 2);
+  return " ".repeat(left) + text + " ".repeat(pad - left);
+}
+
+/** Concatenates same-height blocks side by side, line by line, with a blank gap between them. */
+function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): TextChunk[][] {
+  const lineCount = blocks[0]?.length ?? 0;
+  const merged: TextChunk[][] = [];
+  for (let i = 0; i < lineCount; i++) {
+    const line: TextChunk[] = [];
+    blocks.forEach((block, idx) => {
+      if (idx > 0) line.push(plainChunk(" ".repeat(gapWidth)));
+      line.push(...(block[i] ?? []));
+    });
+    merged.push(line);
+  }
+  return merged;
+}
 
 type UiState =
   | { kind: "room" }
@@ -39,6 +69,7 @@ export class App {
   private ui: UiState = { kind: "room" };
   private root: BoxRenderable;
   private header: TextRenderable;
+  private battlefield: TextRenderable;
   private party: TextRenderable;
   private main: TextRenderable;
   private monsters: TextRenderable;
@@ -75,6 +106,16 @@ export class App {
     });
     headerBox.add(this.header);
     this.root.add(headerBox);
+
+    const battlefieldBox = new BoxRenderable(renderer, {
+      id: "battlefield-box",
+      ...panel,
+      height: UNIT_BLOCK_HEIGHT + 2,
+      title: "Chiến Trường",
+    });
+    this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
+    battlefieldBox.add(this.battlefield);
+    this.root.add(battlefieldBox);
 
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
@@ -228,6 +269,8 @@ export class App {
       ],
     ]);
 
+    this.battlefield.content = joinLines(this.renderBattlefield());
+
     const partyLines: TextChunk[][] = [];
     s.party.forEach((c, i) => {
       if (i > 0) partyLines.push([]);
@@ -280,6 +323,65 @@ export class App {
       line3.push(n);
     });
     return [line1, line2, line3];
+  }
+
+  private buildUnitBlock(sprite: Sprite, label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {
+    const lines = renderSpriteInSlot(sprite, MAX_BOSS_HEIGHT, SLOT_WIDTH);
+    lines.push([plainChunk(" ".repeat(SLOT_WIDTH))]);
+    lines.push([colorChunk(centerText(label, SLOT_WIDTH), labelColor)]);
+    lines.push([colorChunk(centerText(statusText, SLOT_WIDTH), statusColor)]);
+    return lines;
+  }
+
+  private buildEmptyEnemyBlock(message: string): TextChunk[][] {
+    const blank = () => [plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))];
+    const lines: TextChunk[][] = [];
+    for (let i = 0; i < MAX_BOSS_HEIGHT; i++) lines.push(blank());
+    lines.push(blank());
+    lines.push(message ? [colorChunk(centerText(message, EMPTY_ENEMY_WIDTH), PALETTE.dim)] : blank());
+    lines.push(blank());
+    return lines;
+  }
+
+  /** Pixel-art frame (docs: 1 pixel = 1 cell, units <=10px tall, boss <=13px): party on the left, current room's monsters/boss on the right. */
+  private renderBattlefield(): TextChunk[][] {
+    const s = this.game.state;
+
+    const partySlots = s.party.map((c) => {
+      const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+      const sprite = spriteForClass(c.classId);
+      if (!c.isAlive) return this.buildUnitBlock(sprite, style.abbr, PALETTE.dead, "Gục", PALETTE.dead);
+      return this.buildUnitBlock(sprite, style.abbr, style.color, `${c.hp}/${c.maxHp}`, hpColorFor(c.hp, c.maxHp));
+    });
+    const partyBlock = mergeBlocksHorizontally(partySlots, SLOT_GAP);
+
+    let enemyBlock: TextChunk[][];
+    if (s.combat) {
+      const monsterCombatants = s.combat.combatants.filter((c) => c.ref.kind === "monster");
+      if (monsterCombatants.length === 0) {
+        enemyBlock = this.buildEmptyEnemyBlock("Đã dọn sạch");
+      } else {
+        const slots = monsterCombatants.map((combatant) => {
+          const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+          const style = m.isBoss ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+          const sprite = spriteForMonster(m.archetypeId, m.isBoss);
+          if (m.hp <= 0) return this.buildUnitBlock(sprite, style.abbr, PALETTE.dead, "Hạ gục", PALETTE.dead);
+          return this.buildUnitBlock(sprite, style.abbr, style.color, `${m.hp}/${m.maxHp}`, hpColorFor(m.hp, m.maxHp));
+        });
+        enemyBlock = mergeBlocksHorizontally(slots, SLOT_GAP);
+      }
+    } else {
+      const room = getRoom(s.floor, s.currentRoomId);
+      const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? "An toàn" : "Chưa chạm trán";
+      enemyBlock = this.buildEmptyEnemyBlock(message);
+    }
+
+    const divider: TextChunk[][] = [];
+    for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
+      divider.push(i === Math.floor(UNIT_BLOCK_HEIGHT / 2) ? [colorChunk(centerText("vs", DIVIDER_WIDTH), PALETTE.dim)] : [plainChunk(" ".repeat(DIVIDER_WIDTH))]);
+    }
+
+    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
   private renderMonsterLines(): TextChunk[][] {

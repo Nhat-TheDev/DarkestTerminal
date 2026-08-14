@@ -47,18 +47,39 @@ bun run typecheck
 Tông màu tối (nền `#100d0a`/panel `#171310`), mỗi nhân vật/quái có 1 "khối"
 màu riêng (chip nền màu + viết tắt, VD `CV` xanh thép cho Cận Vệ, `XS` xám
 xương cho Xương Sống Canh Gác, boss tô đỏ). HP đổi màu theo ngưỡng
-(xanh/vàng/đỏ), fear từ bậc 2 trở lên mới hiện nhãn màu. 3 panel chính:
+(xanh/vàng/đỏ), fear từ bậc 2 trở lên mới hiện nhãn màu.
 
+### Khung "Chiến Trường" — pixel art
+
+Panel riêng ngay dưới header, hiện đoàn 4 nhân vật (trái) và quái/boss trong
+phòng hiện tại (phải), dạng pixel: **1 pixel = 1 ô ký tự** (space + màu nền,
+không dùng ký tự hiển thị) — kích thước pixel là lựa chọn thiết kế, chọn 1:1
+để giữ khung gọn thay vì nhân đôi bề ngang cho "vuông" hơn. Nhân vật/quái
+thường cao tối đa **10 pixel**, boss cao tối đa **13 pixel** (rộng hơn — 11
+so với 9 cột); mọi đơn vị được **căn đáy** trong 1 khung chung 13 pixel nên
+dù cao thấp khác nhau vẫn "đứng chung 1 mặt đất". Dưới mỗi sprite là 2 dòng
+chữ (viết tắt + HP hiện tại) — chi tiết đầy đủ (tên dài, MP, hiệu ứng...) vẫn
+nằm ở panel "Đoàn Thám Hiểm"/"Quái Vật" bên dưới, khung pixel chỉ để nhìn
+nhanh. Dữ liệu sprite (lưới ký tự → màu hex) ở `src/ui/sprites.ts`, có test
+riêng (`test/sprites.test.ts`) chặn lỗi lệch hàng/cột hoặc thiếu màu trong
+palette.
+
+Panel này cần khá nhiều chiều cao (13 pixel + 3 dòng nhãn + viền ≈ 18 dòng),
+cộng với các panel khác → nên dùng terminal **tối thiểu ~45-50 dòng cao**;
+terminal thấp hơn sẽ bị cắt mất phần dưới của khung (nhãn/HP).
+
+Các panel còn lại:
 - **Đoàn Thám Hiểm**: mỗi nhân vật tối giản còn 2 dòng (tên+chip, HP/MP);
   dòng 3 chỉ xuất hiện khi có cảnh báo thật sự (fear ≥ bậc 2, đói/khát thấp,
   đang dính hiệu ứng)
-- **Quái Vật** (mới): danh sách quái đang giao chiến + HP, ẩn khi không có
-  quái trong phòng
+- **Quái Vật**: danh sách quái đang giao chiến + HP, ẩn khi không có quái
+  trong phòng
 - **Nhật Ký**: thu nhỏ còn 5 dòng cao (trước là 10), chỉ hiện log của round
   vừa resolve thay vì dồn cả trận
 
 Toàn bộ theme/màu định nghĩa ở `src/ui/theme.ts` — đổi bảng màu hoặc thêm
-class/quái mới thì chỉnh `PALETTE`/`CLASS_STYLE`/`MONSTER_STYLE` ở đó.
+class/quái mới thì chỉnh `PALETTE`/`CLASS_STYLE`/`MONSTER_STYLE` ở đó
+(và thêm sprite tương ứng ở `src/ui/sprites.ts`).
 
 ## Cấu trúc code
 
@@ -68,9 +89,11 @@ src/
   data/                # class/skill, monster, status effect, floor — dữ liệu tĩnh
   engine/              # logic thuần (rng, party, resolver, combat, survival, dungeon, game) — test được không cần UI
   ui/theme.ts          # bảng màu + helper dựng StyledText (chip, màu theo HP/fear)
+  ui/sprites.ts        # sprite pixel-art (lưới ký tự -> màu) + render vào khung cố định
   ui/app.ts            # OpenTUI: layout + bàn phím, chỉ đọc/ghi qua Game
   main.ts              # entry point thật (createCliRenderer)
 test/
   engine.test.ts       # unit test engine, bao gồm 1 playthrough kịch bản đầy đủ
   ui.test.ts           # smoke test headless: boot + chơi hết ván qua bàn phím giả lập
+  sprites.test.ts      # kích thước/palette từng sprite + hành vi renderSpriteInSlot
 ```
