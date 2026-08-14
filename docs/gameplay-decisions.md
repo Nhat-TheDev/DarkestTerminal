@@ -1,0 +1,127 @@
+# Gameplay / Nội dung — Quyết định
+
+**Trạng thái**: Đã chốt
+**Liên quan**: `../dungeon-crawler-design-doc.md` mục 1.3, 1.5; `../dungeon-crawler-data-model.ts`
+
+---
+
+## 1. Class & Skill
+
+4 class, mỗi class 5 skill (2 mở sẵn ở cấp 1, 3 mở dần ở cấp 3/5/7). `slot`/`unlockLevel`/`usesPerCombat` khớp field cùng tên trong `SkillDefinition`.
+
+### 1.1 Cận Vệ (Vanguard) — tank, chống chịu, giữ chân quái
+`baseAttack 14, baseDefense 12, baseInitiative 8`
+
+| Slot | Lvl | Skill | MP | Target | Hiệu ứng |
+|---|---|---|---|---|---|
+| 0 | 1 | Chém Khiên | 0 | singleEnemy | `damage 10` |
+| 1 | 1 | Trấn Thủ | 4 | self | `applyStatusEffect "phong-thu"` (buff, 2 lượt, mỗi lượt `modifyCombatStat defense +6`) |
+| 2 | 3 | Khiêu Khích | 6 | singleEnemy | `applyStatusEffect "bi-khieu-khich"` — quái bị dính buộc ưu tiên nhắm Cận Vệ (AI đọc status này, xem mục 2) |
+| 3 | 5 | Chặt Hạ | 10 | singleEnemy | `damage 22` |
+| 4 | 7 | Bất Khuất | 0 | self | `heal 20%maxHp`, `usesPerCombat 1` — chỉ tự kích hoạt khi HP < 25% |
+
+### 1.2 Pháp Sư Bóng Tối (Shadow Mage) — sát thương phép tầm xa, giòn
+`baseAttack 6, baseDefense 4, baseInitiative 10`
+
+| Slot | Lvl | Skill | MP | Target | Hiệu ứng |
+|---|---|---|---|---|---|
+| 0 | 1 | Phi Ảnh | 5 | singleEnemy | `damage 14` |
+| 1 | 1 | Tập Trung | 0 | self | `restoreMp 10` — lượt tích lũy, đánh đổi tempo |
+| 2 | 3 | Quầng Tối | 12 | allEnemies | `damage 10` (AoE) |
+| 3 | 5 | Nguyền Rủa | 8 | singleEnemy | `applyStatusEffect "nguyen-rua"` (debuff, 3 lượt, mỗi lượt `modifyCombatStat attack -4`) |
+| 4 | 7 | Vực Thẳm | 18 | singleEnemy | `damage 40`, `usesPerCombat 1` |
+
+### 1.3 Sát Thủ (Rogue) — burst đơn mục tiêu, initiative cao nhất nhóm
+`baseAttack 16, baseDefense 6, baseInitiative 16`
+
+| Slot | Lvl | Skill | MP | Target | Hiệu ứng |
+|---|---|---|---|---|---|
+| 0 | 1 | Đâm Lén | 3 | singleEnemy | `damage 12` |
+| 1 | 1 | Lẩn Tránh | 4 | self | `applyStatusEffect "ne-tranh"` (buff, 1 lượt, `modifyCombatStat defense +6`) |
+| 2 | 3 | Tẩm Độc | 6 | singleEnemy | `applyStatusEffect "trung-doc"` (debuff thật — xem `curableByMiniGame`, 3 lượt, mỗi lượt `damage 4`) |
+| 3 | 5 | Song Kích | 8 | singleEnemy | 2 effect trong list: `damage 10` + `damage 10`, resolve tuần tự |
+| 4 | 7 | Nhát Chí Mạng | 14 | singleEnemy | `damage 35`, `usesPerCombat 1` |
+
+### 1.4 Tu Sĩ (Chaplain) — hồi phục + hạ fear cả team
+`baseAttack 6, baseDefense 8, baseInitiative 9`
+
+| Slot | Lvl | Skill | MP | Target | Hiệu ứng |
+|---|---|---|---|---|---|
+| 0 | 1 | Cầu Nguyện | 6 | singleAlly | `heal 16` |
+| 1 | 1 | An Ủi | 4 | singleAlly | `modifyStat fear -10` |
+| 2 | 3 | Thánh Ca | 10 | allAllies | `heal 10` + `modifyStat fear -6` |
+| 3 | 5 | Thanh Tẩy | 8 | singleAlly | `removeStatusEffect` — gỡ 1 debuff bất kỳ ngay lập tức, không cần mini-game (cứu hộ khẩn cấp, đổi lại tốn MP cao so với mpCost trung bình) |
+| 4 | 7 | Ánh Sáng Cứu Rỗi | 16 | allAllies | `heal 25` + `modifyStat fear -15`, `usesPerCombat 1` |
+
+### Ghi chú thiết kế
+- Mỗi class có đúng 1 skill "ultimate" (`usesPerCombat: 1`) ở slot 4.
+- `modifyCombatStat` (buff/debuff attack/defense/initiative) luôn đi qua `applyStatusEffect` — không có effect chỉnh combat-stat tức thời/vĩnh viễn, tất cả đều có `durationTurns` trên `StatusEffectDefinition`.
+- `StatusEffectDefinition` dùng chung cho cả buff (VD "phong-thu") lẫn debuff (VD "trung-doc"): buff để `curableByMiniGame: []` và hết hạn qua `durationTurns`; debuff thật mới có `curableByMiniGame` khác rỗng.
+
+---
+
+## 2. Monster — chỉ số & AI pattern
+
+### Công thức scaling theo độ sâu tầng (`floorDepth`, tầng 1 = depth 1)
+- `attack = baseAttack + floorDepth * 2`
+- `defense = baseDefense + floorDepth * 1`
+- `maxHp = baseHp + floorDepth * 8` (hp khởi tạo = maxHp)
+- `initiative = baseInitiative` (không scale theo tầng)
+
+Đây là công thức archetype → instance, dùng khi spawn quái vào `Room.monsterIds`; các field `attack/defense/stats/initiative` trên `Monster` luôn là giá trị đã resolve, không lưu công thức.
+
+### 3 AI pattern (`MonsterAiPattern`)
+- **`aggressive`** (Hung Hãn): mỗi lượt nhắm nhân vật còn ít HP nhất trong party.
+- **`defensive`** (Phòng Thủ): nếu HP bản thân < 40% và có skill hồi/phòng thủ trong `skillIds` thì dùng skill đó; ngược lại tấn công nhân vật có `defense` thấp nhất.
+- **`erratic`** (Hỗn Loạn): chọn ngẫu nhiên trong các target/skill hợp lệ — dùng cho quái "điên loạn", đúng chất theme fear (không đoán trước được).
+
+Ngoại lệ: nếu target có status `"bi-khieu-khich"` (skill Khiêu Khích của Cận Vệ) đang active, mọi pattern đều ưu tiên nhắm target đó trước khi áp dụng logic riêng.
+
+### Ví dụ archetype theo cụm tầng (minh họa, không bắt buộc đủ)
+| Tên | Tầng | baseHp | baseAtk | baseDef | initiative | AI | Ghi chú |
+|---|---|---|---|---|---|---|---|
+| Chuột Hầm Ngục | 1-3 | 18 | 5 | 2 | 7 | erratic | quái mở màn, tần suất cao |
+| Dơi Đen | 1-3 | 14 | 6 | 1 | 14 | aggressive | initiative cao, đánh sớm |
+| Xương Sống Canh Gác | 4-6 | 40 | 10 | 6 | 8 | defensive | tanky, self-heal khi trúng skill |
+| Bóng Ma Gào Thét | 7+ | 60 | 14 | 4 | 11 | erratic | trúng đòn → +fear phụ trội cho nạn nhân |
+
+Boss: `isBoss: true`, xuất hiện mỗi 5 tầng, có 1 phase kích hoạt mini-game ở mốc 50% HP (chi tiết ở `docs/minigame-decisions.md` mục 1).
+
+---
+
+## 3. Ngưỡng số cho survival stats
+
+Cả 3 chỉ số (`fear`, `hunger`, `thirst`) nằm trong khoảng **0–100**.
+
+### Hunger / Thirst
+- Mỗi hành động trong dungeon loop (di chuyển 1 phòng, hoặc 1 lượt combat): `hunger -1`, `thirst -1.5` (khát giảm nhanh hơn đói).
+- Khi `hunger` hoặc `thirst` chạm 0: nhân vật nhận `damage = 2% maxHp` mỗi hành động tiếp theo cho tới khi được nạp lại qua item/rest room (2 chỉ số cộng dồn nếu cả hai cùng chạm đáy).
+- Hồi qua item (`ItemDefinition.effects` với `modifyStat`) hoặc nghỉ tại rest room (hồi đầy `hunger`/`thirst`/`fear` về mức an toàn, xem mục 4).
+
+### Fear
+- Ambient theo tầng: mỗi khi vào phòng mới, `fear += darknessLevel` của `Floor` hiện tại (darkness tăng dần theo depth — công thức darkness cụ thể để tự do cho phần balancing sau, chỉ cần tăng đơn điệu theo `depth`).
+- Thua mini-game: `fear += 15` (cố định, không phụ thuộc loại mini-game).
+- Rest room: hồi `fear -= 30` khi nghỉ (không đưa fear về 0 hẳn — vẫn phải chủ động dùng item/skill nếu muốn an toàn tuyệt đối).
+
+### 4 bậc fear (dùng chung cho mục 4 bên dưới)
+| Bậc | Khoảng | Tên |
+|---|---|---|
+| 1 | 0–39 | Bình Tĩnh |
+| 2 | 40–69 | Bất An |
+| 3 | 70–99 | Hoảng Loạn |
+| 4 | 100 | Suy Sụp |
+
+---
+
+## 4. Fear ảnh hưởng ngược lại combat — có, nhưng có trần và có lối thoát
+
+Quyết định: **fear có ảnh hưởng thật tới hiệu suất combat**, áp dụng theo bậc ở mục 3, để giữ đúng tinh thần "rủi ro thật" của permadeath. Để tránh rủi ro chồng rủi ro biến thành tử vòng xoáy không kiểm soát được, ảnh hưởng bị **chặn trần ở bậc 4** và luôn có công cụ hạ fear chủ động (skill Tu Sĩ, item, rest room) đối trọng lại.
+
+| Bậc fear | Ảnh hưởng combat |
+|---|---|
+| Bình Tĩnh (0-39) | Không ảnh hưởng |
+| Bất An (40-69) | Độ chính xác kỹ năng nhắm địch giảm 10% |
+| Hoảng Loạn (70-99) | Độ chính xác giảm 20%, sát thương gây ra giảm 15% |
+| Suy Sụp (100) | Mỗi lượt có 25% khả năng "mất kiểm soát" — bỏ lượt hoàn toàn (tương đương stun); 75% còn lại hành động bình thường (không giảm thêm accuracy/damage so với bậc Hoảng Loạn) |
+
+Ghi chú: đây là **soft cap có chủ đích** — bậc 4 không tăng nặng thêm theo fear (vì fear đã kịch trần 100), và party luôn có Tu Sĩ/item để kéo fear xuống trước khi vào combat quan trọng. Việc này để dành cho balancing thực tế khi playtest, số % ở trên là điểm khởi đầu, không phải số cuối cùng.
