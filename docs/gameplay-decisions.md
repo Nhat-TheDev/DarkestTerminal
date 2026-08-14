@@ -125,3 +125,28 @@ Quyết định: **fear có ảnh hưởng thật tới hiệu suất combat**, 
 | Suy Sụp (100) | Mỗi lượt có 25% khả năng "mất kiểm soát" — bỏ lượt hoàn toàn (tương đương stun); 75% còn lại hành động bình thường (không giảm thêm accuracy/damage so với bậc Hoảng Loạn) |
 
 Ghi chú: đây là **soft cap có chủ đích** — bậc 4 không tăng nặng thêm theo fear (vì fear đã kịch trần 100), và party luôn có Tu Sĩ/item để kéo fear xuống trước khi vào combat quan trọng. Việc này để dành cho balancing thực tế khi playtest, số % ở trên là điểm khởi đầu, không phải số cuối cùng.
+
+---
+
+## 5. Hiệu quả & tăng trưởng của các chỉ số nhân vật
+
+Mục 1-4 đã định nghĩa hiệu quả của `fear`/`hunger`/`thirst` và của `attack`/`defense` (qua công thức damage ở `technical-decisions.md` §3) và `initiative` (qua turn queue ở `technical-decisions.md` §2). Phần còn thiếu: **HP/MP hoạt động thế nào**, và **chỉ số thay đổi ra sao khi nhân vật lên cấp** — level hiện chỉ mới dùng để mở khóa skill (mục 1), chưa có tác dụng nào lên số liệu.
+
+### HP
+- HP về 0 (từ bất kỳ nguồn nào — damage combat, đói/khát cạn kiệt ở mục 3, hay `perTurnEffects` của status effect) → `Character.isAlive = false` **ngay lập tức**. Permadeath thật (1.2 trong design doc chính): không có effect, skill, hay item nào hồi sinh được nhân vật `isAlive = false`.
+- Nếu đang giữa trận, nhân vật vừa chết bị bỏ qua khi `turnQueue` duyệt tới lượt kế (xử lý skip đã có ở `technical-decisions.md` §2, không cần thêm logic riêng).
+- Monster hp ≤ 0 → loại khỏi `CombatState.combatants`, không có field `isAlive` riêng (monster không permadeath theo nghĩa narrative, đơn giản là biến mất khỏi trận).
+
+### MP
+- Không đủ MP trả `mpCost` của skill → skill đó **không hợp lệ để chọn** ở bước lựa chọn hành động (validate ở caller/UI, giống cách `usesPerCombat` được chặn trước khi gọi resolver — `technical-decisions.md` §3), resolver không bao giờ thấy trường hợp thiếu MP.
+- MP **không tự hồi** theo hành động như hunger/thirst tự giảm — chỉ tăng qua skill/item có effect `restoreMp`, hồi đầy khi nghỉ tại rest room, hoặc hồi đầy khi lên cấp (xem bên dưới).
+
+### Tăng trưởng theo cấp (level)
+- Level dùng chung cho **cả party** (không track kinh nghiệm/XP riêng từng nhân vật — tránh phải thêm hệ thống XP mà một side project không cần): `Character.level = min(currentFloor.depth, 7)`, tự cập nhật mỗi khi cả party xuống tầng mới. Cấp tối đa = 7, trùng mốc mở skill cuối (slot 4, `unlockLevel: 7`) — nhân vật "hoàn thiện" đúng lúc có đủ 5 skill.
+- Công thức tăng trưởng (tuyến tính, áp dụng như nhau cho mọi class để không phải cân bằng 4 đường cong riêng), tính từ giá trị base của class ở level 1:
+  - `maxHp = baseStats.maxHp + (level - 1) * 8`
+  - `maxMp = baseStats.maxMp + (level - 1) * 4`
+  - `attack = baseAttack + (level - 1) * 2`
+  - `defense = baseDefense + (level - 1) * 1`
+- `initiative` **không** tăng theo level — giữ nguyên `baseInitiative` suốt game, vì initiative mỗi trận đã có phần roll ngẫu nhiên riêng (`technical-decisions.md` §2); cộng thêm theo level sẽ làm turn order ở tầng sâu mất cân bằng/dễ đoán hơn thay vì khó hơn.
+- Mỗi lần lên cấp: `hp`/`mp` hiện tại được đặt lại **đầy (= maxHp/maxMp mới)** — lên cấp = hồi phục toàn phần, tạo cảm giác "phần thưởng" tự nhiên khi xuống tầng mới, giống rest room nhưng gắn với mốc tiến triển thay vì phòng nghỉ.
