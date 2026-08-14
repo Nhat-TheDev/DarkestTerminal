@@ -1,0 +1,187 @@
+import type { Character, Monster, SkillEffect, CombatStat, ActiveStatusEffect } from "../types";
+import { getStatusEffect } from "../data/statusEffects";
+
+export type Actor = Character | Monster;
+
+export function isCharacter(actor: Actor): actor is Character {
+  return "classId" in actor;
+}
+
+export function isActorAlive(actor: Actor): boolean {
+  return isCharacter(actor) ? actor.isAlive && actor.hp > 0 : actor.hp > 0;
+}
+
+// docs/gameplay-decisions.md §3: 4 bậc fear.
+export type FearTier = 1 | 2 | 3 | 4;
+
+export function getFearTier(fear: number): FearTier {
+  if (fear >= 100) return 4;
+  if (fear >= 70) return 3;
+  if (fear >= 40) return 2;
+  return 1;
+}
+
+// docs/gameplay-decisions.md §4.
+export function getFearAccuracyPenalty(tier: FearTier): number {
+  if (tier === 1) return 0;
+  if (tier === 2) return 0.1;
+  return 0.2; // tiers 3 and 4 share the same accuracy/damage penalty
+}
+
+export function getFearDamagePenalty(tier: FearTier): number {
+  return tier >= 3 ? 0.15 : 0;
+}
+
+/** Tier 4 only: 25% chance per turn to lose control entirely (skip the action). */
+export function rollLosesControl(fear: number, roll: () => number): boolean {
+  return getFearTier(fear) === 4 && roll() < 0.25;
+}
+
+/**
+ * Accuracy check for skills that target enemies ("kỹ năng nhắm địch" per
+ * gameplay-decisions.md §4). Only characters have fear; monsters always hit.
+ */
+export function rollHits(source: Actor, roll: () => number): boolean {
+  if (!isCharacter(source)) return true;
+  const penalty = getFearAccuracyPenalty(getFearTier(source.survival.fear));
+  return roll() >= penalty;
+}
+
+function damageMultiplierFor(source: Actor): number {
+  if (!isCharacter(source)) return 1;
+  return 1 - getFearDamagePenalty(getFearTier(source.survival.fear));
+}
+
+function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
+  if (stat === "aggro") {
+    if (isCharacter(actor)) actor.aggro += amount;
+    return; // monsters have no aggro
+  }
+  actor[stat] += amount;
+}
+
+export interface ResolveContext {
+  log: string[];
+}
+
+/** Applies a single SkillEffect from `source` onto `target`. */
+export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): void {
+  switch (effect.kind) {
+    case "damage": {
+      const base = (effect.amount ?? 0) + source.attack - target.defense;
+      const withFear = base * damageMultiplierFor(source);
+      const finalDamage = Math.max(1, Math.round(withFear));
+      target.hp = Math.max(0, target.hp - finalDamage);
+      ctx.log.push(`${nameOf(target)} nhận ${finalDamage} sát thương từ ${nameOf(source)}.`);
+      if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
+      break;
+    }
+    case "heal": {
+      const before = target.hp;
+      target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0));
+      ctx.log.push(`${nameOf(target)} hồi ${target.hp - before} HP.`);
+      break;
+    }
+    case "restoreMp": {
+      if (!isCharacter(target)) break;
+      const before = target.mp;
+      target.mp = Math.min(target.maxMp, target.mp + (effect.amount ?? 0));
+      ctx.log.push(`${nameOf(target)} hồi ${target.mp - before} MP.`);
+      break;
+    }
+    case "applyStatusEffect": {
+      if (!effect.statusEffectId) break;
+      applyStatusEffectToActor(target, effect.statusEffectId, ctx);
+      break;
+    }
+    case "removeStatusEffect": {
+      removeStatusEffectFromActor(target, effect.statusEffectId, ctx);
+      break;
+    }
+    case "modifyStat": {
+      if (!isCharacter(target) || !effect.stat) break;
+      target.survival[effect.stat] = clamp(target.survival[effect.stat] + (effect.amount ?? 0), 0, 100);
+      break;
+    }
+    case "modifyCombatStat": {
+      if (!effect.combatStat) break;
+      applyCombatStatDelta(target, effect.combatStat, effect.amount ?? 0);
+      break;
+    }
+    case "triggerMiniGame": {
+      // Out of scope for this prototype (see README.md) — no skill/monster uses it.
+      ctx.log.push(`(mini-game bị bỏ qua trong prototype)`);
+      break;
+    }
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function nameOf(actor: Actor): string {
+  return actor.name;
+}
+
+function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: ResolveContext): void {
+  const def = getStatusEffect(statusEffectId);
+  const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
+  if (existing) {
+    existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
+    ctx.log.push(`${nameOf(actor)} làm mới hiệu ứng ${def.name}.`);
+    return;
+  }
+  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
+  actor.activeStatusEffects.push(entry);
+  // Combat-stat modifiers install once immediately; they're undone once at
+  // expiry (technical-decisions.md §3). Other perTurnEffects (damage/heal/
+  // modifyStat) are recurring and tick at end-of-round instead (see combat.ts).
+  for (const e of def.perTurnEffects) {
+    if (e.kind === "modifyCombatStat" && e.combatStat) {
+      applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
+    }
+  }
+  ctx.log.push(`${nameOf(actor)} nhận hiệu ứng ${def.name}.`);
+}
+
+function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
+  const target = statusEffectId
+    ? actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId)
+    : actor.activeStatusEffects[0]; // "gỡ 1 debuff bất kỳ" (Thanh Tẩy) — no id given, remove the first active one.
+  if (!target) return;
+  expireStatusEffect(actor, target, ctx);
+}
+
+/** Undoes any modifyCombatStat effects and removes the entry from the actor. */
+export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
+  const def = getStatusEffect(active.statusEffectId);
+  for (const e of def.perTurnEffects) {
+    if (e.kind === "modifyCombatStat" && e.combatStat) {
+      applyCombatStatDelta(actor, e.combatStat, -(e.amount ?? 0));
+    }
+  }
+  actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
+  ctx.log.push(`${nameOf(actor)} hết hiệu ứng ${def.name}.`);
+}
+
+/**
+ * End-of-round tick for one actor's active status effects: applies the
+ * recurring (non-combat-stat) perTurnEffects once, decrements duration, and
+ * expires anything that reaches 0.
+ */
+export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
+  for (const active of [...actor.activeStatusEffects]) {
+    const def = getStatusEffect(active.statusEffectId);
+    for (const e of def.perTurnEffects) {
+      if (e.kind !== "modifyCombatStat") {
+        resolveSkillEffect(e, actor, actor, ctx);
+      }
+    }
+    if (!isActorAlive(actor)) continue;
+    active.turnsRemaining -= 1;
+    if (active.turnsRemaining <= 0) {
+      expireStatusEffect(actor, active, ctx);
+    }
+  }
+}
