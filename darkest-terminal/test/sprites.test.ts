@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, renderSpriteInSlot, BOSS_SPRITE, DUNGEON_RAT_SPRITE } from "../src/ui/sprites";
+import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, renderSpriteInSlot } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
 import { MONSTER_ARCHETYPES } from "../src/data/monsters";
 
@@ -49,8 +49,11 @@ describe("sprite dimensions and palette consistency", () => {
 });
 
 describe("renderSpriteInSlot: bottom-aligned, centered, fixed-size output", () => {
+  const dungeonRat = spriteForMonster("dungeon-rat", false);
+  const boss = spriteForMonster("dungeon-rat", true); // any archetype resolves to the shared boss sprite
+
   test("always returns exactly slotHeight lines of exactly slotWidth cells, for a short and a tall sprite", () => {
-    for (const sprite of [DUNGEON_RAT_SPRITE, BOSS_SPRITE]) {
+    for (const sprite of [dungeonRat, boss]) {
       const lines = renderSpriteInSlot(sprite, 13, 11);
       expect(lines).toHaveLength(13);
       for (const line of lines) {
@@ -63,7 +66,7 @@ describe("renderSpriteInSlot: bottom-aligned, centered, fixed-size output", () =
   test("bottom-aligns: padding rows come first, so the top rows are blank and the bottom rows carry colored pixels", () => {
     // Pixels are conveyed via background color on space characters, not glyphs,
     // so "content" here means "has a bg color", not "has non-space text".
-    const lines = renderSpriteInSlot(DUNGEON_RAT_SPRITE, 13, 11);
+    const lines = renderSpriteInSlot(dungeonRat, 13, 11);
     const hasColor = (line: (typeof lines)[number]) => line.some((c) => c.bg !== undefined);
     expect(hasColor(lines[0]!)).toBe(false); // top padding row: fully transparent
     expect(hasColor(lines[12]!)).toBe(true); // sprite's own last row: has real pixels

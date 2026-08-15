@@ -1,0 +1,25 @@
+{
+  "_format": "Each pattern's `layout` is a list of stages separated by '-'. A stage is 1+ room tokens separated by ','. A room token is 'stage.roomId[tag]': stage must match its position (0-indexed), roomId is unique within the pattern, and tag is '' (normal combat room), 'free' (rest room), or 'boss' (must be the sole room of the final stage). Every room in stage N connects forward to every room in stage N+1 — no other edges, no backtracking — so every path is guaranteed to reach the boss with no dead ends. At most 2 stages may contain more than 1 room (that's a 'branch point'); see test/floorPatterns.test.ts for the enforced rules.",
+  "patterns": [
+    {
+      "id": "pattern-linear",
+      "description": "0 nhánh rẽ — hành lang thẳng từ cửa vào tới boss, có 1 phòng nghỉ giữa đường.",
+      "layout": "0.1[]-1.2[]-2.3[free]-3.4[]-4.5[boss]"
+    },
+    {
+      "id": "pattern-fork-mid",
+      "description": "1 nhánh rẽ (3 nhánh nhỏ) ngay sau cửa vào, hội tụ lại trước khi nghỉ rồi vào boss. 7 phòng: 5 thường + 1 nghỉ + 1 boss.",
+      "layout": "0.1[]-1.2[],1.3[],1.4[]-2.5[]-3.6[free]-4.7[boss]"
+    },
+    {
+      "id": "pattern-double-fork",
+      "description": "2 nhánh rẽ (tối đa cho phép): rẽ đôi sớm, nghỉ, rẽ ba, rồi hội tụ vào boss. 9 phòng.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[free]-3.5[],3.6[],3.7[]-4.8[]-5.9[boss]"
+    },
+    {
+      "id": "pattern-short-fork",
+      "description": "Tầng ngắn, 1 nhánh rẽ đôi rồi vào thẳng boss sau khi nghỉ. 5 phòng.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[free]-3.5[boss]"
+    }
+  ]
+}

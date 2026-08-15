@@ -16,14 +16,15 @@ import {
   type EngineContext,
 } from "../src/engine/combat";
 import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive } from "../src/engine/resolver";
-import { getRoom, connectedRooms } from "../src/engine/dungeon";
+import { connectedRooms } from "../src/engine/dungeon";
 import { Game } from "../src/engine/game";
 import type { Character, CombatantRef } from "../src/types";
 
 function makeCtx(seed = 1) {
-  const { floor, monsters } = createFloor();
+  const rng = new Rng(seed);
+  const { floor, monsters } = createFloor(rng);
   const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-  const ctx: EngineContext = { party, monsters, rng: new Rng(seed) };
+  const ctx: EngineContext = { party, monsters, rng };
   return { ctx, floor, monsters, party };
 }
 
@@ -44,43 +45,42 @@ function pickAnyAction(
   return { skillId: skill.id, targets };
 }
 
-describe("floor layout", () => {
-  test("has exactly 7 rooms: 1 rest, 1 boss, 5 combat", () => {
-    const { floor } = createFloor();
-    expect(floor.rooms).toHaveLength(7);
-    const byType = (t: string) => floor.rooms.filter((r) => r.type === t).length;
-    expect(byType("rest")).toBe(1);
-    expect(byType("boss")).toBe(1);
-    expect(byType("combat")).toBe(5);
-  });
-
-  test("every room is reachable from the entry room", () => {
-    const { floor } = createFloor();
-    const visited = new Set<string>([floor.entryRoomId]);
-    const queue = [floor.entryRoomId];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      for (const next of connectedRooms(floor, id)) {
-        if (!visited.has(next.id)) {
-          visited.add(next.id);
-          queue.push(next.id);
+describe("floor layout (random pattern pick — see test/floorPatterns.test.ts for per-pattern structural rules)", () => {
+  test("every room is reachable from the entry room, across many random seeds", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const { floor } = createFloor(new Rng(seed));
+      const visited = new Set<string>([floor.entryRoomId]);
+      const queue = [floor.entryRoomId];
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        for (const next of connectedRooms(floor, id)) {
+          if (!visited.has(next.id)) {
+            visited.add(next.id);
+            queue.push(next.id);
+          }
         }
       }
+      expect(visited.size).toBe(floor.rooms.length);
     }
-    expect(visited.size).toBe(floor.rooms.length);
   });
 
-  test("exactly 3 distinct monster archetypes are used across the floor", () => {
-    const { monsters } = createFloor();
-    const archetypes = new Set(monsters.map((m) => m.archetypeId));
-    expect(archetypes.size).toBe(3);
+  test("exactly 1 boss room, and its monster is flagged isBoss", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const { floor, monsters } = createFloor(new Rng(seed));
+      const bossRooms = floor.rooms.filter((r) => r.type === "boss");
+      expect(bossRooms).toHaveLength(1);
+      const bossMonsters = bossRooms[0]!.monsterIds.map((id) => monsters.find((m) => m.id === id)!);
+      expect(bossMonsters.every((m) => m.isBoss)).toBe(true);
+    }
   });
 
-  test("boss room monster is flagged isBoss", () => {
-    const { floor, monsters } = createFloor();
-    const bossRoom = getRoom(floor, floor.rooms.find((r) => r.type === "boss")!.id);
-    const bossMonsters = bossRoom.monsterIds.map((id) => monsters.find((m) => m.id === id)!);
-    expect(bossMonsters.every((m) => m.isBoss)).toBe(true);
+  test("every combat room has at least 1 monster, rest/boss rooms don't double up", () => {
+    const { floor, monsters } = createFloor(new Rng(3));
+    for (const room of floor.rooms) {
+      if (room.type === "combat") expect(room.monsterIds.length).toBeGreaterThan(0);
+      if (room.type === "rest") expect(room.monsterIds).toHaveLength(0);
+    }
+    expect(monsters.length).toBeGreaterThan(0);
   });
 });
 

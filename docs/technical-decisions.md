@@ -5,32 +5,39 @@
 
 ---
 
-## 1. Thuật toán procedural generation cho room/floor
+## 1. Sinh room/floor: thư viện pattern (thay cho spanning tree)
 
-Cách tiếp cận: **generate-then-validate** trên đồ thị trừu tượng (không phải carve grid vật lý trước) — dựng cấu trúc rẽ nhánh bằng spanning tree ngẫu nhiên trước, gán loại phòng sau, validate rồi mới quyết định giữ hay sinh lại.
+**Quyết định đã đổi** (bản trước dùng random spanning tree generate-then-validate — xem lịch sử git nếu cần tham khảo). Lý do đổi: spanning tree ngẫu nhiên vẫn có thể sinh ra **ngõ cụt** (leaf node không dẫn tới đâu, ví dụ 1 nhánh phụ chỉ để rồi phải quay lại) — trải nghiệm không tốt cho 1 dungeon crawler muốn mọi lựa chọn của người chơi đều có ý nghĩa tiến triển. Quyết định mới: **tác giả thủ công 1 thư viện "pattern" tầng, lưu dạng dữ liệu, random chọn 1 pattern mỗi khi tạo tầng** — cấu trúc được đảm bảo đúng luật ngay từ lúc thiết kế pattern, không cần validate-and-retry.
 
-### Bước 1 — Số phòng & khung đồ thị
-1. Chọn `roomCount` ngẫu nhiên trong [5, 10].
-2. Tạo `roomCount` node trống (chưa gán `RoomType`).
-3. Dựng **random spanning tree** phủ toàn bộ node (randomized Prim's: bắt đầu từ 1 node, lặp lại chọn ngẫu nhiên 1 cạnh nối 1 node-trong-cây với 1 node-ngoài-cây, tới khi hết node). Kết quả đảm bảo:
-   - Toàn bộ đồ thị liên thông (đi được hết mọi phòng).
-   - Có node degree > 2 một cách tự nhiên (spanning tree ngẫu nhiên không phải chuỗi tuyến tính trừ phi random rơi đúng vào 1 đường thẳng — xác suất thấp, và có thể ép tối thiểu 1 node degree ≥ 3 nếu roomCount ≥ 6 bằng cách retry bước dựng cây).
-4. (Tuỳ chọn, không bắt buộc) thêm tối đa 1-2 cạnh phụ giữa các node chưa kề nhau để tạo vòng lặp (loop) trong đồ thị, tăng cảm giác "dungeon" thay vì cây thuần — xác suất thêm mỗi cạnh ứng viên: 20%.
+### Notation
+Một pattern là chuỗi các **stage** (cột) nối nhau bằng `-`; mỗi stage gồm 1+ phòng nối nhau bằng `,`; mỗi phòng là `stage.roomId[tag]`:
+- `stage` = số thứ tự cột (0-indexed, phải khớp vị trí thực của nó trong chuỗi — bắt lỗi copy-paste).
+- `roomId` = số hiệu phòng, duy nhất trong toàn pattern.
+- `tag` = `""` (phòng combat thường), `"free"` (phòng nghỉ/rest), `"boss"` (phòng boss — bắt buộc là phòng duy nhất của stage cuối).
 
-### Bước 2 — Gán RoomType
-1. `entryRoomId` = 1 node bất kỳ có degree thấp (ưu tiên leaf) làm lối vào.
-2. Chạy BFS từ `entryRoomId` để tính khoảng cách mọi node → chọn node xa nhất (leaf ưu tiên) làm phòng `boss`.
-3. Trong các node còn lại, chọn ngẫu nhiên 1-2 node làm `rest`, với ràng buộc: mỗi phòng `rest` phải cách phòng `rest` khác (và cách `entry`) tối thiểu 2 bước đồ thị — tránh 2 phòng nghỉ dính sát nhau hoặc trùng lối vào.
-4. Các node còn lại gán ngẫu nhiên theo trọng số: 60% `combat`, 15% `treasure`, 15% `empty`, 10% `rest` bổ sung nếu chưa đủ 1-2 phòng rest.
+Ví dụ (pattern `pattern-fork-mid`, 7 phòng — khớp đúng số phòng "5 thường + 1 nghỉ + 1 boss" đã chốt trước đây):
+```
+0.1[]-1.2[],1.3[],1.4[]-2.5[]-3.6[free]-4.7[boss]
+```
 
-### Bước 3 — Validate & retry
-Kiểm tra sau khi gán xong:
-- Đúng 1 phòng `boss`, đúng 1-2 phòng `rest`, đồ thị liên thông (đã đảm bảo từ bước 1 nên chỉ cần assert, không cần tính lại).
-- Không có phòng `rest`/`boss` nào trùng `entryRoomId`.
+### Quy tắc kết nối — đảm bảo hết ngõ cụt bằng kết cấu, không cần kiểm tra riêng
+**Mọi phòng ở stage N nối tới TẤT CẢ phòng ở stage N+1** (đồ thị 2 phía đầy đủ giữa 2 stage liền kề), **không có cạnh nào khác** — không nối lùi, không nối tắt qua stage. Hệ quả tự động, không cần thuật toán validate riêng:
+- Không thể có ngõ cụt: mọi phòng luôn có ít nhất 1 cạnh đi tới stage kế, tới tận stage cuối (boss).
+- Mọi nhánh rẽ đều tự hội tụ lại: khi 1 stage sau đó chỉ có 1 phòng, mọi phòng ở stage rẽ nhánh trước đó đều dẫn vào đúng phòng ấy.
+- Không cho phép quay lại phòng cũ (di chuyển chỉ tiến, khớp tinh thần "mỗi nhánh đều về đích").
 
-Nếu bất kỳ điều kiện nào fail (hiếm, chủ yếu khi `roomCount` chạm biên dưới 5) → sinh lại từ Bước 1 với seed khác. Đây chính là phần "constraint-satisfaction" đã nêu trong rủi ro kỹ thuật ở design doc — xử lý bằng generate-and-test đơn giản thay vì solver phức tạp, chấp nhận được vì không gian ràng buộc nhỏ (tối đa 10 node).
+### Ràng buộc khi tác giả 1 pattern (`validatePattern` chặn ở code, không chỉ ở tài liệu)
+- Stage 0 đúng 1 phòng (lối vào duy nhất).
+- Stage cuối đúng 1 phòng, tag `boss`; không stage nào khác được gắn `boss`.
+- **Tối đa 2 stage có > 1 phòng** ("2 lần rẽ nhánh" — đúng yêu cầu đã chốt).
+- `roomId` duy nhất trong cả pattern.
 
-`darknessLevel` của `Floor` = hàm đơn điệu tăng theo `depth` (công thức cụ thể để dành cho balancing sau, chỉ cần đảm bảo tăng dần).
+### Lưu trữ & runtime
+- Thư viện pattern: `darkest-terminal/data/floor-patterns.json` — mảng `{ id, description, layout }`; hiện có 4 pattern mẫu (0, 1, 1, 2 branch stage; 5–9 phòng) minh họa đủ dải quy tắc cho phép.
+- `createFloor(rng)` (`src/data/floor.ts`): random chọn 1 pattern qua `rng.pick`, parse layout, dựng `Room[]` với `connectedRoomIds` = toàn bộ phòng stage kế; gán tên phòng ngẫu nhiên (pool theo loại phòng, tránh trùng tên trong cùng tầng) và random 1-3 quái/phòng combat (đều từ 3 archetype, xem `gameplay-decisions.md` §2), 1 quái elite (`isBoss: true`) cho phòng boss.
+- `test/floorPatterns.test.ts`: verify từng pattern trong thư viện — số stage rẽ nhánh ≤ 2, mọi phòng reachable từ entry, mọi phòng đều có đường tới boss (BFS), cộng test riêng cho parser/validator (input hỏng phải throw).
+
+`darknessLevel` của `Floor` = hàm đơn điệu tăng theo `depth` (công thức cụ thể để dành cho balancing sau, chỉ cần đảm bảo tăng dần) — không đổi so với quyết định trước.
 
 ---
 

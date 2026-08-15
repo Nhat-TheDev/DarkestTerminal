@@ -1,39 +1,12 @@
 import type { MonsterArchetype, Monster } from "../types";
+import monstersJson from "../../data/monsters.json";
 
-// Matches docs/gameplay-decisions.md §2, tier "1-3" and "4-6" archetypes
-// (Bóng Ma Gào Thét / tier 7+ is out of scope: this prototype is 1 floor).
-export const MONSTER_ARCHETYPES: MonsterArchetype[] = [
-  {
-    id: "dungeon-rat",
-    name: "Chuột Hầm Ngục",
-    baseHp: 18,
-    baseAttack: 5,
-    baseDefense: 2,
-    baseSpeed: 7,
-    aiPattern: "erratic",
-    skillIds: [],
-  },
-  {
-    id: "black-bat",
-    name: "Dơi Đen",
-    baseHp: 14,
-    baseAttack: 6,
-    baseDefense: 1,
-    baseSpeed: 14,
-    aiPattern: "aggressive",
-    skillIds: [],
-  },
-  {
-    id: "skeleton-guard",
-    name: "Xương Sống Canh Gác",
-    baseHp: 40,
-    baseAttack: 10,
-    baseDefense: 6,
-    baseSpeed: 8,
-    aiPattern: "defensive",
-    skillIds: [],
-  },
-];
+// Design data now lives in ../../data/monsters.json — see
+// docs/gameplay-decisions.md §2. spawnMonster() below is behavior (scaling
+// formula), not data, so it stays in code.
+export const MONSTER_ARCHETYPES = monstersJson as unknown as MonsterArchetype[];
+
+if (MONSTER_ARCHETYPES.length === 0) throw new Error("data/monsters.json: no monster archetypes defined");
 
 export function getArchetype(id: string): MonsterArchetype {
   const found = MONSTER_ARCHETYPES.find((m) => m.id === id);

@@ -138,6 +138,6 @@ Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ
 - Snake/Tetris/Brick Breaker: điều kiện thắng/thua và thông số cụ thể từng game
 
 ### Kỹ thuật — [`docs/technical-decisions.md`](./docs/technical-decisions.md)
-- Thuật toán procedural generation: dựng random spanning tree trước (đảm bảo liên thông + rẽ nhánh), gán RoomType sau, validate-and-retry cho ràng buộc rest room
+- Sinh room/floor: thư viện pattern dạng dữ liệu (chuỗi `stage.roomId[tag]`), random chọn 1 pattern mỗi tầng — mọi phòng ở stage N nối hết sang stage N+1 nên đảm bảo hết ngõ cụt và mọi nhánh đều về boss bằng kết cấu, không cần validate-and-retry; tối đa 2 stage được phép rẽ nhánh (thay cho random spanning tree ở bản trước)
 - Thuật toán round 2 pha: pha ra lệnh (chốt hành động cả 4 nhân vật, trừ MP/lượt ngay lúc đó) rồi pha thực thi (sort theo `speed`, quái quyết định tại chỗ, rule đổi/hủy mục tiêu nếu target đã chết trước lượt)
 - Resolver function cho `SkillEffect`: 1 hàm thuần túy switch theo `kind`, dùng chung skill/item, xử lý cả case `triggerMiniGame` (mini-game trả kết quả về dưới dạng effect phái sinh, không có code path riêng)

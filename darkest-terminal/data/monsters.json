@@ -1,0 +1,32 @@
+[
+  {
+    "id": "dungeon-rat",
+    "name": "Chuột Hầm Ngục",
+    "baseHp": 18,
+    "baseAttack": 5,
+    "baseDefense": 2,
+    "baseSpeed": 7,
+    "aiPattern": "erratic",
+    "skillIds": []
+  },
+  {
+    "id": "black-bat",
+    "name": "Dơi Đen",
+    "baseHp": 14,
+    "baseAttack": 6,
+    "baseDefense": 1,
+    "baseSpeed": 14,
+    "aiPattern": "aggressive",
+    "skillIds": []
+  },
+  {
+    "id": "skeleton-guard",
+    "name": "Xương Sống Canh Gác",
+    "baseHp": 40,
+    "baseAttack": 10,
+    "baseDefense": 6,
+    "baseSpeed": 8,
+    "aiPattern": "defensive",
+    "skillIds": []
+  }
+]

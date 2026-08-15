@@ -22,9 +22,10 @@ export class Game {
   readonly state: GameState;
 
   constructor(seed = Date.now()) {
-    const { floor, monsters } = createFloor();
+    const rng = new Rng(seed);
+    const { floor, monsters } = createFloor(rng);
     const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-    this.ctx = { party, monsters, rng: new Rng(seed) };
+    this.ctx = { party, monsters, rng };
     this.state = {
       party,
       floor,
