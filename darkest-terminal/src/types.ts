@@ -51,6 +51,14 @@ export interface SkillDefinition {
   usesPerCombat?: number;
 }
 
+/** Multiplier applied to the shared growthBonus() curve per stat, per class — see docs/gameplay-decisions.md §6.8. Budget convention: the 4 weights sum to 4.0 across classes, so no class gets strictly more total growth, only redistributed differently. */
+export interface GrowthWeights {
+  attack: number;
+  defense: number;
+  maxHp: number;
+  maxMp: number;
+}
+
 export interface CharacterClass {
   id: Id;
   name: string;
@@ -61,6 +69,7 @@ export interface CharacterClass {
   baseDefense: number;
   baseAggro: number;
   baseSpeed: number;
+  growthWeights: GrowthWeights;
   skills: SkillDefinition[];
 }
 

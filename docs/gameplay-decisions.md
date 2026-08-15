@@ -20,7 +20,7 @@
 
 Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxHp`, thấp nhất `speed` (tank hút đòn, ra tay muộn); Pháp Sư thấp nhất mọi chỉ số phòng ngự/aggro (né bị nhắm) nhưng `speed` khá; Sát Thủ `speed`/`attack` cao nhất, `defense` thấp; Tu Sĩ cân bằng, `aggro` trung bình để không bị/không tránh được việc làm mục tiêu.
 
-4 class, mỗi class 5 skill (2 mở sẵn ở cấp 1, 3 mở dần ở cấp 3/5/7). `slot`/`unlockLevel`/`usesPerCombat` khớp field cùng tên trong `SkillDefinition`.
+4 class, mỗi class 5 skill (2 mở sẵn ở cấp 1, 3 mở dần ở cấp **10/20/35** — dời từ mốc 3/5/7 ban đầu để dàn đều hơn theo dải level 1-100, xem mục 6). `slot`/`unlockLevel`/`usesPerCombat` khớp field cùng tên trong `SkillDefinition`.
 
 ### 1.1 Cận Vệ (Vanguard) — tank, chống chịu, giữ chân quái
 
@@ -28,9 +28,9 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 |---|---|---|---|---|---|
 | 0 | 1 | Chém Khiên | 0 | singleEnemy | `damage 10` |
 | 1 | 1 | Trấn Thủ | 4 | self | `applyStatusEffect "phong-thu"` (buff, 2 lượt, mỗi lượt `modifyCombatStat defense +6`) |
-| 2 | 3 | Khiêu Khích | 6 | self | `applyStatusEffect "khieu-khich"` (buff, 2 lượt, mỗi lượt `modifyCombatStat aggro +40`) — đẩy trọng số bị chọn làm mục tiêu của Cận Vệ lên rất cao (xem targeting theo aggro ở mục 2); vẫn là xác suất, không ép buộc tuyệt đối |
-| 3 | 5 | Chặt Hạ | 10 | singleEnemy | `damage 22` |
-| 4 | 7 | Bất Khuất | 0 | self | `heal 20%maxHp`, `usesPerCombat 1` — chỉ tự kích hoạt khi HP < 25% |
+| 2 | 10 | Khiêu Khích | 6 | self | `applyStatusEffect "khieu-khich"` (buff, 2 lượt, mỗi lượt `modifyCombatStat aggro +40`) — đẩy trọng số bị chọn làm mục tiêu của Cận Vệ lên rất cao (xem targeting theo aggro ở mục 2); vẫn là xác suất, không ép buộc tuyệt đối |
+| 3 | 20 | Chặt Hạ | 10 | singleEnemy | `damage 22` |
+| 4 | 35 | Bất Khuất | 0 | self | `heal 20%maxHp`, `usesPerCombat 1` — chỉ tự kích hoạt khi HP < 25% |
 
 ### 1.2 Pháp Sư Bóng Tối (Shadow Mage) — sát thương phép tầm xa, giòn
 
@@ -38,9 +38,9 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 |---|---|---|---|---|---|
 | 0 | 1 | Phi Ảnh | 5 | singleEnemy | `damage 14` |
 | 1 | 1 | Tập Trung | 0 | self | `restoreMp 10` — lượt tích lũy, đánh đổi tempo |
-| 2 | 3 | Quầng Tối | 12 | allEnemies | `damage 10` (AoE) |
-| 3 | 5 | Nguyền Rủa | 8 | singleEnemy | `applyStatusEffect "nguyen-rua"` (debuff, 3 lượt, mỗi lượt `modifyCombatStat attack -4`) |
-| 4 | 7 | Vực Thẳm | 18 | singleEnemy | `damage 40`, `usesPerCombat 1` |
+| 2 | 10 | Quầng Tối | 12 | allEnemies | `damage 10` (AoE) |
+| 3 | 20 | Nguyền Rủa | 8 | singleEnemy | `applyStatusEffect "nguyen-rua"` (debuff, 3 lượt, mỗi lượt `modifyCombatStat attack -4`) |
+| 4 | 35 | Vực Thẳm | 18 | singleEnemy | `damage 40`, `usesPerCombat 1` |
 
 ### 1.3 Sát Thủ (Rogue) — burst đơn mục tiêu, tốc độ cao nhất nhóm
 
@@ -48,9 +48,9 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 |---|---|---|---|---|---|
 | 0 | 1 | Đâm Lén | 3 | singleEnemy | `damage 12` |
 | 1 | 1 | Lẩn Tránh | 4 | self | `applyStatusEffect "ne-tranh"` (buff, 1 lượt, `modifyCombatStat defense +6`) |
-| 2 | 3 | Tẩm Độc | 6 | singleEnemy | `applyStatusEffect "trung-doc"` (debuff thật — xem `curableByMiniGame`, 3 lượt, mỗi lượt `damage 4`) |
-| 3 | 5 | Song Kích | 8 | singleEnemy | 2 effect trong list: `damage 10` + `damage 10`, resolve tuần tự |
-| 4 | 7 | Nhát Chí Mạng | 14 | singleEnemy | `damage 35`, `usesPerCombat 1` |
+| 2 | 10 | Tẩm Độc | 6 | singleEnemy | `applyStatusEffect "trung-doc"` (debuff thật — xem `curableByMiniGame`, 3 lượt, mỗi lượt `damage 4`) |
+| 3 | 20 | Song Kích | 8 | singleEnemy | 2 effect trong list: `damage 10` + `damage 10`, resolve tuần tự |
+| 4 | 35 | Nhát Chí Mạng | 14 | singleEnemy | `damage 35`, `usesPerCombat 1` |
 
 ### 1.4 Tu Sĩ (Chaplain) — hồi phục + hạ fear cả team
 
@@ -58,9 +58,9 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 |---|---|---|---|---|---|
 | 0 | 1 | Cầu Nguyện | 6 | singleAlly | `heal 16` |
 | 1 | 1 | An Ủi | 4 | singleAlly | `modifyStat fear -10` |
-| 2 | 3 | Thánh Ca | 10 | allAllies | `heal 10` + `modifyStat fear -6` |
-| 3 | 5 | Thanh Tẩy | 8 | singleAlly | `removeStatusEffect` — gỡ 1 debuff bất kỳ ngay lập tức, không cần mini-game (cứu hộ khẩn cấp, đổi lại tốn MP cao so với mpCost trung bình) |
-| 4 | 7 | Ánh Sáng Cứu Rỗi | 16 | allAllies | `heal 25` + `modifyStat fear -15`, `usesPerCombat 1` |
+| 2 | 10 | Thánh Ca | 10 | allAllies | `heal 10` + `modifyStat fear -6` |
+| 3 | 20 | Thanh Tẩy | 8 | singleAlly | `removeStatusEffect` — gỡ 1 debuff bất kỳ ngay lập tức, không cần mini-game (cứu hộ khẩn cấp, đổi lại tốn MP cao so với mpCost trung bình) |
+| 4 | 35 | Ánh Sáng Cứu Rỗi | 16 | allAllies | `heal 25` + `modifyStat fear -15`, `usesPerCombat 1` |
 
 ### Ghi chú thiết kế
 - Mỗi class có đúng 1 skill "ultimate" (`usesPerCombat: 1`) ở slot 4.
@@ -209,9 +209,11 @@ Giá trị cuối cùng: `stat(level) = base<stat> + bonus(stat, level)`. `base<
 | 75 | 94 | 53 | 576 | 239 |
 | 100 | 102 | 60 | 651 | 264 |
 
-Ví dụ Cận Vệ (base atk14/def12/hp140/mp20) ở level 100: `attack 116, defense 72, maxHp 791, maxMp 284`.
+**Lưu ý — bảng trên là đường cong dùng chung, không phải bonus thật nhận được**: từ khi thêm trọng số theo class (§6.8), bonus thật mỗi class = `round(bonus_ở_bảng_trên × growthWeights[class][stat])`. Bảng 6.4 vẫn giữ nguyên vì đây đúng là input chung (`growthBonus()`) mà `classGrowthBonus()` nhân trọng số lên trên — chỉ số quái vật (mục 6.6) vẫn dùng thẳng bảng này không qua trọng số, vì quái không có class.
 
-**Lưu ý về tính chất "hội tụ"**: vì bonus là **cộng thêm cố định** (không nhân theo base), khoảng cách tuyệt đối giữa các class không đổi nhưng khoảng cách **tương đối** co lại theo level — VD attack Cận Vệ/Pháp Sư là 14/6 (gấp 2.3 lần) ở level 1 nhưng 116/108 (gấp 1.07 lần) ở level 100. Đây là đánh đổi **có chủ đích** để giữ additive đơn giản (xem 6.5) — khác biệt giữa các class ở cấp cao chủ yếu tới từ **bộ skill** (AoE, buff/debuff, target ally/enemy) chứ không còn từ raw attack/defense.
+Ví dụ Cận Vệ (base atk14/def12/hp140/mp20, `growthWeights` = {attack 0.8, defense 1.4, maxHp 1.3, maxMp 0.5}) ở level 100: `attack 96, defense 96, maxHp 986, maxMp 152` — thấp hơn nhiều so với con số 116/72/791/284 nếu không nhân trọng số (đó là số Cận Vệ sẽ có nếu dùng chung đường cong không trọng số như mọi class khác). Xem thêm ví dụ đối chiếu 4 class ở **mục 6.8**.
+
+**Lưu ý về tính chất "hội tụ" (đã giải quyết ở §6.8)**: vì bonus gốc là **cộng thêm cố định như nhau cho mọi class** (không nhân theo base), bản đầu tiên của hệ thống này có vấn đề: khoảng cách **tương đối** giữa các class co lại theo level — VD attack Cận Vệ/Pháp Sư là 14/6 (gấp 2.3 lần) ở level 1 nhưng chỉ còn 116/108 (gấp 1.07 lần) ở level 100 nếu dùng chung một đường cong không trọng số. Đây từng là đánh đổi chấp nhận được để giữ additive đơn giản, nhưng làm mọi class "nhạt" dần thành gần giống nhau ở cấp cao — **§6.8 thay thế cách xử lý này** bằng trọng số riêng theo class, giữ (thậm chí khuếch đại đúng hướng) sự khác biệt giữa các class thay vì để nó hội tụ.
 
 ### 6.5 Sửa lỗi hệ số boss elite (phát hiện khi cân bằng số)
 
@@ -228,19 +230,67 @@ Vì `level = min(depth, 100)`, công thức mục 2 (`attack = baseAttack + floo
 
 ### 6.7 Kiểm chứng cân bằng (time-to-kill, TTK)
 
-Tính bằng Chém Khiên (`amount 10`) của Cận Vệ, so với Chuột Hầm Ngục (quái thường) và Xương Sống Canh Gác bản boss (elite) **cùng tầng**. Số lượt = TTK-1-người ÷ 3 (party có ~3 nhân vật tấn công/round, Tu Sĩ chủ yếu hỗ trợ):
+**Cập nhật sau §6.8**: từ khi attack có trọng số riêng theo class, TTK không còn là một con số chung cho cả party — Cận Vệ (attack weight 0.8, thấp nhất trừ Tu Sĩ) và Sát Thủ (attack weight 1.4, cao nhất) cho hai bức tranh rất khác nhau. Bảng dưới tách theo class để không đánh giá nhầm "cả party yếu" chỉ vì nhìn qua đúng mỗi Cận Vệ.
 
-| Level | dmg vs quái thường | TTK quái thường | dmg vs boss | TTK boss (round) |
+**Quái thường** — vẫn tính bằng Chém Khiên (`amount 10`) của Cận Vệ vs Chuột Hầm Ngục cùng tầng, vì Cận Vệ là class attack thấp nhất trong nhóm còn ra đòn được (Tu Sĩ không có skill damage — xem 6.8) → đây là kịch bản chậm nhất có thể xảy ra, mọi class khác chết quái thường nhanh hơn số này:
+
+| Level | dmg vs quái thường | TTK 1 người | TTK party (round) |
+|---|---|---|---|
+| 1 | 22 | 1 hit | 1 |
+| 10 | 26 | 6 hit | 2 |
+| 25 | 35 | 9 hit | 3 |
+| 50 | 43 | 11 hit | 4 |
+| 75 | 44 | 14 hit | 5 |
+| 100 | 44 | 16 hit | 6 |
+
+Quái thường vẫn luôn chết trong ≤6 round dù chỉ tính bằng class đánh yếu nhất — không "bơm" quá tay dù defense quái có tăng theo tầng.
+
+**Boss** — dmg và TTK-party (÷3, party có ~3 nhân vật tấn công/round) của **kỹ năng cơ bản mỗi class** vs Xương Sống Canh Gác bản boss (elite) cùng tầng:
+
+| Level | Cận Vệ (w0.8) | Pháp Sư (w1.3) | Sát Thủ (w1.4) | Tu Sĩ (w0.6) |
 |---|---|---|---|---|
-| 1 | 22 | 1 hit | 17 | ~2 round |
-| 10 | 31 | ~2 round | 23 | ~6 round |
-| 25 | 46 | ~2 round | 36 | ~7 round |
-| 50 | 59 | ~3 round | 47 | ~9 round |
-| 75 | 63 | ~3 round | 50 | ~10 round |
-| 100 | 64 | ~3 round | 50 | ~12 round |
+| 1 | 2 round | 4 round | 2 round | — (0 skill damage) |
+| 10 | 8 round | 7 round | 4 round | — |
+| 25 | 11 round | 6 round | 5 round | — |
+| 50 | 14 round | 7 round | 5 round | — |
+| 75 | 17 round | 8 round | 6 round | — |
+| 100 | 20 round | 8 round | 7 round | — |
 
-Đọc kết quả: quái thường luôn chết nhanh (1-3 round xuyên suốt 1-100, không bị "bơm" quá tay dù defense có tăng), boss dài dần một cách hợp lý (2 round ở cấp 1 → ~12 round ở cấp 100) mà không bao giờ chạm ngưỡng bất tử (`attack` luôn > `defense` với khoảng cách lành mạnh ở mọi mốc đã kiểm — kể cả Pháp Sư, class attack thấp nhất, vẫn dương sát thương rõ rệt ở boss level 100).
+Đọc kết quả: **Sát Thủ và Pháp Sư** (2 class attack cao) giữ TTK boss ổn định quanh 5-8 round suốt 1-100 — đúng vai trò "carry sát thương" của cả game, không bao giờ chạm ngưỡng bất tử. **Cận Vệ** (tank, attack weight thấp nhất trong các class có đánh) chậm dần rõ rệt (2→20 round) — **đây là chủ đích**, không phải lỗi cân bằng: Cận Vệ được thiết kế để gánh chịu đòn và giữ chân quái (`baseAggro` cao nhất, skill Khiêu Khích/Trấn Thủ), không phải để solo boss; trong party thật, Cận Vệ đánh xen kẽ Sát Thủ/Pháp Sư nên TTK thực tế của cả đội bám theo cột nhanh nhất, không theo cột Cận Vệ. **Tu Sĩ** không có skill gây damage (thuần hỗ trợ, xem 6.8) nên không tính TTK — vai trò của Tu Sĩ là heal/hạ fear, không phải diệt quái.
 
 **Giới hạn đã biết, không giải quyết trong lần cân bằng này** (ghi nhận để tránh hiểu nhầm là bỏ sót):
 - Prototype hiện chỉ có 3 archetype quái dùng chung cho mọi tầng — game đầy đủ (nhiều tầng hơn) nên bổ sung archetype mới theo cụm tầng (đã có gợi ý ở bảng mục 2: 1-3 / 4-6 / 7+) để "quái yếu" luôn thấy yếu, không bị scale theo tầng tới mức ngang quái mạnh.
-- Mốc mở skill (slot 2-4 ở level 3/5/7) chưa dàn lại theo dải 1-100 — vẫn mở hết trong 7 level đầu, 93 level còn lại không có thêm nội dung skill mới. Đề xuất cho lần sau nếu cần: dời mốc slot 2-4 sang khoảng level 15/40/70 để đồng bộ nhịp với đường cong stat ở đây — chưa áp dụng vì ngoài phạm vi yêu cầu lần này.
+
+**Đã giải quyết**: mốc mở skill (slot 2-4) từng cố định ở level 3/5/7 — mở hết trong 7 level đầu, 93 level còn lại không có thêm nội dung skill mới. Đã dời sang **level 10/20/35** (mục 1, mọi class) để dàn đều hơn theo dải 1-100.
+
+### 6.8 Tăng trưởng phụ thuộc class (`growthWeights`)
+
+**Vấn đề cần giải quyết**: §6.4 dùng một đường cong `growthBonus()` chung cho mọi class (bonus cộng thêm giống hệt nhau bất kể class). Vì đây là bonus **cộng thêm cố định** trong khi base stat mỗi class khác nhau, khoảng cách *tương đối* giữa các class co lại theo level — tới cấp 100, Cận Vệ và Pháp Sư gần như cùng attack dù ở cấp 1 Cận Vệ gấp đôi. Cả 4 class dần "nhạt" thành giống nhau, mất bản sắc đúng lúc người chơi chơi lâu nhất (cấp cao).
+
+**Giải pháp**: mỗi class có thêm `growthWeights: { attack, defense, maxHp, maxMp }` — hệ số nhân riêng cho từng chỉ số, áp lên **cùng một đường cong `growthBonus()`** ở 6.3:
+
+```
+classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
+```
+
+**Quy ước "ngân sách" 4.0**: 4 trọng số của một class luôn cộng lại đúng **4.0** — nghĩa là không class nào được tổng lượng tăng trưởng nhiều hơn class khác, chỉ **phân bổ khác nhau**. Giữ tổng cố định để cân bằng ở việc chọn trọng số (đẩy mạnh chỉ số nào thì phải hy sinh chỉ số khác), không phải ở việc "class này mạnh hơn class kia toàn diện".
+
+| Class | attack | defense | maxHp | maxMp | Tổng | Lý do phân bổ |
+|---|---|---|---|---|---|---|
+| Cận Vệ | 0.8 | 1.4 | 1.3 | 0.5 | 4.0 | Tank — dồn tăng trưởng vào phòng thủ/máu để càng chơi lâu càng "trâu" hơn, hy sinh attack/mana vì không phải class carry sát thương hay dùng nhiều skill tốn mana |
+| Pháp Sư Bóng Tối | 1.3 | 0.6 | 0.7 | 1.4 | 4.0 | Glass cannon phép — attack và mana (đạn dược của class) tăng mạnh nhất, đánh đổi bằng phòng thủ/máu thấp nhất nhóm (rủi ro chết nếu bị nhắm, đúng tinh thần "giòn") |
+| Sát Thủ | 1.4 | 0.7 | 1.1 | 0.8 | 4.0 | Glass cannon cận chiến — attack cao nhất game (carry sát thương chính), maxHp vẫn khá (1.1, cao hơn Pháp Sư) vì phải đứng gần quái để đánh, không có tầm bắn xa như Pháp Sư |
+| Tu Sĩ | 0.6 | 1.1 | 1.0 | 1.3 | 4.0 | Thuần hỗ trợ — attack thấp nhất (không cần, kit không có skill damage), mana cao nhất trừ Pháp Sư (mọi skill của Tu Sĩ đều tốn MP), phòng thủ/máu khá để trụ vững gần party mà heal |
+
+**Kết quả tới level 100** (`createCharacter`, base + `classGrowthBonus`):
+
+| Class | attack | defense | maxHp | maxMp |
+|---|---|---|---|---|
+| Cận Vệ | 96 | 96 | 986 | 152 |
+| Pháp Sư Bóng Tối | 139 | 40 | 526 | 430 |
+| Sát Thủ | 159 | 48 | 806 | 241 |
+| Tu Sĩ | 67 | 74 | 751 | 393 |
+
+So với level 1 (base thuần: Cận Vệ atk14/def12, Pháp Sư atk6/def4), tỉ lệ attack Cận Vệ/Pháp Sư đi từ **2.3 lần** (level 1) sang **0.69 lần** (level 100, Pháp Sư giờ attack cao hơn) — không hội tụ về 1.07 lần như mô hình cũ ở 6.4, mà **đảo chiều đúng hướng thiết kế**: Pháp Sư là class sát thương phép, tới cấp cao attack của nó vượt hẳn Cận Vệ (class tank) là hợp lý. Ngược lại tỉ lệ defense Cận Vệ/Pháp Sư giữ **2.4 lần** ở cấp 100 (so với 3.0 lần ở cấp 1) — gần như không co lại, vì cả hai class đều có defense weight thấp hơn attack/maxHp theo đúng vai trò của chúng.
+
+`growthWeights` chỉ áp dụng cho nhân vật (`party.ts`); quái vật vẫn dùng `growthBonus()` không trọng số (6.6) vì không có khái niệm class — mọi archetype quái tăng đều theo cùng một tốc độ, tách biệt hoàn toàn với hệ thống class của party.

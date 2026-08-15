@@ -1,9 +1,13 @@
 import levelGrowthJson from "../../data/level-growth.json";
+import type { GrowthWeights } from "../types";
 
 // Implements docs/gameplay-decisions.md §6: 5 tapered tiers (fast growth
 // early, slower late) shared by both character leveling (party.ts) and
 // monster depth-scaling (monsters.ts) — keeping their power symmetric, same
-// as the old linear-per-depth formula did for levels 1-7.
+// as the old linear-per-depth formula did for levels 1-7. Characters further
+// apply a per-class weight on top (§6.8) so growth stays class-flavored
+// instead of converging toward identical stats at high level; monsters use
+// the shared curve unweighted (`growthBonus` directly).
 
 export type GrowthStat = "attack" | "defense" | "maxHp" | "maxMp";
 
@@ -45,4 +49,9 @@ export function growthBonus(stat: GrowthStat, level: number): number {
     total += tierFor(l)[stat];
   }
   return Math.floor(total);
+}
+
+/** growthBonus() scaled by a class's per-stat weight (§6.8) — used for character leveling only, not monster depth-scaling. */
+export function classGrowthBonus(stat: GrowthStat, level: number, weights: GrowthWeights): number {
+  return Math.round(growthBonus(stat, level) * weights[stat]);
 }

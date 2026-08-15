@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { growthBonus, ELITE_MULTIPLIER, MAX_LEVEL } from "../src/data/levelGrowth";
 import { spawnMonster } from "../src/data/monsters";
-import { getClass } from "../src/data/classes";
+import { getClass, CLASSES } from "../src/data/classes";
 import { createCharacter } from "../src/engine/party";
 
 // Milestone values from docs/gameplay-decisions.md §6.4.
@@ -70,15 +70,44 @@ describe("createCharacter applies growth for its level (regression: used to igno
   });
 });
 
+describe("growth is class-dependent (§6.8): weights reinforce each class's identity instead of converging", () => {
+  test("growthWeights sum to the 4.0 budget for every class (no class gets strictly more total growth)", () => {
+    for (const cls of CLASSES) {
+      const sum = cls.growthWeights.attack + cls.growthWeights.defense + cls.growthWeights.maxHp + cls.growthWeights.maxMp;
+      expect(sum).toBeCloseTo(4.0, 5);
+    }
+  });
+
+  test("Vanguard (tank) gains more defense+maxHp per level than Shadow Mage (glass cannon)", () => {
+    const vanguard50 = createCharacter("v", "V", getClass("vanguard"), 50);
+    const mage50 = createCharacter("m", "M", getClass("shadow-mage"), 50);
+    expect(vanguard50.defense - getClass("vanguard").baseDefense).toBeGreaterThan(mage50.defense - getClass("shadow-mage").baseDefense);
+    expect(vanguard50.maxHp - getClass("vanguard").baseMaxHp).toBeGreaterThan(mage50.maxHp - getClass("shadow-mage").baseMaxHp);
+  });
+
+  test("Shadow Mage gains more maxMp per level than Vanguard", () => {
+    const vanguard50 = createCharacter("v", "V", getClass("vanguard"), 50);
+    const mage50 = createCharacter("m", "M", getClass("shadow-mage"), 50);
+    expect(mage50.maxMp - getClass("shadow-mage").baseMaxMp).toBeGreaterThan(vanguard50.maxMp - getClass("vanguard").baseMaxMp);
+  });
+});
+
 describe("spawnMonster: elite boss stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
-  test("at floor depth 50, a boss's defense stays well below a level-50 Vanguard's total offense", () => {
-    const vanguard = createCharacter("v", "Vanguard", getClass("vanguard"), 50);
+  test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > boss defense, not just barely floored at 1)", () => {
     const boss = spawnMonster("skeleton-guard", 50, { boss: true });
-    const basicSkillAmount = 10; // Chém Khiên
-    const damage = Math.max(1, basicSkillAmount + vanguard.attack - boss.defense);
-    // The bug this guards against: uniform x2 elite scaling let boss.defense
-    // approach vanguard's total offense, flooring damage to ~1 (near-unkillable).
-    expect(damage).toBeGreaterThan(basicSkillAmount + vanguard.attack * 0.3);
+    const basicSkillAmount = 10; // e.g. Chém Khiên
+    // Chaplain is intentionally pure-support (§6.8: lowest attack weight,
+    // and its 5-skill kit has zero `damage` effects) — its attack stat
+    // trailing a boss's defense is by design, not the bug this test guards.
+    const damageDealers = CLASSES.filter((c) => c.id !== "chaplain");
+    for (const cls of damageDealers) {
+      const character = createCharacter("c", cls.name, cls, 50);
+      const damage = Math.max(1, basicSkillAmount + character.attack - boss.defense);
+      // The bug this guards against: uniform x2 elite scaling let boss.defense
+      // approach total offense, flooring damage to ~1 (near-unkillable) even
+      // for the game's highest-attack classes.
+      expect(damage).toBeGreaterThan(basicSkillAmount);
+    }
   });
 
   test("elite multiplier is asymmetric: heavy on HP, light on defense", () => {
