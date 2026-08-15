@@ -159,11 +159,88 @@ Mục 1-4 đã định nghĩa hiệu quả của `fear`/`hunger`/`thirst`, của
 - MP **không tự hồi** theo hành động như hunger/thirst tự giảm — chỉ tăng qua skill/item có effect `restoreMp`, hồi đầy khi nghỉ tại rest room, hoặc hồi đầy khi lên cấp (xem bên dưới).
 
 ### Tăng trưởng theo cấp (level)
-- Level dùng chung cho **cả party** (không track kinh nghiệm/XP riêng từng nhân vật — tránh phải thêm hệ thống XP mà một side project không cần): `Character.level = min(currentFloor.depth, 7)`, tự cập nhật mỗi khi cả party xuống tầng mới. Cấp tối đa = 7, trùng mốc mở skill cuối (slot 4, `unlockLevel: 7`) — nhân vật "hoàn thiện" đúng lúc có đủ 5 skill.
-- Công thức tăng trưởng (tuyến tính, áp dụng như nhau cho mọi class để không phải cân bằng 4 đường cong riêng), tính từ giá trị base của class (`CharacterClass`) ở level 1:
-  - `maxHp = baseMaxHp + (level - 1) * 8`
-  - `maxMp = baseMaxMp + (level - 1) * 4`
-  - `attack = baseAttack + (level - 1) * 2`
-  - `defense = baseDefense + (level - 1) * 1`
-- `aggro` và `speed` **không** tăng theo level — giữ nguyên `baseAggro`/`baseSpeed` suốt game. Đây là 2 chỉ số định hình vai trò/nhịp độ của class (ai bị nhắm, ai ra tay trước), không phải chỉ số sức mạnh thuần túy — cho tăng theo level sẽ làm targeting và thứ tự lượt ở tầng sâu lệch hẳn khỏi thiết kế ban đầu của từng class.
+- Level dùng chung cho **cả party** (không track kinh nghiệm/XP riêng từng nhân vật — tránh phải thêm hệ thống XP mà một side project không cần): `Character.level = min(currentFloor.depth, 100)`, tự cập nhật mỗi khi cả party xuống tầng mới. **Cấp tối đa nay là 100** (trước là 7, tính cho bản prototype 1 tầng) — công thức tăng trưởng đầy đủ + lý do đổi từ tuyến tính sang tapered theo tier: xem **mục 6**.
+- `aggro` và `speed` **không** tăng theo level — giữ nguyên `baseAggro`/`baseSpeed` suốt game (quyết định không đổi). Đây là 2 chỉ số định hình vai trò/nhịp độ của class (ai bị nhắm, ai ra tay trước), không phải chỉ số sức mạnh thuần túy — cho tăng theo level sẽ làm targeting và thứ tự lượt ở tầng sâu lệch hẳn khỏi thiết kế ban đầu của từng class.
 - Mỗi lần lên cấp: `hp`/`mp` hiện tại được đặt lại **đầy (= maxHp/maxMp mới)** — lên cấp = hồi phục toàn phần, tạo cảm giác "phần thưởng" tự nhiên khi xuống tầng mới, giống rest room nhưng gắn với mốc tiến triển thay vì phòng nghỉ.
+
+---
+
+## 6. Hệ thống level 1-100 & cân bằng sát thương
+
+### 6.1 Vì sao không giữ tuyến tính (linear) từ bản cũ
+
+Công thức cũ (`+2 attack/level`, v.v.) tuyến tính suốt: hợp lý cho 1-7 cấp nhưng **vỡ trận** nếu kéo thẳng tới level 100 — thử ngoại suy: Cận Vệ đạt `attack = 14 + 99*2 = 212`. Vấn đề không phải con số này "to xấu", mà là hệ quả của nó: mọi skill có `amount` cố định (VD Chém Khiên `damage 10`) chỉ còn là ~5% tổng sát thương ở cấp 100 thay vì ~40% ở cấp 1 — chọn skill nào gần như hết ý nghĩa, cả bộ kỹ năng dần trở thành "tấn công thường có tí flavor". Đây là lỗi kinh điển khi kéo dài công thức additive/subtractive quá xa mà không kiểm soát.
+
+### 6.2 Tham khảo game cùng dạng
+
+| Game | Công thức damage | Dải level | Ghi chú áp dụng được |
+|---|---|---|---|
+| Dragon Quest | Trừ trực tiếp, `dmg ≈ atk − def/2` | 1–50/99 | Additive **vẫn đi được xa** (tới 99) — nhưng chỉ vì bảng stat mỗi class được **tapered theo tier**, không tuyến tính đều |
+| Fire Emblem | `dmg = atk − def` (giống hệ ta) | 1–20/30 | Cảnh báo: giữ additive mà KHÔNG tapered thì buộc phải cắt level thấp (~20-30) — đúng cái bẫy mục 6.1 |
+| Pokémon | `((2·Lv/5+2)·Power·Atk/Def)/50+2` — tỉ lệ Atk/Def | 1–100 | Không dùng (đổi hẳn shape công thức, phải viết lại resolver) — ghi nhận làm phương án dự phòng nếu additive+taper sau này vẫn không đủ |
+| ARPG (Diablo/PoE-style) | Mitigation %: `dmg × (1 − def/(def+K))` | không giới hạn | Cũng không dùng — cùng lý do; nhưng đây là hướng đi nếu về sau cần defense "không bao giờ vô hiệu hóa hoàn toàn" sát thương ở scale cực lớn |
+
+**Quyết định**: giữ nguyên shape công thức đã implement — `damage = max(1, amount + attack − defense)` (không đổi resolver) — nhưng **tapered growth theo 5 tier** thay vì tuyến tính đều, theo đúng tinh thần Dragon Quest. Đánh đổi đã chấp nhận (xem 6.5).
+
+### 6.3 Bảng tăng trưởng theo tier
+
+5 tier, mỗi tier có tốc độ tăng/level riêng (giảm dần — tier sau luôn ≤ tier trước):
+
+| Tier | Khoảng level | Số lần lên cấp trong tier | attack/lvl | defense/lvl | maxHp/lvl | maxMp/lvl |
+|---|---|---|---|---|---|---|
+| 1 | 1–10 | 9 | 3 | 2 | 14 | 6 |
+| 2 | 11–25 | 15 | 2 | 1 | 10 | 4 |
+| 3 | 26–50 | 25 | 1 | 0.5 | 7 | 3 |
+| 4 | 51–75 | 25 | 0.5 | 1/3 | 5 | 2 |
+| 5 | 76–100 | 25 | 1/3 | 0.25 | 3 | 1 |
+
+**Công thức**: `bonus(stat, level) = floor(Σ rate(stat, tier(l)) với l chạy từ 2 tới level)` — cộng dồn tốc độ của tier chứa level đang "tới", làm tròn xuống. `tier(l)` = tier chứa level `l` (VD level 11 dùng rate tier 2, level 50 vẫn dùng rate tier 3, level 51 chuyển sang tier 4).
+
+Giá trị cuối cùng: `stat(level) = base<stat> + bonus(stat, level)`. `base<stat>` lấy từ bảng 6 chỉ số ở mục 1 (VD `baseAttack` của Cận Vệ = 14).
+
+### 6.4 Bảng mốc (bonus cộng thêm, áp dụng như nhau cho mọi class)
+
+| Level | +attack | +defense | +maxHp | +maxMp |
+|---|---|---|---|---|
+| 1 | 0 | 0 | 0 | 0 |
+| 10 | 27 | 18 | 126 | 54 |
+| 25 | 57 | 33 | 276 | 114 |
+| 50 | 82 | 45 | 451 | 189 |
+| 75 | 94 | 53 | 576 | 239 |
+| 100 | 102 | 60 | 651 | 264 |
+
+Ví dụ Cận Vệ (base atk14/def12/hp140/mp20) ở level 100: `attack 116, defense 72, maxHp 791, maxMp 284`.
+
+**Lưu ý về tính chất "hội tụ"**: vì bonus là **cộng thêm cố định** (không nhân theo base), khoảng cách tuyệt đối giữa các class không đổi nhưng khoảng cách **tương đối** co lại theo level — VD attack Cận Vệ/Pháp Sư là 14/6 (gấp 2.3 lần) ở level 1 nhưng 116/108 (gấp 1.07 lần) ở level 100. Đây là đánh đổi **có chủ đích** để giữ additive đơn giản (xem 6.5) — khác biệt giữa các class ở cấp cao chủ yếu tới từ **bộ skill** (AoE, buff/debuff, target ally/enemy) chứ không còn từ raw attack/defense.
+
+### 6.5 Sửa lỗi hệ số boss elite (phát hiện khi cân bằng số)
+
+Công thức elite cũ (`(base + depth×rate) × 2` áp cho **cả** attack/defense/maxHp) từng ổn ở tầng 1 nhưng **vỡ ở tầng sâu**: defense được nhân đôi cùng lúc với growth tuyến tính khiến ở tầng 50, defense boss (≈102) gần bằng tổng sát thương tối đa của Cận Vệ (≈106) → damage floor về gần 1, boss gần như bất tử. Đây đúng là kiểu lỗi "defense-stacking" hay gặp khi buff toughness bằng cách nhân đều mọi chỉ số phòng ngự.
+
+**Sửa**: hệ số elite tách riêng theo chỉ số, thiên về HP (boss "trâu" nhờ máu dày, không nhờ né/đỡ damage):
+- `maxHp × 2.5` (giữ nguyên tinh thần "damage sponge")
+- `attack × 1.4` (đủ đe dọa, không áp đảo)
+- `defense × 1.15` (chỉ nhỉnh hơn quái thường — người chơi luôn gây được sát thương có ý nghĩa)
+
+### 6.6 Quái vật dùng chung công thức (theo `floorDepth` thay cho `level`)
+
+Vì `level = min(depth, 100)`, công thức mục 2 (`attack = baseAttack + floorDepth × 2`, v.v.) được thay bằng **đúng bảng tier ở 6.3**, chỉ đổi biến từ `level` sang `floorDepth` — giữ nguyên tính đối xứng nhân vật/quái đã có ở bản 1-7 (2 bên luôn cùng tốc độ tăng, tầng sâu bao nhiêu quái mạnh tương ứng bấy nhiêu).
+
+### 6.7 Kiểm chứng cân bằng (time-to-kill, TTK)
+
+Tính bằng Chém Khiên (`amount 10`) của Cận Vệ, so với Chuột Hầm Ngục (quái thường) và Xương Sống Canh Gác bản boss (elite) **cùng tầng**. Số lượt = TTK-1-người ÷ 3 (party có ~3 nhân vật tấn công/round, Tu Sĩ chủ yếu hỗ trợ):
+
+| Level | dmg vs quái thường | TTK quái thường | dmg vs boss | TTK boss (round) |
+|---|---|---|---|---|
+| 1 | 22 | 1 hit | 17 | ~2 round |
+| 10 | 31 | ~2 round | 23 | ~6 round |
+| 25 | 46 | ~2 round | 36 | ~7 round |
+| 50 | 59 | ~3 round | 47 | ~9 round |
+| 75 | 63 | ~3 round | 50 | ~10 round |
+| 100 | 64 | ~3 round | 50 | ~12 round |
+
+Đọc kết quả: quái thường luôn chết nhanh (1-3 round xuyên suốt 1-100, không bị "bơm" quá tay dù defense có tăng), boss dài dần một cách hợp lý (2 round ở cấp 1 → ~12 round ở cấp 100) mà không bao giờ chạm ngưỡng bất tử (`attack` luôn > `defense` với khoảng cách lành mạnh ở mọi mốc đã kiểm — kể cả Pháp Sư, class attack thấp nhất, vẫn dương sát thương rõ rệt ở boss level 100).
+
+**Giới hạn đã biết, không giải quyết trong lần cân bằng này** (ghi nhận để tránh hiểu nhầm là bỏ sót):
+- Prototype hiện chỉ có 3 archetype quái dùng chung cho mọi tầng — game đầy đủ (nhiều tầng hơn) nên bổ sung archetype mới theo cụm tầng (đã có gợi ý ở bảng mục 2: 1-3 / 4-6 / 7+) để "quái yếu" luôn thấy yếu, không bị scale theo tầng tới mức ngang quái mạnh.
+- Mốc mở skill (slot 2-4 ở level 3/5/7) chưa dàn lại theo dải 1-100 — vẫn mở hết trong 7 level đầu, 93 level còn lại không có thêm nội dung skill mới. Đề xuất cho lần sau nếu cần: dời mốc slot 2-4 sang khoảng level 15/40/70 để đồng bộ nhịp với đường cong stat ở đây — chưa áp dụng vì ngoài phạm vi yêu cầu lần này.

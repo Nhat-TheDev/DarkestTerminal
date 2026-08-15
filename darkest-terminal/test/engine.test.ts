@@ -269,7 +269,7 @@ describe("combat round structure", () => {
     }
     resolveRound(combat, ctx);
     expect(isCombatOver(combat, ctx)).toBe(true);
-    // Vanguard(10) + mage(14) + rogue(12) already exceed the rat's 26 hp (18 base + 1*8 depth).
+    // Vanguard(10) + mage(14) + rogue(12) already exceed the rat's 18 hp at depth 1 (base, no growth bonus yet — see levelGrowth.ts).
     expect(combat.outcome).toBe("victory");
   });
 });

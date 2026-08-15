@@ -129,7 +129,7 @@ Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ
 - Monster: công thức scaling atk/def/hp theo độ sâu tầng + targeting theo `aggro` (random có trọng số) + 3 AI pattern (aggressive/defensive/erratic)
 - Giá trị khởi tạo + ngưỡng số cụ thể cho fear/hunger/thirst (giống nhau mọi class) và 4 bậc fear
 - Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
-- Hiệu quả HP=0/MP thiếu + công thức tăng trưởng attack/defense/maxHp/maxMp theo cấp (level gắn với độ sâu tầng, tối đa cấp 7; `aggro`/`speed` không tăng theo cấp)
+- Hiệu quả HP=0/MP thiếu + hệ thống level 1-100 (5 tier tapered growth, không tuyến tính) cho attack/defense/maxHp/maxMp, đã kiểm chứng TTK xuyên suốt dải level + sửa lỗi hệ số elite boss gây bất tử ở tầng sâu (level gắn với độ sâu tầng; `aggro`/`speed` không tăng theo cấp)
 
 ### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
 - Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định

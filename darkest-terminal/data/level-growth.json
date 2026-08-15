@@ -1,0 +1,11 @@
+{
+  "_format": "5 tapered tiers (docs/gameplay-decisions.md §6.3), rate = stat points gained per level while inside that tier. bonus(stat, level) = floor(sum of the tier rate for every level-up from 2 up to `level`). eliteMultiplier applies to a boss-room monster's fully-scaled stats (asymmetric on purpose — see §6.5, uniform x2 let boss defense stack high enough to nearly negate all incoming damage at deep floors).",
+  "tiers": [
+    { "maxLevel": 10, "attack": 3, "defense": 2, "maxHp": 14, "maxMp": 6 },
+    { "maxLevel": 25, "attack": 2, "defense": 1, "maxHp": 10, "maxMp": 4 },
+    { "maxLevel": 50, "attack": 1, "defense": 0.5, "maxHp": 7, "maxMp": 3 },
+    { "maxLevel": 75, "attack": 0.5, "defense": 0.3333333333333333, "maxHp": 5, "maxMp": 2 },
+    { "maxLevel": 100, "attack": 0.3333333333333333, "defense": 0.25, "maxHp": 3, "maxMp": 1 }
+  ],
+  "eliteMultiplier": { "maxHp": 2.5, "attack": 1.4, "defense": 1.15 }
+}

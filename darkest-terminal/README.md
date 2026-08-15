@@ -32,7 +32,7 @@ bun run typecheck
 - **Combat 2 pha** (ra lệnh cả 4 nhân vật → thực thi theo tốc độ, quái quyết định tại chỗ), targeting theo `aggro` (random có trọng số), rule đổi/hủy mục tiêu khi target chết trước lượt — `src/engine/combat.ts`
 - **Resolver `SkillEffect`** dùng chung skill/status-effect, buff/debuff qua `modifyCombatStat` (cài đặt 1 lần lúc áp, gỡ 1 lần lúc hết hạn), DoT (`trúng độc`) tick cuối mỗi round — `src/engine/resolver.ts`
 - **3 survival stat** (fear/hunger/thirst, khởi tạo 100/100/0 mọi class), HP=0 → permadeath thật, fear ảnh hưởng ngược combat theo 4 bậc, rest room hồi đầy — `src/engine/survival.ts`, `src/engine/resolver.ts`
-- **Level = min(floorDepth, 7)**: vì prototype chỉ có 1 tầng nên party giữ nguyên level 1 suốt ván (chỉ dùng được skill slot 0-1/mỗi class) — đúng thiết kế, không phải bug
+- **Hệ thống level 1-100** (`docs/gameplay-decisions.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. `Character.level = min(floorDepth, 100)`: vì prototype chỉ có 1 tầng nên party thực tế vẫn ở level 1 suốt ván (chỉ dùng được skill slot 0-1/mỗi class) — đúng thiết kế, không phải bug; công thức 1-100 sẵn sàng cho khi có nhiều tầng hơn
 
 ## Đã cắt khỏi scope (so với design doc đầy đủ)
 
@@ -60,6 +60,7 @@ lại của code không cần biết dữ liệu tới từ JSON.
 | `data/status-effects.json` | Buff/debuff (phong-thu, trung-doc, ...) | `src/data/statusEffects.ts` |
 | `data/sprites.json` | Pixel-art (lưới ký tự + palette) cho 4 class + 3 quái + boss | `src/ui/sprites.ts` |
 | `data/floor-patterns.json` | Thư viện pattern cấu trúc tầng (xem mục dưới) | `src/data/floorPatterns.ts` |
+| `data/level-growth.json` | 5 tier tốc độ tăng chỉ số theo level/depth + hệ số elite boss | `src/data/levelGrowth.ts` |
 
 ## Floor pattern — cấu trúc tầng dạng dữ liệu
 
@@ -140,10 +141,12 @@ data/                  # thiết kế dạng JSON — xem mục "Dữ liệu thi
   status-effects.json
   sprites.json
   floor-patterns.json
+  level-growth.json
 src/
   types.ts            # runtime types, đối chiếu ../dungeon-crawler-data-model.ts
   data/                # loader cho data/*.json + logic build (spawnMonster, parse/validate pattern, build Floor)
     floorPatterns.ts   # parser + validator cho notation "stage.roomId[tag]"
+    levelGrowth.ts      # growthBonus(stat, level) 5-tier + hệ số elite boss — dùng chung character/monster
   engine/              # logic thuần (rng, party, resolver, combat, survival, dungeon, game) — test được không cần UI
   ui/theme.ts          # bảng màu + helper dựng StyledText (chip, màu theo HP/fear)
   ui/sprites.ts        # load sprite pixel-art từ JSON + render vào khung cố định
@@ -154,4 +157,5 @@ test/
   ui.test.ts           # smoke test headless: boot + chơi hết ván qua bàn phím giả lập
   sprites.test.ts      # kích thước/palette từng sprite + hành vi renderSpriteInSlot
   floorPatterns.test.ts # mọi pattern: luật rẽ nhánh, reachability, parser/validator edge case
+  levelGrowth.test.ts  # bảng mốc 1-100 khớp docs, regression cho lỗi elite boss "gần bất tử" đã sửa
 ```
