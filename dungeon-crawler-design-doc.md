@@ -2,11 +2,11 @@
 
 **Trạng thái**: Giai đoạn thiết kế, chưa implement
 **Loại dự án**: Side project cá nhân / giải trí — không phải sản phẩm nghiêm túc để phát hành
-**Cập nhật**: 14/08/2026
+**Cập nhật**: 15/08/2026
 
 ## Tóm tắt nhanh
 
-**Đã chốt**: genre & platform, core gameplay loop, combat model (round 2 pha: ra lệnh + thực thi theo tốc độ), permadeath, 6 chỉ số class (tấn công/phòng thủ/máu/mana/thu hút/tốc độ) + targeting theo thu hút, 3 survival stat (cùng giá trị khởi tạo mọi class) + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng + thuật toán procedural generation, hệ class/skill (4 class × 5 skill, nội dung cụ thể), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, resolver logic cho SkillEffect, data model (file riêng).
+**Đã chốt**: genre & platform, core gameplay loop, combat model (round 2 pha: ra lệnh + thực thi theo tốc độ), permadeath, 6 chỉ số class (tấn công/phòng thủ/máu/mana/thu hút/tốc độ) + targeting theo thu hút + hệ thống level 1-100 tăng trưởng phụ thuộc class, 3 survival stat (cùng giá trị khởi tạo mọi class) + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng qua thư viện pattern dạng dữ liệu (random chọn 1 pattern/tầng — không phải thuật toán procedural generation), hệ class/skill (4 class × 5 skill, nội dung cụ thể, mốc mở skill 10/20/35), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, resolver logic cho SkillEffect, data model (file riêng).
 
 **Để mở**: không còn mục nào ở tầm thiết kế — toàn bộ đã có quyết định cụ thể, xem `docs/*.md`. Các con số balancing (damage, threshold %, ...) vẫn chỉ là điểm khởi đầu, sẽ điều chỉnh khi có bản chơi được để playtest.
 
@@ -107,11 +107,11 @@ Lý do:
 
 ## 4. Data model
 
-Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). `SurvivalStats` giờ chỉ còn `fear`/`hunger`/`thirst`; `attack`/`defense`/`hp`/`maxHp`/`mp`/`maxMp`/`aggro`/`speed` là field phẳng trực tiếp trên `Character`/`Monster`. Đã thêm `QueuedAction`/`ActionSource` + `CombatState.phase`/`queuedActions` cho mô hình round 2 pha (mục 1.2), `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, và `Monster.aiPattern`.
+Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). `SurvivalStats` giờ chỉ còn `fear`/`hunger`/`thirst`; `attack`/`defense`/`hp`/`maxHp`/`mp`/`maxMp`/`aggro`/`speed` là field phẳng trực tiếp trên `Character`/`Monster`. Đã thêm `QueuedAction`/`ActionSource` + `CombatState.phase`/`queuedActions` cho mô hình round 2 pha (mục 1.2), `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, `Monster.aiPattern`, `CharacterClass.growthWeights` cho tăng trưởng theo cấp phụ thuộc class (`docs/gameplay-decisions.md` §6.8), và `ActiveStatusEffect` (`{ statusEffectId, turnsRemaining }`) thay cho `statusEffectIds: Id[]` phẳng trên `Character`/`Monster` — cần track riêng số lượt còn lại cho `durationTurns` của từng debuff/buff đang mang.
 
 Các type chính:
 - `Character`, `CharacterClass`, `SkillDefinition`, `SkillEffect` (data-driven)
-- `StatusEffectDefinition`
+- `StatusEffectDefinition`, `ActiveStatusEffect`
 - `ItemDefinition`
 - `Room`, `Floor` (cấu trúc hầm ngục)
 - `MiniGameSession`, `MiniGameResult`, `KeyEvent` (mini-game)

@@ -85,6 +85,20 @@ export interface SkillDefinition {
 }
 
 /**
+ * Multiplier applied to the shared level-growth curve (docs/gameplay-
+ * decisions.md §6.3's `growthBonus`) per stat, per class — §6.8. Budget
+ * convention: the 4 weights always sum to 4.0 across a class, so no class
+ * gets strictly more total growth, only redistributed differently (VD tank
+ * dồn vào defense/maxHp, mage dồn vào attack/maxMp).
+ */
+export interface GrowthWeights {
+  attack: number;
+  defense: number;
+  maxHp: number;
+  maxMp: number;
+}
+
+/**
  * Level-1 combat stats for a class: tấn công/phòng thủ/máu/mana/thu hút/tốc độ
  * (docs/gameplay-decisions.md §1). fear/hunger/thirst are NOT here — every
  * character starts with the same values regardless of class (§3).
@@ -101,8 +115,16 @@ export interface CharacterClass {
   baseAggro: number;
   /** Tốc độ — priority in the resolution-phase turn order (docs/technical-decisions.md §2). */
   baseSpeed: number;
+  /** Per-stat growth multiplier for leveling 1-100 (docs/gameplay-decisions.md §6.8). */
+  growthWeights: GrowthWeights;
   /** Exactly 5 skills total per class (2 starting + 3 unlocked by level). */
   skills: SkillDefinition[];
+}
+
+/** Active instance of a status effect on a Character/Monster, tracking remaining duration (durationTurns on StatusEffectDefinition needs somewhere to count down to 0). */
+export interface ActiveStatusEffect {
+  statusEffectId: Id;
+  turnsRemaining: number;
 }
 
 export interface Character {
@@ -120,7 +142,7 @@ export interface Character {
   speed: number;
   survival: SurvivalStats;
   unlockedSkillIds: Id[];
-  statusEffectIds: Id[];
+  activeStatusEffects: ActiveStatusEffect[];
   /** Permadeath (1.2): once false, stays false — never revived. */
   isAlive: boolean;
 }
@@ -238,6 +260,8 @@ export interface Monster {
   skillIds: Id[];
   isBoss: boolean;
   aiPattern: MonsterAiPattern;
+  /** Monsters can be debuffed too (VD Tẩm Độc/Nguyền Rủa nhắm địch = quái). */
+  activeStatusEffects: ActiveStatusEffect[];
 }
 
 export type CombatantRef =
@@ -248,7 +272,6 @@ export interface Combatant {
   ref: CombatantRef;
   /** Snapshotted from the underlying Character/Monster speed at round start. */
   speed: number;
-  statusEffectIds: Id[];
 }
 
 export type ActionSource =

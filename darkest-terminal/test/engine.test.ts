@@ -15,7 +15,7 @@ import {
   isCombatOver,
   type EngineContext,
 } from "../src/engine/combat";
-import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive } from "../src/engine/resolver";
+import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive, tickStatusEffects } from "../src/engine/resolver";
 import { connectedRooms } from "../src/engine/dungeon";
 import { Game } from "../src/engine/game";
 import type { Character, CombatantRef } from "../src/types";
@@ -144,6 +144,16 @@ describe("resolver", () => {
     tickStatusEffects(vanguard, { log }); // 1 -> 0, expires
     expect(vanguard.defense).toBe(baseDef);
     expect(vanguard.activeStatusEffects).toHaveLength(0);
+  });
+
+  test("a status effect's own recurring damage tick (DoT, e.g. Trúng Độc) is flat, not attack-minus-defense (regression: source===target self-tick was going through the full damage formula)", () => {
+    const { ctx } = makeCtx();
+    const victim = ctx.monsters[0]!; // has nonzero attack/defense, unlike a flat 0-0 stub
+    const log: string[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "trung-doc" }, victim, victim, { log });
+    const before = victim.hp;
+    tickStatusEffects(victim, { log });
+    expect(before - victim.hp).toBe(4); // status-effects.json: trung-doc perTurnEffects damage amount 4, flat
   });
 
   test("re-applying an active status effect refreshes duration instead of stacking", () => {

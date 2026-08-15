@@ -68,9 +68,14 @@ export interface ResolveContext {
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): void {
   switch (effect.kind) {
     case "damage": {
-      const base = (effect.amount ?? 0) + source.attack - target.defense;
-      const withFear = base * damageMultiplierFor(source);
-      const finalDamage = Math.max(1, Math.round(withFear));
+      // source === target only for a status effect's own recurring tick
+      // (e.g. Trúng Độc's DoT, applied via tickStatusEffects below) — that's
+      // not "an attack", so it's flat effect.amount with no attack/defense/
+      // fear roll involved (gameplay-decisions.md §1.3: "mỗi lượt damage 4").
+      const isSelfTick = source === target;
+      const finalDamage = isSelfTick
+        ? Math.max(1, Math.round(effect.amount ?? 0))
+        : Math.max(1, Math.round(((effect.amount ?? 0) + source.attack - target.defense) * damageMultiplierFor(source)));
       target.hp = Math.max(0, target.hp - finalDamage);
       ctx.log.push(`${nameOf(target)} nhận ${finalDamage} sát thương từ ${nameOf(source)}.`);
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;

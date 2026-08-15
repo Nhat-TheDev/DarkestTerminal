@@ -2,9 +2,11 @@
 //
 // Mirrors ../../dungeon-crawler-data-model.ts and the decisions in
 // ../../docs/gameplay-decisions.md + ../../docs/technical-decisions.md.
-// Scope cuts for this prototype (see README.md): no mini-games, no items,
-// no procedural generation (floor is hand-authored), party stays level 1
-// (single floor => min(depth, 7) === 1).
+// Scope cuts for this prototype (see README.md): no mini-games, no items.
+// Floor structure IS randomized (1 pattern picked from data/floor-
+// patterns.json each run, see src/data/floor.ts) — the prototype only cuts
+// multi-floor progression, so the party stays level 1 all game
+// (single floor => Character.level = min(depth, 100) === 1).
 
 export type Id = string;
 

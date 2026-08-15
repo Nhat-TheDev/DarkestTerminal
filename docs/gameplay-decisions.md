@@ -73,10 +73,12 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 ## 2. Monster — chỉ số, targeting theo aggro & AI pattern
 
 ### Công thức scaling theo độ sâu tầng (`floorDepth`, tầng 1 = depth 1)
-- `attack = baseAttack + floorDepth * 2`
-- `defense = baseDefense + floorDepth * 1`
-- `maxHp = baseHp + floorDepth * 8` (hp khởi tạo = maxHp)
-- `speed = baseSpeed` (không scale theo tầng)
+
+**Đã thay thế bởi mục 6.6** — công thức tuyến tính bên dưới là bản gốc (khi level cap còn là 7), giữ lại làm bối cảnh lịch sử; số liệu hiện hành tra ở **6.3/6.6** (`growthBonus(stat, floorDepth)`, tapered theo 5 tier, không tuyến tính):
+- ~~`attack = baseAttack + floorDepth * 2`~~
+- ~~`defense = baseDefense + floorDepth * 1`~~
+- ~~`maxHp = baseHp + floorDepth * 8`~~ (hp khởi tạo = maxHp)
+- `speed = baseSpeed` (không scale theo tầng — **vẫn đúng**, không đổi bởi 6.6)
 
 Đây là công thức archetype → instance, dùng khi spawn quái vào `Room.monsterIds`; các field `attack/defense/hp/maxHp/speed` trên `Monster` luôn là giá trị đã resolve, không lưu công thức.
 
