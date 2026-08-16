@@ -2,87 +2,92 @@
   "classes": {
     "vanguard": {
       "rows": [
-        "..HHHHH..",
-        ".HSSSSSH.",
-        ".HSSSSSH.",
-        "WAAAAAAA.",
-        "WABBBBAA.",
-        "WABBBBAA.",
-        ".AA.B.AA.",
-        "..LL.LL..",
-        "..LL.LL..",
-        "..LL.LL.."
+        "....HHHHH....",
+        "...HHSSSSS...",
+        "...HHSSESS...",
+        "...AAAARRRRRR",
+        "..AACCCRFFFFR",
+        "..AAAAARFFFFR",
+        "..SACCCCRRRR.",
+        "...NNNNNNN...",
+        "...NNN.NNN..."
       ],
       "palette": {
-        "H": "#2a3540",
-        "S": "#c9a27a",
-        "A": "#5b7fa6",
-        "B": "#3d5a78",
-        "L": "#2a2420",
-        "W": "#8fb0d6"
+        "H": "#2b3a4a",
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "A": "#5b8fc9",
+        "C": "#1e3a5c",
+        "F": "#7f9ab5",
+        "R": "#c9d8e8",
+        "N": "#2b3a4a"
       }
     },
-    "shadow-mage": {
+    "mage": {
       "rows": [
-        "....H..W.",
-        "...HHH.W.",
-        "..SSSSSW.",
-        ".AAAAAAW.",
-        ".ABBBBAW.",
-        ".ABBBBAW.",
-        ".AAAAAAA.",
-        "AAAAAAAAA",
-        "BBBBBBBBB",
-        "BBBBBBBBB"
+        "....HHHHH..O.",
+        "...HHHHSSS.W.",
+        "...HHHSSES.W.",
+        "...AAAAAAA.W.",
+        "..AACCCCCAAW.",
+        "..AAACCCAAAW.",
+        "..SAAACAAASW.",
+        "...NNNNNNN.W.",
+        "...NNN.NNN.W."
       ],
       "palette": {
         "H": "#2a1f3a",
-        "S": "#c9a27a",
-        "A": "#7a52a3",
-        "B": "#5a3a7a",
-        "W": "#b5892c"
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "A": "#8a5cc4",
+        "C": "#3d2560",
+        "W": "#8a6a3a",
+        "O": "#d070ff",
+        "N": "#2f2440"
       }
     },
     "rogue": {
       "rows": [
-        "...HHH...",
-        ".HHHHHHH.",
-        ".HHHHHHH.",
-        ".AAAAAAA.",
-        ".ABBBBAW.",
-        ".AA.B.AA.",
-        ".AA.B.AA.",
-        "..LL.LL..",
-        "..LL.LL..",
-        "..LL.LL.."
+        "....HHHHH....",
+        "...HHHHSSS...",
+        "...HHHSSES...",
+        "...AAAAAAA...",
+        "W.AAACACAAA.W",
+        ".WAAAACAAAAW.",
+        ".GSAACACAASG.",
+        "...NNNNNNN...",
+        "...NNN.NNN..."
       ],
       "palette": {
         "H": "#2a2015",
-        "A": "#b5892c",
-        "B": "#8a6a1e",
-        "L": "#2a2420",
-        "W": "#c9c2b0"
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "A": "#c9962e",
+        "C": "#5c3d10",
+        "W": "#ede0b0",
+        "G": "#3a2f1c",
+        "N": "#3a2f1c"
       }
     },
     "chaplain": {
       "rows": [
-        "..HHHHH..",
-        ".HSSSSSH.",
-        ".HSSSSSH.",
-        ".AAAAAAA.",
-        ".ABBWBBA.",
-        ".ABBBBBA.",
-        ".AAAAAAA.",
-        "AAAAAAAAA",
-        "AAAAAAAAA",
-        "BBBBBBBBB"
+        "....HHHHH....",
+        "...HHSSSSS...",
+        "...HHSSESS...",
+        "...AAACAAA...",
+        "..AACCCCCAA..",
+        "..AAAACAAAA..",
+        "..SAAACAAAS..",
+        "...NNNNNNN...",
+        "...NNN.NNN..."
       ],
       "palette": {
         "H": "#8a7050",
-        "S": "#c9a27a",
-        "A": "#a8901a",
-        "B": "#c9b04a",
-        "W": "#f0e6c8"
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "A": "#d4c05a",
+        "C": "#fbf6e4",
+        "N": "#4a4028"
       }
     }
   },

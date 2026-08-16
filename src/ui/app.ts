@@ -20,7 +20,7 @@ import {
 } from "./theme";
 import { spriteForClass, spriteForMonster, renderSpriteInSlot, MAX_BOSS_HEIGHT, type Sprite } from "./sprites";
 
-const SLOT_WIDTH = 11; // matches the boss sprite's width, the widest sprite
+const SLOT_WIDTH = 13; // matches the class sprites' width, the widest sprites
 const SLOT_GAP = 2;
 const DIVIDER_WIDTH = 3;
 const EMPTY_ENEMY_WIDTH = 24;
@@ -252,6 +252,11 @@ export class App {
       this.ui = { kind: "pickTarget", actorRef, skill, candidates };
       return;
     }
+    if (skill.target === "singleAllyOrEnemy") {
+      const candidates = [...this.game.livingAllyRefs(), ...this.game.livingEnemyRefs()];
+      this.ui = { kind: "pickTarget", actorRef, skill, candidates };
+      return;
+    }
     const targets = this.game.autoTargets(skill.target, actorRef) ?? [actorRef];
     const err = this.game.queue(actorRef, skill.id, targets);
     if (err) this.game.state.message = err.reason;
@@ -438,16 +443,20 @@ export class App {
       const lines = [`Lượt của ${actor.name} — chọn kỹ năng:`];
       actor.unlockedSkillIds.map(getSkill).forEach((sk, i) => {
         const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
-        lines.push(`  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesLeft !== null ? `, còn ${usesLeft} lượt/trận` : ""}) — ${sk.description}`);
+        const cooldownLeft = actor.cooldownsRemaining[sk.id] ?? 0;
+        const suffix = usesLeft !== null ? `, còn ${usesLeft} lượt/trận` : cooldownLeft > 0 ? `, hồi chiêu ${cooldownLeft} lượt` : "";
+        lines.push(`  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${suffix}) — ${sk.description}`);
       });
       return lines.join("\n");
     }
     if (this.ui.kind === "pickTarget") {
       const lines = [`Chọn mục tiêu cho ${this.ui.skill.name}:`];
+      const isDualRelation = this.ui.skill.target === "singleAllyOrEnemy";
       this.ui.candidates.forEach((ref, i) => {
         const target = getActorByRef(ref, this.game.ctx);
         const hpInfo = "hp" in target ? ` (${target.hp}/${target.maxHp} HP)` : "";
-        lines.push(`  [${i + 1}] ${target.name}${hpInfo}`);
+        const sidePrefix = isDualRelation ? (ref.kind === "character" ? "[Đồng đội] " : "[Địch] ") : "";
+        lines.push(`  [${i + 1}] ${sidePrefix}${target.name}${hpInfo}`);
       });
       return lines.join("\n");
     }
