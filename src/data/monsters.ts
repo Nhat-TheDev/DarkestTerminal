@@ -1,5 +1,6 @@
-import type { MonsterArchetype, Monster, MonsterTier } from "../types";
+import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
+import monsterSkillsJson from "../../data/monster-skills.json";
 import { growthBonusForDepth, EXP_REWARD_DEPTH_RATE, ELITE_MULTIPLIER, BOSS_MULTIPLIER } from "./levelGrowth";
 
 // Design data now lives in ../../data/monsters.json — see
@@ -15,10 +16,26 @@ export function getArchetype(id: string): MonsterArchetype {
   return found;
 }
 
+// Elite/boss-only skill kit (docs/gameplay-decisions.md §6.12), referenced by
+// MonsterArchetype.eliteSkillIds/bossSkillIds and resolved live by
+// runMonsterTurn (engine/combat.ts) — monsters never queue actions, so
+// mpCost/slot/unlockLevel on these entries are unused, kept only to satisfy
+// the shared SkillDefinition shape.
+export const MONSTER_SKILLS = monsterSkillsJson as unknown as SkillDefinition[];
+
+export function getMonsterSkill(id: string): SkillDefinition {
+  const found = MONSTER_SKILLS.find((s) => s.id === id);
+  if (!found) throw new Error(`Unknown monster skill: ${id}`);
+  return found;
+}
+
 let monsterCounter = 0;
 
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
 const TIER_NAME_SUFFIX = { elite: " (Tinh Anh)", boss: " (Đại Tướng)" };
+
+/** §6.12 — turns of normal behavior before a boss can start charging Đòn Kết Liễu again (both the initial delay and the cooldown after a release use this same value). */
+export const EXECUTE_COOLDOWN_TURNS = 3;
 
 /**
  * Spawns a Monster instance from an archetype, scaled by floor depth using
@@ -61,5 +78,7 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     aiPattern: archetype.aiPattern,
     activeStatusEffects: [],
     expReward: multiplier ? Math.round(scaledExp * multiplier.exp) : scaledExp,
+    executeCooldownTurns: tier === "boss" ? EXECUTE_COOLDOWN_TURNS : undefined,
+    isChargingExecute: false,
   };
 }

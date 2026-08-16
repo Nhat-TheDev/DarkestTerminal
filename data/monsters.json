@@ -2,10 +2,10 @@
   {
     "id": "dungeon-rat",
     "name": "Chuột Hầm Ngục",
-    "baseHp": 18,
-    "baseAttack": 5,
-    "baseDefense": 2,
-    "baseSpeed": 7,
+    "baseHp": 16,
+    "baseAttack": 10,
+    "baseDefense": 1,
+    "baseSpeed": 9,
     "aiPattern": "erratic",
     "skillIds": [],
     "expReward": 6
@@ -13,10 +13,10 @@
   {
     "id": "black-bat",
     "name": "Dơi Đen",
-    "baseHp": 14,
-    "baseAttack": 6,
+    "baseHp": 16,
+    "baseAttack": 15,
     "baseDefense": 1,
-    "baseSpeed": 14,
+    "baseSpeed": 18,
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 6
@@ -24,12 +24,14 @@
   {
     "id": "skeleton-guard",
     "name": "Xương Sống Canh Gác",
-    "baseHp": 40,
-    "baseAttack": 10,
-    "baseDefense": 6,
-    "baseSpeed": 8,
+    "baseHp": 55,
+    "baseAttack": 14,
+    "baseDefense": 10,
+    "baseSpeed": 6,
     "aiPattern": "defensive",
     "skillIds": [],
-    "expReward": 15
+    "expReward": 15,
+    "eliteSkillIds": { "strike": "skeleton-elite-strike", "cleave": "skeleton-elite-cleave" },
+    "bossSkillIds": { "execute": "skeleton-boss-execute", "debuff": "skeleton-boss-crush" }
   }
 ]

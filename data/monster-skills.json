@@ -1,0 +1,45 @@
+[
+  {
+    "id": "skeleton-elite-strike",
+    "name": "Chém Hạ Gục",
+    "description": "Đòn chém mạnh của Xương Sống Canh Gác tinh anh/đại tướng — thay cho đòn đánh thường, sát thương cao hơn hẳn.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 8 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-elite-cleave",
+    "name": "Chém Quét",
+    "description": "Vung vũ khí quét cả đội, sát thương diện rộng nhưng nhẹ hơn Chém Hạ Gục trên từng mục tiêu.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [{ "kind": "damage", "amount": 2 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-boss-execute",
+    "name": "Đòn Kết Liễu",
+    "description": "Tích lực 1 lượt (báo trước mục tiêu) rồi giáng đòn cực mạnh — khoảng 60% maxHp của Cận Vệ, đủ hạ gục các class máu mỏng. Không dựa theo % HP hiện tại của mục tiêu.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 71 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-boss-crush",
+    "name": "Nghiền Nát",
+    "description": "Sát thương vừa phải, kèm làm suy yếu phòng thủ mục tiêu vài lượt.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      { "kind": "damage", "amount": 4 },
+      { "kind": "applyStatusEffect", "statusEffectId": "suy-yeu" }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  }
+]

@@ -49,6 +49,14 @@
     "durationTurns": 2
   },
   {
+    "id": "suy-yeu",
+    "name": "Suy Yếu",
+    "description": "Nghiền Nát (Xương Sống Canh Gác - Đại Tướng): giảm phòng thủ mục tiêu trong vài lượt.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
     "id": "choang",
     "name": "Choáng",
     "description": "Phóng Sét/Bão Sét (Pháp Sư): bỏ lượt hoàn toàn trong khi hiệu lực (xem docs/technical-decisions.md §4.3). Không chữa được qua mini-game.",

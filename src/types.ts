@@ -171,6 +171,10 @@ export interface MonsterArchetype {
   skillIds: Id[];
   /** Base EXP granted to the party on kill, before floor-depth scaling (docs/gameplay-decisions.md §6.9). */
   expReward: number;
+  /** Elite-tier-only skill kit (docs/gameplay-decisions.md §6.12) — undefined for archetypes never spawned as the floor's guard-room monster. Boss tier gets this too, on top of bossSkillIds. IDs reference data/monster-skills.json. */
+  eliteSkillIds?: { strike: Id; cleave: Id };
+  /** Boss-tier-only skill kit, on top of eliteSkillIds (§6.12). */
+  bossSkillIds?: { execute: Id; debuff: Id };
 }
 
 /** "normal" = regular combat-room spawn; "elite"/"boss" = the floor's guard room (§6.11), mutually exclusive per floor. */
@@ -191,6 +195,12 @@ export interface Monster {
   activeStatusEffects: ActiveStatusEffect[];
   /** Fully-scaled EXP granted to the party on kill (archetype base + depth scaling + tier multiplier). */
   expReward: number;
+  /** Boss-only (§6.12): turns remaining before Đòn Kết Liễu can start charging again — 0 = ready. Unused outside boss tier. */
+  executeCooldownTurns?: number;
+  /** Boss-only: true on the turn after charging starts — the boss's next turn releases Kết Liễu instead of rolling its normal kit, then resets. */
+  isChargingExecute?: boolean;
+  /** Boss-only: locked in when charging starts, so the release always hits the character that was telegraphed. */
+  executeTargetId?: Id;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id };

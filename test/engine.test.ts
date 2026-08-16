@@ -18,6 +18,7 @@ import {
 import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive, tickStatusEffects } from "../src/engine/resolver";
 import { connectedRooms } from "../src/engine/dungeon";
 import { Game } from "../src/engine/game";
+import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef } from "../src/types";
 
 function makeCtx(seed = 1) {
@@ -202,7 +203,7 @@ describe("aggro-weighted targeting", () => {
 describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
     const { ctx } = makeCtx();
-    // Tanky enough (skeleton-guard, 48hp) that no single hit ends combat mid-round,
+    // Tanky enough (skeleton-guard, 55hp) that no single hit ends combat mid-round,
     // so every character's turn actually runs and shows up in the log.
     const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
     const combat = startCombat("r1", [tanky.id], ctx, false);
@@ -313,8 +314,8 @@ describe("combat round structure", () => {
     }
     resolveRound(combat, ctx);
     expect(isCombatOver(combat, ctx)).toBe(true);
-    // Every class now has a free singleEnemy basic attack (amount 0 = attack - defense): vanguard 12 +
-    // mage 4 + rogue 14 + chaplain 4 = 34, already exceeds the rat's 18 hp at depth 1 (base stats, no
+    // Every class now has a free singleEnemy basic attack (amount 0 = attack - defense): vanguard 13 +
+    // mage 5 + rogue 15 + chaplain 5 = 38, already exceeds the rat's 16 hp at depth 1 (base stats, no
     // growth bonus yet — see levelGrowth.ts).
     expect(combat.outcome).toBe("victory");
   });
@@ -390,7 +391,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     ctx.party.push(chaplain);
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.activeStatusEffects.push({ statusEffectId: "bong", turnsRemaining: 2 });
-    // skeleton-guard (48hp), not dungeon-rat (18hp) — Thanh Tẩy's enemy branch (15 + attack - defense)
+    // skeleton-guard (55hp), not dungeon-rat (16hp) — Thanh Tẩy's enemy branch (15 + attack - defense)
     // would one-shot a rat and end combat before the 2nd (ally-branch) queueAction in this test runs.
     const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
     const combat = startCombat("r1", [tanky.id], ctx, false);
@@ -431,11 +432,120 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
   });
 });
 
+describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
+  function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+  }
+
+  test("elite and boss use their named skill kit instead of the old flat 'tấn công' attack", () => {
+    for (let seed = 0; seed < 10; seed++) {
+      for (const tier of ["elite", "boss"] as const) {
+        const { ctx } = makeCtx(seed);
+        const monster = spawnMonster("skeleton-guard", 1, { tier });
+        ctx.monsters.push(monster);
+        const combat = startCombat("r1", [monster.id], ctx, false);
+        queueTrivialActions(ctx, combat);
+        resolveRound(combat, ctx);
+        const monsterLines = combat.log.filter((l) => l.startsWith(monster.name));
+        expect(monsterLines.some((l) => l.includes("Chém Hạ Gục") || l.includes("Chém Quét") || l.includes("kết liễu") || l.includes("Nghiền Nát"))).toBe(true);
+        expect(monsterLines.some((l) => l.includes("tấn công"))).toBe(false);
+      }
+    }
+  });
+
+  test("normal-tier skeleton-guard is unaffected — still uses the old flat attack (regression)", () => {
+    const { ctx } = makeCtx(1);
+    const monster = spawnMonster("skeleton-guard", 1); // tier defaults to "normal"
+    ctx.monsters.push(monster);
+    const combat = startCombat("r1", [monster.id], ctx, false);
+    queueTrivialActions(ctx, combat);
+    resolveRound(combat, ctx);
+    const monsterLines = combat.log.filter((l) => l.startsWith(monster.name));
+    expect(monsterLines.some((l) => l.includes("tấn công"))).toBe(true);
+    expect(monsterLines.some((l) => l.includes("Chém Hạ Gục") || l.includes("Chém Quét"))).toBe(false);
+  });
+
+  test("boss telegraphs Đòn Kết Liễu 1 turn ahead, locking in a target, then releases a huge flat hit on release (not HP%-based)", () => {
+    const { ctx } = makeCtx();
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    ctx.monsters.push(boss);
+    const combat = startCombat("r1", [boss.id], ctx, false);
+
+    // Cooldown starts at EXECUTE_COOLDOWN_TURNS (§6.12) — run rounds until the charge/warning turn fires.
+    let charged = false;
+    for (let round = 0; round < 10 && combat.phase !== "over" && !charged; round++) {
+      queueTrivialActions(ctx, combat);
+      resolveRound(combat, ctx);
+      charged = combat.log.some((l) => l.includes("bắt đầu tích lực"));
+    }
+    expect(charged).toBe(true);
+    expect(boss.isChargingExecute).toBe(true);
+    const markedTarget = ctx.party.find((p) => p.id === boss.executeTargetId);
+    expect(markedTarget).toBeDefined();
+    markedTarget!.hp = markedTarget!.maxHp; // reset to full so the release's damage is measured cleanly, independent of whatever chip damage landed during the charge-up rounds
+
+    const hpBefore = markedTarget!.hp;
+    queueTrivialActions(ctx, combat);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes("tung đòn kết liễu đã tích lực") && l.includes(markedTarget!.name))).toBe(true);
+    // §6.12: fixed, very high damage regardless of the target's HP going in (not a %-HP trigger) —
+    // amount 71 + boss.attack - target.defense comfortably exceeds half a squishy class's maxHp.
+    const damageDealt = Math.max(0, hpBefore - markedTarget!.hp);
+    expect(damageDealt).toBeGreaterThan(markedTarget!.maxHp * 0.5);
+    expect(boss.isChargingExecute).toBe(false); // resets after releasing
+    expect(boss.executeCooldownTurns).toBeGreaterThan(0); // back on cooldown, won't charge again immediately
+  });
+
+  test("elite cleave (Chém Quét), when it fires, damages every living character in the same round", () => {
+    let found = false;
+    for (let seed = 0; seed < 50 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
+      ctx.monsters.push(elite);
+      const combat = startCombat("r1", [elite.id], ctx, false);
+      queueTrivialActions(ctx, combat);
+      const hpBefore = new Map(ctx.party.filter((c) => c.isAlive).map((c) => [c.id, c.hp]));
+      resolveRound(combat, ctx);
+      if (!combat.log.some((l) => l.includes("Chém Quét"))) continue;
+      found = true;
+      const hitCount = [...hpBefore.entries()].filter(([id, hp]) => {
+        const c = ctx.party.find((p) => p.id === id)!;
+        return c.hp < hp;
+      }).length;
+      expect(hitCount).toBe(hpBefore.size); // every character alive before the round took damage
+    }
+    expect(found).toBe(true); // cleave should fire at least once across 50 seeds at a 30% chance/round
+  });
+
+  test("boss debuff (Nghiền Nát) applies suy-yeu, weakening the target's defense", () => {
+    let found = false;
+    for (let seed = 0; seed < 50 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      ctx.monsters.push(boss);
+      const combat = startCombat("r1", [boss.id], ctx, false);
+      queueTrivialActions(ctx, combat);
+      resolveRound(combat, ctx);
+      if (!combat.log.some((l) => l.includes("Nghiền Nát"))) continue;
+      found = true;
+      const debuffed = ctx.party.find((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "suy-yeu"));
+      expect(debuffed).toBeDefined();
+    }
+    expect(found).toBe(true); // debuff should fire at least once across 50 seeds at a 30% chance/round
+  });
+});
+
 describe("full scripted playthrough (smoke test)", () => {
   // docs/gameplay-decisions.md §6.9/6.10: floor depth is uncapped (roguelite —
   // clearing the guard room always advances instead of ending the game), so a
   // bounded smoke test can't expect to reach gameOver at all — early floors
-  // are comfortably survivable (over-leveled), and death only becomes likely
+  // are comfortably survivable (over-leveled) **for a bot that heals when
+  // hurt** (§6.12: elite/boss can now meaningfully threaten HP, unlike the
+  // old near-harmless numbers — a pure attack-every-turn bot is no longer a
+  // fair floor-1 baseline), and death only becomes likely
   // many floors deeper than this guard can reach. Assert progression + the
   // "victory" outcome being unreachable instead of "run finishes".
   test("descends through many floors without throwing; gameOver, if reached, is only ever defeat", () => {
@@ -445,11 +555,33 @@ describe("full scripted playthrough (smoke test)", () => {
     while (!game.state.gameOver && guard < 2000) {
       guard++;
       if (game.state.combat && game.state.combat.phase !== "over") {
+        const livingAllies = game.livingAllyRefs().map((r) => getActorByRef(r, game.ctx) as Character);
         for (const ref of game.livingAllyRefs()) {
           const actor = getActorByRef(ref, game.ctx) as Character;
           const already = game.state.combat.queuedActions.some((qa) => qa.actor.id === ref.id);
           if (already) continue;
-          const attackSkill = actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy");
+
+          // §6.12: elite/boss can now meaningfully threaten HP, so a bot that never heals isn't a fair
+          // baseline anymore — heal the most-injured ally when someone drops below half HP and this
+          // character has a singleAlly heal skill unlocked, otherwise fall back to plain attacking.
+          const healSkill = actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleAlly" && s.effects?.some((e) => e.kind === "heal"));
+          const mostInjured = livingAllies.reduce((worst, c) => (c.hp / c.maxHp < worst.hp / worst.maxHp ? c : worst));
+          if (healSkill && actor.mp >= healSkill.mpCost && mostInjured.hp / mostInjured.maxHp < 0.5) {
+            game.queue(ref, healSkill.id, [{ kind: "character", id: mostInjured.id }]);
+            continue;
+          }
+
+          // Picks the strongest affordable singleEnemy skill instead of just the first one (usually the
+          // free basic attack) — §6.12's elite defense is high enough that a low-attack class's basic
+          // attack alone barely scratches it, so "always use the cheapest option" is no longer a fair bot.
+          const affordable = actor.unlockedSkillIds
+            .map(getSkill)
+            .filter((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost && (actor.cooldownsRemaining[s.id] ?? 0) === 0);
+          const skillAmount = (s: (typeof affordable)[number]) => s.effects?.reduce((sum, e) => sum + (e.kind === "damage" ? (e.amount ?? 0) : 0), 0) ?? 0;
+          const attackSkill = affordable.reduce<(typeof affordable)[number] | undefined>(
+            (best, s) => (!best || skillAmount(s) > skillAmount(best) ? s : best),
+            undefined
+          );
           const enemies = game.livingEnemyRefs();
           if (attackSkill && enemies.length > 0 && actor.mp >= attackSkill.mpCost) {
             game.queue(ref, attackSkill.id, [enemies[0]!]);

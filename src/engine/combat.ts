@@ -10,6 +10,7 @@ import type {
   SkillEffect,
 } from "../types";
 import { getSkill } from "../data/classes";
+import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
 import { getStatusEffect } from "../data/statusEffects";
 import { Rng } from "./rng";
 import {
@@ -230,6 +231,17 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   applySkillEffects(skill, actor, targets, ctx, combat.log);
 }
 
+/** Chance per turn a boss casts its debuff skill instead of rolling for cleave/strike (checked only outside the execute charge/release turns). */
+const BOSS_DEBUFF_CHANCE = 0.3;
+/** Chance per turn an elite/boss casts its AoE cleave instead of its single-target strike. */
+const ELITE_CLEAVE_CHANCE = 0.3;
+
+/** Normal-tier targeting (§2): erratic ignores aggro entirely, aggressive/defensive both weight by aggro (no monster archetype defines a self-heal skill, so "defensive under 40% HP" falls through to the same rule as aggressive). Reused by elite/boss for their strike skill. */
+function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): Character {
+  if (actor.aiPattern === "erratic") return rng.pick(livingChars);
+  return pickAggroWeighted(livingChars, rng);
+}
+
 function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const actor = getActorByRef(ref, ctx) as Monster;
   if (hasStunningStatus(actor)) {
@@ -240,16 +252,56 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
   const livingChars = livingCharacterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Character);
   if (livingChars.length === 0) return;
 
-  let target: Character;
-  if (actor.aiPattern === "defensive" && actor.hp / actor.maxHp < 0.4) {
-    // No monster archetype currently defines a self-heal skill (out of scope) — falls through to attacking.
-    target = pickAggroWeighted(livingChars, ctx.rng);
-  } else if (actor.aiPattern === "erratic") {
-    target = ctx.rng.pick(livingChars);
-  } else {
-    target = pickAggroWeighted(livingChars, ctx.rng);
+  const archetype = getArchetype(actor.archetypeId);
+
+  // §6.12: boss telegraphs Đòn Kết Liễu 1 turn ahead of releasing it — locks in a target when
+  // charging starts (logged as a warning), then unleashes a flat, very high hit on the next turn.
+  // Not HP%-based anymore: it can nearly one-shot a low-maxHp class or hit the tank for ~60% of
+  // theirs, so taunting the marked target between the charge and release turns is a real counter.
+  if (actor.tier === "boss" && archetype.bossSkillIds) {
+    if (actor.isChargingExecute) {
+      const target = livingChars.find((c) => c.id === actor.executeTargetId) ?? pickAggroWeighted(livingChars, ctx.rng);
+      combat.log.push(`${actor.name} tung đòn kết liễu đã tích lực vào ${target.name}!`);
+      applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], ctx, combat.log);
+      actor.isChargingExecute = false;
+      actor.executeTargetId = undefined;
+      actor.executeCooldownTurns = EXECUTE_COOLDOWN_TURNS;
+      return;
+    }
+    if ((actor.executeCooldownTurns ?? 0) <= 0) {
+      const target = pickAggroWeighted(livingChars, ctx.rng);
+      actor.isChargingExecute = true;
+      actor.executeTargetId = target.id;
+      combat.log.push(`${actor.name} bắt đầu tích lực cho đòn kết liễu, nhắm vào ${target.name}!`);
+      return; // the charge itself is the whole turn — no attack this round, but a clear warning
+    }
+    actor.executeCooldownTurns = (actor.executeCooldownTurns ?? 0) - 1;
+    if (ctx.rng.chance(BOSS_DEBUFF_CHANCE)) {
+      const target = pickAggroWeighted(livingChars, ctx.rng);
+      const skill = getMonsterSkill(archetype.bossSkillIds.debuff);
+      combat.log.push(`${actor.name} dùng ${skill.name}.`);
+      applySkillEffects(skill, actor, [target], ctx, combat.log);
+      return;
+    }
   }
 
+  // §6.12: elite and boss both get a stronger single-target strike (replaces the flat basic
+  // attack) plus a chance to cleave the whole party instead.
+  if ((actor.tier === "elite" || actor.tier === "boss") && archetype.eliteSkillIds) {
+    if (ctx.rng.chance(ELITE_CLEAVE_CHANCE)) {
+      const skill = getMonsterSkill(archetype.eliteSkillIds.cleave);
+      combat.log.push(`${actor.name} dùng ${skill.name}, quét cả đội!`);
+      applySkillEffects(skill, actor, livingChars, ctx, combat.log);
+      return;
+    }
+    const target = pickMonsterTarget(actor, livingChars, ctx.rng);
+    const skill = getMonsterSkill(archetype.eliteSkillIds.strike);
+    combat.log.push(`${actor.name} dùng ${skill.name} vào ${target.name}.`);
+    applySkillEffects(skill, actor, [target], ctx, combat.log);
+    return;
+  }
+
+  const target = pickMonsterTarget(actor, livingChars, ctx.rng);
   combat.log.push(`${actor.name} tấn công ${target.name}.`);
   resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
 }

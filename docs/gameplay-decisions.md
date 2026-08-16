@@ -149,11 +149,14 @@ Công thức: `P(target = X) = X.aggro / tổng aggro toàn bộ nhân vật cò
 - **`erratic`** (Hỗn Loạn): **bỏ qua** trọng số `aggro` — chọn target ngẫu nhiên đều (uniform) trong các nhân vật còn sống. Đây là điểm khác biệt thật sự của pattern này (không phải chỉ random hành động mà còn random cả việc có "nghe" threat hay không) — đúng chất quái "điên loạn", không đoán trước được kể cả khi có Khiêu Khích.
 
 ### Ví dụ archetype theo cụm tầng (minh họa, không bắt buộc đủ)
+
+**Cập nhật 2026-08-16 — tăng chỉ số 3 archetype hiện có**: bản số cũ (cột "trước") gần như vô hại với party base stats (damage chạm sàn `max(1, ...)` ở phần lớn trường hợp — VD Chuột Hầm Ngục atk5 vs Cận Vệ def12 luôn ra đúng 1 sát thương), nên combat không đòi hỏi quyết định gì (không cần heal, không cần taunt, không cần ưu tiên mục tiêu). Số mới đẩy attack lên đáng kể (đặc biệt Dơi Đen — sát thương thật + speed cao nhất bàn để buộc ưu tiên hạ trước khi nó ra đòn) và tách rõ vai trò 3 archetype hơn: Chuột Hầm Ngục (erratic, rẻ mạng, phạt nếu bỏ qua vì random target không đoán trước được), Dơi Đen (aggressive, mong manh nhưng đau, giết trước hoặc chấp nhận ăn đòn mỗi round vì nó luôn ra tay đầu tiên), Xương Sống Canh Gác (defensive, tanky hẳn — def10 khiến đòn đánh thường của Pháp Sư/Tu Sĩ gần như vô dụng, buộc dùng skill có `amount` hoặc DoT thay vì spam đòn thường).
+
 | Tên | Tầng | baseHp | baseAtk | baseDef | baseSpeed | AI | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| Chuột Hầm Ngục | 1-3 | 18 | 5 | 2 | 7 | erratic | quái mở màn, tần suất cao |
-| Dơi Đen | 1-3 | 14 | 6 | 1 | 14 | aggressive | speed cao, đánh sớm |
-| Xương Sống Canh Gác | 4-6 | 40 | 10 | 6 | 8 | defensive | tanky, self-heal khi trúng skill |
+| Chuột Hầm Ngục | 1-3 | 16 (trước 18) | 10 (trước 5) | 1 (trước 2) | 9 (trước 7) | erratic | quái mở màn, tần suất cao |
+| Dơi Đen | 1-3 | 16 (trước 14) | 15 (trước 6) | 1 (không đổi) | 18 (trước 14) | aggressive | speed cao nhất bàn, đánh trước cả Sát Thủ |
+| Xương Sống Canh Gác | 4-6 | 55 (trước 40) | 14 (trước 10) | 10 (trước 6) | 6 (trước 8) | defensive | tanky, self-heal khi trúng skill |
 | Bóng Ma Gào Thét | 7+ | 60 | 14 | 4 | 11 | erratic | trúng đòn → +fear phụ trội cho nạn nhân |
 
 **Cập nhật 2026-08-16 (§6.11) — 3 cấp độ quái, không phải chỉ "boss"**: phòng tag `boss` trong `data/floor-patterns.json` (mọi pattern đều có đúng 1 phòng này, ở cuối) **không phải lúc nào cũng là Boss thật** — mặc định trấn giữ bởi 1 **Elite** (như trước: `eliteMultiplier` ở §6.5), nhưng cứ **mỗi 5 tầng** (`depth % 5 === 0`), phòng đó thay bằng 1 **Boss thật** mạnh hơn hẳn Elite (hệ số riêng, xem §6.11) — 2 loại này loại trừ nhau, tầng nào có Boss thì không có Elite. Hạ quái trấn giữ phòng đó (dù là Elite hay Boss) vẫn là điều kiện lên tầng kế theo §6.9. Mini-game boss-phase (mốc 50% HP, chi tiết `docs/minigame-decisions.md` mục 1) **chưa áp dụng cho cả Elite lẫn Boss** — đã xác nhận giữ Boss thuần combat, siết bằng chỉ số thay vì mini-game (§6.11).
@@ -322,37 +325,41 @@ Party chạm trần level 100 quanh **tầng ~94-100** — trùng hợp gần kh
 
 **Quái thường** (Chuột Hầm Ngục, `Ném Khiên amount 10` của Cận Vệ — vẫn là kịch bản chậm nhất, class khác chết quái nhanh hơn số này):
 
+**Cập nhật 2026-08-16**: bảng tính lại sau khi tăng chỉ số 3 archetype ở mục 2 (`baseDefense` Chuột Hầm Ngục giảm 2→1, `baseHp` giảm 18→16 — vẫn là "quái rẻ mạng, chết nhanh" đúng vai trò, chỉ HP/def đổi, `baseAttack` tăng không ảnh hưởng bảng TTK-giết-nó này).
+
 | Độ sâu tầng | Level nhân vật | dmg | HP quái | TTK 1 người (hit) |
 |---|---|---|---|---|
-| 1 | 5 | 32 | 18 | 1 |
-| 10 | 27 | 51 | 144 | 3 |
-| 25 | 48 | 53 | 294 | 6 |
-| 50 | 70 | 51 | 469 | 10 |
-| 75 | 87 | 47 | 594 | 13 |
-| 100 | 100 | 44 | 669 | 16 |
-| 150 | 100 (đứng yên) | 32 | 819 | 26 |
-| 200 | 100 (đứng yên) | 19 | 969 | 51 |
-| 250 | 100 (đứng yên) | 7 | 1119 | 160 |
+| 1 | 5 | 33 | 16 | 1 |
+| 10 | 27 | 52 | 142 | 3 |
+| 25 | 48 | 54 | 292 | 6 |
+| 50 | 70 | 52 | 467 | 9 |
+| 75 | 87 | 48 | 592 | 13 |
+| 100 | 100 | 45 | 667 | 15 |
+| 150 | 100 (đứng yên) | 33 | 817 | 25 |
+| 200 | 100 (đứng yên) | 20 | 967 | 49 |
+| 250 | 100 (đứng yên) | 8 | 1117 | 140 |
 
-Đọc kết quả: nhờ over-level tự nhiên ở nửa đầu game (level nhân vật vượt xa độ sâu tầng — VD tầng 10 đã level 27), TTK quái thường **tốt hơn hẳn** bảng cũ ở early-mid game (3-13 hit thay vì 6-14 hit ở cùng mốc tầng). Nhưng vì nhân vật đứng yên ở max level trong khi quái tiếp tục mạnh dần vô hạn, TTK **sụp đổ nhanh sau tầng ~150** — tới tầng 250 cần 160 hit, thực chất là bất khả thi trong 1 trận (giới hạn khả năng chịu đựng của party). Đây chính là "điểm kết thúc tự nhiên" của roguelite vô hạn đã nói ở 6.10, không phải lỗi.
+Đọc kết quả: nhờ over-level tự nhiên ở nửa đầu game (level nhân vật vượt xa độ sâu tầng — VD tầng 10 đã level 27), TTK quái thường **tốt hơn hẳn** bảng cũ ở early-mid game (3-13 hit thay vì 6-14 hit ở cùng mốc tầng). Nhưng vì nhân vật đứng yên ở max level trong khi quái tiếp tục mạnh dần vô hạn, TTK **sụp đổ nhanh sau tầng ~150** — tới tầng 250 cần 140 hit, thực chất là bất khả thi trong 1 trận (giới hạn khả năng chịu đựng của party). Đây chính là "điểm kết thúc tự nhiên" của roguelite vô hạn đã nói ở 6.10, không phải lỗi.
 
 **⚠️ Ghi chú (2026-08-16, xem §6.11)**: bảng "Boss" bên dưới tính bằng `eliteMultiplier` — tức là quái trấn giữ phòng cuối tầng ở **đa số các tầng** (Elite, theo cách gọi mới ở §6.11). Từ §6.11 trở đi, cứ mỗi 5 tầng phòng đó là **Boss thật** (mạnh hơn, hệ số riêng) chứ không phải Elite — số liệu Boss thật nằm ở bảng riêng trong §6.11, không lặp lại ở đây.
 
 **Elite** (Xương Sống Canh Gác bản elite, skill sơ cấp mỗi class — Vanguard: Ném Khiên 10, Pháp Sư: Phóng Sét 12, Sát Thủ: Phóng Dao 12, Tu Sĩ: Thanh Tẩy 15 từ level 10 trở đi):
 
+**Cập nhật 2026-08-16**: bảng tính lại sau khi tăng chỉ số base Xương Sống Canh Gác (`baseHp` 40→55, `baseAttack` 10→14, `baseDefense` 6→10 — mục 2), `eliteMultiplier` giữ nguyên (§6.5, không đổi).
+
 | Độ sâu tầng | Level | HP boss | Def boss | Cận Vệ (hit) | Pháp Sư (hit) | Sát Thủ (hit) | Tu Sĩ (hit) |
 |---|---|---|---|---|---|---|---|
-| 1 | 5 | 100 | 7 | 4 | 4 | 3 | — (chưa mở Thanh Tẩy) |
-| 10 | 27 | 415 | 28 | 10 | 7 | 5 | 15 |
-| 25 | 48 | 790 | 45 | 19 | 11 | 9 | 33 |
-| 50 | 70 | 1228 | 59 | 32 | 16 | 13 | 73 |
-| 75 | 87 | 1540 | 68 | 46 | 20 | 16 | 129 |
-| 100 | 100 | 1728 | 76 | 58 | 24 | 19 | 288 |
-| 150 | 100 | 2103 | 90 | 132 | 35 | 26 | 2103 (~bất tử) |
-| 200 | 100 | 2478 | 105 | 2478 (~bất tử) | 54 | 38 | 2478 (~bất tử) |
-| 250 | 100 | 2853 | 118 | 2853 (~bất tử) | 87 | 54 | 2853 (~bất tử) |
+| 1 | 5 | 138 | 12 | 7 | 7 | 5 | — (chưa mở Thanh Tẩy) |
+| 10 | 27 | 453 | 32 | 12 | 8 | 6 | 19 |
+| 25 | 48 | 828 | 49 | 22 | 12 | 10 | 42 |
+| 50 | 70 | 1265 | 63 | 37 | 17 | 14 | 98 |
+| 75 | 87 | 1578 | 72 | 53 | 22 | 17 | 198 |
+| 100 | 100 | 1765 | 81 | 71 | 26 | 20 | 1765 (~bất tử) |
+| 150 | 100 | 2140 | 94 | 179 | 38 | 28 | 2140 (~bất tử) |
+| 200 | 100 | 2515 | 109 | 2515 (~bất tử) | 60 | 41 | 2515 (~bất tử) |
+| 250 | 100 | 2890 | 123 | 2890 (~bất tử) | 104 | 61 | 2890 (~bất tử) |
 
-Đọc kết quả: **Sát Thủ và Pháp Sư** (2 class attack cao) vẫn giữ vai trò carry sát thương suốt game — tới tận tầng 250 vẫn hạ boss được trong 38-87 hit (khả thi qua nhiều round với party 4 người đánh xen kẽ). **Cận Vệ** solo-boss hợp lý tới khoảng tầng 100 (58 hit), sau đó rơi tự do — đúng vai trò tank/giữ chân quái, không phải carry, y hệt kết luận bảng cũ. **Tu Sĩ** với Thanh Tẩy (damage phụ, vai trò chính là heal/hạ fear) đuối hơn hẳn 3 class kia ngay từ đầu và "bất tử hóa" boss từ khoảng tầng 150 trở đi — đúng thiết kế (không phải carry sát thương) nhưng cho thấy rõ: **quái/boss tầng sâu chỉ có thể bị hạ bởi Sát Thủ/Pháp Sư dẫn đầu sát thương**, Cận Vệ/Tu Sĩ đóng vai trò hỗ trợ (giữ chân, heal, hạ fear) để 2 class kia sống sót đủ lâu ra đòn — khớp với thiết kế vai trò ở mục 1, nhưng đáng lưu ý khi playtest thật: nếu party thiếu Sát Thủ/Pháp Sư, tầng sâu (150+) gần như không thể vượt qua.
+Đọc kết quả: **Sát Thủ và Pháp Sư** (2 class attack cao) vẫn giữ vai trò carry sát thương suốt game — tới tận tầng 250 vẫn hạ boss được trong 61-104 hit (khả thi qua nhiều round với party 4 người đánh xen kẽ). **Cận Vệ** solo-boss hợp lý tới khoảng tầng 75-100 (53-71 hit), sau đó rơi tự do — đúng vai trò tank/giữ chân quái, không phải carry, y hệt kết luận bảng cũ. **Tu Sĩ** với Thanh Tẩy (damage phụ, vai trò chính là heal/hạ fear) đuối hơn hẳn 3 class kia ngay từ đầu và "bất tử hóa" boss sớm hơn bản cũ — **từ khoảng tầng 100 trở đi** (trước là tầng 150) vì `baseDefense` elite tăng cùng lúc trong khi attack Tu Sĩ không đổi — đúng thiết kế (không phải carry sát thương) nhưng cho thấy rõ: **quái/boss tầng sâu chỉ có thể bị hạ bởi Sát Thủ/Pháp Sư dẫn đầu sát thương**, Cận Vệ/Tu Sĩ đóng vai trò hỗ trợ (giữ chân, heal, hạ fear) để 2 class kia sống sót đủ lâu ra đòn — khớp với thiết kế vai trò ở mục 1, nhưng đáng lưu ý khi playtest thật: nếu party thiếu Sát Thủ/Pháp Sư, tầng sâu (100+) gần như không thể vượt qua.
 
 **⚠️ Toàn bộ số liệu trên (level-theo-độ-sâu, TTK) phụ thuộc trực tiếp vào hệ số EXP đề xuất ở 6.9 (`expReward` + rate `0.1`/tầng + elite x3) — đây là số ban đầu để bảng trên chạy được, chưa qua playtest, cần chỉnh lại nếu chọn tốc độ lên cấp khác.**
 
@@ -455,28 +462,70 @@ Vì level tầng (`Floor.depth`) không còn giới hạn ở 100 (mục 6.9), c
 
 Đặt tên `bossMultiplier` trong `data/level-growth.json`, cạnh `eliteMultiplier` — không đổi cấu trúc `EliteMultiplier`/`Tier`, chỉ thêm 1 object cùng shape.
 
-**Vì sao đây là bộ số được chọn, không phải phương án defense cao hơn nhiều (đã thử và loại)**: mô phỏng ban đầu thử `defense×1.6` (đẩy rất cao so với Elite) để ép người chơi phải dùng damage "né được defense" (DoT — Trúng Độc/Bỏng, xem `src/engine/resolver.ts`: tick DoT dùng `effect.amount` thẳng, **không trừ defense**, khác hẳn damage thường). Nhưng kiểm chứng bằng số cho thấy **DoT hiện tại (`Trúng Độc` 4/lượt×3, `Bỏng` 5/lượt×2 — cố định, không scale theo level/tầng) không hề trở nên hấp dẫn hơn khi defense boss tăng**: vì HP boss cũng tăng cùng lúc theo cùng hệ số, DoT (tổng cố định ~22) tụt từ ~1.7% xuống ~0.8% HP boss khi đi từ tầng 25 sang tầng 100, trong khi damage vũ khí (dù bị defense ăn bớt) vẫn chiếm 2.4-5.9% HP mỗi đòn — **DoT không phải "câu trả lời" cho defense cao như kỳ vọng ban đầu, trừ khi tự nó cũng được thiết kế scale theo tầng (ngoài phạm vi thay đổi lần này)**.
+**Vì sao đây là bộ số được chọn, không phải phương án defense cao hơn nhiều (đã thử và loại)**: mô phỏng ban đầu thử `defense×1.6` (đẩy rất cao so với Elite) để ép người chơi phải dùng damage "né được defense" (DoT — Trúng Độc/Bỏng, xem `src/engine/resolver.ts`: tick DoT dùng `effect.amount` thẳng, **không trừ defense**, khác hẳn damage thường). Nhưng kiểm chứng bằng số cho thấy **DoT hiện tại (`Trúng Độc` 4/lượt×3, `Bỏng` 5/lượt×2 — cố định, không scale theo level/tầng) không hề trở nên hấp dẫn hơn khi defense boss tăng**: vì HP boss cũng tăng cùng lúc theo cùng hệ số, DoT (tổng cố định ~22) tụt từ ~2.2% xuống ~1.0% HP boss khi đi từ tầng 25 sang tầng 100, trong khi damage vũ khí (dù bị defense ăn bớt) vẫn chiếm 3.8-13.4% HP mỗi đòn — **DoT không phải "câu trả lời" cho defense cao như kỳ vọng ban đầu, trừ khi tự nó cũng được thiết kế scale theo tầng (ngoài phạm vi thay đổi lần này)**.
 
 **Vì vậy "yêu cầu chiến thuật" ở Boss thật được đặt vào 2 chỗ khác, không phải damage-type**:
-1. **`attack×1.8`** (so với Elite ×1.4) — Boss thật gây sát thương đáng kể mỗi đòn (~7-13% maxHp của Cận Vệ/lượt ở tầng 10-100 khi tanking) → buộc phối hợp Tu Sĩ hồi máu chủ động, không thể để 1 người gánh chịu suốt trận như với Elite.
+1. **`attack×1.8`** (so với Elite ×1.4) — Boss thật gây sát thương đáng kể mỗi đòn (~3-12% maxHp của Cận Vệ/lượt ở tầng 10-100 khi tanking) → buộc phối hợp Tu Sĩ hồi máu chủ động, không thể để 1 người gánh chịu suốt trận như với Elite.
 2. **Choáng** (`status-effects.json`, từ Phóng Sét/Bão Sét) vẫn là công cụ CC duy nhất bỏ qua hoàn toàn 1 lượt của Boss, không phụ thuộc defense — dùng đúng lúc Boss sắp ra đòn mạnh là chiến thuật thực chất hơn stack DoT.
-3. **`defense×1.3`** (vừa phải, không đẩy cực đoan như bản thử ×1.6) giữ TTK bằng Sát Thủ/Pháp Sư (2 class attack cao) ở mức khả thi xuyên suốt game (8-40 hit tùy tầng — xem bảng dưới), tránh Boss trở thành "tường số" không thể vượt qua chỉ vì thiếu 1 loại damage cụ thể.
+3. **`defense×1.3`** (vừa phải, không đẩy cực đoan như bản thử ×1.6) giữ TTK bằng Sát Thủ/Pháp Sư (2 class attack cao) ở mức khả thi xuyên suốt game (7-36 hit tùy tầng — xem bảng dưới), tránh Boss trở thành "tường số" không thể vượt qua chỉ vì thiếu 1 loại damage cụ thể.
 
 **⚠️ Đã hỏi và xác nhận (2026-08-16)**: "chiến thuật" ở đây được chốt là **thuần combat, siết bằng chỉ số** (phối hợp tank/heal/CC trong hệ thống hiện có), **không** mở lại mini-game boss-phase (`docs/minigame-decisions.md` §1, hiện vẫn nằm trong danh sách "chưa implement" ở `README.md`) — giữ đúng scope prototype.
+
+**Cập nhật 2026-08-16**: bảng dưới tính lại sau khi tăng chỉ số base Xương Sống Canh Gác ở mục 2 (`baseHp` 40→55, `baseAttack` 10→14, `baseDefense` 6→10); `bossMultiplier`/`eliteMultiplier` không đổi.
 
 **TTK Boss thật vs Elite cùng tầng** (skill sơ cấp mỗi class, party ở level tương ứng theo 6.9):
 
 | Tầng | Level | Loại | HP | Def | Cận Vệ | Pháp Sư | Sát Thủ | Tu Sĩ |
 |---|---|---|---|---|---|---|---|---|
-| 10 | 26 | Elite | 415 | 28 | 10 | 7 | 6 | 15 |
-| 10 | 26 | **Boss** | 498 | 31 | 13 | 9 | 7 | — |
-| 25 | 46 | Elite | 790 | 45 | 20 | 11 | 9 | 35 |
-| 25 | 46 | **Boss** | 948 | 51 | 28 | 14 | 12 | — |
-| 50 | 68 | Elite | 1228 | 59 | 33 | 16 | 13 | 73 |
-| 50 | 68 | **Boss** | 1473 | 66 | 48 | 22 | 17 | — |
-| 100 | 100 | Elite | 1728 | 76 | 58 | 24 | 19 | 288 |
-| 100 | 100 | **Boss** | 2073 | 86 | 104 | 32 | 25 | — |
+| 10 | 26 | Elite | 453 | 32 | 12 | 8 | 6 | 19 |
+| 10 | 26 | **Boss** | 543 | 36 | 16 | 10 | 8 | — |
+| 25 | 46 | Elite | 828 | 49 | 23 | 12 | 10 | — |
+| 25 | 46 | **Boss** | 993 | 56 | 34 | 16 | 13 | — |
+| 50 | 68 | Elite | 1265 | 63 | 38 | 18 | 14 | — |
+| 50 | 68 | **Boss** | 1518 | 72 | 61 | 24 | 19 | — |
+| 100 | 100 | Elite | 1765 | 81 | 71 | 26 | 20 | — |
+| 100 | 100 | **Boss** | 2118 | 91 | 142 | 36 | 27 | — |
 
-Boss thật luôn khó hơn Elite cùng tầng rõ rệt (HP/def/TTK đều cao hơn ~20-40%) nhưng chưa tới mức bất khả thi cho Sát Thủ/Pháp Sư — khớp mục tiêu "mạnh hơn, đòi hỏi chiến thuật" mà không phá vỡ nhịp chơi. Cột Tu Sĩ để trống vì Thanh Tẩy (damage phụ) không đủ để tính TTK có ý nghĩa vs Boss — đúng vai trò support, không phải carry.
+Boss thật luôn khó hơn Elite cùng tầng rõ rệt (HP/def/TTK đều cao hơn ~20-40%) nhưng chưa tới mức bất khả thi cho Sát Thủ/Pháp Sư — khớp mục tiêu "mạnh hơn, đòi hỏi chiến thuật" mà không phá vỡ nhịp chơi. Cột Tu Sĩ để trống vì Thanh Tẩy (damage phụ) không đủ để tính TTK có ý nghĩa vs Boss/Elite ở tầng ≥25 — đúng vai trò support, không phải carry (chỉ còn có nghĩa ở tầng 10, xem bảng Elite ở 6.7).
 
 **⚠️ Số liệu `bossMultiplier` (3/1.8/1.3) và `bossMultiplier.exp` (x6) là đề xuất ban đầu đã qua 1 vòng mô phỏng, chưa playtest thật — cần chỉnh khi có dữ liệu chơi thật, giống mọi bảng số khác trong tài liệu này.**
+
+### 6.12 Elite/Boss có skill riêng — AoE, kết liễu, debuff ngẫu nhiên (cập nhật 2026-08-16)
+
+**Vấn đề**: mọi quái (kể cả Elite/Boss) trước giờ chỉ có đúng 1 hành động — đòn đánh thường đơn mục tiêu (`amount 0`, chọn mục tiêu theo `aiPattern`), dù `Monster.skillIds`/`MonsterArchetype.skillIds` đã tồn tại trong type từ đầu. Việc tăng chỉ số ở mục 2/6.11 (base `skeleton-guard`) làm sát thương/lượt cao hơn hẳn, nhưng bản thân **hành vi** combat của quái vẫn y hệt cũ — Elite/Boss chỉ là "quái thường nhân số", không có công cụ ép người chơi phản ứng khác đi (dồn heal, đổi mục tiêu, gỡ debuff).
+
+**Quyết định**: cho riêng **Elite** và **Boss thật** (không áp dụng cho quái thường, kể cả `skeleton-guard` khi spawn ở phòng combat thường) 1 bộ skill kích hoạt tại chỗ ở đúng lượt của chúng (không qua `queueAction`/MP/cooldown như player — quái luôn "miễn phí" và luôn trúng, giữ đúng bất biến sẵn có ở `resolver.ts`):
+
+| Skill | Tier | Target | Hiệu ứng | Khi nào dùng |
+|---|---|---|---|---|
+| **Chém Hạ Gục** | Elite + Boss | 1 địch | `damage amount 8` | Hành động mặc định (thay `amount 0` cũ), chọn mục tiêu theo `aiPattern` như quái thường (mục 2) |
+| **Chém Quét** | Elite + Boss | Cả đội | `damage amount 2` | 30%/lượt, thay cho Chém Hạ Gục |
+| **Đòn Kết Liễu** | Chỉ Boss | 1 địch | `damage amount 71` | Xem cơ chế tích lực riêng bên dưới — **không** dựa theo %HP mục tiêu |
+| **Nghiền Nát** | Chỉ Boss | 1 địch | `damage amount 4` + áp `suy-yeu` (−6 defense, 2 lượt) | 30%/lượt khi Boss không đang tích lực/tung Kết Liễu, thay cho roll Chém Quét/Chém Hạ Gục |
+
+Thứ tự ưu tiên mỗi lượt của Boss: **đang tích lực?** → tung Kết Liễu → nếu không, **hết cooldown Kết Liễu?** → bắt đầu tích lực (bỏ qua mọi hành động khác lượt đó) → nếu không, roll **Nghiền Nát** (30%) → roll **Chém Quét** (30%) → **Chém Hạ Gục**. Elite (không có Kết Liễu/Nghiền Nát): roll **Chém Quét** (30%) → **Chém Hạ Gục**.
+
+**Cập nhật lần 2 (2026-08-16) — Kết Liễu đổi từ "săn %HP thấp" sang "tích lực rồi dồn 1 đòn cực mạnh"**: bản đầu tiên trigger theo `hp/maxHp ≤ 25%`, tức là chỉ nguy hiểm khi ai đó *đã* sắp chết — hữu ích nhưng không thật sự "dồn sát thương" theo đúng nghĩa đe dọa của 1 đòn boss. Bản mới:
+
+- **Cơ chế kích hoạt riêng, không qua roll `chance()` như Nghiền Nát/Chém Quét**: Boss track `executeCooldownTurns` (khởi tạo `EXECUTE_COOLDOWN_TURNS = 3` lúc spawn, `src/data/monsters.ts`). Khi cooldown chạm 0, lượt đó Boss **tích lực** thay vì tấn công — chọn 1 mục tiêu ngay lúc đó (vẫn theo `aggro` như bình thường, `pickAggroWeighted`) và **khoá lại** (`Monster.executeTargetId`), log cảnh báo tên mục tiêu, không gây sát thương gì lượt này. Lượt kế tiếp của Boss, bất kể cooldown/roll gì khác, **luôn** tung Kết Liễu vào đúng người đã khoá (đọc lại từ `executeTargetId`, không tính lại target) rồi reset cooldown về `EXECUTE_COOLDOWN_TURNS`.
+- **Sát thương cố định, không phụ thuộc %HP hiện tại của mục tiêu**: `amount 71` cộng `attack` của Boss trừ `defense` của mục tiêu — ra đúng **~60% maxHp của Cận Vệ** (dù đang full máu) và **≥88-131% maxHp của 3 class còn lại** (đủ hạ gục Sát Thủ/Pháp Sư gần như chắc chắn, Tu Sĩ sát nút) — xem bảng kiểm chứng bên dưới. Không còn khái niệm "chỉ nguy hiểm khi máu thấp".
+- **Vì sao khoá mục tiêu lúc tích lực thay vì tính lại lúc tung đòn**: đây chính là "cảnh báo trước" (telegraph) — mục tiêu bị chọn dựa trên `aggro` **tại thời điểm tích lực**, nghĩa là Khiêu Khích dùng **trước lượt tích lực của Boss trong cùng round** (nhờ +20 speed ưu tiên buff, mục 1) có thể ảnh hưởng ai bị khoá. Nhưng **sau khi đã khoá**, đổi aggro/khiêu khích ở round kế tiếp **không** cứu được người đó nữa — đúng tinh thần "đã tích lực thì phải hứng chịu hoặc chuẩn bị trước", khác hẳn kiểu "cứ đứng sau lưng Cận Vệ là an toàn tuyệt đối" ở thiết kế %HP cũ. Người chơi có 1 lượt cảnh báo rõ ràng (log tên mục tiêu) để quyết định: dồn heal cho người đó trước khi đòn tới (dù +HP không đổi % sát thương vì `amount` là số cố định, chỉ tăng khả năng sống sót tuyệt đối), hoặc chấp nhận rủi ro mất người đó.
+
+**Suy Yếu** (status effect mới, `data/status-effects.json`) tận dụng đúng công cụ gỡ debuff sẵn có (Thanh Tẩy của Tu Sĩ, nhánh ally = `removeStatusEffect`) — đặt Tu Sĩ vào tình huống phải chọn giữa gỡ debuff hay heal ở đúng lượt Nghiền Nát vừa trúng, thay vì heal luôn là lựa chọn mặc định duy nhất.
+
+**Kiểm chứng bằng số (party level 1 — trạng thái thật khi bắt đầu prototype, `createCharacter(..., level = 1)`, khác với bảng "level theo độ sâu tầng" lý thuyết ở 6.7/6.11 vốn giả định 1 vòng lặp nhiều tầng chưa tồn tại)**, ở tầng 1 (tầng duy nhất chơi được hiện tại):
+
+| Loại | Atk | Def | HP | Class | maxHp | Chém Hạ Gục (%maxHp) | Chém Quét (%maxHp) | Đòn Kết Liễu (%maxHp) |
+|---|---|---|---|---|---|---|---|---|
+| Elite | 20 | 12 | 138 | Cận Vệ | 140 | 16 (11%) | 10 (7%) | — |
+| Elite | 20 | 12 | 138 | Pháp Sư | 70 | 24 (34%) | 18 (26%) | — |
+| Elite | 20 | 12 | 138 | Sát Thủ | 90 | 22 (24%) | 16 (18%) | — |
+| Elite | 20 | 12 | 138 | Tu Sĩ | 100 | 20 (20%) | 14 (14%) | — |
+| Boss | 25 | 13 | 165 | Cận Vệ | 140 | 21 (15%) | 15 (11%) | 84 (**60%**) |
+| Boss | 25 | 13 | 165 | Pháp Sư | 70 | 29 (41%) | 23 (33%) | 92 (**131%, dứt điểm**) |
+| Boss | 25 | 13 | 165 | Sát Thủ | 90 | 27 (30%) | 21 (23%) | 90 (**100%, dứt điểm**) |
+| Boss | 25 | 13 | 165 | Tu Sĩ | 100 | 25 (25%) | 19 (19%) | 88 (**88%**, sát nút) |
+
+Đọc kết quả: Chém Hạ Gục của Elite rơi đúng vào dải **20-35%** cho 3/4 class (Pháp Sư 34%, Sát Thủ 24%, Tu Sĩ 20%), riêng Cận Vệ thấp hơn hẳn (11%) — **có chủ đích**, tank phải chịu ít hơn hẳn đúng vai trò, không phải lỗi cân bằng. Boss nhỉnh hơn Elite thêm ~10 điểm % (do base attack/defense của Boss cao hơn qua `bossMultiplier` sẵn có ở 6.11, không cần tăng thêm `amount` riêng cho Boss) — tới 41% ở Pháp Sư, vượt trần 35% một chút nhưng chấp nhận được vì đây là quái hiếm (mỗi 5 tầng) và mục tiêu Boss vốn là "mạnh hơn Elite rõ rệt" (6.11). Chém Quét (AoE) nhẹ hơn ~30-40% so với Chém Hạ Gục trên từng mục tiêu, nhưng cộng dồn cả 4 người thì tổng sát thương/lượt cao hơn hẳn — đúng vai trò "occasionally nặng đô nếu không kiểm soát được", không phải hành động mặc định mỗi lượt. Đòn Kết Liễu đúng như yêu cầu ban đầu — **~60% lên Cận Vệ**, đủ giết Sát Thủ (đúng 100%) và Pháp Sư (131%, dư sát thương), Tu Sĩ sống sót sát nút (88%, còn 12 HP nếu vào full máu) — hoàn toàn không phụ thuộc %HP hiện tại của mục tiêu như mô tả ban đầu của cơ chế này.
+
+**Chưa giải quyết trong lần này**: các con số trên chỉ tính cho `skeleton-guard` (archetype duy nhất từng dùng làm quái trấn giữ phòng cuối tầng — `BOSS_ARCHETYPE_ID` ở `floor.ts`); `MonsterArchetype.eliteSkillIds`/`bossSkillIds` là optional nên archetype khác (Chuột Hầm Ngục, Dơi Đen) chưa cần định nghĩa, đúng vì chúng chưa từng được spawn ở tier elite/boss.
