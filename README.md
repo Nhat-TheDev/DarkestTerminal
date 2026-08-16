@@ -32,7 +32,7 @@ bun run typecheck
 - **Combat 2 pha** (ra lệnh cả 4 nhân vật → thực thi theo tốc độ, quái quyết định tại chỗ), targeting theo `aggro` (random có trọng số), rule đổi/hủy mục tiêu khi target chết trước lượt — `src/engine/combat.ts`
 - **Resolver `SkillEffect`** dùng chung skill/status-effect, buff/debuff qua `modifyCombatStat` (cài đặt 1 lần lúc áp, gỡ 1 lần lúc hết hạn), DoT (`trúng độc`) tick cuối mỗi round — `src/engine/resolver.ts`
 - **3 survival stat** (fear/hunger/thirst, khởi tạo 100/100/0 mọi class), HP=0 → permadeath thật, fear ảnh hưởng ngược combat theo 4 bậc, rest room hồi đầy — `src/engine/survival.ts`, `src/engine/resolver.ts`
-- **Hệ thống level 1-100** (`docs/gameplay-decisions.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Nhân vật còn nhân thêm `growthWeights` riêng theo class (§6.8, `classGrowthBonus()`) — VD Cận Vệ dồn tăng trưởng vào defense/maxHp, Pháp Sư dồn vào attack/maxMp — để 4 class không "hội tụ" thành giống nhau ở cấp cao; quái vật vẫn dùng `growthBonus()` không trọng số. Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. `Character.level = min(floorDepth, 100)`: vì prototype chỉ có 1 tầng nên party thực tế vẫn ở level 1 suốt ván (chỉ dùng được đòn đánh thường slot 0 + skill riêng slot 1-2/mỗi class, slot 3-5 mở ở level 10/20/35) — đúng thiết kế, không phải bug; công thức 1-100 sẵn sàng cho khi có nhiều tầng hơn
+- **Hệ thống level 1-100** (`docs/gameplay-decisions.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Nhân vật còn nhân thêm `growthWeights` riêng theo class (§6.8, `classGrowthBonus()`) — VD Cận Vệ dồn tăng trưởng vào defense/maxHp, Pháp Sư dồn vào attack/maxMp — để 4 class không "hội tụ" thành giống nhau ở cấp cao; quái vật vẫn dùng `growthBonus()` không trọng số. Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. Vì prototype chỉ có 1 tầng (xem "Đã cắt khỏi scope" bên dưới), party thực tế vẫn ở level 1 suốt ván — chỉ dùng được đòn đánh thường slot 0 + skill riêng slot 1-2/mỗi class, slot 3-5 mở ở level 10/20/35; công thức 1-100 sẵn sàng cho khi có nhiều tầng hơn. **⚠️ Cập nhật thiết kế 2026-08-16, chưa implement** (`docs/gameplay-decisions.md` §6.9/6.10): quyết định mới tách level nhân vật (chung party, cap 100, tăng qua EXP giết quái) khỏi level tầng ngục (`Floor.depth`, không giới hạn, tăng khi hạ boss) — thay cho công thức `Character.level = min(floorDepth, 100)` mô tả ở trên, vốn chưa từng chạy thật vì multi-floor chưa được nối (xem bullet "Multi-floor" bên dưới)
 
 ## Đã cắt khỏi scope (so với design doc đầy đủ)
 
@@ -40,7 +40,7 @@ bun run typecheck
 
 - **4 mini-game** (Snake/Tetris/Brick Breaker/Magic Tiles) — không có debuff nào được "chữa" qua mini-game, debuff chỉ hết hạn theo `durationTurns`; boss cũng không có phase mini-game, chỉ là combat turn-based thuần
 - **Item/inventory** — không có `ItemDefinition`, không nhặt/dùng vật phẩm
-- **Multi-floor / xuống tầng** — chỉ có 1 tầng/ván; hạ boss tầng đó là thắng luôn, chưa có khái niệm "xuống tầng kế"
+- **Multi-floor / xuống tầng** — chỉ có 1 tầng/ván; hạ boss tầng đó là thắng luôn, chưa có khái niệm "xuống tầng kế". Đây cũng là lý do hệ EXP/level-tầng-vô-hạn ở `docs/gameplay-decisions.md` §6.9/6.10 mới chỉ là quyết định thiết kế, chưa có code — cần nối vòng lặp nhiều tầng trước (sửa `depth` hardcode ở `src/data/floor.ts`, đổi hành vi hạ boss ở `src/engine/game.ts` từ "kết thúc game" sang "sinh tầng kế")
 - **FOV / pathfinding / rendering diff-based** — các rủi ro kỹ thuật nêu ở design doc mục 3 chưa cần tới ở quy mô 1 tầng, menu số
 
 ## Dữ liệu thiết kế (JSON)
@@ -61,7 +61,7 @@ JSON.
 | `data/status-effects.json` | Buff/debuff (phong-thu, trung-doc, ...) | `src/data/statusEffects.ts` |
 | `data/sprites.json` | Pixel-art (lưới ký tự + palette) cho 4 class + 3 quái + boss | `src/ui/sprites.ts` |
 | `data/floor-patterns.json` | Thư viện pattern cấu trúc tầng (xem mục dưới) | `src/data/floorPatterns.ts` |
-| `data/level-growth.json` | 5 tier tốc độ tăng chỉ số theo level/depth + hệ số elite boss | `src/data/levelGrowth.ts` |
+| `data/level-growth.json` | 5 tier tốc độ tăng chỉ số theo level/depth + hệ số elite boss + ngưỡng EXP lên cấp (§6.9, chưa implement) | `src/data/levelGrowth.ts` |
 
 ## Floor pattern — cấu trúc tầng dạng dữ liệu
 

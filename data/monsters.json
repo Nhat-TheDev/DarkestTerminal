@@ -7,7 +7,8 @@
     "baseDefense": 2,
     "baseSpeed": 7,
     "aiPattern": "erratic",
-    "skillIds": []
+    "skillIds": [],
+    "expReward": 6
   },
   {
     "id": "black-bat",
@@ -17,7 +18,8 @@
     "baseDefense": 1,
     "baseSpeed": 14,
     "aiPattern": "aggressive",
-    "skillIds": []
+    "skillIds": [],
+    "expReward": 6
   },
   {
     "id": "skeleton-guard",
@@ -27,6 +29,7 @@
     "baseDefense": 6,
     "baseSpeed": 8,
     "aiPattern": "defensive",
-    "skillIds": []
+    "skillIds": [],
+    "expReward": 15
   }
 ]

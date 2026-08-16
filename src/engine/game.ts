@@ -1,7 +1,7 @@
 import type { CombatantRef, GameState, SkillTarget } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
-import { createCharacter } from "./party";
+import { createCharacter, applyPartyExp } from "./party";
 import { Rng } from "./rng";
 import {
   type EngineContext,
@@ -33,6 +33,7 @@ export class Game {
       combat: null,
       message: `Bước vào ${getRoom(floor, floor.entryRoomId).name}.`,
       gameOver: null,
+      partyExp: 0,
     };
     this.checkEntryRoomAmbush();
   }
@@ -100,9 +101,8 @@ export class Game {
       if (this.state.combat.outcome === "victory") {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
-        if (room.type === "boss") {
-          this.state.gameOver = "victory";
-        }
+        const expGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
+        applyPartyExp(this.state, expGained);
       } else if (this.state.combat.outcome === "defeat") {
         this.state.gameOver = "defeat";
       }
@@ -110,8 +110,30 @@ export class Game {
     this.postMoveCheck();
   }
 
+  /**
+   * Clearing the floor's guard room (elite or boss, §6.11) advances depth
+   * instead of ending the game (docs/gameplay-decisions.md §6.9/6.10) — floor
+   * depth is uncapped, so a run only ends via party wipe, never "victory".
+   * Deferred to clearFinishedCombat() (not resolve()) so the player still
+   * sees the "combatOver" victory screen/log before the floor changes under
+   * them — doing it inside resolve() would silently replace state.combat
+   * with the next floor's entry-room ambush before the UI ever renders it.
+   */
+  private advanceToNextFloor(): void {
+    const nextDepth = this.state.floor.depth + 1;
+    const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
+    this.ctx.monsters = monsters;
+    this.state.floor = floor;
+    this.state.currentRoomId = floor.entryRoomId;
+    this.state.message = `Cả đội xuống tầng ${nextDepth}!`;
+    this.checkEntryRoomAmbush();
+  }
+
   clearFinishedCombat(): void {
-    if (this.state.combat?.phase === "over") this.state.combat = null;
+    if (this.state.combat?.phase !== "over") return;
+    const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";
+    this.state.combat = null;
+    if (wasBossRoomVictory) this.advanceToNextFloor();
   }
 
   className(classId: string): string {

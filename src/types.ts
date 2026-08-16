@@ -4,9 +4,11 @@
 // ../../docs/gameplay-decisions.md + ../../docs/technical-decisions.md.
 // Scope cuts for this prototype (see README.md): no mini-games, no items.
 // Floor structure IS randomized (1 pattern picked from data/floor-
-// patterns.json each run, see src/data/floor.ts) — the prototype only cuts
-// multi-floor progression, so the party stays level 1 all game
-// (single floor => Character.level = min(depth, 100) === 1).
+// patterns.json each run, see src/data/floor.ts). Character level and floor
+// depth are 2 independent axes (docs/gameplay-decisions.md §6.9/6.10): level
+// grows via EXP from kills (cap 100), floor depth grows by clearing the
+// floor's guard room (elite most floors, boss every `bossFloorInterval`
+// floors — §6.11), uncapped.
 
 export type Id = string;
 
@@ -167,7 +169,12 @@ export interface MonsterArchetype {
   baseSpeed: number;
   aiPattern: MonsterAiPattern;
   skillIds: Id[];
+  /** Base EXP granted to the party on kill, before floor-depth scaling (docs/gameplay-decisions.md §6.9). */
+  expReward: number;
 }
+
+/** "normal" = regular combat-room spawn; "elite"/"boss" = the floor's guard room (§6.11), mutually exclusive per floor. */
+export type MonsterTier = "normal" | "elite" | "boss";
 
 export interface Monster {
   id: Id;
@@ -179,9 +186,11 @@ export interface Monster {
   defense: number;
   speed: number;
   skillIds: Id[];
-  isBoss: boolean;
+  tier: MonsterTier;
   aiPattern: MonsterAiPattern;
   activeStatusEffects: ActiveStatusEffect[];
+  /** Fully-scaled EXP granted to the party on kill (archetype base + depth scaling + tier multiplier). */
+  expReward: number;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id };
@@ -219,4 +228,6 @@ export interface GameState {
   combat: CombatState | null;
   message: string;
   gameOver: "victory" | "defeat" | null;
+  /** Cumulative party EXP, shared by the whole party (docs/gameplay-decisions.md §6.9). */
+  partyExp: number;
 }

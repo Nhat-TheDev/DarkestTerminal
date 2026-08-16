@@ -92,20 +92,20 @@ describe("growth is class-dependent (§6.8): weights reinforce each class's iden
   });
 });
 
-describe("spawnMonster: elite boss stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
-  test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > boss defense, not just barely floored at 1)", () => {
-    const boss = spawnMonster("skeleton-guard", 50, { boss: true });
+describe("spawnMonster: elite guard stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
+  test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > elite defense, not just barely floored at 1)", () => {
+    const elite = spawnMonster("skeleton-guard", 50, { tier: "elite" });
     const basicSkillAmount = 10; // e.g. Ném Khiên (Cận Vệ)
     // Chaplain is intentionally pure-support (§6.8: lowest attack weight) —
     // its paid skills only deal damage situationally (Thanh Tẩy/Thần Giáng
     // when aimed at an enemy), not via a reliable amount-10-tier skill like
-    // the other 3 classes, so it's excluded here. Its attack stat trailing a
-    // boss's defense is by design, not the bug this test guards.
+    // the other 3 classes, so it's excluded here. Its attack stat trailing an
+    // elite's defense is by design, not the bug this test guards.
     const damageDealers = CLASSES.filter((c) => c.id !== "chaplain");
     for (const cls of damageDealers) {
       const character = createCharacter("c", cls.name, cls, 50);
-      const damage = Math.max(1, basicSkillAmount + character.attack - boss.defense);
-      // The bug this guards against: uniform x2 elite scaling let boss.defense
+      const damage = Math.max(1, basicSkillAmount + character.attack - elite.defense);
+      // The bug this guards against: uniform x2 elite scaling let elite.defense
       // approach total offense, flooring damage to ~1 (near-unkillable) even
       // for the game's highest-attack classes.
       expect(damage).toBeGreaterThan(basicSkillAmount);
@@ -118,11 +118,21 @@ describe("spawnMonster: elite boss stays killable at deep floors (regression for
     expect(ELITE_MULTIPLIER.defense).toBeLessThan(1.5); // never more than a mild bump over a normal monster's defense
   });
 
-  test("a boss is always tankier (more HP) than a normal monster of the same archetype and depth", () => {
+  test("an elite is always tankier (more HP) than a normal monster of the same archetype and depth", () => {
     for (const depth of [1, 25, 50, 100]) {
       const normal = spawnMonster("skeleton-guard", depth);
-      const boss = spawnMonster("skeleton-guard", depth, { boss: true });
-      expect(boss.maxHp).toBeGreaterThan(normal.maxHp);
+      const elite = spawnMonster("skeleton-guard", depth, { tier: "elite" });
+      expect(elite.maxHp).toBeGreaterThan(normal.maxHp);
+    }
+  });
+
+  test("a boss (§6.11) is always tankier and hits harder than an elite of the same archetype and depth", () => {
+    for (const depth of [5, 25, 50, 100]) {
+      const elite = spawnMonster("skeleton-guard", depth, { tier: "elite" });
+      const boss = spawnMonster("skeleton-guard", depth, { tier: "boss" });
+      expect(boss.maxHp).toBeGreaterThan(elite.maxHp);
+      expect(boss.attack).toBeGreaterThan(elite.attack);
+      expect(boss.defense).toBeGreaterThan(elite.defense);
     }
   });
 });

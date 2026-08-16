@@ -368,8 +368,8 @@ export class App {
       } else {
         const slots = monsterCombatants.map((combatant) => {
           const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
-          const style = m.isBoss ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
-          const sprite = spriteForMonster(m.archetypeId, m.isBoss);
+          const style = m.tier !== "normal" ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+          const sprite = spriteForMonster(m.archetypeId, m.tier !== "normal");
           if (m.hp <= 0) return this.buildUnitBlock(sprite, style.abbr, PALETTE.dead, "Hạ gục", PALETTE.dead);
           return this.buildUnitBlock(sprite, style.abbr, style.color, `${m.hp}/${m.maxHp}`, hpColorFor(m.hp, m.maxHp));
         });
@@ -402,7 +402,7 @@ export class App {
     for (const combatant of s.combat.combatants) {
       if (combatant.ref.kind !== "monster") continue;
       const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
-      const style = m.isBoss ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+      const style = m.tier !== "normal" ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
       if (m.hp <= 0) {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(` ${m.name} — hạ gục`)]);
         continue;

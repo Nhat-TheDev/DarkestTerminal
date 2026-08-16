@@ -64,13 +64,13 @@ describe("floor layout (random pattern pick — see test/floorPatterns.test.ts f
     }
   });
 
-  test("exactly 1 boss room, and its monster is flagged isBoss", () => {
+  test("exactly 1 boss room, and its monster is flagged elite/boss (guard tier)", () => {
     for (let seed = 0; seed < 20; seed++) {
       const { floor, monsters } = createFloor(new Rng(seed));
       const bossRooms = floor.rooms.filter((r) => r.type === "boss");
       expect(bossRooms).toHaveLength(1);
-      const bossMonsters = bossRooms[0]!.monsterIds.map((id) => monsters.find((m) => m.id === id)!);
-      expect(bossMonsters.every((m) => m.isBoss)).toBe(true);
+      const guardMonsters = bossRooms[0]!.monsterIds.map((id) => monsters.find((m) => m.id === id)!);
+      expect(guardMonsters.every((m) => m.tier !== "normal")).toBe(true);
     }
   });
 
@@ -432,10 +432,17 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
 });
 
 describe("full scripted playthrough (smoke test)", () => {
-  test("game reaches victory or defeat without throwing, boss room requires isBoss monster", () => {
+  // docs/gameplay-decisions.md §6.9/6.10: floor depth is uncapped (roguelite —
+  // clearing the guard room always advances instead of ending the game), so a
+  // bounded smoke test can't expect to reach gameOver at all — early floors
+  // are comfortably survivable (over-leveled), and death only becomes likely
+  // many floors deeper than this guard can reach. Assert progression + the
+  // "victory" outcome being unreachable instead of "run finishes".
+  test("descends through many floors without throwing; gameOver, if reached, is only ever defeat", () => {
     const game = new Game(12345);
+    const startingDepth = game.state.floor.depth;
     let guard = 0;
-    while (!game.state.gameOver && guard < 500) {
+    while (!game.state.gameOver && guard < 2000) {
       guard++;
       if (game.state.combat && game.state.combat.phase !== "over") {
         for (const ref of game.livingAllyRefs()) {
@@ -462,7 +469,8 @@ describe("full scripted playthrough (smoke test)", () => {
       if (!next) break;
       game.move(next.id);
     }
-    expect(game.state.gameOver === "victory" || game.state.gameOver === "defeat").toBe(true);
+    expect(game.state.gameOver).not.toBe("victory"); // boss-clear always advances the floor now, never ends the game
+    expect(game.state.floor.depth).toBeGreaterThan(startingDepth); // actually descended at least once
     expect(game.state.party.every((c) => c.hp >= 0)).toBe(true);
   });
 });

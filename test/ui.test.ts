@@ -7,13 +7,19 @@ import type { Character } from "../src/types";
 import { getActorByRef } from "../src/engine/combat";
 
 describe("headless UI smoke test", () => {
-  test("boots and plays a full scripted run via real keypresses without crashing", async () => {
+  // docs/gameplay-decisions.md §6.9/6.10: floor depth is uncapped (clearing the
+  // guard room always advances to the next floor instead of ending the game),
+  // so a bounded scripted run can no longer expect to reach "gameover" at
+  // all — early floors are comfortably survivable. Assert progression +
+  // no-crash + "victory" being unreachable instead of "run finishes".
+  test("boots and plays a scripted run via real keypresses across multiple floors without crashing", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
     const app = new App(renderer, new Game(7));
     await renderOnce();
 
     const firstFrame = captureCharFrame();
     expect(firstFrame).toContain("DARKEST-TERMINAL");
+    const startingDepth = app.debugGame.state.floor.depth;
 
     let guard = 0;
     while (app.debugUiState.kind !== "gameover" && guard < 800) {
@@ -40,10 +46,14 @@ describe("headless UI smoke test", () => {
       await renderOnce();
     }
 
-    expect(guard).toBeLessThan(800); // didn't hit the runaway guard
-    expect(app.debugUiState.kind).toBe("gameover");
     const outcome = app.debugGame.state.gameOver;
-    expect(outcome === "victory" || outcome === "defeat").toBe(true);
+    expect(outcome).not.toBe("victory"); // boss-clear always advances the floor now, never ends the game
+    if (outcome === null) {
+      // didn't die within the guard — expected given uncapped floor depth; confirm real progression happened instead.
+      expect(app.debugGame.state.floor.depth).toBeGreaterThan(startingDepth);
+    } else {
+      expect(outcome).toBe("defeat");
+    }
 
     const finalFrame = captureCharFrame();
     expect(finalFrame.length).toBeGreaterThan(0);

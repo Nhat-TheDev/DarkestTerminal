@@ -2,6 +2,7 @@ import type { Floor, Monster, Room, RoomType } from "../types";
 import { spawnMonster } from "./monsters";
 import { MONSTER_ARCHETYPES } from "./monsters";
 import { FLOOR_PATTERNS, validatePattern, roomTypeForTag, pickRandomPattern, type FloorPatternDef } from "./floorPatterns";
+import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 
 // Floor structure is randomly picked from data/floor-patterns.json (see
@@ -42,8 +43,7 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
 const BOSS_ARCHETYPE_ID = "skeleton-guard";
 
 /** Builds a Floor from one specific pattern — exported mainly so tests can cover every pattern in the library directly instead of relying on random picks. */
-export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng): { floor: Floor; monsters: Monster[] } {
-  const depth = 1;
+export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const monsters: Monster[] = [];
   const usedNames = new Set<string>();
 
@@ -69,7 +69,11 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng): { flo
           monsterIds.push(m.id);
         }
       } else if (type === "boss") {
-        const m = spawnMonster(BOSS_ARCHETYPE_ID, depth, { boss: true });
+        // "boss" here is the room tag (always the floor's single guard room) — the
+        // monster inside is "elite" most floors, "boss" every BOSS_FLOOR_INTERVAL
+        // floors instead (mutually exclusive, §6.11), not the room type.
+        const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
+        const m = spawnMonster(BOSS_ARCHETYPE_ID, depth, { tier });
         monsters.push(m);
         monsterIds = [m.id];
       }
@@ -95,9 +99,9 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng): { flo
   return { floor, monsters };
 }
 
-export function createFloor(rng: Rng): { floor: Floor; monsters: Monster[] } {
+export function createFloor(rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const pattern = pickRandomPattern((patterns) => rng.pick(patterns));
-  return buildFloorFromPattern(pattern, rng);
+  return buildFloorFromPattern(pattern, rng, depth);
 }
 
 export { FLOOR_PATTERNS };
