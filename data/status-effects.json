@@ -1,0 +1,60 @@
+[
+  {
+    "id": "phong-thu",
+    "name": "Phòng Thủ",
+    "description": "Che Chắn (Cận Vệ): +6 phòng thủ mỗi lượt.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "khieu-khich",
+    "name": "Khiêu Khích",
+    "description": "Che Chắn (Cận Vệ): +40 thu hút mỗi lượt.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 40 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "khich-le",
+    "name": "Khích Lệ",
+    "description": "Khích Lệ (Cận Vệ): +4 tấn công mỗi lượt, áp lên cả đội.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "dao-doc",
+    "name": "Tẩm Độc",
+    "description": "Tẩm Độc (Sát Thủ): tự nó không gây hiệu ứng mỗi lượt — trong lúc còn hiệu lực, mọi đòn damage của người mang tự kèm áp \"Trúng Độc\" lên mục tiêu trúng đòn (on-hit rider, xem docs/technical-decisions.md §4.2).",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitStatusEffectId": "trung-doc"
+  },
+  {
+    "id": "trung-doc",
+    "name": "Trúng Độc",
+    "description": "Tẩm Độc/Bom Độc (Sát Thủ): mất 4 HP mỗi lượt.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
+    "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
+    "durationTurns": 3
+  },
+  {
+    "id": "bong",
+    "name": "Bỏng",
+    "description": "Cầu Lửa/Cột Lửa (Pháp Sư): mất 5 HP mỗi lượt. Không chữa được qua mini-game (chủ đích — phân biệt với Trúng Độc).",
+    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "choang",
+    "name": "Choáng",
+    "description": "Phóng Sét/Bão Sét (Pháp Sư): bỏ lượt hoàn toàn trong khi hiệu lực (xem docs/technical-decisions.md §4.3). Không chữa được qua mini-game.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 1,
+    "stuns": true
+  }
+]

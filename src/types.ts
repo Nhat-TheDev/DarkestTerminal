@@ -37,9 +37,20 @@ export interface SkillEffect {
   combatStat?: CombatStat;
   statusEffectId?: Id;
   miniGameId?: MiniGameId;
+  /** Roll independently per (effect, target) before applying — omit = always applies (docs/technical-decisions.md §4.1). */
+  chance?: number;
 }
 
-export type SkillTarget = "self" | "singleAlly" | "allAllies" | "singleEnemy" | "allEnemies";
+export type SkillTarget =
+  | "self"
+  | "singleAlly"
+  | "allAllies"
+  | "singleEnemy"
+  | "allEnemies"
+  /** Player picks 1 target from either side; effectsByRelation decides what happens (§4.4). */
+  | "singleAllyOrEnemy"
+  /** Auto-resolves to every living ally + every living enemy at once (§4.4). */
+  | "allAlliesAndEnemies";
 
 export interface SkillDefinition {
   id: Id;
@@ -47,10 +58,20 @@ export interface SkillDefinition {
   description: string;
   mpCost: number;
   target: SkillTarget;
-  effects: SkillEffect[];
-  slot: 0 | 1 | 2 | 3 | 4;
+  /** Used by every skill except the 2 dual-relation ones, which use effectsByRelation instead. */
+  effects?: SkillEffect[];
+  /** Only set for singleAllyOrEnemy/allAlliesAndEnemies skills — effect list picked per target by ally-vs-enemy relation (docs/technical-decisions.md §4.4). */
+  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
+  slot: 0 | 1 | 2 | 3 | 4 | 5;
   unlockLevel: number;
+  /** Reserved for a future non-skill feature — no skill in data/classes.json sets this (docs/gameplay-decisions.md §1.5). */
   usesPerCombat?: number;
+  /** Cooldown in rounds, tracked per-character via Character.cooldownsRemaining (§4.6). Replaces usesPerCombat for skills. */
+  cooldownTurns?: number;
+  /** Always hits (bypasses fear accuracy roll); damage/heal amounts scale by a dedicated fear-effectiveness curve instead (§4.5). */
+  isUltimate?: boolean;
+  /** Grants +20 speed for this round's turn-order sort only, not a persistent stat change (§4.7). */
+  isBuff?: boolean;
 }
 
 /** Multiplier applied to the shared growthBonus() curve per stat, per class — see docs/gameplay-decisions.md §6.8. Budget convention: the 4 weights sum to 4.0 across classes, so no class gets strictly more total growth, only redistributed differently. */
@@ -94,6 +115,8 @@ export interface Character {
   isAlive: boolean;
   /** Tracks remaining usesPerCombat per skill for the current combat only. */
   usesRemainingThisCombat: Record<Id, number>;
+  /** Tracks remaining cooldownTurns per skill; resets at startCombat, decrements each round (docs/technical-decisions.md §4.6). */
+  cooldownsRemaining: Record<Id, number>;
 }
 
 export interface StatusEffectDefinition {
@@ -103,6 +126,10 @@ export interface StatusEffectDefinition {
   perTurnEffects: SkillEffect[];
   curableByMiniGame: { miniGameId: MiniGameId; clearScore: number }[];
   durationTurns?: number;
+  /** When active on the source of a successful `damage` effect, also applies this status to the target hit — "poisoned blade" style riders (§4.2). */
+  onHitStatusEffectId?: Id;
+  /** While active, the bearer skips their entire turn (checked before acting, both Character and Monster) — §4.3. */
+  stuns?: boolean;
 }
 
 /** Active instance of a status effect on a combatant, tracking remaining duration. */

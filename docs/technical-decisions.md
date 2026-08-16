@@ -1,6 +1,6 @@
 # Kỹ thuật — Quyết định
 
-**Trạng thái**: Đã chốt
+**Trạng thái**: Đã chốt (mục 1-3) · mục 4 là **spec chưa implement** (cập nhật 2026-08-16, xem ghi chú đầu mục 4)
 **Liên quan**: `../dungeon-crawler-design-doc.md` mục 3; `../dungeon-crawler-data-model.ts`
 
 ---
@@ -82,7 +82,7 @@ resolveSkillEffect(effect: SkillEffect, source: Combatant, targets: Combatant[],
 - **`damage`**: với mỗi target, `finalDamage = max(1, effect.amount + source.attack - target.defense)`. Nếu `source` là character và đang ở bậc fear "Bất An"/"Hoảng Loạn" (mục 4, `gameplay-decisions.md`), áp thêm accuracy-roll và damage-multiplier tương ứng trước khi trừ hp; bậc "Suy Sụp" có thêm khả năng bỏ lượt được roll ở bước chọn hành động (pha ra lệnh), trước khi resolver được gọi (nên resolver không cần biết về case "mất lượt"). **Ngoại lệ khi `source === target`** (tick định kỳ của chính 1 status effect trên actor đang mang nó, VD DoT "Trúng Độc" — `tickStatusEffects` trong `resolver.ts` gọi lại `resolveSkillEffect` với `source`/`target` là cùng 1 actor): đây không phải "một đòn tấn công" nên **không** cộng/trừ attack/defense hay áp fear-multiplier — sát thương là `effect.amount` cố định, khớp mô tả "mỗi lượt damage 4" ở `gameplay-decisions.md` §1.3. Có regression test (`test/engine.test.ts`) chặn trường hợp DoT vô tình cộng thêm attack/defense của chính actor đang chịu DoT.
 - **`heal`**: `target.hp = min(target.maxHp, target.hp + effect.amount)`.
 - **`restoreMp`**: tương tự `heal` nhưng trên `target.mp`/`target.maxMp` (chỉ áp dụng cho `Character`).
-- **`applyStatusEffect`** / **`removeStatusEffect`**: thêm/xóa entry `{ statusEffectId, turnsRemaining }` khỏi `target.activeStatusEffects` (danh sách unique theo `statusEffectId` — áp lại 1 status đang có sẵn chỉ refresh `turnsRemaining` về lại `durationTurns`, không stack chồng). `activeStatusEffects: ActiveStatusEffect[]` (không phải `statusEffectIds: Id[]` phẳng) vì cần track riêng số lượt còn lại cho từng instance — xem `ActiveStatusEffect` trong `dungeon-crawler-data-model.ts`/`darkest-terminal/src/types.ts`.
+- **`applyStatusEffect`** / **`removeStatusEffect`**: thêm/xóa entry `{ statusEffectId, turnsRemaining }` khỏi `target.activeStatusEffects` (danh sách unique theo `statusEffectId` — áp lại 1 status đang có sẵn chỉ refresh `turnsRemaining` về lại `durationTurns`, không stack chồng). `activeStatusEffects: ActiveStatusEffect[]` (không phải `statusEffectIds: Id[]` phẳng) vì cần track riêng số lượt còn lại cho từng instance — xem `ActiveStatusEffect` trong `dungeon-crawler-data-model.ts`/`src/types.ts`.
 - **`modifyStat`**: `target.survival[effect.stat] += effect.amount` (`fear`/`hunger`/`thirst`, chỉ `Character`), sau đó clamp trong `[0, 100]`.
 - **`modifyCombatStat`**: `target[effect.combatStat] += effect.amount` (`attack`/`defense`/`aggro`/`speed`; `aggro` chỉ có trên `Character`). Effect loại này chỉ xuất hiện bên trong `StatusEffectDefinition.perTurnEffects` (không đứng độc lập trong 1 skill), nên vòng đời buff/debuff = vòng đời của status effect chứa nó; khi status hết hạn (`durationTurns` về 0), resolver áp effect ngược dấu 1 lần để gỡ bù (đảm bảo không rò rỉ buff vĩnh viễn).
 - **`triggerMiniGame`**: resolver KHÔNG tự resolve hp/mp ở đây — trả về tín hiệu "pending", caller (combat loop) chuyển `GameState.mode` sang `{ kind: "miniGame", session, reason }`. Khi mini-game hoàn tất, `MiniGameResult` được dịch ngược thành 1 danh sách `SkillEffect` phái sinh (VD `damage` tỉ lệ combo cho boss phase, hoặc rút ngắn `durationTurns` của debuff đang chữa) và đưa lại qua chính `resolveSkillEffect` — không có code path resolve riêng cho kết quả mini-game.
@@ -91,3 +91,76 @@ resolveSkillEffect(effect: SkillEffect, source: Combatant, targets: Combatant[],
 - Một `SkillDefinition`/`ItemDefinition` có thể có nhiều `effects`; resolver áp dụng **tuần tự theo đúng thứ tự trong mảng**, effect sau thấy được state đã bị effect trước đó thay đổi (VD Song Kích của Sát Thủ = 2 effect `damage` liên tiếp, effect 2 tính trên hp đã bị effect 1 trừ).
 - Trừ MP (skill) hoặc tiêu hao vật phẩm (item, nếu `!stackable` hoặc hết số lượng) xảy ra **ở pha ra lệnh, lúc `QueuedAction` được tạo** (§2) — không phải lúc resolver chạy. Resolver chỉ lo phần effect, không đụng vào chi phí kích hoạt; tới lúc resolver được gọi thì chi phí đã trừ xong từ trước, kể cả khi action sau đó fizzle vì mục tiêu chết.
 - `usesPerCombat` cũng được kiểm tra & trừ ngay ở pha ra lệnh, cùng lúc với MP (resolver không biết và không cần biết về giới hạn số lần dùng).
+
+---
+
+## 4. Cơ chế skill mới cho bộ kit 6 skill/class (spec, chưa implement)
+
+**Trạng thái**: spec kỹ thuật cho các cơ chế mới ở `gameplay-decisions.md` §1/§4.1 — **chỉ là tài liệu**, `data/classes.json`/`src/types.ts`/`src/engine/combat.ts`/`src/engine/resolver.ts`/`src/ui/app.ts`/`src/engine/party.ts` chưa sửa theo mục này. Viết ra ở đây trước để lúc implement code khớp đúng thiết kế, không phải đoán lại.
+
+Cả 4 cơ chế dưới đây đều thiết kế để nằm gọn trong `src/engine/combat.ts` (cụ thể là hàm `applySkillEffects`, `autoResolveTargets`, `resolveExecutionTargets`, `runCharacterTurn`, `queueAction`, `resolveRound`/`finalizeRound`) — **không cần sửa** `resolveSkillEffect` trong `resolver.ts`, vì đó vẫn chỉ là hàm áp 1 effect đơn lẻ lên 1 target, không cần biết về roll xác suất/cooldown/quan hệ phe.
+
+### 4.1 Proc theo tỉ lệ (`SkillEffect.chance`)
+
+- Field mới, optional, trên `SkillEffect`: `chance?: number` (0-1). Không có field này = luôn áp dụng (hành vi hiện tại, không đổi cho 22 effect đã có).
+- Roll tại `applySkillEffects`, **trong vòng lặp per-target**, ngay trước khi gọi `resolveSkillEffect` cho effect đó: `if (effect.chance !== undefined && ctx.rng.next() >= effect.chance) continue;` — bỏ qua đúng effect này cho đúng target này, các effect khác trong cùng skill (VD effect `damage` chính) không bị ảnh hưởng.
+- AoE: mỗi target trong danh sách roll `chance` độc lập (Cột Lửa 50% bỏng trên 3 địch có thể ra 0, 1, 2, hoặc cả 3 địch bị bỏng).
+
+### 4.2 Buff tự thêm hiệu ứng khi đánh trúng — "on-hit rider" (`StatusEffectDefinition.onHitStatusEffectId`)
+
+Dùng cho Tẩm Độc (Sát Thủ): self-buff không tự gây sát thương, nhưng khiến các đòn `damage` tiếp theo của actor tự kèm áp poison lên mục tiêu trúng đòn.
+
+- Field mới, optional, trên `StatusEffectDefinition`: `onHitStatusEffectId?: Id`.
+- Trong `applySkillEffects`, sau khi 1 effect `kind: "damage"` được resolve thành công lên 1 target (target vẫn tồn tại, không nhất thiết phải còn sống — theo đúng rule "sát thương trước, kiểm tra chết sau" đã có): kiểm tra `source.activeStatusEffects` (chỉ khi `isCharacter(source)`) xem có status nào có `onHitStatusEffectId` không → nếu có, gọi thêm `resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: def.onHitStatusEffectId }, source, target, ctx)`.
+- Không giới hạn số status mang field này cùng lúc trên 1 actor (loop qua tất cả `activeStatusEffects`, không dừng ở cái đầu tiên) — dù ở bản kit hiện tại chỉ có `dao-doc` (Tẩm Độc) dùng cơ chế này.
+- Không tương tác với proc `chance` ở 4.1 — rider luôn áp nếu effect `damage` gốc áp thành công (không roll thêm lần 2), trừ khi sau này có skill cụ thể cần rider theo %, lúc đó thêm field `onHitChance?: number` riêng chứ không tái dùng `chance` của 4.1 (2 khái niệm khác nhau: chance của 1 effect trong skill vs. chance của rider từ buff).
+
+### 4.3 Choáng — bỏ lượt (`StatusEffectDefinition.stuns`)
+
+Dùng cho hiệu ứng "choáng" (Phóng Sét/Bão Sét của Pháp Sư).
+
+- Field mới, optional, trên `StatusEffectDefinition`: `stuns?: boolean`.
+- Đầu `runCharacterTurn` và `runMonsterTurn` (combat.ts), **trước** bước lấy `QueuedAction`/chọn AI: nếu `actor.activeStatusEffects` có bất kỳ status nào `stuns: true` đang active → log bỏ lượt, `return`, không thực thi hành động — giống hệt pattern `rollLosesControl` (fear bậc 4) đã có, chỉ khác là do status thay vì roll theo fear, và áp được cho **cả monster** (fear chỉ tồn tại trên Character, nhưng "choáng" do skill người chơi gây cần tác dụng lên quái).
+- Không tự động gỡ status khi actor bị bỏ lượt vì nó — `tickStatusEffects` cuối round vẫn xử lý `turnsRemaining` như bình thường, không có logic đặc biệt.
+
+### 4.4 Skill 2 phe — hiệu ứng khác nhau tùy ally/enemy (`SkillDefinition.effectsByRelation` + 2 `SkillTarget` mới)
+
+Dùng cho Thanh Tẩy (chọn 1 trong 2 phe) và Thần Giáng (cả 2 phe cùng lúc) của Tu Sĩ.
+
+- 2 giá trị mới cho `SkillTarget`: `"singleAllyOrEnemy"` (Thanh Tẩy — người chơi chọn 1 mục tiêu, có thể là đồng đội hoặc địch) và `"allAlliesAndEnemies"` (Thần Giáng — tự động nhắm toàn bộ cả 2 phe, không cần chọn).
+- `SkillDefinition.effects` đổi thành **optional**; thêm field mới optional `effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] }`. Quy ước: skill có `effectsByRelation` thì bỏ qua `effects`; 24 skill còn lại (không phải Thanh Tẩy/Thần Giáng) vẫn dùng `effects` như cũ, không set `effectsByRelation`.
+- `autoResolveTargets`: thêm case `"allAlliesAndEnemies"` → trả về `livingCharacterRefs(...) ∪ livingMonsterRefs(...)` (gộp, không cần người chơi chọn); case `"singleAllyOrEnemy"` → trả `null` như `singleEnemy`/`singleAlly` hiện tại (bắt UI hỏi).
+- `src/ui/app.ts` (`trySelectSkill`): thêm nhánh cho `"singleAllyOrEnemy"` — candidates = `livingEnemyRefs() ∪ livingAllyRefs()`, hiển thị chung 1 danh sách để người chơi chọn (cần phân biệt rõ ally/enemy trong label, VD prefix "[Đồng đội]"/"[Địch]").
+- `resolveExecutionTargets`: `"singleAllyOrEnemy"` — nếu target gốc chết, redirect theo đúng loại của target gốc (gốc là monster → redirect như `singleEnemy`; gốc là character → fizzle như `singleAlly`, không đổi phe). `"allAlliesAndEnemies"` — lọc chết khỏi danh sách gộp, giữ nguyên pattern generic đã dùng cho `self`/`allAllies`/`allEnemies`.
+- `applySkillEffects`: nếu `skill.effectsByRelation` tồn tại, effect list cho mỗi target = `isCharacter(target) ? effectsByRelation.ally : effectsByRelation.enemy` (thay vì `skill.effects` cố định).
+- `runCharacterTurn` (`isEnemyTargeting`, quyết định có roll accuracy hay không): mở rộng điều kiện — `"allAlliesAndEnemies"` luôn coi là có nhắm địch (vì luôn có nửa `enemy`); `"singleAllyOrEnemy"` tùy thuộc **target đã resolve** (`queued.targets[0].kind === "monster"`) chứ không phải field `target` tĩnh của skill.
+- Roll accuracy cho AoE (mục 4.1 ở `gameplay-decisions.md`, tách theo từng target) áp dụng cho nửa `enemy` của cả 2 skill; nửa `ally` không roll, giữ nguyên rule cũ ("fear chỉ ảnh hưởng kỹ năng nhắm địch").
+
+### 4.5 Ultimate: luôn trúng + hệ số hiệu quả theo fear riêng (`SkillDefinition.isUltimate`)
+
+**Cập nhật (2026-08-16, cùng ngày)**: ultimate không còn dùng `usesPerCombat` — xem lý do ở §4.6.
+
+- Field mới, optional, trên `SkillDefinition`: `isUltimate?: boolean` — cờ tường minh, tách biệt hoàn toàn khỏi mọi giới hạn số lần dùng (không tái dùng `usesPerCombat` hay bất kỳ field nào khác làm cờ ngầm định). Cả 4 ultimate hiện có (Giáng Kiếm, Đột Kích Liên Hoàn, Kỷ Băng Hà, Thần Giáng) set `isUltimate: true` **+** `cooldownTurns: 5` (không set `usesPerCombat`).
+- `runCharacterTurn`: nếu `skill.isUltimate`, bỏ qua nhánh `rollHits`/`getFearAccuracyPenalty` hoàn toàn (không log "trượt vì quá sợ hãi").
+- `applySkillEffects` (hoặc 1 bước tiền xử lý trước khi gọi resolver): nếu `skill.isUltimate` và `isCharacter(source)`, nhân `effect.amount` của mọi effect `damage`/`heal` với hệ số theo bảng fear-ultimate (`gameplay-decisions.md` §4.1) **trước khi** truyền vào `resolveSkillEffect` — không đụng `damageMultiplierFor`/`getFearDamagePenalty` hiện có (2 cơ chế giảm sức mạnh theo fear chạy song song nhưng áp cho 2 nhóm skill khác nhau: ultimate dùng hệ số riêng ở đây, skill thường vẫn dùng flat 15% cũ).
+
+### 4.6 Cooldown theo lượt thay cho `usesPerCombat` (`SkillDefinition.cooldownTurns` + `Character.cooldownsRemaining`)
+
+**Cập nhật (2026-08-16, cùng ngày)**: bản spec trước có `usesPerCombat: 1` cho 4 ultimate + cooldown chỉ áp cho skill slot 3-4. Quyết định mới: **`usesPerCombat` không còn dùng cho bất kỳ skill nào** (kể cả ultimate) — toàn bộ 24 skill (kể cả 4 ultimate, dùng `cooldownTurns: 5`) chuyển hẳn sang `cooldownTurns`. `usesPerCombat`/`Character.usesRemainingThisCombat` **vẫn giữ nguyên trong type/code hiện có**, chỉ đơn giản là không skill nào set field này nữa — dành chỗ cho 1 chức năng khác chưa xác định (không phải skill, xem `gameplay-decisions.md` §1.5 bullet cuối). Vì không skill nào dùng `usesPerCombat` nữa, nhánh check `usesPerCombat`/`usesRemainingThisCombat` hiện có trong `queueAction` trở thành **dead code cho tới khi** chức năng kia được thiết kế — không xoá (vẫn cần cho chức năng tương lai đó), nhưng không còn nhánh nào trong `data/classes.json` kích hoạt nó nữa.
+
+- Field mới, optional, trên `SkillDefinition`: `cooldownTurns?: number`.
+- Field mới trên `Character` (mirror `usesRemainingThisCombat`): `cooldownsRemaining: Record<Id, number>` — khởi tạo `{}` ở `createCharacter` (`party.ts`), reset `{}` ở `startCombat` (`combat.ts`, cùng chỗ reset `usesRemainingThisCombat`) — **cooldown không kéo dài qua combat khác**, chỉ có ý nghĩa trong 1 trận đang đánh.
+- `queueAction`: thêm điều kiện chặn — `if ((actor.cooldownsRemaining[skillId] ?? 0) > 0) return { reason: "Kỹ năng đang hồi chiêu." }`. Khi queue thành công và `skill.cooldownTurns` có giá trị, set `actor.cooldownsRemaining[skillId] = skill.cooldownTurns` (cùng lúc trừ MP, tại pha ra lệnh, đúng nguyên tắc "chi phí chốt lúc queue" ở mục 2).
+- Giảm dần: cuối mỗi round (`resolveRound`/`finalizeRound`, cùng chỗ `tickStatusEffects` chạy), với mọi entry `> 0` trong `cooldownsRemaining` của mọi actor còn sống → trừ 1 (floor ở 0, không cần xóa key).
+- 2 quy ước gán `cooldownTurns` (`gameplay-decisions.md` §1.5): skill đánh dấu `isBuff: true` (Che Chắn, Khích Lệ, Tẩm Độc) → `cooldownTurns = durationTurns của status chính + 1`; skill damage/utility khác và ultimate → gán tay (ultimate cố định `5`).
+
+### 4.7 Buff luôn ưu tiên trong round — `SkillDefinition.isBuff` + bonus speed tạm thời khi tính thứ tự lượt
+
+Dùng cho Che Chắn, Khích Lệ (Cận Vệ), Tẩm Độc (Sát Thủ) — 3 skill duy nhất đánh dấu `isBuff: true` (bảng ở `gameplay-decisions.md` §1.1-1.4, cột "Buff?").
+
+**Vì sao không làm bằng data thuần (`applyStatusEffect` một status "+20 speed, 1 lượt")**: `buildTurnQueue` (combat.ts, §2) snapshot `speed` của mọi combatant **ngay khi bắt đầu pha thực thi**, tức là **trước** khi bất kỳ effect nào của bất kỳ `QueuedAction` nào được resolve. Nếu để "+20 speed" là 1 effect nằm trong chính skill buff đó, nó chỉ áp dụng **sau** khi tới lượt actor trong `turnQueue` — nghĩa là chỉ có tác dụng cho round **kế tiếp**, không phải round đang thực thi. Vì mục tiêu là "buff xong rồi mới tới đòn tấn công **trong cùng round**", cần can thiệp thẳng vào bước build `turnQueue`, không thể chỉ dùng data.
+
+- Field mới, optional, trên `SkillDefinition`: `isBuff?: boolean`.
+- `buildTurnQueue` (combat.ts): khi tính sort key cho 1 combatant là character, kiểm tra `combat.queuedActions` xem actor đó có `QueuedAction` nào trỏ tới skill có `isBuff: true` không (tra bằng `getSkill(queued.source.skillId).isBuff`) → nếu có, dùng `actor.speed + 20` làm khoá sort thay vì `actor.speed`. **Không** ghi đè `actor.speed` thật — chỉ là giá trị tạm thời dùng để sort, mất đi ngay sau khi `turnQueue` dựng xong (không rò rỉ sang round sau, không cần cơ chế "undo" như status effect).
+- Không ảnh hưởng gì tới quái (monster không queue trước — AI chọn hành động tại chỗ ở đúng lượt của nó, `runMonsterTurn`, nên không có khái niệm "buff trước tấn công" cho quái).
+- Nếu 2+ character cùng dùng skill `isBuff: true` trong 1 round, cả 2 đều +20 — tie-break vẫn theo rule cũ (`speed` bằng nhau → nhân vật trước quái, rồi theo thứ tự gốc trong `combatants`).

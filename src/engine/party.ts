@@ -32,5 +32,6 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
     activeStatusEffects: [],
     isAlive: true,
     usesRemainingThisCombat: {},
+    cooldownsRemaining: {},
   };
 }

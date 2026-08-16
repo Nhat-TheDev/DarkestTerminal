@@ -78,27 +78,29 @@ describe("growth is class-dependent (§6.8): weights reinforce each class's iden
     }
   });
 
-  test("Vanguard (tank) gains more defense+maxHp per level than Shadow Mage (glass cannon)", () => {
+  test("Vanguard (tank) gains more defense+maxHp per level than Mage (glass cannon)", () => {
     const vanguard50 = createCharacter("v", "V", getClass("vanguard"), 50);
-    const mage50 = createCharacter("m", "M", getClass("shadow-mage"), 50);
-    expect(vanguard50.defense - getClass("vanguard").baseDefense).toBeGreaterThan(mage50.defense - getClass("shadow-mage").baseDefense);
-    expect(vanguard50.maxHp - getClass("vanguard").baseMaxHp).toBeGreaterThan(mage50.maxHp - getClass("shadow-mage").baseMaxHp);
+    const mage50 = createCharacter("m", "M", getClass("mage"), 50);
+    expect(vanguard50.defense - getClass("vanguard").baseDefense).toBeGreaterThan(mage50.defense - getClass("mage").baseDefense);
+    expect(vanguard50.maxHp - getClass("vanguard").baseMaxHp).toBeGreaterThan(mage50.maxHp - getClass("mage").baseMaxHp);
   });
 
-  test("Shadow Mage gains more maxMp per level than Vanguard", () => {
+  test("Mage gains more maxMp per level than Vanguard", () => {
     const vanguard50 = createCharacter("v", "V", getClass("vanguard"), 50);
-    const mage50 = createCharacter("m", "M", getClass("shadow-mage"), 50);
-    expect(mage50.maxMp - getClass("shadow-mage").baseMaxMp).toBeGreaterThan(vanguard50.maxMp - getClass("vanguard").baseMaxMp);
+    const mage50 = createCharacter("m", "M", getClass("mage"), 50);
+    expect(mage50.maxMp - getClass("mage").baseMaxMp).toBeGreaterThan(vanguard50.maxMp - getClass("vanguard").baseMaxMp);
   });
 });
 
 describe("spawnMonster: elite boss stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
   test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > boss defense, not just barely floored at 1)", () => {
     const boss = spawnMonster("skeleton-guard", 50, { boss: true });
-    const basicSkillAmount = 10; // e.g. Chém Khiên
-    // Chaplain is intentionally pure-support (§6.8: lowest attack weight,
-    // and its 5-skill kit has zero `damage` effects) — its attack stat
-    // trailing a boss's defense is by design, not the bug this test guards.
+    const basicSkillAmount = 10; // e.g. Ném Khiên (Cận Vệ)
+    // Chaplain is intentionally pure-support (§6.8: lowest attack weight) —
+    // its paid skills only deal damage situationally (Thanh Tẩy/Thần Giáng
+    // when aimed at an enemy), not via a reliable amount-10-tier skill like
+    // the other 3 classes, so it's excluded here. Its attack stat trailing a
+    // boss's defense is by design, not the bug this test guards.
     const damageDealers = CLASSES.filter((c) => c.id !== "chaplain");
     for (const cls of damageDealers) {
       const character = createCharacter("c", cls.name, cls, 50);

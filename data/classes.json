@@ -1,0 +1,353 @@
+[
+  {
+    "id": "vanguard",
+    "name": "Cận Vệ",
+    "description": "Tank, chống chịu, giữ chân quái.",
+    "baseMaxHp": 140,
+    "baseMaxMp": 20,
+    "baseAttack": 14,
+    "baseDefense": 12,
+    "baseAggro": 20,
+    "baseSpeed": 8,
+    "growthWeights": { "attack": 0.8, "defense": 1.4, "maxHp": 1.3, "maxMp": 0.5 },
+    "skills": [
+      {
+        "id": "vanguard-chem",
+        "name": "Chém",
+        "description": "Chém bằng kiếm — sát thương cơ bản, miễn phí.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "vanguard-che-chan",
+        "name": "Che Chắn",
+        "description": "Dựng khiên phòng thủ, tăng cả phòng thủ lẫn thu hút bản thân 1 lượt.",
+        "mpCost": 8,
+        "target": "self",
+        "effects": [
+          { "kind": "applyStatusEffect", "statusEffectId": "phong-thu" },
+          { "kind": "applyStatusEffect", "statusEffectId": "khieu-khich" }
+        ],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isBuff": true,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "vanguard-nem-khien",
+        "name": "Ném Khiên",
+        "description": "Ném khiên vào địch, gây sát thương tầm xa.",
+        "mpCost": 5,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 10 }],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "vanguard-khich-le",
+        "name": "Khích Lệ",
+        "description": "Hô hào cả đội, hạ sợ hãi tức thì và tăng tấn công 1 lượt cho toàn đội.",
+        "mpCost": 12,
+        "target": "allAllies",
+        "effects": [
+          { "kind": "modifyStat", "stat": "fear", "amount": -8 },
+          { "kind": "applyStatusEffect", "statusEffectId": "khich-le" }
+        ],
+        "slot": 3,
+        "unlockLevel": 10,
+        "isBuff": true,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "vanguard-va-cham-du-doi",
+        "name": "Va Chạm Dữ Dội",
+        "description": "Lao thẳng vào cả nhóm địch, gây sát thương diện rộng.",
+        "mpCost": 14,
+        "target": "allEnemies",
+        "effects": [{ "kind": "damage", "amount": 12 }],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3
+      },
+      {
+        "id": "vanguard-giang-kiem",
+        "name": "Giáng Kiếm",
+        "description": "Giáng đòn kiếm quyết định, sát thương lớn. Luôn trúng, hiệu quả giảm theo fear.",
+        "mpCost": 14,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 30 }],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  },
+  {
+    "id": "mage",
+    "name": "Pháp Sư",
+    "description": "Sát thương phép tầm xa, giòn — hệ lửa/sét/băng.",
+    "baseMaxHp": 70,
+    "baseMaxMp": 60,
+    "baseAttack": 6,
+    "baseDefense": 4,
+    "baseAggro": 8,
+    "baseSpeed": 10,
+    "growthWeights": { "attack": 1.3, "defense": 0.6, "maxHp": 0.7, "maxMp": 1.4 },
+    "skills": [
+      {
+        "id": "mage-dap",
+        "name": "Đập",
+        "description": "Đập bằng gậy phép — sát thương cơ bản, miễn phí.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "mage-cau-lua",
+        "name": "Cầu Lửa",
+        "description": "Triệu hồi quả cầu lửa gây sát thương, có thể gây bỏng.",
+        "mpCost": 5,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 10 },
+          { "kind": "applyStatusEffect", "statusEffectId": "bong", "chance": 0.3 }
+        ],
+        "slot": 1,
+        "unlockLevel": 1
+      },
+      {
+        "id": "mage-phong-set",
+        "name": "Phóng Sét",
+        "description": "Phóng tia sét gây sát thương nhanh, có thể gây choáng.",
+        "mpCost": 6,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "applyStatusEffect", "statusEffectId": "choang", "chance": 0.2 }
+        ],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "mage-cot-lua",
+        "name": "Cột Lửa",
+        "description": "Dựng cột lửa thiêu đốt cả nhóm địch, khả năng gây bỏng cao.",
+        "mpCost": 14,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "applyStatusEffect", "statusEffectId": "bong", "chance": 0.5 }
+        ],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "mage-bao-set",
+        "name": "Bão Sét",
+        "description": "Gọi bão sét đánh toàn bộ kẻ địch, có thể gây choáng.",
+        "mpCost": 16,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 13 },
+          { "kind": "applyStatusEffect", "statusEffectId": "choang", "chance": 0.3 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3
+      },
+      {
+        "id": "mage-ky-bang-ha",
+        "name": "Kỷ Băng Hà",
+        "description": "Phủ băng giá lên toàn chiến trường, sát thương diện rộng. Luôn trúng, hiệu quả giảm theo fear.",
+        "mpCost": 20,
+        "target": "allEnemies",
+        "effects": [{ "kind": "damage", "amount": 22 }],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  },
+  {
+    "id": "rogue",
+    "name": "Sát Thủ",
+    "description": "Burst đơn mục tiêu, tốc độ cao nhất nhóm.",
+    "baseMaxHp": 90,
+    "baseMaxMp": 30,
+    "baseAttack": 16,
+    "baseDefense": 6,
+    "baseAggro": 10,
+    "baseSpeed": 16,
+    "growthWeights": { "attack": 1.4, "defense": 0.7, "maxHp": 1.1, "maxMp": 0.8 },
+    "skills": [
+      {
+        "id": "rogue-dam",
+        "name": "Đâm",
+        "description": "Đâm bằng dao găm — sát thương cơ bản, miễn phí.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "rogue-tam-doc",
+        "name": "Tẩm Độc",
+        "description": "Bôi độc lên lưỡi dao — trong lúc còn hiệu lực, đòn đánh trúng địch tự kèm gây độc.",
+        "mpCost": 3,
+        "target": "self",
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "dao-doc" }],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isBuff": true,
+        "cooldownTurns": 4
+      },
+      {
+        "id": "rogue-phong-dao",
+        "name": "Phóng Dao",
+        "description": "Ném dao găm gây sát thương tầm xa.",
+        "mpCost": 4,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 12 }],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "rogue-dam-len",
+        "name": "Đâm Lén",
+        "description": "Đòn đâm hiểm từ điểm mù, sát thương cao.",
+        "mpCost": 8,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 20 }],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 1
+      },
+      {
+        "id": "rogue-bom-doc",
+        "name": "Bom Độc",
+        "description": "Ném bom độc, gây độc toàn bộ kẻ địch.",
+        "mpCost": 10,
+        "target": "allEnemies",
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "trung-doc" }],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3
+      },
+      {
+        "id": "rogue-dot-kich-lien-hoan",
+        "name": "Đột Kích Liên Hoàn",
+        "description": "Lao vào tung 3 đòn đâm liên tiếp. Luôn trúng, hiệu quả giảm theo fear.",
+        "mpCost": 16,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "damage", "amount": 12 },
+          { "kind": "damage", "amount": 12 }
+        ],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  },
+  {
+    "id": "chaplain",
+    "name": "Tu Sĩ",
+    "description": "Hồi phục + hạ fear cả team.",
+    "baseMaxHp": 100,
+    "baseMaxMp": 50,
+    "baseAttack": 6,
+    "baseDefense": 8,
+    "baseAggro": 12,
+    "baseSpeed": 9,
+    "growthWeights": { "attack": 0.6, "defense": 1.1, "maxHp": 1.0, "maxMp": 1.3 },
+    "skills": [
+      {
+        "id": "chaplain-dam",
+        "name": "Đấm",
+        "description": "Đấm tay không — sát thương cơ bản, miễn phí.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "chaplain-cau-nguyen",
+        "name": "Cầu Nguyện",
+        "description": "Cầu nguyện trấn an, hạ sợ hãi 1 đồng đội.",
+        "mpCost": 4,
+        "target": "singleAlly",
+        "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -10 }],
+        "slot": 1,
+        "unlockLevel": 1
+      },
+      {
+        "id": "chaplain-chua-tri",
+        "name": "Chữa Trị",
+        "description": "Hồi máu cho 1 đồng đội.",
+        "mpCost": 6,
+        "target": "singleAlly",
+        "effects": [{ "kind": "heal", "amount": 16 }],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "chaplain-thanh-tay",
+        "name": "Thanh Tẩy",
+        "description": "Nhắm đồng đội để gỡ 1 debuff, hoặc nhắm địch để gây sát thương thanh trừng.",
+        "mpCost": 9,
+        "target": "singleAllyOrEnemy",
+        "effectsByRelation": {
+          "ally": [{ "kind": "removeStatusEffect" }],
+          "enemy": [{ "kind": "damage", "amount": 15 }]
+        },
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 1
+      },
+      {
+        "id": "chaplain-chua-tri-nang-cao",
+        "name": "Chữa Trị Nâng Cao",
+        "description": "Hồi máu + hạ sợ hãi cả đội.",
+        "mpCost": 10,
+        "target": "allAllies",
+        "effects": [
+          { "kind": "heal", "amount": 10 },
+          { "kind": "modifyStat", "stat": "fear", "amount": -6 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "chaplain-than-giang",
+        "name": "Thần Giáng",
+        "description": "Ánh sáng thần thánh giáng xuống cả chiến trường: hồi máu + hạ sợ hãi mạnh cho đồng đội, gây sát thương cho địch. Luôn trúng, hiệu quả giảm theo fear.",
+        "mpCost": 20,
+        "target": "allAlliesAndEnemies",
+        "effectsByRelation": {
+          "ally": [
+            { "kind": "heal", "amount": 25 },
+            { "kind": "modifyStat", "stat": "fear", "amount": -15 }
+          ],
+          "enemy": [{ "kind": "damage", "amount": 20 }]
+        },
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  }
+]

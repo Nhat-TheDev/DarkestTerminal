@@ -13,8 +13,8 @@ export const CLASSES = classesJson as unknown as CharacterClass[];
 
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");
 for (const cls of CLASSES) {
-  if (cls.skills.length !== 5) {
-    throw new Error(`data/classes.json: class "${cls.id}" must have exactly 5 skills (has ${cls.skills.length})`);
+  if (cls.skills.length !== 6) {
+    throw new Error(`data/classes.json: class "${cls.id}" must have exactly 6 skills (has ${cls.skills.length})`);
   }
 }
 

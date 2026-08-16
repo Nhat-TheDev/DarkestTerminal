@@ -25,7 +25,7 @@ export const PALETTE = {
 
 export const CLASS_STYLE: Record<string, { abbr: string; color: string }> = {
   vanguard: { abbr: "CV", color: "#5b7fa6" },
-  "shadow-mage": { abbr: "PS", color: "#7a52a3" },
+  mage: { abbr: "PS", color: "#7a52a3" },
   rogue: { abbr: "ST", color: "#b5892c" },
   chaplain: { abbr: "TS", color: "#a8901a" },
 };

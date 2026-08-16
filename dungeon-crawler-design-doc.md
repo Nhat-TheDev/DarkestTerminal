@@ -6,7 +6,7 @@
 
 ## Tóm tắt nhanh
 
-**Đã chốt**: genre & platform, core gameplay loop, combat model (round 2 pha: ra lệnh + thực thi theo tốc độ), permadeath, 6 chỉ số class (tấn công/phòng thủ/máu/mana/thu hút/tốc độ) + targeting theo thu hút + hệ thống level 1-100 tăng trưởng phụ thuộc class, 3 survival stat (cùng giá trị khởi tạo mọi class) + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng qua thư viện pattern dạng dữ liệu (random chọn 1 pattern/tầng — không phải thuật toán procedural generation), hệ class/skill (4 class × 5 skill, nội dung cụ thể, mốc mở skill 10/20/35), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, resolver logic cho SkillEffect, data model (file riêng).
+**Đã chốt**: genre & platform, core gameplay loop, combat model (round 2 pha: ra lệnh + thực thi theo tốc độ), permadeath, 6 chỉ số class (tấn công/phòng thủ/máu/mana/thu hút/tốc độ) + targeting theo thu hút + hệ thống level 1-100 tăng trưởng phụ thuộc class, 3 survival stat (cùng giá trị khởi tạo mọi class) + ngưỡng số cụ thể, ảnh hưởng ngược của fear lên combat, cấu trúc tầng/phòng qua thư viện pattern dạng dữ liệu (random chọn 1 pattern/tầng — không phải thuật toán procedural generation), hệ class/skill (4 class × 6 skill: 1 đòn đánh thường dùng chung theo vũ khí + 5 skill riêng, nội dung cụ thể, mốc mở skill 10/20/35, cooldown theo lượt cho 1 số skill mạnh), monster design (scaling + AI pattern), 4 mini-game cụ thể + risk profile từng game, cơ chế Magic Tiles (hit/miss + combo + score/time) + số liệu cụ thể, quan hệ boss-fight ↔ mini-game, tech stack (OpenTUI), kiến trúc dual-loop, resolver logic cho SkillEffect, data model (file riêng).
 
 **Để mở**: không còn mục nào ở tầm thiết kế — toàn bộ đã có quyết định cụ thể, xem `docs/*.md`. Các con số balancing (damage, threshold %, ...) vẫn chỉ là điểm khởi đầu, sẽ điều chỉnh khi có bản chơi được để playtest.
 
@@ -39,9 +39,10 @@
 - Thuật toán sinh phòng cụ thể: **[`docs/technical-decisions.md`](./docs/technical-decisions.md)** mục 1
 
 ### 1.5 Class & Skill
-- Mỗi class: **5 skill total**, bắt đầu với 2, mở dần 3 skill còn lại khi lên cấp
+- Mỗi class: **6 skill total** — 1 **đòn đánh thường** (miễn phí, dùng chung cấu trúc mọi class, gây sát thương thuần theo vũ khí: kiếm=chém, dao=đâm, gậy=đập, tay không=đấm) + **5 skill riêng**, bắt đầu với 2 skill riêng (cộng đòn đánh thường luôn có sẵn), mở dần 3 skill riêng còn lại khi lên cấp
 - 6 chỉ số định hình mỗi class: **tấn công, phòng thủ, máu, mana, thu hút** (tỉ lệ bị quái chọn làm mục tiêu), **tốc độ** (ưu tiên ra đòn trước)
-- 4 class, bảng chỉ số + nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
+- 1 số skill riêng có thêm **cooldown theo lượt** (ngoài `usesPerCombat`) để tránh bị spam liên tục khi lên cấp cao (MP dư dả)
+- 4 class, bảng chỉ số + nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư, Sát Thủ, Tu Sĩ)
 
 ### 1.6 Item
 - Hỗ trợ duy trì sinh tồn (hunger/thirst/fear) và hồi HP/MP
@@ -92,7 +93,7 @@ Lý do:
 
 - **Dual loop**: dungeon loop (turn-based, chỉ redraw khi có action) tách biệt hoàn toàn khỏi mini-game loop (real-time, tick cố định, redraw liên tục)
 - **MiniGameSession**: interface chung (`start / tick / handleInput / isComplete / getResult`) — dungeon loop không cần biết chi tiết bên trong từng mini-game; thêm mini-game thứ 5 không đụng vào dungeon loop
-- **Data-driven skill & item**: `SkillEffect` dùng chung giữa skill và item, tránh hardcode logic riêng cho từng cái — quan trọng vì có thể lên tới 20-30 skill cần balance (4-6 class × 5 skill)
+- **Data-driven skill & item**: `SkillEffect` dùng chung giữa skill và item, tránh hardcode logic riêng cho từng cái — quan trọng vì có thể lên tới 25-35 skill cần balance (4-6 class × 6 skill)
 - **StatusEffect ↔ mini-game**: quan hệ "debuff nào chữa bằng game nào" encode vào data (`curableByMiniGame`), không rải rác trong logic
 - **Monotonic clock**: dùng `performance.now()` cho mini-game timing, không dùng `Date.now()`; dùng CHUNG một nguồn thời gian cho cả đếm giờ lẫn tính vị trí tile, tránh desync khi lag
 
@@ -125,11 +126,12 @@ Các type chính:
 Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ thể, tách ra 3 file riêng trong `docs/` để mục 1-4 ở trên không quá dài:
 
 ### Gameplay / nội dung — [`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)
-- Tên 4 class + bảng 6 chỉ số (attack/defense/maxHp/maxMp/aggro/speed) + danh sách 5 skill/class đầy đủ (Cận Vệ, Pháp Sư Bóng Tối, Sát Thủ, Tu Sĩ)
+- Tên 4 class + bảng 6 chỉ số (attack/defense/maxHp/maxMp/aggro/speed) + danh sách 6 skill/class đầy đủ (1 đánh thường + 5 riêng; Cận Vệ, Pháp Sư, Sát Thủ, Tu Sĩ)
 - Monster: công thức scaling atk/def/hp theo độ sâu tầng + targeting theo `aggro` (random có trọng số) + 3 AI pattern (aggressive/defensive/erratic)
 - Giá trị khởi tạo + ngưỡng số cụ thể cho fear/hunger/thirst (giống nhau mọi class) và 4 bậc fear
 - Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
-- Hiệu quả HP=0/MP thiếu + hệ thống level 1-100 (5 tier tapered growth, không tuyến tính) cho attack/defense/maxHp/maxMp, đã kiểm chứng TTK xuyên suốt dải level + sửa lỗi hệ số elite boss gây bất tử ở tầng sâu (level gắn với độ sâu tầng; `aggro`/`speed` không tăng theo cấp)
+- Hiệu quả HP=0/MP thiếu + hệ thống level 1-100 (5 tier tapered growth, không tuyến tính) cho attack/defense/maxHp/maxMp, đã kiểm chứng TTK xuyên suốt dải level + sửa lỗi hệ số elite boss gây bất tử ở tầng sâu (`aggro`/`speed` không tăng theo cấp)
+- **Cập nhật 2026-08-16 (§6.9/6.10)**: level nhân vật tách khỏi level tầng ngục — level nhân vật (chung cả party, cap 100) tăng qua EXP tích lũy từ giết quái; level tầng ngục (`Floor.depth`, không giới hạn — roguelite vô hạn) tăng khi hạ boss của tầng, không còn đồng bộ 1-1 với level nhân vật như thiết kế cũ
 
 ### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
 - Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định

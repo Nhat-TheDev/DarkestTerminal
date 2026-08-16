@@ -60,6 +60,8 @@ export interface SkillEffect {
   statusEffectId?: Id;
   /** Mini-game to launch, for `triggerMiniGame` (boss phases, item-triggered games, ...). */
   miniGameId?: MiniGameId;
+  /** Roll independently per (effect, target) before applying — omit = always applies (docs/technical-decisions.md §4.1). */
+  chance?: number;
 }
 
 export type SkillTarget =
@@ -67,7 +69,11 @@ export type SkillTarget =
   | "singleAlly"
   | "allAllies"
   | "singleEnemy"
-  | "allEnemies";
+  | "allEnemies"
+  /** Player picks 1 target from either side; effectsByRelation decides what happens (docs/technical-decisions.md §4.4). */
+  | "singleAllyOrEnemy"
+  /** Auto-resolves to every living ally + every living enemy at once (§4.4). */
+  | "allAlliesAndEnemies";
 
 export interface SkillDefinition {
   id: Id;
@@ -75,13 +81,22 @@ export interface SkillDefinition {
   description: string;
   mpCost: number;
   target: SkillTarget;
-  effects: SkillEffect[];
-  /** Slot within the class's 5-skill kit; slots 0-1 are unlocked at creation (1.5). */
-  slot: 0 | 1 | 2 | 3 | 4;
-  /** Character level required to unlock this skill (slots 0-1 should be 1). */
+  /** Used by every skill except the 2 dual-relation ones, which use effectsByRelation instead. */
+  effects?: SkillEffect[];
+  /** Only set for singleAllyOrEnemy/allAlliesAndEnemies skills (docs/technical-decisions.md §4.4). */
+  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
+  /** Slot within the class's 6-skill kit (1 shared basic attack at slot 0 + 5 own skills); slots 0-2 are unlocked at creation (docs/gameplay-decisions.md §1). */
+  slot: 0 | 1 | 2 | 3 | 4 | 5;
+  /** Character level required to unlock this skill (slots 0-2 should be 1). */
   unlockLevel: number;
-  /** Max casts per combat encounter (ultimates); omit for mp/cooldown-only gating. */
+  /** Reserved for a future non-skill feature — no skill sets this (docs/gameplay-decisions.md §1.5). */
   usesPerCombat?: number;
+  /** Cooldown in rounds, replaces usesPerCombat for skills (docs/technical-decisions.md §4.6). */
+  cooldownTurns?: number;
+  /** Always hits; damage/heal scale by a dedicated fear-effectiveness curve instead (docs/technical-decisions.md §4.5). */
+  isUltimate?: boolean;
+  /** Grants +20 speed for this round's turn-order sort only (docs/technical-decisions.md §4.7). */
+  isBuff?: boolean;
 }
 
 /**
@@ -117,7 +132,7 @@ export interface CharacterClass {
   baseSpeed: number;
   /** Per-stat growth multiplier for leveling 1-100 (docs/gameplay-decisions.md §6.8). */
   growthWeights: GrowthWeights;
-  /** Exactly 5 skills total per class (2 starting + 3 unlocked by level). */
+  /** Exactly 6 skills total per class (1 shared basic attack + 2 starting own skills + 3 unlocked by level). */
   skills: SkillDefinition[];
 }
 
@@ -179,6 +194,10 @@ export interface StatusEffectDefinition {
   }[];
   /** undefined = persists until cured via mini-game, not by time. */
   durationTurns?: number;
+  /** When active on the source of a successful `damage` effect, also applies this status to the target hit (docs/technical-decisions.md §4.2). */
+  onHitStatusEffectId?: Id;
+  /** While active, the bearer skips their entire turn (docs/technical-decisions.md §4.3). */
+  stuns?: boolean;
 }
 
 // ---------------------------------------------------------------------------

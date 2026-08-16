@@ -28,7 +28,7 @@ function makeCtx(seed = 1) {
   return { ctx, floor, monsters, party };
 }
 
-/** Picks a singleEnemy skill if the character has one unlocked, else falls back to whatever's available (e.g. the Chaplain has none at level 1). */
+/** Picks a singleEnemy skill if the character has one unlocked, else falls back to whatever's available. */
 function pickAnyAction(
   ctx: EngineContext,
   combat: ReturnType<typeof startCombat>,
@@ -85,10 +85,10 @@ describe("floor layout (random pattern pick — see test/floorPatterns.test.ts f
 });
 
 describe("character creation", () => {
-  test("level-1 character only has slot 0-1 skills unlocked", () => {
+  test("level-1 character only has slot 0-2 skills unlocked (basic attack + 2 own skills)", () => {
     const cls = getClass("vanguard");
     const c = createCharacter("c1", "Test", cls);
-    expect(c.unlockedSkillIds).toEqual(["vanguard-chem-khien", "vanguard-tran-thu"]);
+    expect(c.unlockedSkillIds).toEqual(["vanguard-chem", "vanguard-che-chan", "vanguard-nem-khien"]);
     expect(c.hp).toBe(cls.baseMaxHp);
     expect(c.survival).toEqual({ hunger: 100, thirst: 100, fear: 0 });
   });
@@ -98,7 +98,7 @@ describe("resolver", () => {
   test("damage formula: max(1, amount + attack - defense)", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!; // vanguard, attack 14
-    const target = ctx.party[1]!; // shadow mage, defense 4
+    const target = ctx.party[1]!; // mage, defense 4
     const before = target.hp;
     resolveSkillEffect({ kind: "damage", amount: 10 }, attacker, target, { log: [] });
     expect(target.hp).toBe(before - (10 + 14 - 4));
@@ -130,7 +130,7 @@ describe("resolver", () => {
     expect(target.survival.fear).toBe(100);
   });
 
-  test("modifyCombatStat status effect installs immediately and undoes on expiry", () => {
+  test("modifyCombatStat status effect installs immediately and undoes on expiry (phong-thu is now a 1-turn buff)", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const baseDef = vanguard.defense;
@@ -138,9 +138,6 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "phong-thu" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(baseDef + 6);
 
-    const { tickStatusEffects } = require("../src/engine/resolver");
-    tickStatusEffects(vanguard, { log }); // 2 -> 1
-    expect(vanguard.defense).toBe(baseDef + 6);
     tickStatusEffects(vanguard, { log }); // 1 -> 0, expires
     expect(vanguard.defense).toBe(baseDef);
     expect(vanguard.activeStatusEffects).toHaveLength(0);
@@ -156,17 +153,15 @@ describe("resolver", () => {
     expect(before - victim.hp).toBe(4); // status-effects.json: trung-doc perTurnEffects damage amount 4, flat
   });
 
-  test("re-applying an active status effect refreshes duration instead of stacking", () => {
+  test("re-applying an active status effect refreshes duration instead of stacking (bong: 2-turn debuff)", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const log: string[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "phong-thu" }, vanguard, vanguard, { log });
-    const { tickStatusEffects } = require("../src/engine/resolver");
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bong" }, vanguard, vanguard, { log });
     tickStatusEffects(vanguard, { log }); // 2 -> 1
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "phong-thu" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bong" }, vanguard, vanguard, { log });
     expect(vanguard.activeStatusEffects).toHaveLength(1);
-    expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);
-    expect(vanguard.defense).toBe(12 + 6); // only applied once, not doubled
+    expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2); // refreshed to full duration, not stacked to a 2nd entry
   });
 
   test("fear tiers match docs/gameplay-decisions.md §3", () => {
@@ -224,28 +219,67 @@ describe("combat round structure", () => {
     expect(rogueLine).toBeLessThan(vanguardLine); // rogue speed 16 > vanguard speed 8
   });
 
-  test("MP and usesPerCombat are deducted at queue time, not at resolution", () => {
+  test("isBuff skills get +20 speed for this round's turn order only, not a persistent stat change (§4.7)", () => {
+    const { ctx } = makeCtx();
+    const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    queueAction(combat, self, "vanguard-che-chan", [self], ctx); // isBuff — vanguard (speed 8) would normally act last
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      if (ref.id === vanguard.id) continue;
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+    resolveRound(combat, ctx);
+    const vanguardLine = combat.log.findIndex((l) => l.includes("Cận Vệ") && l.includes("dùng"));
+    const rogueLine = combat.log.findIndex((l) => l.includes("Sát Thủ") && l.includes("dùng"));
+    expect(vanguardLine).toBeGreaterThanOrEqual(0);
+    expect(rogueLine).toBeGreaterThanOrEqual(0);
+    expect(vanguardLine).toBeLessThan(rogueLine); // +20 (=28) now outranks rogue's speed 16
+    expect(vanguard.speed).toBe(8); // the bonus never touches the real stat
+  });
+
+  test("MP is deducted at queue time, not at resolution", () => {
     const { ctx } = makeCtx();
     const combat = startCombat("r1", [ctx.monsters[0]!.id], ctx, false);
-    const mage = ctx.party.find((p) => p.classId === "shadow-mage")!;
+    const mage = ctx.party.find((p) => p.classId === "mage")!;
     const mpBefore = mage.mp;
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
-    queueAction(combat, { kind: "character", id: mage.id }, "mage-phi-anh", [enemy], ctx);
+    queueAction(combat, { kind: "character", id: mage.id }, "mage-cau-lua", [enemy], ctx);
     expect(mage.mp).toBe(mpBefore - 5);
   });
 
-  test("usesPerCombat blocks a second cast within the same combat", () => {
+  test("cooldownTurns is set at queue time and blocks re-queueing the same skill until it expires", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("vanguard-bat-khuat"); // force-unlock the ultimate for this test
     vanguard.mp = 999;
     const combat = startCombat("r1", [ctx.monsters[0]!.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    const err1 = queueAction(combat, self, "vanguard-bat-khuat", [self], ctx);
+    const err1 = queueAction(combat, self, "vanguard-che-chan", [self], ctx);
     expect(err1).toBeNull();
+    expect(vanguard.cooldownsRemaining["vanguard-che-chan"]).toBe(2);
     combat.queuedActions = []; // simulate a fresh round without going through resolution
-    const err2 = queueAction(combat, self, "vanguard-bat-khuat", [self], ctx);
+    const err2 = queueAction(combat, self, "vanguard-che-chan", [self], ctx);
     expect(err2).not.toBeNull();
+  });
+
+  test("cooldown decrements each round and re-allows the skill once it hits 0", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.mp = 999;
+    const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+
+    queueAction(combat, self, "vanguard-che-chan", [self], ctx); // cooldownTurns 2
+    resolveRound(combat, ctx); // round 1 -> 2, cooldown 2 -> 1
+    expect(vanguard.cooldownsRemaining["vanguard-che-chan"]).toBe(1);
+    expect(queueAction(combat, self, "vanguard-che-chan", [self], ctx)).not.toBeNull(); // still cooling down
+
+    resolveRound(combat, ctx); // round 2 -> 3, cooldown 1 -> 0
+    expect(vanguard.cooldownsRemaining["vanguard-che-chan"]).toBe(0);
+    expect(queueAction(combat, self, "vanguard-che-chan", [self], ctx)).toBeNull(); // usable again
   });
 
   test("dead singleEnemy target redirects to another living enemy instead of fizzling", () => {
@@ -257,7 +291,7 @@ describe("combat round structure", () => {
     // Kill enemyA "before" rogue's turn by zeroing its hp directly, simulating an earlier actor finishing it off.
     const targetA = getActorByRef(enemyA!, ctx);
     targetA.hp = 0;
-    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-dam-len", [enemyA!], ctx);
+    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-dam", [enemyA!], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === rogue.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -279,8 +313,121 @@ describe("combat round structure", () => {
     }
     resolveRound(combat, ctx);
     expect(isCombatOver(combat, ctx)).toBe(true);
-    // Vanguard(10) + mage(14) + rogue(12) already exceed the rat's 18 hp at depth 1 (base, no growth bonus yet — see levelGrowth.ts).
+    // Every class now has a free singleEnemy basic attack (amount 0 = attack - defense): vanguard 12 +
+    // mage 4 + rogue 14 + chaplain 4 = 34, already exceeds the rat's 18 hp at depth 1 (base stats, no
+    // growth bonus yet — see levelGrowth.ts).
     expect(combat.outcome).toBe("victory");
+  });
+});
+
+describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
+  test("Che Chắn applies both phong-thu and khieu-khich in a single cast", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const rat = ctx.monsters.filter((m) => m.archetypeId === "dungeon-rat")[0]!;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    queueAction(combat, self, "vanguard-che-chan", [self], ctx);
+    resolveRound(combat, ctx);
+    // Both are now 1-turn buffs, so by the time resolveRound's end-of-round tick runs they've
+    // already expired again (correct — that's the "buff luôn 1 lượt" rule) — assert via the log
+    // instead of activeStatusEffects, which is empty again by the time resolveRound returns.
+    expect(combat.log.some((l) => l.includes("nhận hiệu ứng Phòng Thủ"))).toBe(true);
+    expect(combat.log.some((l) => l.includes("nhận hiệu ứng Khiêu Khích"))).toBe(true);
+  });
+
+  test("stuns status makes the bearer skip their turn entirely (§4.3)", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    rogue.activeStatusEffects.push({ statusEffectId: "choang", turnsRemaining: 1 });
+    const rat = ctx.monsters.filter((m) => m.archetypeId === "dungeon-rat")[0]!;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-dam", [enemyRef], ctx);
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      if (ref.id === rogue.id) continue;
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes("đang choáng"))).toBe(true);
+    expect(combat.log.some((l) => l.includes("Sát Thủ") && l.includes("dùng"))).toBe(false);
+  });
+
+  test("Tẩm Độc buff makes a landed damage hit auto-apply Trúng Độc (on-hit rider, §4.2)", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: rogue.id };
+
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      if (ref.id === rogue.id) queueAction(combat, self, "rogue-tam-doc", [self], ctx);
+      else {
+        const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+        queueAction(combat, ref, skillId, targets, ctx);
+      }
+    }
+    resolveRound(combat, ctx);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "dao-doc")).toBe(true);
+
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      if (ref.id === rogue.id) queueAction(combat, self, "rogue-phong-dao", [enemyRef], ctx);
+      else {
+        const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+        queueAction(combat, ref, skillId, targets, ctx);
+      }
+    }
+    resolveRound(combat, ctx);
+    const enemyActor = getActorByRef(enemyRef, ctx);
+    expect(enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "trung-doc")).toBe(true);
+  });
+
+  test("dual-relation skill (Thanh Tẩy) damages when aimed at an enemy, cleanses when aimed at an ally", () => {
+    const { ctx } = makeCtx();
+    const chaplain = createCharacter("cp-test", "Tu Sĩ Test", getClass("chaplain"), 10);
+    ctx.party.push(chaplain);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "bong", turnsRemaining: 2 });
+    // skeleton-guard (48hp), not dungeon-rat (18hp) — Thanh Tẩy's enemy branch (15 + attack - defense)
+    // would one-shot a rat and end combat before the 2nd (ally-branch) queueAction in this test runs.
+    const tanky = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const chaplainRef: CombatantRef = { kind: "character", id: chaplain.id };
+
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    const hpBefore = getActorByRef(enemyRef, ctx).hp;
+    expect(queueAction(combat, chaplainRef, "chaplain-thanh-tay", [enemyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore); // enemy branch: damage 15
+
+    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    expect(queueAction(combat, chaplainRef, "chaplain-thanh-tay", [allyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "bong")).toBe(false); // ally branch: removeStatusEffect
+  });
+
+  test("ultimate skills always hit even at high fear, but scale damage down instead of missing", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.unlockedSkillIds.push("vanguard-giang-kiem"); // unlockLevel 35 — force-unlock for the test
+    vanguard.mp = 999;
+    vanguard.survival.fear = 99; // Hoảng Loạn (tier 3): normal skills would get -20% accuracy, -15% dmg
+    const skeleton = ctx.monsters.find((m) => m.archetypeId === "skeleton-guard")!;
+    const combat = startCombat("r1", [skeleton.id], ctx, false);
+    const enemyRef: CombatantRef = { kind: "monster", id: skeleton.id };
+    const enemyActor = getActorByRef(enemyRef, ctx);
+    const fullPowerDamage = Math.max(1, 30 + vanguard.attack - enemyActor.defense);
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-giang-kiem", [enemyRef], ctx);
+    const hpBefore = enemyActor.hp;
+    resolveRound(combat, ctx);
+    const actualDamage = hpBefore - enemyActor.hp;
+
+    expect(combat.log.some((l) => l.includes("trượt"))).toBe(false); // ultimate never misses
+    expect(actualDamage).toBeGreaterThan(0);
+    expect(actualDamage).toBeLessThan(fullPowerDamage); // fear-scaled effectiveness kicked in instead
   });
 });
 
