@@ -95,13 +95,13 @@ describe("growth is class-dependent (§6.8): weights reinforce each class's iden
 describe("spawnMonster: elite guard stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
   test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > elite defense, not just barely floored at 1)", () => {
     const elite = spawnMonster("skeleton-guard", 50, { tier: "elite" });
-    const basicSkillAmount = 10; // e.g. Ném Khiên (Cận Vệ)
-    // Chaplain is intentionally pure-support (§6.8: lowest attack weight) —
-    // its paid skills only deal damage situationally (Thanh Tẩy/Thần Giáng
+    const basicSkillAmount = 10; // e.g. Shield Throw (Vanguard)
+    // Acolyte is intentionally pure-support (§6.8: lowest attack weight) —
+    // its paid skills only deal damage situationally (Purify/Divine Descent
     // when aimed at an enemy), not via a reliable amount-10-tier skill like
     // the other 3 classes, so it's excluded here. Its attack stat trailing an
     // elite's defense is by design, not the bug this test guards.
-    const damageDealers = CLASSES.filter((c) => c.id !== "chaplain");
+    const damageDealers = CLASSES.filter((c) => c.id !== "acolyte");
     for (const cls of damageDealers) {
       const character = createCharacter("c", cls.name, cls, 50);
       const damage = Math.max(1, basicSkillAmount + character.attack - elite.defense);

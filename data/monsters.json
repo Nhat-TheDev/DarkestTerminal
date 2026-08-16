@@ -1,9 +1,9 @@
 [
   {
     "id": "dungeon-rat",
-    "name": "Chuột Hầm Ngục",
-    "baseHp": 16,
-    "baseAttack": 10,
+    "name": "Dungeon Rat",
+    "baseHp": 45,
+    "baseAttack": 17,
     "baseDefense": 1,
     "baseSpeed": 9,
     "aiPattern": "erratic",
@@ -12,9 +12,9 @@
   },
   {
     "id": "black-bat",
-    "name": "Dơi Đen",
-    "baseHp": 16,
-    "baseAttack": 15,
+    "name": "Black Bat",
+    "baseHp": 42,
+    "baseAttack": 22,
     "baseDefense": 1,
     "baseSpeed": 18,
     "aiPattern": "aggressive",
@@ -22,16 +22,190 @@
     "expReward": 6
   },
   {
+    "id": "slime",
+    "name": "Slime",
+    "baseHp": 40,
+    "baseAttack": 15,
+    "baseDefense": 2,
+    "baseSpeed": 5,
+    "aiPattern": "erratic",
+    "skillIds": [],
+    "expReward": 6
+  },
+  {
+    "id": "skeleton",
+    "name": "Skeleton",
+    "baseHp": 42,
+    "baseAttack": 19,
+    "baseDefense": 6,
+    "baseSpeed": 8,
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 9
+  },
+  {
+    "id": "zombie",
+    "name": "Zombie",
+    "baseHp": 45,
+    "baseAttack": 18,
+    "baseDefense": 8,
+    "baseSpeed": 4,
+    "aiPattern": "defensive",
+    "skillIds": [],
+    "expReward": 12
+  },
+  {
+    "id": "snake",
+    "name": "Snake",
+    "baseHp": 38,
+    "baseAttack": 20,
+    "baseDefense": 2,
+    "baseSpeed": 17,
+    "aiPattern": "erratic",
+    "skillIds": [],
+    "expReward": 8
+  },
+  {
+    "id": "lizard",
+    "name": "Lizard",
+    "baseHp": 46,
+    "baseAttack": 19,
+    "baseDefense": 5,
+    "baseSpeed": 11,
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 9
+  },
+  {
+    "id": "spider",
+    "name": "Spider",
+    "baseHp": 40,
+    "baseAttack": 21,
+    "baseDefense": 3,
+    "baseSpeed": 15,
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 9
+  },
+  {
+    "id": "skeleton-archer",
+    "name": "Skeleton Archer",
+    "baseHp": 40,
+    "baseAttack": 22,
+    "baseDefense": 3,
+    "baseSpeed": 12,
+    "aiPattern": "erratic",
+    "skillIds": [],
+    "expReward": 10
+  },
+  {
+    "id": "skeleton-warrior",
+    "name": "Skeleton Warrior",
+    "baseHp": 40,
+    "baseAttack": 22,
+    "baseDefense": 9,
+    "baseSpeed": 7,
+    "aiPattern": "defensive",
+    "skillIds": [],
+    "expReward": 13
+  },
+  {
     "id": "skeleton-guard",
-    "name": "Xương Sống Canh Gác",
+    "name": "Skeleton Guard",
     "baseHp": 55,
-    "baseAttack": 14,
+    "baseAttack": 23,
     "baseDefense": 10,
     "baseSpeed": 6,
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 15,
-    "eliteSkillIds": { "strike": "skeleton-elite-strike", "cleave": "skeleton-elite-cleave" },
-    "bossSkillIds": { "execute": "skeleton-boss-execute", "debuff": "skeleton-boss-crush" }
+    "eliteSkillIds": {
+      "strike": "skeleton-elite-strike",
+      "cleave": "skeleton-elite-cleave"
+    },
+    "bossSkillIds": {
+      "execute": "skeleton-boss-execute",
+      "debuff": "skeleton-boss-crush"
+    }
+  },
+  {
+    "id": "giant-spider",
+    "name": "Giant Spider",
+    "baseHp": 50,
+    "baseAttack": 26,
+    "baseDefense": 6,
+    "baseSpeed": 14,
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 16,
+    "guardOnly": true,
+    "eliteSkillIds": {
+      "strike": "giant-spider-elite-strike",
+      "cleave": "giant-spider-elite-cleave"
+    },
+    "bossSkillIds": {
+      "execute": "giant-spider-boss-execute",
+      "debuff": "giant-spider-boss-debuff"
+    }
+  },
+  {
+    "id": "dragon",
+    "name": "Dragon",
+    "baseHp": 65,
+    "baseAttack": 31,
+    "baseDefense": 9,
+    "baseSpeed": 10,
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 20,
+    "guardOnly": true,
+    "eliteSkillIds": {
+      "strike": "dragon-elite-strike",
+      "cleave": "dragon-elite-cleave"
+    },
+    "bossSkillIds": {
+      "execute": "dragon-boss-execute",
+      "debuff": "dragon-boss-debuff"
+    }
+  },
+  {
+    "id": "zombie-knight",
+    "name": "Zombie Knight",
+    "baseHp": 60,
+    "baseAttack": 19,
+    "baseDefense": 12,
+    "baseSpeed": 5,
+    "aiPattern": "defensive",
+    "skillIds": [],
+    "expReward": 17,
+    "guardOnly": true,
+    "eliteSkillIds": {
+      "strike": "zombie-knight-elite-strike",
+      "cleave": "zombie-knight-elite-cleave"
+    },
+    "bossSkillIds": {
+      "execute": "zombie-knight-boss-execute",
+      "debuff": "zombie-knight-boss-debuff"
+    }
+  },
+  {
+    "id": "dark-knight",
+    "name": "Dark Knight",
+    "baseHp": 58,
+    "baseAttack": 27,
+    "baseDefense": 11,
+    "baseSpeed": 9,
+    "aiPattern": "defensive",
+    "skillIds": [],
+    "expReward": 18,
+    "guardOnly": true,
+    "eliteSkillIds": {
+      "strike": "dark-knight-elite-strike",
+      "cleave": "dark-knight-elite-cleave"
+    },
+    "bossSkillIds": {
+      "execute": "dark-knight-boss-execute",
+      "debuff": "dark-knight-boss-debuff"
+    }
   }
 ]

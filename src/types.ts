@@ -175,6 +175,8 @@ export interface MonsterArchetype {
   eliteSkillIds?: { strike: Id; cleave: Id };
   /** Boss-tier-only skill kit, on top of eliteSkillIds (§6.12). */
   bossSkillIds?: { execute: Id; debuff: Id };
+  /** True for archetypes only ever spawned as the floor's guard-room monster (elite/boss tier) — excluded from the regular combat-room pool in src/data/floor.ts. */
+  guardOnly?: boolean;
 }
 
 /** "normal" = regular combat-room spawn; "elite"/"boss" = the floor's guard room (§6.11), mutually exclusive per floor. */

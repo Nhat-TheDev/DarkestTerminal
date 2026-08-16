@@ -40,7 +40,12 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
   return name;
 }
 
-const BOSS_ARCHETYPE_ID = "skeleton-guard";
+// Regular combat rooms pick from every archetype except guard-only ones (elite/boss-exclusive
+// monsters like Dragon or Dark Knight never show up as a plain trash mob). The guard room itself
+// picks among every archetype that actually has an elite/boss skill kit — guard-only archetypes
+// plus skeleton-guard, which (unlike them) also doubles as a regular combat-room spawn.
+const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => !a.guardOnly);
+const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds);
 
 /** Builds a Floor from one specific pattern — exported mainly so tests can cover every pattern in the library directly instead of relying on random picks. */
 export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
@@ -63,7 +68,7 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth 
       if (type === "combat") {
         const count = rng.int(1, 3);
         for (let i = 0; i < count; i++) {
-          const archetype = rng.pick(MONSTER_ARCHETYPES).id;
+          const archetype = rng.pick(COMBAT_ROOM_ARCHETYPES).id;
           const m = spawnMonster(archetype, depth);
           monsters.push(m);
           monsterIds.push(m.id);
@@ -73,7 +78,8 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth 
         // monster inside is "elite" most floors, "boss" every BOSS_FLOOR_INTERVAL
         // floors instead (mutually exclusive, §6.11), not the room type.
         const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
-        const m = spawnMonster(BOSS_ARCHETYPE_ID, depth, { tier });
+        const archetype = rng.pick(GUARD_ROOM_ARCHETYPES).id;
+        const m = spawnMonster(archetype, depth, { tier });
         monsters.push(m);
         monsterIds = [m.id];
       }

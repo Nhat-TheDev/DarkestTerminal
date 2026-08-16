@@ -1,20 +1,20 @@
 [
   {
     "id": "vanguard",
-    "name": "Cận Vệ",
-    "description": "Tank, chống chịu, giữ chân quái.",
+    "name": "Vanguard",
+    "description": "Tank, high durability, holds enemy aggro.",
     "baseMaxHp": 140,
     "baseMaxMp": 20,
     "baseAttack": 14,
-    "baseDefense": 12,
+    "baseDefense": 10,
     "baseAggro": 20,
     "baseSpeed": 8,
     "growthWeights": { "attack": 0.8, "defense": 1.4, "maxHp": 1.3, "maxMp": 0.5 },
     "skills": [
       {
-        "id": "vanguard-chem",
-        "name": "Chém",
-        "description": "Chém bằng kiếm — sát thương cơ bản, miễn phí.",
+        "id": "vanguard-slash",
+        "name": "Slash",
+        "description": "A sword slash — basic damage, free.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 0 }],
@@ -22,14 +22,14 @@
         "unlockLevel": 1
       },
       {
-        "id": "vanguard-che-chan",
-        "name": "Che Chắn",
-        "description": "Dựng khiên phòng thủ, tăng cả phòng thủ lẫn thu hút bản thân 1 lượt.",
+        "id": "vanguard-shield-guard",
+        "name": "Shield Guard",
+        "description": "Raises a defensive shield, boosting both defense and self-aggro for 1 turn.",
         "mpCost": 8,
         "target": "self",
         "effects": [
-          { "kind": "applyStatusEffect", "statusEffectId": "phong-thu" },
-          { "kind": "applyStatusEffect", "statusEffectId": "khieu-khich" }
+          { "kind": "applyStatusEffect", "statusEffectId": "guard" },
+          { "kind": "applyStatusEffect", "statusEffectId": "taunt" }
         ],
         "slot": 1,
         "unlockLevel": 1,
@@ -37,9 +37,9 @@
         "cooldownTurns": 2
       },
       {
-        "id": "vanguard-nem-khien",
-        "name": "Ném Khiên",
-        "description": "Ném khiên vào địch, gây sát thương tầm xa.",
+        "id": "vanguard-shield-throw",
+        "name": "Shield Throw",
+        "description": "Throws the shield at an enemy, dealing ranged damage.",
         "mpCost": 5,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 10 }],
@@ -47,14 +47,14 @@
         "unlockLevel": 1
       },
       {
-        "id": "vanguard-khich-le",
-        "name": "Khích Lệ",
-        "description": "Hô hào cả đội, hạ sợ hãi tức thì và tăng tấn công 1 lượt cho toàn đội.",
+        "id": "vanguard-rally",
+        "name": "Rally",
+        "description": "Rallies the party, instantly lowering fear and boosting attack for 1 turn for the whole team.",
         "mpCost": 12,
         "target": "allAllies",
         "effects": [
           { "kind": "modifyStat", "stat": "fear", "amount": -8 },
-          { "kind": "applyStatusEffect", "statusEffectId": "khich-le" }
+          { "kind": "applyStatusEffect", "statusEffectId": "rally" }
         ],
         "slot": 3,
         "unlockLevel": 10,
@@ -62,9 +62,9 @@
         "cooldownTurns": 2
       },
       {
-        "id": "vanguard-va-cham-du-doi",
-        "name": "Va Chạm Dữ Dội",
-        "description": "Lao thẳng vào cả nhóm địch, gây sát thương diện rộng.",
+        "id": "vanguard-heavy-charge",
+        "name": "Heavy Charge",
+        "description": "Charges straight into the enemy group, dealing area damage.",
         "mpCost": 14,
         "target": "allEnemies",
         "effects": [{ "kind": "damage", "amount": 12 }],
@@ -73,9 +73,9 @@
         "cooldownTurns": 3
       },
       {
-        "id": "vanguard-giang-kiem",
-        "name": "Giáng Kiếm",
-        "description": "Giáng đòn kiếm quyết định, sát thương lớn. Luôn trúng, hiệu quả giảm theo fear.",
+        "id": "vanguard-sword-judgment",
+        "name": "Sword Judgment",
+        "description": "A decisive sword strike, heavy damage. Always hits, effectiveness reduced by fear.",
         "mpCost": 14,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 30 }],
@@ -88,8 +88,8 @@
   },
   {
     "id": "mage",
-    "name": "Pháp Sư",
-    "description": "Sát thương phép tầm xa, giòn — hệ lửa/sét/băng.",
+    "name": "Mage",
+    "description": "Ranged magic damage, fragile — fire/lightning/ice element.",
     "baseMaxHp": 70,
     "baseMaxMp": 60,
     "baseAttack": 6,
@@ -99,9 +99,9 @@
     "growthWeights": { "attack": 1.3, "defense": 0.6, "maxHp": 0.7, "maxMp": 1.4 },
     "skills": [
       {
-        "id": "mage-dap",
-        "name": "Đập",
-        "description": "Đập bằng gậy phép — sát thương cơ bản, miễn phí.",
+        "id": "mage-bludgeon",
+        "name": "Bludgeon",
+        "description": "Strikes with a staff — basic damage, free.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 0 }],
@@ -109,63 +109,63 @@
         "unlockLevel": 1
       },
       {
-        "id": "mage-cau-lua",
-        "name": "Cầu Lửa",
-        "description": "Triệu hồi quả cầu lửa gây sát thương, có thể gây bỏng.",
+        "id": "mage-fireball",
+        "name": "Fireball",
+        "description": "Summons a ball of fire dealing damage, may cause Burning.",
         "mpCost": 5,
         "target": "singleEnemy",
         "effects": [
           { "kind": "damage", "amount": 10 },
-          { "kind": "applyStatusEffect", "statusEffectId": "bong", "chance": 0.3 }
+          { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.3 }
         ],
         "slot": 1,
         "unlockLevel": 1
       },
       {
-        "id": "mage-phong-set",
-        "name": "Phóng Sét",
-        "description": "Phóng tia sét gây sát thương nhanh, có thể gây choáng.",
+        "id": "mage-lightning-bolt",
+        "name": "Lightning Bolt",
+        "description": "Fires a bolt of lightning for fast damage, may cause Stunned.",
         "mpCost": 6,
         "target": "singleEnemy",
         "effects": [
           { "kind": "damage", "amount": 12 },
-          { "kind": "applyStatusEffect", "statusEffectId": "choang", "chance": 0.2 }
+          { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.2 }
         ],
         "slot": 2,
         "unlockLevel": 1
       },
       {
-        "id": "mage-cot-lua",
-        "name": "Cột Lửa",
-        "description": "Dựng cột lửa thiêu đốt cả nhóm địch, khả năng gây bỏng cao.",
+        "id": "mage-fire-pillar",
+        "name": "Fire Pillar",
+        "description": "Raises a pillar of fire burning the whole enemy group, high chance to cause Burning.",
         "mpCost": 14,
         "target": "allEnemies",
         "effects": [
           { "kind": "damage", "amount": 12 },
-          { "kind": "applyStatusEffect", "statusEffectId": "bong", "chance": 0.5 }
+          { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.5 }
         ],
         "slot": 3,
         "unlockLevel": 10,
         "cooldownTurns": 2
       },
       {
-        "id": "mage-bao-set",
-        "name": "Bão Sét",
-        "description": "Gọi bão sét đánh toàn bộ kẻ địch, có thể gây choáng.",
+        "id": "mage-lightning-storm",
+        "name": "Lightning Storm",
+        "description": "Calls down a lightning storm on all enemies, may cause Stunned.",
         "mpCost": 16,
         "target": "allEnemies",
         "effects": [
           { "kind": "damage", "amount": 13 },
-          { "kind": "applyStatusEffect", "statusEffectId": "choang", "chance": 0.3 }
+          { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.3 }
         ],
         "slot": 4,
         "unlockLevel": 20,
         "cooldownTurns": 3
       },
       {
-        "id": "mage-ky-bang-ha",
-        "name": "Kỷ Băng Hà",
-        "description": "Phủ băng giá lên toàn chiến trường, sát thương diện rộng. Luôn trúng, hiệu quả giảm theo fear.",
+        "id": "mage-ice-age",
+        "name": "Ice Age",
+        "description": "Blankets the whole battlefield in frost, wide-area damage. Always hits, effectiveness reduced by fear.",
         "mpCost": 20,
         "target": "allEnemies",
         "effects": [{ "kind": "damage", "amount": 22 }],
@@ -178,8 +178,8 @@
   },
   {
     "id": "rogue",
-    "name": "Sát Thủ",
-    "description": "Burst đơn mục tiêu, tốc độ cao nhất nhóm.",
+    "name": "Rogue",
+    "description": "Single-target burst, highest speed in the party.",
     "baseMaxHp": 90,
     "baseMaxMp": 30,
     "baseAttack": 16,
@@ -189,9 +189,9 @@
     "growthWeights": { "attack": 1.4, "defense": 0.7, "maxHp": 1.1, "maxMp": 0.8 },
     "skills": [
       {
-        "id": "rogue-dam",
-        "name": "Đâm",
-        "description": "Đâm bằng dao găm — sát thương cơ bản, miễn phí.",
+        "id": "rogue-stab",
+        "name": "Stab",
+        "description": "Stabs with a dagger — basic damage, free.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 0 }],
@@ -199,21 +199,21 @@
         "unlockLevel": 1
       },
       {
-        "id": "rogue-tam-doc",
-        "name": "Tẩm Độc",
-        "description": "Bôi độc lên lưỡi dao — trong lúc còn hiệu lực, đòn đánh trúng địch tự kèm gây độc.",
+        "id": "rogue-poison-coat",
+        "name": "Poison Coat",
+        "description": "Coats the blade with poison — while active, hits that land also inflict poison.",
         "mpCost": 3,
         "target": "self",
-        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "dao-doc" }],
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
         "slot": 1,
         "unlockLevel": 1,
         "isBuff": true,
         "cooldownTurns": 4
       },
       {
-        "id": "rogue-phong-dao",
-        "name": "Phóng Dao",
-        "description": "Ném dao găm gây sát thương tầm xa.",
+        "id": "rogue-knife-throw",
+        "name": "Knife Throw",
+        "description": "Throws a dagger, dealing ranged damage.",
         "mpCost": 4,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 12 }],
@@ -221,9 +221,9 @@
         "unlockLevel": 1
       },
       {
-        "id": "rogue-dam-len",
-        "name": "Đâm Lén",
-        "description": "Đòn đâm hiểm từ điểm mù, sát thương cao.",
+        "id": "rogue-backstab",
+        "name": "Backstab",
+        "description": "A vicious stab from a blind spot, high damage.",
         "mpCost": 8,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 20 }],
@@ -232,20 +232,20 @@
         "cooldownTurns": 1
       },
       {
-        "id": "rogue-bom-doc",
-        "name": "Bom Độc",
-        "description": "Ném bom độc, gây độc toàn bộ kẻ địch.",
+        "id": "rogue-poison-bomb",
+        "name": "Poison Bomb",
+        "description": "Throws a poison bomb, poisoning every enemy.",
         "mpCost": 10,
         "target": "allEnemies",
-        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "trung-doc" }],
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned" }],
         "slot": 4,
         "unlockLevel": 20,
         "cooldownTurns": 3
       },
       {
-        "id": "rogue-dot-kich-lien-hoan",
-        "name": "Đột Kích Liên Hoàn",
-        "description": "Lao vào tung 3 đòn đâm liên tiếp. Luôn trúng, hiệu quả giảm theo fear.",
+        "id": "rogue-flurry-assault",
+        "name": "Flurry Assault",
+        "description": "Rushes in for 3 consecutive stabs. Always hits, effectiveness reduced by fear.",
         "mpCost": 16,
         "target": "singleEnemy",
         "effects": [
@@ -261,9 +261,9 @@
     ]
   },
   {
-    "id": "chaplain",
-    "name": "Tu Sĩ",
-    "description": "Hồi phục + hạ fear cả team.",
+    "id": "acolyte",
+    "name": "Acolyte",
+    "description": "Healing + lowers fear for the whole party.",
     "baseMaxHp": 100,
     "baseMaxMp": 50,
     "baseAttack": 6,
@@ -273,9 +273,9 @@
     "growthWeights": { "attack": 0.6, "defense": 1.1, "maxHp": 1.0, "maxMp": 1.3 },
     "skills": [
       {
-        "id": "chaplain-dam",
-        "name": "Đấm",
-        "description": "Đấm tay không — sát thương cơ bản, miễn phí.",
+        "id": "acolyte-punch",
+        "name": "Punch",
+        "description": "A bare-handed punch — basic damage, free.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 0 }],
@@ -283,9 +283,9 @@
         "unlockLevel": 1
       },
       {
-        "id": "chaplain-cau-nguyen",
-        "name": "Cầu Nguyện",
-        "description": "Cầu nguyện trấn an, hạ sợ hãi 1 đồng đội.",
+        "id": "acolyte-prayer",
+        "name": "Prayer",
+        "description": "A calming prayer, lowers fear for 1 ally.",
         "mpCost": 4,
         "target": "singleAlly",
         "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -10 }],
@@ -293,9 +293,9 @@
         "unlockLevel": 1
       },
       {
-        "id": "chaplain-chua-tri",
-        "name": "Chữa Trị",
-        "description": "Hồi máu cho 1 đồng đội.",
+        "id": "acolyte-heal",
+        "name": "Heal",
+        "description": "Restores HP to 1 ally.",
         "mpCost": 6,
         "target": "singleAlly",
         "effects": [{ "kind": "heal", "amount": 16 }],
@@ -303,9 +303,9 @@
         "unlockLevel": 1
       },
       {
-        "id": "chaplain-thanh-tay",
-        "name": "Thanh Tẩy",
-        "description": "Nhắm đồng đội để gỡ 1 debuff, hoặc nhắm địch để gây sát thương thanh trừng.",
+        "id": "acolyte-purify",
+        "name": "Purify",
+        "description": "Target an ally to remove 1 debuff, or target an enemy to deal purging damage.",
         "mpCost": 9,
         "target": "singleAllyOrEnemy",
         "effectsByRelation": {
@@ -317,9 +317,9 @@
         "cooldownTurns": 1
       },
       {
-        "id": "chaplain-chua-tri-nang-cao",
-        "name": "Chữa Trị Nâng Cao",
-        "description": "Hồi máu + hạ sợ hãi cả đội.",
+        "id": "acolyte-mass-heal",
+        "name": "Mass Heal",
+        "description": "Heals + lowers fear for the whole party.",
         "mpCost": 10,
         "target": "allAllies",
         "effects": [
@@ -331,9 +331,9 @@
         "cooldownTurns": 2
       },
       {
-        "id": "chaplain-than-giang",
-        "name": "Thần Giáng",
-        "description": "Ánh sáng thần thánh giáng xuống cả chiến trường: hồi máu + hạ sợ hãi mạnh cho đồng đội, gây sát thương cho địch. Luôn trúng, hiệu quả giảm theo fear.",
+        "id": "acolyte-divine-descent",
+        "name": "Divine Descent",
+        "description": "Holy light descends over the whole battlefield: heals + strongly lowers fear for allies, damages enemies. Always hits, effectiveness reduced by fear.",
         "mpCost": 20,
         "target": "allAlliesAndEnemies",
         "effectsByRelation": {

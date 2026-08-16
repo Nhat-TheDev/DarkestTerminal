@@ -1,65 +1,65 @@
 [
   {
-    "id": "phong-thu",
-    "name": "Phòng Thủ",
-    "description": "Che Chắn (Cận Vệ): +6 phòng thủ mỗi lượt.",
+    "id": "guard",
+    "name": "Guard",
+    "description": "Shield Guard (Vanguard): +6 defense per turn.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 6 }],
     "curableByMiniGame": [],
     "durationTurns": 1
   },
   {
-    "id": "khieu-khich",
-    "name": "Khiêu Khích",
-    "description": "Che Chắn (Cận Vệ): +40 thu hút mỗi lượt.",
+    "id": "taunt",
+    "name": "Taunt",
+    "description": "Shield Guard (Vanguard): +40 aggro per turn.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 40 }],
     "curableByMiniGame": [],
     "durationTurns": 1
   },
   {
-    "id": "khich-le",
-    "name": "Khích Lệ",
-    "description": "Khích Lệ (Cận Vệ): +4 tấn công mỗi lượt, áp lên cả đội.",
+    "id": "rally",
+    "name": "Rally",
+    "description": "Rally (Vanguard): +4 attack per turn, applied to the whole party.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
     "curableByMiniGame": [],
     "durationTurns": 1
   },
   {
-    "id": "dao-doc",
-    "name": "Tẩm Độc",
-    "description": "Tẩm Độc (Sát Thủ): tự nó không gây hiệu ứng mỗi lượt — trong lúc còn hiệu lực, mọi đòn damage của người mang tự kèm áp \"Trúng Độc\" lên mục tiêu trúng đòn (on-hit rider, xem docs/technical-decisions.md §4.2).",
+    "id": "poison-coat",
+    "name": "Poison Coat",
+    "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit (on-hit rider, see docs/technical-decisions.md §4.2).",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 3,
-    "onHitStatusEffectId": "trung-doc"
+    "onHitStatusEffectId": "poisoned"
   },
   {
-    "id": "trung-doc",
-    "name": "Trúng Độc",
-    "description": "Tẩm Độc/Bom Độc (Sát Thủ): mất 4 HP mỗi lượt.",
+    "id": "poisoned",
+    "name": "Poisoned",
+    "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP per turn.",
     "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
     "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
     "durationTurns": 3
   },
   {
-    "id": "bong",
-    "name": "Bỏng",
-    "description": "Cầu Lửa/Cột Lửa (Pháp Sư): mất 5 HP mỗi lượt. Không chữa được qua mini-game (chủ đích — phân biệt với Trúng Độc).",
+    "id": "burning",
+    "name": "Burning",
+    "description": "Fireball/Fire Pillar (Mage): lose 5 HP per turn. Not curable via mini-game (deliberate — distinguishes it from Poisoned).",
     "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
     "curableByMiniGame": [],
     "durationTurns": 2
   },
   {
-    "id": "suy-yeu",
-    "name": "Suy Yếu",
-    "description": "Nghiền Nát (Xương Sống Canh Gác - Đại Tướng): giảm phòng thủ mục tiêu trong vài lượt.",
+    "id": "weakened",
+    "name": "Weakened",
+    "description": "Crush (Skeleton Guard - Boss): lowers the target's defense for a few turns.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -6 }],
     "curableByMiniGame": [],
     "durationTurns": 2
   },
   {
-    "id": "choang",
-    "name": "Choáng",
-    "description": "Phóng Sét/Bão Sét (Pháp Sư): bỏ lượt hoàn toàn trong khi hiệu lực (xem docs/technical-decisions.md §4.3). Không chữa được qua mini-game.",
+    "id": "stunned",
+    "name": "Stunned",
+    "description": "Lightning Bolt/Lightning Storm (Mage): skips the turn entirely while active (see docs/technical-decisions.md §4.3). Not curable via mini-game.",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 1,

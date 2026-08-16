@@ -1,8 +1,8 @@
 # darkest-terminal — Prototype
 
 Prototype chơi được của thiết kế trong `./dungeon-crawler-design-doc.md` và
-`./docs/*.md`: 1 tầng hầm ngục random từ thư viện pattern, 4 nhân vật, 3 loại
-quái vật, combat round 2 pha (ra lệnh + thực thi theo tốc độ). Chạy bằng
+`./docs/*.md`: 1 tầng hầm ngục random từ thư viện pattern, 4 nhân vật, nhiều
+loại quái vật thường + elite/boss, combat round 2 pha (ra lệnh + thực thi theo tốc độ). Chạy bằng
 [Bun](https://bun.sh) + [OpenTUI](https://github.com/anomalyco/opentui) như
 tech stack đã chốt.
 
@@ -27,10 +27,10 @@ bun run typecheck
 ## Nội dung đã implement
 
 - **Tầng random từ thư viện pattern** (xem "Dữ liệu thiết kế" bên dưới): mỗi ván chọn ngẫu nhiên 1 trong 4 pattern có sẵn, luôn 1 lối vào + 1 phòng boss cuối, tối đa 2 lần rẽ nhánh, **không ngõ cụt** — `src/data/floor.ts`, `src/data/floorPatterns.ts`
-- **4 class** với 6 chỉ số + đòn đánh thường (slot 0, miễn phí) + skill riêng slot 1-2 (Cận Vệ, Pháp Sư, Sát Thủ, Tu Sĩ) — `src/data/classes.ts`
-- **3 loại quái** (Chuột Hầm Ngục, Dơi Đen, Xương Sống Canh Gác) + 1 biến thể "Đại Tướng" (elite, `isBoss: true`) trấn giữ phòng boss thay vì quái thứ 4 — `src/data/monsters.ts`
+- **4 class** với 6 chỉ số + đòn đánh thường (slot 0, miễn phí) + skill riêng slot 1-2 (Vanguard, Mage, Rogue, Acolyte — id/name/skill đều tiếng Anh) — `src/data/classes.ts`
+- **11 loại quái thường** (Dungeon Rat, Black Bat, Slime, Skeleton, Zombie, Snake, Lizard, Spider, Skeleton Archer, Skeleton Warrior, Skeleton Guard) + **5 archetype guard-room** (Skeleton Guard dùng chung, cộng Giant Spider/Dragon/Zombie Knight/Dark Knight riêng cho elite/boss) trấn giữ phòng boss mỗi tầng — `src/data/monsters.ts`
 - **Combat 2 pha** (ra lệnh cả 4 nhân vật → thực thi theo tốc độ, quái quyết định tại chỗ), targeting theo `aggro` (random có trọng số), rule đổi/hủy mục tiêu khi target chết trước lượt — `src/engine/combat.ts`
-- **Skill kit riêng cho Elite/Đại Tướng** (`docs/gameplay-decisions.md` §6.12): Chém Hạ Gục (đơn mục tiêu, mạnh hơn đòn thường) + Chém Quét (AoE, 30%/lượt) cho cả 2 tier; riêng Đại Tướng thêm Nghiền Nát (sát thương + debuff `suy-yeu`, 30%/lượt) và Đòn Kết Liễu — tích lực 1 lượt (khoá mục tiêu theo aggro, log cảnh báo), lượt sau tung sát thương cố định rất cao (~60% maxHp Cận Vệ, đủ hạ gục class máu mỏng), không dựa theo %HP mục tiêu — `data/monster-skills.json`, `src/engine/combat.ts`
+- **Skill kit riêng cho Elite/Boss** (`docs/gameplay-decisions.md` §6.12, mở rộng sang 5 archetype guard-room): đòn strike đơn mục tiêu (mạnh hơn đòn thường) + cleave AoE (30%/lượt) cho cả 2 tier; riêng Boss thêm 1 debuff riêng theo archetype (sát thương + weakened/poisoned/burning/stunned, 30%/lượt) và Finishing Blow — tích lực 1 lượt (khoá mục tiêu theo aggro, log cảnh báo), lượt sau tung sát thương cố định rất cao (~60% maxHp Vanguard, đủ hạ gục class máu mỏng), không dựa theo %HP mục tiêu — `data/monster-skills.json`, `src/engine/combat.ts`
 - **Resolver `SkillEffect`** dùng chung skill/status-effect, buff/debuff qua `modifyCombatStat` (cài đặt 1 lần lúc áp, gỡ 1 lần lúc hết hạn), DoT (`trúng độc`) tick cuối mỗi round — `src/engine/resolver.ts`
 - **3 survival stat** (fear/hunger/thirst, khởi tạo 100/100/0 mọi class), HP=0 → permadeath thật, fear ảnh hưởng ngược combat theo 4 bậc, rest room hồi đầy — `src/engine/survival.ts`, `src/engine/resolver.ts`
 - **Hệ thống level 1-100** (`docs/gameplay-decisions.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Nhân vật còn nhân thêm `growthWeights` riêng theo class (§6.8, `classGrowthBonus()`) — VD Cận Vệ dồn tăng trưởng vào defense/maxHp, Pháp Sư dồn vào attack/maxMp — để 4 class không "hội tụ" thành giống nhau ở cấp cao; quái vật vẫn dùng `growthBonus()` không trọng số. Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. Vì prototype chỉ có 1 tầng (xem "Đã cắt khỏi scope" bên dưới), party thực tế vẫn ở level 1 suốt ván — chỉ dùng được đòn đánh thường slot 0 + skill riêng slot 1-2/mỗi class, slot 3-5 mở ở level 10/20/35; công thức 1-100 sẵn sàng cho khi có nhiều tầng hơn. **⚠️ Cập nhật thiết kế 2026-08-16, chưa implement** (`docs/gameplay-decisions.md` §6.9/6.10): quyết định mới tách level nhân vật (chung party, cap 100, tăng qua EXP giết quái) khỏi level tầng ngục (`Floor.depth`, không giới hạn, tăng khi hạ boss) — thay cho công thức `Character.level = min(floorDepth, 100)` mô tả ở trên, vốn chưa từng chạy thật vì multi-floor chưa được nối (xem bullet "Multi-floor" bên dưới)

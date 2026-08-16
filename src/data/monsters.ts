@@ -32,9 +32,9 @@ export function getMonsterSkill(id: string): SkillDefinition {
 let monsterCounter = 0;
 
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
-const TIER_NAME_SUFFIX = { elite: " (Tinh Anh)", boss: " (Đại Tướng)" };
+const TIER_NAME_SUFFIX = { elite: " (Elite)", boss: " (Boss)" };
 
-/** §6.12 — turns of normal behavior before a boss can start charging Đòn Kết Liễu again (both the initial delay and the cooldown after a release use this same value). */
+/** §6.12 — turns of normal behavior before a boss can start charging Finishing Blow again (both the initial delay and the cooldown after a release use this same value). */
 export const EXECUTE_COOLDOWN_TURNS = 3;
 
 /**

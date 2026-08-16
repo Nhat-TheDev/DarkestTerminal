@@ -374,7 +374,7 @@ function scaleEffectForUltimate(effect: SkillEffect, source: Actor): SkillEffect
   return { ...effect, amount: Math.round(effect.amount * mult) };
 }
 
-/** docs/technical-decisions.md §4.2 — a buff like Tẩm Độc's "dao-doc" makes the bearer's landed damage hits also apply another status to whoever got hit. */
+/** docs/technical-decisions.md §4.2 — a buff like Poison Coat's "poison-coat" makes the bearer's landed damage hits also apply another status to whoever got hit. */
 function applyOnHitRider(source: Character, target: Actor, log: string[]): void {
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);

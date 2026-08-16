@@ -24,16 +24,28 @@ export const PALETTE = {
 } as const;
 
 export const CLASS_STYLE: Record<string, { abbr: string; color: string }> = {
-  vanguard: { abbr: "CV", color: "#5b7fa6" },
-  mage: { abbr: "PS", color: "#7a52a3" },
-  rogue: { abbr: "ST", color: "#b5892c" },
-  chaplain: { abbr: "TS", color: "#a8901a" },
+  vanguard: { abbr: "VG", color: "#5b7fa6" },
+  mage: { abbr: "MG", color: "#7a52a3" },
+  rogue: { abbr: "RG", color: "#b5892c" },
+  acolyte: { abbr: "AC", color: "#a8901a" },
 };
 
 export const MONSTER_STYLE: Record<string, { abbr: string; color: string }> = {
-  "dungeon-rat": { abbr: "CH", color: "#7a5230" },
-  "black-bat": { abbr: "DB", color: "#5a4778" },
-  "skeleton-guard": { abbr: "XS", color: "#8a8579" },
+  "dungeon-rat": { abbr: "RAT", color: "#7a5230" },
+  "black-bat": { abbr: "BAT", color: "#5a4778" },
+  slime: { abbr: "SLM", color: "#4a8a3a" },
+  skeleton: { abbr: "SKL", color: "#c9c2b0" },
+  zombie: { abbr: "ZMB", color: "#5a7a3a" },
+  snake: { abbr: "SNK", color: "#3a7a4a" },
+  lizard: { abbr: "LIZ", color: "#4a8a5a" },
+  spider: { abbr: "SPD", color: "#2a1a3a" },
+  "skeleton-archer": { abbr: "ARC", color: "#c9c2b0" },
+  "skeleton-warrior": { abbr: "WAR", color: "#8a8579" },
+  "skeleton-guard": { abbr: "GRD", color: "#8a8579" },
+  "giant-spider": { abbr: "GSP", color: "#4a1f3a" },
+  dragon: { abbr: "DRG", color: "#8a2a1a" },
+  "zombie-knight": { abbr: "ZKN", color: "#5a7a3a" },
+  "dark-knight": { abbr: "DKN", color: "#3a2a4a" },
 };
 
 export const BOSS_COLOR = "#8a1f1f";

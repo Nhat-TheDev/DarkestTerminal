@@ -69,7 +69,7 @@
         "N": "#3a2f1c"
       }
     },
-    "chaplain": {
+    "acolyte": {
       "rows": [
         "....HHHHH....",
         "...HHSSSSS...",
@@ -127,6 +127,185 @@
         "B": "#4a473e",
         "L": "#a8a294",
         "W": "#8a7050"
+      }
+    },
+    "slime": {
+      "rows": ["...E.E...", "..OOOOO..", ".OOOOOOO.", ".OOOOOOO.", ".OO...OO."],
+      "palette": {
+        "E": "#1f3a15",
+        "O": "#4a8a3a"
+      }
+    },
+    "skeleton": {
+      "rows": [
+        "..HHHHH..",
+        ".HSSSSSH.",
+        ".HS.S.SH.",
+        ".AAAAAAA.",
+        ".ABBBBBA.",
+        ".ABBBBBA.",
+        ".AA.B.AA.",
+        "..LL.LL..",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#3a3830",
+        "S": "#c9c2b0",
+        "A": "#6a6558",
+        "B": "#4a473e",
+        "L": "#a8a294"
+      }
+    },
+    "zombie": {
+      "rows": [
+        "..HHHHH..",
+        ".HGGGGGH.",
+        ".HG.G.GH.",
+        ".AAAAAAA.",
+        ".ABBBBBA.",
+        ".ABBBBBA.",
+        ".AA...AA.",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#2a2a1a",
+        "G": "#5a7a3a",
+        "A": "#3a4a2a",
+        "B": "#2a3a1a",
+        "L": "#4a5a2a"
+      }
+    },
+    "snake": {
+      "rows": [".....EE..", "....OOOO.", "...OOOOO.", "..OOOO...", ".OOOO...."],
+      "palette": {
+        "E": "#d1a23a",
+        "O": "#3a7a4a"
+      }
+    },
+    "lizard": {
+      "rows": ["....E....", "...OOOO..", "..OOOOOO.", ".LL.OO.LL", "....LL..."],
+      "palette": {
+        "E": "#1a1a1a",
+        "O": "#4a8a5a",
+        "L": "#2a5a3a"
+      }
+    },
+    "spider": {
+      "rows": ["L..OOO..L", "LL.OOO.LL", ".LLOOOLL.", "L.LLOLL.L", "..L...L.."],
+      "palette": {
+        "L": "#1a1015",
+        "O": "#2a1a3a"
+      }
+    },
+    "skeleton-archer": {
+      "rows": [
+        "..HHHHH..",
+        ".HSSSSSH.",
+        ".HS.S.SHW",
+        ".AAAAAAAW",
+        ".ABBBBBAW",
+        ".ABBBBBA.",
+        ".AA.B.AA.",
+        "..LL.LL..",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#3a3830",
+        "S": "#c9c2b0",
+        "A": "#6a6558",
+        "B": "#4a473e",
+        "L": "#a8a294",
+        "W": "#8a7050"
+      }
+    },
+    "skeleton-warrior": {
+      "rows": [
+        "..HHHHH..",
+        ".HSSSSSH.",
+        ".HS.S.SH.",
+        "WAAAAAAA.",
+        "WABBBBBA.",
+        ".ABBBBBA.",
+        ".AA.B.AA.",
+        "..LL.LL..",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#3a3830",
+        "S": "#c9c2b0",
+        "A": "#5a5548",
+        "B": "#3a372e",
+        "L": "#8a8579",
+        "W": "#8a7050"
+      }
+    },
+    "giant-spider": {
+      "rows": ["L..OOO..L", "LL.OOO.LL", ".LLOOOLL.", "LLLLOLLLL", "L.LLOLL.L", "..L...L.."],
+      "palette": {
+        "L": "#1a1015",
+        "O": "#4a1f3a"
+      }
+    },
+    "dragon": {
+      "rows": [
+        "...HHH...",
+        "..HWWWH..",
+        ".HHWEWHH.",
+        "AASSSSSAA",
+        "AASSSSSAA",
+        ".AASSSAA.",
+        "..AA.AA..",
+        "...A.A..."
+      ],
+      "palette": {
+        "H": "#3a1a10",
+        "W": "#6a2a1a",
+        "E": "#ffcf3a",
+        "S": "#8a2a1a",
+        "A": "#5a1f10"
+      }
+    },
+    "zombie-knight": {
+      "rows": [
+        "..HHHHH..",
+        ".HGGGGGH.",
+        ".HG.G.GH.",
+        ".AAAAAAW.",
+        ".ABBBBAW.",
+        ".ABBBBAW.",
+        ".AA.B.AA.",
+        "..LL.LL..",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#2a2a1a",
+        "G": "#5a7a3a",
+        "A": "#4a5a3a",
+        "B": "#3a4a2a",
+        "L": "#5a6a3a",
+        "W": "#7a6a3a"
+      }
+    },
+    "dark-knight": {
+      "rows": [
+        "..HHHHH..",
+        ".HSSSSSH.",
+        ".HS.E.SH.",
+        ".AAAAAAW.",
+        ".ABBBBAW.",
+        ".ABBBBAW.",
+        ".AA.B.AA.",
+        "..LL.LL..",
+        "..LL.LL.."
+      ],
+      "palette": {
+        "H": "#1a1015",
+        "S": "#3a2a4a",
+        "E": "#8a1fff",
+        "A": "#2a1a3a",
+        "B": "#1a1025",
+        "L": "#2a1a3a",
+        "W": "#4a1a5a"
       }
     }
   },
