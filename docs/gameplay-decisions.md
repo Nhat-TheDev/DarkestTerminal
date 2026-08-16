@@ -7,7 +7,7 @@
 
 ## 1. Class & Skill
 
-**Cập nhật (2026-08-16)**: chuyển từ "5 skill/class" sang **"6 skill/class = 1 đòn đánh thường dùng chung + 5 skill riêng"**, cộng 4 cơ chế engine mới (proc theo %, buff tự thêm hiệu ứng khi đánh trúng, choáng bỏ lượt, skill tác dụng khác nhau tùy phe mục tiêu) và cooldown theo lượt cho 1 số skill mạnh. Đợt cập nhật này **chỉ ở tài liệu** — số liệu dưới đây là spec để implement sau, code (`data/classes.json`, `src/types.ts`, `src/engine/combat.ts`, ...) chưa đổi theo.
+Mỗi class có **6 skill = 1 đòn đánh thường dùng chung (slot 0) + 5 skill riêng**, cộng 4 cơ chế engine (proc theo %, buff tự thêm hiệu ứng khi đánh trúng, choáng bỏ lượt, skill tác dụng khác nhau tùy phe mục tiêu) và cooldown theo lượt cho 1 số skill mạnh. **Lưu ý: đây hiện chỉ là spec tài liệu** — code (`data/classes.json`, `src/types.ts`, `src/engine/combat.ts`, ...) chưa implement theo.
 
 ### Bảng chỉ số (level 1)
 
@@ -24,7 +24,7 @@ Thiết kế có chủ đích: Cận Vệ cao nhất `aggro` + `defense` + `maxH
 
 **Đổi tên**: "Pháp Sư Bóng Tối" (Shadow Mage) → **"Pháp Sư" (Mage)**, bỏ hệ bóng tối, chuyển sang hệ lửa/sét/băng. `id` code-side đề xuất đổi từ `shadow-mage` → `mage` khi implement (kéo theo `data/sprites.json`, `src/ui/theme.ts`).
 
-4 class, mỗi class **6 skill = 1 đòn đánh thường (slot 0, dùng chung mọi class) + 5 skill riêng (slot 1-5)**. 2 skill riêng đầu mở sẵn ở cấp 1 (cộng đòn đánh thường luôn có), 3 skill riêng còn lại mở dần ở cấp **10/20/35** (không đổi so với bản trước). `slot`/`unlockLevel`/`cooldownTurns` khớp field cùng tên trong `SkillDefinition` (`cooldownTurns` là field mới, xem `docs/technical-decisions.md` §4) — **`usesPerCombat` không còn dùng cho skill** (mục 1.5, bullet cuối "Ghi chú thiết kế").
+2 skill riêng đầu mở sẵn ở cấp 1 (cộng đòn đánh thường luôn có), 3 skill riêng còn lại mở dần ở cấp **10/20/35**. `slot`/`unlockLevel`/`cooldownTurns` khớp field cùng tên trong `SkillDefinition` (xem `docs/technical-decisions.md` §4) — **`usesPerCombat` không còn dùng cho skill** (mục 1.5, bullet cuối "Ghi chú thiết kế").
 
 ### 1.0 Đòn đánh thường (mọi class, slot 0)
 
@@ -91,7 +91,7 @@ Miễn phí (`mpCost 0`), luôn có sẵn từ cấp 1, không giới hạn số
 
 ### 1.5 Status Effects — bảng tổng hợp & hiệu ứng đầy đủ
 
-**Cập nhật (2026-08-16, cùng ngày)**: tách riêng thành mục này thay vì chỉ nhắc rải rác trong bảng skill, để tra cứu 1 chỗ. 7 status đang được dùng bởi bộ kit 6 skill/class ở mục 1.1-1.4:
+7 status đang được dùng bởi bộ kit 6 skill/class ở mục 1.1-1.4:
 
 | id | Tên | Loại | Hiệu ứng (`perTurnEffects` / field đặc biệt) | Thời lượng | Chữa qua mini-game | Dùng bởi |
 |---|---|---|---|---|---|---|
@@ -129,11 +129,7 @@ Miễn phí (`mpCost 0`), luôn có sẵn từ cấp 1, không giới hạn số
 
 ### Công thức scaling theo độ sâu tầng (`floorDepth`, tầng 1 = depth 1)
 
-**Đã thay thế bởi mục 6.6** — công thức tuyến tính bên dưới là bản gốc (khi level cap còn là 7), giữ lại làm bối cảnh lịch sử; số liệu hiện hành tra ở **6.3/6.6** (`growthBonus(stat, floorDepth)`, tapered theo 5 tier, không tuyến tính):
-- ~~`attack = baseAttack + floorDepth * 2`~~
-- ~~`defense = baseDefense + floorDepth * 1`~~
-- ~~`maxHp = baseHp + floorDepth * 8`~~ (hp khởi tạo = maxHp)
-- `speed = baseSpeed` (không scale theo tầng — **vẫn đúng**, không đổi bởi 6.6)
+Số liệu hiện hành: `growthBonus(stat, floorDepth)`, tapered theo 5 tier — xem **6.3/6.6**. `speed = baseSpeed` (không scale theo tầng).
 
 Đây là công thức archetype → instance, dùng khi spawn quái vào `Room.monsterIds`; các field `attack/defense/hp/maxHp/speed` trên `Monster` luôn là giá trị đã resolve, không lưu công thức.
 
@@ -150,7 +146,7 @@ Công thức: `P(target = X) = X.aggro / tổng aggro toàn bộ nhân vật cò
 
 ### Ví dụ archetype theo cụm tầng (minh họa, không bắt buộc đủ)
 
-**Cập nhật 2026-08-16 — tăng chỉ số 3 archetype hiện có**: bản số cũ (cột "trước") gần như vô hại với party base stats (damage chạm sàn `max(1, ...)` ở phần lớn trường hợp — VD Chuột Hầm Ngục atk5 vs Cận Vệ def12 luôn ra đúng 1 sát thương), nên combat không đòi hỏi quyết định gì (không cần heal, không cần taunt, không cần ưu tiên mục tiêu). Số mới đẩy attack lên đáng kể (đặc biệt Dơi Đen — sát thương thật + speed cao nhất bàn để buộc ưu tiên hạ trước khi nó ra đòn) và tách rõ vai trò 3 archetype hơn: Chuột Hầm Ngục (erratic, rẻ mạng, phạt nếu bỏ qua vì random target không đoán trước được), Dơi Đen (aggressive, mong manh nhưng đau, giết trước hoặc chấp nhận ăn đòn mỗi round vì nó luôn ra tay đầu tiên), Xương Sống Canh Gác (defensive, tanky hẳn — def10 khiến đòn đánh thường của Pháp Sư/Tu Sĩ gần như vô dụng, buộc dùng skill có `amount` hoặc DoT thay vì spam đòn thường).
+**Tăng chỉ số 3 archetype hiện có**: bản số cũ (cột "trước") gần như vô hại với party base stats (damage chạm sàn `max(1, ...)` ở phần lớn trường hợp — VD Chuột Hầm Ngục atk5 vs Cận Vệ def12 luôn ra đúng 1 sát thương), nên combat không đòi hỏi quyết định gì (không cần heal, không cần taunt, không cần ưu tiên mục tiêu). Số mới đẩy attack lên đáng kể (đặc biệt Dơi Đen — sát thương thật + speed cao nhất bàn để buộc ưu tiên hạ trước khi nó ra đòn) và tách rõ vai trò 3 archetype hơn: Chuột Hầm Ngục (erratic, rẻ mạng, phạt nếu bỏ qua vì random target không đoán trước được), Dơi Đen (aggressive, mong manh nhưng đau, giết trước hoặc chấp nhận ăn đòn mỗi round vì nó luôn ra tay đầu tiên), Xương Sống Canh Gác (defensive, tanky hẳn — def10 khiến đòn đánh thường của Pháp Sư/Tu Sĩ gần như vô dụng, buộc dùng skill có `amount` hoặc DoT thay vì spam đòn thường).
 
 | Tên | Tầng | baseHp | baseAtk | baseDef | baseSpeed | AI | Ghi chú |
 |---|---|---|---|---|---|---|---|
@@ -159,7 +155,7 @@ Công thức: `P(target = X) = X.aggro / tổng aggro toàn bộ nhân vật cò
 | Xương Sống Canh Gác | 4-6 | 55 (trước 40) | 14 (trước 10) | 10 (trước 6) | 6 (trước 8) | defensive | tanky, self-heal khi trúng skill |
 | Bóng Ma Gào Thét | 7+ | 60 | 14 | 4 | 11 | erratic | trúng đòn → +fear phụ trội cho nạn nhân |
 
-**Cập nhật 2026-08-16 (§6.11) — 3 cấp độ quái, không phải chỉ "boss"**: phòng tag `boss` trong `data/floor-patterns.json` (mọi pattern đều có đúng 1 phòng này, ở cuối) **không phải lúc nào cũng là Boss thật** — mặc định trấn giữ bởi 1 **Elite** (như trước: `eliteMultiplier` ở §6.5), nhưng cứ **mỗi 5 tầng** (`depth % 5 === 0`), phòng đó thay bằng 1 **Boss thật** mạnh hơn hẳn Elite (hệ số riêng, xem §6.11) — 2 loại này loại trừ nhau, tầng nào có Boss thì không có Elite. Hạ quái trấn giữ phòng đó (dù là Elite hay Boss) vẫn là điều kiện lên tầng kế theo §6.9. Mini-game boss-phase (mốc 50% HP, chi tiết `docs/minigame-decisions.md` mục 1) **chưa áp dụng cho cả Elite lẫn Boss** — đã xác nhận giữ Boss thuần combat, siết bằng chỉ số thay vì mini-game (§6.11).
+**3 cấp độ quái, không phải chỉ "boss"** (chi tiết §6.11): phòng tag `boss` trong `data/floor-patterns.json` (mọi pattern đều có đúng 1 phòng này, ở cuối) **không phải lúc nào cũng là Boss thật** — mặc định trấn giữ bởi 1 **Elite** (như trước: `eliteMultiplier` ở §6.5), nhưng cứ **mỗi 5 tầng** (`depth % 5 === 0`), phòng đó thay bằng 1 **Boss thật** mạnh hơn hẳn Elite (hệ số riêng, xem §6.11) — 2 loại này loại trừ nhau, tầng nào có Boss thì không có Elite. Hạ quái trấn giữ phòng đó (dù là Elite hay Boss) vẫn là điều kiện lên tầng kế theo §6.9. Mini-game boss-phase (mốc 50% HP, chi tiết `docs/minigame-decisions.md` mục 1) **chưa áp dụng cho cả Elite lẫn Boss** — đã xác nhận giữ Boss thuần combat, siết bằng chỉ số thay vì mini-game (§6.11).
 
 ---
 
@@ -203,7 +199,7 @@ Quyết định: **fear có ảnh hưởng thật tới hiệu suất combat**, 
 
 Ghi chú: đây là **soft cap có chủ đích** — bậc 4 không tăng nặng thêm theo fear (vì fear đã kịch trần 100), và party luôn có Tu Sĩ/item để kéo fear xuống trước khi vào combat quan trọng. Việc này để dành cho balancing thực tế khi playtest, số % ở trên là điểm khởi đầu, không phải số cuối cùng.
 
-### 4.1 Cập nhật (2026-08-16) — roll accuracy theo từng mục tiêu (AoE) + ultimate luôn trúng nhưng giảm hiệu quả theo fear
+### 4.1 Roll accuracy theo từng mục tiêu (AoE) + ultimate luôn trúng nhưng giảm hiệu quả theo fear
 
 Bảng trên vẫn là quy tắc **mặc định cho skill thường** (đơn mục tiêu hoặc AoE), nhưng cách áp dụng tách làm 2 trường hợp kể từ khi thêm skill AoE/ultimate ở mục 1:
 
@@ -238,9 +234,9 @@ Mục 1-4 đã định nghĩa hiệu quả của `fear`/`hunger`/`thirst`, của
 - MP **không tự hồi** theo hành động như hunger/thirst tự giảm — chỉ tăng qua skill/item có effect `restoreMp`, hồi đầy khi nghỉ tại rest room, hoặc hồi đầy khi lên cấp (xem bên dưới).
 
 ### Tăng trưởng theo cấp (level)
-- **Đã thay thế bởi mục 6.9** (2026-08-16) — công thức gốc bên dưới giữ lại làm bối cảnh lịch sử, không còn đúng: ~~Level dùng chung cho **cả party** (không track kinh nghiệm/XP riêng từng nhân vật — tránh phải thêm hệ thống XP mà một side project không cần): `Character.level = min(currentFloor.depth, 100)`, tự cập nhật mỗi khi cả party xuống tầng mới.~~ Level vẫn dùng chung cho cả party (điểm này KHÔNG đổi), nhưng nguồn tăng level đổi từ "độ sâu tầng" sang "EXP tích lũy do giết quái" — xem **mục 6.9** để tách rõ khỏi level tầng ngục (mục 6.10). **Cấp tối đa vẫn là 100** — công thức tăng trưởng đầy đủ + lý do đổi từ tuyến tính sang tapered theo tier: xem **mục 6**.
+- Level dùng chung cho cả party (không track XP riêng từng người). Nguồn tăng level: EXP tích lũy do giết quái — xem **mục 6.9**, tách riêng khỏi level tầng ngục (mục 6.10). Cấp tối đa **100**; công thức tăng trưởng đầy đủ ở **mục 6**.
 - `aggro` và `speed` **không** tăng theo level — giữ nguyên `baseAggro`/`baseSpeed` suốt game (quyết định không đổi). Đây là 2 chỉ số định hình vai trò/nhịp độ của class (ai bị nhắm, ai ra tay trước), không phải chỉ số sức mạnh thuần túy — cho tăng theo level sẽ làm targeting và thứ tự lượt ở tầng sâu lệch hẳn khỏi thiết kế ban đầu của từng class.
-- Mỗi lần lên cấp: `hp`/`mp` hiện tại được đặt lại **đầy (= maxHp/maxMp mới)** — lên cấp = hồi phục toàn phần, tạo cảm giác "phần thưởng" tự nhiên. **Cập nhật 6.9**: trigger đổi từ "xuống tầng mới" sang "đủ EXP để lên cấp" (level không còn gắn với việc xuống tầng).
+- Mỗi lần lên cấp: `hp`/`mp` hiện tại được đặt lại **đầy (= maxHp/maxMp mới)** — lên cấp = hồi phục toàn phần, tạo cảm giác "phần thưởng" tự nhiên. Trigger lên cấp: "đủ EXP để lên cấp" (6.9) — level không gắn với việc xuống tầng.
 
 ---
 
@@ -263,6 +259,8 @@ Công thức cũ (`+2 attack/level`, v.v.) tuyến tính suốt: hợp lý cho 1
 
 ### 6.3 Bảng tăng trưởng theo tier
 
+**Dùng chung cho cả nhân vật và quái**: nhân vật dùng biến `level`, nhân thêm `growthWeights` theo class (6.8); quái dùng biến `floorDepth` thay cho `level`, không qua trọng số vì không có class (6.6).
+
 5 tier, mỗi tier có tốc độ tăng/level riêng (giảm dần — tier sau luôn ≤ tier trước):
 
 | Tier | Khoảng level | Số lần lên cấp trong tier | attack/lvl | defense/lvl | maxHp/lvl | maxMp/lvl |
@@ -278,6 +276,8 @@ Công thức cũ (`+2 attack/level`, v.v.) tuyến tính suốt: hợp lý cho 1
 Giá trị cuối cùng: `stat(level) = base<stat> + bonus(stat, level)`. `base<stat>` lấy từ bảng 6 chỉ số ở mục 1 (VD `baseAttack` của Cận Vệ = 14).
 
 ### 6.4 Bảng mốc (bonus cộng thêm, áp dụng như nhau cho mọi class)
+
+**Dùng chung cho cả nhân vật và quái** (xem ghi chú "Lưu ý" ngay dưới bảng): nhân vật dùng bảng này rồi nhân `growthWeights` theo class (6.8); quái dùng thẳng bảng này, không qua trọng số (6.6).
 
 | Level | +attack | +defense | +maxHp | +maxMp |
 |---|---|---|---|---|
@@ -309,9 +309,7 @@ Vì `level = min(depth, 100)`, công thức mục 2 (`attack = baseAttack + floo
 
 ### 6.7 Kiểm chứng cân bằng (time-to-kill, TTK)
 
-**✅ Đã tính lại (2026-08-16)**, thay cho bảng cũ dùng bộ kit 5-skill — 2 lý do phải làm lại:
-1. Bộ kit đổi sang 6 skill/class (mục 1): "Chém Khiên `amount 10`" cũ tách thành đòn đánh thường `amount 0` + "Ném Khiên" `amount 10` riêng; Tu Sĩ nay có đòn đánh thường (Đấm) + Thanh Tẩy/Thần Giáng gây damage khi nhắm địch, không còn "0 skill damage" như trước.
-2. **Level nhân vật và level tầng không còn đồng bộ 1-1** (mục 6.9/6.10) — bảng cũ giả định "level = depth", giờ phải mô phỏng cả 2 trục cùng lúc mới đọc đúng TTK ở 1 tầng cụ thể.
+Bảng TTK dưới đây dựa trên bộ kit 6 skill/class hiện hành (mục 1) — "Ném Khiên `amount 10`" tách riêng khỏi đòn đánh thường `amount 0`; Tu Sĩ nay có đòn đánh thường (Đấm) + Thanh Tẩy/Thần Giáng gây damage khi nhắm địch. Level nhân vật **không** đồng bộ 1-1 với level tầng (mục 6.9/6.10) nên phải mô phỏng cả 2 trục cùng lúc mới đọc đúng TTK ở 1 tầng cụ thể.
 
 **Phương pháp**: mô phỏng 1 lượt chơi "đi hết đường bắt buộc mỗi tầng" (không có lựa chọn farm thêm — xem lưu ý agency ở 6.9), dùng đúng công thức đã chốt (`growthBonus`/`growthBonusForDepth`, `expReward`, `expCostForLevel` ở 6.3/6.9/6.10) để suy ra **level nhân vật thực tế ở mỗi độ sâu tầng**, rồi tính TTK bằng skill/damage thật của bộ kit 6-skill tại đúng level đó — không còn giả định level=depth.
 
@@ -325,7 +323,7 @@ Party chạm trần level 100 quanh **tầng ~94-100** — trùng hợp gần kh
 
 **Quái thường** (Chuột Hầm Ngục, `Ném Khiên amount 10` của Cận Vệ — vẫn là kịch bản chậm nhất, class khác chết quái nhanh hơn số này):
 
-**Cập nhật 2026-08-16**: bảng tính lại sau khi tăng chỉ số 3 archetype ở mục 2 (`baseDefense` Chuột Hầm Ngục giảm 2→1, `baseHp` giảm 18→16 — vẫn là "quái rẻ mạng, chết nhanh" đúng vai trò, chỉ HP/def đổi, `baseAttack` tăng không ảnh hưởng bảng TTK-giết-nó này).
+Bảng dưới dùng chỉ số Chuột Hầm Ngục hiện hành ở mục 2 (`baseDefense 1`, `baseHp 16` — "quái rẻ mạng, chết nhanh" đúng vai trò).
 
 | Độ sâu tầng | Level nhân vật | dmg | HP quái | TTK 1 người (hit) |
 |---|---|---|---|---|
@@ -341,11 +339,11 @@ Party chạm trần level 100 quanh **tầng ~94-100** — trùng hợp gần kh
 
 Đọc kết quả: nhờ over-level tự nhiên ở nửa đầu game (level nhân vật vượt xa độ sâu tầng — VD tầng 10 đã level 27), TTK quái thường **tốt hơn hẳn** bảng cũ ở early-mid game (3-13 hit thay vì 6-14 hit ở cùng mốc tầng). Nhưng vì nhân vật đứng yên ở max level trong khi quái tiếp tục mạnh dần vô hạn, TTK **sụp đổ nhanh sau tầng ~150** — tới tầng 250 cần 140 hit, thực chất là bất khả thi trong 1 trận (giới hạn khả năng chịu đựng của party). Đây chính là "điểm kết thúc tự nhiên" của roguelite vô hạn đã nói ở 6.10, không phải lỗi.
 
-**⚠️ Ghi chú (2026-08-16, xem §6.11)**: bảng "Boss" bên dưới tính bằng `eliteMultiplier` — tức là quái trấn giữ phòng cuối tầng ở **đa số các tầng** (Elite, theo cách gọi mới ở §6.11). Từ §6.11 trở đi, cứ mỗi 5 tầng phòng đó là **Boss thật** (mạnh hơn, hệ số riêng) chứ không phải Elite — số liệu Boss thật nằm ở bảng riêng trong §6.11, không lặp lại ở đây.
+**⚠️ Ghi chú (xem §6.11)**: bảng "Boss" bên dưới tính bằng `eliteMultiplier` — tức là quái trấn giữ phòng cuối tầng ở **đa số các tầng** (Elite, theo cách gọi mới ở §6.11). Từ §6.11 trở đi, cứ mỗi 5 tầng phòng đó là **Boss thật** (mạnh hơn, hệ số riêng) chứ không phải Elite — số liệu Boss thật nằm ở bảng riêng trong §6.11, không lặp lại ở đây.
 
 **Elite** (Xương Sống Canh Gác bản elite, skill sơ cấp mỗi class — Vanguard: Ném Khiên 10, Pháp Sư: Phóng Sét 12, Sát Thủ: Phóng Dao 12, Tu Sĩ: Thanh Tẩy 15 từ level 10 trở đi):
 
-**Cập nhật 2026-08-16**: bảng tính lại sau khi tăng chỉ số base Xương Sống Canh Gác (`baseHp` 40→55, `baseAttack` 10→14, `baseDefense` 6→10 — mục 2), `eliteMultiplier` giữ nguyên (§6.5, không đổi).
+Bảng dưới dùng chỉ số base Xương Sống Canh Gác hiện hành (`baseHp 55`, `baseAttack 14`, `baseDefense 10` — mục 2), `eliteMultiplier` không đổi (§6.5).
 
 | Độ sâu tầng | Level | HP boss | Def boss | Cận Vệ (hit) | Pháp Sư (hit) | Sát Thủ (hit) | Tu Sĩ (hit) |
 |---|---|---|---|---|---|---|---|
@@ -401,7 +399,7 @@ So với level 1 (base thuần: Cận Vệ atk14/def12, Pháp Sư atk6/def4), t�
 
 `growthWeights` chỉ áp dụng cho nhân vật (`party.ts`); quái vật vẫn dùng `growthBonus()` không trọng số (6.6) vì không có khái niệm class — mọi archetype quái tăng đều theo cùng một tốc độ, tách biệt hoàn toàn với hệ thống class của party.
 
-### 6.9 Tách level nhân vật khỏi level tầng ngục — hệ EXP (cập nhật 2026-08-16)
+### 6.9 Tách level nhân vật khỏi level tầng ngục — hệ EXP
 
 **Vấn đề của bản thiết kế cũ**: mục 5 định nghĩa `Character.level = min(currentFloor.depth, 100)` — level nhân vật **luôn bằng đúng** độ sâu tầng đang đứng. Hệ quả: party không bao giờ under-level hay over-level so với tầng hiện tại, loại bỏ hoàn toàn rủi ro chiến thuật kiểu "tầng này quá sức, nên lùi lại farm tầng thấp trước" — một cơ chế đặc trưng của thể loại dungeon-crawler permadeath. Ngoài ra cơ chế này **chưa từng được thực thi trong game thật**: bản prototype trước đó chỉ có 1 tầng cố định (`depth` hardcode ở `floor.ts`, chưa có vòng lặp nhiều tầng), nên `Character.level` trong thực tế luôn là 1 suốt game.
 
@@ -414,13 +412,13 @@ So với level 1 (base thuần: Cận Vệ atk14/def12, Pháp Sư atk6/def4), t�
 
 Vì 2 trục không còn đồng bộ, đây là **thay đổi có chủ đích** so với triết lý "đối xứng nhân vật/quái" ở mục 6.6: quái vẫn scale theo `floorDepth` (không đổi), nhưng nhân vật giờ scale theo tiến độ combat thực tế của người chơi, không theo số tầng đã đi qua. Một party farm kỹ ở tầng thấp trước khi xuống sâu sẽ mạnh hơn 1 party rush thẳng qua boss — đúng tinh thần rủi ro/phần thưởng.
 
-**Công thức EXP quái (cộng vào `partyExp` khi giết) — sửa sau kiểm chứng 6.7 (2026-08-16)**: bản nháp đầu tiên định tái dùng `growthBonus` cộng dồn theo tier (giống attack/defense/hp) để tính bonus EXP theo tầng, nhưng mô phỏng số ở mục 6.7 cho thấy cách này làm EXP tăng phi mã theo tầng (cộng dồn không trần trong khi `expCost` mỗi tier chỉ là hằng số) — party đạt level 100 ngay ở tầng ~29, triệt tiêu mục đích tách 2 trục (party gần như luôn max level bất kể tầng). **Sửa**: dùng công thức **tuyến tính đơn giản** thay vì tái dùng đường cong tapered của combat stat — ít code hơn (không cần thêm cột vào `tiers[]`, không cần sửa `Tier` interface):
+**Công thức EXP quái (cộng vào `partyExp` khi giết)**: dùng công thức **tuyến tính đơn giản** — không tái dùng đường cong tapered của combat stat, vì đã kiểm chứng (mục 6.7) rằng cộng dồn theo tier làm EXP tăng phi mã theo tầng (party max level ngay ở tầng ~29, triệt tiêu mục đích tách 2 trục):
 
 ```
 expReward(archetype, floorDepth) = archetype.expReward + floor(floorDepth × 0.1)
 ```
 
-Hệ số `0.1` (EXP bonus/tầng) là hằng số riêng, đặt cạnh `eliteMultiplier`/`bossMultiplier` trong `data/level-growth.json` (không phải 1 cột trong `tiers[]`). **Cập nhật sau khi tách Elite/Boss (§6.11)**: quái trấn giữ phòng cuối tầng nhân hệ số EXP khác nhau tùy loại — Elite (đa số các tầng) nhân `eliteMultiplier.exp` (**x3**, hạ từ x4 nháp đầu sau kiểm chứng ở 6.7), Boss thật (mỗi 5 tầng) nhân `bossMultiplier.exp` (**x6** — gấp đôi Elite, xứng đáng vì hiếm và khó hơn hẳn).
+Hệ số `0.1` (EXP bonus/tầng) là hằng số riêng, đặt cạnh `eliteMultiplier`/`bossMultiplier` trong `data/level-growth.json` (không phải 1 cột trong `tiers[]`). Quái trấn giữ phòng cuối tầng nhân hệ số EXP khác nhau tùy loại (§6.11) — Elite (đa số các tầng) nhân `eliteMultiplier.exp` (**x3**, hạ từ x4 nháp đầu sau kiểm chứng ở 6.7), Boss thật (mỗi 5 tầng) nhân `bossMultiplier.exp` (**x6** — gấp đôi Elite, xứng đáng vì hiếm và khó hơn hẳn).
 
 **Công thức ngưỡng lên cấp nhân vật**: thêm cột `expCost` vào cùng `tiers[]` (cùng ranh giới 5 tier ở mục 6.3: 1–10 / 11–25 / 26–50 / 51–75 / 76–100) — càng về tier sau, chi phí lên 1 cấp càng cao, cùng tinh thần "chậm dần" như tốc độ tăng stat:
 
@@ -440,7 +438,7 @@ Hệ số `0.1` (EXP bonus/tầng) là hằng số riêng, đặt cạnh `eliteM
 
 **Lưu ý về tính agency**: với cấu trúc tầng hiện tại (`data/floor-patterns.json` — mọi phòng combat trên đường đi tới boss đều bắt buộc phải qua, không có phòng phụ để né hay quay lại farm thêm), người chơi **không thực sự có lựa chọn** "rush nhanh hay farm kỹ" — số quái giết được ở mỗi tầng gần như cố định theo pattern được chọn ngẫu nhiên. Việc tách 2 trục vì vậy hiện chỉ có tác dụng **định hình đường cong độ khó** (bao lâu thì party đạt max level so với tầng đang đứng), chưa tạo ra rủi ro/lựa chọn chiến thuật thật như hình dung ban đầu ở đầu mục 6.9 — muốn có lựa chọn thật cần thêm nội dung kiểu "quay lại tầng cũ" hoặc "phòng phụ tùy chọn", nằm ngoài phạm vi thay đổi lần này.
 
-### 6.10 Level tầng ngục vô hạn — quái/boss không còn trần scale (cập nhật 2026-08-16)
+### 6.10 Level tầng ngục vô hạn — quái/boss không còn trần scale
 
 Vì level tầng (`Floor.depth`) không còn giới hạn ở 100 (mục 6.9), công thức scale quái ở mục 6.6 (`growthBonus(stat, floorDepth)`) không thể tiếp tục dùng bản clamp-trần-100 — nếu giữ nguyên, quái ở tầng 101+ sẽ đứng yên mãi ở đúng mức tầng 100, làm game "hết thử thách" sau mốc đó.
 
@@ -448,7 +446,7 @@ Vì level tầng (`Floor.depth`) không còn giới hạn ở 100 (mục 6.9), c
 
 **Hệ quả thiết kế cần lưu ý**: vì level nhân vật vẫn cap ở 100 (mục 6.9) nhưng level tầng vô hạn, sau khi party đạt max level, sức mạnh nhân vật đứng yên trong khi quái/boss tiếp tục mạnh dần vô thời hạn — **party chắc chắn sẽ thua ở một độ sâu đủ lớn**. Đây là mô hình "chơi được tới đâu hay tới đó" (score-attack roguelite), không phải bug — độ sâu tầng đạt được trước khi party bị xóa sổ trở thành thước đo thành tích của 1 lượt chơi, thay cho khái niệm "thắng game" cố định (không còn trạng thái `gameOver: "victory"` nào được kích hoạt trong luồng chơi bình thường nữa — hạ boss giờ luôn dẫn sang tầng kế tiếp thay vì kết thúc game).
 
-### 6.11 Tách Elite khỏi Boss thật — Boss mạnh hơn, đòi hỏi chiến thuật (cập nhật 2026-08-16)
+### 6.11 Tách Elite khỏi Boss thật — Boss mạnh hơn, đòi hỏi chiến thuật
 
 **Quyết định**: phòng cuối mỗi tầng (tag `boss` trong pattern) không còn luôn là "boss" theo nghĩa cũ — tách thành 2 cấp:
 - **Elite**: mặc định, xuất hiện ở hầu hết các tầng (dùng `eliteMultiplier` sẵn có ở §6.5 — `maxHp×2.5, attack×1.4, defense×1.15`, không đổi).
@@ -462,16 +460,16 @@ Vì level tầng (`Floor.depth`) không còn giới hạn ở 100 (mục 6.9), c
 
 Đặt tên `bossMultiplier` trong `data/level-growth.json`, cạnh `eliteMultiplier` — không đổi cấu trúc `EliteMultiplier`/`Tier`, chỉ thêm 1 object cùng shape.
 
-**Vì sao đây là bộ số được chọn, không phải phương án defense cao hơn nhiều (đã thử và loại)**: mô phỏng ban đầu thử `defense×1.6` (đẩy rất cao so với Elite) để ép người chơi phải dùng damage "né được defense" (DoT — Trúng Độc/Bỏng, xem `src/engine/resolver.ts`: tick DoT dùng `effect.amount` thẳng, **không trừ defense**, khác hẳn damage thường). Nhưng kiểm chứng bằng số cho thấy **DoT hiện tại (`Trúng Độc` 4/lượt×3, `Bỏng` 5/lượt×2 — cố định, không scale theo level/tầng) không hề trở nên hấp dẫn hơn khi defense boss tăng**: vì HP boss cũng tăng cùng lúc theo cùng hệ số, DoT (tổng cố định ~22) tụt từ ~2.2% xuống ~1.0% HP boss khi đi từ tầng 25 sang tầng 100, trong khi damage vũ khí (dù bị defense ăn bớt) vẫn chiếm 3.8-13.4% HP mỗi đòn — **DoT không phải "câu trả lời" cho defense cao như kỳ vọng ban đầu, trừ khi tự nó cũng được thiết kế scale theo tầng (ngoài phạm vi thay đổi lần này)**.
+**Vì sao `defense×1.3`, không cao hơn**: DoT (Trúng Độc/Bỏng — `effect.amount` cố định, không trừ defense, xem `src/engine/resolver.ts`) không né được defense cao nên về lý thuyết là công cụ đối trọng, nhưng vì tổng damage DoT không scale theo tầng trong khi HP boss có, tỷ lệ DoT/HP boss giảm dần theo tầng — đẩy defense cao hơn không tạo ra lựa chọn chiến thuật thật, chỉ làm boss trơ lì hơn với mọi loại damage.
 
 **Vì vậy "yêu cầu chiến thuật" ở Boss thật được đặt vào 2 chỗ khác, không phải damage-type**:
 1. **`attack×1.8`** (so với Elite ×1.4) — Boss thật gây sát thương đáng kể mỗi đòn (~3-12% maxHp của Cận Vệ/lượt ở tầng 10-100 khi tanking) → buộc phối hợp Tu Sĩ hồi máu chủ động, không thể để 1 người gánh chịu suốt trận như với Elite.
 2. **Choáng** (`status-effects.json`, từ Phóng Sét/Bão Sét) vẫn là công cụ CC duy nhất bỏ qua hoàn toàn 1 lượt của Boss, không phụ thuộc defense — dùng đúng lúc Boss sắp ra đòn mạnh là chiến thuật thực chất hơn stack DoT.
 3. **`defense×1.3`** (vừa phải, không đẩy cực đoan như bản thử ×1.6) giữ TTK bằng Sát Thủ/Pháp Sư (2 class attack cao) ở mức khả thi xuyên suốt game (7-36 hit tùy tầng — xem bảng dưới), tránh Boss trở thành "tường số" không thể vượt qua chỉ vì thiếu 1 loại damage cụ thể.
 
-**⚠️ Đã hỏi và xác nhận (2026-08-16)**: "chiến thuật" ở đây được chốt là **thuần combat, siết bằng chỉ số** (phối hợp tank/heal/CC trong hệ thống hiện có), **không** mở lại mini-game boss-phase (`docs/minigame-decisions.md` §1, hiện vẫn nằm trong danh sách "chưa implement" ở `README.md`) — giữ đúng scope prototype.
+**⚠️ Đã xác nhận**: "chiến thuật" ở đây được chốt là **thuần combat, siết bằng chỉ số** (phối hợp tank/heal/CC trong hệ thống hiện có), **không** mở lại mini-game boss-phase (`docs/minigame-decisions.md` §1, hiện vẫn nằm trong danh sách "chưa implement" ở `README.md`) — giữ đúng scope prototype.
 
-**Cập nhật 2026-08-16**: bảng dưới tính lại sau khi tăng chỉ số base Xương Sống Canh Gác ở mục 2 (`baseHp` 40→55, `baseAttack` 10→14, `baseDefense` 6→10); `bossMultiplier`/`eliteMultiplier` không đổi.
+Bảng dưới dùng chỉ số base Xương Sống Canh Gác hiện hành ở mục 2 (`baseHp 55`, `baseAttack 14`, `baseDefense 10`); `bossMultiplier`/`eliteMultiplier` như ở trên.
 
 **TTK Boss thật vs Elite cùng tầng** (skill sơ cấp mỗi class, party ở level tương ứng theo 6.9):
 
@@ -490,7 +488,7 @@ Boss thật luôn khó hơn Elite cùng tầng rõ rệt (HP/def/TTK đều cao 
 
 **⚠️ Số liệu `bossMultiplier` (3/1.8/1.3) và `bossMultiplier.exp` (x6) là đề xuất ban đầu đã qua 1 vòng mô phỏng, chưa playtest thật — cần chỉnh khi có dữ liệu chơi thật, giống mọi bảng số khác trong tài liệu này.**
 
-### 6.12 Elite/Boss có skill riêng — AoE, kết liễu, debuff ngẫu nhiên (cập nhật 2026-08-16)
+### 6.12 Elite/Boss có skill riêng — AoE, kết liễu, debuff ngẫu nhiên
 
 **Vấn đề**: mọi quái (kể cả Elite/Boss) trước giờ chỉ có đúng 1 hành động — đòn đánh thường đơn mục tiêu (`amount 0`, chọn mục tiêu theo `aiPattern`), dù `Monster.skillIds`/`MonsterArchetype.skillIds` đã tồn tại trong type từ đầu. Việc tăng chỉ số ở mục 2/6.11 (base `skeleton-guard`) làm sát thương/lượt cao hơn hẳn, nhưng bản thân **hành vi** combat của quái vẫn y hệt cũ — Elite/Boss chỉ là "quái thường nhân số", không có công cụ ép người chơi phản ứng khác đi (dồn heal, đổi mục tiêu, gỡ debuff).
 
@@ -505,7 +503,7 @@ Boss thật luôn khó hơn Elite cùng tầng rõ rệt (HP/def/TTK đều cao 
 
 Thứ tự ưu tiên mỗi lượt của Boss: **đang tích lực?** → tung Kết Liễu → nếu không, **hết cooldown Kết Liễu?** → bắt đầu tích lực (bỏ qua mọi hành động khác lượt đó) → nếu không, roll **Nghiền Nát** (30%) → roll **Chém Quét** (30%) → **Chém Hạ Gục**. Elite (không có Kết Liễu/Nghiền Nát): roll **Chém Quét** (30%) → **Chém Hạ Gục**.
 
-**Cập nhật lần 2 (2026-08-16) — Kết Liễu đổi từ "săn %HP thấp" sang "tích lực rồi dồn 1 đòn cực mạnh"**: bản đầu tiên trigger theo `hp/maxHp ≤ 25%`, tức là chỉ nguy hiểm khi ai đó *đã* sắp chết — hữu ích nhưng không thật sự "dồn sát thương" theo đúng nghĩa đe dọa của 1 đòn boss. Bản mới:
+**Đòn Kết Liễu — cơ chế "tích lực rồi dồn 1 đòn cực mạnh"** (không trigger theo %HP mục tiêu):
 
 - **Cơ chế kích hoạt riêng, không qua roll `chance()` như Nghiền Nát/Chém Quét**: Boss track `executeCooldownTurns` (khởi tạo `EXECUTE_COOLDOWN_TURNS = 3` lúc spawn, `src/data/monsters.ts`). Khi cooldown chạm 0, lượt đó Boss **tích lực** thay vì tấn công — chọn 1 mục tiêu ngay lúc đó (vẫn theo `aggro` như bình thường, `pickAggroWeighted`) và **khoá lại** (`Monster.executeTargetId`), log cảnh báo tên mục tiêu, không gây sát thương gì lượt này. Lượt kế tiếp của Boss, bất kể cooldown/roll gì khác, **luôn** tung Kết Liễu vào đúng người đã khoá (đọc lại từ `executeTargetId`, không tính lại target) rồi reset cooldown về `EXECUTE_COOLDOWN_TURNS`.
 - **Sát thương cố định, không phụ thuộc %HP hiện tại của mục tiêu**: `amount 71` cộng `attack` của Boss trừ `defense` của mục tiêu — ra đúng **~60% maxHp của Cận Vệ** (dù đang full máu) và **≥88-131% maxHp của 3 class còn lại** (đủ hạ gục Sát Thủ/Pháp Sư gần như chắc chắn, Tu Sĩ sát nút) — xem bảng kiểm chứng bên dưới. Không còn khái niệm "chỉ nguy hiểm khi máu thấp".
