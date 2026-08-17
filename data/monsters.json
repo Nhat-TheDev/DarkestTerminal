@@ -8,7 +8,8 @@
     "baseSpeed": 9,
     "aiPattern": "erratic",
     "skillIds": [],
-    "expReward": 6
+    "expReward": 6,
+    "powerTier": "weak"
   },
   {
     "id": "black-bat",
@@ -19,7 +20,8 @@
     "baseSpeed": 18,
     "aiPattern": "aggressive",
     "skillIds": [],
-    "expReward": 6
+    "expReward": 6,
+    "powerTier": "weak"
   },
   {
     "id": "slime",
@@ -30,7 +32,8 @@
     "baseSpeed": 5,
     "aiPattern": "erratic",
     "skillIds": [],
-    "expReward": 6
+    "expReward": 6,
+    "powerTier": "weak"
   },
   {
     "id": "skeleton",
@@ -41,7 +44,8 @@
     "baseSpeed": 8,
     "aiPattern": "aggressive",
     "skillIds": [],
-    "expReward": 9
+    "expReward": 9,
+    "powerTier": "medium"
   },
   {
     "id": "zombie",
@@ -52,7 +56,8 @@
     "baseSpeed": 4,
     "aiPattern": "defensive",
     "skillIds": [],
-    "expReward": 12
+    "expReward": 12,
+    "powerTier": "strong"
   },
   {
     "id": "snake",
@@ -63,7 +68,8 @@
     "baseSpeed": 17,
     "aiPattern": "erratic",
     "skillIds": [],
-    "expReward": 8
+    "expReward": 8,
+    "powerTier": "medium"
   },
   {
     "id": "lizard",
@@ -74,7 +80,8 @@
     "baseSpeed": 11,
     "aiPattern": "aggressive",
     "skillIds": [],
-    "expReward": 9
+    "expReward": 9,
+    "powerTier": "medium"
   },
   {
     "id": "spider",
@@ -85,7 +92,8 @@
     "baseSpeed": 15,
     "aiPattern": "aggressive",
     "skillIds": [],
-    "expReward": 9
+    "expReward": 9,
+    "powerTier": "medium"
   },
   {
     "id": "skeleton-archer",
@@ -96,7 +104,8 @@
     "baseSpeed": 12,
     "aiPattern": "erratic",
     "skillIds": [],
-    "expReward": 10
+    "expReward": 10,
+    "powerTier": "medium"
   },
   {
     "id": "skeleton-warrior",
@@ -107,7 +116,8 @@
     "baseSpeed": 7,
     "aiPattern": "defensive",
     "skillIds": [],
-    "expReward": 13
+    "expReward": 13,
+    "powerTier": "strong"
   },
   {
     "id": "skeleton-guard",
@@ -119,6 +129,7 @@
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 15,
+    "powerTier": "strong",
     "eliteSkillIds": {
       "strike": "skeleton-elite-strike",
       "cleave": "skeleton-elite-cleave"

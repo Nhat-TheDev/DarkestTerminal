@@ -140,7 +140,7 @@ export interface ActiveStatusEffect {
   turnsRemaining: number;
 }
 
-export type RoomType = "combat" | "rest" | "boss" | "treasure" | "empty";
+export type RoomType = "combat" | "rest" | "boss" | "treasure" | "empty" | "event";
 
 export interface Room {
   id: Id;
@@ -177,6 +177,8 @@ export interface MonsterArchetype {
   bossSkillIds?: { execute: Id; debuff: Id };
   /** True for archetypes only ever spawned as the floor's guard-room monster (elite/boss tier) — excluded from the regular combat-room pool in src/data/floor.ts. */
   guardOnly?: boolean;
+  /** Combat-room strength bracket used by ROOM_COMPOSITION_TEMPLATES (src/data/floor.ts) to keep room EXP balanced — unset for guard-only archetypes, which don't go through that composition logic. */
+  powerTier?: "weak" | "medium" | "strong";
 }
 
 /** "normal" = regular combat-room spawn; "elite"/"boss" = the floor's guard room (§6.11), mutually exclusive per floor. */

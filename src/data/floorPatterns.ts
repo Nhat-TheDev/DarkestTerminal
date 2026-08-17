@@ -1,53 +1,17 @@
 import type { RoomType } from "../types";
-import floorPatternsJson from "../../data/floor-patterns.json";
+import type { Rng } from "../engine/rng";
 
-// Floor layouts are now data (../../data/floor-patterns.json), randomly
-// picked per floor instead of hand-authored or spanning-tree-generated —
-// see docs/technical-decisions.md §1 for the design rationale.
-//
-// Notation: "stage.roomId[tag]" tokens, comma-separated within a stage,
-// stages dash-separated. Every room in stage N connects forward to every
-// room in stage N+1 only (no other edges) — this is what guarantees "no
-// dead ends, every branch reaches the boss" by construction, without having
-// to encode explicit edges per room.
-
-export interface FloorPatternDef {
-  id: string;
-  description: string;
-  layout: string;
-}
-
-interface FloorPatternsFile {
-  patterns: FloorPatternDef[];
-}
-
-export const FLOOR_PATTERNS: FloorPatternDef[] = (floorPatternsJson as unknown as FloorPatternsFile).patterns;
-
-if (FLOOR_PATTERNS.length === 0) throw new Error("data/floor-patterns.json: no patterns defined");
+// Floor layouts are generated at runtime (see docs/technical-decisions.md §1)
+// instead of picked from a hand-authored pattern library — a stage-based DAG
+// where every room in stage N connects forward to every room in stage N+1
+// only (no other edges), which is what guarantees "no dead ends, every
+// branch reaches the boss" by construction, without a generate-then-validate
+// loop.
 
 export interface RoomToken {
   stage: number;
   roomId: number;
   tag: string;
-}
-
-const ROOM_TOKEN_RE = /^(\d+)\.(\d+)\[(\w*)\]$/;
-
-/** Parses a `layout` string into stages of room tokens. Throws on malformed syntax. */
-export function parsePatternLayout(layout: string): RoomToken[][] {
-  return layout.split("-").map((stageGroup, stageIdx) => {
-    const tokens = stageGroup.split(",").map((raw) => {
-      const match = ROOM_TOKEN_RE.exec(raw.trim());
-      if (!match) throw new Error(`Malformed room token "${raw}" in pattern "${layout}"`);
-      const [, stageStr, idStr, tag] = match as unknown as [string, string, string, string];
-      const stage = Number(stageStr);
-      if (stage !== stageIdx) {
-        throw new Error(`Room "${raw}" declares stage ${stage} but sits in stage-group #${stageIdx} of pattern "${layout}"`);
-      }
-      return { stage, roomId: Number(idStr), tag };
-    });
-    return tokens;
-  });
 }
 
 export function roomTypeForTag(tag: string): RoomType {
@@ -62,31 +26,129 @@ export function roomTypeForTag(tag: string): RoomType {
       return "treasure";
     case "empty":
       return "empty";
+    case "event":
+      return "event";
     default:
       throw new Error(`Unknown room tag "[${tag}]"`);
   }
 }
 
-// Every room in stage N connects to every room in stage N+1, so every path from entry to
-// boss picks exactly 1 room per stage — path length is fixed by stage count regardless of
-// which branch a player takes. These bounds are the min/max count of a given room type a
-// path could see, computed per stage independently (a stage where every room shares a type
-// contributes 1 to that type's min; a stage where at least one room has that type
-// contributes 1 to its max).
-export const MIN_COMBAT_ROOMS_PER_PATH = 5;
+// A "path" is start → boss walking exactly 1 room per stage (fixed length =
+// stage count, regardless of which branch a player takes — same guarantee
+// as the old pattern library). All bounds below are per-path.
+export const MIN_PATH_ROOMS = 7;
+export const MAX_PATH_ROOMS = 12;
+export const MAX_BRANCHES = 3;
+export const MIN_BRANCH_START_STAGE = 2; // room #3 onward (0-indexed stage)
+export const MIN_BRANCH_SPACING = 3; // stages between 2 consecutive branch stages
+export const MAX_EVENT_ROOMS_PER_PATH = 4;
 export const MIN_REST_ROOMS_PER_PATH = 1;
 export const MAX_REST_ROOMS_PER_PATH = 2;
 
+/** Distributes `total` indistinguishable units randomly across `parts` bins (each >= 0). */
+function randomPartition(total: number, parts: number, rng: Rng): number[] {
+  const bins: number[] = [];
+  let remaining = total;
+  for (let i = 0; i < parts; i++) {
+    const bin = i === parts - 1 ? remaining : rng.int(0, remaining);
+    bins.push(bin);
+    remaining -= bin;
+  }
+  return bins;
+}
+
+/**
+ * Picks 0..min(MAX_BRANCHES, feasible) branch stage indices inside
+ * [minStage, maxStage], each consecutive pair spaced >= MIN_BRANCH_SPACING
+ * apart. Feasible count is capped by how many spaced-out slots fit in the
+ * region — a short path (MIN_PATH_ROOMS) can't always fit MAX_BRANCHES.
+ */
+function pickBranchStages(rng: Rng, minStage: number, maxStage: number): number[] {
+  const span = maxStage - minStage;
+  if (span < 0) return [];
+  const feasibleMax = Math.floor(span / MIN_BRANCH_SPACING) + 1;
+  const target = rng.int(0, Math.min(MAX_BRANCHES, feasibleMax));
+  if (target === 0) return [];
+
+  const minSpan = (target - 1) * MIN_BRANCH_SPACING;
+  const slack = span - minSpan;
+  const gaps = randomPartition(slack, target + 1, rng);
+
+  const stages: number[] = [];
+  let pos = minStage + gaps[0]!;
+  stages.push(pos);
+  for (let i = 1; i < target; i++) {
+    pos = pos + MIN_BRANCH_SPACING + gaps[i]!;
+    stages.push(pos);
+  }
+  return stages;
+}
+
+/** Picks MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH stage indices from `candidates` (already excludes start/boss/branch stages). */
+function pickRestStages(rng: Rng, candidates: number[]): number[] {
+  const count = rng.int(MIN_REST_ROOMS_PER_PATH, Math.min(MAX_REST_ROOMS_PER_PATH, candidates.length));
+  const pool = [...candidates];
+  const picked: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const idx = rng.int(0, pool.length - 1);
+    picked.push(pool.splice(idx, 1)[0]!);
+  }
+  return picked;
+}
+
+/**
+ * Generates 1 floor layout as stages of room tokens, obeying:
+ * - stage 0 (start) is exactly 1 combat room
+ * - final stage is exactly 1 boss room
+ * - branch stages (>1 room) only start at stage >= MIN_BRANCH_START_STAGE,
+ *   at most MAX_BRANCHES of them, each pair spaced >= MIN_BRANCH_SPACING apart
+ * - every branch stage offers exactly 2 rooms: 1 combat + 1 event
+ * - MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH non-branch stages are rest rooms
+ * - path length (stage count, including start + boss) is MIN_PATH_ROOMS..MAX_PATH_ROOMS
+ */
+export function generateFloorLayout(rng: Rng): RoomToken[][] {
+  const pathLength = rng.int(MIN_PATH_ROOMS, MAX_PATH_ROOMS);
+  const lastStage = pathLength - 1;
+
+  const branchStages = pickBranchStages(rng, MIN_BRANCH_START_STAGE, lastStage - 1);
+  const branchSet = new Set(branchStages);
+
+  const restCandidates: number[] = [];
+  for (let s = 1; s < lastStage; s++) {
+    if (!branchSet.has(s)) restCandidates.push(s);
+  }
+  const restStages = new Set(pickRestStages(rng, restCandidates));
+
+  let nextRoomId = 1;
+  const stages: RoomToken[][] = [];
+  for (let s = 0; s < pathLength; s++) {
+    if (s === lastStage) {
+      stages.push([{ stage: s, roomId: nextRoomId++, tag: "boss" }]);
+    } else if (branchSet.has(s)) {
+      stages.push([
+        { stage: s, roomId: nextRoomId++, tag: "" },
+        { stage: s, roomId: nextRoomId++, tag: "event" },
+      ]);
+    } else if (restStages.has(s)) {
+      stages.push([{ stage: s, roomId: nextRoomId++, tag: "free" }]);
+    } else {
+      stages.push([{ stage: s, roomId: nextRoomId++, tag: "" }]);
+    }
+  }
+
+  return stages;
+}
+
 export interface PathRoomBounds {
-  combat: { min: number; max: number };
+  event: { min: number; max: number };
   rest: { min: number; max: number };
 }
 
-export function pathRoomBounds(stages: RoomToken[][]): PathRoomBounds {
-  const bounds: PathRoomBounds = { combat: { min: 0, max: 0 }, rest: { min: 0, max: 0 } };
+function pathRoomBounds(stages: RoomToken[][]): PathRoomBounds {
+  const bounds: PathRoomBounds = { event: { min: 0, max: 0 }, rest: { min: 0, max: 0 } };
   for (const stage of stages) {
     const types = stage.map((r) => roomTypeForTag(r.tag));
-    for (const key of ["combat", "rest"] as const) {
+    for (const key of ["event", "rest"] as const) {
       if (types.every((t) => t === key)) bounds[key].min += 1;
       if (types.some((t) => t === key)) bounds[key].max += 1;
     }
@@ -95,53 +157,48 @@ export function pathRoomBounds(stages: RoomToken[][]): PathRoomBounds {
 }
 
 /**
- * Structural rules (docs/technical-decisions.md §1):
- * - single entry room (stage 0 has exactly 1 room)
- * - single boss room, and it's the only room of the final stage
- * - at most 2 "branch" stages (a stage with more than 1 room)
- * - every roomId is unique within the pattern
- * - every path to boss has >= MIN_COMBAT_ROOMS_PER_PATH combat rooms and
- *   MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH rest rooms
- * Throws with a description of the first violation found.
+ * Re-validates a generated layout against every rule above. Generation is
+ * correct by construction, so this only exists as a safety net for tests /
+ * future changes to the generator.
  */
-export function validatePattern(def: FloorPatternDef): RoomToken[][] {
-  const stages = parsePatternLayout(def.layout);
-  const label = `pattern "${def.id}"`;
-
-  if (stages.length < 2) throw new Error(`${label}: needs at least an entry stage and a boss stage`);
-  if (stages[0]!.length !== 1) throw new Error(`${label}: stage 0 (entry) must have exactly 1 room`);
-
-  const lastStage = stages[stages.length - 1]!;
-  if (lastStage.length !== 1 || lastStage[0]!.tag !== "boss") {
-    throw new Error(`${label}: the final stage must be exactly 1 room tagged [boss]`);
+export function validateGeneratedStages(stages: RoomToken[][]): void {
+  if (stages.length < MIN_PATH_ROOMS || stages.length > MAX_PATH_ROOMS) {
+    throw new Error(`layout has ${stages.length} stages, expected ${MIN_PATH_ROOMS}-${MAX_PATH_ROOMS}`);
   }
-  for (const stage of stages.slice(0, -1)) {
-    for (const room of stage) {
-      if (room.tag === "boss") throw new Error(`${label}: [boss] may only appear in the final stage (room ${room.stage}.${room.roomId})`);
+  if (stages[0]!.length !== 1 || stages[0]![0]!.tag !== "") {
+    throw new Error("stage 0 (start) must be exactly 1 combat room");
+  }
+  const last = stages[stages.length - 1]!;
+  if (last.length !== 1 || last[0]!.tag !== "boss") {
+    throw new Error("final stage must be exactly 1 boss room");
+  }
+
+  const branchStageIndices: number[] = [];
+  for (let s = 0; s < stages.length; s++) {
+    const stage = stages[s]!;
+    if (stage.length > 1) {
+      branchStageIndices.push(s);
+      if (s < MIN_BRANCH_START_STAGE) throw new Error(`branch stage ${s} is before allowed start stage ${MIN_BRANCH_START_STAGE}`);
+      const tags = stage.map((r) => r.tag).sort();
+      if (stage.length !== 2 || tags[0] !== "" || tags[1] !== "event") {
+        throw new Error(`branch stage ${s} must have exactly 1 combat + 1 event room`);
+      }
     }
   }
-
-  const branchStages = stages.filter((s) => s.length > 1).length;
-  if (branchStages > 2) throw new Error(`${label}: has ${branchStages} branch stages, max allowed is 2`);
+  if (branchStageIndices.length > MAX_BRANCHES) throw new Error(`layout has ${branchStageIndices.length} branch stages, max allowed is ${MAX_BRANCHES}`);
+  for (let i = 1; i < branchStageIndices.length; i++) {
+    const gap = branchStageIndices[i]! - branchStageIndices[i - 1]!;
+    if (gap < MIN_BRANCH_SPACING) throw new Error(`branch stages ${branchStageIndices[i - 1]} and ${branchStageIndices[i]} are only ${gap} apart, need >= ${MIN_BRANCH_SPACING}`);
+  }
 
   const allIds = stages.flat().map((r) => r.roomId);
-  if (new Set(allIds).size !== allIds.length) throw new Error(`${label}: room ids must be unique within the pattern`);
+  if (new Set(allIds).size !== allIds.length) throw new Error("room ids must be unique within the layout");
 
   const bounds = pathRoomBounds(stages);
-  if (bounds.combat.min < MIN_COMBAT_ROOMS_PER_PATH) {
-    throw new Error(
-      `${label}: every path to boss must pass through at least ${MIN_COMBAT_ROOMS_PER_PATH} combat rooms, this pattern guarantees as few as ${bounds.combat.min}`,
-    );
+  if (bounds.event.max > MAX_EVENT_ROOMS_PER_PATH) {
+    throw new Error(`every path may pass through at most ${MAX_EVENT_ROOMS_PER_PATH} event rooms, this layout allows up to ${bounds.event.max}`);
   }
   if (bounds.rest.min < MIN_REST_ROOMS_PER_PATH || bounds.rest.max > MAX_REST_ROOMS_PER_PATH) {
-    throw new Error(
-      `${label}: every path to boss must pass through ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, this pattern allows between ${bounds.rest.min} and ${bounds.rest.max}`,
-    );
+    throw new Error(`every path must pass through ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, this layout allows between ${bounds.rest.min} and ${bounds.rest.max}`);
   }
-
-  return stages;
-}
-
-export function pickRandomPattern(pick: (patterns: FloorPatternDef[]) => FloorPatternDef): FloorPatternDef {
-  return pick(FLOOR_PATTERNS);
 }

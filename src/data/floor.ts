@@ -1,14 +1,13 @@
-import type { Floor, Monster, Room, RoomType } from "../types";
+import type { Floor, Monster, Room, RoomType, MonsterArchetype } from "../types";
 import { spawnMonster } from "./monsters";
 import { MONSTER_ARCHETYPES } from "./monsters";
-import { FLOOR_PATTERNS, validatePattern, roomTypeForTag, pickRandomPattern, type FloorPatternDef } from "./floorPatterns";
+import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatterns";
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 
-// Floor structure is randomly picked from data/floor-patterns.json (see
-// src/data/floorPatterns.ts for the notation + the "<=2 branch stages,
-// every branch reaches the boss" rules). This module turns the picked
-// pattern into an actual Floor + spawned Monster[], choosing room names and
+// Floor structure is generated at runtime (see src/data/floorPatterns.ts for
+// the stage/branch/rest/event rules). This module turns the generated
+// stages into an actual Floor + spawned Monster[], choosing room names and
 // monster composition randomly via the shared engine Rng.
 
 const COMBAT_ROOM_NAMES = [
@@ -47,12 +46,66 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
 const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => !a.guardOnly);
 const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds);
 
-/** Builds a Floor from one specific pattern — exported mainly so tests can cover every pattern in the library directly instead of relying on random picks. */
-export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
+type PowerTier = NonNullable<MonsterArchetype["powerTier"]>;
+
+const ARCHETYPES_BY_TIER: Record<PowerTier, MonsterArchetype[]> = {
+  weak: COMBAT_ROOM_ARCHETYPES.filter((a) => a.powerTier === "weak"),
+  medium: COMBAT_ROOM_ARCHETYPES.filter((a) => a.powerTier === "medium"),
+  strong: COMBAT_ROOM_ARCHETYPES.filter((a) => a.powerTier === "strong"),
+};
+
+// Every allowed tier makeup for a combat room, chosen so the room's EXP stays
+// balanced (docs/gameplay-decisions.md §2 update 2026-08-17 "monster power
+// tiers"): no single-weak room (too trivial), no all-strong room (too punishing
+// for the room count), and total representative EXP (weak=6, medium≈9,
+// strong≈13) lands within [15, 35] — which also rules out any 1-monster room.
+const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = [
+  ["weak", "medium"],
+  ["weak", "strong"],
+  ["medium", "medium"],
+  ["medium", "strong"],
+  ["strong", "strong"],
+  ["weak", "weak", "medium"],
+  ["weak", "weak", "strong"],
+  ["weak", "medium", "medium"],
+  ["weak", "medium", "strong"],
+  ["weak", "strong", "strong"],
+  ["medium", "medium", "medium"],
+  ["medium", "medium", "strong"],
+  ["medium", "strong", "strong"],
+];
+
+/** Spawns the monsters for 1 room of a given type; returns [] for room types that spawn nothing. */
+type RoomSpawnFn = (rng: Rng, depth: number) => Monster[];
+
+function spawnCombatRoomMonsters(rng: Rng, depth: number): Monster[] {
+  const template = rng.pick(ROOM_COMPOSITION_TEMPLATES);
+  return template.map((tier) => {
+    const archetype = rng.pick(ARCHETYPES_BY_TIER[tier]).id;
+    return spawnMonster(archetype, depth);
+  });
+}
+
+function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
+  // "boss" here is the room tag (always the floor's single guard room) — the
+  // monster inside is "elite" most floors, "boss" every BOSS_FLOOR_INTERVAL
+  // floors instead (mutually exclusive, §6.11), not the room type.
+  const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
+  const archetype = rng.pick(GUARD_ROOM_ARCHETYPES).id;
+  return [spawnMonster(archetype, depth, { tier })];
+}
+
+// Room types not listed here spawn nothing (rest/treasure/empty/event) — adding
+// a new type that spawns monsters is a single entry, no change to the loop below.
+const ROOM_SPAWN_STRATEGIES: Partial<Record<RoomType, RoomSpawnFn>> = {
+  combat: spawnCombatRoomMonsters,
+  boss: spawnBossRoomMonsters,
+};
+
+/** Builds a Floor from a generated set of stages — exported mainly so tests can cover the generator's output directly instead of always going through `createFloor`. */
+export function buildFloorFromStages(stages: RoomToken[][], rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const monsters: Monster[] = [];
   const usedNames = new Set<string>();
-
-  const stages = validatePattern(pattern);
 
   const rooms: Room[] = [];
   for (let stageIdx = 0; stageIdx < stages.length; stageIdx++) {
@@ -63,26 +116,10 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth 
     for (const token of stage) {
       const type = roomTypeForTag(token.tag);
       const id = `r${token.roomId}`;
-      let monsterIds: string[] = [];
 
-      if (type === "combat") {
-        const count = rng.int(1, 3);
-        for (let i = 0; i < count; i++) {
-          const archetype = rng.pick(COMBAT_ROOM_ARCHETYPES).id;
-          const m = spawnMonster(archetype, depth);
-          monsters.push(m);
-          monsterIds.push(m.id);
-        }
-      } else if (type === "boss") {
-        // "boss" here is the room tag (always the floor's single guard room) — the
-        // monster inside is "elite" most floors, "boss" every BOSS_FLOOR_INTERVAL
-        // floors instead (mutually exclusive, §6.11), not the room type.
-        const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
-        const archetype = rng.pick(GUARD_ROOM_ARCHETYPES).id;
-        const m = spawnMonster(archetype, depth, { tier });
-        monsters.push(m);
-        monsterIds = [m.id];
-      }
+      const roomMonsters = ROOM_SPAWN_STRATEGIES[type]?.(rng, depth) ?? [];
+      monsters.push(...roomMonsters);
+      const monsterIds = roomMonsters.map((m) => m.id);
 
       rooms.push({
         id,
@@ -106,8 +143,6 @@ export function buildFloorFromPattern(pattern: FloorPatternDef, rng: Rng, depth 
 }
 
 export function createFloor(rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
-  const pattern = pickRandomPattern((patterns) => rng.pick(patterns));
-  return buildFloorFromPattern(pattern, rng, depth);
+  const stages = generateFloorLayout(rng);
+  return buildFloorFromStages(stages, rng, depth);
 }
-
-export { FLOOR_PATTERNS };

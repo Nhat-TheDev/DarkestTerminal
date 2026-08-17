@@ -5,38 +5,38 @@
 
 ---
 
-## 1. Sinh room/floor: thư viện pattern (thay cho spanning tree)
+## 1. Sinh room/floor: generator runtime theo luật cố định (thay cho thư viện pattern)
 
-**Quyết định đã đổi** (bản trước dùng random spanning tree generate-then-validate — xem lịch sử git nếu cần tham khảo). Lý do đổi: spanning tree ngẫu nhiên vẫn có thể sinh ra **ngõ cụt** (leaf node không dẫn tới đâu, ví dụ 1 nhánh phụ chỉ để rồi phải quay lại) — trải nghiệm không tốt cho 1 dungeon crawler muốn mọi lựa chọn của người chơi đều có ý nghĩa tiến triển. Quyết định mới: **tác giả thủ công 1 thư viện "pattern" tầng, lưu dạng dữ liệu, random chọn 1 pattern mỗi khi tạo tầng** — cấu trúc được đảm bảo đúng luật ngay từ lúc thiết kế pattern, không cần validate-and-retry.
+**Quyết định đã đổi lần 2** (⚠️ cập nhật 2026-08-17): bản trước dùng 1 thư viện pattern viết tay (`data/floor-patterns.json`), random chọn 1 pattern mỗi khi tạo tầng (bản đó tự thay cho spanning-tree generate-then-validate trước nữa — xem lịch sử git nếu cần tham khảo lý do đổi lần 1: spanning tree ngẫu nhiên có thể sinh ngõ cụt). Lý do đổi lần 2: thư viện viết tay không mở rộng được khi thêm luật mới (`"event"` room ở nhánh rẽ) mà không phải author lại từng pattern bằng tay; **cấu trúc tầng giờ được sinh trực tiếp bằng thuật toán ở runtime**, vẫn giữ nguyên bất biến "không ngõ cụt, mọi nhánh đều hội tụ về boss" bằng đúng cơ chế kết nối forward-only cũ — chỉ khác nguồn stage đến từ hàm sinh chứ không phải parse JSON.
 
-### Notation
-Một pattern là chuỗi các **stage** (cột) nối nhau bằng `-`; mỗi stage gồm 1+ phòng nối nhau bằng `,`; mỗi phòng là `stage.roomId[tag]`:
-- `stage` = số thứ tự cột (0-indexed, phải khớp vị trí thực của nó trong chuỗi — bắt lỗi copy-paste).
-- `roomId` = số hiệu phòng, duy nhất trong toàn pattern.
-- `tag` = `""` (phòng combat thường), `"free"` (phòng nghỉ/rest), `"boss"` (phòng boss — bắt buộc là phòng duy nhất của stage cuối).
+### Biểu diễn nội bộ
+Vẫn dùng khái niệm **stage** (cột) — `RoomToken[][]` — mỗi phòng có `{ stage, roomId, tag }`, `tag` là:
+- `""` — phòng combat thường
+- `"free"` — phòng nghỉ (rest)
+- `"event"` — phòng sự kiện (mới, `RoomType` thêm `"event"` — nguồn rơi Artifact hiếm hơn Treasure room, xem `gameplay-decisions/07-items-artifacts.md` §7)
+- `"boss"` — phòng boss, bắt buộc là phòng duy nhất của stage cuối
 
-Ví dụ (pattern `pattern-fork-mid`, 9 phòng — mọi đường đi đều khớp đúng "5 thường + 1 nghỉ + 1 boss" đã chốt):
-```
-0.1[]-1.2[],1.3[],1.4[]-2.5[]-3.6[]-4.7[free]-5.8[]-6.9[boss]
-```
+### Quy tắc kết nối — giữ nguyên từ bản trước, đảm bảo hết ngõ cụt bằng kết cấu
+**Mọi phòng ở stage N nối tới TẤT CẢ phòng ở stage N+1**, không có cạnh nào khác — không nối lùi, không nối tắt qua stage. Hệ quả tự động: không thể có ngõ cụt, mọi nhánh rẽ tự hội tụ lại khi stage sau chỉ còn 1 phòng, không cho phép quay lại phòng cũ.
 
-### Quy tắc kết nối — đảm bảo hết ngõ cụt bằng kết cấu, không cần kiểm tra riêng
-**Mọi phòng ở stage N nối tới TẤT CẢ phòng ở stage N+1** (đồ thị 2 phía đầy đủ giữa 2 stage liền kề), **không có cạnh nào khác** — không nối lùi, không nối tắt qua stage. Hệ quả tự động, không cần thuật toán validate riêng:
-- Không thể có ngõ cụt: mọi phòng luôn có ít nhất 1 cạnh đi tới stage kế, tới tận stage cuối (boss).
-- Mọi nhánh rẽ đều tự hội tụ lại: khi 1 stage sau đó chỉ có 1 phòng, mọi phòng ở stage rẽ nhánh trước đó đều dẫn vào đúng phòng ấy.
-- Không cho phép quay lại phòng cũ (di chuyển chỉ tiến, khớp tinh thần "mỗi nhánh đều về đích").
+### Luật sinh (`generateFloorLayout(rng)` trong `src/data/floorPatterns.ts`, đúng luật bằng construction — không cần generate-then-validate)
+Mọi bound dưới đây tính **trên 1 đường đi** (path) từ start tới boss — vì mỗi stage nối toàn bộ sang stage kế nên độ dài đường đi = số stage, cố định bất kể chọn nhánh nào:
+- Stage 0 (start) đúng 1 phòng, tag `""` (phòng thường).
+- Stage cuối đúng 1 phòng, tag `boss`.
+- Độ dài path (tổng số phòng, tính cả start + boss): **7–12 phòng** (`MIN_PATH_ROOMS`/`MAX_PATH_ROOMS`), random mỗi lần sinh.
+- **Ngã rẽ (branch = stage >1 phòng) chỉ được đặt từ phòng thứ 3 trở đi** (`MIN_BRANCH_START_STAGE = 2`, 0-indexed).
+- Tối đa **3 ngã rẽ** (`MAX_BRANCHES`); 2 ngã rẽ liên tiếp phải cách nhau **≥3 phòng** (`MIN_BRANCH_SPACING`) — path ngắn (7 phòng) do đó chỉ khả thi tối đa ~2 ngã rẽ, không phải bug.
+- Mỗi ngã rẽ = đúng 2 phòng: **1 phòng thường + 1 phòng event** (người chơi chọn 1 trong 2 khi đi qua stage đó).
+- Vì khoảng cách 2 ngã rẽ ≥3 phòng, **2 phòng event không bao giờ liền kề nhau** trên cùng 1 path — hệ quả tự động, không cần check riêng.
+- Tối đa **4 phòng event** trên 1 path (`MAX_EVENT_ROOMS_PER_PATH`) — tự thỏa mãn vì tối đa 3 ngã rẽ ⇒ tối đa 3 event/path, hằng số giữ lại để luật tường minh nếu sau này đổi `MAX_BRANCHES`.
+- **1–2 phòng nghỉ** trên mỗi path (`MIN_REST_ROOMS_PER_PATH`/`MAX_REST_ROOMS_PER_PATH`, giữ nguyên từ bản trước) — chọn ngẫu nhiên trong các stage không phải start/boss/ngã rẽ.
+- `roomId` duy nhất trong toàn bộ layout.
 
-### Ràng buộc khi tác giả 1 pattern (`validatePattern` chặn ở code, không chỉ ở tài liệu)
-- Stage 0 đúng 1 phòng (lối vào duy nhất).
-- Stage cuối đúng 1 phòng, tag `boss`; không stage nào khác được gắn `boss`.
-- **Tối đa 2 stage có > 1 phòng** ("2 lần rẽ nhánh" — đúng yêu cầu đã chốt).
-- `roomId` duy nhất trong cả pattern.
-- **Mọi đường đi từ entry tới boss phải có ≥5 phòng combat và 1-2 phòng nghỉ** (`pathRoomBounds` trong `floorPatterns.ts` — vì mỗi stage nối toàn bộ sang stage kế nên độ dài đường đi = số stage bất kể chọn nhánh nào; bổ sung 2026-08-17 sau khi phát hiện `pattern-short-fork` cho phép chỉ 2 phòng combat trước boss).
+`validateGeneratedStages(stages)` re-check lại toàn bộ luật trên — không nằm trên đường sinh thật (generator đúng luật do construction), chỉ dùng làm lưới an toàn cho test và cho các thay đổi sau này vào generator.
 
 ### Lưu trữ & runtime
-- Thư viện pattern: `darkest-terminal/data/floor-patterns.json` — mảng `{ id, description, layout }`; hiện có 4 pattern mẫu (0, 1, 1, 2 branch stage; 8–12 phòng, mọi đường đi ≥5 combat + 1-2 nghỉ) minh họa đủ dải quy tắc cho phép.
-- `createFloor(rng, depth)` (`src/data/floor.ts`): random chọn 1 pattern qua `rng.pick`, parse layout, dựng `Room[]` với `connectedRoomIds` = toàn bộ phòng stage kế; gán tên phòng ngẫu nhiên (pool theo loại phòng, tránh trùng tên trong cùng tầng) và random 1-3 quái/phòng combat (từ 11 archetype combat thường, xem `gameplay-decisions/02-monster.md` §2), 1 quái elite hoặc boss (5 archetype guard-room, random 1 — `gameplay-decisions/02-monster.md` §2, `gameplay-decisions/06-level-system.md` §6.11) cho phòng `boss`. `depth` không còn cố định — `Game.advanceToNextFloor()` (`src/engine/game.ts`) gọi lại `createFloor` với `depth + 1` mỗi khi phòng guard-room được dọn sạch (`gameplay-decisions/06-level-system.md` §6.9).
-- `test/floorPatterns.test.ts`: verify từng pattern trong thư viện — số stage rẽ nhánh ≤ 2, mọi phòng reachable từ entry, mọi phòng đều có đường tới boss (BFS), cộng test riêng cho parser/validator (input hỏng phải throw).
+- Không còn file JSON pattern (`data/floor-patterns.json` đã xóa) — `createFloor(rng, depth)` (`src/data/floor.ts`) gọi thẳng `generateFloorLayout(rng)` rồi `buildFloorFromStages(stages, rng, depth)`: dựng `Room[]` với `connectedRoomIds` = toàn bộ phòng stage kế; gán tên phòng ngẫu nhiên (pool theo loại phòng, tránh trùng tên trong cùng tầng) và random 1-3 quái/phòng combat (từ 11 archetype combat thường, xem `gameplay-decisions/02-monster.md` §2), 1 quái elite hoặc boss (5 archetype guard-room, random 1 — `gameplay-decisions/02-monster.md` §2, `gameplay-decisions/06-level-system.md` §6.11) cho phòng `boss`. `depth` không còn cố định — `Game.advanceToNextFloor()` (`src/engine/game.ts`) gọi lại `createFloor` với `depth + 1` mỗi khi phòng guard-room được dọn sạch (`gameplay-decisions/06-level-system.md` §6.9).
+- `test/floorPatterns.test.ts`: property-based test chạy `generateFloorLayout` trên 200 seed, verify toàn bộ luật ở trên + reachability/no-dead-end (BFS), cộng test riêng cho `validateGeneratedStages` (input hỏng phải throw).
 
 `darknessLevel` của `Floor` = hàm đơn điệu tăng theo `depth` (công thức cụ thể để dành cho balancing sau, chỉ cần đảm bảo tăng dần) — không đổi so với quyết định trước.
 

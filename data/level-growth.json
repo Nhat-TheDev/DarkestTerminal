@@ -40,83 +40,83 @@
   "expTiers": [
     {
       "maxLevel": 5,
-      "expCost": 170
+      "expCost": 115
     },
     {
       "maxLevel": 10,
-      "expCost": 200
+      "expCost": 135
     },
     {
       "maxLevel": 15,
-      "expCost": 230
+      "expCost": 150
     },
     {
       "maxLevel": 20,
-      "expCost": 260
+      "expCost": 165
     },
     {
       "maxLevel": 25,
-      "expCost": 300
+      "expCost": 195
     },
     {
       "maxLevel": 30,
-      "expCost": 340
+      "expCost": 255
     },
     {
       "maxLevel": 35,
-      "expCost": 380
+      "expCost": 285
     },
     {
       "maxLevel": 40,
-      "expCost": 440
+      "expCost": 330
     },
     {
       "maxLevel": 45,
-      "expCost": 500
+      "expCost": 375
     },
     {
       "maxLevel": 50,
-      "expCost": 570
+      "expCost": 430
     },
     {
       "maxLevel": 55,
-      "expCost": 650
+      "expCost": 490
     },
     {
       "maxLevel": 60,
-      "expCost": 740
+      "expCost": 555
     },
     {
       "maxLevel": 65,
-      "expCost": 850
+      "expCost": 640
     },
     {
       "maxLevel": 70,
-      "expCost": 970
+      "expCost": 730
     },
     {
       "maxLevel": 75,
-      "expCost": 1100
+      "expCost": 825
     },
     {
       "maxLevel": 80,
-      "expCost": 1260
+      "expCost": 945
     },
     {
       "maxLevel": 85,
-      "expCost": 1440
+      "expCost": 1080
     },
     {
       "maxLevel": 90,
-      "expCost": 1640
+      "expCost": 1230
     },
     {
       "maxLevel": 95,
-      "expCost": 1880
+      "expCost": 1410
     },
     {
       "maxLevel": 100,
-      "expCost": 2140
+      "expCost": 1605
     }
   ],
   "eliteMultiplier": {

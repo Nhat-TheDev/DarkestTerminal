@@ -1,20 +1,24 @@
 import { describe, test, expect } from "bun:test";
 import {
-  FLOOR_PATTERNS,
-  parsePatternLayout,
-  validatePattern,
+  generateFloorLayout,
+  validateGeneratedStages,
   roomTypeForTag,
-  pathRoomBounds,
-  MIN_COMBAT_ROOMS_PER_PATH,
+  MIN_PATH_ROOMS,
+  MAX_PATH_ROOMS,
+  MAX_BRANCHES,
+  MIN_BRANCH_START_STAGE,
+  MIN_BRANCH_SPACING,
+  MAX_EVENT_ROOMS_PER_PATH,
   MIN_REST_ROOMS_PER_PATH,
   MAX_REST_ROOMS_PER_PATH,
-  type FloorPatternDef,
 } from "../src/data/floorPatterns";
-import { buildFloorFromPattern } from "../src/data/floor";
+import { buildFloorFromStages } from "../src/data/floor";
 import { connectedRooms } from "../src/engine/dungeon";
 import { Rng } from "../src/engine/rng";
 
-function bfsReachable(floor: ReturnType<typeof buildFloorFromPattern>["floor"]): Set<string> {
+const SEEDS = Array.from({ length: 200 }, (_, i) => i * 37 + 1);
+
+function bfsReachable(floor: ReturnType<typeof buildFloorFromStages>["floor"]): Set<string> {
   const visited = new Set<string>([floor.entryRoomId]);
   const queue = [floor.entryRoomId];
   while (queue.length > 0) {
@@ -29,29 +33,72 @@ function bfsReachable(floor: ReturnType<typeof buildFloorFromPattern>["floor"]):
   return visited;
 }
 
-describe("data/floor-patterns.json — every pattern obeys the design rules", () => {
-  test("the library isn't empty", () => {
-    expect(FLOOR_PATTERNS.length).toBeGreaterThan(0);
-  });
+describe("generateFloorLayout — every generated layout obeys the design rules", () => {
+  for (const seed of SEEDS) {
+    describe(`seed ${seed}`, () => {
+      const stages = generateFloorLayout(new Rng(seed));
 
-  for (const pattern of FLOOR_PATTERNS) {
-    describe(`pattern "${pattern.id}"`, () => {
-      test("parses and validates without throwing", () => {
-        expect(() => validatePattern(pattern)).not.toThrow();
+      test("validates without throwing", () => {
+        expect(() => validateGeneratedStages(stages)).not.toThrow();
       });
 
-      test("has at most 2 branch stages (stages with >1 room)", () => {
-        const stages = validatePattern(pattern);
-        const branchStages = stages.filter((s) => s.length > 1).length;
-        expect(branchStages).toBeLessThanOrEqual(2);
+      test(`path length is ${MIN_PATH_ROOMS}-${MAX_PATH_ROOMS} rooms (including start + boss)`, () => {
+        expect(stages.length).toBeGreaterThanOrEqual(MIN_PATH_ROOMS);
+        expect(stages.length).toBeLessThanOrEqual(MAX_PATH_ROOMS);
       });
 
-      test("every room is reachable from the entry, and every room can reach the boss (no dead ends)", () => {
-        const { floor } = buildFloorFromPattern(pattern, new Rng(42));
+      test("stage 0 is exactly 1 combat room, final stage is exactly 1 boss room", () => {
+        expect(stages[0]).toEqual([{ stage: 0, roomId: stages[0]![0]!.roomId, tag: "" }]);
+        const last = stages[stages.length - 1]!;
+        expect(last).toHaveLength(1);
+        expect(last[0]!.tag).toBe("boss");
+      });
+
+      test(`at most ${MAX_BRANCHES} branch stages, none before stage ${MIN_BRANCH_START_STAGE}, spaced >= ${MIN_BRANCH_SPACING} apart`, () => {
+        const branchStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.length > 1);
+        expect(branchStages.length).toBeLessThanOrEqual(MAX_BRANCHES);
+        for (const { i } of branchStages) expect(i).toBeGreaterThanOrEqual(MIN_BRANCH_START_STAGE);
+        for (let k = 1; k < branchStages.length; k++) {
+          expect(branchStages[k]!.i - branchStages[k - 1]!.i).toBeGreaterThanOrEqual(MIN_BRANCH_SPACING);
+        }
+      });
+
+      test("every branch stage offers exactly 1 combat room + 1 event room", () => {
+        for (const stage of stages) {
+          if (stage.length <= 1) continue;
+          const tags = stage.map((r) => r.tag).sort();
+          expect(tags).toEqual(["", "event"]);
+        }
+      });
+
+      test("2 event rooms are never adjacent (branch spacing guarantees this structurally)", () => {
+        const eventStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.some((r) => r.tag === "event")).map(({ i }) => i);
+        for (let k = 1; k < eventStages.length; k++) {
+          expect(eventStages[k]! - eventStages[k - 1]!).toBeGreaterThan(1);
+        }
+      });
+
+      test(`every path has at most ${MAX_EVENT_ROOMS_PER_PATH} event rooms`, () => {
+        const eventStageCount = stages.filter((s) => s.some((r) => r.tag === "event")).length;
+        expect(eventStageCount).toBeLessThanOrEqual(MAX_EVENT_ROOMS_PER_PATH);
+      });
+
+      test(`every path has ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, never on a branch stage`, () => {
+        const restStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.length === 1 && s[0]!.tag === "free");
+        expect(restStages.length).toBeGreaterThanOrEqual(MIN_REST_ROOMS_PER_PATH);
+        expect(restStages.length).toBeLessThanOrEqual(MAX_REST_ROOMS_PER_PATH);
+      });
+
+      test("every roomId is unique", () => {
+        const ids = stages.flat().map((r) => r.roomId);
+        expect(new Set(ids).size).toBe(ids.length);
+      });
+
+      test("every room is reachable from entry, and every room can reach the boss (no dead ends)", () => {
+        const { floor } = buildFloorFromStages(stages, new Rng(seed));
         const reachableFromEntry = bfsReachable(floor);
         expect(reachableFromEntry.size).toBe(floor.rooms.length);
 
-        // Forward-only DAG: walking connectedRoomIds from ANY room must eventually hit the boss room.
         const bossId = floor.rooms.find((r) => r.type === "boss")!.id;
         for (const room of floor.rooms) {
           let frontier = [room.id];
@@ -73,50 +120,8 @@ describe("data/floor-patterns.json — every pattern obeys the design rules", ()
           expect(reachedBoss).toBe(true);
         }
       });
-
-      test("exactly 1 rest room and exactly 1 boss room", () => {
-        const { floor } = buildFloorFromPattern(pattern, new Rng(7));
-        expect(floor.rooms.filter((r) => r.type === "boss")).toHaveLength(1);
-        expect(floor.rooms.filter((r) => r.type === "rest").length).toBeGreaterThanOrEqual(1);
-      });
-
-      test(`every path to boss has >=${MIN_COMBAT_ROOMS_PER_PATH} combat rooms and ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms`, () => {
-        const stages = validatePattern(pattern);
-        const bounds = pathRoomBounds(stages);
-        expect(bounds.combat.min).toBeGreaterThanOrEqual(MIN_COMBAT_ROOMS_PER_PATH);
-        expect(bounds.rest.min).toBeGreaterThanOrEqual(MIN_REST_ROOMS_PER_PATH);
-        expect(bounds.rest.max).toBeLessThanOrEqual(MAX_REST_ROOMS_PER_PATH);
-      });
-
-      test("room count is stable across different rng seeds (structure is fixed by the pattern, not randomized)", () => {
-        const countA = buildFloorFromPattern(pattern, new Rng(1)).floor.rooms.length;
-        const countB = buildFloorFromPattern(pattern, new Rng(999)).floor.rooms.length;
-        expect(countA).toBe(countB);
-      });
     });
   }
-});
-
-describe("parsePatternLayout", () => {
-  test("splits stages on '-' and rooms within a stage on ','", () => {
-    const stages = parsePatternLayout("0.1[]-1.2[],1.3[free]-2.4[boss]");
-    expect(stages).toEqual([
-      [{ stage: 0, roomId: 1, tag: "" }],
-      [
-        { stage: 1, roomId: 2, tag: "" },
-        { stage: 1, roomId: 3, tag: "free" },
-      ],
-      [{ stage: 2, roomId: 4, tag: "boss" }],
-    ]);
-  });
-
-  test("throws on a malformed token", () => {
-    expect(() => parsePatternLayout("0.1[]-not-a-token")).toThrow();
-  });
-
-  test("throws when a token's declared stage doesn't match its position", () => {
-    expect(() => parsePatternLayout("0.1[]-5.2[]")).toThrow();
-  });
 });
 
 describe("roomTypeForTag", () => {
@@ -124,6 +129,9 @@ describe("roomTypeForTag", () => {
     expect(roomTypeForTag("")).toBe("combat");
     expect(roomTypeForTag("free")).toBe("rest");
     expect(roomTypeForTag("boss")).toBe("boss");
+    expect(roomTypeForTag("event")).toBe("event");
+    expect(roomTypeForTag("treasure")).toBe("treasure");
+    expect(roomTypeForTag("empty")).toBe("empty");
   });
 
   test("throws on an unknown tag", () => {
@@ -131,48 +139,97 @@ describe("roomTypeForTag", () => {
   });
 });
 
-describe("validatePattern rejects patterns that break the rules", () => {
-  function pattern(layout: string): FloorPatternDef {
-    return { id: "test", description: "", layout };
+describe("validateGeneratedStages rejects layouts that break the rules", () => {
+  function stage(entries: Array<[number, string]>, s: number) {
+    return entries.map(([roomId, tag]) => ({ stage: s, roomId, tag }));
   }
 
-  test("rejects more than 2 branch stages", () => {
-    const bad = pattern("0.1[]-1.2[],1.3[]-2.4[],2.5[]-3.6[],3.7[]-4.8[boss]");
-    expect(() => validatePattern(bad)).toThrow(/branch/);
-  });
-
-  test("rejects a non-boss final stage", () => {
-    const bad = pattern("0.1[]-1.2[]");
-    expect(() => validatePattern(bad)).toThrow(/boss/);
-  });
-
-  test("rejects [boss] appearing outside the final stage", () => {
-    const bad = pattern("0.1[boss]-1.2[boss]");
-    expect(() => validatePattern(bad)).toThrow(/boss/);
+  test("rejects too few stages", () => {
+    const bad = [stage([[1, ""]], 0), stage([[2, "boss"]], 1)];
+    expect(() => validateGeneratedStages(bad)).toThrow(/stages/);
   });
 
   test("rejects more than 1 room in the entry stage", () => {
-    const bad = pattern("0.1[],0.2[]-1.3[boss]");
-    expect(() => validatePattern(bad)).toThrow(/entry/);
+    const bad = [
+      stage(
+        [
+          [1, ""],
+          [2, ""],
+        ],
+        0,
+      ),
+      ...Array.from({ length: 5 }, (_, i) => stage([[10 + i, ""]], i + 1)),
+      stage([[20, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(bad)).toThrow(/start/);
+  });
+
+  test("rejects a non-boss final stage", () => {
+    const bad = Array.from({ length: 7 }, (_, i) => stage([[i + 1, ""]], i));
+    expect(() => validateGeneratedStages(bad)).toThrow(/boss/);
+  });
+
+  test("rejects a branch stage before MIN_BRANCH_START_STAGE", () => {
+    const bad = [
+      stage([[1, ""]], 0),
+      stage(
+        [
+          [2, ""],
+          [3, "event"],
+        ],
+        1,
+      ),
+      ...Array.from({ length: 4 }, (_, i) => stage([[10 + i, ""]], i + 2)),
+      stage([[20, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(bad)).toThrow(/branch stage/);
+  });
+
+  test("rejects a branch stage that isn't 1 combat + 1 event", () => {
+    const bad = [
+      stage([[1, ""]], 0),
+      stage([[2, ""]], 1),
+      stage(
+        [
+          [3, ""],
+          [4, ""],
+        ],
+        2,
+      ),
+      ...Array.from({ length: 3 }, (_, i) => stage([[10 + i, ""]], i + 3)),
+      stage([[20, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(bad)).toThrow(/combat \+ 1 event/);
   });
 
   test("rejects duplicate room ids", () => {
-    const bad = pattern("0.1[]-1.1[boss]");
-    expect(() => validatePattern(bad)).toThrow(/unique/);
-  });
-
-  test("rejects a path with fewer than the minimum combat rooms", () => {
-    const bad = pattern("0.1[]-1.2[free]-2.3[boss]");
-    expect(() => validatePattern(bad)).toThrow(/combat rooms/);
+    const layout = [
+      stage([[1, ""]], 0),
+      stage([[1, "free"]], 1),
+      stage([[3, ""]], 2),
+      stage([[4, ""]], 3),
+      stage([[5, ""]], 4),
+      stage([[6, ""]], 5),
+      stage([[7, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(layout)).toThrow(/unique/);
   });
 
   test("rejects a path with no rest rooms", () => {
-    const bad = pattern("0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[boss]");
-    expect(() => validatePattern(bad)).toThrow(/rest rooms/);
+    const layout = Array.from({ length: 6 }, (_, i) => stage([[i + 1, ""]], i)).concat([stage([[7, "boss"]], 6)]);
+    expect(() => validateGeneratedStages(layout)).toThrow(/rest rooms/);
   });
 
   test("rejects a path with more than the maximum rest rooms", () => {
-    const bad = pattern("0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[free]-6.7[free]-7.8[free]-8.9[boss]");
-    expect(() => validatePattern(bad)).toThrow(/rest rooms/);
+    const layout = [
+      stage([[1, ""]], 0),
+      stage([[2, "free"]], 1),
+      stage([[3, "free"]], 2),
+      stage([[4, "free"]], 3),
+      stage([[5, ""]], 4),
+      stage([[6, ""]], 5),
+      stage([[7, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(layout)).toThrow(/rest rooms/);
   });
 });

@@ -378,67 +378,73 @@
     },
     "dark-knight": {
       "rows": [
-        "..HHHHH..",
-        ".HSSSSSH.",
-        ".HS.E.SH.",
-        ".AAAAAAW.",
-        ".ABBBBAW.",
-        ".ABBBBAW.",
-        ".AA.B.AA.",
-        "..LL.LL..",
-        "..LL.LL.."
+        "...A.GGG.A.",
+        "...AG.G.GA.",
+        "J...GG.GG..",
+        "IJ.AAEEEAA.",
+        ".IJAEFFFEA.",
+        "..IGEEFEEE.",
+        "...I.EFE.E.",
+        "....EE.EE..",
+        "....EE.EE..",
+        "....GG.GG.."
       ],
       "palette": {
-        "H": "#1a1015",
-        "S": "#3a2a4a",
-        "E": "#8a1fff",
-        "A": "#2a1a3a",
-        "B": "#1a1025",
-        "L": "#2a1a3a",
-        "W": "#4a1a5a"
+        "G": "#31296a",
+        "A": "#1c1e3b",
+        "E": "#261e52",
+        "F": "#850000",
+        "I": "#6b6284",
+        "J": "#524d56"
       }
     }
   },
   "elites": {
     "skeleton-guard": {
       "rows": [
-        "..HHHHH..",
-        ".HSSSSSH.",
-        ".HS.E.SH.",
-        "WAAAAAAAW",
-        "WABBBBBAW",
-        "WABBBBBAW",
-        ".AA.B.AA.",
-        "..LL.LL..",
-        "..LL.LL..",
-        "..LL.LL.."
+        "...........",
+        "..H.......H",
+        "..H.CCCCC.H",
+        "...CC.C.CC.",
+        "....EE.EE..",
+        "CCCCCCAAEE.",
+        "CDDDDCHHHE.",
+        "CDDDDCHHHE.",
+        ".CCCCEEE.L.",
+        "....LL.EE..",
+        "....EL.LL.."
       ],
       "palette": {
-        "H": "#4a473e",
+        "H": "#3a3830",
         "S": "#c9c2b0",
-        "E": "#2a1f18",
-        "A": "#6a6558",
-        "B": "#4a473e",
-        "L": "#a8a294",
-        "W": "#c9a227"
+        "A": "#5a5548",
+        "B": "#3a372e",
+        "L": "#8a8579",
+        "C": "#a2a4ae",
+        "D": "#6f757b",
+        "E": "#bfbecb"
       }
     },
     "giant-spider": {
       "rows": [
-        "L.L....L.L",
-        ".L.L..L.L.",
-        "LLOOOOOOLL",
-        ".LOOOOOOL.",
-        "LOOOEOEOOL",
-        ".LOOOOOOL.",
-        "LLOOOOOOLL",
-        ".L.L..L.L.",
-        "L.L....L.L"
+        "..L.......L..",
+        "L.L.......L.L",
+        "L..L.....L..L",
+        ".L..L.B.L..L.",
+        "..LLBOBOBLL..",
+        "...OOEOEOO...",
+        "..LOEOEOEOL..",
+        ".L.OOOOOOO.L.",
+        "L..L.A.A.L..L",
+        "L..L.....L..L",
+        "...L.....L..."
       ],
       "palette": {
-        "L": "#5a1f4a",
-        "O": "#3a1040",
-        "E": "#ff40b0"
+        "L": "#4a1f3a",
+        "O": "#2a1030",
+        "E": "#c00735",
+        "A": "#e0e0e0",
+        "B": "#f2c121"
       }
     },
     "dragon": {
