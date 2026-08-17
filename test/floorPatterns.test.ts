@@ -1,5 +1,15 @@
 import { describe, test, expect } from "bun:test";
-import { FLOOR_PATTERNS, parsePatternLayout, validatePattern, roomTypeForTag, type FloorPatternDef } from "../src/data/floorPatterns";
+import {
+  FLOOR_PATTERNS,
+  parsePatternLayout,
+  validatePattern,
+  roomTypeForTag,
+  pathRoomBounds,
+  MIN_COMBAT_ROOMS_PER_PATH,
+  MIN_REST_ROOMS_PER_PATH,
+  MAX_REST_ROOMS_PER_PATH,
+  type FloorPatternDef,
+} from "../src/data/floorPatterns";
 import { buildFloorFromPattern } from "../src/data/floor";
 import { connectedRooms } from "../src/engine/dungeon";
 import { Rng } from "../src/engine/rng";
@@ -68,6 +78,14 @@ describe("data/floor-patterns.json — every pattern obeys the design rules", ()
         const { floor } = buildFloorFromPattern(pattern, new Rng(7));
         expect(floor.rooms.filter((r) => r.type === "boss")).toHaveLength(1);
         expect(floor.rooms.filter((r) => r.type === "rest").length).toBeGreaterThanOrEqual(1);
+      });
+
+      test(`every path to boss has >=${MIN_COMBAT_ROOMS_PER_PATH} combat rooms and ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms`, () => {
+        const stages = validatePattern(pattern);
+        const bounds = pathRoomBounds(stages);
+        expect(bounds.combat.min).toBeGreaterThanOrEqual(MIN_COMBAT_ROOMS_PER_PATH);
+        expect(bounds.rest.min).toBeGreaterThanOrEqual(MIN_REST_ROOMS_PER_PATH);
+        expect(bounds.rest.max).toBeLessThanOrEqual(MAX_REST_ROOMS_PER_PATH);
       });
 
       test("room count is stable across different rng seeds (structure is fixed by the pattern, not randomized)", () => {
@@ -141,5 +159,20 @@ describe("validatePattern rejects patterns that break the rules", () => {
   test("rejects duplicate room ids", () => {
     const bad = pattern("0.1[]-1.1[boss]");
     expect(() => validatePattern(bad)).toThrow(/unique/);
+  });
+
+  test("rejects a path with fewer than the minimum combat rooms", () => {
+    const bad = pattern("0.1[]-1.2[free]-2.3[boss]");
+    expect(() => validatePattern(bad)).toThrow(/combat rooms/);
+  });
+
+  test("rejects a path with no rest rooms", () => {
+    const bad = pattern("0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[boss]");
+    expect(() => validatePattern(bad)).toThrow(/rest rooms/);
+  });
+
+  test("rejects a path with more than the maximum rest rooms", () => {
+    const bad = pattern("0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[free]-6.7[free]-7.8[free]-8.9[boss]");
+    expect(() => validatePattern(bad)).toThrow(/rest rooms/);
   });
 });

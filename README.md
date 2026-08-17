@@ -1,8 +1,9 @@
 # darkest-terminal — Prototype
 
-Prototype chơi được của thiết kế trong `./dungeon-crawler-design-doc.md` và
-`./docs/*.md`: 1 tầng hầm ngục random từ thư viện pattern, 4 nhân vật, nhiều
-loại quái vật thường + elite/boss, combat round 2 pha (ra lệnh + thực thi theo tốc độ). Chạy bằng
+Prototype chơi được của thiết kế trong `./docs/design-doc.md` và
+`./docs/*.md`: hầm ngục nhiều tầng random từ thư viện pattern (xuống tầng khi
+hạ quái trấn giữ phòng cuối), 4 nhân vật, nhiều loại quái vật thường +
+elite/boss, combat round 2 pha (ra lệnh + thực thi theo tốc độ). Chạy bằng
 [Bun](https://bun.sh) + [OpenTUI](https://github.com/anomalyco/opentui) như
 tech stack đã chốt.
 
@@ -13,8 +14,10 @@ bun install
 bun run start
 ```
 
-Điều khiển: nhấn **số** để chọn (di chuyển phòng / kỹ năng / mục tiêu),
-nhấn phím bất kỳ để tiếp tục sau khi 1 round kết thúc, **q** để thoát.
+Mở màn hình tiêu đề (splash screen) trước, nhấn phím bất kỳ để vào game
+thật. Điều khiển trong game: nhấn **số** để chọn (di chuyển phòng / kỹ năng /
+mục tiêu / lựa chọn rest room), nhấn phím bất kỳ để tiếp tục sau khi 1 round
+kết thúc, **↑/↓** để cuộn nhật ký chiến đấu, **q** để thoát.
 
 ## Test
 
@@ -22,27 +25,31 @@ nhấn phím bất kỳ để tiếp tục sau khi 1 round kết thúc, **q** đ
 bun test        # unit test cho engine (resolver, combat, aggro, ...) +
                  # smoke test headless cho UI (giả lập bàn phím qua @opentui/core/testing)
 bun run typecheck
+bun run sprite-editor  # công cụ dev: chỉnh sprite pixel-art qua trình duyệt (tools/sprite-editor/)
 ```
 
 ## Nội dung đã implement
 
-- **Tầng random từ thư viện pattern** (xem "Dữ liệu thiết kế" bên dưới): mỗi ván chọn ngẫu nhiên 1 trong 4 pattern có sẵn, luôn 1 lối vào + 1 phòng boss cuối, tối đa 2 lần rẽ nhánh, **không ngõ cụt** — `src/data/floor.ts`, `src/data/floorPatterns.ts`
+- **Nhiều tầng hầm ngục, xuống tầng thật** — mỗi tầng random 1 trong 4 pattern có sẵn (xem "Floor pattern" bên dưới), luôn 1 lối vào + 1 phòng guard-room (elite/boss) cuối, tối đa 2 lần rẽ nhánh, **không ngõ cụt**. Hạ quái trấn giữ phòng cuối tầng → sinh tầng kế ngay (`Game.advanceToNextFloor`, `docs/gameplay-decisions/06-level-system.md` §6.9) — không có trạng thái "thắng game" cố định, chơi được tới đâu hay tới đó (§6.10) — `src/data/floor.ts`, `src/data/floorPatterns.ts`, `src/engine/game.ts`
 - **4 class** với 6 chỉ số + đòn đánh thường (slot 0, miễn phí) + skill riêng slot 1-2 (Vanguard, Mage, Rogue, Acolyte — id/name/skill đều tiếng Anh) — `src/data/classes.ts`
-- **11 loại quái thường** (Dungeon Rat, Black Bat, Slime, Skeleton, Zombie, Snake, Lizard, Spider, Skeleton Archer, Skeleton Warrior, Skeleton Guard) + **5 archetype guard-room** (Skeleton Guard dùng chung, cộng Giant Spider/Dragon/Zombie Knight/Dark Knight riêng cho elite/boss) trấn giữ phòng boss mỗi tầng — `src/data/monsters.ts`
+- **11 loại quái thường** (Dungeon Rat, Black Bat, Slime, Skeleton, Zombie, Snake, Lizard, Spider, Skeleton Archer, Skeleton Warrior, Skeleton Guard) + **5 archetype guard-room** (Skeleton Guard dùng chung, cộng Giant Spider/Dragon/Zombie Knight/Dark Knight riêng cho elite/boss) trấn giữ phòng boss mỗi tầng, random chọn 1 trong 5 mỗi lần — `src/data/monsters.ts`
 - **Combat 2 pha** (ra lệnh cả 4 nhân vật → thực thi theo tốc độ, quái quyết định tại chỗ), targeting theo `aggro` (random có trọng số), rule đổi/hủy mục tiêu khi target chết trước lượt — `src/engine/combat.ts`
-- **Skill kit riêng cho Elite/Boss** (`docs/gameplay-decisions.md` §6.12, mở rộng sang 5 archetype guard-room): đòn strike đơn mục tiêu (mạnh hơn đòn thường) + cleave AoE (30%/lượt) cho cả 2 tier; riêng Boss thêm 1 debuff riêng theo archetype (sát thương + weakened/poisoned/burning/stunned, 30%/lượt) và Finishing Blow — tích lực 1 lượt (khoá mục tiêu theo aggro, log cảnh báo), lượt sau tung sát thương cố định rất cao (~60% maxHp Vanguard, đủ hạ gục class máu mỏng), không dựa theo %HP mục tiêu — `data/monster-skills.json`, `src/engine/combat.ts`
-- **Resolver `SkillEffect`** dùng chung skill/status-effect, buff/debuff qua `modifyCombatStat` (cài đặt 1 lần lúc áp, gỡ 1 lần lúc hết hạn), DoT (`trúng độc`) tick cuối mỗi round — `src/engine/resolver.ts`
-- **3 survival stat** (fear/hunger/thirst, khởi tạo 100/100/0 mọi class), HP=0 → permadeath thật, fear ảnh hưởng ngược combat theo 4 bậc, rest room hồi đầy — `src/engine/survival.ts`, `src/engine/resolver.ts`
-- **Hệ thống level 1-100** (`docs/gameplay-decisions.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Nhân vật còn nhân thêm `growthWeights` riêng theo class (§6.8, `classGrowthBonus()`) — VD Cận Vệ dồn tăng trưởng vào defense/maxHp, Pháp Sư dồn vào attack/maxMp — để 4 class không "hội tụ" thành giống nhau ở cấp cao; quái vật vẫn dùng `growthBonus()` không trọng số. Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. Vì prototype chỉ có 1 tầng (xem "Đã cắt khỏi scope" bên dưới), party thực tế vẫn ở level 1 suốt ván — chỉ dùng được đòn đánh thường slot 0 + skill riêng slot 1-2/mỗi class, slot 3-5 mở ở level 10/20/35; công thức 1-100 sẵn sàng cho khi có nhiều tầng hơn. **⚠️ Cập nhật thiết kế 2026-08-16, chưa implement** (`docs/gameplay-decisions.md` §6.9/6.10): quyết định mới tách level nhân vật (chung party, cap 100, tăng qua EXP giết quái) khỏi level tầng ngục (`Floor.depth`, không giới hạn, tăng khi hạ boss) — thay cho công thức `Character.level = min(floorDepth, 100)` mô tả ở trên, vốn chưa từng chạy thật vì multi-floor chưa được nối (xem bullet "Multi-floor" bên dưới)
+- **Skill kit riêng cho Elite/Boss** (`docs/gameplay-decisions/06-level-system.md` §6.12, cả 5 archetype guard-room): đòn strike đơn mục tiêu (mạnh hơn đòn thường) + cleave AoE (30%/lượt) cho cả 2 tier; riêng Boss thêm 1 debuff riêng theo archetype (sát thương + weakened/poisoned/burning/stunned, 30%/lượt) và Finishing Blow — tích lực 1 lượt (khoá mục tiêu theo aggro, log cảnh báo), lượt sau tung sát thương cố định rất cao, không dựa theo %HP mục tiêu — `data/monster-skills.json`, `src/engine/combat.ts`
+- **Resolver `SkillEffect`** dùng chung skill/status-effect, buff/debuff qua `modifyCombatStat` (cài đặt 1 lần lúc áp, gỡ 1 lần lúc hết hạn), DoT (`poisoned`) tick cuối mỗi round — `src/engine/resolver.ts`
+- **3 survival stat** (fear/hunger/thirst, khởi tạo 100/100/0 mọi class), HP=0 → permadeath thật, fear ảnh hưởng ngược combat theo 4 bậc — `src/engine/survival.ts`, `src/engine/resolver.ts`. **Rest room** cho 3 lựa chọn (Ăn uống: +50% maxHp/maxMp; Trò chuyện: +10% maxHp/maxMp + fear -20; Bỏ qua) — **hiện không hồi `hunger`/`thirst`**, xem ghi chú lệch thiết kế ở `docs/gameplay-decisions/03-survival-stats.md` §3.
+- **Hệ thống level 1-100, đã implement và đang chạy trong game** (`docs/gameplay-decisions/06-level-system.md` §6): `attack`/`defense`/`maxHp`/`maxMp` tăng theo 5 tier tapered (nhanh dần chậm lại, không tuyến tính) qua `growthBonus()` — dùng chung cho `createCharacter` (theo `level`) và `spawnMonster` (theo `floorDepth`, cùng công thức). Nhân vật còn nhân thêm `growthWeights` riêng theo class (§6.8, `classGrowthBonus()`) — VD Vanguard dồn tăng trưởng vào defense/maxHp, Mage dồn vào attack/maxMp — để 4 class không "hội tụ" thành giống nhau ở cấp cao; quái vật vẫn dùng `growthBonus()` không trọng số. Boss dùng hệ số elite bất đối xứng (`maxHp×2.5, attack×1.4, defense×1.15`) thay vì nhân đều ×2 mọi chỉ số — bản cũ khiến defense boss ở tầng sâu gần bằng tổng sát thương, gần bất tử. Level nhân vật (chung party, cap 100, tăng qua EXP giết quái) tách hoàn toàn khỏi level tầng ngục (`Floor.depth`, không giới hạn, tăng khi hạ guard-room) — `Game.resolve()` gọi `applyPartyExp` ngay sau mỗi trận thắng, `Game.advanceToNextFloor()` sinh tầng kế khi hạ guard-room (§6.9).
+- **Màn hình tiêu đề (splash screen)** trước khi vào game — dựng bằng font chữ khối tự viết (`src/ui/bigText.ts`, `test/bigText.test.ts`) — `src/ui/mainMenu.ts`, `src/main.ts`
 
 ## Đã cắt khỏi scope (so với design doc đầy đủ)
 
 Để giữ prototype gọn và chơi được trong thời gian ngắn, các phần sau **chưa** implement:
 
 - **4 mini-game** (Snake/Tetris/Brick Breaker/Magic Tiles) — không có debuff nào được "chữa" qua mini-game, debuff chỉ hết hạn theo `durationTurns`; boss cũng không có phase mini-game, chỉ là combat turn-based thuần
-- **Item/inventory** — không có `ItemDefinition`, không nhặt/dùng vật phẩm
-- **Multi-floor / xuống tầng** — chỉ có 1 tầng/ván; hạ boss tầng đó là thắng luôn, chưa có khái niệm "xuống tầng kế". Đây cũng là lý do hệ EXP/level-tầng-vô-hạn ở `docs/gameplay-decisions.md` §6.9/6.10 mới chỉ là quyết định thiết kế, chưa có code — cần nối vòng lặp nhiều tầng trước (sửa `depth` hardcode ở `src/data/floor.ts`, đổi hành vi hạ boss ở `src/engine/game.ts` từ "kết thúc game" sang "sinh tầng kế")
-- **FOV / pathfinding / rendering diff-based** — các rủi ro kỹ thuật nêu ở design doc mục 3 chưa cần tới ở quy mô 1 tầng, menu số
+- **Item/inventory** — không có `ItemDefinition`, không nhặt/dùng vật phẩm. Spec đầy đủ (10 item tiêu hao + 30 Artifact **trang bị** — tối đa 3/nhân vật, hiệu ứng chỉ tính cho người đang gắn — 11 loại hiệu ứng, 4 bậc hiếm, nguồn rơi Elite/Boss/Treasure/Event room) đã viết ở `docs/gameplay-decisions/07-items-artifacts.md` §7 — chưa implement.
+- **Treasure room / Event room** — 2 loại phòng mới cần cho nguồn rơi Artifact (`07-items-artifacts.md` §7) chưa có trong `data/floor-patterns.json` (hiện chỉ 3 tag: combat rỗng, `free`/rest, `boss`).
+- **FOV / pathfinding / rendering diff-based** — các rủi ro kỹ thuật nêu ở design doc mục 3 chưa cần tới ở quy mô hiện tại, menu số
+
+**Đã implement từ bản trước** (từng nằm trong danh sách này): **multi-floor / xuống tầng thật** — xem bullet đầu tiên ở "Nội dung đã implement" — không còn giới hạn "1 tầng/ván" như bản gốc.
 
 ## Dữ liệu thiết kế (JSON)
 
@@ -57,12 +64,13 @@ JSON.
 
 | File | Nội dung | Loader |
 |---|---|---|
-| `data/classes.json` | 4 class: chỉ số + đầy đủ 6 skill/class (1 đánh thường + 5 riêng) | `src/data/classes.ts` |
-| `data/monsters.json` | 3 monster archetype: chỉ số base + AI pattern | `src/data/monsters.ts` |
-| `data/status-effects.json` | Buff/debuff (phong-thu, trung-doc, ...) | `src/data/statusEffects.ts` |
-| `data/sprites.json` | Pixel-art (lưới ký tự + palette) cho 4 class + 3 quái + boss | `src/ui/sprites.ts` |
+| `data/classes.json` | 4 class (id/name tiếng Anh: Vanguard/Mage/Rogue/Acolyte): chỉ số + đầy đủ 6 skill/class (1 đánh thường + 5 riêng) | `src/data/classes.ts` |
+| `data/monsters.json` | 15 monster archetype (11 combat thường + 5 guard-room, Skeleton Guard thuộc cả 2): chỉ số base + AI pattern + `guardOnly` flag | `src/data/monsters.ts` |
+| `data/monster-skills.json` | 20 skill riêng Elite/Boss (strike/cleave/execute/debuff × 5 archetype guard-room) | `src/data/monsters.ts` |
+| `data/status-effects.json` | Buff/debuff (id/name tiếng Anh: `guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
+| `data/sprites.json` | Pixel-art (lưới ký tự + palette) cho 4 class + 15 monster archetype + 1 boss dùng chung (elite/boss tier) | `src/ui/sprites.ts` |
 | `data/floor-patterns.json` | Thư viện pattern cấu trúc tầng (xem mục dưới) | `src/data/floorPatterns.ts` |
-| `data/level-growth.json` | 5 tier tốc độ tăng chỉ số theo level/depth + hệ số elite boss + ngưỡng EXP lên cấp (§6.9, chưa implement) | `src/data/levelGrowth.ts` |
+| `data/level-growth.json` | 5 tier tốc độ tăng chỉ số theo level/depth + hệ số elite/boss + `expTiers` (20 bucket 5-level, ngưỡng EXP lên cấp) — **đã implement**, không còn chỉ là spec | `src/data/levelGrowth.ts` |
 
 ## Floor pattern — cấu trúc tầng dạng dữ liệu
 
@@ -92,15 +100,18 @@ Luật khi thêm pattern mới (bị chặn bởi `validatePattern` ở
 - `roomId` không trùng trong cùng pattern.
 
 Tên phòng, loại quái/số lượng quái mỗi phòng combat được random ở
-`src/data/floor.ts` khi build pattern thành `Floor` thật — pattern chỉ quyết
-định **cấu trúc**, không quyết định nội dung từng phòng.
+`src/data/floor.ts` khi build pattern thành `Floor` thật (dùng lại **mỗi
+tầng**, không chỉ tầng đầu — `depth` truyền vào `createFloor` tăng dần qua
+`Game.advanceToNextFloor()`) — pattern chỉ quyết định **cấu trúc**, không
+quyết định nội dung từng phòng.
 
 ## Giao diện
 
-Tông màu tối (nền `#100d0a`/panel `#171310`), mỗi nhân vật/quái có 1 "khối"
-màu riêng (chip nền màu + viết tắt, VD `CV` xanh thép cho Cận Vệ, `XS` xám
-xương cho Xương Sống Canh Gác, boss tô đỏ). HP đổi màu theo ngưỡng
-(xanh/vàng/đỏ), fear từ bậc 2 trở lên mới hiện nhãn màu.
+Mở màn hình tiêu đề (`src/ui/mainMenu.ts`) trước khi vào game — nhấn phím bất
+kỳ để bắt đầu. Trong game: tông màu tối (nền `#100d0a`/panel `#171310`), mỗi
+nhân vật/quái có 1 "khối" màu riêng (chip nền màu + viết tắt, VD `VG` xanh
+thép cho Vanguard, `GRD` xám xương cho Skeleton Guard, boss tô đỏ). HP đổi
+màu theo ngưỡng (xanh/vàng/đỏ), fear từ bậc 2 trở lên mới hiện nhãn màu.
 
 ### Khung "Chiến Trường" — pixel art
 
@@ -115,7 +126,8 @@ chữ (viết tắt + HP hiện tại) — chi tiết đầy đủ (tên dài, M
 nằm ở panel "Đoàn Thám Hiểm"/"Quái Vật" bên dưới, khung pixel chỉ để nhìn
 nhanh. Dữ liệu sprite (lưới ký tự → màu hex) ở `src/ui/sprites.ts`, có test
 riêng (`test/sprites.test.ts`) chặn lỗi lệch hàng/cột hoặc thiếu màu trong
-palette.
+palette. Chỉnh sprite trực quan qua trình duyệt bằng `bun run sprite-editor`
+(`tools/sprite-editor/`) thay vì sửa tay lưới ký tự trong JSON.
 
 Panel này cần khá nhiều chiều cao (13 pixel + 3 dòng nhãn + viền ≈ 18 dòng),
 cộng với các panel khác → nên dùng terminal **tối thiểu ~45-50 dòng cao**;
@@ -127,8 +139,10 @@ Các panel còn lại:
   đang dính hiệu ứng)
 - **Quái Vật**: danh sách quái đang giao chiến + HP, ẩn khi không có quái
   trong phòng
-- **Nhật Ký**: thu nhỏ còn 5 dòng cao (trước là 10), chỉ hiện log của round
-  vừa resolve thay vì dồn cả trận
+- **Nhật Ký**: 8 dòng cao, **cuộn được** (`↑`/`↓`, `ScrollBoxRenderable`,
+  dính đáy mặc định) — giữ toàn bộ lịch sử log của cả ván (`logHistory`,
+  không reset qua các trận/tầng) thay vì chỉ hiện đúng round vừa resolve như
+  bản trước
 
 Toàn bộ theme/màu định nghĩa ở `src/ui/theme.ts` — đổi bảng màu hoặc thêm
 class/quái mới thì chỉnh `PALETTE`/`CLASS_STYLE`/`MONSTER_STYLE` ở đó
@@ -140,6 +154,7 @@ class/quái mới thì chỉnh `PALETTE`/`CLASS_STYLE`/`MONSTER_STYLE` ở đó
 data/                  # thiết kế dạng JSON — xem mục "Dữ liệu thiết kế" ở trên
   classes.json
   monsters.json
+  monster-skills.json
   status-effects.json
   sprites.json
   floor-patterns.json
@@ -148,16 +163,21 @@ src/
   types.ts            # runtime types, đối chiếu ./dungeon-crawler-data-model.ts
   data/                # loader cho data/*.json + logic build (spawnMonster, parse/validate pattern, build Floor)
     floorPatterns.ts   # parser + validator cho notation "stage.roomId[tag]"
-    levelGrowth.ts      # growthBonus(stat, level) 5-tier + hệ số elite boss — dùng chung character/monster
+    levelGrowth.ts      # growthBonus(stat, level) 5-tier + hệ số elite/boss + expTiers — dùng chung character/monster
   engine/              # logic thuần (rng, party, resolver, combat, survival, dungeon, game) — test được không cần UI
   ui/theme.ts          # bảng màu + helper dựng StyledText (chip, màu theo HP/fear)
   ui/sprites.ts        # load sprite pixel-art từ JSON + render vào khung cố định
+  ui/bigText.ts        # font chữ khối tự viết cho màn hình tiêu đề
+  ui/mainMenu.ts        # màn hình tiêu đề, chờ phím bất kỳ rồi mới boot App
   ui/app.ts            # OpenTUI: layout + bàn phím, chỉ đọc/ghi qua Game
-  main.ts              # entry point thật (createCliRenderer)
+  main.ts              # entry point thật (createCliRenderer → mainMenu → App)
+tools/
+  sprite-editor/        # dev tool: chỉnh sprite pixel-art qua trình duyệt (bun run sprite-editor)
 test/
   engine.test.ts       # unit test engine, bao gồm 1 playthrough kịch bản đầy đủ
   ui.test.ts           # smoke test headless: boot + chơi hết ván qua bàn phím giả lập
   sprites.test.ts      # kích thước/palette từng sprite + hành vi renderSpriteInSlot
+  bigText.test.ts      # font chữ khối: mọi glyph cùng chiều rộng theo hàng
   floorPatterns.test.ts # mọi pattern: luật rẽ nhánh, reachability, parser/validator edge case
   levelGrowth.test.ts  # bảng mốc 1-100 khớp docs, regression cho lỗi elite boss "gần bất tử" đã sửa
 ```

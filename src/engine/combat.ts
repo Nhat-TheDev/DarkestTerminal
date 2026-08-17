@@ -107,6 +107,25 @@ export interface QueueActionError {
   reason: string;
 }
 
+/**
+ * Read-only affordability check (unlocked / MP / usesPerCombat / cooldown) —
+ * shared by queueAction (which then spends the cost) and the UI, which needs
+ * to know a skill is unusable *before* letting the player advance to target
+ * picking, not just at queue time.
+ */
+export function checkSkillUsable(actor: Actor, skill: SkillDefinition): QueueActionError | null {
+  if (!isCharacter(actor)) return { reason: "Chỉ nhân vật mới được ra lệnh ở pha này." };
+  if (!actor.unlockedSkillIds.includes(skill.id)) return { reason: "Kỹ năng chưa được mở khóa." };
+  if (actor.mp < skill.mpCost) return { reason: "Không đủ MP." };
+  if (skill.usesPerCombat !== undefined) {
+    const used = actor.usesRemainingThisCombat[skill.id] ?? skill.usesPerCombat;
+    if (used <= 0) return { reason: "Đã hết lượt dùng skill này trong trận." };
+  }
+  const cooldownLeft = actor.cooldownsRemaining[skill.id] ?? 0;
+  if (cooldownLeft > 0) return { reason: `Đang hồi chiêu (còn ${cooldownLeft} lượt).` };
+  return null;
+}
+
 /** Validates + deducts MP/usesPerCombat/cooldown and appends a QueuedAction (docs/technical-decisions.md §2: cost is spent at queue time). */
 export function queueAction(
   combat: CombatState,
@@ -116,23 +135,18 @@ export function queueAction(
   ctx: EngineContext
 ): QueueActionError | null {
   const actor = getActorByRef(actorRef, ctx);
-  if (!isCharacter(actor)) return { reason: "Chỉ nhân vật mới được ra lệnh ở pha này." };
   const skill = getSkill(skillId);
-  if (!actor.unlockedSkillIds.includes(skillId)) return { reason: "Kỹ năng chưa được mở khóa." };
-  if (actor.mp < skill.mpCost) return { reason: "Không đủ MP." };
-  if (skill.usesPerCombat !== undefined) {
-    const used = actor.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
-    if (used <= 0) return { reason: "Đã hết lượt dùng skill này trong trận." };
-  }
-  if ((actor.cooldownsRemaining[skillId] ?? 0) > 0) return { reason: "Kỹ năng đang hồi chiêu." };
+  const err = checkSkillUsable(actor, skill);
+  if (err) return err;
+  const character = actor as Character; // checkSkillUsable already confirmed isCharacter(actor)
 
-  actor.mp -= skill.mpCost;
+  character.mp -= skill.mpCost;
   if (skill.usesPerCombat !== undefined) {
-    const used = actor.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
-    actor.usesRemainingThisCombat[skillId] = used - 1;
+    const used = character.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
+    character.usesRemainingThisCombat[skillId] = used - 1;
   }
   if (skill.cooldownTurns !== undefined) {
-    actor.cooldownsRemaining[skillId] = skill.cooldownTurns;
+    character.cooldownsRemaining[skillId] = skill.cooldownTurns;
   }
 
   combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId }, targets: chosenTargets });
@@ -227,7 +241,12 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
     return;
   }
 
-  combat.log.push(`${actor.name} dùng ${skill.name}.`);
+  // Name the target for a single-recipient skill ("A dùng Heal lên B.") so who's
+  // being buffed/debuffed/healed is clear before the effect lines even resolve —
+  // but not for a self-target (targets[0] === actor) or an AoE skill (>1 target).
+  const soloTarget = targets.length === 1 && targets[0] !== actor ? targets[0] : null;
+  const targetSuffix = soloTarget ? ` lên ${soloTarget.name}` : "";
+  combat.log.push(`${actor.name} dùng ${skill.name}${targetSuffix}.`);
   applySkillEffects(skill, actor, targets, ctx, combat.log);
 }
 

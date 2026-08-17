@@ -4,7 +4,9 @@ import type { Character } from "../types";
 const HUNGER_DRAIN_PER_ACTION = 1;
 const THIRST_DRAIN_PER_ACTION = 1.5;
 const STARVATION_DAMAGE_PERCENT = 0.02;
-const REST_FEAR_RELIEF = 30;
+const EAT_DRINK_RESTORE_PERCENT = 0.5;
+const CHAT_RESTORE_PERCENT = 0.1;
+const CHAT_FEAR_RELIEF = 20;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -36,12 +38,17 @@ export function applyAmbientFear(character: Character, darknessLevel: number): v
   character.survival.fear = clamp(character.survival.fear + darknessLevel, 0, 100);
 }
 
-/** Resting fully restores HP/MP/hunger/thirst and relieves (not zeroes) fear. */
-export function restCharacter(character: Character): void {
+/** Rest room option "Ăn uống": restores 50% of max HP/MP. */
+export function restEatDrink(character: Character): void {
   if (!character.isAlive) return;
-  character.hp = character.maxHp;
-  character.mp = character.maxMp;
-  character.survival.hunger = 100;
-  character.survival.thirst = 100;
-  character.survival.fear = clamp(character.survival.fear - REST_FEAR_RELIEF, 0, 100);
+  character.hp = clamp(character.hp + Math.round(character.maxHp * EAT_DRINK_RESTORE_PERCENT), 0, character.maxHp);
+  character.mp = clamp(character.mp + Math.round(character.maxMp * EAT_DRINK_RESTORE_PERCENT), 0, character.maxMp);
+}
+
+/** Rest room option "Trò chuyện": restores 10% of max HP/MP and relieves fear. */
+export function restChat(character: Character): void {
+  if (!character.isAlive) return;
+  character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_PERCENT), 0, character.maxHp);
+  character.mp = clamp(character.mp + Math.round(character.maxMp * CHAT_RESTORE_PERCENT), 0, character.maxMp);
+  character.survival.fear = clamp(character.survival.fear - CHAT_FEAR_RELIEF, 0, 100);
 }

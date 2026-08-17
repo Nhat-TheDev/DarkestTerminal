@@ -22,30 +22,31 @@
 ### 1.2 Combat
 - Turn-based theo round, mỗi round 2 pha: **ra lệnh** (người chơi chọn hành động + mục tiêu cho cả 4 nhân vật trước, không thấy trước quái làm gì) rồi **thực thi** (nhân vật + quái lần lượt ra đòn theo **tốc độ**, cao trước thấp sau)
 - **Permadeath thật sự** — nhân vật chết là mất hẳn, không hồi sinh
-- Thuật toán 2 pha đầy đủ (rule mục tiêu chết trước lượt, thời điểm trừ MP, ...): **[`docs/technical-decisions.md`](./docs/technical-decisions.md)** mục 2
-- Hiệu quả HP/MP/attack/defense/aggro/speed + công thức tăng trưởng theo cấp: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 5
+- Thuật toán 2 pha đầy đủ (rule mục tiêu chết trước lượt, thời điểm trừ MP, ...): **[`technical-decisions.md`](./technical-decisions.md)** mục 2
+- Hiệu quả HP/MP/attack/defense/aggro/speed + công thức tăng trưởng theo cấp: **[`gameplay-decisions/05-character-stats.md`](./gameplay-decisions/05-character-stats.md)** mục 5
 
 ### 1.3 Survival stats
 - 3 chỉ số: **sợ hãi (fear)**, **đói (hunger)**, **khát (thirst)** — cộng thêm HP, MP riêng
 - Fear tăng theo: độ bóng tối của tầng (darkness tăng dần theo độ sâu) + thua mini-game
 - Hunger/thirst giảm dần theo thời gian/hành động
 - Hồi phục qua: item, hoặc nghỉ tại rest room
-- Ngưỡng số cụ thể + fear có ảnh hưởng ngược lại combat: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 3-4
+- Ngưỡng số cụ thể: **[`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)** mục 3; fear có ảnh hưởng ngược lại combat: **[`gameplay-decisions/04-fear-combat.md`](./gameplay-decisions/04-fear-combat.md)** mục 4
 
 ### 1.4 Cấu trúc tầng (Floor/Room)
 - Mỗi tầng: 5-10 phòng, có **rẽ nhánh** (đồ thị, không phải chuỗi tuyến tính)
 - 1-2 phòng trống dùng để nghỉ ngơi (rest room), hồi survival stats
 - Xuống tầng sâu hơn → darkness tăng → fear tăng theo (ambient)
-- Thuật toán sinh phòng cụ thể: **[`docs/technical-decisions.md`](./docs/technical-decisions.md)** mục 1
+- Thuật toán sinh phòng cụ thể: **[`technical-decisions.md`](./technical-decisions.md)** mục 1
 
 ### 1.5 Class & Skill
 - Mỗi class: **6 skill total** — 1 **đòn đánh thường** (miễn phí, dùng chung cấu trúc mọi class, gây sát thương thuần theo vũ khí: kiếm=chém, dao=đâm, gậy=đập, tay không=đấm) + **5 skill riêng**, bắt đầu với 2 skill riêng (cộng đòn đánh thường luôn có sẵn), mở dần 3 skill riêng còn lại khi lên cấp
 - 6 chỉ số định hình mỗi class: **tấn công, phòng thủ, máu, mana, thu hút** (tỉ lệ bị quái chọn làm mục tiêu), **tốc độ** (ưu tiên ra đòn trước)
 - 1 số skill riêng có thêm **cooldown theo lượt** (ngoài `usesPerCombat`) để tránh bị spam liên tục khi lên cấp cao (MP dư dả)
-- 4 class, bảng chỉ số + nội dung skill cụ thể: **[`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)** mục 1 (Cận Vệ, Pháp Sư, Sát Thủ, Tu Sĩ)
+- 4 class, bảng chỉ số + nội dung skill cụ thể: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** mục 1 (Vanguard, Mage, Rogue, Acolyte)
 
 ### 1.6 Item
 - Hỗ trợ duy trì sinh tồn (hunger/thirst/fear) và hồi HP/MP
+- **Cập nhật 2026-08-17**: spec đầy đủ (10 item tiêu hao, id/name tiếng Anh) + khái niệm mới **Artifact** (relic **trang bị** cho 1 nhân vật cụ thể — tối đa 3/nhân vật, không phải buff cả đội — vĩnh viễn trong 1 run, 30 cái, 11 loại hiệu ứng, 4 bậc hiếm, rơi từ Elite/Boss/Treasure room/Event room) không có trong outline gốc này — xem **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.7 Status Effect (debuff) & Mini-game
 - Có "trạng thái bất lợi đặc biệt" (debuff) — trị liệu bằng cách chơi mini-game
@@ -67,7 +68,7 @@ Gợi ý phân bổ (chưa bắt buộc): game rủi ro thấp (Snake/Tetris) ch
 - Có **hit combo** — dùng làm hệ số nhân cho hiệu quả (combo cao → trị debuff triệt để hơn / damage lên boss nhiều hơn)
 - **Điều kiện thắng/thua**: tính điểm liên tục; đủ điểm mục tiêu trong thời gian quy định = thắng, không đủ = thua
 - 3 biến độ khó độc lập để tuning: tốc độ spawn tile, thời lượng ván, điểm mục tiêu
-- Số liệu cụ thể + UI + quan hệ với boss-fight và 3 mini-game còn lại: **[`docs/minigame-decisions.md`](./docs/minigame-decisions.md)**
+- Số liệu cụ thể + UI + quan hệ với boss-fight và 3 mini-game còn lại: **[`minigame-decisions.md`](./minigame-decisions.md)**
 
 ---
 
@@ -108,7 +109,7 @@ Lý do:
 
 ## 4. Data model
 
-Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](./dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, cùng thư mục với file này). `SurvivalStats` giờ chỉ còn `fear`/`hunger`/`thirst`; `attack`/`defense`/`hp`/`maxHp`/`mp`/`maxMp`/`aggro`/`speed` là field phẳng trực tiếp trên `Character`/`Monster`. Đã thêm `QueuedAction`/`ActionSource` + `CombatState.phase`/`queuedActions` cho mô hình round 2 pha (mục 1.2), `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, `Monster.aiPattern`, `CharacterClass.growthWeights` cho tăng trưởng theo cấp phụ thuộc class (`docs/gameplay-decisions.md` §6.8), và `ActiveStatusEffect` (`{ statusEffectId, turnsRemaining }`) thay cho `statusEffectIds: Id[]` phẳng trên `Character`/`Monster` — cần track riêng số lượt còn lại cho `durationTurns` của từng debuff/buff đang mang.
+Đã sketch trong file riêng: **[`dungeon-crawler-data-model.ts`](../dungeon-crawler-data-model.ts)** (TypeScript, đã compile qua `tsc --noEmit --strict` sạch, ở thư mục gốc repo). `SurvivalStats` giờ chỉ còn `fear`/`hunger`/`thirst`; `attack`/`defense`/`hp`/`maxHp`/`mp`/`maxMp`/`aggro`/`speed` là field phẳng trực tiếp trên `Character`/`Monster`. Đã thêm `QueuedAction`/`ActionSource` + `CombatState.phase`/`queuedActions` cho mô hình round 2 pha (mục 1.2), `SkillEffectKind.modifyCombatStat`, `SkillDefinition.usesPerCombat`, `Monster.aiPattern`, `CharacterClass.growthWeights` cho tăng trưởng theo cấp phụ thuộc class (`gameplay-decisions/06-level-system.md` §6.8), và `ActiveStatusEffect` (`{ statusEffectId, turnsRemaining }`) thay cho `statusEffectIds: Id[]` phẳng trên `Character`/`Monster` — cần track riêng số lượt còn lại cho `durationTurns` của từng debuff/buff đang mang.
 
 Các type chính:
 - `Character`, `CharacterClass`, `SkillDefinition`, `SkillEffect` (data-driven)
@@ -123,23 +124,25 @@ Các type chính:
 
 ## 5. Quyết định chi tiết (tách file)
 
-Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ thể, tách ra 3 file riêng trong `docs/` để mục 1-4 ở trên không quá dài:
+Toàn bộ mục từng nằm ở "Để mở" nay đã có quyết định cụ thể, tách ra các file riêng cùng thư mục `docs/` với file này để mục 1-4 ở trên không quá dài:
 
-### Gameplay / nội dung — [`docs/gameplay-decisions.md`](./docs/gameplay-decisions.md)
-- Tên 4 class + bảng 6 chỉ số (attack/defense/maxHp/maxMp/aggro/speed) + danh sách 6 skill/class đầy đủ (1 đánh thường + 5 riêng; Cận Vệ, Pháp Sư, Sát Thủ, Tu Sĩ)
+### Gameplay / nội dung — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
+- Tên 4 class + bảng 6 chỉ số (attack/defense/maxHp/maxMp/aggro/speed) + danh sách 6 skill/class đầy đủ (1 đánh thường + 5 riêng; Vanguard, Mage, Rogue, Acolyte)
 - Monster: công thức scaling atk/def/hp theo độ sâu tầng + targeting theo `aggro` (random có trọng số) + 3 AI pattern (aggressive/defensive/erratic)
 - Giá trị khởi tạo + ngưỡng số cụ thể cho fear/hunger/thirst (giống nhau mọi class) và 4 bậc fear
 - Fear ảnh hưởng ngược lại combat — có, theo bậc, nhưng chặn trần ở bậc cao nhất để không tạo tử vòng xoáy
 - Hiệu quả HP=0/MP thiếu + hệ thống level 1-100 (5 tier tapered growth, không tuyến tính) cho attack/defense/maxHp/maxMp, đã kiểm chứng TTK xuyên suốt dải level + sửa lỗi hệ số elite boss gây bất tử ở tầng sâu (`aggro`/`speed` không tăng theo cấp)
 - **Cập nhật 2026-08-16 (§6.9/6.10)**: level nhân vật tách khỏi level tầng ngục — level nhân vật (chung cả party, cap 100) tăng qua EXP tích lũy từ giết quái; level tầng ngục (`Floor.depth`, không giới hạn — roguelite vô hạn) tăng khi hạ boss của tầng, không còn đồng bộ 1-1 với level nhân vật như thiết kế cũ
+- **Cập nhật 2026-08-16 (§6.11/6.12)**: tách Elite (đa số các tầng) khỏi Boss thật (mỗi 5 tầng, mạnh hơn hẳn, loại trừ Elite tầng đó) — cả 2 có bộ skill riêng (strike/cleave AoE; Boss thêm debuff + Finishing Blow tích lực 1 lượt rồi dồn sát thương cố định cực cao)
+- **Cập nhật 2026-08-17 (§7, mới)**: Item tiêu hao (10 cái, dùng trong/ngoài combat qua `effects` tái dùng resolver có sẵn) + Artifact (30 cái, 11 loại hiệu ứng — statBoost/reflectDamage/poisonOnHit/lifesteal/dodgeChance/healOnKill/autoDamage/expBoost/fearResist/cooldownReduction/survivalDrainReduction — 4 bậc hiếm common/rare/unique/epic, relic vĩnh viễn trong run — mất khi permadeath) rơi từ giết Elite (35%)/Boss (100%)/Treasure room/Event room (2 loại phòng mới). **Artifact là trang bị** — gắn vào 1 nhân vật cụ thể (tối đa 3/nhân vật), hiệu ứng chỉ tính cho người đang gắn, không còn cộng thẳng cho cả đội. Mọi id/name của Item/Artifact bằng tiếng Anh, khớp hướng đổi tên của monster/class.
 
-### Mini-game — [`docs/minigame-decisions.md`](./docs/minigame-decisions.md)
+### Mini-game — [`minigame-decisions.md`](./minigame-decisions.md)
 - Quan hệ boss-fight ↔ mini-game: combat turn-based bình thường, mini-game chỉ chen vào như 1 phase ở các mốc HP nhất định
 - Magic Tiles: số liệu cụ thể cho cả debuff-cure lẫn boss phase (thời lượng, tốc độ spawn, điểm mục tiêu, công thức combo)
 - Magic Tiles: thiết kế UI live progress (thanh điểm, thanh thời gian, combo counter)
 - Snake/Tetris/Brick Breaker: điều kiện thắng/thua và thông số cụ thể từng game
 
-### Kỹ thuật — [`docs/technical-decisions.md`](./docs/technical-decisions.md)
+### Kỹ thuật — [`technical-decisions.md`](./technical-decisions.md)
 - Sinh room/floor: thư viện pattern dạng dữ liệu (chuỗi `stage.roomId[tag]`), random chọn 1 pattern mỗi tầng — mọi phòng ở stage N nối hết sang stage N+1 nên đảm bảo hết ngõ cụt và mọi nhánh đều về boss bằng kết cấu, không cần validate-and-retry; tối đa 2 stage được phép rẽ nhánh (thay cho random spanning tree ở bản trước)
 - Thuật toán round 2 pha: pha ra lệnh (chốt hành động cả 4 nhân vật, trừ MP/lượt ngay lúc đó) rồi pha thực thi (sort theo `speed`, quái quyết định tại chỗ, rule đổi/hủy mục tiêu nếu target đã chết trước lượt)
 - Resolver function cho `SkillEffect`: 1 hàm thuần túy switch theo `kind`, dùng chung skill/item, xử lý cả case `triggerMiniGame` (mini-game trả kết quả về dưới dạng effect phái sinh, không có code path riêng)

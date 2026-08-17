@@ -1,7 +1,7 @@
 import type { Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
-import { tickSurvivalOnAction, applyAmbientFear, restCharacter } from "./survival";
+import { tickSurvivalOnAction, applyAmbientFear } from "./survival";
 
 export function getRoom(floor: Floor, roomId: string): Room {
   const room = floor.rooms.find((r) => r.id === roomId);
@@ -46,9 +46,7 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   }
 
   if (room.type === "rest" && !room.cleared) {
-    for (const c of state.party) restCharacter(c);
-    room.cleared = true;
-    state.message = `Cả đội nghỉ ngơi tại ${room.name}, hồi phục hoàn toàn.`;
+    state.message = `Cả đội dừng chân tại ${room.name}, quây quần bên lửa trại.`;
     return;
   }
 

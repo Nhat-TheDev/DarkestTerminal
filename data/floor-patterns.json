@@ -1,25 +1,105 @@
 {
-  "_format": "Each pattern's `layout` is a list of stages separated by '-'. A stage is 1+ room tokens separated by ','. A room token is 'stage.roomId[tag]': stage must match its position (0-indexed), roomId is unique within the pattern, and tag is '' (normal combat room), 'free' (rest room), or 'boss' (must be the sole room of the final stage). Every room in stage N connects forward to every room in stage N+1 — no other edges, no backtracking — so every path is guaranteed to reach the boss with no dead ends. At most 2 stages may contain more than 1 room (that's a 'branch point'); see test/floorPatterns.test.ts for the enforced rules.",
+  "_format": "Each pattern's `layout` is a list of stages separated by '-'. A stage is 1+ room tokens separated by ','. A room token is 'stage.roomId[tag]': stage must match its position (0-indexed), roomId is unique within the pattern, and tag is '' (normal combat room), 'free' (rest room), or 'boss' (must be the sole room of the final stage). Every room in stage N connects forward to every room in stage N+1 — no other edges, no backtracking — so every path is guaranteed to reach the boss with no dead ends. Since every path picks exactly 1 room per stage, path length is fixed by stage count: every pattern must guarantee >=5 combat rooms and 1-2 rest rooms on EVERY path to the boss (enforced by validatePattern's pathRoomBounds check). At most 2 stages may contain more than 1 room (that's a 'branch point'); see test/floorPatterns.test.ts for the enforced rules.",
   "patterns": [
     {
       "id": "pattern-linear",
-      "description": "0 nhánh rẽ — hành lang thẳng từ cửa vào tới boss, có 1 phòng nghỉ giữa đường.",
-      "layout": "0.1[]-1.2[]-2.3[free]-3.4[]-4.5[boss]"
+      "description": "0 nhánh rẽ — hành lang thẳng từ cửa vào tới boss. Mọi đường đi: 5 phòng thường + 2 phòng nghỉ + 1 boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[free]-4.5[]-5.6[]-6.7[free]-7.8[boss]"
     },
     {
       "id": "pattern-fork-mid",
-      "description": "1 nhánh rẽ (3 nhánh nhỏ) ngay sau cửa vào, hội tụ lại trước khi nghỉ rồi vào boss. 7 phòng: 5 thường + 1 nghỉ + 1 boss.",
-      "layout": "0.1[]-1.2[],1.3[],1.4[]-2.5[]-3.6[free]-4.7[boss]"
+      "description": "1 nhánh rẽ (3 nhánh nhỏ) ngay sau cửa vào, hội tụ lại rồi tiếp tục hành trình dài trước khi vào boss. Mọi đường đi: 5 phòng thường + 1 nghỉ + 1 boss.",
+      "layout": "0.1[]-1.2[],1.3[],1.4[]-2.5[]-3.6[]-4.7[free]-5.8[]-6.9[boss]"
     },
     {
       "id": "pattern-double-fork",
-      "description": "2 nhánh rẽ (tối đa cho phép): rẽ đôi sớm, nghỉ, rẽ ba, rồi hội tụ vào boss. 9 phòng.",
-      "layout": "0.1[]-1.2[],1.3[]-2.4[free]-3.5[],3.6[],3.7[]-4.8[]-5.9[boss]"
+      "description": "2 nhánh rẽ (tối đa cho phép): rẽ đôi, nghỉ, đi tiếp, rẽ ba, rồi hội tụ vào boss. Mọi đường đi: 6 phòng thường + 2 nghỉ + 1 boss.",
+      "layout": "0.1[]-1.2[]-2.3[free]-3.4[],3.5[]-4.6[]-5.7[]-6.8[],6.9[],6.10[]-7.11[free]-8.12[boss]"
     },
     {
       "id": "pattern-short-fork",
-      "description": "Tầng ngắn, 1 nhánh rẽ đôi rồi vào thẳng boss sau khi nghỉ. 5 phòng.",
-      "layout": "0.1[]-1.2[],1.3[]-2.4[free]-3.5[boss]"
+      "description": "Tầng ngắn nhất được luật cho phép: 1 nhánh rẽ đôi ngay đầu, đi thẳng, nghỉ 1 lần trước khi vào boss. Mọi đường đi: 5 phòng thường (tối thiểu) + 1 nghỉ + 1 boss.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[]-3.5[]-4.6[]-5.7[free]-6.8[boss]"
+    },
+    {
+      "id": "pattern-tail-rest",
+      "description": "0 nhánh rẽ, đi thẳng 4 phòng thường rồi nghỉ ngay trước cửa boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[free]-6.7[boss]"
+    },
+    {
+      "id": "pattern-head-rest",
+      "description": "0 nhánh rẽ, nghỉ ngay sau cửa vào rồi đi thẳng 4 phòng thường tới boss.",
+      "layout": "0.1[]-1.2[free]-2.3[]-3.4[]-4.5[]-5.6[]-6.7[boss]"
+    },
+    {
+      "id": "pattern-long-linear",
+      "description": "0 nhánh rẽ, hành lang dài nhất không rẽ nhánh — 6 phòng thường xen 1 phòng nghỉ giữa đường.",
+      "layout": "0.1[]-1.2[]-2.3[free]-3.4[]-4.5[]-5.6[]-6.7[]-7.8[boss]"
+    },
+    {
+      "id": "pattern-double-rest-linear",
+      "description": "0 nhánh rẽ, 2 phòng nghỉ rải đều dọc hành lang thẳng.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[free]-4.5[]-5.6[]-6.7[free]-7.8[boss]"
+    },
+    {
+      "id": "pattern-early-branch",
+      "description": "1 nhánh rẽ đôi ngay đầu, sau đó đi thẳng dài rồi nghỉ trước boss.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[]-3.5[]-4.6[]-5.7[free]-6.8[boss]"
+    },
+    {
+      "id": "pattern-late-branch",
+      "description": "Đi thẳng đầu hành trình, rẽ đôi muộn ngay trước khi nghỉ và vào boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[]-4.5[],4.6[]-5.7[free]-6.8[boss]"
+    },
+    {
+      "id": "pattern-mid-branch-wide",
+      "description": "Nghỉ sớm, rẽ ba (nhánh rộng) giữa hành trình rồi đi thẳng tới boss.",
+      "layout": "0.1[]-1.2[]-2.3[free]-3.4[],3.5[],3.6[]-4.7[]-5.8[]-6.9[boss]"
+    },
+    {
+      "id": "pattern-branch-then-rest",
+      "description": "Rẽ đôi sớm, nghỉ giữa đường, rồi đi thẳng dài tới boss.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[]-3.5[free]-4.6[]-5.7[]-6.8[]-7.9[boss]"
+    },
+    {
+      "id": "pattern-rest-then-branch",
+      "description": "Đi thẳng đầu, rẽ đôi, nghỉ, rồi tiếp tục thẳng tới boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[],3.5[]-4.6[free]-5.7[]-6.8[]-7.9[boss]"
+    },
+    {
+      "id": "pattern-bookend-rest-branch",
+      "description": "Nghỉ ngay đầu, rẽ ba giữa đường, nghỉ lần nữa trước boss.",
+      "layout": "0.1[]-1.2[free]-2.3[],2.4[],2.5[]-3.6[]-4.7[]-5.8[]-6.9[free]-7.10[boss]"
+    },
+    {
+      "id": "pattern-two-branch-early",
+      "description": "2 nhánh rẽ liên tiếp gần đầu hành trình, nghỉ 1 lần trước boss.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[]-3.5[]-4.6[free]-5.7[],5.8[]-6.9[]-7.10[boss]"
+    },
+    {
+      "id": "pattern-two-branch-spread",
+      "description": "2 nhánh rẽ (đôi rồi ba) rải đều dọc hành trình, nghỉ giữa đường.",
+      "layout": "0.1[]-1.2[]-2.3[],2.4[]-3.5[free]-4.6[]-5.7[],5.8[],5.9[]-6.10[]-7.11[boss]"
+    },
+    {
+      "id": "pattern-two-branch-double-rest",
+      "description": "2 nhánh rẽ xen giữa 2 phòng nghỉ, hành trình dài nhất trong thư viện.",
+      "layout": "0.1[]-1.2[],1.3[]-2.4[free]-3.5[]-4.6[]-5.7[],5.8[]-6.9[]-7.10[free]-8.11[boss]"
+    },
+    {
+      "id": "pattern-two-branch-wide-late",
+      "description": "Đi thẳng đầu, rẽ ba giữa đường, rẽ đôi muộn, nghỉ 1 lần trước boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[],3.5[],3.6[]-4.7[]-5.8[free]-6.9[],6.10[]-7.11[]-8.12[boss]"
+    },
+    {
+      "id": "pattern-two-branch-marathon",
+      "description": "Hành trình marathon: nghỉ, rẽ đôi, đi thẳng, rẽ ba, nghỉ lần nữa trước boss.",
+      "layout": "0.1[]-1.2[free]-2.3[]-3.4[],3.5[]-4.6[]-5.7[]-6.8[],6.9[],6.10[]-7.11[]-8.12[free]-9.13[boss]"
+    },
+    {
+      "id": "pattern-long-linear-rest-mid",
+      "description": "0 nhánh rẽ, hành trình thẳng dài, nghỉ đúng giữa chặng đường tới boss.",
+      "layout": "0.1[]-1.2[]-2.3[]-3.4[]-4.5[]-5.6[]-6.7[free]-7.8[]-8.9[boss]"
     }
   ]
 }

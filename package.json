@@ -7,7 +7,8 @@
   "scripts": {
     "start": "bun run src/main.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sprite-editor": "bun run tools/sprite-editor/server.ts"
   },
   "dependencies": {
     "@opentui/core": "^0.5.3"

@@ -1,7 +1,7 @@
 # Mini-game — Quyết định
 
 **Trạng thái**: Đã chốt
-**Liên quan**: `../dungeon-crawler-design-doc.md` mục 1.7, 1.8
+**Liên quan**: `./design-doc.md` mục 1.7, 1.8
 
 ---
 
@@ -13,7 +13,7 @@ Cơ chế:
 - Mỗi boss có 1 hoặc nhiều **ngưỡng HP kích hoạt phase** (VD: 50% HP). Khi HP boss chạm ngưỡng, combat tạm dừng (không mất turn queue hiện có — `CombatState` giữ nguyên), `GameMode` chuyển sang `{ kind: "miniGame", reason: "bossPhase" }`.
 - Mini-game dùng cho phase: mặc định **Magic Tiles** (đã đơn giản hóa đủ an toàn để dùng rộng — xem mục 1.8 trong design doc chính), nhưng field `miniGameId` trên `SkillEffect`/cấu hình boss vẫn cho phép gán game khác nếu muốn đa dạng hóa.
 - Thắng phase: `MiniGameResult.maxCombo` quy đổi thành sát thương thẳng vào boss (xem công thức combo ở mục 2) — tính là 1 "đòn" ngoài turn queue, không tốn lượt của ai.
-- Thua phase: không insta-kill, không mất turn — chỉ `fear += 15` cho cả party (như thua mini-game thường, mục 3 `gameplay-decisions.md`) rồi combat turn-based tiếp tục bình thường từ đúng chỗ đang dừng.
+- Thua phase: không insta-kill, không mất turn — chỉ `fear += 15` cho cả party (như thua mini-game thường, `gameplay-decisions/03-survival-stats.md` mục 3) rồi combat turn-based tiếp tục bình thường từ đúng chỗ đang dừng.
 - Mỗi ngưỡng HP chỉ kích hoạt phase **đúng 1 lần** (tránh spam mini-game liên tục nếu boss dao động quanh ngưỡng do heal/lifesteal).
 
 ---

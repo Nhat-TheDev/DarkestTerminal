@@ -1,7 +1,7 @@
 // dungeon-crawler-data-model.ts
 //
 // Design-time sketch of the core data types described in
-// dungeon-crawler-design-doc.md (section 4). Types only, no game logic —
+// docs/design-doc.md (section 4). Types only, no game logic —
 // the resolver algorithm that reads these and applies real effects is
 // specified in docs/technical-decisions.md.
 

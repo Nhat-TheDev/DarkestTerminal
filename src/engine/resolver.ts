@@ -1,5 +1,18 @@
-import type { Character, Monster, SkillEffect, CombatStat, ActiveStatusEffect } from "../types";
+import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect } from "../types";
 import { getStatusEffect } from "../data/statusEffects";
+
+const SURVIVAL_STAT_LABEL: Record<keyof SurvivalStats, string> = {
+  fear: "sợ hãi",
+  hunger: "đói",
+  thirst: "khát",
+};
+
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
+  attack: "công",
+  defense: "thủ",
+  aggro: "khiêu khích",
+  speed: "tốc độ",
+};
 
 export type Actor = Character | Monster;
 
@@ -62,6 +75,8 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
 
 export interface ResolveContext {
   log: string[];
+  /** Set only for a status effect's own recurring tick (DoT) — names the effect in the damage log instead of the nonsensical "X nhận sát thương từ X". */
+  statusEffectName?: string;
 }
 
 /** Applies a single SkillEffect from `source` onto `target`. */
@@ -77,7 +92,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ? Math.max(1, Math.round(effect.amount ?? 0))
         : Math.max(1, Math.round(((effect.amount ?? 0) + source.attack - target.defense) * damageMultiplierFor(source)));
       target.hp = Math.max(0, target.hp - finalDamage);
-      ctx.log.push(`${nameOf(target)} nhận ${finalDamage} sát thương từ ${nameOf(source)}.`);
+      const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
+      ctx.log.push(`${nameOf(target)} nhận ${finalDamage} sát thương từ ${sourceLabel}.`);
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       break;
     }
@@ -105,12 +121,25 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "modifyStat": {
       if (!isCharacter(target) || !effect.stat) break;
-      target.survival[effect.stat] = clamp(target.survival[effect.stat] + (effect.amount ?? 0), 0, 100);
+      const before = target.survival[effect.stat];
+      target.survival[effect.stat] = clamp(before + (effect.amount ?? 0), 0, 100);
+      const delta = target.survival[effect.stat] - before;
+      // Target-as-subject, same convention as the heal/damage lines above — naming
+      // the target IS the "who got buffed/debuffed" info, no separate "cho X" needed.
+      if (delta !== 0) {
+        const verb = delta < 0 ? "giảm" : "tăng";
+        ctx.log.push(`${nameOf(target)} ${verb} ${Math.abs(delta)} ${SURVIVAL_STAT_LABEL[effect.stat]}.`);
+      }
       break;
     }
     case "modifyCombatStat": {
       if (!effect.combatStat) break;
       applyCombatStatDelta(target, effect.combatStat, effect.amount ?? 0);
+      const delta = effect.amount ?? 0;
+      if (delta !== 0) {
+        const verb = delta < 0 ? "giảm" : "tăng";
+        ctx.log.push(`${nameOf(target)} ${verb} ${Math.abs(delta)} ${COMBAT_STAT_LABEL[effect.combatStat]}.`);
+      }
       break;
     }
     case "triggerMiniGame": {
@@ -180,7 +209,7 @@ export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
     const def = getStatusEffect(active.statusEffectId);
     for (const e of def.perTurnEffects) {
       if (e.kind !== "modifyCombatStat") {
-        resolveSkillEffect(e, actor, actor, ctx);
+        resolveSkillEffect(e, actor, actor, { log: ctx.log, statusEffectName: def.name });
       }
     }
     if (!isActorAlive(actor)) continue;

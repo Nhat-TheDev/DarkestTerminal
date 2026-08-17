@@ -67,12 +67,41 @@ export function roomTypeForTag(tag: string): RoomType {
   }
 }
 
+// Every room in stage N connects to every room in stage N+1, so every path from entry to
+// boss picks exactly 1 room per stage — path length is fixed by stage count regardless of
+// which branch a player takes. These bounds are the min/max count of a given room type a
+// path could see, computed per stage independently (a stage where every room shares a type
+// contributes 1 to that type's min; a stage where at least one room has that type
+// contributes 1 to its max).
+export const MIN_COMBAT_ROOMS_PER_PATH = 5;
+export const MIN_REST_ROOMS_PER_PATH = 1;
+export const MAX_REST_ROOMS_PER_PATH = 2;
+
+export interface PathRoomBounds {
+  combat: { min: number; max: number };
+  rest: { min: number; max: number };
+}
+
+export function pathRoomBounds(stages: RoomToken[][]): PathRoomBounds {
+  const bounds: PathRoomBounds = { combat: { min: 0, max: 0 }, rest: { min: 0, max: 0 } };
+  for (const stage of stages) {
+    const types = stage.map((r) => roomTypeForTag(r.tag));
+    for (const key of ["combat", "rest"] as const) {
+      if (types.every((t) => t === key)) bounds[key].min += 1;
+      if (types.some((t) => t === key)) bounds[key].max += 1;
+    }
+  }
+  return bounds;
+}
+
 /**
  * Structural rules (docs/technical-decisions.md §1):
  * - single entry room (stage 0 has exactly 1 room)
  * - single boss room, and it's the only room of the final stage
  * - at most 2 "branch" stages (a stage with more than 1 room)
  * - every roomId is unique within the pattern
+ * - every path to boss has >= MIN_COMBAT_ROOMS_PER_PATH combat rooms and
+ *   MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH rest rooms
  * Throws with a description of the first violation found.
  */
 export function validatePattern(def: FloorPatternDef): RoomToken[][] {
@@ -97,6 +126,18 @@ export function validatePattern(def: FloorPatternDef): RoomToken[][] {
 
   const allIds = stages.flat().map((r) => r.roomId);
   if (new Set(allIds).size !== allIds.length) throw new Error(`${label}: room ids must be unique within the pattern`);
+
+  const bounds = pathRoomBounds(stages);
+  if (bounds.combat.min < MIN_COMBAT_ROOMS_PER_PATH) {
+    throw new Error(
+      `${label}: every path to boss must pass through at least ${MIN_COMBAT_ROOMS_PER_PATH} combat rooms, this pattern guarantees as few as ${bounds.combat.min}`,
+    );
+  }
+  if (bounds.rest.min < MIN_REST_ROOMS_PER_PATH || bounds.rest.max > MAX_REST_ROOMS_PER_PATH) {
+    throw new Error(
+      `${label}: every path to boss must pass through ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, this pattern allows between ${bounds.rest.min} and ${bounds.rest.max}`,
+    );
+  }
 
   return stages;
 }

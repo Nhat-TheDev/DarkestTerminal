@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Darkest Terminal — Sprite Editor</title>
+<style>
+  :root {
+    --bg: #100d0a;
+    --panel-bg: #171310;
+    --border: #4a3a2a;
+    --border-accent: #8a5a2a;
+    --text: #d8cbb0;
+    --dim: #8a7d68;
+    --title: #c9a227;
+    --danger: #c0392b;
+    --ok: #5fa85f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 15px;
+    color: var(--title);
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+  #status {
+    font-size: 12px;
+    color: var(--dim);
+  }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  main {
+    display: grid;
+    grid-template-columns: 260px 1fr 220px;
+    gap: 16px;
+    padding: 16px;
+    align-items: start;
+  }
+  fieldset {
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    border-radius: 4px;
+    padding: 10px;
+  }
+  legend {
+    color: var(--title);
+    padding: 0 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  label { display: block; margin: 8px 0 3px; color: var(--dim); font-size: 11px; }
+  select, input[type="text"], input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 6px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button {
+    background: var(--border);
+    color: var(--text);
+    border: 1px solid var(--border-accent);
+    border-radius: 3px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--border-accent); }
+  button.primary { background: var(--title); color: #12100c; font-weight: bold; }
+  button.primary:hover { filter: brightness(1.1); }
+  button.danger { border-color: var(--danger); }
+  .row { display: flex; gap: 6px; margin-top: 8px; }
+  .row > * { flex: 1; }
+  #gridWrap {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: inline-block;
+  }
+  #grid {
+    display: grid;
+    gap: 1px;
+    background: var(--border);
+    width: max-content;
+  }
+  .cell {
+    width: 22px;
+    height: 44px;
+    background: var(--bg);
+    cursor: crosshair;
+  }
+  .cell:hover { outline: 1px solid var(--title); outline-offset: -1px; }
+  #palette { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .swatch.active { border-color: var(--title); background: rgba(201, 162, 39, 0.15); }
+  .swatch .key {
+    width: 18px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--dim);
+  }
+  .swatch input[type="color"] {
+    width: 26px;
+    height: 20px;
+    border: 1px solid var(--border);
+    background: none;
+    padding: 0;
+    border-radius: 2px;
+  }
+  .swatch .hex { flex: 1; color: var(--dim); font-size: 11px; }
+  .swatch button { padding: 2px 6px; font-size: 11px; }
+  .swatch.eraser .key { color: var(--danger); }
+  #preview {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    display: inline-block;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  #previewCanvas { display: block; image-rendering: pixelated; }
+  .hint { color: var(--dim); font-size: 11px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DARKEST-TERMINAL · SPRITE EDITOR</h1>
+  <span id="status"></span>
+</header>
+<main>
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <fieldset>
+      <legend>Đối tượng</legend>
+      <label>Loại</label>
+      <select id="category">
+        <option value="classes">Nhân vật (classes)</option>
+        <option value="monsters">Quái vật thường (monsters)</option>
+        <option value="elites">Elite (elites)</option>
+        <option value="bosses">Trùm (bosses)</option>
+      </select>
+
+      <div id="idPickerWrap">
+        <label>Có sẵn</label>
+        <select id="existingId"></select>
+        <label>ID (chữ thường, số, gạch ngang)</label>
+        <input type="text" id="idInput" placeholder="vd: skeleton-guard" />
+        <p class="hint" id="idHint"></p>
+      </div>
+
+      <div class="row">
+        <button id="loadBtn">Tải</button>
+        <button id="newBtn">Tạo mới</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Kích thước</legend>
+      <div class="row">
+        <div>
+          <label>Rộng</label>
+          <input type="number" id="widthInput" min="1" max="20" value="9" />
+        </div>
+        <div>
+          <label>Cao (tối đa <span id="maxHeightLabel">10</span>)</label>
+          <input type="number" id="heightInput" min="1" max="13" value="9" />
+        </div>
+      </div>
+      <div class="row">
+        <button id="resizeBtn" style="flex:1;">Đổi kích thước</button>
+      </div>
+      <p class="hint">Đổi kích thước giữ lại pixel ở góc trên-trái, phần thêm mới sẽ trống.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Công cụ</legend>
+      <div class="row">
+        <button id="copyBtn" style="flex:1;">Copy</button>
+        <button id="pasteBtn" style="flex:1;">Paste</button>
+      </div>
+      <label style="margin-top: 8px;">Di chuyển</label>
+      <div class="row">
+        <button id="moveLeftBtn" style="flex:1;">Trái</button>
+        <button id="moveUpBtn" style="flex:1;">Lên</button>
+        <button id="moveDownBtn" style="flex:1;">Xuống</button>
+        <button id="moveRightBtn" style="flex:1;">Phải</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Preview (tỉ lệ ô 1:2 như terminal)</legend>
+      <div id="preview"><canvas id="previewCanvas"></canvas></div>
+    </fieldset>
+  </div>
+
+  <div>
+    <div id="gridWrap"><div id="grid"></div></div>
+    <p class="hint">Click hoặc giữ chuột kéo để tô. Chọn "Xoá" ở bảng màu bên phải để tẩy về ô trống.</p>
+  </div>
+
+  <div>
+    <fieldset>
+      <legend>Bảng màu</legend>
+      <div id="palette"></div>
+      <div class="row">
+        <button id="addColorBtn" style="flex:1;">+ Thêm màu</button>
+      </div>
+    </fieldset>
+    <div class="row" style="margin-top:12px;">
+      <button id="saveBtn" class="primary" style="flex:1;">Lưu vào data/sprites.json</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const CELL_W = 22, CELL_H = 44;
+  const ERASER = ".";
+
+  let spritesData = null;       // full file contents from the server
+  let category = "classes";
+  let width = 9, height = 9;
+  let grid = [];                // grid[row][col] = palette key or "."
+  let palette = {};             // key -> "#rrggbb"
+  let activeKey = null;         // currently selected paint key, or ERASER
+  let painting = false;
+
+  let clipboardGrid = null;
+  let clipboardPalette = null;
+
+  // Archetypes that ever spawn as elite/boss (GUARD_ROOM_ARCHETYPES in src/data/floor.ts) —
+  // for elites/bosses categories, the ID must match one of these to actually take effect in-game.
+  const GUARD_ARCHETYPE_IDS = ["skeleton-guard", "giant-spider", "dragon", "zombie-knight", "dark-knight"];
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 13 };
+
+  const el = (id) => document.getElementById(id);
+  const statusEl = el("status");
+  const categoryEl = el("category");
+  const existingIdEl = el("existingId");
+  const idInputEl = el("idInput");
+  const idHintEl = el("idHint");
+  const widthInput = el("widthInput");
+  const heightInput = el("heightInput");
+  const maxHeightLabel = el("maxHeightLabel");
+  const gridEl = el("grid");
+  const paletteEl = el("palette");
+  const previewCanvas = el("previewCanvas");
+
+  function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.className = kind || "";
+  }
+
+  function maxHeight() {
+    return MAX_HEIGHT[category];
+  }
+
+  function updateIdHint() {
+    if (category === "elites" || category === "bosses") {
+      idHintEl.textContent = `ID phải trùng 1 archetype quái trong "monsters" để game dùng đúng: ${GUARD_ARCHETYPE_IDS.join(", ")}.`;
+    } else {
+      idHintEl.textContent = "";
+    }
+  }
+
+  async function loadSpritesData() {
+    const res = await fetch("/api/sprites");
+    spritesData = await res.json();
+  }
+
+  function currentSection() {
+    return spritesData[category];
+  }
+
+  function populateExistingIds() {
+    existingIdEl.innerHTML = "";
+    updateIdHint();
+    const ids = Object.keys(currentSection()).sort();
+    for (const id of ids) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      existingIdEl.appendChild(opt);
+    }
+    if (ids.length > 0) idInputEl.value = ids[0];
+  }
+
+  function blankGrid(w, h) {
+    return Array.from({ length: h }, () => Array.from({ length: w }, () => ERASER));
+  }
+
+  function loadSpriteIntoEditor(sprite) {
+    height = sprite.rows.length;
+    width = sprite.rows[0].length;
+    grid = sprite.rows.map((row) => row.split(""));
+    palette = { ...sprite.palette };
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    activeKey = Object.keys(palette)[0] ?? ERASER;
+    renderPalette();
+    renderGrid();
+    renderPreview();
+  }
+
+  function nextFreeKey() {
+    const used = new Set(Object.keys(palette));
+    for (let code = 65; code <= 90; code++) {
+      const ch = String.fromCharCode(code);
+      if (!used.has(ch)) return ch;
+    }
+    for (let code = 97; code <= 122; code++) {
+      const ch = String.fromCharCode(code);
+      if (!used.has(ch)) return ch;
+    }
+    throw new Error("Hết ký tự cho bảng màu.");
+  }
+
+  function loadBtnHandler() {
+    const id = existingIdEl.value;
+    const sprite = currentSection()[id];
+    if (!sprite) {
+      setStatus("Không tìm thấy id đó.", "error");
+      return;
+    }
+    idInputEl.value = id;
+    loadSpriteIntoEditor(sprite);
+    setStatus(`Đã tải "${id}".`, "ok");
+  }
+
+  function newBtnHandler() {
+    width = Number(widthInput.value) || 9;
+    height = Math.min(Number(heightInput.value) || 9, maxHeight());
+    grid = blankGrid(width, height);
+    palette = { A: "#8a5a2a" };
+    activeKey = "A";
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    if (category === "elites" || category === "bosses") {
+      const missing = GUARD_ARCHETYPE_IDS.find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    }
+    renderPalette();
+    renderGrid();
+    renderPreview();
+    setStatus("Sprite trống mới — vẽ rồi đặt ID và Lưu.", "ok");
+  }
+
+  function resizeBtnHandler() {
+    const newWidth = Math.max(1, Math.min(20, Number(widthInput.value) || width));
+    const newHeight = Math.max(1, Math.min(maxHeight(), Number(heightInput.value) || height));
+    const next = blankGrid(newWidth, newHeight);
+    for (let r = 0; r < Math.min(height, newHeight); r++) {
+      for (let c = 0; c < Math.min(width, newWidth); c++) {
+        next[r][c] = grid[r][c];
+      }
+    }
+    grid = next;
+    width = newWidth;
+    height = newHeight;
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    renderGrid();
+    renderPreview();
+  }
+
+  function copyBtnHandler() {
+    clipboardGrid = grid.map(r => [...r]);
+    clipboardPalette = { ...palette };
+    setStatus("Đã copy sprite.", "ok");
+  }
+
+  function pasteBtnHandler() {
+    if (!clipboardGrid) {
+      setStatus("Chưa có gì để paste.", "error");
+      return;
+    }
+    const newHeight = Math.min(maxHeight(), clipboardGrid.length);
+    const newWidth = clipboardGrid[0].length;
+    grid = blankGrid(newWidth, newHeight);
+    for (let r = 0; r < newHeight; r++) {
+      for (let c = 0; c < newWidth; c++) {
+        grid[r][c] = clipboardGrid[r][c];
+      }
+    }
+    palette = { ...clipboardPalette };
+    width = newWidth;
+    height = newHeight;
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    activeKey = Object.keys(palette)[0] ?? ERASER;
+    renderPalette();
+    renderGrid();
+    renderPreview();
+    setStatus("Đã paste sprite.", "ok");
+  }
+
+  function canMove(dx, dy) {
+    if (dx === -1) {
+      for (let r = 0; r < height; r++) if (grid[r][0] !== ERASER) return false;
+    }
+    if (dx === 1) {
+      for (let r = 0; r < height; r++) if (grid[r][width - 1] !== ERASER) return false;
+    }
+    if (dy === -1) {
+      for (let c = 0; c < width; c++) if (grid[0][c] !== ERASER) return false;
+    }
+    if (dy === 1) {
+      for (let c = 0; c < width; c++) if (grid[height - 1][c] !== ERASER) return false;
+    }
+    return true;
+  }
+
+  function moveBtnHandler(dx, dy) {
+    if (!canMove(dx, dy)) {
+      setStatus("Không thể di chuyển, bị cắt phần đánh màu.", "error");
+      return;
+    }
+    const next = blankGrid(width, height);
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const nr = r + dy;
+        const nc = c + dx;
+        if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+          next[nr][nc] = grid[r][c];
+        }
+      }
+    }
+    grid = next;
+    renderGrid();
+    renderPreview();
+    setStatus("Đã di chuyển.", "ok");
+  }
+
+  function renderGrid() {
+    gridEl.style.gridTemplateColumns = `repeat(${width}, ${CELL_W}px)`;
+    gridEl.innerHTML = "";
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.style.width = CELL_W + "px";
+        cell.style.height = CELL_H + "px";
+        paintCellStyle(cell, grid[r][c]);
+        cell.dataset.r = String(r);
+        cell.dataset.c = String(c);
+        cell.addEventListener("mousedown", (e) => {
+          painting = true;
+          applyPaint(r, c);
+          e.preventDefault();
+        });
+        cell.addEventListener("mouseenter", () => {
+          if (painting) applyPaint(r, c);
+        });
+        gridEl.appendChild(cell);
+      }
+    }
+  }
+
+  function paintCellStyle(cellDiv, key) {
+    cellDiv.style.background = key === ERASER ? "var(--bg)" : (palette[key] ?? "#ff00ff");
+  }
+
+  function applyPaint(r, c) {
+    if (activeKey === null) return;
+    grid[r][c] = activeKey;
+    const cellDiv = gridEl.children[r * width + c];
+    if (cellDiv) paintCellStyle(cellDiv, activeKey);
+    renderPreview();
+  }
+
+  document.addEventListener("mouseup", () => { painting = false; });
+
+  function renderPalette() {
+    paletteEl.innerHTML = "";
+
+    const eraserRow = document.createElement("div");
+    eraserRow.className = "swatch eraser" + (activeKey === ERASER ? " active" : "");
+    eraserRow.innerHTML = `<span class="key">·</span><span class="hex">Xoá (ô trống)</span>`;
+    eraserRow.addEventListener("click", () => { activeKey = ERASER; renderPalette(); });
+    paletteEl.appendChild(eraserRow);
+
+    for (const key of Object.keys(palette)) {
+      const row = document.createElement("div");
+      row.className = "swatch" + (activeKey === key ? " active" : "");
+
+      const keyLabel = document.createElement("span");
+      keyLabel.className = "key";
+      keyLabel.textContent = key;
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = palette[key];
+      colorInput.addEventListener("input", (e) => {
+        palette[key] = e.target.value;
+        hexLabel.textContent = e.target.value;
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            if (grid[r][c] === key) paintCellStyle(gridEl.children[r * width + c], key);
+          }
+        }
+        renderPreview();
+      });
+      colorInput.addEventListener("click", (e) => e.stopPropagation());
+
+      const hexLabel = document.createElement("span");
+      hexLabel.className = "hex";
+      hexLabel.textContent = palette[key];
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "×";
+      delBtn.title = "Xoá màu này (ô đang dùng sẽ về trống)";
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            if (grid[r][c] === key) grid[r][c] = ERASER;
+          }
+        }
+        delete palette[key];
+        if (activeKey === key) activeKey = ERASER;
+        renderPalette();
+        renderGrid();
+        renderPreview();
+      });
+
+      row.appendChild(keyLabel);
+      row.appendChild(colorInput);
+      row.appendChild(hexLabel);
+      row.appendChild(delBtn);
+      row.addEventListener("click", () => { activeKey = key; renderPalette(); });
+      paletteEl.appendChild(row);
+    }
+  }
+
+  function addColorHandler() {
+    const key = nextFreeKey();
+    palette[key] = "#c9a227";
+    activeKey = key;
+    renderPalette();
+  }
+
+  function renderPreview() {
+    const scale = 6;
+    previewCanvas.width = width * scale;
+    previewCanvas.height = height * scale * 2;
+    const ctx = previewCanvas.getContext("2d");
+    ctx.fillStyle = "#171310";
+    ctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const key = grid[r][c];
+        if (key === ERASER) continue;
+        ctx.fillStyle = palette[key] ?? "#ff00ff";
+        ctx.fillRect(c * scale, r * scale * 2, scale, scale * 2);
+      }
+    }
+  }
+
+  async function saveHandler() {
+    const rows = grid.map((r) => r.join(""));
+    const sprite = { rows, palette };
+
+    const id = idInputEl.value.trim();
+    if (!/^[a-z][a-z0-9-]*$/.test(id)) {
+      setStatus("ID phải bắt đầu bằng chữ thường, chỉ gồm chữ thường/số/gạch ngang.", "error");
+      return;
+    }
+    const unusedIdWarning =
+      (category === "elites" || category === "bosses") && !GUARD_ARCHETYPE_IDS.includes(id)
+        ? ` (Cảnh báo: "${id}" không nằm trong danh sách archetype có thể làm elite/boss — game sẽ không dùng sprite này.)`
+        : "";
+
+    try {
+      const res = await fetch("/api/sprites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ category, id, sprite }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setStatus("Lỗi: " + data.error, "error");
+        return;
+      }
+      setStatus(`Đã lưu "${id}" vào data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
+      await loadSpritesData();
+      populateExistingIds();
+      existingIdEl.value = id;
+      idInputEl.value = id;
+    } catch (e) {
+      setStatus("Lỗi kết nối: " + e.message, "error");
+    }
+  }
+
+  categoryEl.addEventListener("change", () => {
+    category = categoryEl.value;
+    maxHeightLabel.textContent = String(maxHeight());
+    populateExistingIds();
+    if (existingIdEl.value) {
+      loadSpriteIntoEditor(currentSection()[existingIdEl.value]);
+      idInputEl.value = existingIdEl.value;
+    } else {
+      newBtnHandler();
+    }
+  });
+  // Auto-load on selecting a different existing sprite — previously this only updated the ID
+  // text field, leaving the grid/palette showing the PREVIOUS sprite until "Tải" was clicked
+  // separately, which read as "loading a new sprite keeps the old one's color pattern".
+  existingIdEl.addEventListener("change", loadBtnHandler);
+  el("loadBtn").addEventListener("click", loadBtnHandler);
+  el("newBtn").addEventListener("click", newBtnHandler);
+  el("resizeBtn").addEventListener("click", resizeBtnHandler);
+  el("copyBtn").addEventListener("click", copyBtnHandler);
+  el("pasteBtn").addEventListener("click", pasteBtnHandler);
+  el("moveLeftBtn").addEventListener("click", () => moveBtnHandler(-1, 0));
+  el("moveUpBtn").addEventListener("click", () => moveBtnHandler(0, -1));
+  el("moveDownBtn").addEventListener("click", () => moveBtnHandler(0, 1));
+  el("moveRightBtn").addEventListener("click", () => moveBtnHandler(1, 0));
+  el("addColorBtn").addEventListener("click", addColorHandler);
+  el("saveBtn").addEventListener("click", saveHandler);
+
+  (async function init() {
+    await loadSpritesData();
+    populateExistingIds();
+    // Load whatever populateExistingIds actually left selected in the dropdown — hardcoding
+    // "vanguard" here regardless of dropdown order (it isn't always 1st alphabetically) is
+    // exactly the "dropdown says X but the grid shows Y" bug this tool had.
+    const firstId = existingIdEl.value;
+    loadSpriteIntoEditor((firstId && currentSection()[firstId]) || Object.values(currentSection())[0]);
+    setStatus("Sẵn sàng.", "ok");
+  })();
+})();
+</script>
+</body>
+</html>

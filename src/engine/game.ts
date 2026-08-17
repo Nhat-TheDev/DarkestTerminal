@@ -2,6 +2,7 @@ import type { CombatantRef, GameState, SkillTarget } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import { createCharacter, applyPartyExp } from "./party";
+import { restEatDrink, restChat } from "./survival";
 import { Rng } from "./rng";
 import {
   type EngineContext,
@@ -66,6 +67,22 @@ export class Game {
     }
   }
 
+  /** Resolves the current rest room's 3-way choice, then hands control back to room navigation. */
+  restAction(choice: "eat" | "chat" | "skip"): void {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    if (room.type !== "rest" || room.cleared) return;
+    if (choice === "eat") {
+      for (const c of this.state.party) restEatDrink(c);
+      this.state.message = `Cả đội ăn uống no nê, hồi phục HP/MP.`;
+    } else if (choice === "chat") {
+      for (const c of this.state.party) restChat(c);
+      this.state.message = `Cả đội trò chuyện quanh lửa trại, nguôi ngoai nỗi sợ hãi.`;
+    } else {
+      this.state.message = `Cả đội bỏ qua, tiếp tục lên đường.`;
+    }
+    room.cleared = true;
+  }
+
   autoTargets(target: SkillTarget, actor: CombatantRef): CombatantRef[] | null {
     if (!this.state.combat) return null;
     return autoResolveTargets(target, actor, this.state.combat, this.ctx);
@@ -102,7 +119,11 @@ export class Game {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
         const expGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
+        const levelBefore = this.state.party[0]?.level ?? 1;
         applyPartyExp(this.state, expGained);
+        this.state.combat.log.push(`Cả đội nhận ${expGained} EXP.`);
+        const levelAfter = this.state.party[0]?.level ?? levelBefore;
+        if (levelAfter > levelBefore) this.state.combat.log.push(`Cả đội lên cấp ${levelAfter}!`);
       } else if (this.state.combat.outcome === "defeat") {
         this.state.gameOver = "defeat";
       }

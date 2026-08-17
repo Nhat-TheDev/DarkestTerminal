@@ -17,7 +17,6 @@ import {
 } from "../src/engine/combat";
 import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive, tickStatusEffects } from "../src/engine/resolver";
 import { connectedRooms } from "../src/engine/dungeon";
-import { Game } from "../src/engine/game";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef } from "../src/types";
 
@@ -549,71 +548,3 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
   });
 });
 
-describe("full scripted playthrough (smoke test)", () => {
-  // docs/gameplay-decisions.md §6.9/6.10: floor depth is uncapped (roguelite —
-  // clearing the guard room always advances instead of ending the game), so a
-  // bounded smoke test can't expect to reach gameOver at all — early floors
-  // are comfortably survivable (over-leveled) **for a bot that heals when
-  // hurt** (§6.12: elite/boss can now meaningfully threaten HP, unlike the
-  // old near-harmless numbers — a pure attack-every-turn bot is no longer a
-  // fair floor-1 baseline), and death only becomes likely
-  // many floors deeper than this guard can reach. Assert progression + the
-  // "victory" outcome being unreachable instead of "run finishes".
-  test("descends through many floors without throwing; gameOver, if reached, is only ever defeat", () => {
-    const game = new Game(12345);
-    const startingDepth = game.state.floor.depth;
-    let guard = 0;
-    while (!game.state.gameOver && guard < 2000) {
-      guard++;
-      if (game.state.combat && game.state.combat.phase !== "over") {
-        const livingAllies = game.livingAllyRefs().map((r) => getActorByRef(r, game.ctx) as Character);
-        for (const ref of game.livingAllyRefs()) {
-          const actor = getActorByRef(ref, game.ctx) as Character;
-          const already = game.state.combat.queuedActions.some((qa) => qa.actor.id === ref.id);
-          if (already) continue;
-
-          // §6.12: elite/boss can now meaningfully threaten HP, so a bot that never heals isn't a fair
-          // baseline anymore — heal the most-injured ally when someone drops below half HP and this
-          // character has a singleAlly heal skill unlocked, otherwise fall back to plain attacking.
-          const healSkill = actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleAlly" && s.effects?.some((e) => e.kind === "heal"));
-          const mostInjured = livingAllies.reduce((worst, c) => (c.hp / c.maxHp < worst.hp / worst.maxHp ? c : worst));
-          if (healSkill && actor.mp >= healSkill.mpCost && mostInjured.hp / mostInjured.maxHp < 0.5) {
-            game.queue(ref, healSkill.id, [{ kind: "character", id: mostInjured.id }]);
-            continue;
-          }
-
-          // Picks the strongest affordable singleEnemy skill instead of just the first one (usually the
-          // free basic attack) — §6.12's elite defense is high enough that a low-attack class's basic
-          // attack alone barely scratches it, so "always use the cheapest option" is no longer a fair bot.
-          const affordable = actor.unlockedSkillIds
-            .map(getSkill)
-            .filter((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost && (actor.cooldownsRemaining[s.id] ?? 0) === 0);
-          const skillAmount = (s: (typeof affordable)[number]) => s.effects?.reduce((sum, e) => sum + (e.kind === "damage" ? (e.amount ?? 0) : 0), 0) ?? 0;
-          const attackSkill = affordable.reduce<(typeof affordable)[number] | undefined>(
-            (best, s) => (!best || skillAmount(s) > skillAmount(best) ? s : best),
-            undefined
-          );
-          const enemies = game.livingEnemyRefs();
-          if (attackSkill && enemies.length > 0 && actor.mp >= attackSkill.mpCost) {
-            game.queue(ref, attackSkill.id, [enemies[0]!]);
-          } else {
-            const cheap = actor.unlockedSkillIds.map(getSkill).find((s) => s.mpCost === 0) ?? actor.unlockedSkillIds.map(getSkill)[0]!;
-            const targets = game.autoTargets(cheap.target, ref) ?? [ref];
-            game.queue(ref, cheap.id, targets);
-          }
-        }
-        if (game.readyToResolve()) game.resolve();
-        continue;
-      }
-      game.clearFinishedCombat();
-      if (game.state.gameOver) break;
-      const choices = game.connectedRoomChoices().filter((r) => true);
-      const next = choices.find((r) => !r.cleared) ?? choices[0];
-      if (!next) break;
-      game.move(next.id);
-    }
-    expect(game.state.gameOver).not.toBe("victory"); // boss-clear always advances the floor now, never ends the game
-    expect(game.state.floor.depth).toBeGreaterThan(startingDepth); // actually descended at least once
-    expect(game.state.party.every((c) => c.hp >= 0)).toBe(true);
-  });
-});

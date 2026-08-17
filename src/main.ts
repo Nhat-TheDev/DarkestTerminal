@@ -1,9 +1,11 @@
 import { createCliRenderer } from "@opentui/core";
 import { App } from "./ui/app";
+import { showMainMenu } from "./ui/mainMenu";
 import { PALETTE } from "./ui/theme";
 
 async function main() {
   const renderer = await createCliRenderer({ exitOnCtrlC: true, backgroundColor: PALETTE.bg });
+  await showMainMenu(renderer);
   new App(renderer);
 }
 

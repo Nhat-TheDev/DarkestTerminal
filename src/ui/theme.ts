@@ -20,6 +20,7 @@ export const PALETTE = {
   fearPanic: "#d1702a",
   fearBroken: "#c0392b",
   dead: "#6a5a52",
+  disabled: "#5a5248",
   chipFg: "#12100c",
 } as const;
 
@@ -49,6 +50,7 @@ export const MONSTER_STYLE: Record<string, { abbr: string; color: string }> = {
 };
 
 export const BOSS_COLOR = "#8a1f1f";
+export const ELITE_COLOR = "#c9a227";
 
 export function plainChunk(text: string): TextChunk {
   return { __isChunk: true, text } as TextChunk;

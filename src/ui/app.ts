@@ -1,7 +1,7 @@
-import { BoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
+import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Character, CombatantRef, Monster, SkillDefinition } from "../types";
 import { Game } from "../engine/game";
-import { getActorByRef } from "../engine/combat";
+import { getActorByRef, checkSkillUsable } from "../engine/combat";
 import { getSkill, getClass } from "../data/classes";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";
@@ -10,6 +10,7 @@ import {
   CLASS_STYLE,
   MONSTER_STYLE,
   BOSS_COLOR,
+  ELITE_COLOR,
   chip,
   plainChunk,
   colorChunk,
@@ -18,7 +19,16 @@ import {
   fearColorFor,
   joinLines,
 } from "./theme";
-import { spriteForClass, spriteForMonster, renderSpriteInSlot, MAX_BOSS_HEIGHT, type Sprite } from "./sprites";
+import {
+  spriteForClass,
+  spriteForMonster,
+  renderSpriteInSlot,
+  compositeSpriteRow,
+  MAX_BOSS_HEIGHT,
+  TOMBSTONE_SPRITE,
+  CAMPFIRE_SPRITE,
+  type Sprite,
+} from "./sprites";
 
 const SLOT_WIDTH = 13; // matches the class sprites' width, the widest sprites
 const SLOT_GAP = 2;
@@ -26,12 +36,26 @@ const DIVIDER_WIDTH = 3;
 const EMPTY_ENEMY_WIDTH = 24;
 /** sprite (bottom-aligned to MAX_BOSS_HEIGHT) + 1 spacer + label line + hp line. */
 const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
+/** How many of the most recent log lines are kept on screen — scroll up within the panel to see them. */
+const LOG_HISTORY_SIZE = 20;
 
 function centerText(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);
   const pad = width - text.length;
   const left = Math.floor(pad / 2);
   return " ".repeat(left) + text + " ".repeat(pad - left);
+}
+
+/** Elite and boss are 2 distinct tiers — mixing them up made every guard-room elite display as "BOSS". */
+function monsterStyle(m: Monster): { abbr: string; color: string } {
+  if (m.tier === "boss") return { abbr: "BOSS", color: BOSS_COLOR };
+  if (m.tier === "elite") return { abbr: "ELITE", color: ELITE_COLOR };
+  return MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+}
+
+function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen - 1).trimEnd() + "…";
 }
 
 /** Concatenates same-height blocks side by side, line by line, with a blank gap between them. */
@@ -51,6 +75,7 @@ function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): Tex
 
 type UiState =
   | { kind: "room" }
+  | { kind: "rest" }
   | { kind: "pickSkill"; actorRef: CombatantRef }
   | { kind: "pickTarget"; actorRef: CombatantRef; skill: SkillDefinition; candidates: CombatantRef[] }
   | { kind: "roundResolved" }
@@ -74,8 +99,13 @@ export class App {
   private main: TextRenderable;
   private monsters: TextRenderable;
   private log: TextRenderable;
+  private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
+  /** How many entries of the current combat's log have already been folded into `logHistory` — combat.log resets to a fresh array each new fight, `logHistory` never does. */
   private lastLogLength = 0;
+  private observedCombatLog: string[] | null = null;
+  /** Persists across combats/floors for the lifetime of the App — never cleared, only trimmed to LOG_HISTORY_SIZE. */
+  private logHistory: string[] = [];
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -135,9 +165,19 @@ export class App {
     monstersBox.add(this.monsters);
     body.add(monstersBox);
 
-    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: 5, title: "Nhật Ký" });
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: 8, title: "Nhật Ký (↑/↓ để cuộn)" });
+    this.logScroll = new ScrollBoxRenderable(renderer, {
+      id: "log-scroll",
+      width: "100%",
+      height: "100%",
+      scrollX: false,
+      scrollY: true,
+      stickyScroll: true,
+      stickyStart: "bottom",
+    });
     this.log = new TextRenderable(renderer, { id: "log", content: "", fg: PALETTE.dim });
-    logBox.add(this.log);
+    this.logScroll.add(this.log);
+    logBox.add(this.logScroll);
     this.root.add(logBox);
 
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
@@ -167,7 +207,8 @@ export class App {
     }
     const combat = this.game.state.combat;
     if (!combat) {
-      this.ui = { kind: "room" };
+      const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
+      this.ui = room.type === "rest" && !room.cleared ? { kind: "rest" } : { kind: "room" };
       return;
     }
     if (combat.phase === "over") {
@@ -194,6 +235,10 @@ export class App {
       this.quit();
       return;
     }
+    if (this.logScroll.handleKeyPress(key)) {
+      this.render();
+      return;
+    }
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
     switch (this.ui.kind) {
@@ -202,6 +247,13 @@ export class App {
         const choices = this.game.connectedRoomChoices();
         const choice = choices[digit - 1];
         if (choice) this.game.move(choice.id);
+        this.syncUiToGameState();
+        break;
+      }
+      case "rest": {
+        const choice = digit === 1 ? "eat" : digit === 2 ? "chat" : digit === 3 ? "skip" : null;
+        if (choice === null) break;
+        this.game.restAction(choice);
         this.syncUiToGameState();
         break;
       }
@@ -218,9 +270,7 @@ export class App {
         const target = this.ui.candidates[digit - 1];
         if (!target) break;
         const err = this.game.queue(this.ui.actorRef, this.ui.skill.id, [target]);
-        if (err) {
-          this.game.state.message = err.reason;
-        }
+        if (err) this.reportUnusable(err.reason);
         this.syncUiToGameState();
         break;
       }
@@ -246,7 +296,24 @@ export class App {
     process.exit(0);
   }
 
+  /**
+   * Surfaces a "can't do that" reason where the player will actually see it.
+   * state.message only renders as a fallback when the session's whole log
+   * history is empty (see render()'s log section) — dead once combat has
+   * happened even once — so push straight into the active combat's log instead.
+   */
+  private reportUnusable(reason: string): void {
+    this.game.state.combat?.log.push(reason);
+  }
+
   private trySelectSkill(actorRef: CombatantRef, skill: SkillDefinition): void {
+    const actor = getActorByRef(actorRef, this.game.ctx);
+    const unusable = checkSkillUsable(actor, skill);
+    if (unusable) {
+      // Stay on pickSkill — never advance to target-picking for a skill that can't be used.
+      this.reportUnusable(`Không thể dùng ${skill.name}: ${unusable.reason}`);
+      return;
+    }
     if (skill.target === "singleEnemy" || skill.target === "singleAlly") {
       const candidates = skill.target === "singleEnemy" ? this.game.livingEnemyRefs() : this.game.livingAllyRefs();
       this.ui = { kind: "pickTarget", actorRef, skill, candidates };
@@ -259,7 +326,7 @@ export class App {
     }
     const targets = this.game.autoTargets(skill.target, actorRef) ?? [actorRef];
     const err = this.game.queue(actorRef, skill.id, targets);
-    if (err) this.game.state.message = err.reason;
+    if (err) this.reportUnusable(err.reason);
     this.syncUiToGameState();
   }
 
@@ -285,12 +352,18 @@ export class App {
     this.monsters.content = joinLines(this.renderMonsterLines());
     this.main.content = this.renderMain();
 
-    const fullLog = [...(s.combat?.log ?? [])];
-    const newLines = fullLog.slice(this.lastLogLength);
-    if (this.ui.kind !== "roundResolved" && this.ui.kind !== "combatOver") {
-      this.lastLogLength = fullLog.length;
+    // Combat.log is a fresh array per fight; fold every new line into logHistory,
+    // which persists for the whole session so past battles stay visible (scroll to see them).
+    const combatLog = s.combat?.log ?? null;
+    if (combatLog !== this.observedCombatLog) {
+      this.observedCombatLog = combatLog;
+      this.lastLogLength = 0;
     }
-    const displayLog = (this.ui.kind === "roundResolved" || this.ui.kind === "combatOver" ? newLines : fullLog).slice(-4);
+    if (combatLog) {
+      this.logHistory.push(...combatLog.slice(this.lastLogLength));
+      this.lastLogLength = combatLog.length;
+    }
+    const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
     this.log.content = (displayLog.length > 0 ? displayLog : [s.message]).join("\n");
 
     this.footer.content = this.renderFooter();
@@ -302,7 +375,7 @@ export class App {
       return [[chip(style.abbr, PALETTE.dead), plainChunk(` ${c.name} — Đã ngã xuống`)]];
     }
 
-    const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name}`)];
+    const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name} `), colorChunk(`Lv.${c.level}`, PALETTE.title)];
     const line2: TextChunk[] = [
       plainChunk("  "),
       colorChunk(`HP ${c.hp}/${c.maxHp}`, hpColorFor(c.hp, c.maxHp)),
@@ -330,12 +403,34 @@ export class App {
     return [line1, line2, line3];
   }
 
-  private buildUnitBlock(sprite: Sprite, label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {
-    const lines = renderSpriteInSlot(sprite, MAX_BOSS_HEIGHT, SLOT_WIDTH);
-    lines.push([plainChunk(" ".repeat(SLOT_WIDTH))]);
-    lines.push([colorChunk(centerText(label, SLOT_WIDTH), labelColor)]);
-    lines.push([colorChunk(centerText(statusText, SLOT_WIDTH), statusColor)]);
-    return lines;
+  /** The 3 rows below a unit's sprite (spacer/label/status) — always exactly SLOT_WIDTH, never overflows. */
+  private buildUnitMeta(label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {
+    return [
+      [plainChunk(" ".repeat(SLOT_WIDTH))],
+      [colorChunk(centerText(label, SLOT_WIDTH), labelColor)],
+      [colorChunk(centerText(statusText, SLOT_WIDTH), statusColor)],
+    ];
+  }
+
+  /**
+   * Builds 1 side (party or enemy row) of the battlefield from its units.
+   * Sprites are composited (not just concatenated) so a sprite wider than
+   * SLOT_WIDTH bleeds into its neighbors' slots instead of corrupting the
+   * layout — see compositeSpriteRow. The label/status rows stay simple
+   * side-by-side text, since they're always exactly SLOT_WIDTH.
+   */
+  private buildSideBlock(units: { sprite: Sprite; label: string; labelColor: string; statusText: string; statusColor: string }[]): TextChunk[][] {
+    const spritePart = compositeSpriteRow(
+      units.map((u) => u.sprite),
+      SLOT_WIDTH,
+      MAX_BOSS_HEIGHT,
+      SLOT_GAP
+    );
+    const metaPart = mergeBlocksHorizontally(
+      units.map((u) => this.buildUnitMeta(u.label, u.labelColor, u.statusText, u.statusColor)),
+      SLOT_GAP
+    );
+    return [...spritePart, ...metaPart];
   }
 
   private buildEmptyEnemyBlock(message: string): TextChunk[][] {
@@ -348,17 +443,28 @@ export class App {
     return lines;
   }
 
+  private buildCampfireBlock(): TextChunk[][] {
+    const lines = renderSpriteInSlot(CAMPFIRE_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    lines.push([colorChunk(centerText("Lửa trại ấm áp", EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    return lines;
+  }
+
   /** Pixel-art frame (docs: 1 pixel = 1 cell, units <=10px tall, boss <=13px): party on the left, current room's monsters/boss on the right. */
   private renderBattlefield(): TextChunk[][] {
     const s = this.game.state;
 
-    const partySlots = s.party.map((c) => {
+    const partyUnits = s.party.map((c) => {
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+      if (!c.isAlive) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: "Gục", statusColor: PALETTE.dead };
       const sprite = spriteForClass(c.classId);
-      if (!c.isAlive) return this.buildUnitBlock(sprite, style.abbr, PALETTE.dead, "Gục", PALETTE.dead);
-      return this.buildUnitBlock(sprite, style.abbr, style.color, `${c.hp}/${c.maxHp}`, hpColorFor(c.hp, c.maxHp));
+      return { sprite, label: style.abbr, labelColor: style.color, statusText: `${c.hp}/${c.maxHp}`, statusColor: hpColorFor(c.hp, c.maxHp) };
     });
-    const partyBlock = mergeBlocksHorizontally(partySlots, SLOT_GAP);
+    const partyBlock = this.buildSideBlock(partyUnits);
+
+    const room = getRoom(s.floor, s.currentRoomId);
+    const isRestRoom = !s.combat && room.type === "rest";
 
     let enemyBlock: TextChunk[][];
     if (s.combat) {
@@ -366,24 +472,29 @@ export class App {
       if (monsterCombatants.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock("Đã dọn sạch");
       } else {
-        const slots = monsterCombatants.map((combatant) => {
+        const enemyUnits = monsterCombatants.map((combatant) => {
           const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
-          const style = m.tier !== "normal" ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
-          const sprite = spriteForMonster(m.archetypeId, m.tier !== "normal");
-          if (m.hp <= 0) return this.buildUnitBlock(sprite, style.abbr, PALETTE.dead, "Hạ gục", PALETTE.dead);
-          return this.buildUnitBlock(sprite, style.abbr, style.color, `${m.hp}/${m.maxHp}`, hpColorFor(m.hp, m.maxHp));
+          const style = monsterStyle(m);
+          if (m.hp <= 0) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: "Hạ gục", statusColor: PALETTE.dead };
+          const sprite = spriteForMonster(m.archetypeId, m.tier);
+          return { sprite, label: style.abbr, labelColor: style.color, statusText: `${m.hp}/${m.maxHp}`, statusColor: hpColorFor(m.hp, m.maxHp) };
         });
-        enemyBlock = mergeBlocksHorizontally(slots, SLOT_GAP);
+        enemyBlock = this.buildSideBlock(enemyUnits);
       }
+    } else if (isRestRoom) {
+      enemyBlock = this.buildCampfireBlock();
     } else {
-      const room = getRoom(s.floor, s.currentRoomId);
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? "An toàn" : "Chưa chạm trán";
       enemyBlock = this.buildEmptyEnemyBlock(message);
     }
 
     const divider: TextChunk[][] = [];
     for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
-      divider.push(i === Math.floor(UNIT_BLOCK_HEIGHT / 2) ? [colorChunk(centerText("vs", DIVIDER_WIDTH), PALETTE.dim)] : [plainChunk(" ".repeat(DIVIDER_WIDTH))]);
+      divider.push(
+        i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom
+          ? [colorChunk(centerText("vs", DIVIDER_WIDTH), PALETTE.dim)]
+          : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
+      );
     }
 
     return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
@@ -402,7 +513,7 @@ export class App {
     for (const combatant of s.combat.combatants) {
       if (combatant.ref.kind !== "monster") continue;
       const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
-      const style = m.tier !== "normal" ? { abbr: "BOSS", color: BOSS_COLOR } : MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
+      const style = monsterStyle(m);
       if (m.hp <= 0) {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(` ${m.name} — hạ gục`)]);
         continue;
@@ -417,7 +528,7 @@ export class App {
     return lines.length > 0 ? lines : [[colorChunk("Không còn quái vật.", PALETTE.dim)]];
   }
 
-  private renderMain(): string {
+  private renderMain(): string | StyledText {
     const s = this.game.state;
     if (this.ui.kind === "gameover") {
       return s.gameOver === "victory"
@@ -431,6 +542,16 @@ export class App {
       choices.forEach((r, i) => lines.push(`  [${i + 1}] ${r.name} (${r.type})`));
       return lines.join("\n");
     }
+    if (this.ui.kind === "rest") {
+      const room = getRoom(s.floor, s.currentRoomId);
+      return [
+        `Cả đội dừng chân tại ${room.name}, quây quần bên lửa trại.`,
+        "",
+        "  [1] Ăn uống — hồi 50% HP/MP tối đa.",
+        "  [2] Trò chuyện — hồi 10% HP/MP tối đa, giảm 20 sợ hãi cho cả đội.",
+        "  [3] Bỏ qua — tiếp tục lên đường ngay.",
+      ].join("\n");
+    }
     if (this.ui.kind === "combatOver") {
       const combat = s.combat!;
       return combat.outcome === "victory" ? "Đã dọn sạch phòng! Nhấn phím bất kỳ để tiếp tục." : "Trận chiến thất bại.";
@@ -440,14 +561,27 @@ export class App {
     }
     if (this.ui.kind === "pickSkill") {
       const actor = getActorByRef(this.ui.actorRef, this.game.ctx) as Character;
-      const lines = [`Lượt của ${actor.name} — chọn kỹ năng:`];
+      const lines: TextChunk[][] = [[plainChunk(`Lượt của ${actor.name} — chọn kỹ năng:`)]];
       actor.unlockedSkillIds.map(getSkill).forEach((sk, i) => {
+        const unusable = checkSkillUsable(actor, sk);
         const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
-        const cooldownLeft = actor.cooldownsRemaining[sk.id] ?? 0;
-        const suffix = usesLeft !== null ? `, còn ${usesLeft} lượt/trận` : cooldownLeft > 0 ? `, hồi chiêu ${cooldownLeft} lượt` : "";
-        lines.push(`  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${suffix}) — ${sk.description}`);
+        const usesSuffix = usesLeft !== null ? `, còn ${usesLeft} lượt/trận` : "";
+        // Raw damage before the target's defense is subtracted (see resolver.ts's damage
+        // formula) — only shown for skills with a plain damage effect, skipped for the 2
+        // dual-relation skills since their effect depends on which side the target is on.
+        const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
+        const dmgSuffix = dmgEffect ? `, ~${Math.max(1, Math.round((dmgEffect.amount ?? 0) + actor.attack))} dmg` : "";
+        const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
+        if (unusable) {
+          // The reason (cooldown/MP status) replaces the description here rather than
+          // trailing after it — the main panel can be quite narrow, and the reason is
+          // the more important thing to see when a skill can't be used right now.
+          lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
+        } else {
+          lines.push([plainChunk(`${head} — ${truncateText(sk.description, 34)}`)]);
+        }
       });
-      return lines.join("\n");
+      return joinLines(lines);
     }
     if (this.ui.kind === "pickTarget") {
       const lines = [`Chọn mục tiêu cho ${this.ui.skill.name}:`];
@@ -467,6 +601,8 @@ export class App {
     switch (this.ui.kind) {
       case "room":
         return "Nhấn số để di chuyển. q để thoát.";
+      case "rest":
+        return "Nhấn số để chọn hoạt động.";
       case "pickSkill":
         return "Nhấn số để chọn kỹ năng.";
       case "pickTarget":
