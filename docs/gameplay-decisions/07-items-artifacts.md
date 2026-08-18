@@ -35,9 +35,18 @@ ItemDefinition {
 
 Dùng trong combat: ở pha ra lệnh, nhân vật chọn "dùng vật phẩm" thay vì skill — trừ 1 số lượng khỏi `GameState.inventory[itemId]`, áp `effects` qua đúng `resolveSkillEffect` hiện có (0 thay đổi ở `resolver.ts`). Có thể dùng ngoài combat (VD hồi hunger/thirst khi đang đi trong dungeon loop, không cần đợi combat).
 
-### Nguồn rơi
+### Nguồn rơi (cập nhật 2026-08-17 — thêm item đặc trưng theo quái)
 
-Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ đề xuất **15%/lần giết**, 1 item ngẫu nhiên (đều, không phân hiếm) trong toàn bộ pool 10 item bên dưới, cộng thẳng vào `GameState.inventory[itemId] += 1`. Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2) — giữ 2 nguồn tách biệt cho 2 loại phần thưởng.
+Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ **25%/lần giết** (tăng từ đề xuất ban đầu 15%, xem `08-events.md` §8 để biết bối cảnh cập nhật cùng đợt). Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2, cũng xem `08-events.md`) — giữ 2 nguồn tách biệt cho 2 loại phần thưởng.
+
+Khi roll 25% trúng, item cụ thể được chọn từ **pool kết hợp** = 10 item chung (catalog bên dưới) + item đặc trưng của đúng `archetypeId` vừa bị giết (bảng "Item đặc trưng theo quái" bên dưới), với trọng số:
+
+- **50%** rơi item đặc trưng của loại quái đó (nếu quái không có item đặc trưng — hiện tại không có trường hợp này vì cả 14 archetype trong `data/monsters.json` đều đã gán — thì fallback về pool chung, chia đều 10 item)
+- **50%** chia đều cho 10 item pool chung (~5%/item)
+
+Cộng thẳng vào `GameState.inventory[itemId] += 1` như cũ, không đổi cơ chế dùng item trong/ngoài combat.
+
+**Ví dụ**: phòng 3 quái → mỗi quái roll độc lập 25% → tối đa 3 item rơi (không giới hạn cộng dồn), trung bình ~0.75 item/phòng 3 quái.
 
 ### Catalog — 10 item
 
@@ -61,7 +70,22 @@ Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) �
 | `empower` | Empower | `modifyCombatStat attack +6` | 2 lượt |
 | `fortify` | Fortify | `modifyCombatStat defense +8` | 2 lượt |
 
-**⚠️ Số liệu heal/restoreMp/tỷ lệ rơi (15%) là đề xuất ban đầu — cần playtest, giống mọi bảng số khác trong tài liệu này.**
+**⚠️ Số liệu heal/restoreMp/tỷ lệ rơi (25%, trọng số 50/50 đặc trưng-vs-chung) là đề xuất ban đầu — cần playtest, giống mọi bảng số khác trong tài liệu này.**
+
+### Item đặc trưng theo quái (thêm 2026-08-17)
+
+6 item mới, gán theo **nhóm quái cùng chủ đề** (không phải 1-1 cho từng archetype — giữ catalog gọn, `data/monsters.json` có 14 archetype nhưng nhiều con cùng họ Undead/Bò sát dùng chung item). Tái dùng đúng `effects: SkillEffect[]` + resolver hiện có — **0 effect kind mới**, 2 status effect dùng lại là `fortify` (đã thêm ở bảng status item phía trên) và `poisoned` (status sẵn có từ Rogue's Poison Coat, `docs/technical-decisions.md` §4.2).
+
+| id | Name | Gán cho `archetypeId` | Hiệu ứng (`effects`) | Ghi chú |
+|---|---|---|---|---|
+| `grave-dust` | Grave Dust | `skeleton`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard`, `zombie`, `zombie-knight`, `dark-knight` (nhóm Undead, 7 archetype) | `applyStatusEffect "fortify"` (+8 defense, 2 lượt) | Bụi xương hoá cứng da thịt người dùng |
+| `venom-gland` | Venom Gland | `snake`, `lizard`, `spider`, `giant-spider` (nhóm Bò sát/Côn trùng, 4 archetype) | `applyStatusEffect "poisoned"` nhắm vào 1 quái mục tiêu | Túi độc chiết xuất, dùng tấn công — khác Antidote (gỡ debuff) |
+| `rat-whisker` | Rat Whisker | `dungeon-rat` | `modifyStat hunger +20` | Bản rút gọn của Ration, gắn lore "chuột luôn biết chỗ có đồ ăn" |
+| `bat-fang` | Bat Fang | `black-bat` | `heal 20` | Nanh dơi sắc, chiết thành thuốc bổ máu nhỏ |
+| `slime-core` | Slime Core | `slime` | `restoreMp 20` | Lõi keo còn dư phép thuật |
+| `dragon-scale` | Dragon Scale | `dragon` | `heal 70` | `dragon` là `guardOnly` (chỉ gặp ở Elite/Boss) — item hiếm khi rơi nên hiệu ứng mạnh, bằng Large Health Potion |
+
+**⚠️ Gán nhóm quái và số liệu hiệu ứng của 6 item này là đề xuất ban đầu — cần playtest.**
 
 ---
 
@@ -127,8 +151,8 @@ ArtifactDefinition {
 
 | Nguồn | Tỷ lệ rơi 1 Artifact | Ghi chú |
 |---|---|---|
-| Giết **Elite** (phòng cuối tầng, không phải Boss) | **35%** | Thấp hơn hẳn Boss — Elite xuất hiện hầu hết các tầng nên tần suất tự bù lại |
-| Giết **Boss thật** (mỗi 5 tầng, `06-level-system.md` §6.11) | **100%** (chắc chắn) | Cột mốc lớn, luôn thưởng — không cần roll |
+| Giết **Elite** (phòng cuối tầng, không phải Boss) | **100%** | Rơi các vật phẩm Common, Rare và tỉ lệ nhỏ rơi Unique |
+| Giết **Boss thật** (mỗi 5 tầng, `06-level-system.md` §6.11) | **100%** | Luôn rơi Unique hoặc Epic (tỉ lệ nhỏ hơn) |
 | **Treasure room** | **100%** (chắc chắn, khi ghé phòng) | Phòng loại mới — `RoomType` thêm `"treasure"` (đã có sẵn trong `src/types.ts` nhưng chưa dùng tới nay), không có combat |
 | **Event room** | **100%** (chắc chắn, khi ghé phòng) | Phòng loại mới — `RoomType` thêm `"event"` (chưa tồn tại, cần thêm), thiên về Artifact hiếm hơn Treasure room (xem bảng độ hiếm theo nguồn bên dưới) |
 
