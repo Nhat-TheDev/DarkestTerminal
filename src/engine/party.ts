@@ -1,6 +1,15 @@
-import type { Character, CharacterClass, GameState } from "../types";
+import type { Character, CharacterClass, GameState, Id } from "../types";
 import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
 import { getClass } from "../data/classes";
+import { artifactStatBoostSum, curseAggroBoostSum } from "./artifacts";
+import { t } from "../data/strings";
+
+/** Max equipped artifacts per character (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
+export const MAX_EQUIPPED_ARTIFACTS = 3;
+
+export interface PartyActionError {
+  reason: string;
+}
 
 // Matches docs/gameplay-decisions.md §3: identical starting survival stats
 // for every class.
@@ -19,7 +28,7 @@ interface LevelStats {
 // reinforces each class's identity instead of converging toward identical
 // stats at high level (level 1 = base, no bonus). aggro/speed never scale
 // with level (§5) — they're fixed role/tempo identifiers per class.
-function statsForLevel(cls: CharacterClass, level: number): LevelStats {
+export function statsForLevel(cls: CharacterClass, level: number): LevelStats {
   return {
     maxHp: cls.baseMaxHp + classGrowthBonus("maxHp", level, cls.growthWeights),
     maxMp: cls.baseMaxMp + classGrowthBonus("maxMp", level, cls.growthWeights),
@@ -50,7 +59,57 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
     isAlive: true,
     usesRemainingThisCombat: {},
     cooldownsRemaining: {},
+    equippedArtifactIds: [],
   };
+}
+
+/**
+ * Recomputes attack/defense/maxHp/maxMp/aggro from scratch (class+level base,
+ * plus every equipped artifact's statBoost/curseAggroBoost) and reclamps
+ * current hp/mp to the new max — called after equip, unequip, AND level-up
+ * (docs/gameplay-decisions/07-items-artifacts.md §7.2, docs/gameplay-decisions/08-events.md
+ * §8.6 for curseAggroBoost). Recomputing from scratch instead of tracking
+ * incremental deltas means it's safe to call redundantly and can't drift,
+ * and it's the only way artifact bonuses survive applyPartyExp's level-up,
+ * which recomputes base stats from the class curve directly.
+ */
+export function recomputeCharacterStats(character: Character): void {
+  const cls = getClass(character.classId);
+  const base = statsForLevel(cls, character.level);
+  const boost = artifactStatBoostSum(character);
+  character.attack = base.attack + boost.attack;
+  character.defense = base.defense + boost.defense;
+  character.maxHp = base.maxHp + boost.maxHp;
+  character.maxMp = base.maxMp + boost.maxMp;
+  character.aggro = cls.baseAggro + curseAggroBoostSum(character);
+  character.hp = Math.min(character.hp, character.maxHp);
+  character.mp = Math.min(character.mp, character.maxMp);
+}
+
+/** Equips `artifactId` from the shared unequipped pool onto `characterId` — free, unlimited, max 3/character (§7.2). */
+export function equipArtifact(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
+  const character = state.party.find((c) => c.id === characterId);
+  if (!character) return { reason: t("errors.characterNotFound") };
+  if (!state.unequippedArtifactIds.includes(artifactId)) return { reason: t("errors.artifactNotInPool") };
+  if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) return { reason: t("errors.maxArtifactsEquipped", { max: MAX_EQUIPPED_ARTIFACTS }) };
+
+  state.unequippedArtifactIds.splice(state.unequippedArtifactIds.indexOf(artifactId), 1);
+  character.equippedArtifactIds.push(artifactId);
+  recomputeCharacterStats(character);
+  return null;
+}
+
+/** Unequips `artifactId` from `characterId` back into the shared pool — free, unlimited (§7.2). */
+export function unequipArtifact(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
+  const character = state.party.find((c) => c.id === characterId);
+  if (!character) return { reason: t("errors.characterNotFound") };
+  const idx = character.equippedArtifactIds.indexOf(artifactId);
+  if (idx === -1) return { reason: t("errors.artifactNotEquippedOnCharacter") };
+
+  character.equippedArtifactIds.splice(idx, 1);
+  state.unequippedArtifactIds.push(artifactId);
+  recomputeCharacterStats(character);
+  return null;
 }
 
 /**
@@ -68,14 +127,14 @@ export function applyPartyExp(state: GameState, gained: number): void {
     const cls = getClass(character.classId);
     const stats = statsForLevel(cls, newLevel);
     character.level = newLevel;
-    character.maxHp = stats.maxHp;
-    character.maxMp = stats.maxMp;
-    character.attack = stats.attack;
-    character.defense = stats.defense;
     character.unlockedSkillIds = stats.unlockedSkillIds;
+    // recomputeCharacterStats sets attack/defense/maxHp/maxMp from the new level
+    // *plus* any equipped artifacts' statBoost (docs/gameplay-decisions/07-items-artifacts.md
+    // §7.2) — a plain reassignment here would silently wipe artifact bonuses on every level-up.
+    recomputeCharacterStats(character);
     if (character.isAlive) {
-      character.hp = stats.maxHp;
-      character.mp = stats.maxMp;
+      character.hp = character.maxHp;
+      character.mp = character.maxMp;
     }
   }
 }

@@ -14,6 +14,6 @@ Tài liệu này trước đây là 1 file `gameplay-decisions.md` duy nhất, �
 | [`05-character-stats.md`](./05-character-stats.md) | §5 | HP/MP hoạt động thế nào, tăng trưởng theo cấp |
 | [`06-level-system.md`](./06-level-system.md) | §6 (6.1-6.12) | Hệ thống level 1-100, EXP, level tầng ngục vô hạn, Elite/Boss, skill riêng Elite/Boss |
 | [`07-items-artifacts.md`](./07-items-artifacts.md) | §7 | Item tiêu hao + Artifact (relic vĩnh viễn trong run), độ hiếm, nguồn rơi, item đặc trưng theo quái |
-| [`08-events.md`](./08-events.md) | §8 | Event room: 5 loại sự kiện (mở rương, đánh quái canh giữ, thương nhân, đổi HP lấy artifact, phá tế đàn) |
+| [`08-events.md`](./08-events.md) | §8 | Event room: 11 loại sự kiện chia 2 tier (Common/Rare), Cursed Artifact, quy tắc trang bị |
 
 Các file khác trong `docs/` (`technical-decisions.md`, `minigame-decisions.md`) tham chiếu vào tài liệu này qua đường dẫn `gameplay-decisions/<file>.md §N` thay vì `gameplay-decisions.md §N` như trước.

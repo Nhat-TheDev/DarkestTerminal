@@ -95,6 +95,29 @@ function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
   return [spawnMonster(archetype, depth, { tier })];
 }
 
+const EVENT_GUARDIAN_STAT_MULTIPLIER = 1.2;
+
+/**
+ * docs/gameplay-decisions/08-events.md §8.3 (guardian-fight/desecrated-altar)
+ * — 1-2 monsters from the regular combat-room pool, +20% hp/attack/defense
+ * over their normal spawn-time stats. Unlike combat/boss rooms, this isn't
+ * wired into ROOM_SPAWN_STRATEGIES — event rooms don't know which of the 11
+ * events they'll resolve to until entered (src/engine/dungeon.ts), so this
+ * is called at resolve time instead of floor-build time.
+ */
+export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
+  const count = rng.int(1, 2);
+  return Array.from({ length: count }, () => {
+    const archetype = rng.pick(COMBAT_ROOM_ARCHETYPES).id;
+    const m = spawnMonster(archetype, depth);
+    m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER);
+    m.hp = m.maxHp;
+    m.attack = Math.round(m.attack * EVENT_GUARDIAN_STAT_MULTIPLIER);
+    m.defense = Math.round(m.defense * EVENT_GUARDIAN_STAT_MULTIPLIER);
+    return m;
+  });
+}
+
 // Room types not listed here spawn nothing (rest/treasure/empty/event) — adding
 // a new type that spawns monsters is a single entry, no change to the loop below.
 const ROOM_SPAWN_STRATEGIES: Partial<Record<RoomType, RoomSpawnFn>> = {
@@ -136,7 +159,6 @@ export function buildFloorFromStages(stages: RoomToken[][], rng: Rng, depth = 1)
     depth,
     rooms,
     entryRoomId: rooms[0]!.id,
-    darknessLevel: 10,
   };
 
   return { floor, monsters };

@@ -8,11 +8,25 @@ import type {
   SkillTarget,
   SkillDefinition,
   SkillEffect,
+  ActionSource,
+  Id,
 } from "../types";
 import { getSkill } from "../data/classes";
 import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
+import { getItem } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
+import {
+  rollDodge,
+  rollPoisonOnHit,
+  totalReflectDamagePercent,
+  totalLifestealPercent,
+  totalHealOnKill,
+  autoDamageAmounts,
+  totalCooldownReduction,
+} from "./artifacts";
 import { Rng } from "./rng";
+import { t } from "../data/strings";
+import { applyRoundFear, applyVictoryFearRelief } from "./survival";
 import {
   type Actor,
   isCharacter,
@@ -28,6 +42,15 @@ export interface EngineContext {
   party: Character[];
   monsters: Monster[];
   rng: Rng;
+  /** Same object reference as GameState.inventory (see Game constructor) — item count by id, shared by the whole party. */
+  inventory: Record<Id, number>;
+}
+
+/** Wraps an ItemDefinition as a SkillDefinition so item actions can reuse the exact same target-resolution/effect pipeline as skills (docs/gameplay-decisions/07-items-artifacts.md §7.1: items reuse SkillEffect + the resolver, no dedicated pipeline). */
+function actionDefinition(source: ActionSource): SkillDefinition {
+  if (source.kind === "skill") return getSkill(source.skillId);
+  const item = getItem(source.itemId);
+  return { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0, unlockLevel: 0 };
 }
 
 export function getActorByRef(ref: CombatantRef, ctx: EngineContext): Actor {
@@ -66,7 +89,7 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
     turnQueue: [],
     activeTurnIndex: 0,
     isBossFight,
-    log: [`Trận chiến bắt đầu tại phòng ${roomId}.`],
+    log: [t("combat.started", { roomId })],
   };
 }
 
@@ -114,15 +137,15 @@ export interface QueueActionError {
  * picking, not just at queue time.
  */
 export function checkSkillUsable(actor: Actor, skill: SkillDefinition): QueueActionError | null {
-  if (!isCharacter(actor)) return { reason: "Chỉ nhân vật mới được ra lệnh ở pha này." };
-  if (!actor.unlockedSkillIds.includes(skill.id)) return { reason: "Kỹ năng chưa được mở khóa." };
-  if (actor.mp < skill.mpCost) return { reason: "Không đủ MP." };
+  if (!isCharacter(actor)) return { reason: t("errors.characterPhaseOnly") };
+  if (!actor.unlockedSkillIds.includes(skill.id)) return { reason: t("errors.skillLocked") };
+  if (actor.mp < skill.mpCost) return { reason: t("errors.notEnoughMp") };
   if (skill.usesPerCombat !== undefined) {
     const used = actor.usesRemainingThisCombat[skill.id] ?? skill.usesPerCombat;
-    if (used <= 0) return { reason: "Đã hết lượt dùng skill này trong trận." };
+    if (used <= 0) return { reason: t("errors.skillUsesExhausted") };
   }
   const cooldownLeft = actor.cooldownsRemaining[skill.id] ?? 0;
-  if (cooldownLeft > 0) return { reason: `Đang hồi chiêu (còn ${cooldownLeft} lượt).` };
+  if (cooldownLeft > 0) return { reason: t("errors.skillOnCooldown", { turns: cooldownLeft }) };
   return null;
 }
 
@@ -146,10 +169,35 @@ export function queueAction(
     character.usesRemainingThisCombat[skillId] = used - 1;
   }
   if (skill.cooldownTurns !== undefined) {
-    character.cooldownsRemaining[skillId] = skill.cooldownTurns;
+    // docs/gameplay-decisions/07-items-artifacts.md §7.2 — cooldownReduction artifacts.
+    character.cooldownsRemaining[skillId] = Math.max(0, skill.cooldownTurns - totalCooldownReduction(character));
   }
 
   combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId }, targets: chosenTargets });
+  return null;
+}
+
+/** Read-only affordability check for using an item instead of a skill — mirrors checkSkillUsable (docs/gameplay-decisions/07-items-artifacts.md §7.1). */
+export function checkItemUsable(actor: Actor, itemId: Id, inventory: Record<Id, number>): QueueActionError | null {
+  if (!isCharacter(actor)) return { reason: t("errors.characterPhaseOnly") };
+  if ((inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
+  return null;
+}
+
+/** Validates + deducts 1 from inventory and appends a QueuedAction, mirroring queueAction for items. */
+export function queueItemAction(
+  combat: CombatState,
+  actorRef: CombatantRef,
+  itemId: Id,
+  chosenTargets: CombatantRef[],
+  ctx: EngineContext
+): QueueActionError | null {
+  const actor = getActorByRef(actorRef, ctx);
+  const err = checkItemUsable(actor, itemId, ctx.inventory);
+  if (err) return err;
+
+  ctx.inventory[itemId] = (ctx.inventory[itemId] ?? 0) - 1;
+  combat.queuedActions.push({ actor: actorRef, source: { kind: "item", itemId }, targets: chosenTargets });
   return null;
 }
 
@@ -162,7 +210,7 @@ export function allLivingCharactersHaveQueuedActions(combat: CombatState, ctx: E
 function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   if (c.ref.kind !== "character") return c.speed;
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
-  if (queued && getSkill(queued.source.skillId).isBuff) return c.speed + 20;
+  if (queued && actionDefinition(queued.source).isBuff) return c.speed + 20;
   return c.speed;
 }
 
@@ -180,11 +228,26 @@ function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[]
   return sorted.map((c) => c.ref);
 }
 
+/** docs/gameplay-decisions/07-items-artifacts.md §7.2 group 3 — autoDamage fires once per equipped copy at the start of every round, flat damage (no attack/defense), 1 uniformly-random living monster per tick, independent of queueAction/MP/turn order. */
+function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
+  for (const character of ctx.party) {
+    if (!character.isAlive) continue;
+    for (const amount of autoDamageAmounts(character)) {
+      const alive = livingMonsterRefs(combat, ctx);
+      if (alive.length === 0) return;
+      const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
+      target.hp = Math.max(0, target.hp - amount);
+      combat.log.push(t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }));
+    }
+  }
+}
+
 /** Ends the command phase and executes the whole round's resolution phase synchronously. */
-export function resolveRound(combat: CombatState, ctx: EngineContext): void {
+export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1): void {
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
   combat.activeTurnIndex = 0;
+  runArtifactAutoDamage(combat, ctx);
 
   for (const ref of combat.turnQueue) {
     const actor = getActorByRef(ref, ctx);
@@ -210,6 +273,8 @@ export function resolveRound(combat: CombatState, ctx: EngineContext): void {
         if (c.cooldownsRemaining[skillId]! > 0) c.cooldownsRemaining[skillId]! -= 1;
       }
     }
+    // docs/gameplay-decisions/03-survival-stats.md §3 — every round that doesn't end the fight costs fear.
+    for (const c of ctx.party) applyRoundFear(c, floorDepth);
   }
 
   finalizeRound(combat, ctx);
@@ -225,19 +290,19 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   if (!queued) return;
 
   if (hasStunningStatus(actor)) {
-    combat.log.push(`${actor.name} đang choáng, bỏ lượt.`);
+    combat.log.push(t("combat.stunnedSkipTurn", { actor: actor.name }));
     return;
   }
 
   if (rollLosesControl(actor.survival.fear, () => ctx.rng.next())) {
-    combat.log.push(`${actor.name} mất kiểm soát vì sợ hãi, bỏ lượt.`);
+    combat.log.push(t("combat.fearLoseControl", { actor: actor.name }));
     return;
   }
 
-  const skill = getSkill(queued.source.skillId);
+  const skill = actionDefinition(queued.source);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
-    combat.log.push(`${actor.name} dùng ${skill.name} nhưng mục tiêu không còn — hành động lãng phí.`);
+    combat.log.push(t("combat.wastedAction", { actor: actor.name, skill: skill.name }));
     return;
   }
 
@@ -245,8 +310,11 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   // being buffed/debuffed/healed is clear before the effect lines even resolve —
   // but not for a self-target (targets[0] === actor) or an AoE skill (>1 target).
   const soloTarget = targets.length === 1 && targets[0] !== actor ? targets[0] : null;
-  const targetSuffix = soloTarget ? ` lên ${soloTarget.name}` : "";
-  combat.log.push(`${actor.name} dùng ${skill.name}${targetSuffix}.`);
+  combat.log.push(
+    soloTarget
+      ? t("combat.useSkillOnTarget", { actor: actor.name, skill: skill.name, target: soloTarget.name })
+      : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name })
+  );
   applySkillEffects(skill, actor, targets, ctx, combat.log);
 }
 
@@ -264,7 +332,7 @@ function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): 
 function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const actor = getActorByRef(ref, ctx) as Monster;
   if (hasStunningStatus(actor)) {
-    combat.log.push(`${actor.name} đang choáng, bỏ lượt.`);
+    combat.log.push(t("combat.stunnedSkipTurn", { actor: actor.name }));
     return;
   }
 
@@ -280,7 +348,7 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
   if (actor.tier === "boss" && archetype.bossSkillIds) {
     if (actor.isChargingExecute) {
       const target = livingChars.find((c) => c.id === actor.executeTargetId) ?? pickAggroWeighted(livingChars, ctx.rng);
-      combat.log.push(`${actor.name} tung đòn kết liễu đã tích lực vào ${target.name}!`);
+      combat.log.push(t("combat.bossExecuteRelease", { actor: actor.name, target: target.name }));
       applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], ctx, combat.log);
       actor.isChargingExecute = false;
       actor.executeTargetId = undefined;
@@ -291,14 +359,14 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
       const target = pickAggroWeighted(livingChars, ctx.rng);
       actor.isChargingExecute = true;
       actor.executeTargetId = target.id;
-      combat.log.push(`${actor.name} bắt đầu tích lực cho đòn kết liễu, nhắm vào ${target.name}!`);
+      combat.log.push(t("combat.bossExecuteCharge", { actor: actor.name, target: target.name }));
       return; // the charge itself is the whole turn — no attack this round, but a clear warning
     }
     actor.executeCooldownTurns = (actor.executeCooldownTurns ?? 0) - 1;
     if (ctx.rng.chance(BOSS_DEBUFF_CHANCE)) {
       const target = pickAggroWeighted(livingChars, ctx.rng);
       const skill = getMonsterSkill(archetype.bossSkillIds.debuff);
-      combat.log.push(`${actor.name} dùng ${skill.name}.`);
+      combat.log.push(t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }));
       applySkillEffects(skill, actor, [target], ctx, combat.log);
       return;
     }
@@ -309,20 +377,27 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
   if ((actor.tier === "elite" || actor.tier === "boss") && archetype.eliteSkillIds) {
     if (ctx.rng.chance(ELITE_CLEAVE_CHANCE)) {
       const skill = getMonsterSkill(archetype.eliteSkillIds.cleave);
-      combat.log.push(`${actor.name} dùng ${skill.name}, quét cả đội!`);
+      combat.log.push(t("combat.eliteCleave", { actor: actor.name, skill: skill.name }));
       applySkillEffects(skill, actor, livingChars, ctx, combat.log);
       return;
     }
     const target = pickMonsterTarget(actor, livingChars, ctx.rng);
     const skill = getMonsterSkill(archetype.eliteSkillIds.strike);
-    combat.log.push(`${actor.name} dùng ${skill.name} vào ${target.name}.`);
+    combat.log.push(t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }));
     applySkillEffects(skill, actor, [target], ctx, combat.log);
     return;
   }
 
   const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-  combat.log.push(`${actor.name} tấn công ${target.name}.`);
-  resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
+  // dodgeChance/reflectDamage (§7.2) apply here too — this basic attack bypasses applySkillEffects
+  // entirely (no skill involved), so it needs its own copy of both hooks.
+  if (rollDodge(target, ctx.rng)) {
+    combat.log.push(t("combat.dodge", { target: target.name, actor: actor.name }));
+    return;
+  }
+  combat.log.push(t("combat.basicAttack", { actor: actor.name, target: target.name }));
+  const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
+  if (damageDealt > 0) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
 }
 
 function pickAggroWeighted(characters: Character[], rng: Rng): Character {
@@ -403,13 +478,46 @@ function applyOnHitRider(source: Character, target: Actor, log: string[]): void 
   }
 }
 
+/** docs/gameplay-decisions/07-items-artifacts.md §7.2 — reflectDamage: bearer just took `damageDealt` from `attacker`, reflect a % of it back (bypasses defense, like a status DoT tick). */
+function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: string[]): void {
+  const percent = totalReflectDamagePercent(bearer);
+  const reflected = Math.round(damageDealt * (percent / 100));
+  if (reflected <= 0) return;
+  attacker.hp = Math.max(0, attacker.hp - reflected);
+  log.push(t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }));
+}
+
+/** lifesteal — bearer just dealt `damageDealt`, heal them a % of it. */
+function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: string[]): void {
+  const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
+  if (healed <= 0) return;
+  const before = bearer.hp;
+  bearer.hp = Math.min(bearer.maxHp, bearer.hp + healed);
+  if (bearer.hp > before) log.push(t("combat.lifesteal", { bearer: bearer.name, amount: bearer.hp - before }));
+}
+
+/** healOnKill — bearer just landed the killing blow. */
+function applyArtifactHealOnKill(bearer: Character, log: string[]): void {
+  const amount = totalHealOnKill(bearer);
+  if (amount <= 0) return;
+  const before = bearer.hp;
+  bearer.hp = Math.min(bearer.maxHp, bearer.hp + amount);
+  if (bearer.hp > before) log.push(t("combat.healOnKill", { bearer: bearer.name, amount: bearer.hp - before }));
+}
+
 function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], ctx: EngineContext, log: string[]): void {
   for (const target of targets) {
     // Accuracy: ultimates always hit (§4.1); everything else rolls once PER TARGET (so 1 dodging enemy
     // in an AoE doesn't affect whether the others get hit) — only applies when source/target are on opposite sides.
     const isEnemyFacing = isCharacter(source) !== isCharacter(target);
     if (isEnemyFacing && !skill.isUltimate && !rollHits(source, () => ctx.rng.next())) {
-      log.push(`${sourceName(source)} ra đòn trượt vào ${target.name} vì quá sợ hãi.`);
+      log.push(t("combat.missedFear", { source: sourceName(source), target: target.name }));
+      continue;
+    }
+    // dodgeChance (§7.2) — only for actual attacks (a `damage` effect) aimed at an equipped character,
+    // rolled separately from the fear-accuracy check above (unrelated mechanics, see §7.2 "Vì sao").
+    if (isEnemyFacing && isCharacter(target) && effectsFor(skill, target).some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
+      log.push(t("combat.dodge", { target: target.name, actor: sourceName(source) }));
       continue;
     }
 
@@ -417,8 +525,21 @@ function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor
       if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
       if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
       const finalEffect = skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect;
-      resolveSkillEffect(finalEffect, source, target, { log });
+
+      const wasAliveBefore = isActorAlive(target);
+      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log });
       if (effect.kind === "damage" && isCharacter(source)) applyOnHitRider(source, target, log);
+
+      if (finalEffect.kind === "damage" && appliedAmount > 0) {
+        if (isCharacter(target) && isEnemyFacing) applyArtifactReflectDamage(target, source, appliedAmount, log);
+        if (isCharacter(source)) {
+          applyArtifactLifesteal(source, appliedAmount, log);
+          if (rollPoisonOnHit(source, ctx.rng)) {
+            resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, source, target, { log });
+          }
+          if (wasAliveBefore && !isActorAlive(target)) applyArtifactHealOnKill(source, log);
+        }
+      }
     }
   }
 }
@@ -435,13 +556,17 @@ function finalizeRound(combat: CombatState, ctx: EngineContext): void {
   if (livingCharacterRefs(combat, ctx).length === 0) {
     combat.phase = "over";
     combat.outcome = "defeat";
-    combat.log.push("Cả đội đã gục ngã...");
+    combat.log.push(t("combat.partyWiped"));
     return;
   }
   if (livingMonsterRefs(combat, ctx).length === 0) {
     combat.phase = "over";
     combat.outcome = "victory";
-    combat.log.push("Toàn bộ quái vật trong phòng đã bị đánh bại!");
+    // §3 bigger relief — driven by the actual monster tier fought, not `combat.isBossFight`
+    // (that flag really means "guard room", which elite fights also use most floors).
+    const hasEliteOrBoss = combat.combatants.some((c) => c.ref.kind === "monster" && (getActorByRef(c.ref, ctx) as Monster).tier !== "normal");
+    applyVictoryFearRelief(ctx.party, hasEliteOrBoss);
+    combat.log.push(t("combat.roomCleared"));
     return;
   }
   combat.roundNumber += 1;

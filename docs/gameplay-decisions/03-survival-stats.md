@@ -14,9 +14,16 @@ Cả 3 chỉ số (`fear`, `hunger`, `thirst`) nằm trong khoảng **0–100**.
 - **⚠️ Rest room hiện KHÔNG hồi `hunger`/`thirst`** — xem ghi chú "Rest room — cập nhật hành vi thật" bên dưới; đây là điểm lệch giữa thiết kế gốc (mục này) và code hiện hành, chưa được giải quyết.
 
 ### Fear
-- Ambient theo tầng: mỗi khi vào phòng mới, `fear += darknessLevel` của `Floor` hiện tại (darkness tăng dần theo depth — công thức darkness cụ thể để tự do cho phần balancing sau, chỉ cần tăng đơn điệu theo `depth`).
+- **Theo round combat**: cuối mỗi round mà trận **chưa kết thúc**, mỗi nhân vật còn sống nhận thêm fear:
+  - `+1` bình thường, hoặc **`+3` thay vào đó (không cộng dồn với `+1`)** nếu nhân vật đang dưới **60% maxHP**.
+  - Cả 2 mức đều **scale +5%/tầng** (`depth 1` = mức gốc, không bonus), mỗi mức có trần riêng: mức thường tối đa **3/round**, mức dưới 60% HP tối đa **6/round**.
+  - Bị giảm theo artifact `fearResist` — xem `07-items-artifacts.md` §7.2.
+  - Implementation: `fearGainForRound`/`applyRoundFear` trong `src/engine/survival.ts`, gọi từ `resolveRound` (`src/engine/combat.ts`) mỗi round không kết thúc trận.
+- **Thắng trận**: `fear -= 10` cho cả team (mọi nhân vật còn sống); nếu trận đó có **Elite hoặc Boss** thì `fear -= 15` **thay thế** (không cộng dồn với `-10`) — xét theo tier thật của quái vừa hạ (`Monster.tier !== "normal"`), không phải theo loại phòng. Implementation: `applyVictoryFearRelief`, gọi từ `finalizeRound` khi `outcome === "victory"`.
 - Thua mini-game: `fear += 15` (cố định, không phụ thuộc loại mini-game).
 - Rest room (lựa chọn "Trò chuyện"): `fear -= 20` — xem chi tiết ở ghi chú bên dưới, con số và cơ chế đã đổi khác thiết kế gốc.
+
+> Đã bỏ cơ chế fear tăng theo `darknessLevel` khi di chuyển phòng (thiết kế gốc trước đây) — fear giờ chỉ tăng trong lúc combat kéo dài, không tăng khi đi lại giữa các phòng.
 
 ### Rest room — cập nhật hành vi thật (2026-08-17, `src/engine/survival.ts`/`src/engine/game.ts`)
 

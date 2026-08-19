@@ -26,7 +26,7 @@
   {
     "id": "poison-coat",
     "name": "Poison Coat",
-    "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit (on-hit rider, see docs/technical-decisions.md §4.2).",
+    "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit.",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 3,
@@ -59,10 +59,51 @@
   {
     "id": "stunned",
     "name": "Stunned",
-    "description": "Lightning Bolt/Lightning Storm (Mage): skips the turn entirely while active (see docs/technical-decisions.md §4.3). Not curable via mini-game.",
+    "description": "Lightning Bolt/Lightning Storm (Mage): skips the turn entirely while active. Not curable via mini-game.",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 1,
     "stuns": true
+  },
+  {
+    "id": "empower",
+    "name": "Empower",
+    "description": "+6 attack per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "fortify",
+    "name": "Fortify",
+    "description": "+8 defense per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 8 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "distracted",
+    "name": "Distracted",
+    "description": "-20 aggro per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": -20 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "regeneration",
+    "name": "Regeneration",
+    "description": "heal 10 HP per turn.",
+    "perTurnEffects": [{ "kind": "heal", "amount": 10 }],
+    "curableByMiniGame": [],
+    "durationTurns": 3
+  },
+  {
+    "id": "poison-vulnerable",
+    "name": "Poison Vulnerable",
+    "description": "While active, doubles the per-turn damage of the bearer's own Poisoned tick.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 2,
+    "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
   }
 ]

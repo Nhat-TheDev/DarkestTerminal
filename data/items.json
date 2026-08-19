@@ -1,0 +1,144 @@
+[
+  {
+    "id": "small-health-potion",
+    "name": "Small Health Potion",
+    "description": "Hồi ngay 30 HP.",
+    "target": "self",
+    "effects": [{ "kind": "heal", "amount": 30 }]
+  },
+  {
+    "id": "large-health-potion",
+    "name": "Large Health Potion",
+    "description": "Hồi ngay 70 HP.",
+    "target": "self",
+    "effects": [{ "kind": "heal", "amount": 70 }]
+  },
+  {
+    "id": "small-mana-potion",
+    "name": "Small Mana Potion",
+    "description": "Hồi ngay 20 MP.",
+    "target": "self",
+    "effects": [{ "kind": "restoreMp", "amount": 20 }]
+  },
+  {
+    "id": "large-mana-potion",
+    "name": "Large Mana Potion",
+    "description": "Hồi ngay 45 MP.",
+    "target": "self",
+    "effects": [{ "kind": "restoreMp", "amount": 45 }]
+  },
+  {
+    "id": "ration",
+    "name": "Ration",
+    "description": "Hồi 40 hunger. Dùng ngoài combat.",
+    "target": "self",
+    "effects": [{ "kind": "modifyStat", "stat": "hunger", "amount": 40 }]
+  },
+  {
+    "id": "water-flask",
+    "name": "Water Flask",
+    "description": "Hồi 40 thirst. Dùng ngoài combat.",
+    "target": "self",
+    "effects": [{ "kind": "modifyStat", "stat": "thirst", "amount": 40 }]
+  },
+  {
+    "id": "calming-draught",
+    "name": "Calming Draught",
+    "description": "Giảm 25 fear.",
+    "target": "self",
+    "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -25 }]
+  },
+  {
+    "id": "antidote",
+    "name": "Antidote",
+    "description": "Gỡ 1 debuff bất kỳ đang mang.",
+    "target": "self",
+    "effects": [{ "kind": "removeStatusEffect" }]
+  },
+  {
+    "id": "whetstone",
+    "name": "Whetstone",
+    "description": "Empower: +6 attack, 2 lượt.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }]
+  },
+  {
+    "id": "temporary-ward",
+    "name": "Temporary Ward",
+    "description": "Fortify: +8 defense, 2 lượt.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }]
+  },
+  {
+    "id": "grave-dust",
+    "name": "Grave Dust",
+    "description": "Bụi xương hoá cứng da thịt người dùng — Fortify: +8 defense, 2 lượt. Rơi từ Skeleton/Skeleton Archer/Skeleton Guard.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
+    "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"]
+  },
+  {
+    "id": "broken-blade-fragment",
+    "name": "Broken Blade Fragment",
+    "description": "Mảnh vũ khí gãy còn sắc — Empower: +6 attack, 2 lượt. Rơi từ Skeleton Warrior/Zombie Knight/Dark Knight.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
+    "archetypeIds": ["skeleton-warrior", "zombie-knight", "dark-knight"]
+  },
+  {
+    "id": "rotten-flesh",
+    "name": "Rotten Flesh",
+    "description": "Mùi hôi thối khiến quái khác bớt chú ý — giảm 20 aggro, 1 lượt. Rơi từ Zombie/Zombie Knight.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "distracted" }],
+    "archetypeIds": ["zombie", "zombie-knight"]
+  },
+  {
+    "id": "venom-gland",
+    "name": "Venom Gland",
+    "description": "Tẩm độc vũ khí — Poison Coat: 3 lượt, mọi đòn đánh trúng tự kèm Poisoned. Rơi từ Snake/Lizard/Spider.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
+    "archetypeIds": ["snake", "lizard", "spider"]
+  },
+  {
+    "id": "venom-thorn",
+    "name": "Venom Thorn",
+    "description": "Khiến 1 quái mục tiêu chịu sát thương Poisoned gấp đôi trong 2 lượt (không tự gây Poisoned). Rơi từ Giant Spider.",
+    "target": "singleEnemy",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-vulnerable" }],
+    "archetypeIds": ["giant-spider"]
+  },
+  {
+    "id": "rat-meat",
+    "name": "Rat Meat",
+    "description": "Regeneration: hồi 10 HP/lượt, 3 lượt. Rơi từ Dungeon Rat.",
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "regeneration" }],
+    "archetypeIds": ["dungeon-rat"]
+  },
+  {
+    "id": "bat-blood",
+    "name": "Bat Blood",
+    "description": "Hồi ngay 20 HP. Rơi từ Black Bat.",
+    "target": "self",
+    "effects": [{ "kind": "heal", "amount": 20 }],
+    "archetypeIds": ["black-bat"]
+  },
+  {
+    "id": "slime-solution",
+    "name": "Slime Solution",
+    "description": "Hồi ngay 20 MP. Rơi từ Slime.",
+    "target": "self",
+    "effects": [{ "kind": "restoreMp", "amount": 20 }],
+    "archetypeIds": ["slime"]
+  },
+  {
+    "id": "dragon-scale",
+    "name": "Dragon Scale",
+    "description": "Fortify cho cả đội: +8 defense, 2 lượt. Rơi từ Dragon.",
+    "target": "allAllies",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
+    "archetypeIds": ["dragon"]
+  }
+]

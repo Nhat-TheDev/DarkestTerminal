@@ -1,0 +1,80 @@
+[
+  {
+    "id": "open-chest",
+    "name": "Mở Rương",
+    "description": "Một chiếc rương gỗ sồi nứt nẻ nằm lệch giữa đống đá vụn, nắp hé mở như đang chờ ai đó đủ tò mò để lại gần.",
+    "kind": "instantReward",
+    "tier": "common"
+  },
+  {
+    "id": "guardian-fight",
+    "name": "Đánh Quái Canh Giữ",
+    "description": "Tiếng móng vuốt cà lên đá vọng ra từ góc tối — thứ gì đó đang canh giữ báu vật trong phòng này, và nó vừa đánh hơi thấy các bạn.",
+    "kind": "combatReward",
+    "tier": "common"
+  },
+  {
+    "id": "merchant",
+    "name": "Gặp Thương Nhân",
+    "description": "Ánh đèn dầu run rẩy hắt lên tấm vải trải đầy món hàng kỳ lạ. Một bóng người cúi đầu chào, tay vẫy nhẹ mời các bạn lại gần.",
+    "kind": "merchant",
+    "tier": "common"
+  },
+  {
+    "id": "desecrated-altar",
+    "name": "Phá Tế Đàn",
+    "description": "Tế đàn đá rực lên thứ ánh sáng đỏ nhợt, phập phồng như đang thở — chạm vào nó chắc chắn sẽ đánh thức thứ đang ngủ bên dưới.",
+    "kind": "combatReward",
+    "tier": "common"
+  },
+  {
+    "id": "blood-altar",
+    "name": "Đổi HP Lấy Artifact",
+    "description": "Những đường khắc cổ trên bệ đá rỉ ra thứ chất lỏng sẫm màu, vẫn còn ấm. Nó đòi một cái giá bằng máu, không hơn không kém.",
+    "kind": "hpGamble",
+    "tier": "rare"
+  },
+  {
+    "id": "cursed-shrine",
+    "name": "Đền Thờ Nguyền Rủa",
+    "description": "Bức tượng có 3 con mắt. Một trong số chúng đang mở.",
+    "kind": "choiceReveal",
+    "tier": "rare"
+  },
+  {
+    "id": "twin-altars",
+    "name": "Hai Bàn Thờ",
+    "description": "Hai bệ đá đối diện nhau. Chọn 1 — bệ còn lại vỡ vụn ngay khi bạn chạm bệ kia.",
+    "kind": "choiceReveal",
+    "tier": "rare",
+    "forceEquip": true
+  },
+  {
+    "id": "sacrificial-circle",
+    "name": "Vòng Nghi Lễ",
+    "description": "Máu khô đã cũ trên đá. Vòng tròn không nhận lễ vật tầm thường — chỉ nhận thứ đã có phép.",
+    "kind": "artifactExchange",
+    "tier": "rare"
+  },
+  {
+    "id": "gambling-den",
+    "name": "Sòng Bạc Lang Thang",
+    "description": "Một gã lạ mặt xóc 3 chiếc cốc úp ngược, cười khẩy trong bóng tối. 'Đưa ta thứ ngươi có. Ta gấp đôi nó, hoặc giữ luôn.'",
+    "kind": "artifactExchange",
+    "tier": "rare"
+  },
+  {
+    "id": "wandering-hermit",
+    "name": "Ẩn Sĩ Lang Thang",
+    "description": "Ông già ngồi thiền giữa đống đổ nát, mắt nhắm nghiền. 'Ta không bán gì. Ta chỉ... trao đổi thôi.'",
+    "kind": "artifactExchange",
+    "tier": "rare"
+  },
+  {
+    "id": "collapsed-floor",
+    "name": "Sàn Nhà Sập",
+    "description": "Một bước sai và cả người rơi xuống tầng dưới. Có tiếng rên yếu ớt vọng lên từ khe nứt — vẫn còn ai đó mắc kẹt.",
+    "kind": "rescueGamble",
+    "tier": "rare"
+  }
+]

@@ -7,6 +7,8 @@ import {
   getActorByRef,
   startCombat,
   queueAction,
+  queueItemAction,
+  checkItemUsable,
   allLivingCharactersHaveQueuedActions,
   resolveRound,
   autoResolveTargets,
@@ -16,15 +18,34 @@ import {
   type EngineContext,
 } from "../src/engine/combat";
 import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive, tickStatusEffects } from "../src/engine/resolver";
-import { connectedRooms } from "../src/engine/dungeon";
+import { connectedRooms, getRoom, moveToRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
+import { rollItemDrop, getItem, ITEMS } from "../src/data/items";
+import { rollArtifactRarity, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
+import { rollEvent, getEvent, EVENTS } from "../src/data/events";
+import { applyPartyExp, statsForLevel, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
+import {
+  rollDodge,
+  artifactStatBoostSum,
+  totalReflectDamagePercent,
+  totalLifestealPercent,
+  totalHealOnKill,
+  autoDamageAmounts,
+  totalExpBoostPercent,
+  fearResistMultiplier,
+  totalCooldownReduction,
+  survivalDrainMultiplier,
+  curseAggroBoostSum,
+} from "../src/engine/artifacts";
+import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, tickSurvivalOnAction } from "../src/engine/survival";
+import { Game } from "../src/engine/game";
 import type { Character, CombatantRef } from "../src/types";
 
 function makeCtx(seed = 1) {
   const rng = new Rng(seed);
   const { floor, monsters } = createFloor(rng);
   const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-  const ctx: EngineContext = { party, monsters, rng };
+  const ctx: EngineContext = { party, monsters, rng, inventory: {} };
   return { ctx, floor, monsters, party };
 }
 
@@ -545,6 +566,635 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
       expect(debuffed).toBeDefined();
     }
     expect(found).toBe(true); // debuff should fire at least once across 50 seeds at a 30% chance/round
+  });
+});
+
+describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
+  test("rollItemDrop fires close to the spec'd 60% of the time", () => {
+    const rng = new Rng(42);
+    let drops = 0;
+    const total = 4000;
+    for (let i = 0; i < total; i++) {
+      if (rollItemDrop("dungeon-rat", rng)) drops++;
+    }
+    expect(drops / total).toBeGreaterThan(0.55);
+    expect(drops / total).toBeLessThan(0.65);
+  });
+
+  test("on a successful roll, roughly half go to the archetype's own signature item", () => {
+    const rng = new Rng(7);
+    let signatureHits = 0;
+    let totalDrops = 0;
+    for (let i = 0; i < 8000; i++) {
+      const id = rollItemDrop("dungeon-rat", rng);
+      if (!id) continue;
+      totalDrops++;
+      if (id === "rat-meat") signatureHits++;
+    }
+    expect(totalDrops).toBeGreaterThan(0);
+    expect(signatureHits / totalDrops).toBeGreaterThan(0.4);
+    expect(signatureHits / totalDrops).toBeLessThan(0.6);
+  });
+
+  test("an archetype in 2 groups (Zombie Knight) splits the signature half evenly between both items", () => {
+    const rng = new Rng(11);
+    const counts: Record<string, number> = {};
+    let totalDrops = 0;
+    for (let i = 0; i < 12000; i++) {
+      const id = rollItemDrop("zombie-knight", rng);
+      if (!id) continue;
+      totalDrops++;
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    const rottenFleshRatio = (counts["rotten-flesh"] ?? 0) / totalDrops;
+    const bladeFragmentRatio = (counts["broken-blade-fragment"] ?? 0) / totalDrops;
+    expect(rottenFleshRatio).toBeGreaterThan(0.15);
+    expect(rottenFleshRatio).toBeLessThan(0.35);
+    expect(bladeFragmentRatio).toBeGreaterThan(0.15);
+    expect(bladeFragmentRatio).toBeLessThan(0.35);
+  });
+
+  test("a base-pool item is still reachable for an archetype that also has a signature item", () => {
+    const rng = new Rng(3);
+    let sawBaseItem = false;
+    for (let i = 0; i < 4000 && !sawBaseItem; i++) {
+      const id = rollItemDrop("dungeon-rat", rng);
+      if (id && !getItem(id).archetypeIds) sawBaseItem = true;
+    }
+    expect(sawBaseItem).toBe(true);
+  });
+
+  test("queueItemAction deducts inventory at queue time and applies the item's effect on resolve", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    vanguard.hp = vanguard.maxHp - 30; // otherwise heal clamps at maxHp and the log line reads "hồi 0 HP."
+    ctx.inventory["small-health-potion"] = 1;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0; // keep vanguard's hp deterministic regardless of turn order (damage still floors at 1)
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const err = queueItemAction(combat, self, "small-health-potion", [self], ctx);
+    expect(err).toBeNull();
+    expect(ctx.inventory["small-health-potion"]).toBe(0); // spent at queue time, like skill MP (technical-decisions.md §2)
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes("hồi 30 HP"))).toBe(true);
+  });
+
+  test("checkItemUsable rejects when inventory has 0 of the item", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    expect(checkItemUsable(vanguard, "small-health-potion", ctx.inventory)).not.toBeNull();
+  });
+
+  test("Regeneration heals 10 HP/turn and refreshes (doesn't stack a 2nd instance) when reapplied while active", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "regeneration" }, target, target, { log: [] });
+    expect(target.activeStatusEffects.filter((s) => s.statusEffectId === "regeneration")).toHaveLength(1);
+    tickStatusEffects(target, { log: [] });
+    expect(target.hp).toBe(11);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "regeneration" }, target, target, { log: [] });
+    expect(target.activeStatusEffects.filter((s) => s.statusEffectId === "regeneration")).toHaveLength(1);
+  });
+
+  test("poison-vulnerable doubles the bearer's own Poisoned DoT tick", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
+    target.activeStatusEffects.push({ statusEffectId: "poison-vulnerable", turnsRemaining: 2 });
+    const before = target.hp;
+    tickStatusEffects(target, { log: [] });
+    expect(before - target.hp).toBe(8); // 4 base * 2 multiplier
+  });
+
+  test("Game.useItemOutOfCombat heals outside combat, decrements inventory, and rejects singleEnemy items", () => {
+    const game = new Game(1);
+    const c = game.state.party[0]!;
+    c.hp = 1;
+    game.state.inventory["small-health-potion"] = 1;
+    expect(game.useItemOutOfCombat("small-health-potion", c.id)).toBeNull();
+    expect(c.hp).toBe(31);
+    expect(game.state.inventory["small-health-potion"]).toBe(0);
+
+    game.state.inventory["venom-thorn"] = 1;
+    expect(game.useItemOutOfCombat("venom-thorn", c.id)).not.toBeNull();
+  });
+
+  test("Dragon Scale (allAllies) buffs every living party member at once outside combat", () => {
+    const game = new Game(2);
+    game.state.inventory["dragon-scale"] = 1;
+    expect(game.useItemOutOfCombat("dragon-scale")).toBeNull();
+    for (const c of game.state.party) {
+      if (c.isAlive) expect(c.defense).toBeGreaterThan(getClass(c.classId).baseDefense);
+    }
+  });
+});
+
+describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () => {
+  test("rollArtifactRarity: Elite never Epic, Boss never Common/Rare, Treasure/Event spans all 4", () => {
+    const rng = new Rng(5);
+    const seen = { elite: new Set<string>(), boss: new Set<string>(), treasureOrEvent: new Set<string>() };
+    for (let i = 0; i < 4000; i++) {
+      seen.elite.add(rollArtifactRarity("elite", rng));
+      seen.boss.add(rollArtifactRarity("boss", rng));
+      seen.treasureOrEvent.add(rollArtifactRarity("treasureOrEvent", rng));
+    }
+    expect([...seen.elite].sort()).toEqual(["common", "rare", "unique"]);
+    expect([...seen.boss].sort()).toEqual(["epic", "unique"]);
+    expect([...seen.treasureOrEvent].sort()).toEqual(["common", "epic", "rare", "unique"]);
+  });
+
+  test("equipArtifact/unequipArtifact move ids between the shared pool and a character, capped at MAX_EQUIPPED_ARTIFACTS", () => {
+    const game = new Game(1);
+    const c = game.state.party[0]!;
+    game.state.unequippedArtifactIds.push("iron-gauntlet", "sharp-claw", "ancient-sword", "heart-of-stone");
+    expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
+    expect(game.equipArtifact(c.id, "sharp-claw")).toBeNull();
+    expect(game.equipArtifact(c.id, "ancient-sword")).toBeNull();
+    expect(c.equippedArtifactIds).toHaveLength(MAX_EQUIPPED_ARTIFACTS);
+    expect(game.equipArtifact(c.id, "heart-of-stone")).not.toBeNull(); // 4th slot rejected
+    expect(game.state.unequippedArtifactIds).toEqual(["heart-of-stone"]);
+
+    expect(game.unequipArtifact(c.id, "sharp-claw")).toBeNull();
+    expect(c.equippedArtifactIds).toHaveLength(2);
+    expect(game.state.unequippedArtifactIds).toContain("sharp-claw");
+  });
+
+  test("statBoost recomputes attack from scratch and survives a level-up", () => {
+    const game = new Game(2);
+    const c = game.state.party[0]!;
+    const baseAttack = c.attack;
+    game.state.unequippedArtifactIds.push("iron-gauntlet"); // +3 attack
+    expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
+    expect(c.attack).toBe(baseAttack + 3);
+
+    applyPartyExp(game.state, 999999);
+    expect(c.level).toBeGreaterThan(1);
+    expect(c.attack).toBe(statsForLevel(getClass(c.classId), c.level).attack + 3);
+  });
+
+  test("rollDodge fires close to the equipped artifact's chance", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedArtifactIds.push("featherweight-boots"); // dodgeChance 6%
+    const rng = new Rng(9);
+    let dodges = 0;
+    const total = 6000;
+    for (let i = 0; i < total; i++) if (rollDodge(c, rng)) dodges++;
+    expect(dodges / total).toBeGreaterThan(0.04);
+    expect(dodges / total).toBeLessThan(0.08);
+  });
+
+  test("aggregation helpers sum correctly across multi-effect and stacked artifacts", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedArtifactIds.push("immortal-heart"); // reflectDamage 15 + statBoost defense+10 + statBoost maxHp+60
+    expect(totalReflectDamagePercent(c)).toBe(15);
+    expect(artifactStatBoostSum(c).defense).toBe(10);
+    expect(artifactStatBoostSum(c).maxHp).toBe(60);
+
+    c.equippedArtifactIds.push("reapers-covenant"); // healOnKill 25 + lifesteal 8
+    expect(totalHealOnKill(c)).toBe(25);
+    expect(totalLifestealPercent(c)).toBe(8);
+
+    c.equippedArtifactIds.push("thunder-totem", "thunder-totem"); // 2 copies -> 2 separate auto-damage ticks
+    expect(autoDamageAmounts(c)).toEqual([6, 6]);
+  });
+
+  test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction/survivalDrainReduction are per-character", () => {
+    const { ctx } = makeCtx();
+    ctx.party[0]!.equippedArtifactIds.push("scholars-insight"); // expBoost 15
+    ctx.party[1]!.equippedArtifactIds.push("eternal-scholars-tome"); // expBoost 25 + cooldownReduction 1
+    expect(totalExpBoostPercent(ctx.party)).toBe(40);
+    expect(totalCooldownReduction(ctx.party[1]!)).toBe(1);
+    expect(totalCooldownReduction(ctx.party[0]!)).toBe(0);
+
+    ctx.party[0]!.equippedArtifactIds.push("pendant-of-calm"); // fearResist 10%
+    expect(fearResistMultiplier(ctx.party[0]!)).toBeCloseTo(0.9);
+    ctx.party[0]!.equippedArtifactIds.push("travelers-ration"); // survivalDrainReduction 15%
+    expect(survivalDrainMultiplier(ctx.party[0]!)).toBeCloseTo(0.85);
+  });
+
+  test("fearGainForRound: base amount at depth 1, no fearResist", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(fearGainForRound(c, 1)).toBe(1);
+  });
+
+  test("fearGainForRound: low-HP amount replaces (not adds to) the base amount", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.hp = Math.floor(c.maxHp * 0.59);
+    expect(fearGainForRound(c, 1)).toBe(3); // not 1 + 3
+  });
+
+  test("fearGainForRound: scales +5%/floor depth, capped separately for base vs low-HP", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(fearGainForRound(c, 40)).toBe(3); // 1 * (1 + 0.05*39) = 2.95 -> rounds to the 3 cap
+    expect(fearGainForRound(c, 100)).toBe(3); // scaled value (5.95) is well past the cap, stays at 3
+    c.hp = Math.floor(c.maxHp * 0.59);
+    expect(fearGainForRound(c, 100)).toBe(6); // low-HP capped at 6
+  });
+
+  test("fearGainForRound: reduced by fearResist artifacts", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.hp = Math.floor(c.maxHp * 0.59);
+    c.equippedArtifactIds.push("pendant-of-calm"); // fearResist 10%
+    expect(fearGainForRound(c, 1)).toBe(3); // round(3 * 0.9) = round(2.7) = 3
+  });
+
+  test("applyRoundFear adds the gain and skips dead characters", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.survival.fear = 10;
+    applyRoundFear(c, 1);
+    expect(c.survival.fear).toBe(11);
+
+    c.isAlive = false;
+    applyRoundFear(c, 1);
+    expect(c.survival.fear).toBe(11); // unchanged — dead characters don't accrue fear
+  });
+
+  test("applyVictoryFearRelief: normal victory -10, boss victory -15 (not stacked)", () => {
+    const { ctx } = makeCtx();
+    for (const c of ctx.party) c.survival.fear = 50;
+    applyVictoryFearRelief(ctx.party, false);
+    expect(ctx.party.every((c) => c.survival.fear === 40)).toBe(true);
+
+    for (const c of ctx.party) c.survival.fear = 50;
+    applyVictoryFearRelief(ctx.party, true);
+    expect(ctx.party.every((c) => c.survival.fear === 35)).toBe(true);
+  });
+
+  test("beating an Elite gets the bigger -15 fear relief too, even outside the boss room (combat.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
+    elite.hp = 1;
+    ctx.monsters.push(elite);
+    // isBossFight: false on purpose — proves the relief is driven by the monster's actual
+    // tier, not by whichever room flag started the fight.
+    const combat = startCombat("r1", [elite.id], ctx, false);
+    for (const c of ctx.party) c.survival.fear = 50;
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+    resolveRound(combat, ctx, 1);
+    expect(combat.outcome).toBe("victory");
+    expect(ctx.party.every((c) => c.survival.fear === 35)).toBe(true);
+  });
+
+  test("survivalDrainReduction reduces hunger/thirst drain per action (survival.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedArtifactIds.push("travelers-ration"); // survivalDrainReduction 15%
+    tickSurvivalOnAction(c, []);
+    expect(c.survival.hunger).toBeCloseTo(99.1, 5); // 100 - round(1 * 0.85 * 10)/10
+    expect(c.survival.thirst).toBeCloseTo(98.7, 5); // 100 - round(1.5 * 0.85 * 10)/10
+  });
+
+  test("reflectDamage: a monster's attack on the bearer reflects a percent back (combat.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.equippedArtifactIds.push("thorned-armor"); // reflectDamage 5%
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 200; // guarantee a hit big enough that 5% doesn't round down to 0
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    queueAction(combat, self, "vanguard-shield-guard", [self], ctx); // self-target, so only the rat's attack matters this round
+    const ratHpBefore = rat.hp;
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes("phản lại từ artifact"))).toBe(true);
+    expect(rat.hp).toBeLessThan(ratHpBefore);
+  });
+
+  test("lifesteal and healOnKill heal the equipped character on their own damage (combat.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.equippedArtifactIds.push("reapers-covenant"); // healOnKill 25 + lifesteal 8%
+    vanguard.hp = Math.max(1, vanguard.maxHp - 100); // room to see the heal in the log
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.hp = 1; // guaranteed killing blow
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const attackSkill = vanguard.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    queueAction(combat, { kind: "character", id: vanguard.id }, attackSkill.id, [enemyRef], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes("nhờ artifact khi hạ gục địch"))).toBe(true);
+    expect(combat.log.some((l) => l.includes("hồi") && l.includes("nhờ artifact") && !l.includes("khi hạ gục"))).toBe(true);
+  });
+
+  test("autoDamage fires at the start of the round, independent of turn order (combat.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.equippedArtifactIds.push("thunder-totem"); // autoDamage 6
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.includes(`Artifact của ${vanguard.name} gây 6 sát thương`))).toBe(true);
+  });
+
+  test("cooldownReduction shortens a skill's cooldown at queue time (combat.ts integration)", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    rogue.equippedArtifactIds.push("quickcharge-rune"); // cooldownReduction 1
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: rogue.id };
+    expect(queueAction(combat, self, "rogue-poison-coat", [self], ctx)).toBeNull();
+    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(3); // base cooldown 4, minus 1
+  });
+
+  test("expBoost artifacts increase EXP gained on victory (Game integration)", () => {
+    const game = new Game(3);
+    const vanguard = game.state.party[0]!;
+    game.state.unequippedArtifactIds.push("scholars-insight"); // expBoost 15%
+    expect(game.equipArtifact(vanguard.id, "scholars-insight")).toBeNull();
+
+    const rat = spawnMonster("dungeon-rat", 1);
+    rat.hp = 1; // guaranteed 1-hit kill
+    game.ctx.monsters.push(rat);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.monsterIds = [rat.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+
+    const attackSkill = vanguard.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
+    const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
+    expect(game.queue({ kind: "character", id: vanguard.id }, attackSkill.id, [enemyRef])).toBeNull();
+    game.resolve();
+
+    const expectedExp = Math.round(rat.expReward * 1.15);
+    expect(game.state.combat!.log.some((l) => l.includes(`nhận ${expectedExp} EXP`))).toBe(true);
+  });
+});
+
+function forceEventRoom(game: Game, eventId: string) {
+  const room = getRoom(game.state.floor, game.state.currentRoomId);
+  room.type = "event";
+  room.cleared = false;
+  room.rolledEventId = eventId;
+  return room;
+}
+
+describe("events (docs/gameplay-decisions/08-events.md)", () => {
+  test("rollEvent: only picks ids from the 2 tiers, roughly 65% Common / 35% Rare", () => {
+    const rng = new Rng(3);
+    const commonIds = new Set(EVENTS.filter((e) => e.tier === "common").map((e) => e.id));
+    const rareIds = new Set(EVENTS.filter((e) => e.tier === "rare").map((e) => e.id));
+    let commonCount = 0;
+    const total = 4000;
+    for (let i = 0; i < total; i++) {
+      const id = rollEvent(rng);
+      expect(commonIds.has(id) || rareIds.has(id)).toBe(true);
+      if (commonIds.has(id)) commonCount++;
+    }
+    expect(commonCount / total).toBeGreaterThan(0.6);
+    expect(commonCount / total).toBeLessThan(0.7);
+  });
+
+  test("rollArtifactWithMinRarity('rare', ...) never rolls Common, matches §8.9's 60/30/10 Rare/Unique/Epic split", () => {
+    const rng = new Rng(4);
+    const counts: Record<string, number> = {};
+    const total = 6000;
+    for (let i = 0; i < total; i++) {
+      const rarity = getArtifact(rollArtifactWithMinRarity("rare", rng)).rarity;
+      counts[rarity] = (counts[rarity] ?? 0) + 1;
+    }
+    expect(counts["common"] ?? 0).toBe(0);
+    expect((counts["rare"] ?? 0) / total).toBeGreaterThan(0.55);
+    expect((counts["rare"] ?? 0) / total).toBeLessThan(0.65);
+    expect((counts["epic"] ?? 0) / total).toBeGreaterThan(0.06);
+    expect((counts["epic"] ?? 0) / total).toBeLessThan(0.14);
+  });
+
+  test("rollArtifactWithMinRarity('epic', ...) always returns an Epic", () => {
+    const rng = new Rng(6);
+    for (let i = 0; i < 20; i++) expect(getArtifact(rollArtifactWithMinRarity("epic", rng)).rarity).toBe("epic");
+  });
+
+  test("rollArtifactOrCursed fires the Cursed pool close to 30% of the time", () => {
+    const rng = new Rng(7);
+    let cursedCount = 0;
+    const total = 4000;
+    for (let i = 0; i < total; i++) {
+      if (getArtifact(rollArtifactOrCursed(rng)).isCursed) cursedCount++;
+    }
+    expect(cursedCount / total).toBeGreaterThan(0.24);
+    expect(cursedCount / total).toBeLessThan(0.36);
+  });
+
+  test("moveToRoom auto-resolves open-chest: grants 1 Artifact immediately and clears the room", () => {
+    const game = new Game(1);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "open-chest";
+    const before = game.state.unequippedArtifactIds.length;
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.unequippedArtifactIds.length).toBe(before + 1);
+    expect(room.cleared).toBe(true);
+  });
+
+  test("moveToRoom auto-resolves guardian-fight: starts combat with 1-2 scaled monsters", () => {
+    const game = new Game(2);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.combat).not.toBeNull();
+    expect(room.monsterIds.length).toBeGreaterThanOrEqual(1);
+    expect(room.monsterIds.length).toBeLessThanOrEqual(2);
+  });
+
+  test("moveToRoom pre-rolls merchant offers into activeEvent (2-3 artifacts)", () => {
+    const game = new Game(3);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "merchant";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.activeEvent?.eventId).toBe("merchant");
+    const offers = game.state.activeEvent?.offerArtifactIds ?? [];
+    expect(offers.length).toBeGreaterThanOrEqual(2);
+    expect(offers.length).toBeLessThanOrEqual(3);
+  });
+
+  test("merchantPurchase deducts HP price by rarity and grants the artifact; rejects a payer with too little HP", () => {
+    const game = new Game(4);
+    forceEventRoom(game, "merchant");
+    const payer = game.state.party[0]!;
+    game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"] }; // common -> 15%
+    const before = payer.hp;
+    const cost = Math.floor((payer.maxHp * 15) / 100);
+    expect(game.merchantPurchase(0, payer.id)).toBeNull();
+    expect(payer.hp).toBe(before - cost);
+    expect(game.state.unequippedArtifactIds).toContain("iron-gauntlet");
+    expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(true);
+
+    const game2 = new Game(5);
+    forceEventRoom(game2, "merchant");
+    const poorPayer = game2.state.party[0]!;
+    poorPayer.hp = 1;
+    game2.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"] };
+    expect(game2.merchantPurchase(0, poorPayer.id)).not.toBeNull();
+  });
+
+  test("bloodAltarPay pays a fixed 25% maxHP for 1 fully random artifact", () => {
+    const game = new Game(6);
+    forceEventRoom(game, "blood-altar");
+    const c = game.state.party[0]!;
+    const before = c.hp;
+    const cost = Math.floor((c.maxHp * 25) / 100);
+    const beforeCount = game.state.unequippedArtifactIds.length;
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    expect(c.hp).toBe(before - cost);
+    expect(game.state.unequippedArtifactIds.length).toBe(beforeCount + 1);
+  });
+
+  test("cursedShrineDecide: accept grants the pre-rolled offer, decline grants nothing", () => {
+    const game = new Game(7);
+    forceEventRoom(game, "cursed-shrine");
+    game.state.activeEvent = { eventId: "cursed-shrine", offerArtifactIds: ["blackened-locket"] };
+    expect(game.cursedShrineDecide(true)).toBeNull();
+    expect(game.state.unequippedArtifactIds).toContain("blackened-locket");
+
+    const game2 = new Game(8);
+    forceEventRoom(game2, "cursed-shrine");
+    game2.state.activeEvent = { eventId: "cursed-shrine", offerArtifactIds: ["blackened-locket"] };
+    expect(game2.cursedShrineDecide(false)).toBeNull();
+    expect(game2.state.unequippedArtifactIds).not.toContain("blackened-locket");
+  });
+
+  test("twinAltarsChoose equips the chosen offer immediately, discards the other, and requires an unequip pick when full", () => {
+    const game = new Game(9);
+    forceEventRoom(game, "twin-altars");
+    game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
+    const c = game.state.party[0]!;
+    expect(game.twinAltarsChoose(0, c.id)).toBeNull();
+    expect(c.equippedArtifactIds).toContain("iron-gauntlet");
+    expect(game.state.unequippedArtifactIds).not.toContain("sharp-claw"); // discarded, never entered anywhere
+
+    const game2 = new Game(10);
+    const c2 = game2.state.party[0]!;
+    game2.state.unequippedArtifactIds.push("ancient-sword", "heart-of-stone", "eternal-vial");
+    expect(game2.equipArtifact(c2.id, "ancient-sword")).toBeNull();
+    expect(game2.equipArtifact(c2.id, "heart-of-stone")).toBeNull();
+    expect(game2.equipArtifact(c2.id, "eternal-vial")).toBeNull();
+    forceEventRoom(game2, "twin-altars");
+    game2.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
+    expect(game2.twinAltarsChoose(0, c2.id)).not.toBeNull(); // full, no unequip pick given
+    expect(game2.twinAltarsChoose(0, c2.id, "ancient-sword")).toBeNull();
+    expect(c2.equippedArtifactIds).toContain("iron-gauntlet");
+    expect(c2.equippedArtifactIds).not.toContain("ancient-sword");
+    expect(game2.state.unequippedArtifactIds).toContain("ancient-sword"); // swapped out, back in the pool
+  });
+
+  test("sacrifice consumes the sacrificed artifact and rolls at/above its rarity; room only closes via sacrificeLeave", () => {
+    const game = new Game(11);
+    forceEventRoom(game, "sacrificial-circle");
+    let sawSubUnique = false;
+    for (let i = 0; i < 60 && !sawSubUnique; i++) {
+      game.state.unequippedArtifactIds = ["scholars-insight"]; // unique tier, reset each iteration
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      const rarity = getArtifact(game.state.unequippedArtifactIds[0]!).rarity;
+      if (rarity === "common" || rarity === "rare") sawSubUnique = true;
+    }
+    expect(sawSubUnique).toBe(false);
+    expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(false);
+    game.sacrificeLeave();
+    expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(true);
+  });
+
+  test("gamblingDenBet: win adds a same-rarity artifact, lose removes the bet permanently", () => {
+    let won = false;
+    let lost = false;
+    for (let seed = 1; seed < 60 && !(won && lost); seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.unequippedArtifactIds = ["iron-gauntlet"];
+      expect(game.gamblingDenBet("iron-gauntlet")).toBeNull();
+      if (game.state.unequippedArtifactIds.length === 2 && game.state.unequippedArtifactIds.includes("iron-gauntlet")) won = true;
+      if (game.state.unequippedArtifactIds.length === 0) lost = true;
+    }
+    expect(won).toBe(true);
+    expect(lost).toBe(true);
+  });
+
+  test("hermitRemoveCurse deletes a Cursed Artifact entirely (not returned to the pool)", () => {
+    const game = new Game(12);
+    forceEventRoom(game, "wandering-hermit");
+    const c = game.state.party[0]!;
+    game.state.unequippedArtifactIds.push("blackened-locket");
+    expect(game.equipArtifact(c.id, "blackened-locket")).toBeNull();
+    expect(game.hermitRemoveCurse(c.id, "blackened-locket")).toBeNull();
+    expect(c.equippedArtifactIds).not.toContain("blackened-locket");
+    expect(game.state.unequippedArtifactIds).not.toContain("blackened-locket");
+  });
+
+  test("hermitRerollFortune trades any owned artifact (auto-unequipping first) for a new random roll", () => {
+    const game = new Game(13);
+    forceEventRoom(game, "wandering-hermit");
+    const c = game.state.party[0]!;
+    game.state.unequippedArtifactIds.push("iron-gauntlet");
+    expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
+    const beforeCount = game.state.unequippedArtifactIds.length + c.equippedArtifactIds.length;
+    expect(game.hermitRerollFortune("iron-gauntlet")).toBeNull();
+    expect(c.equippedArtifactIds).not.toContain("iron-gauntlet");
+    expect(game.state.unequippedArtifactIds).not.toContain("iron-gauntlet");
+    expect(game.state.unequippedArtifactIds.length + c.equippedArtifactIds.length).toBe(beforeCount);
+  });
+
+  test("collapsedFloorAttempt pays a fixed HP cost, then grants a Unique/Epic artifact on the 60% success roll", () => {
+    let sawSuccess = false;
+    let sawFailure = false;
+    for (let seed = 1; seed < 60 && !(sawSuccess && sawFailure); seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "collapsed-floor");
+      const c = game.state.party[0]!;
+      const hpBefore = c.hp;
+      const before = game.state.unequippedArtifactIds.length;
+      expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+      expect(c.hp).toBeLessThan(hpBefore);
+      if (game.state.unequippedArtifactIds.length > before) {
+        const gained = game.state.unequippedArtifactIds[game.state.unequippedArtifactIds.length - 1]!;
+        expect(["unique", "epic"]).toContain(getArtifact(gained).rarity);
+        sawSuccess = true;
+      } else {
+        sawFailure = true;
+      }
+    }
+    expect(sawSuccess).toBe(true);
+    expect(sawFailure).toBe(true);
+  });
+
+  test("curseAggroBoost adds flat aggro, curseDrainBoost speeds up survival drain", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedArtifactIds.push("unstable-core"); // curseAggroBoost 25
+    expect(curseAggroBoostSum(c)).toBe(25);
+
+    const { ctx: ctx2 } = makeCtx();
+    const c2 = ctx2.party[0]!;
+    c2.equippedArtifactIds.push("shackle-of-hunger"); // curseDrainBoost 30%
+    expect(survivalDrainMultiplier(c2)).toBeCloseTo(1.3);
+  });
+
+  test("recomputeCharacterStats folds curseAggroBoost into character.aggro on equip", () => {
+    const game = new Game(14);
+    const c = game.state.party[0]!;
+    const baseAggro = c.aggro;
+    game.state.unequippedArtifactIds.push("unstable-core");
+    expect(game.equipArtifact(c.id, "unstable-core")).toBeNull();
+    expect(c.aggro).toBe(baseAggro + 25);
+    expect(game.unequipArtifact(c.id, "unstable-core")).toBeNull();
+    expect(c.aggro).toBe(baseAggro);
   });
 });
 

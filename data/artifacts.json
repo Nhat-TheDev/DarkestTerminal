@@ -1,0 +1,127 @@
+[
+  { "id": "iron-gauntlet", "name": "Iron Gauntlet", "description": "+3 attack.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 3 }] },
+  { "id": "worn-wooden-shield", "name": "Worn Wooden Shield", "description": "+3 defense.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
+  { "id": "charm-of-life", "name": "Charm of Life", "description": "+20 max HP.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 20 }] },
+  { "id": "small-mana-gem", "name": "Small Mana Gem", "description": "+10 max MP.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
+  { "id": "sharp-claw", "name": "Sharp Claw", "description": "+4 attack.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
+  { "id": "stone-of-endurance", "name": "Stone of Endurance", "description": "+30 max HP.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
+  { "id": "ring-of-focus", "name": "Ring of Focus", "description": "+15 max MP.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
+  { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "+5 defense.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
+  { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "-10% fear gained.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
+  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "-15% hunger/thirst drain.", "rarity": "common", "effects": [{ "kind": "survivalDrainReduction", "percent": 15 }] },
+
+  { "id": "ancient-sword", "name": "Ancient Sword", "description": "+8 attack.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
+  { "id": "heart-of-stone", "name": "Heart of Stone", "description": "+8 defense.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
+  { "id": "eternal-vial", "name": "Eternal Vial", "description": "+50 max HP.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
+  { "id": "arcane-core", "name": "Arcane Core", "description": "+25 max MP.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
+  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Reflects 5% of damage taken back to the attacker.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
+  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "6% chance on hit to poison the target.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
+  { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "Heals 5% of damage dealt.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
+  { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "6% chance to dodge an attack entirely.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
+  { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "-1 turn skill cooldown.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
+
+  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "Reflects 10% of damage taken back to the attacker.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
+  { "id": "serpent-ring", "name": "Serpent Ring", "description": "12% chance on hit to poison the target.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
+  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Deals 6 flat damage to a random enemy at the start of every round.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
+  {
+    "id": "armor-of-wholeness",
+    "name": "Armor of Wholeness",
+    "description": "+6 attack, +6 defense, +40 max HP.",
+    "rarity": "unique",
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "amount": 6 },
+      { "kind": "statBoost", "stat": "defense", "amount": 6 },
+      { "kind": "statBoost", "stat": "maxHp", "amount": 40 }
+    ]
+  },
+  { "id": "bloodthirsty-blade", "name": "Bloodthirsty Blade", "description": "Heals 10% of damage dealt.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
+  { "id": "phantom-step", "name": "Phantom Step", "description": "12% chance to dodge an attack entirely.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
+  { "id": "scholars-insight", "name": "Scholar's Insight", "description": "+15% EXP gained by the whole party.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
+
+  {
+    "id": "crown-of-destruction",
+    "name": "Crown of Destruction",
+    "description": "Deals 12 flat damage to a random enemy at the start of every round; 8% chance on hit to poison the target.",
+    "rarity": "epic",
+    "effects": [
+      { "kind": "autoDamage", "amount": 12 },
+      { "kind": "poisonOnHit", "chance": 8 }
+    ]
+  },
+  {
+    "id": "immortal-heart",
+    "name": "Immortal Heart",
+    "description": "Reflects 15% of damage taken; +10 defense; +60 max HP.",
+    "rarity": "epic",
+    "effects": [
+      { "kind": "reflectDamage", "percent": 15 },
+      { "kind": "statBoost", "stat": "defense", "amount": 10 },
+      { "kind": "statBoost", "stat": "maxHp", "amount": 60 }
+    ]
+  },
+  {
+    "id": "reapers-covenant",
+    "name": "Reaper's Covenant",
+    "description": "Heals 25 HP on a killing blow; heals 8% of damage dealt.",
+    "rarity": "epic",
+    "effects": [
+      { "kind": "healOnKill", "amount": 25 },
+      { "kind": "lifesteal", "percent": 8 }
+    ]
+  },
+  {
+    "id": "eternal-scholars-tome",
+    "name": "Eternal Scholar's Tome",
+    "description": "+25% EXP gained by the whole party; -1 turn skill cooldown.",
+    "rarity": "epic",
+    "effects": [
+      { "kind": "expBoost", "percent": 25 },
+      { "kind": "cooldownReduction", "turns": 1 }
+    ]
+  },
+
+  {
+    "id": "blackened-locket",
+    "name": "Blackened Locket",
+    "description": "-20 max HP; +10 attack.",
+    "rarity": "rare",
+    "isCursed": true,
+    "effects": [
+      { "kind": "statBoost", "stat": "maxHp", "amount": -20 },
+      { "kind": "statBoost", "stat": "attack", "amount": 10 }
+    ]
+  },
+  {
+    "id": "shackle-of-hunger",
+    "name": "Shackle of Hunger",
+    "description": "+30% hunger/thirst drain; +8 attack.",
+    "rarity": "rare",
+    "isCursed": true,
+    "effects": [
+      { "kind": "curseDrainBoost", "percent": 30 },
+      { "kind": "statBoost", "stat": "attack", "amount": 8 }
+    ]
+  },
+  {
+    "id": "unstable-core",
+    "name": "Unstable Core",
+    "description": "+25 aggro; +30 max MP.",
+    "rarity": "rare",
+    "isCursed": true,
+    "effects": [
+      { "kind": "curseAggroBoost", "amount": 25 },
+      { "kind": "statBoost", "stat": "maxMp", "amount": 30 }
+    ]
+  },
+  {
+    "id": "heavy-guilt",
+    "name": "Heavy Guilt",
+    "description": "-6 defense; heals 8% of damage dealt.",
+    "rarity": "rare",
+    "isCursed": true,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "amount": -6 },
+      { "kind": "lifesteal", "percent": 8 }
+    ]
+  }
+]

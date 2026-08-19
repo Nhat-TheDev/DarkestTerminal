@@ -2,9 +2,9 @@
 
 *(mục 7 của `00-index.md`)*
 
-**Trạng thái: spec tài liệu, chưa implement** — đúng quy ước đã dùng cho các mục khác lúc còn ở giai đoạn thiết kế (VD `01-class-skill.md` trước khi có code). `README.md` hiện vẫn liệt kê "Item/inventory" trong danh sách đã cắt khỏi scope prototype; mục này thay thế phần "chưa xác định" đó bằng spec đầy đủ, đợi lượt implement kế tiếp.
+**Trạng thái: đã implement** (Item §7.1 và Artifact §7.2 — engine + data + UI đều đã code, xem `src/engine/artifacts.ts`, `src/data/items.ts`, `src/data/artifacts.ts`). Tài liệu này vẫn là nguồn tham chiếu chính cho số liệu/cơ chế.
 
-**Quy ước đặt tên (cập nhật 2026-08-17)**: mọi `id`/`name` của Item, Artifact, và 2 status effect mới phục vụ Item ở mục này đều bằng **tiếng Anh** — khớp hướng đổi tên đang áp dụng cho monster/class ở `data/monsters.json`/`data/classes.json` (xem `README.md`). Phần mô tả/giải thích trong tài liệu vẫn giữ tiếng Việt như toàn bộ `docs/gameplay-decisions/` — chỉ riêng `id`/`name` đổi.
+**Quy ước đặt tên**: mọi `id`/`name` của Item, Artifact, và status effect phục vụ 2 hệ thống này đều bằng **tiếng Anh** — khớp quy ước đặt tên của monster/class ở `data/monsters.json`/`data/classes.json`. Phần mô tả/giải thích trong tài liệu vẫn giữ tiếng Việt như toàn bộ `docs/gameplay-decisions/`.
 
 Tách 2 khái niệm rõ ràng, không dùng chung 1 hệ thống:
 
@@ -35,18 +35,18 @@ ItemDefinition {
 
 Dùng trong combat: ở pha ra lệnh, nhân vật chọn "dùng vật phẩm" thay vì skill — trừ 1 số lượng khỏi `GameState.inventory[itemId]`, áp `effects` qua đúng `resolveSkillEffect` hiện có (0 thay đổi ở `resolver.ts`). Có thể dùng ngoài combat (VD hồi hunger/thirst khi đang đi trong dungeon loop, không cần đợi combat).
 
-### Nguồn rơi (cập nhật 2026-08-17 — thêm item đặc trưng theo quái)
+### Nguồn rơi
 
-Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ **25%/lần giết** (tăng từ đề xuất ban đầu 15%, xem `08-events.md` §8 để biết bối cảnh cập nhật cùng đợt). Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2, cũng xem `08-events.md`) — giữ 2 nguồn tách biệt cho 2 loại phần thưởng.
+Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ **60%/lần giết**. Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2, cũng xem `08-events.md`) — giữ 2 nguồn tách biệt cho 2 loại phần thưởng.
 
-Khi roll 25% trúng, item cụ thể được chọn từ **pool kết hợp** = 10 item chung (catalog bên dưới) + item đặc trưng của đúng `archetypeId` vừa bị giết (bảng "Item đặc trưng theo quái" bên dưới), với trọng số:
+Khi roll 60% trúng, item cụ thể được chọn từ **pool kết hợp** = 10 item chung (catalog bên dưới) + (các) item đặc trưng của đúng `archetypeId` vừa bị giết (bảng "Item đặc trưng theo quái" bên dưới), với trọng số:
 
-- **50%** rơi item đặc trưng của loại quái đó (nếu quái không có item đặc trưng — hiện tại không có trường hợp này vì cả 14 archetype trong `data/monsters.json` đều đã gán — thì fallback về pool chung, chia đều 10 item)
-- **50%** chia đều cho 10 item pool chung (~5%/item)
+- **50%** tổng dành cho item đặc trưng của loại quái đó. **1 quái có thể thuộc nhiều nhóm cùng lúc** (VD Zombie Knight vừa thuộc nhóm Zombie vừa thuộc nhóm Knight/Warrior) → nếu quái có N item đặc trưng áp dụng, 50% này **chia đều N phần** (N=1 → trọn 50% cho item đó; N=2 → 25%/item). Mọi archetype trong `data/monsters.json` đều đã có ít nhất 1 item đặc trưng (không có trường hợp fallback).
+- **50%** còn lại chia đều cho 10 item pool chung (~5%/item)
 
 Cộng thẳng vào `GameState.inventory[itemId] += 1` như cũ, không đổi cơ chế dùng item trong/ngoài combat.
 
-**Ví dụ**: phòng 3 quái → mỗi quái roll độc lập 25% → tối đa 3 item rơi (không giới hạn cộng dồn), trung bình ~0.75 item/phòng 3 quái.
+**Ví dụ**: phòng 3 quái → mỗi quái roll độc lập 60% → tối đa 3 item rơi (không giới hạn cộng dồn), trung bình ~1.8 item/phòng 3 quái.
 
 ### Catalog — 10 item
 
@@ -70,30 +70,37 @@ Cộng thẳng vào `GameState.inventory[itemId] += 1` như cũ, không đổi c
 | `empower` | Empower | `modifyCombatStat attack +6` | 2 lượt |
 | `fortify` | Fortify | `modifyCombatStat defense +8` | 2 lượt |
 
-**⚠️ Số liệu heal/restoreMp/tỷ lệ rơi (25%, trọng số 50/50 đặc trưng-vs-chung) là đề xuất ban đầu — cần playtest, giống mọi bảng số khác trong tài liệu này.**
+### Item đặc trưng theo quái
 
-### Item đặc trưng theo quái (thêm 2026-08-17)
-
-6 item mới, gán theo **nhóm quái cùng chủ đề** (không phải 1-1 cho từng archetype — giữ catalog gọn, `data/monsters.json` có 14 archetype nhưng nhiều con cùng họ Undead/Bò sát dùng chung item). Tái dùng đúng `effects: SkillEffect[]` + resolver hiện có — **0 effect kind mới**, 2 status effect dùng lại là `fortify` (đã thêm ở bảng status item phía trên) và `poisoned` (status sẵn có từ Rogue's Poison Coat, `docs/technical-decisions.md` §4.2).
+9 item, gán theo **nhóm quái theo tên/tab** (1 quái có thể thuộc nhiều nhóm — xem cơ chế roll đa-nhóm ở trên). Tái dùng tối đa `effects: SkillEffect[]` + resolver hiện có; 2 item cuối (`rotten-flesh`, `venom-thorn`) dùng status effect mới, ghi rõ ở ghi chú.
 
 | id | Name | Gán cho `archetypeId` | Hiệu ứng (`effects`) | Ghi chú |
 |---|---|---|---|---|
-| `grave-dust` | Grave Dust | `skeleton`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard`, `zombie`, `zombie-knight`, `dark-knight` (nhóm Undead, 7 archetype) | `applyStatusEffect "fortify"` (+8 defense, 2 lượt) | Bụi xương hoá cứng da thịt người dùng |
-| `venom-gland` | Venom Gland | `snake`, `lizard`, `spider`, `giant-spider` (nhóm Bò sát/Côn trùng, 4 archetype) | `applyStatusEffect "poisoned"` nhắm vào 1 quái mục tiêu | Túi độc chiết xuất, dùng tấn công — khác Antidote (gỡ debuff) |
-| `rat-whisker` | Rat Whisker | `dungeon-rat` | `modifyStat hunger +20` | Bản rút gọn của Ration, gắn lore "chuột luôn biết chỗ có đồ ăn" |
-| `bat-fang` | Bat Fang | `black-bat` | `heal 20` | Nanh dơi sắc, chiết thành thuốc bổ máu nhỏ |
-| `slime-core` | Slime Core | `slime` | `restoreMp 20` | Lõi keo còn dư phép thuật |
-| `dragon-scale` | Dragon Scale | `dragon` | `heal 70` | `dragon` là `guardOnly` (chỉ gặp ở Elite/Boss) — item hiếm khi rơi nên hiệu ứng mạnh, bằng Large Health Potion |
+| `grave-dust` | Grave Dust | `skeleton`, `skeleton-archer`, `skeleton-guard` (nhóm Skeleton "thường/lính gác", 3 archetype) | `applyStatusEffect "fortify"` (+8 defense, 2 lượt, tự thân) | Bụi xương hoá cứng da thịt người dùng |
+| `broken-blade-fragment` | Broken Blade Fragment | `skeleton-warrior`, `zombie-knight`, `dark-knight` (nhóm "chiến binh cầm vũ khí", 3 archetype) | `applyStatusEffect "empower"` (+6 attack, 2 lượt, tự thân — tái dùng status có sẵn) | Mảnh vũ khí gãy còn sắc, người nhặt học được cách ra đòn hiểm hơn |
+| `rotten-flesh` | Rotten Flesh | `zombie`, `zombie-knight` (nhóm "xác sống", 2 archetype) | `applyStatusEffect "distracted"` (`modifyCombatStat aggro -20`, 1 lượt, tự thân) | Mùi hôi thối khiến quái khác bớt chú ý tới người mang — giảm aggro tạm thời |
+| `venom-gland` | Venom Gland | `snake`, `lizard`, `spider` (nhóm Bò sát/Côn trùng cỡ nhỏ, 3 archetype) | `applyStatusEffect "poison-coat"` (tự thân, 3 lượt — tái dùng đúng status của skill Rogue "Poison Coat", `01-class-skill.md` §1.4: mọi đòn `damage` gây ra trong lúc buff còn hiệu lực tự kèm `poisoned` lên mục tiêu trúng đòn) | Tẩm độc vũ khí như skill sát thủ |
+| `venom-thorn` | Venom Thorn | `giant-spider` (tách riêng khỏi nhóm Bò sát nhỏ — đại diện "động vật lớn") | `applyStatusEffect "poison-vulnerable"` nhắm 1 quái mục tiêu (status mới, xem ghi chú) | Gai độc không tự gây poison — chỉ khiến mục tiêu chịu sát thương poison gấp đôi nếu đang/sẽ bị `poisoned` từ nguồn khác (Venom Gland, Poison Coat, skill Rogue...) |
+| `rat-meat` | Rat Meat | `dungeon-rat` | `applyStatusEffect "regeneration"` (status mới: `heal 10`/lượt, 3 lượt, tự thân, không xếp chồng — xem ghi chú) | Hồi máu theo lượt |
+| `bat-blood` | Bat Blood | `black-bat` | `heal 20` (tức thì, tự thân) | |
+| `slime-solution` | Slime Solution | `slime` | `restoreMp 20` (tức thì, tự thân) | |
+| `dragon-scale` | Dragon Scale | `dragon` | `applyStatusEffect "fortify"` nhắm **allAllies** (+8 defense, 2 lượt, cả đội — tái dùng status `fortify`, giống pattern skill Rally của Vanguard `01-class-skill.md` §1.2) | `dragon` là `guardOnly` (chỉ gặp ở Elite/Boss) — buff cả đội xứng với độ hiếm khi rơi. Item duy nhất dùng target `allAllies` thay vì tự thân |
 
-**⚠️ Gán nhóm quái và số liệu hiệu ứng của 6 item này là đề xuất ban đầu — cần playtest.**
+**3 status effect mới cần thêm vào `data/status-effects.json`** (ngoài `empower`/`fortify`/`poison-coat`/`poisoned` đã có sẵn):
+
+| id | Name | `perTurnEffects` | Thời lượng | Ghi chú hành vi mới |
+|---|---|---|---|---|
+| `distracted` | Distracted | `modifyCombatStat aggro -20` | 1 lượt | Dùng đúng `modifyCombatStat` sẵn có trên field `aggro` — giá trị âm thay vì dương như `taunt` |
+| `regeneration` | Regeneration | `heal 10` | 3 lượt | **Không xếp chồng**: tái áp dụng khi đang hiệu lực chỉ làm mới thời lượng về 3, không cộng thêm instance mới — đây vốn đã là hành vi mặc định của `applyStatusEffectToActor`, không cần code riêng |
+| `poison-vulnerable` | Poison Vulnerable | *(không có, chỉ khuếch đại)* | 2 lượt | Dùng field `vulnerableTo?: { statusEffectId: Id; multiplier: number }` trên `StatusEffectDefinition` — actor mang status này thì mọi tick sát thương của `poisoned` trên actor đó nhân `multiplier` (2.0 = gấp đôi, 4 HP/lượt gốc → 8 HP/lượt). Không tự gây `poisoned` — chỉ khuếch đại nếu đã/sẽ dính từ nguồn khác |
 
 ---
 
 ## 7.2 Artifact (relic vĩnh viễn trong run)
 
-### Trang bị — Artifact gắn lên 1 nhân vật cụ thể, không phải cả đội (cập nhật 2026-08-17)
+### Trang bị — Artifact gắn lên 1 nhân vật cụ thể, không phải cả đội
 
-**Quyết định**: Artifact là **trang bị** (equipment), không phải buff rơi thẳng vào cả đội như bản nháp trước. Nhặt được → vào kho chung chưa trang bị (`GameState.unequippedArtifactIds: Id[]`) → người chơi **chủ động gắn** vào 1 nhân vật bất kỳ ngoài combat (cùng màn hình quản lý đội, VD panel "Đoàn Thám Hiểm" đã có ở UI — không đổi trong lúc combat đang diễn ra, tránh xáo trộn loadout giữa trận).
+Artifact là **trang bị** (equipment). Nhặt được → vào kho chung chưa trang bị (`GameState.unequippedArtifactIds: Id[]`) → người chơi **chủ động gắn** vào 1 nhân vật bất kỳ ngoài combat (cùng màn hình quản lý đội, panel "Đoàn Thám Hiểm" — không đổi trong lúc combat đang diễn ra, tránh xáo trộn loadout giữa trận).
 
 ```
 Character.equippedArtifactIds: Id[]   // tối đa 3, field mới trên Character
@@ -103,7 +110,7 @@ GameState.unequippedArtifactIds: Id[] // kho chung, artifact đã nhặt nhưng 
 - **Tối đa 3 Artifact/nhân vật** — 4 nhân vật × 3 slot = **12 lượt trang bị** cho cả đội mỗi run.
 - Gắn/gỡ **tự do, không tốn gì, không giới hạn số lần** — artifact không bị "tiêu hao" khi gỡ, chỉ chuyển lại kho chung, có thể gắn sang nhân vật khác bất kỳ lúc nào (ngoài combat).
 - Nhặt được nhiều hơn 12 (tổng slot cả đội) → phần dư nằm trong kho chung, vẫn thuộc sở hữu nhưng **không có hiệu lực** cho tới khi được gắn (thay 1 artifact khác đang gắn) — tạo đúng tension "chọn 12 cái tốt nhất trong số đã nhặt được" của thể loại roguelite trang bị relic.
-- **Hiệu ứng chỉ áp dụng cho đúng nhân vật đang gắn nó** — khác hẳn bản nháp trước ("cộng cho cả đội"). Xem lại từng loại hiệu ứng ở bảng "Vì sao" bên dưới, đã cập nhật theo hướng này.
+- **Hiệu ứng chỉ áp dụng cho đúng nhân vật đang gắn nó** (trừ `expBoost`, ngoại lệ vì EXP dùng chung — xem bảng "Vì sao" bên dưới).
 
 ### Cấu trúc dữ liệu hiệu ứng
 
@@ -143,7 +150,7 @@ ArtifactDefinition {
 
 **Cộng dồn khi trùng lặp**: 1 nhân vật gắn 2 artifact cùng loại (chiếm 2/3 slot của họ) → hiệu quả cộng thẳng cho riêng người đó (2× `statBoost`, 2 roll độc lập cho `poisonOnHit`/`dodgeChance`/v.v.) — đúng tinh thần roguelite "dồn relic cùng loại vào 1 carry", đối trọng lại việc quái mạnh dần vô hạn ở `06-level-system.md` §6.10. 2 nhân vật khác nhau cùng gắn 1 loại artifact thì **mỗi người tính riêng độc lập**, không cộng chung.
 
-**Áp dụng cho ai**: `statBoost` cộng thẳng vào chỉ số của **đúng nhân vật đang gắn** (không nhân theo `growthWeights` — artifact nhặt được ngẫu nhiên, không phải lựa chọn theo class, xem lý do tương tự ở `06-level-system.md` §6.6 vì sao quái không dùng trọng số). Toàn bộ hiệu ứng nhóm 2-4 cũng chỉ tính cho đúng nhân vật đang gắn (trừ `expBoost` — ngoại lệ vì EXP dùng chung `partyExp`, xem chú thích ngay trong khối effect ở trên) — tính ở tầng `Character` (mới, cần thêm field `equippedArtifactIds`) thay vì `GameState`/`CombatState` như bản nháp trước.
+**Áp dụng cho ai**: `statBoost` cộng thẳng vào chỉ số của **đúng nhân vật đang gắn** (không nhân theo `growthWeights` — artifact nhặt được ngẫu nhiên, không phải lựa chọn theo class, xem lý do tương tự ở `06-level-system.md` §6.6 vì sao quái không dùng trọng số). Toàn bộ hiệu ứng nhóm 2-4 cũng chỉ tính cho đúng nhân vật đang gắn (trừ `expBoost` — ngoại lệ vì EXP dùng chung `partyExp`, xem chú thích ngay trong khối effect ở trên) — tính ở tầng `Character` (field `equippedArtifactIds`).
 
 ### Nguồn rơi
 
@@ -151,18 +158,36 @@ ArtifactDefinition {
 
 | Nguồn | Tỷ lệ rơi 1 Artifact | Ghi chú |
 |---|---|---|
-| Giết **Elite** (phòng cuối tầng, không phải Boss) | **100%** | Rơi các vật phẩm Common, Rare và tỉ lệ nhỏ rơi Unique |
-| Giết **Boss thật** (mỗi 5 tầng, `06-level-system.md` §6.11) | **100%** | Luôn rơi Unique hoặc Epic (tỉ lệ nhỏ hơn) |
-| **Treasure room** | **100%** (chắc chắn, khi ghé phòng) | Phòng loại mới — `RoomType` thêm `"treasure"` (đã có sẵn trong `src/types.ts` nhưng chưa dùng tới nay), không có combat |
-| **Event room** | **100%** (chắc chắn, khi ghé phòng) | Phòng loại mới — `RoomType` thêm `"event"` (chưa tồn tại, cần thêm), thiên về Artifact hiếm hơn Treasure room (xem bảng độ hiếm theo nguồn bên dưới) |
+| Giết **Elite** (phòng cuối tầng, không phải Boss) | **100%** | Độ hiếm roll theo bảng "Elite" riêng bên dưới — không bao giờ ra Epic |
+| Giết **Boss thật** (mỗi 5 tầng, `06-level-system.md` §6.11) | **100%** | Độ hiếm roll theo bảng "Boss" riêng bên dưới — không bao giờ ra Common/Rare |
+| **Treasure room** | **100%** (chắc chắn, khi ghé phòng) | `RoomType "treasure"` tồn tại trong code nhưng floor generator hiện chưa sinh ra loại phòng này (chỉ sinh Event room ở branch stage) — trên thực tế chưa gặp được trong game |
+| **Event room** | **100%** (chắc chắn, khi ghé phòng) | Xem `08-events.md` §8 cho 11 loại sự kiện cụ thể. Độ hiếm dùng bảng "Treasure/Event" bên dưới |
 
 **Quái thường** (không phải Elite/Boss) **không** rơi Artifact — chỉ rơi Item (mục 7.1). Giữ 2 nguồn tách biệt: quái thường/Elite/Boss đều có thể rơi Item, nhưng chỉ Elite/Boss/2 loại phòng mới rơi Artifact.
 
-**⚠️ Treasure room/Event room hiện chưa có trong `data/floor-patterns.json`** (pattern hiện tại chỉ có 3 tag: combat rỗng, `free` (rest), `boss`) — cần thêm 2 tag mới + cập nhật `validatePattern`/`roomTypeForTag` (`src/data/floorPatterns.ts`) khi implement. Ngoài scope của lượt viết tài liệu này (không code).
-
 ### Độ hiếm & tỷ lệ rơi từng bậc
 
-Khi 1 lượt rơi Artifact xảy ra (theo bảng nguồn ở trên), độ hiếm của Artifact nhận được roll riêng theo trọng số cố định, không phụ thuộc nguồn (Elite/Boss/Treasure/Event đều dùng chung bảng này — chỉ khác **có rơi hay không**, không khác **rơi gì**):
+**Elite và Boss có bảng độ hiếm riêng, tách biệt hoàn toàn** (không chỉ chênh trọng số) để tạo khoảng cách phần thưởng rõ rệt giữa 2 mốc:
+
+**Elite** — chỉ roll trong {Common, Rare, Unique}, **không bao giờ Epic**:
+
+| Độ hiếm | Trọng số rơi |
+|---|---|
+| Common | **55%** |
+| Rare | **35%** |
+| Unique | **10%** |
+| Epic | **0%** (không thể rơi) |
+
+**Boss** — chỉ roll trong {Unique, Epic}, **không bao giờ Common/Rare**:
+
+| Độ hiếm | Trọng số rơi |
+|---|---|
+| Common | **0%** (không thể rơi) |
+| Rare | **0%** (không thể rơi) |
+| Unique | **65%** |
+| Epic | **35%** |
+
+**Treasure room / Event room** — giữ nguyên bảng gốc, đứng giữa Elite và Boss về độ tốt trung bình:
 
 | Độ hiếm | Trọng số rơi | Số lượng trong catalog | Đặc điểm hiệu ứng |
 |---|---|---|---|
@@ -225,20 +250,20 @@ Khi 1 lượt rơi Artifact xảy ra (theo bảng nguồn ở trên), độ hi�
 
 ### Vì sao `autoDamage` không chọn được mục tiêu
 
-Theo đúng yêu cầu — Artifact là phần thưởng bị động, không phải 1 skill người chơi điều khiển. `autoDamage` kích hoạt **đầu mỗi round** (trước pha ra lệnh của player, tương tự cách `darknessLevel`/ambient fear áp dụng — `03-survival-stats.md` mục 3), chọn 1 quái còn sống **ngẫu nhiên đều** (uniform, giống pattern `erratic` ở `02-monster.md` mục 2 — không theo `aggro` vì đây không phải hành động của quái nhắm vào party mà ngược lại) — không tốn MP, không qua `queueAction`, không hiện trong danh sách skill để chọn. Log kết quả như 1 dòng sự kiện riêng, tách biệt lượt của bất kỳ nhân vật nào.
+Theo đúng yêu cầu — Artifact là phần thưởng bị động, không phải 1 skill người chơi điều khiển. `autoDamage` kích hoạt **đầu mỗi round** (trước pha ra lệnh của player — cùng round boundary mà fear-gain theo combat cũng dùng, `03-survival-stats.md` mục 3), chọn 1 quái còn sống **ngẫu nhiên đều** (uniform, giống pattern `erratic` ở `02-monster.md` mục 2 — không theo `aggro` vì đây không phải hành động của quái nhắm vào party mà ngược lại) — không tốn MP, không qua `queueAction`, không hiện trong danh sách skill để chọn. Log kết quả như 1 dòng sự kiện riêng, tách biệt lượt của bất kỳ nhân vật nào.
 
 ### Vì sao đây là 9 hiệu ứng "khác biệt" đúng nghĩa (không phải biến thể của cái đã có)
 
-Không cái nào trong nhóm 2-4 tồn tại dưới bất kỳ hình thức nào trong hệ skill/status hiện có (`01-class-skill.md` mục 1.5) — mỗi cái cần 1 hook riêng ở engine khi implement (ngoài scope tài liệu này):
+Không cái nào trong nhóm 2-4 tồn tại dưới bất kỳ hình thức nào trong hệ skill/status hiện có (`01-class-skill.md` mục 1.5) — mỗi cái có 1 hook riêng trong engine:
 
 - **`reflectDamage`**: sau khi 1 quái gây `damage` thành công lên **đúng nhân vật đang gắn artifact này** (không phải nhân vật khác trong party), roll `percent`, nếu trúng thì gây ngược `percent × damage vừa nhận` lên chính quái đó (không đi qua `defense` của quái — phản đòn không phải 1 đòn tấn công thường).
 - **`poisonOnHit`**: sau khi **đúng nhân vật đang gắn artifact này** gây `damage` thành công lên 1 quái (bất kỳ skill/đòn thường nào của người đó, không chỉ Poison Coat), roll `chance`, nếu trúng thì `applyStatusEffect "poisoned"` lên quái đó — cùng cơ chế "on-hit rider" đã có cho Poison Coat (`docs/technical-decisions.md` §4.2), chỉ khác nguồn kích hoạt là artifact thay vì status tạm thời. Nhân vật khác trong party đánh trúng **không** kích hoạt hiệu ứng này trừ khi họ cũng tự gắn 1 artifact `poisonOnHit` riêng.
 - **`lifesteal`**: hook ở đúng chỗ resolver tính `finalDamage` cho effect `damage` do **đúng nhân vật đang gắn artifact này** gây ra (`resolver.ts`) — sau khi trừ hp mục tiêu, cộng thêm `round(finalDamage × percent)` vào hp của chính họ (không vượt `maxHp`). Khác `heal` thường vì không phải 1 effect độc lập trong skill, mà ăn theo damage thật đã gây ra.
 - **`dodgeChance`**: roll **trước** bước tính `finalDamage` khi quái nhắm `damage` vào **đúng nhân vật đang gắn artifact này** — trúng thì bỏ qua toàn bộ effect (damage = 0, không chỉ giảm), khác hẳn accuracy-roll theo fear đã có (`04-fear-combat.md` mục 4, vốn chỉ áp cho skill nhân vật nhắm địch, không áp cho đòn quái nhắm nhân vật). Quái nhắm vào đồng đội khác của họ thì không roll dodge này.
-- **`healOnKill`**: hook ở đúng điểm 1 quái bị loại khỏi `CombatState.combatants` (hp ≤ 0) — **chỉ trigger nếu đòn kết liễu (effect `damage` cuối cùng khiến hp ≤ 0) do đúng nhân vật đang gắn artifact này gây ra**, hồi thẳng `amount` cho chính họ (không vượt `maxHp`, không phải cho đồng đội khác — khác thiết kế "hồi người thấp HP nhất" ở bản nháp trước, đổi theo đúng tinh thần "hiệu ứng chỉ định lên nhân vật đang trang bị").
+- **`healOnKill`**: hook ở đúng điểm 1 quái bị loại khỏi `CombatState.combatants` (hp ≤ 0) — **chỉ trigger nếu đòn kết liễu (effect `damage` cuối cùng khiến hp ≤ 0) do đúng nhân vật đang gắn artifact này gây ra**, hồi thẳng `amount` cho chính họ (không vượt `maxHp`, không phải cho đồng đội khác).
 - **`expBoost`**: nhân thêm vào bước `applyPartyExp` nhận `expGained` từ `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + tổng percent của mọi artifact expBoost đang được trang bị bởi bất kỳ ai trong party))`. Đây là **hiệu ứng duy nhất không giới hạn theo người gây kill** — vì `partyExp` là 1 giá trị dùng chung cho cả đội (§6.9), không có khái niệm "EXP của riêng 1 người" để giới hạn vào.
-- **`fearResist`**: nhân vào **cả 2 nguồn tăng fear chủ động ngoài ý muốn** của **đúng nhân vật đang gắn artifact này** — ambient theo `darknessLevel` khi vào phòng mới, và `+15` cố định khi thua mini-game (`03-survival-stats.md` mục 3) — theo `fear_thật = round(fear_gốc × (1 − tổng percent))`, không áp cho fear giảm chủ động (skill Acolyte/item không đổi, tính đủ 100%). Đồng đội không gắn artifact này vẫn nhận fear đầy đủ như bình thường.
+- **`fearResist`**: nhân vào **fear-gain theo round combat** của **đúng nhân vật đang gắn artifact này** (`fearGainForRound` — `03-survival-stats.md` mục 3) — theo `fear_thật = round(fear_gốc × (1 − tổng percent))`, không áp cho fear giảm chủ động (skill Acolyte/item không đổi, tính đủ 100%) hay relief thắng trận. Đồng đội không gắn artifact này vẫn nhận fear đầy đủ như bình thường.
 - **`cooldownReduction`**: trừ thẳng vào `cooldownTurns` được gán lúc 1 skill của **đúng nhân vật đang gắn artifact này** vào cooldown (`Character.cooldownsRemaining[skillId] = skill.cooldownTurns − tổng turns`, tối thiểu 0) — không hồi ngay skill đang cooldown sẵn có từ trước khi gắn artifact, không ảnh hưởng cooldown của đồng đội khác.
 - **`survivalDrainReduction`**: nhân vào tốc độ giảm gốc mỗi hành động của **đúng nhân vật đang gắn artifact này** (`03-survival-stats.md` mục 3: `hunger -1`, `thirst -1.5`, vốn đã tính riêng từng `Character.survival`) — `giảm_thật = round(giảm_gốc × (1 − tổng percent), 1 chữ số thập phân)`.
 
-**⚠️ Toàn bộ số liệu ở §7 (tỷ lệ rơi item 15%, tỷ lệ rơi Artifact theo nguồn 35%/100%, trọng số độ hiếm 50/30/15/5%, mọi con số hiệu ứng) là đề xuất ban đầu để có bộ khung đầy đủ — chưa playtest, sẽ cần chỉnh khi có dữ liệu chơi thật, giống mọi bảng số khác trong tài liệu này.**
+**⚠️ Toàn bộ số liệu ở §7 (tỷ lệ rơi, trọng số độ hiếm, mọi con số hiệu ứng) đã implement đúng như liệt kê ở trên nhưng chưa playtest cân bằng — có thể cần chỉnh khi có dữ liệu chơi thật.**

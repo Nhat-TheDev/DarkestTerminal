@@ -38,8 +38,6 @@ Mọi bound dưới đây tính **trên 1 đường đi** (path) từ start tớ
 - Không còn file JSON pattern (`data/floor-patterns.json` đã xóa) — `createFloor(rng, depth)` (`src/data/floor.ts`) gọi thẳng `generateFloorLayout(rng)` rồi `buildFloorFromStages(stages, rng, depth)`: dựng `Room[]` với `connectedRoomIds` = toàn bộ phòng stage kế; gán tên phòng ngẫu nhiên (pool theo loại phòng, tránh trùng tên trong cùng tầng) và random 1-3 quái/phòng combat (từ 11 archetype combat thường, xem `gameplay-decisions/02-monster.md` §2), 1 quái elite hoặc boss (5 archetype guard-room, random 1 — `gameplay-decisions/02-monster.md` §2, `gameplay-decisions/06-level-system.md` §6.11) cho phòng `boss`. `depth` không còn cố định — `Game.advanceToNextFloor()` (`src/engine/game.ts`) gọi lại `createFloor` với `depth + 1` mỗi khi phòng guard-room được dọn sạch (`gameplay-decisions/06-level-system.md` §6.9).
 - `test/floorPatterns.test.ts`: property-based test chạy `generateFloorLayout` trên 200 seed, verify toàn bộ luật ở trên + reachability/no-dead-end (BFS), cộng test riêng cho `validateGeneratedStages` (input hỏng phải throw).
 
-`darknessLevel` của `Floor` = hàm đơn điệu tăng theo `depth` (công thức cụ thể để dành cho balancing sau, chỉ cần đảm bảo tăng dần) — không đổi so với quyết định trước.
-
 ---
 
 ## 2. Vòng lượt: pha ra lệnh + pha thực thi theo tốc độ

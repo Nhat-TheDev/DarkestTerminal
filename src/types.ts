@@ -2,7 +2,9 @@
 //
 // Mirrors ../../dungeon-crawler-data-model.ts and the decisions in
 // ../../docs/gameplay-decisions.md + ../../docs/technical-decisions.md.
-// Scope cuts for this prototype (see README.md): no mini-games, no items.
+// Scope cuts for this prototype (see README.md): no mini-games. Items now
+// implemented per docs/gameplay-decisions/07-items-artifacts.md §7.1 (Artifact
+// equipment and Event rooms — §7.2/§8 — are still not implemented).
 // Floor structure IS randomized (1 pattern picked from data/floor-
 // patterns.json each run, see src/data/floor.ts). Character level and floor
 // depth are 2 independent axes (docs/gameplay-decisions.md §6.9/6.10): level
@@ -119,6 +121,8 @@ export interface Character {
   usesRemainingThisCombat: Record<Id, number>;
   /** Tracks remaining cooldownTurns per skill; resets at startCombat, decrements each round (docs/technical-decisions.md §4.6). */
   cooldownsRemaining: Record<Id, number>;
+  /** Equipped artifact ids, max 3 (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
+  equippedArtifactIds: Id[];
 }
 
 export interface StatusEffectDefinition {
@@ -132,6 +136,75 @@ export interface StatusEffectDefinition {
   onHitStatusEffectId?: Id;
   /** While active, the bearer skips their entire turn (checked before acting, both Character and Monster) — §4.3. */
   stuns?: boolean;
+  /** While active on a bearer, multiplies the per-turn `damage` amount of the named status's own DoT tick on that same bearer (docs/gameplay-decisions/07-items-artifacts.md §7.1, `poison-vulnerable`/Venom Thorn). Does not apply the named status itself. */
+  vulnerableTo?: { statusEffectId: Id; multiplier: number };
+}
+
+/** Consumable item (docs/gameplay-decisions/07-items-artifacts.md §7.1) — used instead of a skill during the combat command phase, or directly outside combat. Reuses SkillEffect/resolveSkillEffect exactly like a skill, no dedicated effect kind. */
+export interface ItemDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  target: SkillTarget;
+  effects: SkillEffect[];
+  /** Set only for the 9 monster-signature items — the MonsterArchetype ids whose kills roll this item into the "signature" half of the drop pool (§7.1 "Item đặc trưng theo quái"). Omitted/empty for the 10 common-pool items. */
+  archetypeIds?: Id[];
+}
+
+export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
+
+/** Passive artifact effect (docs/gameplay-decisions/07-items-artifacts.md §7.2) — applies only to the character it's equipped on, except expBoost (party-wide, since EXP is shared). The 2 curse* kinds (docs/gameplay-decisions/08-events.md §8.6) only ever appear on isCursed artifacts. */
+export type ArtifactEffect =
+  | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp"; amount: number }
+  | { kind: "reflectDamage"; percent: number }
+  | { kind: "poisonOnHit"; chance: number }
+  | { kind: "lifesteal"; percent: number }
+  | { kind: "dodgeChance"; chance: number }
+  | { kind: "healOnKill"; amount: number }
+  | { kind: "autoDamage"; amount: number }
+  | { kind: "expBoost"; percent: number }
+  | { kind: "fearResist"; percent: number }
+  | { kind: "cooldownReduction"; turns: number }
+  | { kind: "survivalDrainReduction"; percent: number }
+  /** Adds flat aggro to the equipped-on character (permanent, like statBoost) — monsters target them more. */
+  | { kind: "curseAggroBoost"; amount: number }
+  /** Inverse of survivalDrainReduction — speeds up hunger/thirst drain for the equipped-on character. */
+  | { kind: "curseDrainBoost"; percent: number };
+
+/** Permanent relic equipment for the run (docs/gameplay-decisions/07-items-artifacts.md §7.2) — unlike Item, never consumed; equipped/unequipped freely outside combat, max 3 per character. */
+export interface ArtifactDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  rarity: ArtifactRarity;
+  effects: ArtifactEffect[];
+  /** True when effects includes at least 1 negative/curse effect (docs/gameplay-decisions/08-events.md §8.6) — flagged to the player before accepting. */
+  isCursed?: boolean;
+}
+
+export type EventTier = "common" | "rare";
+
+export type EventKind =
+  | "instantReward"
+  | "combatReward"
+  | "merchant"
+  | "hpGamble"
+  /** cursed-shrine, twin-altars — reveals an offer, then the player decides. */
+  | "choiceReveal"
+  /** sacrificial-circle, gambling-den, wandering-hermit — operates on artifacts already owned instead of a plain new roll. */
+  | "artifactExchange"
+  /** collapsed-floor. */
+  | "rescueGamble";
+
+/** Event room definition (docs/gameplay-decisions/08-events.md §8) — the specific event a room resolves to is rolled once on first entry (Room.rolledEventId) from the 2-tier table in §8.1. */
+export interface EventDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  kind: EventKind;
+  tier: EventTier;
+  /** True only for twin-altars (§8.8/§8.13) — the chosen Artifact must be equipped immediately, no "để đó" option. */
+  forceEquip?: boolean;
 }
 
 /** Active instance of a status effect on a combatant, tracking remaining duration. */
@@ -149,13 +222,14 @@ export interface Room {
   connectedRoomIds: Id[];
   monsterIds: Id[];
   cleared: boolean;
+  /** Only set for type "event" — rolled once on first entry (docs/gameplay-decisions/08-events.md §8.1), so leaving and re-entering doesn't reroll. */
+  rolledEventId?: Id;
 }
 
 export interface Floor {
   depth: number;
   rooms: Room[];
   entryRoomId: Id;
-  darknessLevel: number;
 }
 
 export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
@@ -214,7 +288,7 @@ export interface Combatant {
   speed: number;
 }
 
-export type ActionSource = { kind: "skill"; skillId: Id };
+export type ActionSource = { kind: "skill"; skillId: Id } | { kind: "item"; itemId: Id };
 
 export interface QueuedAction {
   actor: CombatantRef;
@@ -244,4 +318,10 @@ export interface GameState {
   gameOver: "victory" | "defeat" | null;
   /** Cumulative party EXP, shared by the whole party (docs/gameplay-decisions.md §6.9). */
   partyExp: number;
+  /** Item count by id, shared by the whole party — docs/gameplay-decisions/07-items-artifacts.md §7.1. */
+  inventory: Record<Id, number>;
+  /** Artifacts picked up but not equipped on any character yet — shared pool (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
+  unequippedArtifactIds: Id[];
+  /** Set while a "reveal before decide" event (merchant/cursed-shrine/twin-altars) is being resolved — the artifact ids it pre-rolled to show the player, cleared once the room resolves (docs/gameplay-decisions/08-events.md). */
+  activeEvent?: { eventId: Id; offerArtifactIds: Id[] } | null;
 }

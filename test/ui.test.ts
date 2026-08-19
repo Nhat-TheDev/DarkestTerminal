@@ -31,6 +31,8 @@ describe("headless UI smoke test", () => {
         const choices = app.debugGame.connectedRoomChoices();
         const idx = choices.findIndex((r) => !r.cleared);
         key = String((idx >= 0 ? idx : 0) + 1);
+      } else if (ui.kind === "pickAction") {
+        key = "1"; // always Fight
       } else if (ui.kind === "pickSkill") {
         const actor = getActorByRef(ui.actorRef, app.debugGame.ctx) as Character;
         const skills = actor.unlockedSkillIds.map(getSkill);

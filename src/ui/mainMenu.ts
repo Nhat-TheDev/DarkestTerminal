@@ -1,6 +1,7 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import { PALETTE, boldColorChunk, colorChunk, joinLines } from "./theme";
 import { renderBigTextStacked } from "./bigText";
+import { t } from "../data/strings";
 
 /**
  * Title screen shown once before the game boots. Resolves on the first
@@ -27,13 +28,13 @@ export function showMainMenu(renderer: CliRenderer): Promise<void> {
 
     const subtitle = new TextRenderable(renderer, {
       id: "menu-subtitle",
-      content: joinLines([[colorChunk("hầm ngục đen tối nhất trên terminal đang chờ đợi bạn khám phá...", PALETTE.dim)]]),
+      content: joinLines([[colorChunk(t("mainMenu.tagline"), PALETTE.dim)]]),
     });
     root.add(subtitle);
 
     const hint = new TextRenderable(renderer, {
       id: "menu-hint",
-      content: joinLines([[colorChunk("Nhấn phím bất kỳ để bắt đầu...", PALETTE.text)]]),
+      content: joinLines([[colorChunk(t("mainMenu.pressAnyKey"), PALETTE.text)]]),
     });
     root.add(hint);
 
