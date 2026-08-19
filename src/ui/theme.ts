@@ -1,4 +1,5 @@
 import { StyledText, fg, bg, bold, type TextChunk } from "@opentui/core";
+import type { LogEntryKind } from "../types";
 
 // Dark "darkest dungeon"-ish palette. Used both for renderer/box chrome
 // (hex strings passed straight to backgroundColor/borderColor) and for
@@ -88,6 +89,17 @@ export function fearColorFor(tier: number): string {
       return PALETTE.fearBroken;
   }
 }
+
+/** Icon + color for a battle-log line, keyed by its semantic kind (see LogEntryKind). */
+export const LOG_KIND_STYLE: Record<LogEntryKind, { icon: string; color: string }> = {
+  attack: { icon: "⚔", color: PALETTE.hpLow },
+  heal: { icon: "✚", color: PALETTE.hpHigh },
+  buff: { icon: "↑", color: PALETTE.mp },
+  debuff: { icon: "↓", color: PALETTE.fearPanic },
+  item: { icon: "🎒", color: PALETTE.title },
+  death: { icon: "☠", color: PALETTE.dead },
+  info: { icon: "·", color: PALETTE.dim },
+};
 
 /** Joins pre-built chunk arrays (1 per line) into a single StyledText, inserting real newlines between them. */
 export function joinLines(lines: TextChunk[][]): StyledText {

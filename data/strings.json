@@ -83,6 +83,7 @@
   "resolver.statLabelAggro": "khiêu khích",
   "resolver.statLabelSpeed": "tốc độ",
   "resolver.damage": "{{target}} nhận {{amount}} sát thương từ {{source}}.",
+  "resolver.defeated": "{{target}} bị hạ gục.",
   "resolver.heal": "{{target}} hồi {{amount}} HP.",
   "resolver.restoreMp": "{{target}} hồi {{amount}} MP.",
   "resolver.statChange": "{{target}} {{verb}} {{amount}} {{stat}}.",

@@ -1,5 +1,5 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, CombatantRef, Monster, SkillDefinition, ItemDefinition, Id } from "../types";
+import type { Character, CombatantRef, Monster, SkillDefinition, ItemDefinition, Id, LogEntry, CombatantSnapshot } from "../types";
 import { Game, MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../engine/combat";
 import { getSkill, getClass } from "../data/classes";
@@ -23,6 +23,7 @@ import {
   hpColorFor,
   fearColorFor,
   joinLines,
+  LOG_KIND_STYLE,
 } from "./theme";
 import {
   spriteForClass,
@@ -43,6 +44,8 @@ const EMPTY_ENEMY_WIDTH = 24;
 const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
 /** How many of the most recent log lines are kept on screen — scroll up within the panel to see them. */
 const LOG_HISTORY_SIZE = 20;
+/** Delay between revealing consecutive action-phase log lines, so the player can follow turn order as it happens instead of seeing the whole round dumped at once. Any keypress skips straight to the end. */
+const LOG_REVEAL_INTERVAL_MS = 500;
 
 function centerText(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);
@@ -176,11 +179,16 @@ export class App {
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
-  /** How many entries of the current combat's log have already been folded into `logHistory` — combat.log resets to a fresh array each new fight, `logHistory` never does. */
+  /** How many entries of the current combat's log have already been picked up into `pendingReveal`/`logHistory` — combat.log resets to a fresh array each new fight, `logHistory` never does. */
   private lastLogLength = 0;
-  private observedCombatLog: string[] | null = null;
+  private observedCombatLog: LogEntry[] | null = null;
   /** Persists across combats/floors for the lifetime of the App — never cleared, only trimmed to LOG_HISTORY_SIZE. */
-  private logHistory: string[] = [];
+  private logHistory: LogEntry[] = [];
+  /** New combat.log lines waiting to be revealed 1-by-1 (see LOG_REVEAL_INTERVAL_MS); a keypress flushes the rest instantly. */
+  private pendingReveal: LogEntry[] = [];
+  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+  /** HP/alive state to show on the battlefield/party/monster panels while `pendingReveal` is draining — keeps those panels in step with however far the log has been revealed, instead of jumping straight to the round's final state. Ignored (falls back to live state) once pendingReveal is empty. */
+  private displaySnapshot: CombatantSnapshot[] | null = null;
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -320,6 +328,10 @@ export class App {
       this.quit();
       return;
     }
+    if (this.pendingReveal.length > 0) {
+      this.flushPendingReveal();
+      return; // this keypress only skips the reveal animation, no other action
+    }
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
       return;
@@ -406,7 +418,7 @@ export class App {
         if (entry.item.target === "allAllies") {
           const err = this.game.useItemOutOfCombat(entry.item.id);
           if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push(this.game.state.message);
+          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         } else if (entry.item.target === "singleEnemy") {
           this.reportUnusable(t("ui.itemUnusableInCombatNamed", { item: entry.item.name }));
@@ -421,7 +433,7 @@ export class App {
         if (!character) break;
         const err = this.game.useItemOutOfCombat(this.ui.item.id, character.id);
         if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push(this.game.state.message);
+        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         this.syncUiToGameState();
         break;
       }
@@ -455,7 +467,7 @@ export class App {
           this.ui = { kind: "eventMerchantPickPayer", offerIndex: digit - 1 };
         } else if (digit === offers.length + 1) {
           this.game.merchantLeave();
-          this.logHistory.push(this.game.state.message);
+          this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         }
         break;
@@ -466,14 +478,14 @@ export class App {
         if (!payer) break;
         const err = this.game.merchantPurchase(this.ui.offerIndex, payer.id);
         if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push(this.game.state.message);
+        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         this.syncUiToGameState();
         break;
       }
       case "eventCursedShrine": {
         if (digit === 1 || digit === 2) {
           this.game.cursedShrineDecide(digit === 1);
-          this.logHistory.push(this.game.state.message);
+          this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         }
         break;
@@ -492,7 +504,7 @@ export class App {
         }
         const err = this.game.twinAltarsChoose(this.ui.offerIndex, character.id);
         if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push(this.game.state.message);
+        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         this.syncUiToGameState();
         break;
       }
@@ -504,7 +516,7 @@ export class App {
         if (!artifactId) break;
         const err = this.game.twinAltarsChoose(offerIndex, characterId, artifactId);
         if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push(this.game.state.message);
+        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         this.syncUiToGameState();
         break;
       }
@@ -514,7 +526,7 @@ export class App {
         } else if (digit === 2) {
           if (this.ui.eventId === "blood-altar") this.game.bloodAltarLeave();
           else this.game.collapsedFloorLeave();
-          this.logHistory.push(this.game.state.message);
+          this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         }
         break;
@@ -525,7 +537,7 @@ export class App {
         if (!character) break;
         const err = this.ui.eventId === "blood-altar" ? this.game.bloodAltarPay(character.id) : this.game.collapsedFloorAttempt(character.id);
         if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push(this.game.state.message);
+        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         this.syncUiToGameState();
         break;
       }
@@ -537,12 +549,12 @@ export class App {
           const artifactId = candidates[digit - 1]!;
           const err = isSacrifice ? this.game.sacrifice(artifactId) : this.game.gamblingDenBet(artifactId);
           if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push(this.game.state.message);
+          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState(); // sacrifice leaves the room open (repeatable) — this just re-shows the screen with fresh candidates
         } else if (digit === candidates.length + 1) {
           if (isSacrifice) this.game.sacrificeLeave();
           else this.game.gamblingDenLeave();
-          this.logHistory.push(this.game.state.message);
+          this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         }
         break;
@@ -562,7 +574,7 @@ export class App {
           this.ui = { kind: "eventHermitPickArtifact", service: "reroll" };
         } else if (digit === 3) {
           this.game.hermitLeave();
-          this.logHistory.push(this.game.state.message);
+          this.logHistory.push({ text: this.game.state.message, kind: "info" });
           this.syncUiToGameState();
         }
         break;
@@ -574,13 +586,13 @@ export class App {
           if (!entry) break;
           const err = this.game.hermitRemoveCurse(entry.character.id, entry.artifactId);
           if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push(this.game.state.message);
+          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         } else {
           const artifactId = ownedArtifactIds(this.game.state.party, this.game.state.unequippedArtifactIds)[digit - 1];
           if (!artifactId) break;
           const err = this.game.hermitRerollFortune(artifactId);
           if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push(this.game.state.message);
+          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
         }
         this.syncUiToGameState();
         break;
@@ -631,6 +643,7 @@ export class App {
    * restores the terminal first, then we exit.
    */
   private quit(): void {
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.renderer.destroy();
     process.exit(0);
   }
@@ -644,8 +657,8 @@ export class App {
    * active combat (e.g. using an item from the room screen).
    */
   private reportUnusable(reason: string): void {
-    if (this.game.state.combat) this.game.state.combat.log.push(reason);
-    else this.logHistory.push(reason);
+    if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
+    else this.logHistory.push({ text: reason, kind: "info" });
   }
 
   private trySelectSkill(actorRef: CombatantRef, skill: SkillDefinition): void {
@@ -712,12 +725,35 @@ export class App {
       ],
     ]);
 
-    this.battlefield.content = joinLines(this.renderBattlefield());
+    // Combat.log is a fresh array per fight; queue every new line for paced reveal into
+    // logHistory (see scheduleReveal), which persists for the whole session so past battles
+    // stay visible (scroll to see them). Must run BEFORE the panels below are built, so the
+    // very first render after a round resolves already shows the round's *starting* state
+    // instead of the live state (which resolveRound already advanced synchronously to the end).
+    const combatLog = s.combat?.log ?? null;
+    if (combatLog !== this.observedCombatLog) {
+      this.observedCombatLog = combatLog;
+      this.lastLogLength = 0;
+      this.displaySnapshot = null;
+    }
+    if (combatLog && combatLog.length > this.lastLogLength) {
+      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
+      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
+      this.lastLogLength = combatLog.length;
+      this.scheduleReveal();
+    }
+
+    // While a round's log lines are still being paced out, show the panels as of however far
+    // the reveal has gotten (see displaySnapshot) instead of the live end-of-round state.
+    const hpOverride = this.pendingReveal.length > 0 && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
+
+    this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
 
     const partyLines: TextChunk[][] = [];
     s.party.forEach((c, i) => {
       if (i > 0) partyLines.push([]);
-      partyLines.push(...this.renderCharacterLines(c));
+      const view = hpOverride?.get(c.id);
+      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive } : c));
     });
     const items = inventoryEntries(s.inventory);
     if (items.length > 0) {
@@ -725,24 +761,55 @@ export class App {
       for (const { item, qty } of items) partyLines.push([plainChunk(`  ${item.name} x${qty}`)]);
     }
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines());
+    this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
     this.main.content = this.renderMain();
-
-    // Combat.log is a fresh array per fight; fold every new line into logHistory,
-    // which persists for the whole session so past battles stay visible (scroll to see them).
-    const combatLog = s.combat?.log ?? null;
-    if (combatLog !== this.observedCombatLog) {
-      this.observedCombatLog = combatLog;
-      this.lastLogLength = 0;
-    }
-    if (combatLog) {
-      this.logHistory.push(...combatLog.slice(this.lastLogLength));
-      this.lastLogLength = combatLog.length;
-    }
-    const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
-    this.log.content = (displayLog.length > 0 ? displayLog : [s.message]).join("\n");
+    this.renderLogContent();
 
     this.footer.content = this.renderFooter();
+  }
+
+  /** Renders `logHistory` (trimmed to LOG_HISTORY_SIZE) as icon+colored lines by LogEntryKind. */
+  private renderLogContent(): void {
+    const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
+    if (displayLog.length === 0) {
+      this.log.content = this.game.state.message;
+      return;
+    }
+    this.log.content = joinLines(
+      displayLog.map((entry) => {
+        const style = LOG_KIND_STYLE[entry.kind];
+        return [colorChunk(`${style.icon} `, style.color), colorChunk(entry.text, style.color)];
+      })
+    );
+  }
+
+  /** Reveals 1 queued log line every LOG_REVEAL_INTERVAL_MS, so the player can follow action order as it happens. Also advances displaySnapshot and does a full re-render, so the battlefield/party/monster panels stay in step with the log instead of sitting at the round's end state the whole time. */
+  private scheduleReveal(): void {
+    if (this.revealTimer !== null) return; // already draining
+    this.revealTimer = setTimeout(() => {
+      this.revealTimer = null;
+      const next = this.pendingReveal.shift();
+      if (next) {
+        this.logHistory.push(next);
+        if (next.snapshot) this.displaySnapshot = next.snapshot;
+      }
+      if (this.pendingReveal.length > 0) this.scheduleReveal();
+      this.render();
+    }, LOG_REVEAL_INTERVAL_MS);
+  }
+
+  /** Skips straight to the end of the current reveal animation — called on the next keypress. */
+  private flushPendingReveal(): void {
+    if (this.pendingReveal.length === 0) return;
+    if (this.revealTimer !== null) {
+      clearTimeout(this.revealTimer);
+      this.revealTimer = null;
+    }
+    const last = this.pendingReveal[this.pendingReveal.length - 1];
+    this.logHistory.push(...this.pendingReveal);
+    if (last?.snapshot) this.displaySnapshot = last.snapshot;
+    this.pendingReveal = [];
+    this.render();
   }
 
   private renderCharacterLines(c: Character): TextChunk[][] {
@@ -832,15 +899,19 @@ export class App {
     return lines;
   }
 
-  /** Pixel-art frame (docs: 1 pixel = 1 cell, units <=10px tall, boss <=13px): party on the left, current room's monsters/boss on the right. */
-  private renderBattlefield(): TextChunk[][] {
+  /** Pixel-art frame (docs: 1 pixel = 1 cell, units <=10px tall, boss <=13px): party on the left, current room's monsters/boss on the right. `hpOverride`, when set, replaces each combatant's live hp/isAlive with its value as of however far the log reveal has gotten (see displaySnapshot in render()). */
+  private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
     const s = this.game.state;
 
     const partyUnits = s.party.map((c) => {
+      const view = hpOverride?.get(c.id);
+      const hp = view?.hp ?? c.hp;
+      const maxHp = c.maxHp;
+      const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      if (!c.isAlive) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead };
+      if (!isAlive) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead };
       const sprite = spriteForClass(c.classId);
-      return { sprite, label: style.abbr, labelColor: style.color, statusText: `${c.hp}/${c.maxHp}`, statusColor: hpColorFor(c.hp, c.maxHp) };
+      return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp) };
     });
     const partyBlock = this.buildSideBlock(partyUnits);
 
@@ -855,10 +926,12 @@ export class App {
       } else {
         const enemyUnits = monsterCombatants.map((combatant) => {
           const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+          const view = hpOverride?.get(m.id);
+          const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
-          if (m.hp <= 0) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead };
+          if (hp <= 0) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead };
           const sprite = spriteForMonster(m.archetypeId, m.tier);
-          return { sprite, label: style.abbr, labelColor: style.color, statusText: `${m.hp}/${m.maxHp}`, statusColor: hpColorFor(m.hp, m.maxHp) };
+          return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp) };
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
       }
@@ -881,7 +954,7 @@ export class App {
     return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
-  private renderMonsterLines(): TextChunk[][] {
+  private renderMonsterLines(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
     const s = this.game.state;
     if (!s.combat) {
       const room = getRoom(s.floor, s.currentRoomId);
@@ -894,8 +967,9 @@ export class App {
     for (const combatant of s.combat.combatants) {
       if (combatant.ref.kind !== "monster") continue;
       const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+      const hp = hpOverride?.get(m.id)?.hp ?? m.hp;
       const style = monsterStyle(m);
-      if (m.hp <= 0) {
+      if (hp <= 0) {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(t("ui.monsterDefeatedSuffix", { name: m.name }))]);
         continue;
       }
@@ -903,7 +977,7 @@ export class App {
         chip(style.abbr, style.color),
         plainChunk(` ${m.name}`),
         plainChunk("\n   "),
-        colorChunk(`HP ${m.hp}/${m.maxHp}`, hpColorFor(m.hp, m.maxHp)),
+        colorChunk(`HP ${hp}/${m.maxHp}`, hpColorFor(hp, m.maxHp)),
       ]);
     }
     return lines.length > 0 ? lines : [[colorChunk(t("ui.noMoreMonsters"), PALETTE.dim)]];
@@ -1001,7 +1075,8 @@ export class App {
           // formula) — only shown for skills with a plain damage effect, skipped for the 2
           // dual-relation skills since their effect depends on which side the target is on.
           const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
-          const dmgSuffix = dmgEffect ? `, ~${Math.max(1, Math.round((dmgEffect.amount ?? 0) + actor.attack))} dmg` : "";
+          const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
+          const dmgSuffix = dmgEffect ? `, ~${Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat))} dmg` : "";
           const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
           if (unusable) {
             // The reason (cooldown/MP status) replaces the description here rather than

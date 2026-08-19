@@ -4,102 +4,116 @@
     "name": "Small Health Potion",
     "description": "Hồi ngay 30 HP.",
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 30 }]
+    "effects": [{ "kind": "heal", "amount": 30 }],
+    "weight": 1
   },
   {
     "id": "large-health-potion",
     "name": "Large Health Potion",
     "description": "Hồi ngay 70 HP.",
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 70 }]
+    "effects": [{ "kind": "heal", "amount": 70 }],
+    "weight": 0.5
   },
   {
     "id": "small-mana-potion",
     "name": "Small Mana Potion",
     "description": "Hồi ngay 20 MP.",
     "target": "self",
-    "effects": [{ "kind": "restoreMp", "amount": 20 }]
+    "effects": [{ "kind": "restoreMp", "amount": 20 }],
+    "weight": 1
   },
   {
     "id": "large-mana-potion",
     "name": "Large Mana Potion",
     "description": "Hồi ngay 45 MP.",
     "target": "self",
-    "effects": [{ "kind": "restoreMp", "amount": 45 }]
+    "effects": [{ "kind": "restoreMp", "amount": 45 }],
+    "weight": 0.5
   },
   {
     "id": "ration",
     "name": "Ration",
     "description": "Hồi 40 hunger. Dùng ngoài combat.",
     "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "hunger", "amount": 40 }]
+    "effects": [{ "kind": "modifyStat", "stat": "hunger", "amount": 40 }],
+    "weight": 1
   },
   {
     "id": "water-flask",
     "name": "Water Flask",
     "description": "Hồi 40 thirst. Dùng ngoài combat.",
     "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "thirst", "amount": 40 }]
+    "effects": [{ "kind": "modifyStat", "stat": "thirst", "amount": 40 }],
+    "weight": 1
   },
   {
     "id": "calming-draught",
     "name": "Calming Draught",
     "description": "Giảm 25 fear.",
     "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -25 }]
+    "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -25 }],
+    "weight": 1
   },
   {
     "id": "antidote",
     "name": "Antidote",
     "description": "Gỡ 1 debuff bất kỳ đang mang.",
     "target": "self",
-    "effects": [{ "kind": "removeStatusEffect" }]
+    "effects": [{ "kind": "removeStatusEffect" }],
+    "weight": 0.5
   },
   {
     "id": "whetstone",
     "name": "Whetstone",
-    "description": "Empower: +6 attack, 2 lượt.",
-    "target": "self",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }]
+    "description": "Empower: +6 attack, 2 lượt. Có thể dùng cho đồng đội.",
+    "target": "singleAlly",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
+    "weight": 0.5
   },
   {
     "id": "temporary-ward",
     "name": "Temporary Ward",
-    "description": "Fortify: +8 defense, 2 lượt.",
-    "target": "self",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }]
+    "description": "Fortify: +8 defense, 2 lượt. Có thể dùng cho đồng đội.",
+    "target": "singleAlly",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
+    "weight": 0.5
   },
   {
     "id": "grave-dust",
     "name": "Grave Dust",
-    "description": "Bụi xương hoá cứng da thịt người dùng — Fortify: +8 defense, 2 lượt. Rơi từ Skeleton/Skeleton Archer/Skeleton Guard.",
-    "target": "self",
+    "description": "Bụi xương hoá cứng da thịt người dùng — Fortify: +8 defense, 2 lượt. Có thể dùng cho đồng đội. Rơi từ Skeleton/Skeleton Archer/Skeleton Guard.",
+    "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
-    "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"]
+    "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"],
+    "weight": 0.5
   },
   {
     "id": "broken-blade-fragment",
     "name": "Broken Blade Fragment",
-    "description": "Mảnh vũ khí gãy còn sắc — Empower: +6 attack, 2 lượt. Rơi từ Skeleton Warrior/Zombie Knight/Dark Knight.",
-    "target": "self",
+    "description": "Mảnh vũ khí gãy còn sắc — Empower: +6 attack, 2 lượt. Có thể dùng cho đồng đội. Rơi từ Skeleton Warrior/Zombie Knight/Dark Knight.",
+    "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
-    "archetypeIds": ["skeleton-warrior", "zombie-knight", "dark-knight"]
+    "archetypeIds": ["skeleton-warrior", "zombie-knight", "dark-knight"],
+    "weight": 0.5
   },
   {
     "id": "rotten-flesh",
     "name": "Rotten Flesh",
-    "description": "Mùi hôi thối khiến quái khác bớt chú ý — giảm 20 aggro, 1 lượt. Rơi từ Zombie/Zombie Knight.",
-    "target": "self",
+    "description": "Mùi hôi thối khiến quái khác bớt chú ý — giảm 20 aggro, 1 lượt. Có thể dùng cho đồng đội. Rơi từ Zombie/Zombie Knight.",
+    "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "distracted" }],
-    "archetypeIds": ["zombie", "zombie-knight"]
+    "archetypeIds": ["zombie", "zombie-knight"],
+    "weight": 1
   },
   {
     "id": "venom-gland",
     "name": "Venom Gland",
-    "description": "Tẩm độc vũ khí — Poison Coat: 3 lượt, mọi đòn đánh trúng tự kèm Poisoned. Rơi từ Snake/Lizard/Spider.",
-    "target": "self",
+    "description": "Tẩm độc vũ khí — Poison Coat: 3 lượt, mọi đòn đánh trúng tự kèm Poisoned. Có thể dùng cho đồng đội. Rơi từ Snake/Lizard/Spider.",
+    "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
-    "archetypeIds": ["snake", "lizard", "spider"]
+    "archetypeIds": ["snake", "lizard", "spider"],
+    "weight": 0.5
   },
   {
     "id": "venom-thorn",
@@ -107,15 +121,17 @@
     "description": "Khiến 1 quái mục tiêu chịu sát thương Poisoned gấp đôi trong 2 lượt (không tự gây Poisoned). Rơi từ Giant Spider.",
     "target": "singleEnemy",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-vulnerable" }],
-    "archetypeIds": ["giant-spider"]
+    "archetypeIds": ["giant-spider"],
+    "weight": 1
   },
   {
     "id": "rat-meat",
     "name": "Rat Meat",
-    "description": "Regeneration: hồi 10 HP/lượt, 3 lượt. Rơi từ Dungeon Rat.",
-    "target": "self",
+    "description": "Regeneration: hồi 10 HP/lượt, 3 lượt. Có thể dùng cho đồng đội. Rơi từ Dungeon Rat.",
+    "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "regeneration" }],
-    "archetypeIds": ["dungeon-rat"]
+    "archetypeIds": ["dungeon-rat"],
+    "weight": 0.5
   },
   {
     "id": "bat-blood",
@@ -123,7 +139,8 @@
     "description": "Hồi ngay 20 HP. Rơi từ Black Bat.",
     "target": "self",
     "effects": [{ "kind": "heal", "amount": 20 }],
-    "archetypeIds": ["black-bat"]
+    "archetypeIds": ["black-bat"],
+    "weight": 1
   },
   {
     "id": "slime-solution",
@@ -131,7 +148,8 @@
     "description": "Hồi ngay 20 MP. Rơi từ Slime.",
     "target": "self",
     "effects": [{ "kind": "restoreMp", "amount": 20 }],
-    "archetypeIds": ["slime"]
+    "archetypeIds": ["slime"],
+    "weight": 1
   },
   {
     "id": "dragon-scale",
@@ -139,6 +157,7 @@
     "description": "Fortify cho cả đội: +8 defense, 2 lượt. Rơi từ Dragon.",
     "target": "allAllies",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
-    "archetypeIds": ["dragon"]
+    "archetypeIds": ["dragon"],
+    "weight": 0.5
   }
 ]
