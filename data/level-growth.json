@@ -1,40 +1,44 @@
 {
-  "_format": "`tiers`: 5 tapered stat tiers (docs/gameplay-decisions.md §6.3), rate = stat points gained per level while inside that tier. bonus(stat, level) = floor(sum of the tier rate for every level-up from 2 up to `level`). `expTiers`: EXP-per-level-up curve, kept on its own finer 5-level bracket grid (1-5, 6-10, ..., 96-100) instead of the 5 stat tiers — same cumulative-sum shape as bonus(), used for character leveling (§6.9), just re-bucketed for a smoother cost ramp. eliteMultiplier/bossMultiplier apply to a floor's guard-room monster's fully-scaled stats — asymmetric per-stat on purpose (§6.5: uniform x2 let boss defense stack high enough to nearly negate all incoming damage at deep floors). Elite guards most floors; bossMultiplier (stronger on every axis) replaces it every `bossFloorInterval` floors instead (§6.11) — the 2 are mutually exclusive per floor. `exp` on each multiplier scales the guard's EXP reward on top of expRewardDepthRate (§6.9/6.11).",
   "tiers": [
     {
       "maxLevel": 10,
       "attack": 3,
       "defense": 2,
       "maxHp": 14,
-      "maxMp": 6
+      "maxMp": 6,
+      "magicPower": 3
     },
     {
       "maxLevel": 25,
       "attack": 2,
       "defense": 1,
       "maxHp": 10,
-      "maxMp": 4
+      "maxMp": 4,
+      "magicPower": 2
     },
     {
       "maxLevel": 50,
       "attack": 1,
       "defense": 0.5,
       "maxHp": 7,
-      "maxMp": 3
+      "maxMp": 3,
+      "magicPower": 1
     },
     {
       "maxLevel": 75,
       "attack": 0.5,
       "defense": 0.3333333333333333,
       "maxHp": 5,
-      "maxMp": 2
+      "maxMp": 2,
+      "magicPower": 0.5
     },
     {
       "maxLevel": 100,
       "attack": 0.3333333333333333,
       "defense": 0.25,
       "maxHp": 3,
-      "maxMp": 1
+      "maxMp": 1,
+      "magicPower": 0.3333333333333333
     }
   ],
   "expTiers": [

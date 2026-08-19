@@ -9,7 +9,8 @@
     "baseDefense": 10,
     "baseAggro": 20,
     "baseSpeed": 8,
-    "growthWeights": { "attack": 0.8, "defense": 1.4, "maxHp": 1.3, "maxMp": 0.5 },
+    "baseMagicPower": 0,
+    "growthWeights": { "attack": 1.0, "defense": 1.5, "maxHp": 1.5, "maxMp": 0.6, "magicPower": 0.4 },
     "skills": [
       {
         "id": "vanguard-slash",
@@ -96,7 +97,8 @@
     "baseDefense": 4,
     "baseAggro": 8,
     "baseSpeed": 10,
-    "growthWeights": { "attack": 1.3, "defense": 0.6, "maxHp": 0.7, "maxMp": 1.4 },
+    "baseMagicPower": 14,
+    "growthWeights": { "attack": 0.1, "defense": 0.7, "maxHp": 0.9, "maxMp": 1.6, "magicPower": 1.7 },
     "skills": [
       {
         "id": "mage-bludgeon",
@@ -119,7 +121,8 @@
           { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.3 }
         ],
         "slot": 1,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "mage-lightning-bolt",
@@ -132,7 +135,8 @@
           { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.2 }
         ],
         "slot": 2,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "mage-fire-pillar",
@@ -146,7 +150,8 @@
         ],
         "slot": 3,
         "unlockLevel": 10,
-        "cooldownTurns": 2
+        "cooldownTurns": 2,
+        "isMagic": true
       },
       {
         "id": "mage-lightning-storm",
@@ -160,7 +165,8 @@
         ],
         "slot": 4,
         "unlockLevel": 20,
-        "cooldownTurns": 3
+        "cooldownTurns": 3,
+        "isMagic": true
       },
       {
         "id": "mage-ice-age",
@@ -172,7 +178,8 @@
         "slot": 5,
         "unlockLevel": 35,
         "isUltimate": true,
-        "cooldownTurns": 5
+        "cooldownTurns": 5,
+        "isMagic": true
       }
     ]
   },
@@ -186,7 +193,8 @@
     "baseDefense": 6,
     "baseAggro": 10,
     "baseSpeed": 16,
-    "growthWeights": { "attack": 1.4, "defense": 0.7, "maxHp": 1.1, "maxMp": 0.8 },
+    "baseMagicPower": 0,
+    "growthWeights": { "attack": 1.7, "defense": 0.9, "maxHp": 1.3, "maxMp": 0.8, "magicPower": 0.3 },
     "skills": [
       {
         "id": "rogue-stab",
@@ -270,7 +278,8 @@
     "baseDefense": 8,
     "baseAggro": 12,
     "baseSpeed": 9,
-    "growthWeights": { "attack": 0.6, "defense": 1.1, "maxHp": 1.0, "maxMp": 1.3 },
+    "baseMagicPower": 10,
+    "growthWeights": { "attack": 0.5, "defense": 1.0, "maxHp": 1.1, "maxMp": 1.3, "magicPower": 1.1 },
     "skills": [
       {
         "id": "acolyte-punch",
@@ -300,7 +309,8 @@
         "target": "singleAlly",
         "effects": [{ "kind": "heal", "amount": 16 }],
         "slot": 2,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "acolyte-purify",
@@ -314,7 +324,8 @@
         },
         "slot": 3,
         "unlockLevel": 10,
-        "cooldownTurns": 1
+        "cooldownTurns": 1,
+        "isMagic": true
       },
       {
         "id": "acolyte-mass-heal",
@@ -328,7 +339,8 @@
         ],
         "slot": 4,
         "unlockLevel": 20,
-        "cooldownTurns": 2
+        "cooldownTurns": 2,
+        "isMagic": true
       },
       {
         "id": "acolyte-divine-descent",
@@ -346,7 +358,8 @@
         "slot": 5,
         "unlockLevel": 35,
         "isUltimate": true,
-        "cooldownTurns": 5
+        "cooldownTurns": 5,
+        "isMagic": true
       }
     ]
   }

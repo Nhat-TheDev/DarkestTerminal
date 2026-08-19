@@ -3,23 +3,29 @@ import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
 import { getClass } from "../data/classes";
 import { artifactStatBoostSum, curseAggroBoostSum } from "./artifacts";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 
-/** Max equipped artifacts per character (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
-export const MAX_EQUIPPED_ARTIFACTS = 3;
+/** Max equipped artifacts per character (docs/gameplay-decisions/07-items-artifacts.md §7.2). Value: data/balance-config.json BALANCE.party.maxEquippedArtifacts. */
+export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
 export interface PartyActionError {
   reason: string;
 }
 
 // Matches docs/gameplay-decisions.md §3: identical starting survival stats
-// for every class.
-export const INITIAL_SURVIVAL_STATS = { hunger: 100, thirst: 100, fear: 0 };
+// for every class. Values: data/balance-config.json BALANCE.survival.initial*.
+export const INITIAL_SURVIVAL_STATS = {
+  hunger: BALANCE.survival.initialHunger,
+  thirst: BALANCE.survival.initialThirst,
+  fear: BALANCE.survival.initialFear,
+};
 
 interface LevelStats {
   maxHp: number;
   maxMp: number;
   attack: number;
   defense: number;
+  magicPower: number;
   unlockedSkillIds: string[];
 }
 
@@ -34,6 +40,7 @@ export function statsForLevel(cls: CharacterClass, level: number): LevelStats {
     maxMp: cls.baseMaxMp + classGrowthBonus("maxMp", level, cls.growthWeights),
     attack: cls.baseAttack + classGrowthBonus("attack", level, cls.growthWeights),
     defense: cls.baseDefense + classGrowthBonus("defense", level, cls.growthWeights),
+    magicPower: cls.baseMagicPower + classGrowthBonus("magicPower", level, cls.growthWeights),
     unlockedSkillIds: cls.skills.filter((s) => s.unlockLevel <= level).map((s) => s.id),
   };
 }
@@ -51,6 +58,7 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
     maxMp: stats.maxMp,
     attack: stats.attack,
     defense: stats.defense,
+    magicPower: stats.magicPower,
     aggro: cls.baseAggro,
     speed: cls.baseSpeed,
     survival: { ...INITIAL_SURVIVAL_STATS },
@@ -79,6 +87,7 @@ export function recomputeCharacterStats(character: Character): void {
   const boost = artifactStatBoostSum(character);
   character.attack = base.attack + boost.attack;
   character.defense = base.defense + boost.defense;
+  character.magicPower = base.magicPower;
   character.maxHp = base.maxHp + boost.maxHp;
   character.maxMp = base.maxMp + boost.maxMp;
   character.aggro = cls.baseAggro + curseAggroBoostSum(character);

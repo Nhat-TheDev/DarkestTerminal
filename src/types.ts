@@ -43,6 +43,8 @@ export interface SkillEffect {
   miniGameId?: MiniGameId;
   /** Roll independently per (effect, target) before applying — omit = always applies (docs/technical-decisions.md §4.1). */
   chance?: number;
+  /** Only meaningful on a `damage` effect — 0-100, reduces target.defense by this % before the mitigation formula runs (e.g. a boss's execute "finishing blow" punching through armor). Omit = 0, no change. */
+  ignoreDefensePercent?: number;
 }
 
 export type SkillTarget =
@@ -76,14 +78,17 @@ export interface SkillDefinition {
   isUltimate?: boolean;
   /** Grants +20 speed for this round's turn-order sort only, not a persistent stat change (§4.7). */
   isBuff?: boolean;
+  /** True for skills whose damage/heal effects scale off the caster's magicPower instead of attack — elemental/holy skills (fire, lightning, ice, heal). Unset = physical, scales off attack as before. */
+  isMagic?: boolean;
 }
 
-/** Multiplier applied to the shared growthBonus() curve per stat, per class — see docs/gameplay-decisions.md §6.8. Budget convention: the 4 weights sum to 4.0 across classes, so no class gets strictly more total growth, only redistributed differently. */
+/** Multiplier applied to the shared growthBonus() curve per stat, per class — see docs/gameplay-decisions/06-level-system.md §6.8. Budget convention: all 5 weights (attack/defense/maxHp/maxMp/magicPower) sum to 5.0 across classes, so no class gets strictly more total growth, only redistributed differently. Vanguard/Rogue keep magicPower at (or near) 0 since none of their skills are isMagic. */
 export interface GrowthWeights {
   attack: number;
   defense: number;
   maxHp: number;
   maxMp: number;
+  magicPower: number;
 }
 
 export interface CharacterClass {
@@ -96,6 +101,8 @@ export interface CharacterClass {
   baseDefense: number;
   baseAggro: number;
   baseSpeed: number;
+  /** Offensive stat for skills flagged isMagic (elemental/holy damage and heal) — separate from attack, which still drives every non-magic skill. */
+  baseMagicPower: number;
   growthWeights: GrowthWeights;
   skills: SkillDefinition[];
 }
@@ -111,6 +118,7 @@ export interface Character {
   maxMp: number;
   attack: number;
   defense: number;
+  magicPower: number;
   aggro: number;
   speed: number;
   survival: SurvivalStats;
@@ -149,6 +157,8 @@ export interface ItemDefinition {
   effects: SkillEffect[];
   /** Set only for the 9 monster-signature items — the MonsterArchetype ids whose kills roll this item into the "signature" half of the drop pool (§7.1 "Item đặc trưng theo quái"). Omitted/empty for the 10 common-pool items. */
   archetypeIds?: Id[];
+  /** Relative drop weight within its pool (signature or common), default 1 if omitted. Stronger items use <1 to drop less often; see rollItemDrop's floor-depth growth. */
+  weight?: number;
 }
 
 export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
@@ -253,6 +263,19 @@ export interface MonsterArchetype {
   guardOnly?: boolean;
   /** Combat-room strength bracket used by ROOM_COMPOSITION_TEMPLATES (src/data/floor.ts) to keep room EXP balanced — unset for guard-only archetypes, which don't go through that composition logic. */
   powerTier?: "weak" | "medium" | "strong";
+  /**
+   * Per-tier relative weights for runMonsterTurn's action pick (combat.ts `pickMonsterAction`).
+   * "skill" = a random pick from `skillIds`; "strike"/"cleave" need `eliteSkillIds`; "debuff" needs
+   * `bossSkillIds`. `execute` is NOT part of this pool — it stays on its own charge/cooldown/release
+   * cycle (§6.12), not a per-turn weighted choice. Missing tier/action-key, an action with weight 0,
+   * or an action whose prerequisite skill kit is absent are all excluded from the roll; if nothing is
+   * left, the monster falls back to a plain basic attack.
+   */
+  actionWeights?: {
+    normal?: Partial<Record<"basicAttack" | "skill", number>>;
+    elite?: Partial<Record<"basicAttack" | "skill" | "strike" | "cleave", number>>;
+    boss?: Partial<Record<"basicAttack" | "strike" | "cleave" | "debuff", number>>;
+  };
 }
 
 /** "normal" = regular combat-room spawn; "elite"/"boss" = the floor's guard room (§6.11), mutually exclusive per floor. */
@@ -296,6 +319,24 @@ export interface QueuedAction {
   targets: CombatantRef[];
 }
 
+/** Semantic category of a combat log line, used to pick an icon/color when rendering (see src/ui/app.ts). */
+export type LogEntryKind = "attack" | "heal" | "buff" | "debuff" | "item" | "death" | "info";
+
+/** HP/alive state of 1 combatant at a point in a round's resolution — lets the UI show the battlefield/party/monster panels in sync with however far the paced log reveal has gotten, instead of jumping straight to the round's final state (see src/ui/app.ts). */
+export interface CombatantSnapshot {
+  id: Id;
+  hp: number;
+  maxHp: number;
+  isAlive: boolean;
+}
+
+export interface LogEntry {
+  text: string;
+  kind: LogEntryKind;
+  /** Full-roster HP/alive state right after this line (and the rest of its turn/block) resolved. Undefined only for entries pushed outside resolveRound's tagging (shouldn't happen for combat.log). */
+  snapshot?: CombatantSnapshot[];
+}
+
 export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
@@ -305,7 +346,9 @@ export interface CombatState {
   turnQueue: CombatantRef[];
   activeTurnIndex: number;
   isBossFight: boolean;
-  log: string[];
+  log: LogEntry[];
+  /** Full-roster HP/alive state captured at the very start of the round currently resolving (before any of its mutations) — the UI's baseline while none of this round's log lines have been revealed yet. */
+  roundStartSnapshot?: CombatantSnapshot[];
   outcome?: "victory" | "defeat";
 }
 

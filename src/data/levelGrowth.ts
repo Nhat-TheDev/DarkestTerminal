@@ -18,7 +18,7 @@ import type { GrowthWeights } from "../types";
 // guard-room monster (elite/boss) scales via growthBonusForDepth, which
 // keeps applying tier 5's rate forever past level 100 instead of clamping.
 
-export type GrowthStat = "attack" | "defense" | "maxHp" | "maxMp";
+export type GrowthStat = "attack" | "defense" | "maxHp" | "maxMp" | "magicPower";
 
 interface Tier {
   maxLevel: number;
@@ -26,6 +26,7 @@ interface Tier {
   defense: number;
   maxHp: number;
   maxMp: number;
+  magicPower: number;
 }
 
 /** EXP-per-level-up rate, bucketed on its own finer 5-level grid (1-5, 6-10, ..., 96-100) — kept separate from `Tier` since the stat curve and the EXP curve don't need to share bracket boundaries. */

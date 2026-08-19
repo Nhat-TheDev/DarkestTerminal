@@ -9,7 +9,13 @@
     "aiPattern": "erratic",
     "skillIds": [],
     "expReward": 6,
-    "powerTier": "weak"
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "black-bat",
@@ -21,7 +27,13 @@
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 6,
-    "powerTier": "weak"
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "slime",
@@ -33,7 +45,13 @@
     "aiPattern": "erratic",
     "skillIds": [],
     "expReward": 6,
-    "powerTier": "weak"
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "skeleton",
@@ -45,7 +63,13 @@
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 9,
-    "powerTier": "medium"
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "zombie",
@@ -57,7 +81,13 @@
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 12,
-    "powerTier": "strong"
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "snake",
@@ -69,7 +99,13 @@
     "aiPattern": "erratic",
     "skillIds": [],
     "expReward": 8,
-    "powerTier": "medium"
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "lizard",
@@ -81,7 +117,13 @@
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 9,
-    "powerTier": "medium"
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "spider",
@@ -93,7 +135,13 @@
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 9,
-    "powerTier": "medium"
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "skeleton-archer",
@@ -105,7 +153,13 @@
     "aiPattern": "erratic",
     "skillIds": [],
     "expReward": 10,
-    "powerTier": "medium"
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "skeleton-warrior",
@@ -117,7 +171,13 @@
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 13,
-    "powerTier": "strong"
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      }
+    }
   },
   {
     "id": "skeleton-guard",
@@ -137,6 +197,24 @@
     "bossSkillIds": {
       "execute": "skeleton-boss-execute",
       "debuff": "skeleton-boss-crush"
+    },
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100,
+        "skill": 0
+      },
+      "elite": {
+        "basicAttack": 40,
+        "skill": 0,
+        "strike": 35,
+        "cleave": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 25
+      }
     }
   },
   {
@@ -157,6 +235,20 @@
     "bossSkillIds": {
       "execute": "giant-spider-boss-execute",
       "debuff": "giant-spider-boss-debuff"
+    },
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "skill": 0,
+        "strike": 35,
+        "cleave": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 25
+      }
     }
   },
   {
@@ -177,6 +269,20 @@
     "bossSkillIds": {
       "execute": "dragon-boss-execute",
       "debuff": "dragon-boss-debuff"
+    },
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "skill": 0,
+        "strike": 35,
+        "cleave": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 25
+      }
     }
   },
   {
@@ -197,6 +303,20 @@
     "bossSkillIds": {
       "execute": "zombie-knight-boss-execute",
       "debuff": "zombie-knight-boss-debuff"
+    },
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "skill": 0,
+        "strike": 35,
+        "cleave": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 25
+      }
     }
   },
   {
@@ -217,6 +337,20 @@
     "bossSkillIds": {
       "execute": "dark-knight-boss-execute",
       "debuff": "dark-knight-boss-debuff"
+    },
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "skill": 0,
+        "strike": 35,
+        "cleave": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 25
+      }
     }
   }
 ]

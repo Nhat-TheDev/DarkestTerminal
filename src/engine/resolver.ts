@@ -1,6 +1,15 @@
-import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect } from "../types";
+import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition } from "../types";
 import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
+
+/** No explicit buff/debuff flag exists on StatusEffectDefinition, so infer it from its mechanical effect: anything that stuns, damages, weakens a combat stat, or carries a vulnerability is harmful; everything else (heals, positive stat boosts, or a no-op rider like Poison Coat) is helpful. Used only to pick a log-line color (see LOG_KIND_STYLE). */
+function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
+  if (def.stuns || def.vulnerableTo) return false;
+  if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
+  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && (e.amount ?? 0) < 0)) return false;
+  return true;
+}
 
 const SURVIVAL_STAT_LABEL: Record<keyof SurvivalStats, string> = {
   fear: t("resolver.statLabelFear"),
@@ -75,9 +84,29 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
 }
 
 export interface ResolveContext {
-  log: string[];
+  log: LogEntry[];
   /** Set only for a status effect's own recurring tick (DoT) — names the effect in the damage log instead of the nonsensical "X nhận sát thương từ X". */
   statusEffectName?: string;
+  /** Set when resolving an elemental/holy skill (SkillDefinition.isMagic) — damage/heal scale off the caster's magicPower instead of attack. */
+  isMagic?: boolean;
+}
+
+/** damage/heal offensive stat for `source`: magicPower for a Character casting an isMagic skill, attack otherwise (monsters have no magicPower). */
+function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
+  if (isMagic && isCharacter(source)) return source.magicPower;
+  return source.attack;
+}
+
+// Percentage-mitigation defense curve (tuned 2026-08-19, see docs/gameplay-decisions/06-level-system.md
+// §6.7 "hits-to-die" note): replaces the old flat `attack - defense` subtraction, which could floor
+// damage to 1 far too easily once defense caught up to offense (e.g. an under-leveled Vanguard vs a
+// deep-floor Boss). `off * (def/(X+def))` asymptotically approaches (but never reaches) 100% mitigation
+// as defense grows — at `def === X`, exactly half of `off` is mitigated. `def/Y` is a small additional
+// flat chip on top (never dominant within the game's real defense range, verified by simulation up to
+// floor 250) so defense still has a little extra bite beyond the pure percentage curve.
+// X/Y live in data/balance-config.json (BALANCE.combat.defenseMitigation*) so they can be retuned without touching this file.
+export function mitigatedOffense(off: number, def: number): number {
+  return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
 }
 
 /**
@@ -95,27 +124,37 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       // not "an attack", so it's flat effect.amount with no attack/defense/
       // fear roll involved (gameplay-decisions.md §1.3: "mỗi lượt damage 4").
       const isSelfTick = source === target;
+      // ignoreDefensePercent (e.g. a boss's execute "finishing blow") shrinks the defense fed into
+      // the mitigation formula, not the raw stat itself — target.defense elsewhere (UI, other effects) is untouched.
+      const effectiveDefense = target.defense * (1 - (effect.ignoreDefensePercent ?? 0) / 100);
       const finalDamage = isSelfTick
         ? Math.max(1, Math.round(effect.amount ?? 0))
-        : Math.max(1, Math.round(((effect.amount ?? 0) + source.attack - target.defense) * damageMultiplierFor(source)));
+        : Math.max(
+            1,
+            Math.round(
+              ((effect.amount ?? 0) + mitigatedOffense(offensiveStatFor(source, ctx.isMagic), effectiveDefense)) * damageMultiplierFor(source)
+            )
+          );
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
-      ctx.log.push(t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel }));
+      ctx.log.push({ text: t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel }), kind: "attack" });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
+      if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       return finalDamage;
     }
     case "heal": {
       const before = target.hp;
-      target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0));
+      const healPower = ctx.isMagic && isCharacter(source) ? source.magicPower : 0;
+      target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0) + healPower);
       const healed = target.hp - before;
-      ctx.log.push(t("resolver.heal", { target: nameOf(target), amount: healed }));
+      ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
       return healed;
     }
     case "restoreMp": {
       if (!isCharacter(target)) return 0;
       const before = target.mp;
       target.mp = Math.min(target.maxMp, target.mp + (effect.amount ?? 0));
-      ctx.log.push(t("resolver.restoreMp", { target: nameOf(target), amount: target.mp - before }));
+      ctx.log.push({ text: t("resolver.restoreMp", { target: nameOf(target), amount: target.mp - before }), kind: "heal" });
       return 0;
     }
     case "applyStatusEffect": {
@@ -136,7 +175,10 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       // the target IS the "who got buffed/debuffed" info, no separate "cho X" needed.
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
-        ctx.log.push(t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: SURVIVAL_STAT_LABEL[effect.stat] }));
+        ctx.log.push({
+          text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: SURVIVAL_STAT_LABEL[effect.stat] }),
+          kind: delta < 0 ? "buff" : "debuff", // for survival stats (fear/hunger/thirst), lower is better
+        });
       }
       return 0;
     }
@@ -146,13 +188,16 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const delta = effect.amount ?? 0;
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
-        ctx.log.push(t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: COMBAT_STAT_LABEL[effect.combatStat] }));
+        ctx.log.push({
+          text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: COMBAT_STAT_LABEL[effect.combatStat] }),
+          kind: delta < 0 ? "debuff" : "buff", // for combat stats (attack/defense/speed/aggro), higher is generally better
+        });
       }
       return 0;
     }
     case "triggerMiniGame": {
       // Out of scope for this prototype (see README.md) — no skill/monster uses it.
-      ctx.log.push(t("resolver.miniGameSkipped"));
+      ctx.log.push({ text: t("resolver.miniGameSkipped"), kind: "info" });
       return 0;
     }
   }
@@ -171,7 +216,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
   const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
   if (existing) {
     existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
-    ctx.log.push(t("resolver.statusRefresh", { actor: nameOf(actor), effect: def.name }));
+    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
   const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
@@ -184,7 +229,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
       applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
     }
   }
-  ctx.log.push(t("resolver.statusApply", { actor: nameOf(actor), effect: def.name }));
+  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
@@ -204,7 +249,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
-  ctx.log.push(t("resolver.statusExpire", { actor: nameOf(actor), effect: def.name }));
+  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: def.name }), kind: "info" });
 }
 
 /**

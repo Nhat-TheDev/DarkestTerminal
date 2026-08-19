@@ -2,6 +2,7 @@ import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "..
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import { growthBonusForDepth, EXP_REWARD_DEPTH_RATE, ELITE_MULTIPLIER, BOSS_MULTIPLIER } from "./levelGrowth";
+import { BALANCE } from "./balanceConfig";
 
 // Design data now lives in ../../data/monsters.json — see
 // docs/gameplay-decisions.md §2. spawnMonster() below is behavior (scaling
@@ -34,8 +35,8 @@ let monsterCounter = 0;
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
 const TIER_NAME_SUFFIX = { elite: " (Elite)", boss: " (Boss)" };
 
-/** §6.12 — turns of normal behavior before a boss can start charging Finishing Blow again (both the initial delay and the cooldown after a release use this same value). */
-export const EXECUTE_COOLDOWN_TURNS = 3;
+/** §6.12 — turns of normal behavior before a boss can start charging Finishing Blow again (both the initial delay and the cooldown after a release use this same value). Value: data/balance-config.json BALANCE.combat.executeCooldownTurns. */
+export const EXECUTE_COOLDOWN_TURNS = BALANCE.combat.executeCooldownTurns;
 
 /**
  * Spawns a Monster instance from an archetype, scaled by floor depth using

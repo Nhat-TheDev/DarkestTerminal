@@ -8,16 +8,29 @@ Mỗi class có **6 skill = 1 đòn đánh thường dùng chung (slot 0) + 5 sk
 
 ### Bảng chỉ số (level 1)
 
-6 chỉ số class: **tấn công** (`attack`), **phòng thủ** (`defense`), **máu** (`maxHp`), **mana** (`maxMp`), **thu hút** (`aggro` — trọng số bị quái chọn làm mục tiêu, xem `02-monster.md` mục 2), **tốc độ** (`speed` — ưu tiên ra đòn trước, xem `docs/technical-decisions.md` §2).
+7 chỉ số class: **tấn công** (`attack`), **sức mạnh phép** (`magicPower` — xem mục 1.6 ngay dưới), **phòng thủ** (`defense`), **máu** (`maxHp`), **mana** (`maxMp`), **thu hút** (`aggro` — trọng số bị quái chọn làm mục tiêu, xem `02-monster.md` mục 2), **tốc độ** (`speed` — ưu tiên ra đòn trước, xem `docs/technical-decisions.md` §2).
 
-| Class | attack | defense | maxHp | maxMp | aggro | speed |
-|---|---|---|---|---|---|---|
-| Vanguard | 14 | **10** | 140 | 20 | 20 | 8 |
-| Mage | 6 | 4 | 70 | 60 | 8 | 10 |
-| Rogue | 16 | 6 | 90 | 30 | 10 | 16 |
-| Acolyte | 6 | 8 | 100 | 50 | 12 | 9 |
+| Class | attack | magicPower | defense | maxHp | maxMp | aggro | speed |
+|---|---|---|---|---|---|---|---|
+| Vanguard | 14 | 0 | **10** | 140 | 20 | 20 | 8 |
+| Mage | 6 | 14 | 4 | 70 | 60 | 8 | 10 |
+| Rogue | 16 | 0 | 6 | 90 | 30 | 10 | 16 |
+| Acolyte | 6 | 10 | 8 | 100 | 50 | 12 | 9 |
 
-Thiết kế có chủ đích: Vanguard cao nhất `aggro` + `defense` + `maxHp`, thấp nhất `speed` (tank hút đòn, ra tay muộn); Mage thấp nhất mọi chỉ số phòng ngự/aggro (né bị nhắm) nhưng `speed` khá; Rogue `speed`/`attack` cao nhất, `defense` thấp; Acolyte cân bằng, `aggro` trung bình để không bị/không tránh được việc làm mục tiêu.
+Thiết kế có chủ đích: Vanguard cao nhất `aggro` + `defense` + `maxHp`, thấp nhất `speed` (tank hút đòn, ra tay muộn); Mage thấp nhất mọi chỉ số phòng ngự/aggro (né bị nhắm) nhưng `speed` khá, và là class duy nhất có `attack` thấp bù lại bằng `magicPower` cao nhất — carry sát thương của Mage đến từ skill phép (mục 1.6), không phải đòn đánh thường; Rogue `speed`/`attack` cao nhất, `defense` thấp, `magicPower` bằng 0 (thuần vật lý); Acolyte cân bằng, `aggro` trung bình để không bị/không tránh được việc làm mục tiêu, `magicPower` khá (heal + damage phụ, thấp hơn Mage vì không phải carry sát thương chính).
+
+### 1.6 Chỉ số `magicPower` và cờ `isMagic`
+
+Từ `2026-08-19`: skill nào có `damage`/`heal` mang tính "phép" (element lửa/sét/băng của Mage, holy heal/purge của Acolyte) được đánh dấu `isMagic: true` trong `data/classes.json`. Khi resolver tính sát thương/hồi máu cho 1 skill `isMagic`, nó dùng `source.magicPower` của người dùng skill thay cho `source.attack` — chỉ đổi vế offense nào được đưa vào công thức, không đổi cách defense được trừ (chi tiết công thức mitigation đầy đủ: `docs/technical-decisions.md` mục "Xử lý theo `effect.kind`"). Skill không đánh dấu `isMagic` (đòn đánh thường của mọi class, toàn bộ skill Vanguard/Rogue, damage của Purify — chỉ nhánh enemy) giữ nguyên dùng `attack` như trước, không đổi.
+
+Danh sách skill đang mang `isMagic: true`:
+
+| Class | Skill |
+|---|---|
+| Mage | Fireball, Lightning Bolt, Fire Pillar, Lightning Storm, Ice Age (toàn bộ 5 skill riêng — chỉ trừ đòn đánh thường Bludgeon) |
+| Acolyte | Heal, Purify, Mass Heal, Divine Descent (toàn bộ 4 skill riêng có tác dụng heal/damage — trừ đòn đánh thường Punch và Prayer, vốn không có effect `damage`/`heal`) |
+
+`magicPower` tăng theo level qua cùng đường cong tapered 5-tier dùng chung cho `attack`/`defense`/`maxHp`/`maxMp` (`06-level-system.md` §6.3), nhân thêm `growthWeights.magicPower` riêng theo class — xem bảng ngân sách weight đầy đủ (giờ là **5.0**, sau 2 vòng rebalance 4.0→4.5→5.0) ở `06-level-system.md` §6.8.
 
 **⚠️ Cập nhật cân bằng (2026-08-17)**: `baseDefense` của Vanguard hạ từ **12 xuống 10** — ở mức 12, đa số quái thường (`baseAttack` 8-15 lúc đó) chỉ gây đúng 1-2 sát thương lên Vanguard (`max(1, atk − def)` chạm sàn), khiến class tank gần như miễn nhiễm damage ngay từ tầng 1 và party sống sót quá dễ dàng dù không dùng skill hỗ trợ nào. Hạ xuống 10 (vẫn cao nhất nhóm — Acolyte 8, Rogue 6, Mage 4) đưa damage nhận vào Vanguard lên mức 1-9 tùy quái (chi tiết bảng đối chiếu ở `02-monster.md` mục 2), giữ vai trò tank nhưng không còn "miễn nhiễm" hoàn toàn.
 
@@ -25,7 +38,7 @@ Thiết kế có chủ đích: Vanguard cao nhất `aggro` + `defense` + `maxHp`
 
 ### 1.0 Đòn đánh thường (mọi class, slot 0)
 
-Miễn phí (`mpCost 0`), luôn có sẵn từ cấp 1, không giới hạn số lần dùng, không cooldown, `target: singleEnemy`, `effects: [{ kind: "damage", amount: 0 }]` → sát thương = `max(1, attack − defense)`, đúng nghĩa "sát thương cơ bản" (giống công thức quái vật đánh thường). Tên/vũ khí theo class, không có ý nghĩa cơ chế nào khác ngoài fallback miễn phí khi hết MP:
+Miễn phí (`mpCost 0`), luôn có sẵn từ cấp 1, không giới hạn số lần dùng, không cooldown, `target: singleEnemy`, `effects: [{ kind: "damage", amount: 0 }]` → sát thương = `max(1, round(mitigatedOffense(attack, defense)))` (công thức mitigation, `docs/technical-decisions.md`), đúng nghĩa "sát thương cơ bản" (giống công thức quái vật đánh thường). Tên/vũ khí theo class, không có ý nghĩa cơ chế nào khác ngoài fallback miễn phí khi hết MP:
 
 | Class | Vũ khí | Skill id | Tên đòn thường |
 |---|---|---|---|

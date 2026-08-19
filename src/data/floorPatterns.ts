@@ -1,5 +1,6 @@
 import type { RoomType } from "../types";
 import type { Rng } from "../engine/rng";
+import { BALANCE } from "./balanceConfig";
 
 // Floor layouts are generated at runtime (see docs/technical-decisions.md §1)
 // instead of picked from a hand-authored pattern library — a stage-based DAG
@@ -36,14 +37,15 @@ export function roomTypeForTag(tag: string): RoomType {
 // A "path" is start → boss walking exactly 1 room per stage (fixed length =
 // stage count, regardless of which branch a player takes — same guarantee
 // as the old pattern library). All bounds below are per-path.
-export const MIN_PATH_ROOMS = 7;
-export const MAX_PATH_ROOMS = 12;
-export const MAX_BRANCHES = 3;
-export const MIN_BRANCH_START_STAGE = 2; // room #3 onward (0-indexed stage)
-export const MIN_BRANCH_SPACING = 3; // stages between 2 consecutive branch stages
-export const MAX_EVENT_ROOMS_PER_PATH = 4;
-export const MIN_REST_ROOMS_PER_PATH = 1;
-export const MAX_REST_ROOMS_PER_PATH = 2;
+// Values: data/balance-config.json BALANCE.floorGeneration.*.
+export const MIN_PATH_ROOMS = BALANCE.floorGeneration.minPathRooms;
+export const MAX_PATH_ROOMS = BALANCE.floorGeneration.maxPathRooms;
+export const MAX_BRANCHES = BALANCE.floorGeneration.maxBranches;
+export const MIN_BRANCH_START_STAGE = BALANCE.floorGeneration.minBranchStartStage; // room #3 onward (0-indexed stage)
+export const MIN_BRANCH_SPACING = BALANCE.floorGeneration.minBranchSpacing; // stages between 2 consecutive branch stages
+export const MAX_EVENT_ROOMS_PER_PATH = BALANCE.floorGeneration.maxEventRoomsPerPath;
+export const MIN_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.minRestRoomsPerPath;
+export const MAX_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.maxRestRoomsPerPath;
 
 /** Distributes `total` indistinguishable units randomly across `parts` bins (each >= 0). */
 function randomPartition(total: number, parts: number, rng: Rng): number[] {

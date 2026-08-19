@@ -1,6 +1,8 @@
 import type {
   Character,
   Monster,
+  MonsterArchetype,
+  MonsterTier,
   CombatState,
   Combatant,
   CombatantRef,
@@ -10,6 +12,9 @@ import type {
   SkillEffect,
   ActionSource,
   Id,
+  LogEntry,
+  LogEntryKind,
+  CombatantSnapshot,
 } from "../types";
 import { getSkill } from "../data/classes";
 import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
@@ -89,7 +94,7 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
     turnQueue: [],
     activeTurnIndex: 0,
     isBossFight,
-    log: [t("combat.started", { roomId })],
+    log: [{ text: t("combat.started", { roomId }), kind: "info" }],
   };
 }
 
@@ -228,6 +233,22 @@ function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[]
   return sorted.map((c) => c.ref);
 }
 
+/** Full-roster HP/alive state right now — used to tag log entries so the UI can replay the round's panels in step with the paced log reveal instead of jumping straight to the end (see LogEntry.snapshot). */
+function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantSnapshot[] {
+  return combat.combatants.map((c) => {
+    const actor = getActorByRef(c.ref, ctx);
+    return { id: actor.id, hp: actor.hp, maxHp: actor.maxHp, isAlive: isActorAlive(actor) };
+  });
+}
+
+/** Attaches `snapshot` to every log entry pushed since `fromIndex` — i.e. everything 1 block (a turn, a tick phase) just produced. */
+function tagLogRange(combat: CombatState, fromIndex: number, snapshot: CombatantSnapshot[]): void {
+  for (let i = fromIndex; i < combat.log.length; i++) {
+    const entry = combat.log[i];
+    if (entry) entry.snapshot = snapshot;
+  }
+}
+
 /** docs/gameplay-decisions/07-items-artifacts.md §7.2 group 3 — autoDamage fires once per equipped copy at the start of every round, flat damage (no attack/defense), 1 uniformly-random living monster per tick, independent of queueAction/MP/turn order. */
 function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
   for (const character of ctx.party) {
@@ -237,7 +258,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
       if (alive.length === 0) return;
       const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
       target.hp = Math.max(0, target.hp - amount);
-      combat.log.push(t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }));
+      combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack" });
     }
   }
 }
@@ -247,22 +268,30 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
   combat.activeTurnIndex = 0;
+  // Baseline for the UI: state as of the instant this round started, before any of its mutations.
+  combat.roundStartSnapshot = snapshotCombatants(combat, ctx);
+
+  let blockStart = combat.log.length;
   runArtifactAutoDamage(combat, ctx);
+  tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
   for (const ref of combat.turnQueue) {
     const actor = getActorByRef(ref, ctx);
     if (!isActorAlive(actor)) continue; // died earlier this round
 
+    blockStart = combat.log.length;
     if (ref.kind === "character") {
       runCharacterTurn(ref, combat, ctx);
     } else {
       runMonsterTurn(ref, combat, ctx);
     }
+    tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
     if (isCombatOver(combat, ctx)) break;
   }
 
   if (!isCombatOver(combat, ctx)) {
+    blockStart = combat.log.length;
     for (const c of combat.combatants) {
       const actor = getActorByRef(c.ref, ctx);
       if (isActorAlive(actor)) tickStatusEffects(actor, { log: combat.log });
@@ -275,9 +304,12 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     }
     // docs/gameplay-decisions/03-survival-stats.md §3 — every round that doesn't end the fight costs fear.
     for (const c of ctx.party) applyRoundFear(c, floorDepth);
+    tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
   }
 
+  blockStart = combat.log.length;
   finalizeRound(combat, ctx);
+  tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 }
 
 function hasStunningStatus(actor: Actor): boolean {
@@ -290,19 +322,19 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   if (!queued) return;
 
   if (hasStunningStatus(actor)) {
-    combat.log.push(t("combat.stunnedSkipTurn", { actor: actor.name }));
+    combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
     return;
   }
 
   if (rollLosesControl(actor.survival.fear, () => ctx.rng.next())) {
-    combat.log.push(t("combat.fearLoseControl", { actor: actor.name }));
+    combat.log.push({ text: t("combat.fearLoseControl", { actor: actor.name }), kind: "info" });
     return;
   }
 
   const skill = actionDefinition(queued.source);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
-    combat.log.push(t("combat.wastedAction", { actor: actor.name, skill: skill.name }));
+    combat.log.push({ text: t("combat.wastedAction", { actor: actor.name, skill: skill.name }), kind: "info" });
     return;
   }
 
@@ -310,29 +342,56 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   // being buffed/debuffed/healed is clear before the effect lines even resolve —
   // but not for a self-target (targets[0] === actor) or an AoE skill (>1 target).
   const soloTarget = targets.length === 1 && targets[0] !== actor ? targets[0] : null;
-  combat.log.push(
-    soloTarget
+  const announceKind: LogEntryKind = queued.source.kind === "item" ? "item" : "info";
+  combat.log.push({
+    text: soloTarget
       ? t("combat.useSkillOnTarget", { actor: actor.name, skill: skill.name, target: soloTarget.name })
-      : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name })
-  );
+      : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }),
+    kind: announceKind,
+  });
   applySkillEffects(skill, actor, targets, ctx, combat.log);
 }
 
-/** Chance per turn a boss casts its debuff skill instead of rolling for cleave/strike (checked only outside the execute charge/release turns). */
-const BOSS_DEBUFF_CHANCE = 0.3;
-/** Chance per turn an elite/boss casts its AoE cleave instead of its single-target strike. */
-const ELITE_CLEAVE_CHANCE = 0.3;
-
-/** Normal-tier targeting (§2): erratic ignores aggro entirely, aggressive/defensive both weight by aggro (no monster archetype defines a self-heal skill, so "defensive under 40% HP" falls through to the same rule as aggressive). Reused by elite/boss for their strike skill. */
+/** Normal-tier targeting (§2): erratic ignores aggro entirely, aggressive/defensive both weight by aggro (no monster archetype defines a self-heal skill, so "defensive under 40% HP" falls through to the same rule as aggressive). Reused by elite/boss for their strike skill and species skills aimed at 1 target. */
 function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): Character {
   if (actor.aiPattern === "erratic") return rng.pick(livingChars);
   return pickAggroWeighted(livingChars, rng);
 }
 
+type MonsterAction = "basicAttack" | "skill" | "strike" | "cleave" | "debuff";
+
+/**
+ * Weighted pick of this turn's action from `archetype.actionWeights[tier]` (data/monsters.json) —
+ * candidates with weight <= 0, or whose prerequisite kit is missing (`skill` needs a non-empty
+ * `skillIds`, `strike`/`cleave` need `eliteSkillIds`, `debuff` needs `bossSkillIds`), are excluded
+ * before the roll. No config for this tier, or nothing left after filtering, both fall back to
+ * `basicAttack` — every monster can always at least attack.
+ */
+function pickMonsterAction(archetype: MonsterArchetype, tier: MonsterTier, rng: Rng): MonsterAction {
+  const weights = archetype.actionWeights?.[tier];
+  if (!weights) return "basicAttack";
+  const candidates: [MonsterAction, number][] = [];
+  for (const [key, weight] of Object.entries(weights) as [MonsterAction, number | undefined][]) {
+    if (!weight || weight <= 0) continue;
+    if (key === "skill" && archetype.skillIds.length === 0) continue;
+    if ((key === "strike" || key === "cleave") && !archetype.eliteSkillIds) continue;
+    if (key === "debuff" && !archetype.bossSkillIds) continue;
+    candidates.push([key, weight]);
+  }
+  if (candidates.length === 0) return "basicAttack";
+  return rng.weightedPick(candidates, ([, weight]) => weight)[0];
+}
+
+/** Target(s) for a species skill (`archetype.skillIds`) — same 2 shapes every monster skill in data/monster-skills.json uses. */
+function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingChars: Character[], rng: Rng): Character[] {
+  if (skill.target === "allEnemies") return livingChars;
+  return [pickMonsterTarget(actor, livingChars, rng)];
+}
+
 function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const actor = getActorByRef(ref, ctx) as Monster;
   if (hasStunningStatus(actor)) {
-    combat.log.push(t("combat.stunnedSkipTurn", { actor: actor.name }));
+    combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
     return;
   }
 
@@ -345,10 +404,12 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
   // charging starts (logged as a warning), then unleashes a flat, very high hit on the next turn.
   // Not HP%-based anymore: it can nearly one-shot a low-maxHp class or hit the tank for ~60% of
   // theirs, so taunting the marked target between the charge and release turns is a real counter.
+  // Execute stays on its own charge/cooldown/release cycle — it's NOT part of pickMonsterAction's
+  // weighted pool (§6.12 forced periodic mechanic, not a per-turn roll).
   if (actor.tier === "boss" && archetype.bossSkillIds) {
     if (actor.isChargingExecute) {
       const target = livingChars.find((c) => c.id === actor.executeTargetId) ?? pickAggroWeighted(livingChars, ctx.rng);
-      combat.log.push(t("combat.bossExecuteRelease", { actor: actor.name, target: target.name }));
+      combat.log.push({ text: t("combat.bossExecuteRelease", { actor: actor.name, target: target.name }), kind: "attack" });
       applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], ctx, combat.log);
       actor.isChargingExecute = false;
       actor.executeTargetId = undefined;
@@ -359,45 +420,58 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
       const target = pickAggroWeighted(livingChars, ctx.rng);
       actor.isChargingExecute = true;
       actor.executeTargetId = target.id;
-      combat.log.push(t("combat.bossExecuteCharge", { actor: actor.name, target: target.name }));
+      combat.log.push({ text: t("combat.bossExecuteCharge", { actor: actor.name, target: target.name }), kind: "info" });
       return; // the charge itself is the whole turn — no attack this round, but a clear warning
     }
     actor.executeCooldownTurns = (actor.executeCooldownTurns ?? 0) - 1;
-    if (ctx.rng.chance(BOSS_DEBUFF_CHANCE)) {
+  }
+
+  switch (pickMonsterAction(archetype, actor.tier, ctx.rng)) {
+    case "debuff": {
+      // pickMonsterAction only returns "debuff" when archetype.bossSkillIds is set.
       const target = pickAggroWeighted(livingChars, ctx.rng);
-      const skill = getMonsterSkill(archetype.bossSkillIds.debuff);
-      combat.log.push(t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }));
+      const skill = getMonsterSkill(archetype.bossSkillIds!.debuff);
+      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
       applySkillEffects(skill, actor, [target], ctx, combat.log);
       return;
     }
-  }
-
-  // §6.12: elite and boss both get a stronger single-target strike (replaces the flat basic
-  // attack) plus a chance to cleave the whole party instead.
-  if ((actor.tier === "elite" || actor.tier === "boss") && archetype.eliteSkillIds) {
-    if (ctx.rng.chance(ELITE_CLEAVE_CHANCE)) {
-      const skill = getMonsterSkill(archetype.eliteSkillIds.cleave);
-      combat.log.push(t("combat.eliteCleave", { actor: actor.name, skill: skill.name }));
+    case "cleave": {
+      // pickMonsterAction only returns "cleave" when archetype.eliteSkillIds is set.
+      const skill = getMonsterSkill(archetype.eliteSkillIds!.cleave);
+      combat.log.push({ text: t("combat.eliteCleave", { actor: actor.name, skill: skill.name }), kind: "attack" });
       applySkillEffects(skill, actor, livingChars, ctx, combat.log);
       return;
     }
-    const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-    const skill = getMonsterSkill(archetype.eliteSkillIds.strike);
-    combat.log.push(t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }));
-    applySkillEffects(skill, actor, [target], ctx, combat.log);
-    return;
+    case "strike": {
+      // pickMonsterAction only returns "strike" when archetype.eliteSkillIds is set.
+      const target = pickMonsterTarget(actor, livingChars, ctx.rng);
+      const skill = getMonsterSkill(archetype.eliteSkillIds!.strike);
+      combat.log.push({ text: t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }), kind: "attack" });
+      applySkillEffects(skill, actor, [target], ctx, combat.log);
+      return;
+    }
+    case "skill": {
+      // pickMonsterAction only returns "skill" when archetype.skillIds is non-empty.
+      const skill = getMonsterSkill(ctx.rng.pick(archetype.skillIds));
+      const targets = resolveMonsterSkillTargets(skill, actor, livingChars, ctx.rng);
+      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
+      applySkillEffects(skill, actor, targets, ctx, combat.log);
+      return;
+    }
+    case "basicAttack": {
+      const target = pickMonsterTarget(actor, livingChars, ctx.rng);
+      // dodgeChance/reflectDamage (§7.2) apply here too — this basic attack bypasses applySkillEffects
+      // entirely (no skill involved), so it needs its own copy of both hooks.
+      if (rollDodge(target, ctx.rng)) {
+        combat.log.push({ text: t("combat.dodge", { target: target.name, actor: actor.name }), kind: "info" });
+        return;
+      }
+      combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: target.name }), kind: "attack" });
+      const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
+      if (damageDealt > 0) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
+      return;
+    }
   }
-
-  const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-  // dodgeChance/reflectDamage (§7.2) apply here too — this basic attack bypasses applySkillEffects
-  // entirely (no skill involved), so it needs its own copy of both hooks.
-  if (rollDodge(target, ctx.rng)) {
-    combat.log.push(t("combat.dodge", { target: target.name, actor: actor.name }));
-    return;
-  }
-  combat.log.push(t("combat.basicAttack", { actor: actor.name, target: target.name }));
-  const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
-  if (damageDealt > 0) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
 }
 
 function pickAggroWeighted(characters: Character[], rng: Rng): Character {
@@ -469,7 +543,7 @@ function scaleEffectForUltimate(effect: SkillEffect, source: Actor): SkillEffect
 }
 
 /** docs/technical-decisions.md §4.2 — a buff like Poison Coat's "poison-coat" makes the bearer's landed damage hits also apply another status to whoever got hit. */
-function applyOnHitRider(source: Character, target: Actor, log: string[]): void {
+function applyOnHitRider(source: Character, target: Actor, log: LogEntry[]): void {
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
     if (def.onHitStatusEffectId) {
@@ -479,45 +553,45 @@ function applyOnHitRider(source: Character, target: Actor, log: string[]): void 
 }
 
 /** docs/gameplay-decisions/07-items-artifacts.md §7.2 — reflectDamage: bearer just took `damageDealt` from `attacker`, reflect a % of it back (bypasses defense, like a status DoT tick). */
-function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: string[]): void {
+function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
   const percent = totalReflectDamagePercent(bearer);
   const reflected = Math.round(damageDealt * (percent / 100));
   if (reflected <= 0) return;
   attacker.hp = Math.max(0, attacker.hp - reflected);
-  log.push(t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }));
+  log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
 }
 
 /** lifesteal — bearer just dealt `damageDealt`, heal them a % of it. */
-function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: string[]): void {
+function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
   const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
   if (healed <= 0) return;
   const before = bearer.hp;
   bearer.hp = Math.min(bearer.maxHp, bearer.hp + healed);
-  if (bearer.hp > before) log.push(t("combat.lifesteal", { bearer: bearer.name, amount: bearer.hp - before }));
+  if (bearer.hp > before) log.push({ text: t("combat.lifesteal", { bearer: bearer.name, amount: bearer.hp - before }), kind: "heal" });
 }
 
 /** healOnKill — bearer just landed the killing blow. */
-function applyArtifactHealOnKill(bearer: Character, log: string[]): void {
+function applyArtifactHealOnKill(bearer: Character, log: LogEntry[]): void {
   const amount = totalHealOnKill(bearer);
   if (amount <= 0) return;
   const before = bearer.hp;
   bearer.hp = Math.min(bearer.maxHp, bearer.hp + amount);
-  if (bearer.hp > before) log.push(t("combat.healOnKill", { bearer: bearer.name, amount: bearer.hp - before }));
+  if (bearer.hp > before) log.push({ text: t("combat.healOnKill", { bearer: bearer.name, amount: bearer.hp - before }), kind: "heal" });
 }
 
-function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], ctx: EngineContext, log: string[]): void {
+function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], ctx: EngineContext, log: LogEntry[]): void {
   for (const target of targets) {
     // Accuracy: ultimates always hit (§4.1); everything else rolls once PER TARGET (so 1 dodging enemy
     // in an AoE doesn't affect whether the others get hit) — only applies when source/target are on opposite sides.
     const isEnemyFacing = isCharacter(source) !== isCharacter(target);
     if (isEnemyFacing && !skill.isUltimate && !rollHits(source, () => ctx.rng.next())) {
-      log.push(t("combat.missedFear", { source: sourceName(source), target: target.name }));
+      log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
       continue;
     }
     // dodgeChance (§7.2) — only for actual attacks (a `damage` effect) aimed at an equipped character,
     // rolled separately from the fear-accuracy check above (unrelated mechanics, see §7.2 "Vì sao").
     if (isEnemyFacing && isCharacter(target) && effectsFor(skill, target).some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
-      log.push(t("combat.dodge", { target: target.name, actor: sourceName(source) }));
+      log.push({ text: t("combat.dodge", { target: target.name, actor: sourceName(source) }), kind: "info" });
       continue;
     }
 
@@ -527,7 +601,7 @@ function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor
       const finalEffect = skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect;
 
       const wasAliveBefore = isActorAlive(target);
-      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log });
+      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log, isMagic: skill.isMagic });
       if (effect.kind === "damage" && isCharacter(source)) applyOnHitRider(source, target, log);
 
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
@@ -556,7 +630,7 @@ function finalizeRound(combat: CombatState, ctx: EngineContext): void {
   if (livingCharacterRefs(combat, ctx).length === 0) {
     combat.phase = "over";
     combat.outcome = "defeat";
-    combat.log.push(t("combat.partyWiped"));
+    combat.log.push({ text: t("combat.partyWiped"), kind: "death" });
     return;
   }
   if (livingMonsterRefs(combat, ctx).length === 0) {
@@ -566,7 +640,7 @@ function finalizeRound(combat: CombatState, ctx: EngineContext): void {
     // (that flag really means "guard room", which elite fights also use most floors).
     const hasEliteOrBoss = combat.combatants.some((c) => c.ref.kind === "monster" && (getActorByRef(c.ref, ctx) as Monster).tier !== "normal");
     applyVictoryFearRelief(ctx.party, hasEliteOrBoss);
-    combat.log.push(t("combat.roomCleared"));
+    combat.log.push({ text: t("combat.roomCleared"), kind: "info" });
     return;
   }
   combat.roundNumber += 1;

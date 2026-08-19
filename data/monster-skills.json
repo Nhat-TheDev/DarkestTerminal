@@ -38,7 +38,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 71
+        "amount": 71,
+        "ignoreDefensePercent": 50
       }
     ],
     "slot": 0,
@@ -102,7 +103,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 71
+        "amount": 71,
+        "ignoreDefensePercent": 50
       }
     ],
     "slot": 0,
@@ -166,7 +168,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 71
+        "amount": 71,
+        "ignoreDefensePercent": 50
       }
     ],
     "slot": 0,
@@ -230,7 +233,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 71
+        "amount": 71,
+        "ignoreDefensePercent": 50
       }
     ],
     "slot": 0,
@@ -294,7 +298,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 71
+        "amount": 71,
+        "ignoreDefensePercent": 50
       }
     ],
     "slot": 0,

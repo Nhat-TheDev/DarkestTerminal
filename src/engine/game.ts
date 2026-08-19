@@ -1,4 +1,4 @@
-import type { CombatantRef, GameState, SkillTarget, Id, ArtifactRarity } from "../types";
+import type { CombatantRef, GameState, SkillTarget, Id, ArtifactRarity, LogEntry } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -32,14 +32,15 @@ import { totalExpBoostPercent } from "./artifacts";
 import { resolveSkillEffect } from "./resolver";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 
-/** §8.4 "Gặp Thương Nhân" — HP price by the offered artifact's rarity. Exported so the UI can show the price before the player commits. */
-export const MERCHANT_PRICE_PERCENT: Record<ArtifactRarity, number> = { common: 15, rare: 25, unique: 35, epic: 50 };
-/** §8.5 "Đổi HP Lấy Artifact" — fixed cost, unlike merchant's rarity-scaled price. */
-export const BLOOD_ALTAR_HP_PERCENT = 25;
-/** §8.12 "Sàn Nhà Sập". */
-export const COLLAPSED_FLOOR_HP_PERCENT = 15;
-const COLLAPSED_FLOOR_SUCCESS_CHANCE = 0.6;
+/** §8.4 "Gặp Thương Nhân" — HP price by the offered artifact's rarity. Exported so the UI can show the price before the player commits. Value: data/balance-config.json BALANCE.events.merchantPricePercent. */
+export const MERCHANT_PRICE_PERCENT: Record<ArtifactRarity, number> = BALANCE.events.merchantPricePercent;
+/** §8.5 "Đổi HP Lấy Artifact" — fixed cost, unlike merchant's rarity-scaled price. Value: data/balance-config.json BALANCE.events.bloodAltarHpPercent. */
+export const BLOOD_ALTAR_HP_PERCENT = BALANCE.events.bloodAltarHpPercent;
+/** §8.12 "Sàn Nhà Sập". Value: data/balance-config.json BALANCE.events.collapsedFloorHpPercent. */
+export const COLLAPSED_FLOOR_HP_PERCENT = BALANCE.events.collapsedFloorHpPercent;
+const COLLAPSED_FLOOR_SUCCESS_CHANCE = BALANCE.events.collapsedFloorSuccessChance;
 
 export class Game {
   readonly ctx: EngineContext;
@@ -148,7 +149,7 @@ export class Game {
     if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
     if (item.target === "singleEnemy") return { reason: t("errors.itemNotUsableOutOfCombat") };
 
-    const log: string[] = [];
+    const log: LogEntry[] = [];
     const applyTo = (character: (typeof this.state.party)[number]) => {
       for (const effect of item.effects) resolveSkillEffect(effect, character, character, { log });
     };
@@ -386,23 +387,23 @@ export class Game {
         const expGained = Math.round(baseExpGained * (1 + totalExpBoostPercent(this.state.party) / 100));
         const levelBefore = this.state.party[0]?.level ?? 1;
         applyPartyExp(this.state, expGained);
-        this.state.combat.log.push(t("game.expGained", { amount: expGained }));
+        this.state.combat.log.push({ text: t("game.expGained", { amount: expGained }), kind: "info" });
         const levelAfter = this.state.party[0]?.level ?? levelBefore;
-        if (levelAfter > levelBefore) this.state.combat.log.push(t("game.leveledUp", { level: levelAfter }));
+        if (levelAfter > levelBefore) this.state.combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
         // §7.1 "Nguồn rơi" — each killed monster rolls its own item drop independently.
         for (const id of room.monsterIds) {
           const monster = this.ctx.monsters.find((m) => m.id === id);
           if (!monster) continue;
-          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng);
+          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng, this.state.floor.depth);
           if (itemId) {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
-            this.state.combat.log.push(t("game.itemPickedUp", { item: getItem(itemId).name }));
+            this.state.combat.log.push({ text: t("game.itemPickedUp", { item: getItem(itemId).name }), kind: "item" });
           }
           // §7.2 "Nguồn rơi" — only Elite/Boss kills roll an Artifact (100% each), own rarity table per tier.
           if (monster.tier === "elite" || monster.tier === "boss") {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
             this.state.unequippedArtifactIds.push(artifactId);
-            this.state.combat.log.push(t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }));
+            this.state.combat.log.push({ text: t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }), kind: "item" });
           }
         }
         // §8.3 — guardian-fight/desecrated-altar: winning the event's fight grants 1 Artifact
@@ -411,7 +412,7 @@ export class Game {
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
           this.state.unequippedArtifactIds.push(artifactId);
-          this.state.combat.log.push(t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }));
+          this.state.combat.log.push({ text: t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }), kind: "item" });
         }
       } else if (this.state.combat.outcome === "defeat") {
         this.state.gameOver = "defeat";

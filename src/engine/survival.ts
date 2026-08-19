@@ -1,32 +1,33 @@
-import type { Character } from "../types";
+import type { Character, LogEntry } from "../types";
 import { fearResistMultiplier, survivalDrainMultiplier } from "./artifacts";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 
-// docs/gameplay-decisions.md §3.
-const HUNGER_DRAIN_PER_ACTION = 1;
-const THIRST_DRAIN_PER_ACTION = 1.5;
-const STARVATION_DAMAGE_PERCENT = 0.02;
-const EAT_DRINK_RESTORE_PERCENT = 0.5;
-const CHAT_RESTORE_PERCENT = 0.1;
-const CHAT_FEAR_RELIEF = 20;
+// docs/gameplay-decisions.md §3. Values: data/balance-config.json BALANCE.survival.*.
+const HUNGER_DRAIN_PER_ACTION = BALANCE.survival.hungerDrainPerAction;
+const THIRST_DRAIN_PER_ACTION = BALANCE.survival.thirstDrainPerAction;
+const STARVATION_DAMAGE_PERCENT = BALANCE.survival.starvationDamagePercent;
+const EAT_DRINK_RESTORE_PERCENT = BALANCE.survival.eatDrinkRestorePercent;
+const CHAT_RESTORE_PERCENT = BALANCE.survival.chatRestorePercent;
+const CHAT_FEAR_RELIEF = BALANCE.survival.chatFearRelief;
 
 // Round-based combat fear (docs/gameplay-decisions/03-survival-stats.md §3).
-const FEAR_PER_ROUND_BASE = 1;
-const FEAR_PER_ROUND_LOW_HP = 3;
-const FEAR_PER_ROUND_BASE_CAP = 3;
-const FEAR_PER_ROUND_LOW_HP_CAP = 6;
+const FEAR_PER_ROUND_BASE = BALANCE.survival.fearPerRoundBase;
+const FEAR_PER_ROUND_LOW_HP = BALANCE.survival.fearPerRoundLowHp;
+const FEAR_PER_ROUND_BASE_CAP = BALANCE.survival.fearPerRoundBaseCap;
+const FEAR_PER_ROUND_LOW_HP_CAP = BALANCE.survival.fearPerRoundLowHpCap;
 /** +5%/floor depth, compounding from depth 1 = base (no bonus yet) — same convention as monster stat scaling. */
-const FEAR_PER_ROUND_DEPTH_GROWTH = 0.05;
-const FEAR_LOW_HP_THRESHOLD_PERCENT = 0.6;
-const FEAR_VICTORY_RELIEF = 10;
-const FEAR_ELITE_OR_BOSS_VICTORY_RELIEF = 15;
+const FEAR_PER_ROUND_DEPTH_GROWTH = BALANCE.survival.fearPerRoundDepthGrowth;
+const FEAR_LOW_HP_THRESHOLD_PERCENT = BALANCE.survival.fearLowHpThresholdPercent;
+const FEAR_VICTORY_RELIEF = BALANCE.survival.fearVictoryRelief;
+const FEAR_ELITE_OR_BOSS_VICTORY_RELIEF = BALANCE.survival.fearEliteOrBossVictoryRelief;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
 /** Called once per dungeon action (room move) or once per resolved combat round. */
-export function tickSurvivalOnAction(character: Character, log: string[]): void {
+export function tickSurvivalOnAction(character: Character, log: LogEntry[]): void {
   if (!character.isAlive) return;
   // docs/gameplay-decisions/07-items-artifacts.md §7.2 — survivalDrainReduction artifacts, rounded to 1 decimal.
   const drainMultiplier = survivalDrainMultiplier(character);
@@ -41,10 +42,10 @@ export function tickSurvivalOnAction(character: Character, log: string[]): void 
   if (starving > 0) {
     const damage = Math.max(1, Math.round(character.maxHp * STARVATION_DAMAGE_PERCENT * starving));
     character.hp = Math.max(0, character.hp - damage);
-    log.push(t("survival.starving", { name: character.name, damage }));
+    log.push({ text: t("survival.starving", { name: character.name, damage }), kind: "debuff" });
     if (character.hp <= 0) {
       character.isAlive = false;
-      log.push(t("survival.collapsed", { name: character.name }));
+      log.push({ text: t("survival.collapsed", { name: character.name }), kind: "death" });
     }
   }
 }

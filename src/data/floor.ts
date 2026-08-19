@@ -4,6 +4,7 @@ import { MONSTER_ARCHETYPES } from "./monsters";
 import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatterns";
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
+import { BALANCE } from "./balanceConfig";
 
 // Floor structure is generated at runtime (see src/data/floorPatterns.ts for
 // the stage/branch/rest/event rules). This module turns the generated
@@ -95,7 +96,8 @@ function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
   return [spawnMonster(archetype, depth, { tier })];
 }
 
-const EVENT_GUARDIAN_STAT_MULTIPLIER = 1.2;
+/** Value: data/balance-config.json BALANCE.events.eventGuardianStatMultiplier. */
+const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
 
 /**
  * docs/gameplay-decisions/08-events.md §8.3 (guardian-fight/desecrated-altar)

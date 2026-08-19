@@ -15,7 +15,9 @@ Công thức cũ (`+2 attack/level`, v.v.) tuyến tính suốt: hợp lý cho 1
 | Pokémon | `((2·Lv/5+2)·Power·Atk/Def)/50+2` — tỉ lệ Atk/Def | 1–100 | Không dùng (đổi hẳn shape công thức, phải viết lại resolver) — ghi nhận làm phương án dự phòng nếu additive+taper sau này vẫn không đủ |
 | ARPG (Diablo/PoE-style) | Mitigation %: `dmg × (1 − def/(def+K))` | không giới hạn | Cũng không dùng — cùng lý do; nhưng đây là hướng đi nếu về sau cần defense "không bao giờ vô hiệu hóa hoàn toàn" sát thương ở scale cực lớn |
 
-**Quyết định**: giữ nguyên shape công thức đã implement — `damage = max(1, amount + attack − defense)` (không đổi resolver) — nhưng **tapered growth theo 5 tier** thay vì tuyến tính đều, theo đúng tinh thần Dragon Quest. Đánh đổi đã chấp nhận (xem 6.5).
+**Quyết định (2026-08-17)**: giữ nguyên shape công thức đã implement — `damage = max(1, amount + attack − defense)` (không đổi resolver) — nhưng **tapered growth theo 5 tier** thay vì tuyến tính đều, theo đúng tinh thần Dragon Quest. Đánh đổi đã chấp nhận (xem 6.5).
+
+**⚠️ Cập nhật (2026-08-19): đã đổi shape công thức** — phần "attack − defense" ở trên được thay bằng `mitigatedOffense(off, def)` dạng % mitigation (`off·(def/(60+def)) + def/30` bị trừ, thay vì trừ thẳng `def`) — xem `docs/technical-decisions.md` mục "Xử lý theo `effect.kind`" cho công thức đầy đủ, và ghi chú "hits-to-die" cuối §6.7 cho lý do. Quyết định "giữ nguyên shape công thức" ở trên chỉ còn đúng cho tapered growth (5 tier), không còn đúng cho bản thân phép trừ attack/defense nữa.
 
 ### 6.3 Bảng tăng trưởng theo tier
 
@@ -71,57 +73,68 @@ Vì `level = min(depth, 100)` (thiết kế gốc, đã thay bằng hệ EXP đ�
 
 ### 6.7 Kiểm chứng cân bằng (time-to-kill, TTK)
 
-**⚠️ Bảng số ở mục này đã tính lại (2026-08-17) bằng mô phỏng chạy trực tiếp trên code hiện hành** (`createFloor`/`spawnMonster`/`classGrowthBonus`/`levelForTotalExp` thật, không còn ước lượng tay) — phản ánh đúng: 15 archetype quái (thay vì 3), `baseAttack` quái đã tăng, `baseDefense` Vanguard đã giảm còn 10, và đường cong EXP mới (`expTiers` 20 bucket, đã nhân thêm ×1.25 — xem §6.9).
+**⚠️ Bảng số ở mục này đã re-simulate (2026-08-19)** bằng mô phỏng chạy trực tiếp trên code hiện hành (`createFloor`/`spawnMonster`/`createCharacter`/`levelForTotalExp` thật — script tạm, không commit vào repo), cùng phương pháp 40-seed đã mô tả ở bản 2026-08-17, cập nhật 2 điểm: (1) damage của Mage/Acolyte giờ tính qua `magicPower` thay vì `attack` cho đúng skill `isMagic` của chúng (§6.8, `01-class-skill.md` mục 1.6); (2) **phát hiện phụ, không liên quan `magicPower`**: bảng "level theo độ sâu tầng" của bản 2026-08-17 bị lệch nhiều so với hành vi thật hiện tại — mỗi tầng hiện sinh trung bình **8-12 phòng** (không phải "~3 phòng" như ước lượng tay cũ mà bản 2026-08-17 thay thế), khiến EXP tích lũy nhanh hơn hẳn số đã ghi trước đó. Không rõ nguyên nhân (thay đổi ở `floor-patterns.json`/`floorPatterns.ts` giữa 2 lần đo, hay bản 2026-08-17 tự nó đã tính sai) — ghi nhận là phát hiện mới, chưa điều tra thêm.
 
-**Phương pháp**: mô phỏng party dọn sạch mọi phòng combat + guard-room liên tục từ tầng 1 tới tầng đích (dùng `createFloor(rng, depth)` thật cho từng tầng, cộng dồn `expReward` mọi quái gặp phải vào `partyExp`, tra `levelForTotalExp` để ra level tại mỗi mốc tầng), lặp lại trên 40 seed khác nhau rồi lấy trung bình — thay cho công thức tay "trung bình ~3 phòng × ~2 quái/phòng" trước đây.
+**Phương pháp**: mô phỏng party dọn sạch mọi phòng combat + guard-room liên tục từ tầng 1 tới tầng đích (dùng `createFloor(rng, depth)` thật cho từng tầng, cộng dồn `expReward` mọi quái gặp phải vào `partyExp`, tra `levelForTotalExp` để ra level tại mỗi mốc tầng), lặp lại trên 40 seed khác nhau rồi lấy trung bình.
 
-**Level nhân vật theo độ sâu tầng** (trung bình 40 lượt mô phỏng, làm tròn):
+**Level nhân vật theo độ sâu tầng** (trung bình 40 lượt mô phỏng, làm tròn — **đã đổi nhiều so với bản 2026-08-17**, xem ghi chú phát hiện phụ ở trên):
 
 | Độ sâu tầng | 1 | 10 | 25 | 50 | 75 | 100 | 150 | 200 | 250 |
 |---|---|---|---|---|---|---|---|---|---|
-| Level nhân vật | 1 | 8 | 19 | 33 | 45 | 55 | 72 | 86 | 97 |
+| Level nhân vật | 3 | 18 | 35 | 54 | 69 | 80 | 99 | 100 | 100 |
 
-Party chạm trần level 100 quanh **tầng ~262** (mô phỏng 1 seed đơn lẻ tới khi `levelForTotalExp` trả về 100) — chậm hơn hẳn bản trước (từng chạm trần quanh tầng ~94-100), đúng như mục tiêu của đợt tăng `expCost` ×1.25 ở §6.9: **level nhân vật giờ bám sát độ sâu tầng gần như 1-1** trong phần lớn game (VD tầng 50 → level 33, tầng 100 → level 55 — lệch nhau ~35-45%, thay vì gấp đôi/gấp ba như bản cũ tầng 10 → level 27), thay vì over-level mạnh ở nửa đầu game như thiết kế ban đầu.
+Party chạm trần level 100 quanh **tầng ~151** trung bình (so với ~262 ghi nhận ở bản trước) — pacing hiện tại nhanh hơn nhiều so với mục tiêu "level bám sát độ sâu tầng gần như 1-1" đã đặt ra ở §6.9 khi tăng `expCost` ×1.25; nhân vật giờ **over-level đáng kể** so với độ sâu tầng trong phần lớn game (VD tầng 50 → level 54, tầng 100 → level 80). Đây là phát hiện cần playtest/cân bằng lại `expTiers` hoặc số phòng/tầng, **nằm ngoài phạm vi thay đổi `magicPower`** — không tự sửa số liệu này trong lần cập nhật doc này, chỉ ghi nhận.
 
-**Quái thường** (Dungeon Rat, đòn đánh thường của **Vanguard** — vẫn là kịch bản chậm nhất trong 4 class vì `attack` weight thấp nhất, 0.8; 3 class kia hạ quái nhanh hơn số này):
+**Quái thường** (Dungeon Rat, đòn đánh thường của **Vanguard** — không có skill `isMagic`, không bị ảnh hưởng bởi thay đổi `magicPower`; vẫn là kịch bản chậm nhất trong 4 class vì `attack` growth weight thấp nhất nhóm, 0.8):
 
-Bảng dưới dùng chỉ số Dungeon Rat hiện hành ở `02-monster.md` mục 2 (`baseDefense 1`, `baseHp 45`, `baseAttack 17`).
+Bảng dưới dùng chỉ số Dungeon Rat hiện hành ở `02-monster.md` mục 2 (`baseDefense 1`, `baseHp 45`, `baseAttack 17`), level nhân vật lấy từ bảng trên (đã đổi so với bản trước).
 
 | Độ sâu tầng | Level nhân vật | dmg (Vanguard) | HP quái | TTK Vanguard (hit) |
 |---|---|---|---|---|
-| 1 | 1 | 13 | 45 | 4 |
-| 10 | 8 | 12 | 171 | 15 |
-| 25 | 19 | 16 | 321 | 21 |
-| 50 | 33 | 20 | 496 | 25 |
-| 75 | 45 | 22 | 621 | 29 |
-| 100 | 55 | 20 | 696 | 35 |
-| 150 | 72 | 15 | 846 | 57 |
-| 200 | 86 | 6 | 996 | 166 |
-| 250 | 97 | 1 | 1146 | 1146 |
+| 1 | 3 | 18 | 45 | 3 |
+| 10 | 18 | 29 | 171 | 6 |
+| 25 | 35 | 34 | 321 | 10 |
+| 50 | 54 | 35 | 496 | 15 |
+| 75 | 69 | 33 | 621 | 19 |
+| 100 | 80 | 30 | 696 | 24 |
+| 150 | 99 | 23 | 846 | 37 |
+| 200 | 100 | 10 | 996 | 100 |
+| 250 | 100 | 1 | 1146 | 1146 |
 
-Đọc kết quả: vì `attack` growth weight của Vanguard thấp (0.8) trong khi HP/defense của quái tăng theo đường cong **không trọng số** (§6.6), damage của Vanguard vào quái thường chững lại rồi **sụp hẳn** sau tầng ~150 — tới tầng 250 chỉ còn 1 sát thương/hit (chạm sàn), TTK 1146 hit là bất khả thi thực tế. Đây là phiên bản mới của hiện tượng "điểm kết thúc tự nhiên" đã ghi nhận ở §6.10 — Vanguard **không phải carry sát thương**, kết quả này đúng vai trò tank/giữ chân của nó, không phải bug; các class attack cao (Mage/Rogue) hạ quái nhanh hơn nhiều ở cùng mốc (xem bảng Elite/Boss dưới để đối chiếu 4 class).
+Đọc kết quả: pattern cũ vẫn giữ nguyên hình dạng (dmg Vanguard tăng rồi **sụp** khi HP/defense quái — tăng theo `floorDepth` không giới hạn — vượt qua tốc độ tăng `attack` chậm của Vanguard, chạm sàn ở tầng 250), chỉ dịch mốc theo bảng level mới: sụp bắt đầu rõ từ khoảng tầng 150-200 thay vì 150 như trước, do nhân vật giờ over-level hơn nên trụ được thêm 1 mốc tầng. Vẫn đúng vai trò tank/giữ chân của Vanguard, không phải carry sát thương — không phải bug.
 
 **⚠️ Ghi chú (xem §6.11)**: bảng "Boss" bên dưới tính bằng `eliteMultiplier` — tức là quái trấn giữ phòng cuối tầng ở **đa số các tầng** (Elite, theo cách gọi mới ở §6.11). Từ §6.11 trở đi, cứ mỗi 5 tầng phòng đó là **Boss thật** (mạnh hơn, hệ số riêng) chứ không phải Elite — số liệu Boss thật nằm ở bảng riêng trong §6.11, không lặp lại ở đây.
 
 **Elite/Boss guard-room** (dùng **Skeleton Guard** làm archetype tham chiếu — vẫn là 1 trong 5 archetype guard-room, xem `02-monster.md` mục 2; 4 archetype còn lại theo cùng công thức multiplier nhưng base stat khác, dao động quanh số dưới đây, xem bảng riêng ở §6.12):
 
-Bảng dưới dùng chỉ số base Skeleton Guard hiện hành (`baseHp 55`, `baseAttack 23`, `baseDefense 10` — `02-monster.md` mục 2), `eliteMultiplier` không đổi (§6.5), skill sơ cấp mỗi class (Vanguard: Shield Throw `amount 10`; Mage: Fireball `amount 10`; Rogue: Knife Throw `amount 12`; Acolyte: Purify `amount 15` từ level 10 trở đi):
+Bảng dưới dùng chỉ số base Skeleton Guard hiện hành (`baseHp 55`, `baseAttack 23`, `baseDefense 10` — `02-monster.md` mục 2), `eliteMultiplier` không đổi (§6.5), skill sơ cấp mỗi class (Vanguard: Shield Throw `amount 10`, dùng `attack`; **Mage: Fireball `amount 10`, giờ dùng `magicPower`**; Rogue: Knife Throw `amount 12`, dùng `attack`; **Acolyte: Purify `amount 15` từ level 10 trở đi, giờ dùng `magicPower`**):
 
 | Độ sâu tầng | Level | HP | Def | Vanguard (hit) | Mage (hit) | Rogue (hit) | Acolyte (hit) |
 |---|---|---|---|---|---|---|---|
-| 1 | 1 | 138 | 12 | 12 | 35 | 9 | — (chưa mở Purify) |
-| 10 | 8 | 453 | 32 | 51 | 42 | 19 | — |
-| 25 | 19 | 828 | 49 | 76 | 32 | 20 | 828 (~bất tử) |
-| 50 | 33 | 1265 | 63 | 98 | 34 | 23 | 1265 (~bất tử) |
-| 75 | 45 | 1578 | 72 | 113 | 36 | 25 | 1578 (~bất tử) |
-| 100 | 55 | 1765 | 81 | 177 | 41 | 28 | 1765 (~bất tử) |
-| 150 | 72 | 2140 | 94 | 535 | 50 | 34 | 2140 (~bất tử) |
-| 200 | 86 | 2515 | 109 | 2515 (~bất tử) | 74 | 45 | 2515 (~bất tử) |
-| 250 | 97 | 2890 | 123 | 2890 (~bất tử) | 121 | 63 | 2890 (~bất tử) |
+| 1 | 3 | 121 | 8 | 6 | 5 | 5 | — (chưa mở Purify) |
+| 10 | 18 | 398 | 28 | 14 | 7 | 7 | 10 |
+| 25 | 35 | 728 | 44 | 22 | 9 | 9 | 16 |
+| 50 | 54 | 1113 | 57 | 33 | 12 | 12 | 22 |
+| 75 | 69 | 1388 | 66 | 45 | 14 | 15 | 28 |
+| 100 | 80 | 1553 | 74 | 58 | 15 | 16 | 34 |
+| 150 | 99 | 1883 | 87 | 100 | 19 | 21 | 48 |
+| 200 | 100 | 2213 | 101 | 443 | 26 | 28 | 86 |
+| 250 | 100 | 2543 | 114 | 2543 (~bất tử) | 35 | 38 | 196 |
 
-Đọc kết quả: **Rogue và Mage** (2 class attack cao) vẫn giữ vai trò carry sát thương suốt game — tới tận tầng 250 vẫn hạ elite được trong 63-121 hit (khả thi qua nhiều round với party 4 người đánh xen kẽ). **Vanguard** solo-elite hợp lý tới khoảng tầng 100-150 (113-177 hit), sau đó rơi tự do — đúng vai trò tank/giữ chân quái, không phải carry, giống kết luận bản trước dù mốc "bất tử hóa" dịch chuyển đôi chút do rebalance. **Acolyte** với Purify (damage phụ, vai trò chính là heal/hạ fear) "bất tử hóa" elite **từ khoảng tầng 25 trở đi** (sớm hơn hẳn bản trước — từng ở tầng ~100) vì `baseAttack` elite tăng mạnh (14→23 lúc base, nhân tiếp `eliteMultiplier` 1.4) trong khi attack Acolyte không đổi — đúng thiết kế (không phải carry sát thương) nhưng đáng lưu ý: **quái/boss tầng sâu chỉ có thể bị hạ bởi Rogue/Mage dẫn đầu sát thương**, Vanguard/Acolyte đóng vai trò hỗ trợ (giữ chân, heal, hạ fear) để 2 class kia sống sót đủ lâu ra đòn — khớp thiết kế vai trò ở `01-class-skill.md` mục 1, nhưng playtest thật cần lưu ý: nếu party thiếu Rogue/Mage, tầng sâu (150+) gần như không thể vượt qua.
+Đọc kết quả: **Rogue vẫn là carry vật lý mạnh nhất** (7-38 hit suốt game). **Mage** giờ hạ elite nhanh gần ngang Rogue (5-35 hit) — cải thiện rõ rệt so với bản trước dùng `attack` (từng 32-121 hit ở cùng mốc), đúng mục tiêu tách `magicPower`: Mage carry sát thương qua skill phép, không còn phụ thuộc `attack` thấp của nó. **Acolyte** (Purify là damage phụ, vai trò chính vẫn heal/hạ fear) giờ **không còn "bất tử hóa" elite** như bản trước (từng chạm sàn dmg=1 từ tầng ~25) — nhờ `magicPower`, Acolyte vẫn gây sát thương có ý nghĩa suốt game (16-86 hit), dù chậm hơn 3 class kia rõ rệt, đúng vai trò support không phải carry. **Vanguard** solo-elite hợp lý tới khoảng tầng 100-150 (58-100 hit), sau đó rơi tự do như Dungeon Rat ở trên — đúng vai trò tank/giữ chân, không phải carry. Kết luận thiết kế cũ ("tầng sâu chỉ Rogue/Mage hạ được quái") vẫn đúng hướng, nhưng Acolyte giờ đóng góp sát thương thật thay vì hoàn toàn vô hiệu — cân bằng party linh hoạt hơn bản trước.
 
-**⚠️ Toàn bộ số liệu trên (level-theo-độ-sâu, TTK) phụ thuộc trực tiếp vào đường cong EXP ở §6.9 (`expReward` mỗi archetype + rate `0.1`/tầng + elite ×3/boss ×6 + `expTiers` ×1.25) — đây là số đã qua 2 vòng chỉnh sau playtest thật (tăng ×5 rồi ×1.25 tổng ~×6.25 so với bản gốc), vẫn có thể cần chỉnh tiếp tùy cảm nhận độ khó khi chơi thật.**
+**⚠️ Toàn bộ số liệu trên (level-theo-độ-sâu, TTK) phụ thuộc trực tiếp vào đường cong EXP ở §6.9 (`expReward` mỗi archetype + rate `0.1`/tầng + elite ×3/boss ×6 + `expTiers` ×1.25) và vào số phòng/tầng thực tế của `floor-patterns.json` — bảng level-theo-độ-sâu vừa phát hiện lệch nhiều so với lần đo trước (xem ghi chú đầu mục), nên các con số này **cần playtest/điều tra thêm về pacing tổng thể**, không chỉ về `magicPower`.**
+
+**⚠️ Sát thương NHẬN vào ("mon → char") — công thức mitigation, ĐÃ implement vào `resolver.ts` (2026-08-19)**: song song với việc cân bằng sát thương gây ra ở trên, có 1 phân tích riêng (2026-08-19) về sát thương **quái gây cho nhân vật**, dùng công thức mitigation `finalDamage = max(1, round(amount + atk − atk·(def/(60+def)) − def/30))` (thay cho công thức additive `max(1, amount+atk−def)` đã chạy trước đó) — mục tiêu là tránh trường hợp defense cao khiến sát thương chạm sàn 1 quá dễ (VD Vanguard under-level đánh Boss). Công thức này áp dụng chung cho **cả 2 chiều** (nhân vật đánh quái lẫn quái đánh nhân vật, cùng 1 hàm `mitigatedOffense` trong resolver — không phân biệt hướng) — xem `docs/technical-decisions.md` cho công thức đầy đủ + lưu ý cân bằng phát sinh (sát thương đầu game tăng nhẹ so với công thức cũ). 2 hằng số `x=60,y=30` được chọn qua mô phỏng trước khi implement; dùng công thức đó, phát hiện Mage "chết trong 3-4 đòn" từ elite **xuyên suốt cả game** (không riêng cuối game), dẫn tới 2 vòng rebalance `growthWeights`/base của cả 4 class (ngân sách 4.0→4.5→5.0, xem §6.8) để giảm bớt độ mong manh cực đoan này. Hits-to-die trung bình từ Skeleton Guard elite (mô phỏng trước khi implement, dùng cùng công thức mitigation đã lên code thật) sau vòng rebalance ngân sách 5.0:
+
+| Class | min – max (toàn game) | avg |
+|---|---|---|
+| Vanguard | 7.3 – 15.6 | 13.2 |
+| Rogue | 4.7 – 9.6 | 8.2 |
+| Acolyte | 5.0 – 9.0 | 7.8 |
+| Mage | 3.4 – 6.0 | 5.2 |
+
+So với ngân sách 4.5 trước đó (Mage avg 3.9), Mage đã bền hơn ~34%, và tỉ lệ Vanguard/Mage (tank vs glass cannon) thu hẹp từ 3.0 lần xuống 2.54 lần. Tỉ lệ Mage/Acolyte chỉ nhích nhẹ 0.61→0.67 vì ngân sách được nâng đều cho cả 4 class, không riêng Mage — nếu muốn Mage tiệm cận Rogue/Acolyte hơn nữa thì cần ưu tiên `defense`/`maxHp` của riêng Mage nhiều hơn tỉ lệ chung. **Công thức mitigation `x=60,y=30` đã implement vào `resolver.ts` và đang chạy thật** (2026-08-19) — bảng hits-to-die ở trên vẫn là số mô phỏng trước khi implement, nhưng dùng đúng công thức đã lên code nên số liệu vẫn phản ánh đúng hành vi hiện hành. **Phát hiện phát sinh khi verify bằng test thật**: ở defense thấp (đầu game), công thức mitigation trừ ít hơn phép trừ thẳng cũ, nên sát thương đầu game cao hơn bản trước 1 chút (bắt được qua 1 test end-to-end: boss tầng 1 chết trước khi kịp tung đòn kết liễu vì party gây damage cao hơn dự kiến, `test/engine.test.ts`) — chưa re-simulate bảng hits-to-die ở trên có tính tới hiệu ứng "đầu game dễ hơn" này (bảng chỉ mô phỏng chiều mon→char, không mô phỏng chiều ngược lại thay đổi TTK ra sao ở defense thấp).
 
 **Giới hạn đã biết, chưa giải quyết trong lần cân bằng này**:
 - Bảng TTK trên dùng giá trị trung bình (số phòng combat, số quái/phòng, archetype ngẫu nhiên trong 11 archetype combat thường) — chưa tính phương sai thực tế giữa các pattern/seed cụ thể trong `data/floor-patterns.json`.
@@ -133,31 +146,31 @@ Bảng dưới dùng chỉ số base Skeleton Guard hiện hành (`baseHp 55`, `
 
 **Vấn đề cần giải quyết**: §6.4 dùng một đường cong `growthBonus()` chung cho mọi class (bonus cộng thêm giống hệt nhau bất kể class). Vì đây là bonus **cộng thêm cố định** trong khi base stat mỗi class khác nhau, khoảng cách *tương đối* giữa các class co lại theo level — tới cấp 100, Vanguard và Mage gần như cùng attack dù ở cấp 1 Vanguard gấp đôi. Cả 4 class dần "nhạt" thành giống nhau, mất bản sắc đúng lúc người chơi chơi lâu nhất (cấp cao).
 
-**Giải pháp**: mỗi class có thêm `growthWeights: { attack, defense, maxHp, maxMp }` — hệ số nhân riêng cho từng chỉ số, áp lên **cùng một đường cong `growthBonus()`** ở 6.3:
+**Giải pháp**: mỗi class có thêm `growthWeights: { attack, defense, maxHp, maxMp, magicPower }` — hệ số nhân riêng cho từng chỉ số, áp lên **cùng một đường cong `growthBonus()`** ở 6.3 (từ `2026-08-19`, `magicPower` dùng đúng rate của `attack` trên cùng bảng tier — xem `data/level-growth.json`):
 
 ```
 classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
 ```
 
-**Quy ước "ngân sách" 4.0**: 4 trọng số của một class luôn cộng lại đúng **4.0** — nghĩa là không class nào được tổng lượng tăng trưởng nhiều hơn class khác, chỉ **phân bổ khác nhau**. Giữ tổng cố định để cân bằng ở việc chọn trọng số (đẩy mạnh chỉ số nào thì phải hy sinh chỉ số khác), không phải ở việc "class này mạnh hơn class kia toàn diện".
+**⚠️ Cập nhật (2026-08-19): thêm chỉ số `magicPower`, ngân sách đổi 4.0 → 4.5 → 5.0**. `magicPower` là chỉ số tấn công riêng cho skill đánh dấu `isMagic` (fire/lightning/ice của Mage, holy heal/purge của Acolyte — xem `01-class-skill.md` mục 1.6) — resolver dùng `magicPower` thay `attack` cho đúng những skill này, `attack` vẫn giữ nguyên vai trò cũ cho mọi skill vật lý (kể cả đòn đánh thường của Mage/Acolyte). Ngân sách "không class nào được tổng tăng trưởng nhiều hơn class khác" tính trên cả 5 trọng số; sau 1 vòng rebalance thêm (đẩy mạnh phòng thủ/máu toàn bộ 4 class để giảm bớt độ mong manh cực đoan của Mage — xem ghi chú "hits-to-die" cuối §6.7), tổng hiện tại là **5.0** (không còn 4.5).
 
-| Class | attack | defense | maxHp | maxMp | Tổng | Lý do phân bổ |
-|---|---|---|---|---|---|---|
-| Vanguard | 0.8 | 1.4 | 1.3 | 0.5 | 4.0 | Tank — dồn tăng trưởng vào phòng thủ/máu để càng chơi lâu càng "trâu" hơn, hy sinh attack/mana vì không phải class carry sát thương hay dùng nhiều skill tốn mana |
-| Mage | 1.3 | 0.6 | 0.7 | 1.4 | 4.0 | Glass cannon phép — attack và mana (đạn dược của class) tăng mạnh nhất, đánh đổi bằng phòng thủ/máu thấp nhất nhóm (rủi ro chết nếu bị nhắm, đúng tinh thần "giòn") |
-| Rogue | 1.4 | 0.7 | 1.1 | 0.8 | 4.0 | Glass cannon cận chiến — attack cao nhất game (carry sát thương chính), maxHp vẫn khá (1.1, cao hơn Mage) vì phải đứng gần quái để đánh, không có tầm bắn xa như Mage |
-| Acolyte | 0.6 | 1.1 | 1.0 | 1.3 | 4.0 | Thuần hỗ trợ — attack thấp nhất (heal/hạ fear vẫn là vai trò chính; đòn đánh thường + Purify/Divine Descent nhắm địch ở bộ kit mới chỉ là sát thương phụ, không đổi định hướng growth weight), mana cao nhất trừ Mage (mọi skill riêng của Acolyte đều tốn MP), phòng thủ/máu khá để trụ vững gần party mà heal |
+| Class | attack | magicPower | defense | maxHp | maxMp | Tổng | Lý do phân bổ |
+|---|---|---|---|---|---|---|---|
+| Vanguard | 1.0 | 0.4 | 1.5 | 1.5 | 0.6 | 5.0 | Tank — dồn tăng trưởng vào phòng thủ/máu để càng chơi lâu càng "trâu" hơn; `magicPower` chỉ ở mức tối thiểu vì không skill nào của Vanguard là `isMagic` |
+| Mage | 0.1 | 1.7 | 0.7 | 0.9 | 1.6 | 5.0 | Glass cannon phép — gần như bỏ hẳn `attack` (0.1, chỉ còn phục vụ đòn đánh thường Bludgeon) để dồn tối đa cho `magicPower` (carry chính, cao nhất game) và mana (đạn dược, cao nhất nhóm); `defense`/`maxHp` được nâng nhẹ so với bản 4.5 (0.5/0.7 → 0.7/0.9) để bớt độ mong manh cực đoan, nhưng vẫn thấp nhất nhóm — Mage vẫn là class dễ chết nhất, chỉ là không còn chết trong 3-4 đòn như trước |
+| Rogue | 1.7 | 0.3 | 0.9 | 1.3 | 0.8 | 5.0 | Glass cannon cận chiến — attack cao nhất game (carry sát thương vật lý chính), `magicPower` gần như 0 vì không skill nào là `isMagic` |
+| Acolyte | 0.5 | 1.1 | 1.0 | 1.1 | 1.3 | 5.0 | Thuần hỗ trợ — `magicPower` khá cao (heal/purge/divine descent đều `isMagic`, đây là "sát thương phụ" thật của Acolyte), `attack` ở mức tối thiểu (chỉ còn phục vụ đòn đánh thường Punch), mana cao nhất trừ Mage, phòng thủ/máu khá để trụ vững gần party mà heal |
 
 **Kết quả tới level 100** (`createCharacter`, base + `classGrowthBonus`):
 
-| Class | attack | defense | maxHp | maxMp |
-|---|---|---|---|---|
-| Vanguard | 96 | 94 | 986 | 152 |
-| Mage | 139 | 40 | 526 | 430 |
-| Rogue | 159 | 48 | 806 | 241 |
-| Acolyte | 67 | 74 | 751 | 393 |
+| Class | attack | magicPower | defense | maxHp | maxMp |
+|---|---|---|---|---|---|
+| Vanguard | 116 | 41 | 100 | 1117 | 178 |
+| Mage | 16 | 187 | 46 | 656 | 482 |
+| Rogue | 189 | 31 | 60 | 936 | 241 |
+| Acolyte | 57 | 122 | 68 | 816 | 393 |
 
-So với level 1 (base thuần: Vanguard atk14/def**10**, Mage atk6/def4), tỉ lệ attack Vanguard/Mage đi từ **2.3 lần** (level 1) sang **0.69 lần** (level 100, Mage giờ attack cao hơn) — không hội tụ về 1.07 lần như mô hình cũ ở 6.4, mà **đảo chiều đúng hướng thiết kế**: Mage là class sát thương phép, tới cấp cao attack của nó vượt hẳn Vanguard (class tank) là hợp lý. Ngược lại tỉ lệ defense Vanguard/Mage giữ **2.35 lần** ở cấp 100 (so với **2.5 lần** ở cấp 1, đã hạ nhẹ từ 3.0 lần khi `baseDefense` Vanguard còn 12) — gần như không co lại, vì cả hai class đều có defense weight thấp hơn attack/maxHp theo đúng vai trò của chúng.
+So với level 1 (base thuần: Vanguard atk14/magicPower0, Mage atk6/magicPower14), sát thương thật của Mage giờ đọc qua `magicPower` chứ không phải `attack`: 14 → 187 ở level 100 (**13.4 lần**), vượt xa cả `attack` của Vanguard (116) — đúng tinh thần glass cannon phép. `attack` của Mage gần như đứng yên (6→16, weight chỉ 0.1) — đúng chủ đích, đòn Bludgeon miễn phí không còn ý nghĩa gì với Mage ở cấp cao, toàn bộ sát thương thật đi qua skill phép. Rogue vẫn là carry vật lý mạnh nhất (`attack` 16→189, **11.8 lần**, cao nhất game). `magicPower` của Vanguard/Rogue vẫn gần như không đáng kể (0→41 và 0→31). `defense`/`maxHp` của Mage (46/656) đã nhích lên đáng kể so với bản 4.5 (34/526, xem ghi chú "hits-to-die" cuối §6.7) nhưng vẫn thấp nhất nhóm rõ ràng — Vanguard 100/1117 (2.17× defense Mage), Rogue 60/936, Acolyte 68/816.
 
 `growthWeights` chỉ áp dụng cho nhân vật (`party.ts`); quái vật vẫn dùng `growthBonus()` không trọng số (6.6) vì không có khái niệm class — mọi archetype quái tăng đều theo cùng một tốc độ, tách biệt hoàn toàn với hệ thống class của party.
 

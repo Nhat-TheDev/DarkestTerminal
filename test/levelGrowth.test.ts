@@ -71,10 +71,15 @@ describe("createCharacter applies growth for its level (regression: used to igno
 });
 
 describe("growth is class-dependent (§6.8): weights reinforce each class's identity instead of converging", () => {
-  test("growthWeights sum to the 4.0 budget for every class (no class gets strictly more total growth)", () => {
+  test("growthWeights sum to the 5.0 budget for every class (no class gets strictly more total growth)", () => {
     for (const cls of CLASSES) {
-      const sum = cls.growthWeights.attack + cls.growthWeights.defense + cls.growthWeights.maxHp + cls.growthWeights.maxMp;
-      expect(sum).toBeCloseTo(4.0, 5);
+      const sum =
+        cls.growthWeights.attack +
+        cls.growthWeights.defense +
+        cls.growthWeights.maxHp +
+        cls.growthWeights.maxMp +
+        cls.growthWeights.magicPower;
+      expect(sum).toBeCloseTo(5.0, 5);
     }
   });
 
@@ -104,7 +109,10 @@ describe("spawnMonster: elite guard stays killable at deep floors (regression fo
     const damageDealers = CLASSES.filter((c) => c.id !== "acolyte");
     for (const cls of damageDealers) {
       const character = createCharacter("c", cls.name, cls, 50);
-      const damage = Math.max(1, basicSkillAmount + character.attack - elite.defense);
+      // Mage's reference skill (Fireball) is isMagic — it scales off magicPower, not attack.
+      const isMagicClass = cls.skills.some((s) => s.isMagic);
+      const offensiveStat = isMagicClass ? character.magicPower : character.attack;
+      const damage = Math.max(1, basicSkillAmount + offensiveStat - elite.defense);
       // The bug this guards against: uniform x2 elite scaling let elite.defense
       // approach total offense, flooring damage to ~1 (near-unkillable) even
       // for the game's highest-attack classes.

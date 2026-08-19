@@ -1,0 +1,52 @@
+{
+  "combat": {
+    "defenseMitigationX": 60,
+    "defenseMitigationY": 30,
+    "executeCooldownTurns": 3
+  },
+  "survival": {
+    "initialHunger": 100,
+    "initialThirst": 100,
+    "initialFear": 0,
+    "hungerDrainPerAction": 1,
+    "thirstDrainPerAction": 1.5,
+    "starvationDamagePercent": 0.02,
+    "eatDrinkRestorePercent": 0.5,
+    "chatRestorePercent": 0.1,
+    "chatFearRelief": 20,
+    "fearPerRoundBase": 1,
+    "fearPerRoundLowHp": 3,
+    "fearPerRoundBaseCap": 3,
+    "fearPerRoundLowHpCap": 6,
+    "fearPerRoundDepthGrowth": 0.05,
+    "fearLowHpThresholdPercent": 0.6,
+    "fearVictoryRelief": 10,
+    "fearEliteOrBossVictoryRelief": 15
+  },
+  "party": {
+    "maxEquippedArtifacts": 3
+  },
+  "events": {
+    "commonTierWeight": 65,
+    "rareTierWeight": 35,
+    "merchantPricePercent": { "common": 15, "rare": 25, "unique": 35, "epic": 50 },
+    "bloodAltarHpPercent": 25,
+    "collapsedFloorHpPercent": 15,
+    "collapsedFloorSuccessChance": 0.6,
+    "eventGuardianStatMultiplier": 1.2
+  },
+  "items": {
+    "itemDropChance": 0.6,
+    "itemWeightDepthGrowth": 0.1
+  },
+  "floorGeneration": {
+    "minPathRooms": 7,
+    "maxPathRooms": 12,
+    "maxBranches": 3,
+    "minBranchStartStage": 2,
+    "minBranchSpacing": 3,
+    "maxEventRoomsPerPath": 4,
+    "minRestRoomsPerPath": 1,
+    "maxRestRoomsPerPath": 2
+  }
+}
