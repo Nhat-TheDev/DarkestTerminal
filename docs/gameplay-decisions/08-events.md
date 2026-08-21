@@ -2,7 +2,7 @@
 
 *(mục 8 của `00-index.md`)*
 
-**Trạng thái: đã implement** — engine + data + UI đều đã code (xem `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/data/events.ts`, `data/events.json`). Event room tách khỏi Treasure room (Treasure room giữ nguyên spec ở `07-items-artifacts.md` §7.2: 100% Artifact, không combat, không lựa chọn — nhưng floor generator hiện không sinh loại phòng đó, xem ghi chú ở §7.2).
+Event room logic sống ở `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/data/events.ts`, `data/events.json`. Event room tách khỏi Treasure room (Treasure room giữ nguyên spec ở `07-items-artifacts.md` §7.2: 100% Artifact, không combat, không lựa chọn — nhưng floor generator hiện không sinh loại phòng đó, xem ghi chú ở §7.2).
 
 **Quy ước đặt tên**: `id` bằng tiếng Anh (khớp §7), mô tả/flavor text tiếng Việt.
 
@@ -31,7 +31,7 @@ EventDefinition {
 }
 ```
 
-`guardian-fight` và `desecrated-altar` cùng dùng `kind: "combatReward"` — **cùng cơ chế xử lý ở engine, chỉ khác `id`/`name`/`description`** để tạo cảm giác đa dạng khi chơi nhiều run mà không nhân đôi logic combat-reward trong code. Tương tự, `cursed-shrine`/`twin-altars` dùng chung `kind: "choiceReveal"` (hiện thông tin trước khi quyết định); `sacrificial-circle`/`gambling-den`/`wandering-hermit` dùng chung `kind: "artifactExchange"` (thao tác trên artifact đã sở hữu thay vì roll mới đơn thuần).
+`guardian-fight` và `desecrated-altar` cùng dùng `kind: "combatReward"` — **cùng cơ chế xử lý ở engine, chỉ khác `id`/`name`/`description`**. Tương tự, `cursed-shrine`/`twin-altars` dùng chung `kind: "choiceReveal"` (hiện thông tin trước khi quyết định); `sacrificial-circle`/`gambling-den`/`wandering-hermit` dùng chung `kind: "artifactExchange"` (thao tác trên artifact đã sở hữu thay vì roll mới đơn thuần).
 
 ---
 
@@ -111,7 +111,7 @@ Không cần thêm `ArtifactEffect` kind mới — tái dùng field có sẵn v�
 | `curseAggroBoost` | `{ kind: "curseAggroBoost"; amount: number }` — cộng aggro cho nhân vật đang gắn, quái ưu tiên nhắm người này |
 | `curseDrainBoost` | `{ kind: "curseDrainBoost"; percent: number }` — nghịch đảo `survivalDrainReduction`, tăng tốc độ giảm hunger/thirst |
 
-**Catalog gợi ý — 4 Cursed Artifact**, mỗi cái luôn ghép 1 effect âm + 1 effect dương mạnh hơn mức thường (tension "được cái này mất cái kia", không phải trap thuần tuý):
+**Catalog gợi ý — 4 Cursed Artifact**, mỗi cái luôn ghép 1 effect âm + 1 effect dương mạnh hơn mức thường:
 
 | id | Name | Effect âm | Effect dương bù lại |
 |---|---|---|---|
@@ -120,7 +120,7 @@ Không cần thêm `ArtifactEffect` kind mới — tái dùng field có sẵn v�
 | `unstable-core` | Unstable Core | `curseAggroBoost 25` | `statBoost maxMp +30` |
 | `heavy-guilt` | Heavy Guilt | `statBoost defense -6` | `lifesteal 8%` |
 
-Cursed Artifact **chiếm slot trang bị bình thường** — cái giá là tốn 1/3 slot của nhân vật, không mất gì thêm khi gắn. Chỉ xuất hiện qua `cursed-shrine` (§8.7) hoặc làm kết quả xui của `sacrificial-circle`/`gambling-den` nếu roll trúng đúng 4 id này trong pool chuẩn.
+Cursed Artifact **chiếm slot trang bị bình thường** (tốn 1/3 slot của nhân vật), không mất gì thêm khi gắn. Chỉ xuất hiện qua `cursed-shrine` (§8.7) hoặc làm kết quả xui của `sacrificial-circle`/`gambling-den` nếu roll trúng đúng 4 id này trong pool chuẩn.
 
 ---
 
@@ -144,7 +144,7 @@ Cursed Artifact **chiếm slot trang bị bình thường** — cái giá là t�
 
 - Roll sẵn **2 Artifact cụ thể độc lập** (2 roll riêng theo bảng chuẩn), hiện đầy đủ tên/hiệu ứng/độ hiếm cả 2 cùng lúc.
 - Chọn **đúng 1**, cái còn lại biến mất vĩnh viễn (không rời phòng rồi quay lại đổi ý — chọn xong phòng cleared ngay).
-- **Không có lựa chọn "từ chối cả 2"** — đây là phòng buộc quyết định, khác mọi event khác trong game (điểm khác biệt chủ đích, không phải thiếu sót).
+- **Không có lựa chọn "từ chối cả 2"** — đây là phòng buộc quyết định, khác mọi event khác trong game.
 - Artifact được chọn **bắt buộc trang bị ngay** vào 1 nhân vật do người chơi chỉ định — nếu party đã đầy 12/12 slot, bắt buộc gỡ 1 artifact đang gắn (bất kỳ) để lấy chỗ (xem §8.13).
 
 ---
@@ -170,7 +170,7 @@ Chọn artifact để hiến từ danh sách sở hữu (kho chung + đang gắn
 
 > "Một gã lạ mặt xóc 3 chiếc cốc úp ngược, cười khẩy trong bóng tối. 'Đưa ta thứ ngươi có. Ta gấp đôi nó, hoặc giữ luôn.'"
 
-**Không combat** (`kind: "artifactExchange"`). Cược **1 Artifact** — chỉ chọn từ kho chưa gắn (`unequippedArtifactIds`, không cược artifact đang gắn để tránh phải tự động gỡ) — để đổi lấy cơ hội nhân đôi cùng tier:
+**Không combat** (`kind: "artifactExchange"`). Cược **1 Artifact** — chỉ chọn từ kho chưa gắn (`unequippedArtifactIds`, không cược artifact đang gắn) — để đổi lấy cơ hội nhân đôi cùng tier:
 
 - Chọn 1 artifact chưa gắn, xác nhận cược.
 - Roll 50/50:
@@ -186,12 +186,12 @@ Artifact thắng thêm **optional-equip** theo §8.13.
 
 > "Ông già ngồi thiền giữa đống đổ nát, mắt nhắm nghiền. 'Ta không bán gì. Ta chỉ... trao đổi thôi.'"
 
-**Không combat** (`kind: "artifactExchange"`), không tạo Artifact mới — dịch vụ tương tác với artifact đã có, lấp khoảng trống "lỡ gắn artifact nguyền rồi hối hận". Chọn đúng 1 trong các dịch vụ (miễn phí, dùng 1 lần/lượt ghé phòng):
+**Không combat** (`kind: "artifactExchange"`), không tạo Artifact mới — dịch vụ tương tác với artifact đã có. Chọn đúng 1 trong các dịch vụ (miễn phí, dùng 1 lần/lượt ghé phòng):
 
 | Dịch vụ | Điều kiện | Hiệu quả |
 |---|---|---|
-| Gỡ nguyền | Có ≥1 Cursed Artifact đang gắn trong party | Gỡ artifact đó khỏi nhân vật, artifact **biến mất hoàn toàn** (không về kho chung — cái giá là mất luôn, kể cả phần dương đi kèm) |
-| Đổi vận | Có ≥1 Artifact bất kỳ (kho chung hoặc đang gắn) | Chọn 1 artifact, đổi lấy 1 Artifact ngẫu nhiên khác roll theo bảng chuẩn (không được chọn cái mới, giữ nguyên rủi ro "đổi mù") |
+| Gỡ nguyền | Có ≥1 Cursed Artifact đang gắn trong party | Gỡ artifact đó khỏi nhân vật, artifact **biến mất hoàn toàn** (không về kho chung, kể cả phần dương đi kèm) |
+| Đổi vận | Có ≥1 Artifact bất kỳ (kho chung hoặc đang gắn) | Chọn 1 artifact, đổi lấy 1 Artifact ngẫu nhiên khác roll theo bảng chuẩn (không được chọn cái mới) |
 | *(không có gì để tương tác)* | — | Chỉ có thể rời đi |
 
 Kết quả "Đổi vận" **optional-equip** theo §8.13.
@@ -204,7 +204,7 @@ Kết quả "Đổi vận" **optional-equip** theo §8.13.
 
 Cơ chế cứu người: trả trước 1 mức HP cố định để thử cứu, kết quả quyết định có thưởng hay không.
 
-- Chọn 1 nhân vật "trèo xuống cứu": trả **cố định 15% maxHP** của người đó (làm tròn xuống) — trả dù kết quả thế nào, đây là cái giá của việc thử.
+- Chọn 1 nhân vật "trèo xuống cứu": trả **cố định 15% maxHP** của người đó (làm tròn xuống) dù kết quả thế nào.
 - Roll 60/40:
   - **60% (cứu được)**: nhận **1 Artifact**, roll giới hạn trong {Unique, Epic} — dùng lại đúng tỷ lệ bảng Boss đã có ở `07-items-artifacts.md` §7.2 (Unique 65% / Epic 35%), không tạo bảng mới.
   - **40% (không kịp)**: không nhận gì thêm — chỉ mất 15% maxHP đã trả trước.
@@ -219,7 +219,7 @@ Artifact thưởng (nếu có) **optional-equip** theo §8.13.
 
 `07-items-artifacts.md` §7.2 định nghĩa artifact nhặt được luôn vào kho chung `unequippedArtifactIds` trước, gắn/gỡ là hành động rời, tự do, không giới hạn số lần, tối đa **3 artifact/nhân vật × 4 nhân vật = 12 slot toàn đội**.
 
-**10/11 event** (mọi event trừ `twin-altars`): artifact vào thẳng kho chung, không có màn hình hỏi "gắn ngay hay để đó" riêng — người chơi gắn khi nào tuỳ ý ở màn hình quản lý đội (đã có sẵn, phím `a`). Đây là cách hiện thực đơn giản hơn so với việc làm 1 màn hình riêng ngay lúc nhận cho từng event, nhưng vẫn giữ đúng tinh thần "artifact là tài sản, gắn khi nào là quyền người chơi" của §7.2.
+**10/11 event** (mọi event trừ `twin-altars`): artifact vào thẳng kho chung, không có màn hình hỏi "gắn ngay hay để đó" riêng — người chơi gắn khi nào tuỳ ý ở màn hình quản lý đội (đã có sẵn, phím `a`).
 
 **`twin-altars` (`forceEquip: true`)** — event duy nhất bắt buộc trang bị ngay, không có lựa chọn "để đó":
 

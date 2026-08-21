@@ -7,6 +7,15 @@ export class Rng {
     this.state = seed >>> 0;
   }
 
+  /** Raw internal state — save/load uses this to resume future rolls exactly where they left off. */
+  getState(): number {
+    return this.state;
+  }
+
+  setState(state: number): void {
+    this.state = state >>> 0;
+  }
+
   /** Returns a float in [0, 1). */
   next(): number {
     this.state |= 0;

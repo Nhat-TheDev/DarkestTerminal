@@ -2,7 +2,7 @@
   {
     "id": "small-health-potion",
     "name": "Small Health Potion",
-    "description": "Hồi ngay 30 HP.",
+    "description": "Một lọ thuốc đỏ sẫm, mùi thảo dược quen thuộc của mọi kẻ mạo hiểm.",
     "target": "self",
     "effects": [{ "kind": "heal", "amount": 30 }],
     "weight": 1
@@ -10,7 +10,7 @@
   {
     "id": "large-health-potion",
     "name": "Large Health Potion",
-    "description": "Hồi ngay 70 HP.",
+    "description": "Phiên bản đậm đặc hơn, đóng chai dày để chịu được va đập trong túi hành trang.",
     "target": "self",
     "effects": [{ "kind": "heal", "amount": 70 }],
     "weight": 0.5
@@ -18,7 +18,7 @@
   {
     "id": "small-mana-potion",
     "name": "Small Mana Potion",
-    "description": "Hồi ngay 20 MP.",
+    "description": "Chất lỏng xanh lam lấp lánh, mát lạnh khi chạm vào lưỡi.",
     "target": "self",
     "effects": [{ "kind": "restoreMp", "amount": 20 }],
     "weight": 1
@@ -26,7 +26,7 @@
   {
     "id": "large-mana-potion",
     "name": "Large Mana Potion",
-    "description": "Hồi ngay 45 MP.",
+    "description": "Được cất trong bình pha lê, dùng để nạp lại phép thuật sau những đòn tốn sức nhất.",
     "target": "self",
     "effects": [{ "kind": "restoreMp", "amount": 45 }],
     "weight": 0.5
@@ -34,7 +34,7 @@
   {
     "id": "ration",
     "name": "Ration",
-    "description": "Hồi 40 hunger. Dùng ngoài combat.",
+    "description": "Bánh khô và thịt muối gói trong lá — không ngon nhưng đủ sống qua một ngày dài.",
     "target": "self",
     "effects": [{ "kind": "modifyStat", "stat": "hunger", "amount": 40 }],
     "weight": 1
@@ -42,7 +42,7 @@
   {
     "id": "water-flask",
     "name": "Water Flask",
-    "description": "Hồi 40 thirst. Dùng ngoài combat.",
+    "description": "Bình da đựng nước suối, nút kín để không rò rỉ giữa những hành lang bụi bặm.",
     "target": "self",
     "effects": [{ "kind": "modifyStat", "stat": "thirst", "amount": 40 }],
     "weight": 1
@@ -50,7 +50,7 @@
   {
     "id": "calming-draught",
     "name": "Calming Draught",
-    "description": "Giảm 25 fear.",
+    "description": "Trà thảo mộc pha đặc, giúp nhịp tim chậm lại giữa bóng tối ngột ngạt.",
     "target": "self",
     "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -25 }],
     "weight": 1
@@ -58,7 +58,7 @@
   {
     "id": "antidote",
     "name": "Antidote",
-    "description": "Gỡ 1 debuff bất kỳ đang mang.",
+    "description": "Viên thuốc trắng đắng nghét, được các thầy thuốc hầm ngục tin dùng.",
     "target": "self",
     "effects": [{ "kind": "removeStatusEffect" }],
     "weight": 0.5
@@ -66,7 +66,7 @@
   {
     "id": "whetstone",
     "name": "Whetstone",
-    "description": "Empower: +6 attack, 2 lượt. Có thể dùng cho đồng đội.",
+    "description": "Đá mài cầm tay, vài nhát vuốt lưỡi kiếm là đủ sắc bén trở lại.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
     "weight": 0.5
@@ -74,7 +74,7 @@
   {
     "id": "temporary-ward",
     "name": "Temporary Ward",
-    "description": "Fortify: +8 defense, 2 lượt. Có thể dùng cho đồng đội.",
+    "description": "Bùa hộ mệnh tạm thời, khắc vội trên mảnh gỗ để chống đỡ đòn kế tiếp.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
     "weight": 0.5
@@ -82,7 +82,7 @@
   {
     "id": "grave-dust",
     "name": "Grave Dust",
-    "description": "Bụi xương hoá cứng da thịt người dùng — Fortify: +8 defense, 2 lượt. Có thể dùng cho đồng đội. Rơi từ Skeleton/Skeleton Archer/Skeleton Guard.",
+    "description": "Bụi xương nghiền mịn từ nấm mồ cũ, xoa lên da khiến thịt hoá cứng như đá.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
     "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"],
@@ -91,7 +91,7 @@
   {
     "id": "broken-blade-fragment",
     "name": "Broken Blade Fragment",
-    "description": "Mảnh vũ khí gãy còn sắc — Empower: +6 attack, 2 lượt. Có thể dùng cho đồng đội. Rơi từ Skeleton Warrior/Zombie Knight/Dark Knight.",
+    "description": "Mảnh vũ khí gãy nhưng vẫn còn sắc, tước ra để tôi luyện lại thành lưỡi mới.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
     "archetypeIds": ["skeleton-warrior", "zombie-knight", "dark-knight"],
@@ -100,7 +100,7 @@
   {
     "id": "rotten-flesh",
     "name": "Rotten Flesh",
-    "description": "Mùi hôi thối khiến quái khác bớt chú ý — giảm 20 aggro, 1 lượt. Có thể dùng cho đồng đội. Rơi từ Zombie/Zombie Knight.",
+    "description": "Miếng thịt thối rữa bốc mùi nồng nặc — quái vật khác thà tránh xa còn hơn.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "distracted" }],
     "archetypeIds": ["zombie", "zombie-knight"],
@@ -109,7 +109,7 @@
   {
     "id": "venom-gland",
     "name": "Venom Gland",
-    "description": "Tẩm độc vũ khí — Poison Coat: 3 lượt, mọi đòn đánh trúng tự kèm Poisoned. Có thể dùng cho đồng đội. Rơi từ Snake/Lizard/Spider.",
+    "description": "Tuyến độc còn tươi, dùng để tẩm lên vũ khí trước một cuộc chạm trán dài.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
     "archetypeIds": ["snake", "lizard", "spider"],
@@ -118,7 +118,7 @@
   {
     "id": "venom-thorn",
     "name": "Venom Thorn",
-    "description": "Khiến 1 quái mục tiêu chịu sát thương Poisoned gấp đôi trong 2 lượt (không tự gây Poisoned). Rơi từ Giant Spider.",
+    "description": "Chiếc gai to bằng ngón tay, chích vào mục tiêu sẽ khiến chất độc trong người chúng ngấm nhanh hơn gấp bội.",
     "target": "singleEnemy",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-vulnerable" }],
     "archetypeIds": ["giant-spider"],
@@ -127,7 +127,7 @@
   {
     "id": "rat-meat",
     "name": "Rat Meat",
-    "description": "Regeneration: hồi 10 HP/lượt, 3 lượt. Có thể dùng cho đồng đội. Rơi từ Dungeon Rat.",
+    "description": "Thịt chuột hầm ngục, dai nhưng giàu dinh dưỡng lạ thường — cơ thể tự phục hồi rõ rệt sau khi ăn.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "regeneration" }],
     "archetypeIds": ["dungeon-rat"],
@@ -136,7 +136,7 @@
   {
     "id": "bat-blood",
     "name": "Bat Blood",
-    "description": "Hồi ngay 20 HP. Rơi từ Black Bat.",
+    "description": "Máu dơi còn ấm, uống vội giữa trận để giữ mình đứng vững.",
     "target": "self",
     "effects": [{ "kind": "heal", "amount": 20 }],
     "archetypeIds": ["black-bat"],
@@ -145,7 +145,7 @@
   {
     "id": "slime-solution",
     "name": "Slime Solution",
-    "description": "Hồi ngay 20 MP. Rơi từ Slime.",
+    "description": "Chất nhầy trong suốt của quái nhầy, lạ thay lại có tính chất khơi thông dòng phép thuật.",
     "target": "self",
     "effects": [{ "kind": "restoreMp", "amount": 20 }],
     "archetypeIds": ["slime"],
@@ -154,7 +154,7 @@
   {
     "id": "dragon-scale",
     "name": "Dragon Scale",
-    "description": "Fortify cho cả đội: +8 defense, 2 lượt. Rơi từ Dragon.",
+    "description": "Một chiếc vảy rồng nặng trịch, ánh kim loại vẫn còn ấm hơi lửa — đủ để rèn lá chắn cho cả đội.",
     "target": "allAllies",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
     "archetypeIds": ["dragon"],

@@ -328,6 +328,10 @@ export interface CombatantSnapshot {
   hp: number;
   maxHp: number;
   isAlive: boolean;
+  /** Character-only (undefined for monsters) — lets the party panel hold the pre-levelup/pre-spend value while the log is still catching up to it. */
+  level?: number;
+  mp?: number;
+  maxMp?: number;
 }
 
 export interface LogEntry {
@@ -367,4 +371,6 @@ export interface GameState {
   unequippedArtifactIds: Id[];
   /** Set while a "reveal before decide" event (merchant/cursed-shrine/twin-altars) is being resolved — the artifact ids it pre-rolled to show the player, cleared once the room resolves (docs/gameplay-decisions/08-events.md). */
   activeEvent?: { eventId: Id; offerArtifactIds: Id[] } | null;
+  /** Items/artifacts picked up by the room-clear victory just resolved — the UI shows a "you received" reveal screen from this, then clears it. Null when the last clear dropped nothing, or outside that 1-render window. */
+  lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;
 }

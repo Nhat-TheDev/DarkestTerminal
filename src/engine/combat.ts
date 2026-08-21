@@ -237,7 +237,16 @@ function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[]
 function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantSnapshot[] {
   return combat.combatants.map((c) => {
     const actor = getActorByRef(c.ref, ctx);
-    return { id: actor.id, hp: actor.hp, maxHp: actor.maxHp, isAlive: isActorAlive(actor) };
+    const isCharacter = c.ref.kind === "character";
+    return {
+      id: actor.id,
+      hp: actor.hp,
+      maxHp: actor.maxHp,
+      isAlive: isActorAlive(actor),
+      level: isCharacter ? (actor as Character).level : undefined,
+      mp: isCharacter ? (actor as Character).mp : undefined,
+      maxMp: isCharacter ? (actor as Character).maxMp : undefined,
+    };
   });
 }
 

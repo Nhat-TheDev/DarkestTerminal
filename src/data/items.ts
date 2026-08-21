@@ -1,7 +1,8 @@
-import type { ItemDefinition, Id } from "../types";
+import type { ItemDefinition, Id, SkillEffect, CombatStat } from "../types";
 import itemsJson from "../../data/items.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
+import { getStatusEffect } from "./statusEffects";
 
 // Design data now lives in ../../data/items.json — see
 // docs/gameplay-decisions/07-items-artifacts.md §7.1.
@@ -11,6 +12,62 @@ export function getItem(id: Id): ItemDefinition {
   const found = ITEMS.find((i) => i.id === id);
   if (!found) throw new Error(`Unknown item: ${id}`);
   return found;
+}
+
+const STAT_LABEL: Record<string, string> = { hunger: "hunger", thirst: "thirst", fear: "fear" };
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "attack", defense: "defense", aggro: "aggro", speed: "speed" };
+
+/** 1 status effect's per-turn behavior as a short Vietnamese fragment — shared by an item granting it and a status effect's own detail text. */
+function statusEffectSummary(statusEffectId: Id): string {
+  const status = getStatusEffect(statusEffectId);
+  const parts = status.perTurnEffects.map((e) => {
+    if (e.kind === "damage") return `mất ${e.amount} HP/lượt`;
+    if (e.kind === "heal") return `hồi ${e.amount} HP/lượt`;
+    if (e.kind === "modifyCombatStat" && e.combatStat) return `${(e.amount ?? 0) >= 0 ? "+" : ""}${e.amount} ${COMBAT_STAT_LABEL[e.combatStat]}/lượt`;
+    return "";
+  }).filter(Boolean);
+  if (status.onHitStatusEffectId) parts.push(`mọi đòn đánh trúng tự kèm ${getStatusEffect(status.onHitStatusEffectId).name}`);
+  if (status.vulnerableTo) parts.push(`nhân đôi sát thương ${getStatusEffect(status.vulnerableTo.statusEffectId).name} đang mang`);
+  if (status.stuns) parts.push("mất lượt hoàn toàn");
+  const body = parts.length > 0 ? parts.join(", ") : "không có hiệu ứng theo lượt";
+  return `${status.name} (${status.durationTurns ?? "?"} lượt): ${body}`;
+}
+
+function itemEffectSummary(effect: SkillEffect): string {
+  switch (effect.kind) {
+    case "heal":
+      return `Hồi ngay ${effect.amount} HP`;
+    case "restoreMp":
+      return `Hồi ngay ${effect.amount} MP`;
+    case "modifyStat": {
+      const label = effect.stat ? STAT_LABEL[effect.stat] ?? effect.stat : "";
+      const amount = effect.amount ?? 0;
+      return `${amount >= 0 ? "+" : ""}${amount} ${label}`;
+    }
+    case "removeStatusEffect":
+      return "Gỡ 1 hiệu ứng bất lợi đang mang";
+    case "applyStatusEffect":
+      return effect.statusEffectId ? `Áp dụng ${statusEffectSummary(effect.statusEffectId)}` : "Áp dụng 1 hiệu ứng";
+    case "modifyCombatStat": {
+      const label = effect.combatStat ? COMBAT_STAT_LABEL[effect.combatStat] : "";
+      const amount = effect.amount ?? 0;
+      return `${amount >= 0 ? "+" : ""}${amount} ${label}`;
+    }
+    default:
+      return "Hiệu ứng đặc biệt";
+  }
+}
+
+const TARGET_NOTE: Record<string, string> = {
+  self: " (chọn 1 nhân vật bất kỳ, kể cả đồng đội)",
+  singleAlly: " (chọn 1 đồng đội)",
+  allAllies: " (cả đội)",
+  singleEnemy: " (chọn 1 kẻ địch — chỉ dùng trong combat)",
+};
+
+/** Auto-derived "công dụng" text for an item's detail screen — always matches `item.effects` exactly, so it can never drift from `item.description`'s flavor text the way a hand-authored effect string could. */
+export function formatItemEffect(item: ItemDefinition): string {
+  return item.effects.map(itemEffectSummary).join(". ") + "." + (TARGET_NOTE[item.target] ?? "");
 }
 
 /** The 10 shared-pool items — every item without an `archetypeIds` list (§7.1 "Catalog — 10 item"). */

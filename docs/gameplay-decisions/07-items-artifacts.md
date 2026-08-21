@@ -2,7 +2,7 @@
 
 *(mục 7 của `00-index.md`)*
 
-**Trạng thái: đã implement** (Item §7.1 và Artifact §7.2 — engine + data + UI đều đã code, xem `src/engine/artifacts.ts`, `src/data/items.ts`, `src/data/artifacts.ts`). Tài liệu này vẫn là nguồn tham chiếu chính cho số liệu/cơ chế.
+Item (§7.1) và Artifact (§7.2) là 2 hệ thống phần thưởng tách biệt, xem `src/engine/artifacts.ts`, `src/data/items.ts`, `src/data/artifacts.ts`.
 
 **Quy ước đặt tên**: mọi `id`/`name` của Item, Artifact, và status effect phục vụ 2 hệ thống này đều bằng **tiếng Anh** — khớp quy ước đặt tên của monster/class ở `data/monsters.json`/`data/classes.json`. Phần mô tả/giải thích trong tài liệu vẫn giữ tiếng Việt như toàn bộ `docs/gameplay-decisions/`.
 
@@ -13,7 +13,7 @@ Tách 2 khái niệm rõ ràng, không dùng chung 1 hệ thống:
 | Bản chất | Tiêu hao — dùng 1 lần, mất đi | Relic vĩnh viễn trong 1 run — nhặt là giữ tới khi permadeath |
 | Hiệu quả | Tức thời, chủ động (người chơi chọn lúc nào dùng) | Bị động, liên tục suốt run (không cần "dùng") |
 | Dùng trong combat? | Có — thay cho việc chọn skill ở pha ra lệnh | Không — cộng dồn thẳng vào chỉ số/hành vi, không chiếm lượt |
-| Mất khi nào | Dùng xong (trừ 1 khỏi kho) | Party wipe (permadeath — đúng tinh thần rủi ro thật, `05-character-stats.md` mục 5) |
+| Mất khi nào | Dùng xong (trừ 1 khỏi kho) | Party wipe (permadeath, `05-character-stats.md` mục 5) |
 | Độ hiếm | Không phân hiếm — chỉ khác loại hiệu ứng | **4 bậc**: Common / Rare / Unique / Epic |
 
 ---
@@ -37,7 +37,7 @@ Dùng trong combat: ở pha ra lệnh, nhân vật chọn "dùng vật phẩm" t
 
 ### Nguồn rơi
 
-Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ **60%/lần giết**. Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2, cũng xem `08-events.md`) — giữ 2 nguồn tách biệt cho 2 loại phần thưởng.
+Rơi ngẫu nhiên khi giết **bất kỳ quái nào** (thường/Elite/Boss) — tỷ lệ **60%/lần giết**. Không rơi từ Treasure/Event room (2 room đó dành cho Artifact — mục 7.2, cũng xem `08-events.md`).
 
 Khi roll 60% trúng, item cụ thể được chọn từ **pool kết hợp** = 10 item chung (catalog bên dưới) + (các) item đặc trưng của đúng `archetypeId` vừa bị giết (bảng "Item đặc trưng theo quái" bên dưới), với trọng số:
 
@@ -84,7 +84,7 @@ Cộng thẳng vào `GameState.inventory[itemId] += 1` như cũ, không đổi c
 | `rat-meat` | Rat Meat | `dungeon-rat` | `applyStatusEffect "regeneration"` (status mới: `heal 10`/lượt, 3 lượt, tự thân, không xếp chồng — xem ghi chú) | Hồi máu theo lượt |
 | `bat-blood` | Bat Blood | `black-bat` | `heal 20` (tức thì, tự thân) | |
 | `slime-solution` | Slime Solution | `slime` | `restoreMp 20` (tức thì, tự thân) | |
-| `dragon-scale` | Dragon Scale | `dragon` | `applyStatusEffect "fortify"` nhắm **allAllies** (+8 defense, 2 lượt, cả đội — tái dùng status `fortify`, giống pattern skill Rally của Vanguard `01-class-skill.md` §1.2) | `dragon` là `guardOnly` (chỉ gặp ở Elite/Boss) — buff cả đội xứng với độ hiếm khi rơi. Item duy nhất dùng target `allAllies` thay vì tự thân |
+| `dragon-scale` | Dragon Scale | `dragon` | `applyStatusEffect "fortify"` nhắm **allAllies** (+8 defense, 2 lượt, cả đội — tái dùng status `fortify`, giống pattern skill Rally của Vanguard `01-class-skill.md` §1.2) | `dragon` là `guardOnly` (chỉ gặp ở Elite/Boss). Item duy nhất dùng target `allAllies` thay vì tự thân |
 
 **3 status effect mới cần thêm vào `data/status-effects.json`** (ngoài `empower`/`fortify`/`poison-coat`/`poisoned` đã có sẵn):
 
@@ -109,7 +109,7 @@ GameState.unequippedArtifactIds: Id[] // kho chung, artifact đã nhặt nhưng 
 
 - **Tối đa 3 Artifact/nhân vật** — 4 nhân vật × 3 slot = **12 lượt trang bị** cho cả đội mỗi run.
 - Gắn/gỡ **tự do, không tốn gì, không giới hạn số lần** — artifact không bị "tiêu hao" khi gỡ, chỉ chuyển lại kho chung, có thể gắn sang nhân vật khác bất kỳ lúc nào (ngoài combat).
-- Nhặt được nhiều hơn 12 (tổng slot cả đội) → phần dư nằm trong kho chung, vẫn thuộc sở hữu nhưng **không có hiệu lực** cho tới khi được gắn (thay 1 artifact khác đang gắn) — tạo đúng tension "chọn 12 cái tốt nhất trong số đã nhặt được" của thể loại roguelite trang bị relic.
+- Nhặt được nhiều hơn 12 (tổng slot cả đội) → phần dư nằm trong kho chung, vẫn thuộc sở hữu nhưng **không có hiệu lực** cho tới khi được gắn (thay 1 artifact khác đang gắn).
 - **Hiệu ứng chỉ áp dụng cho đúng nhân vật đang gắn nó** (trừ `expBoost`, ngoại lệ vì EXP dùng chung — xem bảng "Vì sao" bên dưới).
 
 ### Cấu trúc dữ liệu hiệu ứng
@@ -148,9 +148,9 @@ ArtifactDefinition {
 }
 ```
 
-**Cộng dồn khi trùng lặp**: 1 nhân vật gắn 2 artifact cùng loại (chiếm 2/3 slot của họ) → hiệu quả cộng thẳng cho riêng người đó (2× `statBoost`, 2 roll độc lập cho `poisonOnHit`/`dodgeChance`/v.v.) — đúng tinh thần roguelite "dồn relic cùng loại vào 1 carry", đối trọng lại việc quái mạnh dần vô hạn ở `06-level-system.md` §6.10. 2 nhân vật khác nhau cùng gắn 1 loại artifact thì **mỗi người tính riêng độc lập**, không cộng chung.
+**Cộng dồn khi trùng lặp**: 1 nhân vật gắn 2 artifact cùng loại (chiếm 2/3 slot của họ) → hiệu quả cộng thẳng cho riêng người đó (2× `statBoost`, 2 roll độc lập cho `poisonOnHit`/`dodgeChance`/v.v.). 2 nhân vật khác nhau cùng gắn 1 loại artifact thì **mỗi người tính riêng độc lập**, không cộng chung.
 
-**Áp dụng cho ai**: `statBoost` cộng thẳng vào chỉ số của **đúng nhân vật đang gắn** (không nhân theo `growthWeights` — artifact nhặt được ngẫu nhiên, không phải lựa chọn theo class, xem lý do tương tự ở `06-level-system.md` §6.6 vì sao quái không dùng trọng số). Toàn bộ hiệu ứng nhóm 2-4 cũng chỉ tính cho đúng nhân vật đang gắn (trừ `expBoost` — ngoại lệ vì EXP dùng chung `partyExp`, xem chú thích ngay trong khối effect ở trên) — tính ở tầng `Character` (field `equippedArtifactIds`).
+**Áp dụng cho ai**: `statBoost` cộng thẳng vào chỉ số của **đúng nhân vật đang gắn** (không nhân theo `growthWeights`). Toàn bộ hiệu ứng nhóm 2-4 cũng chỉ tính cho đúng nhân vật đang gắn (trừ `expBoost` — ngoại lệ vì EXP dùng chung `partyExp`, xem chú thích ngay trong khối effect ở trên) — tính ở tầng `Character` (field `equippedArtifactIds`).
 
 ### Nguồn rơi
 
@@ -167,7 +167,7 @@ ArtifactDefinition {
 
 ### Độ hiếm & tỷ lệ rơi từng bậc
 
-**Elite và Boss có bảng độ hiếm riêng, tách biệt hoàn toàn** (không chỉ chênh trọng số) để tạo khoảng cách phần thưởng rõ rệt giữa 2 mốc:
+**Elite và Boss có bảng độ hiếm riêng, tách biệt hoàn toàn** (không chỉ chênh trọng số):
 
 **Elite** — chỉ roll trong {Common, Rare, Unique}, **không bao giờ Epic**:
 
@@ -248,22 +248,20 @@ ArtifactDefinition {
 | `reapers-covenant` | Reaper's Covenant | `healOnKill 25` + `lifesteal 8%` |
 | `eternal-scholars-tome` | Eternal Scholar's Tome | `expBoost 25%` + `cooldownReduction 1` |
 
-### Vì sao `autoDamage` không chọn được mục tiêu
+### Cơ chế kích hoạt `autoDamage`
 
-Theo đúng yêu cầu — Artifact là phần thưởng bị động, không phải 1 skill người chơi điều khiển. `autoDamage` kích hoạt **đầu mỗi round** (trước pha ra lệnh của player — cùng round boundary mà fear-gain theo combat cũng dùng, `03-survival-stats.md` mục 3), chọn 1 quái còn sống **ngẫu nhiên đều** (uniform, giống pattern `erratic` ở `02-monster.md` mục 2 — không theo `aggro` vì đây không phải hành động của quái nhắm vào party mà ngược lại) — không tốn MP, không qua `queueAction`, không hiện trong danh sách skill để chọn. Log kết quả như 1 dòng sự kiện riêng, tách biệt lượt của bất kỳ nhân vật nào.
+`autoDamage` kích hoạt **đầu mỗi round** (trước pha ra lệnh của player — cùng round boundary mà fear-gain theo combat cũng dùng, `03-survival-stats.md` mục 3), chọn 1 quái còn sống **ngẫu nhiên đều** (uniform, giống pattern `erratic` ở `02-monster.md` mục 2, không theo `aggro`) — không tốn MP, không qua `queueAction`, không hiện trong danh sách skill để chọn. Log kết quả như 1 dòng sự kiện riêng, tách biệt lượt của bất kỳ nhân vật nào.
 
-### Vì sao đây là 9 hiệu ứng "khác biệt" đúng nghĩa (không phải biến thể của cái đã có)
+### Hook engine của 9 hiệu ứng nhóm 2-4
 
 Không cái nào trong nhóm 2-4 tồn tại dưới bất kỳ hình thức nào trong hệ skill/status hiện có (`01-class-skill.md` mục 1.5) — mỗi cái có 1 hook riêng trong engine:
 
 - **`reflectDamage`**: sau khi 1 quái gây `damage` thành công lên **đúng nhân vật đang gắn artifact này** (không phải nhân vật khác trong party), roll `percent`, nếu trúng thì gây ngược `percent × damage vừa nhận` lên chính quái đó (không đi qua `defense` của quái — phản đòn không phải 1 đòn tấn công thường).
 - **`poisonOnHit`**: sau khi **đúng nhân vật đang gắn artifact này** gây `damage` thành công lên 1 quái (bất kỳ skill/đòn thường nào của người đó, không chỉ Poison Coat), roll `chance`, nếu trúng thì `applyStatusEffect "poisoned"` lên quái đó — cùng cơ chế "on-hit rider" đã có cho Poison Coat (`docs/technical-decisions.md` §4.2), chỉ khác nguồn kích hoạt là artifact thay vì status tạm thời. Nhân vật khác trong party đánh trúng **không** kích hoạt hiệu ứng này trừ khi họ cũng tự gắn 1 artifact `poisonOnHit` riêng.
-- **`lifesteal`**: hook ở đúng chỗ resolver tính `finalDamage` cho effect `damage` do **đúng nhân vật đang gắn artifact này** gây ra (`resolver.ts`) — sau khi trừ hp mục tiêu, cộng thêm `round(finalDamage × percent)` vào hp của chính họ (không vượt `maxHp`). Khác `heal` thường vì không phải 1 effect độc lập trong skill, mà ăn theo damage thật đã gây ra.
+- **`lifesteal`**: hook ở đúng chỗ resolver tính `finalDamage` cho effect `damage` do **đúng nhân vật đang gắn artifact này** gây ra (`resolver.ts`) — sau khi trừ hp mục tiêu, cộng thêm `round(finalDamage × percent)` vào hp của chính họ (không vượt `maxHp`).
 - **`dodgeChance`**: roll **trước** bước tính `finalDamage` khi quái nhắm `damage` vào **đúng nhân vật đang gắn artifact này** — trúng thì bỏ qua toàn bộ effect (damage = 0, không chỉ giảm), khác hẳn accuracy-roll theo fear đã có (`04-fear-combat.md` mục 4, vốn chỉ áp cho skill nhân vật nhắm địch, không áp cho đòn quái nhắm nhân vật). Quái nhắm vào đồng đội khác của họ thì không roll dodge này.
 - **`healOnKill`**: hook ở đúng điểm 1 quái bị loại khỏi `CombatState.combatants` (hp ≤ 0) — **chỉ trigger nếu đòn kết liễu (effect `damage` cuối cùng khiến hp ≤ 0) do đúng nhân vật đang gắn artifact này gây ra**, hồi thẳng `amount` cho chính họ (không vượt `maxHp`, không phải cho đồng đội khác).
-- **`expBoost`**: nhân thêm vào bước `applyPartyExp` nhận `expGained` từ `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + tổng percent của mọi artifact expBoost đang được trang bị bởi bất kỳ ai trong party))`. Đây là **hiệu ứng duy nhất không giới hạn theo người gây kill** — vì `partyExp` là 1 giá trị dùng chung cho cả đội (§6.9), không có khái niệm "EXP của riêng 1 người" để giới hạn vào.
+- **`expBoost`**: nhân thêm vào bước `applyPartyExp` nhận `expGained` từ `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + tổng percent của mọi artifact expBoost đang được trang bị bởi bất kỳ ai trong party))`. Đây là **hiệu ứng duy nhất không giới hạn theo người gây kill** — `partyExp` là 1 giá trị dùng chung cho cả đội (§6.9).
 - **`fearResist`**: nhân vào **fear-gain theo round combat** của **đúng nhân vật đang gắn artifact này** (`fearGainForRound` — `03-survival-stats.md` mục 3) — theo `fear_thật = round(fear_gốc × (1 − tổng percent))`, không áp cho fear giảm chủ động (skill Acolyte/item không đổi, tính đủ 100%) hay relief thắng trận. Đồng đội không gắn artifact này vẫn nhận fear đầy đủ như bình thường.
 - **`cooldownReduction`**: trừ thẳng vào `cooldownTurns` được gán lúc 1 skill của **đúng nhân vật đang gắn artifact này** vào cooldown (`Character.cooldownsRemaining[skillId] = skill.cooldownTurns − tổng turns`, tối thiểu 0) — không hồi ngay skill đang cooldown sẵn có từ trước khi gắn artifact, không ảnh hưởng cooldown của đồng đội khác.
 - **`survivalDrainReduction`**: nhân vào tốc độ giảm gốc mỗi hành động của **đúng nhân vật đang gắn artifact này** (`03-survival-stats.md` mục 3: `hunger -1`, `thirst -1.5`, vốn đã tính riêng từng `Character.survival`) — `giảm_thật = round(giảm_gốc × (1 − tổng percent), 1 chữ số thập phân)`.
-
-**⚠️ Toàn bộ số liệu ở §7 (tỷ lệ rơi, trọng số độ hiếm, mọi con số hiệu ứng) đã implement đúng như liệt kê ở trên nhưng chưa playtest cân bằng — có thể cần chỉnh khi có dữ liệu chơi thật.**

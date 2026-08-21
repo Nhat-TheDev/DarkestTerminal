@@ -2,7 +2,7 @@
 
 *(mục 4 của `00-index.md`)*
 
-Quyết định: **fear có ảnh hưởng thật tới hiệu suất combat**, áp dụng theo bậc ở `03-survival-stats.md` mục 3, để giữ đúng tinh thần "rủi ro thật" của permadeath. Để tránh rủi ro chồng rủi ro biến thành tử vòng xoáy không kiểm soát được, ảnh hưởng bị **chặn trần ở bậc 4** và luôn có công cụ hạ fear chủ động (skill Acolyte, item, rest room) đối trọng lại.
+**Fear có ảnh hưởng tới hiệu suất combat**, áp dụng theo bậc ở `03-survival-stats.md` mục 3. Ảnh hưởng bị **chặn trần ở bậc 4**. Có công cụ hạ fear chủ động: skill Acolyte, item, rest room.
 
 | Bậc fear | Ảnh hưởng combat |
 |---|---|
@@ -11,11 +11,11 @@ Quyết định: **fear có ảnh hưởng thật tới hiệu suất combat**, 
 | Hoảng Loạn (70-99) | Độ chính xác giảm 20%, sát thương gây ra giảm 15% |
 | Suy Sụp (100) | Mỗi lượt có 25% khả năng "mất kiểm soát" — bỏ lượt hoàn toàn (tương đương stun); 75% còn lại hành động bình thường (không giảm thêm accuracy/damage so với bậc Hoảng Loạn) |
 
-Ghi chú: đây là **soft cap có chủ đích** — bậc 4 không tăng nặng thêm theo fear (vì fear đã kịch trần 100), và party luôn có Acolyte/item để kéo fear xuống trước khi vào combat quan trọng. Việc này để dành cho balancing thực tế khi playtest, số % ở trên là điểm khởi đầu, không phải số cuối cùng.
+Bậc 4 là mức tối đa, không tăng nặng thêm theo fear.
 
 ### 4.1 Roll accuracy theo từng mục tiêu (AoE) + ultimate luôn trúng nhưng giảm hiệu quả theo fear
 
-Bảng trên vẫn là quy tắc **mặc định cho skill thường** (đơn mục tiêu hoặc AoE), nhưng cách áp dụng tách làm 2 trường hợp kể từ khi thêm skill AoE/ultimate ở `01-class-skill.md` mục 1:
+Bảng trên là quy tắc **mặc định cho skill thường** (đơn mục tiêu hoặc AoE), áp dụng theo 2 trường hợp:
 
 - **Skill đơn mục tiêu** (`singleEnemy`, nửa "địch" khi người chơi chọn địch cho skill 2 phe kiểu Purify): roll accuracy 1 lần cho cả skill — không đổi so với trước.
 - **Skill AoE nhắm địch** (`allEnemies`, nửa "địch" của skill 2 phe kiểu Divine Descent): roll accuracy **riêng cho từng địch** trong danh sách mục tiêu — 1 địch có thể trúng trong khi địch khác né được cùng 1 lần dùng skill. Nửa "đồng đội" của skill 2 phe (heal/buff) không roll accuracy, giữ nguyên quy tắc cũ (fear chỉ ảnh hưởng "kỹ năng nhắm địch").
@@ -28,6 +28,4 @@ Bảng trên vẫn là quy tắc **mặc định cho skill thường** (đơn m�
   | Hoảng Loạn (70-99) | 75% |
   | Suy Sụp (100) | 60% |
 
-  *Đề xuất ban đầu, cần playtest để chốt số cuối — nguyên tắc là ultimate "chắc trúng" nhưng phạt bằng độ mạnh thay vì tỉ lệ trúng/trượt, tránh cảm giác "dồn hết vào 1 đòn quyết định rồi trượt trắng tay" ở đúng lúc cần nó nhất (fear cao).*
-
-  Kỹ thuật: cần 1 field đánh dấu "đây là ultimate" tách biệt khỏi `usesPerCombat` (để không vô tình áp luật này lên 1 skill thường nào đó lỡ có `usesPerCombat: 1` vì lý do khác) — xem `docs/technical-decisions.md` §4.
+  Kỹ thuật: cần 1 field đánh dấu "đây là ultimate" tách biệt khỏi `usesPerCombat` — xem `docs/technical-decisions.md` §4.

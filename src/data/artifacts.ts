@@ -1,4 +1,4 @@
-import type { ArtifactDefinition, ArtifactRarity, Id } from "../types";
+import type { ArtifactDefinition, ArtifactRarity, ArtifactEffect, Id } from "../types";
 import artifactsJson from "../../data/artifacts.json";
 import type { Rng } from "../engine/rng";
 
@@ -10,6 +10,46 @@ export function getArtifact(id: Id): ArtifactDefinition {
   const found = ARTIFACTS.find((a) => a.id === id);
   if (!found) throw new Error(`Unknown artifact: ${id}`);
   return found;
+}
+
+const STAT_LABEL: Record<string, string> = { attack: "attack", defense: "defense", maxHp: "max HP", maxMp: "max MP" };
+
+function artifactEffectSummary(effect: ArtifactEffect): string {
+  switch (effect.kind) {
+    case "statBoost":
+      return `${effect.amount >= 0 ? "+" : ""}${effect.amount} ${STAT_LABEL[effect.stat]}`;
+    case "reflectDamage":
+      return `Phản ${effect.percent}% sát thương phải chịu lại kẻ tấn công`;
+    case "poisonOnHit":
+      return `${effect.chance}% cơ hội gây Poisoned khi đánh trúng`;
+    case "lifesteal":
+      return `Hồi ${effect.percent}% sát thương gây ra`;
+    case "dodgeChance":
+      return `${effect.chance}% cơ hội né hoàn toàn 1 đòn tấn công`;
+    case "healOnKill":
+      return `Hồi ${effect.amount} HP khi hạ gục mục tiêu`;
+    case "autoDamage":
+      return `Gây ${effect.amount} sát thương cố định lên 1 kẻ địch ngẫu nhiên đầu mỗi round`;
+    case "expBoost":
+      return `+${effect.percent}% EXP nhận được cho cả đội`;
+    case "fearResist":
+      return `-${effect.percent}% fear tích lũy`;
+    case "cooldownReduction":
+      return `-${effect.turns} lượt hồi chiêu kỹ năng`;
+    case "survivalDrainReduction":
+      return `-${effect.percent}% tốc độ giảm hunger/thirst`;
+    case "curseAggroBoost":
+      return `+${effect.amount} aggro`;
+    case "curseDrainBoost":
+      return `+${effect.percent}% tốc độ giảm hunger/thirst`;
+    default:
+      return "Hiệu ứng đặc biệt";
+  }
+}
+
+/** Auto-derived "công dụng" text for an artifact's detail screen — always matches `artifact.effects` exactly, so it can never drift from `artifact.description`'s flavor text the way a hand-authored effect string could. */
+export function formatArtifactEffect(artifact: ArtifactDefinition): string {
+  return artifact.effects.map(artifactEffectSummary).join(". ") + ".";
 }
 
 /** Where an artifact drop roll came from — each source has its own rarity weight table (§7.2 "Độ hiếm & tỷ lệ rơi từng bậc"). */

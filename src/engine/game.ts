@@ -1,4 +1,4 @@
-import type { CombatantRef, GameState, SkillTarget, Id, ArtifactRarity, LogEntry } from "../types";
+import type { CombatantRef, GameState, SkillTarget, Id, ArtifactRarity, LogEntry, Monster } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -46,10 +46,29 @@ export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
 
-  constructor(seed = Date.now()) {
+  /**
+   * `classIds` picks which classes fill the party (character-select screen) —
+   * defaults to every class in the catalog, matching the original prototype
+   * behavior and every existing `new Game(seed)` test call.
+   *
+   * `restore`, when set, reconstructs a `Game` from a save file instead of
+   * generating a fresh floor/party: `rng` resumes from the exact state it
+   * was saved at, and `state`/`monsters` are used as-is (already-resolved
+   * GameState/Monster[] from src/engine/save.ts). The entry-room ambush
+   * check is skipped since a restored state was already past that point (or
+   * mid-combat, which the saved CombatState already captures).
+   */
+  constructor(seed = Date.now(), classIds?: Id[], restore?: { state: GameState; monsters: Monster[]; rngState: number }) {
     const rng = new Rng(seed);
+    if (restore) {
+      rng.setState(restore.rngState);
+      this.ctx = { party: restore.state.party, monsters: restore.monsters, rng, inventory: restore.state.inventory };
+      this.state = restore.state;
+      return;
+    }
     const { floor, monsters } = createFloor(rng);
-    const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
+    const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
+    const party = classes.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
     const inventory: Record<Id, number> = {}; // shared reference — see EngineContext.inventory doc comment
     this.ctx = { party, monsters, rng, inventory };
     this.state = {
@@ -63,6 +82,7 @@ export class Game {
       inventory,
       unequippedArtifactIds: [],
       activeEvent: null,
+      lastRoomDrops: null,
     };
     this.checkEntryRoomAmbush();
   }
@@ -163,7 +183,7 @@ export class Game {
     }
 
     this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
-    this.state.message = log.length > 0 ? log.join(" ") : t("game.usedItem", { item: item.name });
+    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t("game.usedItem", { item: item.name });
     return null;
   }
 
@@ -390,6 +410,11 @@ export class Game {
         this.state.combat.log.push({ text: t("game.expGained", { amount: expGained }), kind: "info" });
         const levelAfter = this.state.party[0]?.level ?? levelBefore;
         if (levelAfter > levelBefore) this.state.combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
+        // §7.1/§7.2 "Nguồn rơi" — collected alongside the existing log lines so the UI's
+        // post-victory reward-reveal screen (src/ui/app.ts) can show exactly what this
+        // room's clear granted, distinct from the scrolling combat log.
+        const droppedItemIds: Id[] = [];
+        const droppedArtifactIds: Id[] = [];
         // §7.1 "Nguồn rơi" — each killed monster rolls its own item drop independently.
         for (const id of room.monsterIds) {
           const monster = this.ctx.monsters.find((m) => m.id === id);
@@ -397,13 +422,13 @@ export class Game {
           const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng, this.state.floor.depth);
           if (itemId) {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
-            this.state.combat.log.push({ text: t("game.itemPickedUp", { item: getItem(itemId).name }), kind: "item" });
+            droppedItemIds.push(itemId);
           }
           // §7.2 "Nguồn rơi" — only Elite/Boss kills roll an Artifact (100% each), own rarity table per tier.
           if (monster.tier === "elite" || monster.tier === "boss") {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
             this.state.unequippedArtifactIds.push(artifactId);
-            this.state.combat.log.push({ text: t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }), kind: "item" });
+            droppedArtifactIds.push(artifactId);
           }
         }
         // §8.3 — guardian-fight/desecrated-altar: winning the event's fight grants 1 Artifact
@@ -412,8 +437,9 @@ export class Game {
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
           this.state.unequippedArtifactIds.push(artifactId);
-          this.state.combat.log.push({ text: t("game.artifactPickedUp", { artifact: getArtifact(artifactId).name }), kind: "item" });
+          droppedArtifactIds.push(artifactId);
         }
+        this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;
       } else if (this.state.combat.outcome === "defeat") {
         this.state.gameOver = "defeat";
       }
@@ -425,12 +451,13 @@ export class Game {
    * Clearing the floor's guard room (elite or boss, §6.11) advances depth
    * instead of ending the game (docs/gameplay-decisions.md §6.9/6.10) — floor
    * depth is uncapped, so a run only ends via party wipe, never "victory".
-   * Deferred to clearFinishedCombat() (not resolve()) so the player still
-   * sees the "combatOver" victory screen/log before the floor changes under
-   * them — doing it inside resolve() would silently replace state.combat
-   * with the next floor's entry-room ambush before the UI ever renders it.
+   * Public (not called automatically by clearFinishedCombat()) so the caller
+   * can hold off until any post-victory UI (e.g. the roomReward reveal
+   * screen) has been dismissed — calling it any earlier would silently
+   * replace state.combat with the next floor's entry-room ambush while that
+   * screen is still showing the just-cleared room's battlefield.
    */
-  private advanceToNextFloor(): void {
+  advanceToNextFloor(): void {
     const nextDepth = this.state.floor.depth + 1;
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
@@ -440,11 +467,12 @@ export class Game {
     this.checkEntryRoomAmbush();
   }
 
-  clearFinishedCombat(): void {
-    if (this.state.combat?.phase !== "over") return;
+  /** Returns whether the just-cleared room was the floor's guard room (elite/boss) — the caller decides when (if at all deferred) to follow up with advanceToNextFloor(). */
+  clearFinishedCombat(): boolean {
+    if (this.state.combat?.phase !== "over") return false;
     const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";
     this.state.combat = null;
-    if (wasBossRoomVictory) this.advanceToNextFloor();
+    return wasBossRoomVictory;
   }
 
   className(classId: string): string {

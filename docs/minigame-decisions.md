@@ -1,6 +1,8 @@
-# Mini-game — Quyết định
+# Mini-game — Định hướng tương lai (chưa implement)
 
-**Trạng thái**: Đã chốt
+**Chưa có trong code hiện tại.** Tài liệu này là spec tham khảo cho khi
+triển khai mini-game, không mô tả trạng thái game hiện có — xem
+`../design-doc.md` mục "Định hướng tương lai".
 **Liên quan**: `./design-doc.md` mục 1.7, 1.8
 
 ---
@@ -41,7 +43,7 @@ Nguyên tắc (đã chốt ở design doc 1.8): tune theo kỳ vọng người c
 
 - **Thanh điểm**: progress bar ngang trên cùng màn hình mini-game, hiển thị `score / targetScore` (VD "14 / 24"), cập nhật ngay mỗi lần hit — không đợi tick định kỳ.
 - **Thanh thời gian**: progress bar mỏng ngay dưới thanh điểm, đếm ngược từ `duration` về 0, dùng chung `performance.now()` với logic spawn tile (đã chốt ở kiến trúc — tránh desync).
-- **Combo counter**: số hiển thị góc, chỉ **nhấp nháy** (highlight 1 frame) mỗi khi combo chạm mốc chia hết cho 5 (tức mỗi lần hệ số nhân tăng thêm 0.1x) — không đổi cách hiển thị liên tục để tránh nhiễu mắt khi tile đang rơi nhanh.
+- **Combo counter**: số hiển thị góc, chỉ **nhấp nháy** (highlight 1 frame) mỗi khi combo chạm mốc chia hết cho 5 (tức mỗi lần hệ số nhân tăng thêm 0.1x).
 - Redraw của 3 thành phần trên nằm trong cùng tick loop của mini-game (real-time, tick cố định — theo kiến trúc dual-loop đã chốt), không redraw riêng lẻ ngoài luồng.
 
 ---

@@ -3,13 +3,14 @@ import type { Character, CombatantRef, Monster, SkillDefinition, ItemDefinition,
 import { Game, MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../engine/combat";
 import { getSkill, getClass } from "../data/classes";
-import { getItem } from "../data/items";
-import { getArtifact } from "../data/artifacts";
+import { getItem, formatItemEffect } from "../data/items";
+import { getArtifact, formatArtifactEffect } from "../data/artifacts";
 import { getEvent } from "../data/events";
 import { MAX_EQUIPPED_ARTIFACTS } from "../engine/party";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";
 import { t } from "../data/strings";
+import { manualSave, quickSave, autoSave } from "../engine/save";
 import {
   PALETTE,
   CLASS_STYLE,
@@ -84,6 +85,15 @@ function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): Tex
 /** What triggered a target-picking screen — a skill or an item (docs/gameplay-decisions/07-items-artifacts.md §7.1: items are picked instead of a skill in the command phase). */
 type PickTargetSource = { kind: "skill"; skill: SkillDefinition } | { kind: "item"; item: ItemDefinition };
 
+/** Where an itemDetail screen returns to on "Quay lại"/Esc — mirrors the 2 places an item can be name-picked from. */
+type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { kind: "outOfCombat" };
+
+/** Where an artifactDetail screen returns to, and what its confirm action does — mirrors artifactMenu's 2 kinds of numbered entry. */
+type ArtifactDetailOrigin = { kind: "unequipped" } | { kind: "equipped"; characterId: Id };
+
+/** 1 entry in the post-room-clear reward reveal — dedupes item drops (qty shown), lists each artifact individually since they never stack. */
+type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id };
+
 type UiState =
   | { kind: "room" }
   | { kind: "rest" }
@@ -94,14 +104,20 @@ type UiState =
   | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
   | { kind: "roundResolved" }
   | { kind: "combatOver" }
-  /** Outside combat — picking which item to use (§7.1: items can be used outside combat too, e.g. Ration/Water Flask). */
+  /** Outside combat — picking which item to inspect. Read-only: items can only actually be used during combat (see itemDetail's origin.kind === "outOfCombat"). */
   | { kind: "pickItemOutOfCombat" }
-  /** Outside combat — an item needing a specific character (target !== "allAllies") was picked, now choosing who uses it. */
-  | { kind: "pickItemTargetOutOfCombat"; item: ItemDefinition }
+  /** Name was picked off pickItemInCombat/pickItemOutOfCombat — shows công dụng (formatItemEffect) + mô tả (item.description). Outside combat this is view-only (no "Dùng" option). */
+  | { kind: "itemDetail"; item: ItemDefinition; origin: ItemDetailOrigin }
   /** Outside combat — artifact equip/unequip menu (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
   | { kind: "artifactMenu" }
+  /** Name was picked off artifactMenu — shows công dụng (formatArtifactEffect) + mô tả before equipping/unequipping. */
+  | { kind: "artifactDetail"; artifactId: Id; origin: ArtifactDetailOrigin }
   /** An unequipped artifact was picked to equip, now choosing which character gets it. */
   | { kind: "pickCharacterForArtifact"; artifactId: Id }
+  /** Q — asks whether to save before continuing; `previous` is restored on Hủy. */
+  | { kind: "saveMenu"; previous: UiState }
+  /** Shown once after clearFinishedCombat() when the room's clear actually dropped something (empty drops skip straight to `room`); picking an entry shows its detail read-only, the last entry dismisses to `room`. */
+  | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   // --- Event room (docs/gameplay-decisions/08-events.md §8) — shown whenever the current room is an
   // unresolved event; syncUiToGameState routes to the right one from Room.rolledEventId's EventDefinition.kind.
   | { kind: "eventMerchant" }
@@ -122,6 +138,16 @@ function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition
   return Object.entries(inventory)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({ item: getItem(id), qty }));
+}
+
+/** Builds the roomReward screen's entry list from a room-clear's raw drops — item ids are deduped with a count (2 monsters can drop the same item), artifacts are listed individually since they never stack. */
+function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[] }): RewardEntry[] {
+  const itemQty = new Map<Id, number>();
+  for (const id of drops.itemIds) itemQty.set(id, (itemQty.get(id) ?? 0) + 1);
+  const entries: RewardEntry[] = [];
+  for (const [id, qty] of itemQty) entries.push({ kind: "item", id, qty });
+  for (const id of drops.artifactIds) entries.push({ kind: "artifact", id });
+  return entries;
 }
 
 /** Every artifact the party owns right now, unequipped pool + everyone's equipped — used by sacrificial-circle/wandering-hermit "any owned artifact" pickers (docs/gameplay-decisions/08-events.md §8.9/§8.11). */
@@ -189,6 +215,8 @@ export class App {
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   /** HP/alive state to show on the battlefield/party/monster panels while `pendingReveal` is draining — keeps those panels in step with however far the log has been revealed, instead of jumping straight to the round's final state. Ignored (falls back to live state) once pendingReveal is empty. */
   private displaySnapshot: CombatantSnapshot[] | null = null;
+  /** Set when a boss-room clear's roomReward screen is showing — holds off Game.advanceToNextFloor() until the player dismisses that screen, so the battlefield keeps showing the just-cleared room's tombstones instead of jumping straight to the next floor's ambush underneath it. */
+  private pendingFloorAdvance = false;
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -324,8 +352,21 @@ export class App {
   }
 
   private handleKey(key: KeyEvent): void {
-    if (key.name === "q" || (key.name === "c" && key.ctrl)) {
+    if (key.name === "c" && key.ctrl) {
       this.quit();
+      return;
+    }
+    // q/s are global hotkeys — checked before the pending-reveal flush (like the old q-quits-
+    // immediately behavior) so they work even while a round's log lines are still pacing out.
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "saveMenu" && key.name === "q") {
+      this.ui = { kind: "saveMenu", previous: this.ui };
+      this.render();
+      return;
+    }
+    if (this.ui.kind !== "gameover" && key.name === "s") {
+      quickSave(this.game);
+      this.pushToast(t("ui.quickSavedMsg"));
+      this.render();
       return;
     }
     if (this.pendingReveal.length > 0) {
@@ -390,7 +431,7 @@ export class App {
         if (digit === null) break;
         const entry = inventoryEntries(this.game.state.inventory)[digit - 1];
         if (!entry) break;
-        this.trySelectItem(this.ui.actorRef, entry.item);
+        this.ui = { kind: "itemDetail", item: entry.item, origin: { kind: "combat", actorRef: this.ui.actorRef } };
         break;
       }
       case "pickTarget": {
@@ -407,47 +448,101 @@ export class App {
       }
       case "roundResolved":
       case "combatOver": {
-        if (this.ui.kind === "combatOver") this.game.clearFinishedCombat();
+        if (this.ui.kind === "combatOver") {
+          const wasBossRoomVictory = this.game.clearFinishedCombat();
+          const drops = this.game.state.lastRoomDrops;
+          this.game.state.lastRoomDrops = null;
+          if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
+            // Hold off advancing the floor until the player dismisses this screen — see
+            // pendingFloorAdvance's doc comment.
+            this.pendingFloorAdvance = wasBossRoomVictory;
+            this.ui = { kind: "roomReward", entries: buildRewardEntries(drops), viewing: null };
+            break;
+          }
+          if (wasBossRoomVictory) {
+            const depthBefore = this.game.state.floor.depth;
+            this.game.advanceToNextFloor();
+            if (this.game.state.floor.depth > depthBefore) autoSave(this.game);
+          }
+        }
         this.syncUiToGameState();
+        break;
+      }
+      case "roomReward": {
+        if (this.ui.viewing) {
+          if (digit === 1) this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
+          break;
+        }
+        // "Tiếp tục" only has an Enter binding now — digits are reserved for picking an entry to view.
+        if (key.name === "return") {
+          if (this.pendingFloorAdvance) {
+            this.pendingFloorAdvance = false;
+            const depthBefore = this.game.state.floor.depth;
+            this.game.advanceToNextFloor();
+            if (this.game.state.floor.depth > depthBefore) autoSave(this.game);
+          }
+          this.syncUiToGameState();
+          break;
+        }
+        if (digit === null) break;
+        if (digit <= this.ui.entries.length) {
+          this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: this.ui.entries[digit - 1]! };
+        }
         break;
       }
       case "pickItemOutOfCombat": {
         if (digit === null) break;
         const entry = inventoryEntries(this.game.state.inventory)[digit - 1];
         if (!entry) break;
-        if (entry.item.target === "allAllies") {
-          const err = this.game.useItemOutOfCombat(entry.item.id);
-          if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        } else if (entry.item.target === "singleEnemy") {
-          this.reportUnusable(t("ui.itemUnusableInCombatNamed", { item: entry.item.name }));
-        } else {
-          this.ui = { kind: "pickItemTargetOutOfCombat", item: entry.item };
+        this.ui = { kind: "itemDetail", item: entry.item, origin: { kind: "outOfCombat" } };
+        break;
+      }
+      case "itemDetail": {
+        if (this.ui.origin.kind === "outOfCombat") {
+          if (digit === 1) this.ui = { kind: "pickItemOutOfCombat" };
+        } else if (digit === 1) {
+          this.trySelectItem(this.ui.origin.actorRef, this.ui.item);
+        } else if (digit === 2) {
+          this.ui = { kind: "pickItemInCombat", actorRef: this.ui.origin.actorRef };
         }
         break;
       }
-      case "pickItemTargetOutOfCombat": {
-        if (digit === null) break;
-        const character = this.game.state.party.filter((c) => c.isAlive)[digit - 1];
-        if (!character) break;
-        const err = this.game.useItemOutOfCombat(this.ui.item.id, character.id);
-        if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        this.syncUiToGameState();
+      case "artifactDetail": {
+        if (digit === 1) {
+          if (this.ui.origin.kind === "unequipped") {
+            this.ui = { kind: "pickCharacterForArtifact", artifactId: this.ui.artifactId };
+          } else {
+            const err = this.game.unequipArtifact(this.ui.origin.characterId, this.ui.artifactId);
+            if (err) this.reportUnusable(err.reason);
+            this.syncUiToGameState();
+          }
+        } else if (digit === 2) {
+          this.ui = { kind: "artifactMenu" };
+        }
+        break;
+      }
+      case "saveMenu": {
+        if (digit === 1) {
+          manualSave(this.game);
+          this.pushToast(t("ui.gameSavedMsg"));
+          this.ui = this.ui.previous;
+        } else if (digit === 2) {
+          manualSave(this.game);
+          this.quit();
+        } else if (digit === 3) {
+          this.ui = this.ui.previous;
+        }
         break;
       }
       case "artifactMenu": {
         if (digit === null) break;
         const unequipped = this.game.state.unequippedArtifactIds;
         if (digit <= unequipped.length) {
-          this.ui = { kind: "pickCharacterForArtifact", artifactId: unequipped[digit - 1]! };
+          this.ui = { kind: "artifactDetail", artifactId: unequipped[digit - 1]!, origin: { kind: "unequipped" } };
         } else {
           const pair = this.equippedArtifactPairAt(digit - unequipped.length);
           if (!pair) break;
-          const err = this.game.unequipArtifact(pair.characterId, pair.artifactId);
-          if (err) this.reportUnusable(err.reason);
-          this.syncUiToGameState();
+          this.ui = { kind: "artifactDetail", artifactId: pair.artifactId, origin: { kind: "equipped", characterId: pair.characterId } };
         }
         break;
       }
@@ -623,15 +718,27 @@ export class App {
       case "pickItemOutOfCombat":
         this.ui = { kind: "room" };
         return true;
-      case "pickItemTargetOutOfCombat":
-        this.ui = { kind: "pickItemOutOfCombat" };
+      case "itemDetail":
+        this.ui = this.ui.origin.kind === "combat" ? { kind: "pickItemInCombat", actorRef: this.ui.origin.actorRef } : { kind: "pickItemOutOfCombat" };
         return true;
       case "artifactMenu":
         this.ui = { kind: "room" };
         return true;
+      case "artifactDetail":
+        this.ui = { kind: "artifactMenu" };
+        return true;
       case "pickCharacterForArtifact":
         this.ui = { kind: "artifactMenu" };
         return true;
+      case "saveMenu":
+        this.ui = this.ui.previous;
+        return true;
+      case "roomReward":
+        if (this.ui.viewing) {
+          this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
+          return true;
+        }
+        return false; // must explicitly pick "Tiếp tục" — Esc can't skip acknowledging a room's drops
       default:
         return false;
     }
@@ -659,6 +766,12 @@ export class App {
   private reportUnusable(reason: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
     else this.logHistory.push({ text: reason, kind: "info" });
+  }
+
+  /** Same "surface it where the player will see it" routing as reportUnusable, for a plain status message (e.g. save confirmations) rather than a rejection reason. */
+  private pushToast(text: string): void {
+    if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
+    else this.logHistory.push({ text, kind: "info" });
   }
 
   private trySelectSkill(actorRef: CombatantRef, skill: SkillDefinition): void {
@@ -703,7 +816,10 @@ export class App {
       this.reportUnusable(t("ui.itemUnusableNamed", { item: item.name, reason: unusable.reason }));
       return;
     }
-    if (item.target === "singleEnemy" || item.target === "singleAlly") {
+    // "self" items let the acting character hand it to any living ally (including themselves),
+    // same as "singleAlly" — lets you pick who receives a "self" item instead of forcing it onto
+    // 1 fixed character. Skills keep "self" auto-targeting the caster (trySelectSkill never routes through here).
+    if (item.target === "singleEnemy" || item.target === "singleAlly" || item.target === "self") {
       const candidates = item.target === "singleEnemy" ? this.game.livingEnemyRefs() : this.game.livingAllyRefs();
       this.ui = { kind: "pickTarget", actorRef, source: { kind: "item", item }, candidates };
       return;
@@ -753,7 +869,7 @@ export class App {
     s.party.forEach((c, i) => {
       if (i > 0) partyLines.push([]);
       const view = hpOverride?.get(c.id);
-      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive } : c));
+      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp } : c));
     });
     const items = inventoryEntries(s.inventory);
     if (items.length > 0) {
@@ -762,10 +878,18 @@ export class App {
     }
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
-    this.main.content = this.renderMain();
+    // Never let the main/footer panels leak the *next* screen (e.g. combatOver's victory text,
+    // or the next character's full skill list post-levelup) while the log is still paced-revealing
+    // the round that led there — see docs bug report: "màn hình đã hiển thị khung tiếp theo" before
+    // the log finished telling the story.
+    if (this.pendingReveal.length > 0) {
+      this.main.content = t("ui.revealingCombat");
+      this.footer.content = t("ui.footerSkipReveal");
+    } else {
+      this.main.content = this.renderMain();
+      this.footer.content = this.renderFooter();
+    }
     this.renderLogContent();
-
-    this.footer.content = this.renderFooter();
   }
 
   /** Renders `logHistory` (trimmed to LOG_HISTORY_SIZE) as icon+colored lines by LogEntryKind. */
@@ -1005,7 +1129,7 @@ export class App {
         s.unequippedArtifactIds.forEach((id) => {
           i++;
           const a = getArtifact(id);
-          lines.push(t("ui.equipOption", { i, name: a.name, rarity: a.rarity, desc: truncateText(a.description, 40) }));
+          lines.push(t("ui.equipOption", { i, name: a.name, rarity: a.rarity }));
         });
         s.party.forEach((c) => {
           c.equippedArtifactIds.forEach((id) => {
@@ -1014,6 +1138,23 @@ export class App {
           });
         });
         if (i === 0) lines.push(t("ui.noArtifactsYet"));
+        return lines.join("\n");
+      }
+
+      case "artifactDetail": {
+        const artifact = getArtifact(this.ui.artifactId);
+        const lines = [
+          `${artifact.name} (${artifact.rarity})${artifact.isCursed ? " ⚠ CURSED" : ""}`,
+          "",
+          t("ui.effectLabel"),
+          formatArtifactEffect(artifact),
+          "",
+          t("ui.descriptionLabel"),
+          artifact.description,
+          "",
+          this.ui.origin.kind === "unequipped" ? t("ui.artifactDetailEquipOption") : t("ui.artifactDetailUnequipOption"),
+          t("ui.artifactDetailBackOption"),
+        ];
         return lines.join("\n");
       }
 
@@ -1027,16 +1168,49 @@ export class App {
       case "pickItemOutOfCombat": {
         const lines = [t("ui.chooseItemToUse")];
         inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(`  [${i + 1}] ${item.name} x${qty} — ${truncateText(item.description, 40)}`);
+          lines.push(`  [${i + 1}] ${item.name} x${qty}`);
         });
         return lines.join("\n");
       }
 
-      case "pickItemTargetOutOfCombat": {
-        const lines = [t("ui.chooseCharacterForItem", { item: this.ui.item.name })];
-        s.party
-          .filter((c) => c.isAlive)
-          .forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} (${c.hp}/${c.maxHp} HP)`));
+      case "itemDetail": {
+        const { item, origin } = this.ui;
+        const lines = [item.name, "", t("ui.effectLabel"), formatItemEffect(item), "", t("ui.descriptionLabel"), item.description, ""];
+        if (origin.kind === "outOfCombat") {
+          lines.push(t("ui.itemOutOfCombatViewOnlyHint"), "", t("ui.itemDetailBackOnlyOption"));
+        } else {
+          lines.push(t("ui.itemDetailUseOption"), t("ui.itemDetailBackOption"));
+        }
+        return lines.join("\n");
+      }
+
+      case "saveMenu": {
+        return [t("ui.saveMenuTitle"), "", t("ui.saveMenuSave"), t("ui.saveMenuSaveAndExit"), t("ui.saveMenuCancel")].join("\n");
+      }
+
+      case "roomReward": {
+        if (this.ui.viewing) {
+          const entry = this.ui.viewing;
+          const lines =
+            entry.kind === "item"
+              ? [`${getItem(entry.id).name} x${entry.qty}`, "", t("ui.effectLabel"), formatItemEffect(getItem(entry.id)), "", t("ui.descriptionLabel"), getItem(entry.id).description]
+              : [
+                  `${getArtifact(entry.id).name} (${getArtifact(entry.id).rarity})`,
+                  "",
+                  t("ui.effectLabel"),
+                  formatArtifactEffect(getArtifact(entry.id)),
+                  "",
+                  t("ui.descriptionLabel"),
+                  getArtifact(entry.id).description,
+                ];
+          lines.push("", t("ui.roomRewardBackOption"));
+          return lines.join("\n");
+        }
+        const lines = [t("ui.roomRewardTitle")];
+        this.ui.entries.forEach((entry, i) => {
+          lines.push(entry.kind === "item" ? t("ui.roomRewardItemLine", { i: i + 1, name: getItem(entry.id).name, qty: entry.qty }) : t("ui.roomRewardArtifactLine", { i: i + 1, name: getArtifact(entry.id).name, rarity: getArtifact(entry.id).rarity }));
+        });
+        lines.push(t("ui.roomRewardContinueOption"));
         return lines.join("\n");
       }
 
@@ -1093,7 +1267,7 @@ export class App {
       case "pickItemInCombat": {
         const lines = [t("ui.chooseItemToUse")];
         inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(`  [${i + 1}] ${item.name} x${qty} — ${truncateText(item.description, 40)}`);
+          lines.push(`  [${i + 1}] ${item.name} x${qty}`);
         });
         return lines.join("\n");
       }
@@ -1238,12 +1412,18 @@ export class App {
         return t("ui.footerChooseTargetEsc");
       case "pickItemOutOfCombat":
         return t("ui.footerChooseItemEsc");
-      case "pickItemTargetOutOfCombat":
-        return t("ui.footerChooseCharacterEsc");
+      case "itemDetail":
+        return t("ui.detailFooter");
       case "artifactMenu":
         return t("ui.footerEquipUnequipEsc");
+      case "artifactDetail":
+        return t("ui.detailFooter");
       case "pickCharacterForArtifact":
         return t("ui.footerChooseCharacterEsc");
+      case "saveMenu":
+        return t("ui.saveMenuFooter");
+      case "roomReward":
+        return this.ui.viewing ? t("ui.detailFooter") : t("ui.roomRewardFooter");
       case "eventMerchantPickPayer":
       case "eventTwinAltarsPickCharacter":
       case "eventHpGamblePickPayer":

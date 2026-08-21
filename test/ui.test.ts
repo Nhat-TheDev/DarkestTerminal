@@ -25,8 +25,14 @@ describe("headless UI smoke test", () => {
     while (app.debugUiState.kind !== "gameover" && guard < 800) {
       guard++;
       const ui = app.debugUiState;
-      let key = "1";
 
+      if (ui.kind === "roomReward") {
+        mockInput.pressKey("RETURN"); // "Tiếp tục" is Enter-only now — skip viewing detail in the smoke test
+        await renderOnce();
+        continue;
+      }
+
+      let key = "1";
       if (ui.kind === "room") {
         const choices = app.debugGame.connectedRoomChoices();
         const idx = choices.findIndex((r) => !r.cleared);
@@ -61,7 +67,26 @@ describe("headless UI smoke test", () => {
     expect(finalFrame.length).toBeGreaterThan(0);
   });
 
-  test("q quits the process", async () => {
+  test("q opens the save menu instead of quitting", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 80, height: 24 });
+    const originalExit = process.exit;
+    let exitCalled = false;
+    process.exit = ((code?: number) => {
+      exitCalled = true;
+      throw new Error("__exit__");
+    }) as typeof process.exit;
+    try {
+      const app = new App(renderer, new Game(1));
+      await renderOnce();
+      mockInput.pressKey("q");
+      expect(app.debugUiState.kind).toBe("saveMenu");
+      expect(exitCalled).toBe(false);
+    } finally {
+      process.exit = originalExit;
+    }
+  });
+
+  test("ctrl+c quits the process", async () => {
     // Smoke-check the key is wired without actually exiting the test process.
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 80, height: 24 });
     const originalExit = process.exit;
@@ -74,7 +99,7 @@ describe("headless UI smoke test", () => {
       new App(renderer, new Game(1));
       await renderOnce();
       try {
-        mockInput.pressKey("q");
+        mockInput.pressCtrlC();
       } catch (e) {
         if (!(e instanceof Error) || e.message !== "__exit__") throw e;
       }

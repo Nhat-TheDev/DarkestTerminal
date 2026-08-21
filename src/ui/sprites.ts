@@ -130,15 +130,17 @@ export function renderSpriteInSlot(sprite: Sprite, slotHeight: number, slotWidth
   const h = spriteHeight(sprite);
   const w = spriteWidth(sprite);
   const topPad = Math.max(0, slotHeight - h);
+  const topCrop = Math.max(0, h - slotHeight); // sprite taller than slot: bottom-aligned, so drop overflow rows from the top
   const leftPad = Math.max(0, Math.floor((slotWidth - w) / 2));
   const rightPad = Math.max(0, slotWidth - w - leftPad);
+  const leftCrop = Math.max(0, Math.floor((w - slotWidth) / 2)); // sprite wider than slot: crop centered, mirroring leftPad's centering
 
   const lines: TextChunk[][] = [];
   for (let i = 0; i < topPad; i++) lines.push([plainChunk(" ".repeat(slotWidth))]);
-  for (let r = 0; r < h; r++) {
+  for (let r = topCrop; r < h; r++) {
     const row: TextChunk[] = [];
     if (leftPad > 0) row.push(plainChunk(" ".repeat(leftPad)));
-    row.push(...renderSpriteRow(sprite, r));
+    row.push(...renderSpriteRow(sprite, r).slice(leftCrop, leftCrop + slotWidth));
     if (rightPad > 0) row.push(plainChunk(" ".repeat(rightPad)));
     lines.push(row);
   }
