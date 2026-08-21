@@ -1,6 +1,6 @@
 {
   "name": "darkest-terminal-darwin-x64",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "macOS (Intel) binary for darkest-terminal",
   "license": "PolyForm-Noncommercial-1.0.0",
   "os": ["darwin"],

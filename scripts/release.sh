@@ -47,7 +47,7 @@ if [[ "$MAIN_VERSION" != "$PLATFORM_VERSION" || "$MAIN_VERSION" != "$OPTDEP_VERS
 fi
 
 echo "Building $PLATFORM binary (v$MAIN_VERSION)..."
-OUTFILE="$PLATFORM_DIR/$BIN_NAME" bun run build
+bun build ./src/main.ts --compile --outfile "$PLATFORM_DIR/$BIN_NAME"
 
 echo "Built: $PLATFORM_DIR/$BIN_NAME"
 

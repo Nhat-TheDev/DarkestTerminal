@@ -11,6 +11,11 @@
         "@types/bun": "^1.3.14",
         "typescript": "^7.0.2",
       },
+      "optionalDependencies": {
+        "darkest-terminal-darwin-arm64": "0.1.2",
+        "darkest-terminal-darwin-x64": "0.1.2",
+        "darkest-terminal-win32-x64": "0.1.2",
+      },
     },
   },
   "packages": {
