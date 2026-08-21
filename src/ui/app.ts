@@ -37,15 +37,12 @@ import {
   type Sprite,
 } from "./sprites";
 
-const SLOT_WIDTH = 13; // matches the class sprites' width, the widest sprites
+const SLOT_WIDTH = 13;
 const SLOT_GAP = 2;
 const DIVIDER_WIDTH = 3;
 const EMPTY_ENEMY_WIDTH = 24;
-/** sprite (bottom-aligned to MAX_BOSS_HEIGHT) + 1 spacer + label line + hp line. */
 const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
-/** How many of the most recent log lines are kept on screen — scroll up within the panel to see them. */
 const LOG_HISTORY_SIZE = 20;
-/** Delay between revealing consecutive action-phase log lines, so the player can follow turn order as it happens instead of seeing the whole round dumped at once. Any keypress skips straight to the end. */
 const LOG_REVEAL_INTERVAL_MS = 500;
 
 function centerText(text: string, width: number): string {
@@ -55,7 +52,6 @@ function centerText(text: string, width: number): string {
   return " ".repeat(left) + text + " ".repeat(pad - left);
 }
 
-/** Elite and boss are 2 distinct tiers — mixing them up made every guard-room elite display as "BOSS". */
 function monsterStyle(m: Monster): { abbr: string; color: string } {
   if (m.tier === "boss") return { abbr: "BOSS", color: BOSS_COLOR };
   if (m.tier === "elite") return { abbr: "ELITE", color: ELITE_COLOR };
@@ -67,7 +63,6 @@ function truncateText(text: string, maxLen: number): string {
   return text.slice(0, maxLen - 1).trimEnd() + "…";
 }
 
-/** Concatenates same-height blocks side by side, line by line, with a blank gap between them. */
 function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): TextChunk[][] {
   const lineCount = blocks[0]?.length ?? 0;
   const merged: TextChunk[][] = [];
@@ -82,44 +77,30 @@ function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): Tex
   return merged;
 }
 
-/** What triggered a target-picking screen — a skill or an item (docs/gameplay-decisions/07-items-artifacts.md §7.1: items are picked instead of a skill in the command phase). */
 type PickTargetSource = { kind: "skill"; skill: SkillDefinition } | { kind: "item"; item: ItemDefinition };
 
-/** Where an itemDetail screen returns to on "Quay lại"/Esc — mirrors the 2 places an item can be name-picked from. */
 type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { kind: "outOfCombat" };
 
-/** Where an artifactDetail screen returns to, and what its confirm action does — mirrors artifactMenu's 2 kinds of numbered entry. */
 type ArtifactDetailOrigin = { kind: "unequipped" } | { kind: "equipped"; characterId: Id };
 
-/** 1 entry in the post-room-clear reward reveal — dedupes item drops (qty shown), lists each artifact individually since they never stack. */
 type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id };
 
 type UiState =
   | { kind: "room" }
   | { kind: "rest" }
-  /** Combat command phase — actor must first choose Fight (→ pickSkill) or Use Item (→ pickItemInCombat). */
   | { kind: "pickAction"; actorRef: CombatantRef }
   | { kind: "pickSkill"; actorRef: CombatantRef }
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }
   | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
   | { kind: "roundResolved" }
   | { kind: "combatOver" }
-  /** Outside combat — picking which item to inspect. Read-only: items can only actually be used during combat (see itemDetail's origin.kind === "outOfCombat"). */
   | { kind: "pickItemOutOfCombat" }
-  /** Name was picked off pickItemInCombat/pickItemOutOfCombat — shows công dụng (formatItemEffect) + mô tả (item.description). Outside combat this is view-only (no "Dùng" option). */
   | { kind: "itemDetail"; item: ItemDefinition; origin: ItemDetailOrigin }
-  /** Outside combat — artifact equip/unequip menu (docs/gameplay-decisions/07-items-artifacts.md §7.2). */
   | { kind: "artifactMenu" }
-  /** Name was picked off artifactMenu — shows công dụng (formatArtifactEffect) + mô tả before equipping/unequipping. */
   | { kind: "artifactDetail"; artifactId: Id; origin: ArtifactDetailOrigin }
-  /** An unequipped artifact was picked to equip, now choosing which character gets it. */
   | { kind: "pickCharacterForArtifact"; artifactId: Id }
-  /** Q — asks whether to save before continuing; `previous` is restored on Hủy. */
   | { kind: "saveMenu"; previous: UiState }
-  /** Shown once after clearFinishedCombat() when the room's clear actually dropped something (empty drops skip straight to `room`); picking an entry shows its detail read-only, the last entry dismisses to `room`. */
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
-  // --- Event room (docs/gameplay-decisions/08-events.md §8) — shown whenever the current room is an
-  // unresolved event; syncUiToGameState routes to the right one from Room.rolledEventId's EventDefinition.kind.
   | { kind: "eventMerchant" }
   | { kind: "eventMerchantPickPayer"; offerIndex: number }
   | { kind: "eventCursedShrine" }
@@ -133,14 +114,12 @@ type UiState =
   | { kind: "eventHermitPickArtifact"; service: "removeCurse" | "reroll" }
   | { kind: "gameover" };
 
-/** Items currently in inventory (qty > 0), in catalog order. */
 function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
   return Object.entries(inventory)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({ item: getItem(id), qty }));
 }
 
-/** Builds the roomReward screen's entry list from a room-clear's raw drops — item ids are deduped with a count (2 monsters can drop the same item), artifacts are listed individually since they never stack. */
 function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[] }): RewardEntry[] {
   const itemQty = new Map<Id, number>();
   for (const id of drops.itemIds) itemQty.set(id, (itemQty.get(id) ?? 0) + 1);
@@ -150,22 +129,18 @@ function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[] }): Reward
   return entries;
 }
 
-/** Every artifact the party owns right now, unequipped pool + everyone's equipped — used by sacrificial-circle/wandering-hermit "any owned artifact" pickers (docs/gameplay-decisions/08-events.md §8.9/§8.11). */
 function ownedArtifactIds(party: Character[], unequippedArtifactIds: Id[]): Id[] {
   return [...unequippedArtifactIds, ...party.flatMap((c) => c.equippedArtifactIds)];
 }
 
-/** (character, artifact) pairs for every Cursed Artifact currently equipped anywhere in the party — wandering-hermit's "Gỡ nguyền" candidate list (§8.11). */
 function cursedEquippedEntries(party: Character[]): { character: Character; artifactId: Id }[] {
   return party.flatMap((character) => character.equippedArtifactIds.filter((id) => getArtifact(id).isCursed).map((artifactId) => ({ character, artifactId })));
 }
 
-/** The "pickSkill" screen's numbered list — every unlocked skill, in unlock order. */
 function skillEntries(actor: Character): SkillDefinition[] {
   return actor.unlockedSkillIds.map((id) => getSkill(id));
 }
 
-/** Maps a rolled event's kind/id to the UiState that presents it (docs/gameplay-decisions/08-events.md §8) — single source of truth so syncUiToGameState never drifts from the handleKey/renderMain switches below. */
 function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
@@ -180,8 +155,6 @@ function eventUiState(eventId: Id): UiState {
     case "rescueGamble":
       return { kind: "eventHpGamble", eventId: "collapsed-floor" };
     default:
-      // instantReward/combatReward never reach here — dungeon.ts always resolves them
-      // (room.cleared or state.combat) before returning control to the UI.
       return { kind: "room" };
   }
 }
@@ -205,17 +178,12 @@ export class App {
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
-  /** How many entries of the current combat's log have already been picked up into `pendingReveal`/`logHistory` — combat.log resets to a fresh array each new fight, `logHistory` never does. */
   private lastLogLength = 0;
   private observedCombatLog: LogEntry[] | null = null;
-  /** Persists across combats/floors for the lifetime of the App — never cleared, only trimmed to LOG_HISTORY_SIZE. */
   private logHistory: LogEntry[] = [];
-  /** New combat.log lines waiting to be revealed 1-by-1 (see LOG_REVEAL_INTERVAL_MS); a keypress flushes the rest instantly. */
   private pendingReveal: LogEntry[] = [];
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
-  /** HP/alive state to show on the battlefield/party/monster panels while `pendingReveal` is draining — keeps those panels in step with however far the log has been revealed, instead of jumping straight to the round's final state. Ignored (falls back to live state) once pendingReveal is empty. */
   private displaySnapshot: CombatantSnapshot[] | null = null;
-  /** Set when a boss-room clear's roomReward screen is showing — holds off Game.advanceToNextFloor() until the player dismisses that screen, so the battlefield keeps showing the just-cleared room's tombstones instead of jumping straight to the next floor's ambush underneath it. */
   private pendingFloorAdvance = false;
 
   constructor(private renderer: CliRenderer, game?: Game) {
@@ -301,7 +269,6 @@ export class App {
     this.render();
   }
 
-  /** Exposed for tests — the UI is otherwise driven purely by keypresses. */
   get debugUiState(): UiState {
     return this.ui;
   }
@@ -310,7 +277,6 @@ export class App {
     return this.game;
   }
 
-  /** After any game mutation: figure out what the UI should be showing next. */
   private syncUiToGameState(): void {
     if (this.game.state.gameOver) {
       this.ui = { kind: "gameover" };
@@ -323,8 +289,6 @@ export class App {
         this.ui = { kind: "rest" };
         return;
       }
-      // instantReward/combatReward-in-progress already resolved to room.cleared or state.combat
-      // by dungeon.ts — anything still unresolved here is one of the 8 player-decides event kinds.
       if (room.type === "event" && !room.cleared && room.rolledEventId) {
         this.ui = eventUiState(room.rolledEventId);
         return;
@@ -340,7 +304,6 @@ export class App {
       this.ui = { kind: "roundResolved" };
       return;
     }
-    // phase === "command": find the next living character without a queued action.
     const next = this.game
       .livingAllyRefs()
       .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind));
@@ -356,8 +319,6 @@ export class App {
       this.quit();
       return;
     }
-    // q/s are global hotkeys — checked before the pending-reveal flush (like the old q-quits-
-    // immediately behavior) so they work even while a round's log lines are still pacing out.
     if (this.ui.kind !== "gameover" && this.ui.kind !== "saveMenu" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
@@ -371,7 +332,7 @@ export class App {
     }
     if (this.pendingReveal.length > 0) {
       this.flushPendingReveal();
-      return; // this keypress only skips the reveal animation, no other action
+      return;
     }
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
@@ -453,8 +414,6 @@ export class App {
           const drops = this.game.state.lastRoomDrops;
           this.game.state.lastRoomDrops = null;
           if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
-            // Hold off advancing the floor until the player dismisses this screen — see
-            // pendingFloorAdvance's doc comment.
             this.pendingFloorAdvance = wasBossRoomVictory;
             this.ui = { kind: "roomReward", entries: buildRewardEntries(drops), viewing: null };
             break;
@@ -473,7 +432,6 @@ export class App {
           if (digit === 1) this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
           break;
         }
-        // "Tiếp tục" only has an Enter binding now — digits are reserved for picking an entry to view.
         if (key.name === "return") {
           if (this.pendingFloorAdvance) {
             this.pendingFloorAdvance = false;
@@ -645,7 +603,7 @@ export class App {
           const err = isSacrifice ? this.game.sacrifice(artifactId) : this.game.gamblingDenBet(artifactId);
           if (err) this.reportUnusable(err.reason);
           else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState(); // sacrifice leaves the room open (repeatable) — this just re-shows the screen with fresh candidates
+          this.syncUiToGameState();
         } else if (digit === candidates.length + 1) {
           if (isSacrifice) this.game.sacrificeLeave();
           else this.game.gamblingDenLeave();
@@ -698,14 +656,6 @@ export class App {
     this.render();
   }
 
-  /**
-   * Esc handling — pops 1 level back on screens that have a natural parent
-   * (item/artifact submenus, the fight-or-item choice, target picking) but
-   * were reached without an explicit numbered "back" option. Returns false
-   * for screens that must resolve to a decision (`pickAction` mid-combat,
-   * `rest`, event rooms with their own "leave" option per §8.13) — Esc does
-   * nothing there rather than letting the player dodge a required choice.
-   */
   private goBack(): boolean {
     switch (this.ui.kind) {
       case "pickSkill":
@@ -738,37 +688,23 @@ export class App {
           this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
           return true;
         }
-        return false; // must explicitly pick "Tiếp tục" — Esc can't skip acknowledging a room's drops
+        return false;
       default:
         return false;
     }
   }
 
-  /**
-   * `process.exit()` alone skips OpenTUI's terminal teardown (leaves mouse
-   * tracking / alternate screen / cursor state stuck) — `renderer.destroy()`
-   * restores the terminal first, then we exit.
-   */
   private quit(): void {
     if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.renderer.destroy();
     process.exit(0);
   }
 
-  /**
-   * Surfaces a "can't do that" reason (or an out-of-combat result line) where
-   * the player will actually see it. state.message only renders as a
-   * fallback when the session's whole log history is empty (see render()'s
-   * log section) — dead once combat has happened even once — so push
-   * straight into the active combat's log, or logHistory when there's no
-   * active combat (e.g. using an item from the room screen).
-   */
   private reportUnusable(reason: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
     else this.logHistory.push({ text: reason, kind: "info" });
   }
 
-  /** Same "surface it where the player will see it" routing as reportUnusable, for a plain status message (e.g. save confirmations) rather than a rejection reason. */
   private pushToast(text: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
     else this.logHistory.push({ text, kind: "info" });
@@ -778,7 +714,6 @@ export class App {
     const actor = getActorByRef(actorRef, this.game.ctx);
     const unusable = checkSkillUsable(actor, skill);
     if (unusable) {
-      // Stay on pickSkill — never advance to target-picking for a skill that can't be used.
       this.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: unusable.reason }));
       return;
     }
@@ -798,7 +733,6 @@ export class App {
     this.syncUiToGameState();
   }
 
-  /** 1-indexed lookup into the flattened "every equipped artifact across the whole party" list, in party order — matches the numbering used by the artifactMenu screen's "Gỡ" entries. */
   private equippedArtifactPairAt(position: number): { characterId: Id; artifactId: Id } | null {
     let remaining = position;
     for (const c of this.game.state.party) {
@@ -808,7 +742,6 @@ export class App {
     return null;
   }
 
-  /** Item counterpart to trySelectSkill — used instead of a skill during the command phase (§7.1). */
   private trySelectItem(actorRef: CombatantRef, item: ItemDefinition): void {
     const actor = getActorByRef(actorRef, this.game.ctx);
     const unusable = checkItemUsable(actor, item.id, this.game.state.inventory);
@@ -816,9 +749,6 @@ export class App {
       this.reportUnusable(t("ui.itemUnusableNamed", { item: item.name, reason: unusable.reason }));
       return;
     }
-    // "self" items let the acting character hand it to any living ally (including themselves),
-    // same as "singleAlly" — lets you pick who receives a "self" item instead of forcing it onto
-    // 1 fixed character. Skills keep "self" auto-targeting the caster (trySelectSkill never routes through here).
     if (item.target === "singleEnemy" || item.target === "singleAlly" || item.target === "self") {
       const candidates = item.target === "singleEnemy" ? this.game.livingEnemyRefs() : this.game.livingAllyRefs();
       this.ui = { kind: "pickTarget", actorRef, source: { kind: "item", item }, candidates };
@@ -841,11 +771,6 @@ export class App {
       ],
     ]);
 
-    // Combat.log is a fresh array per fight; queue every new line for paced reveal into
-    // logHistory (see scheduleReveal), which persists for the whole session so past battles
-    // stay visible (scroll to see them). Must run BEFORE the panels below are built, so the
-    // very first render after a round resolves already shows the round's *starting* state
-    // instead of the live state (which resolveRound already advanced synchronously to the end).
     const combatLog = s.combat?.log ?? null;
     if (combatLog !== this.observedCombatLog) {
       this.observedCombatLog = combatLog;
@@ -859,8 +784,6 @@ export class App {
       this.scheduleReveal();
     }
 
-    // While a round's log lines are still being paced out, show the panels as of however far
-    // the reveal has gotten (see displaySnapshot) instead of the live end-of-round state.
     const hpOverride = this.pendingReveal.length > 0 && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
 
     this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
@@ -878,10 +801,6 @@ export class App {
     }
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
-    // Never let the main/footer panels leak the *next* screen (e.g. combatOver's victory text,
-    // or the next character's full skill list post-levelup) while the log is still paced-revealing
-    // the round that led there — see docs bug report: "màn hình đã hiển thị khung tiếp theo" before
-    // the log finished telling the story.
     if (this.pendingReveal.length > 0) {
       this.main.content = t("ui.revealingCombat");
       this.footer.content = t("ui.footerSkipReveal");
@@ -892,7 +811,6 @@ export class App {
     this.renderLogContent();
   }
 
-  /** Renders `logHistory` (trimmed to LOG_HISTORY_SIZE) as icon+colored lines by LogEntryKind. */
   private renderLogContent(): void {
     const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
     if (displayLog.length === 0) {
@@ -907,9 +825,8 @@ export class App {
     );
   }
 
-  /** Reveals 1 queued log line every LOG_REVEAL_INTERVAL_MS, so the player can follow action order as it happens. Also advances displaySnapshot and does a full re-render, so the battlefield/party/monster panels stay in step with the log instead of sitting at the round's end state the whole time. */
   private scheduleReveal(): void {
-    if (this.revealTimer !== null) return; // already draining
+    if (this.revealTimer !== null) return;
     this.revealTimer = setTimeout(() => {
       this.revealTimer = null;
       const next = this.pendingReveal.shift();
@@ -922,7 +839,6 @@ export class App {
     }, LOG_REVEAL_INTERVAL_MS);
   }
 
-  /** Skips straight to the end of the current reveal animation — called on the next keypress. */
   private flushPendingReveal(): void {
     if (this.pendingReveal.length === 0) return;
     if (this.revealTimer !== null) {
@@ -975,7 +891,6 @@ export class App {
     return [line1, line2, line3];
   }
 
-  /** The 3 rows below a unit's sprite (spacer/label/status) — always exactly SLOT_WIDTH, never overflows. */
   private buildUnitMeta(label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {
     return [
       [plainChunk(" ".repeat(SLOT_WIDTH))],
@@ -984,13 +899,6 @@ export class App {
     ];
   }
 
-  /**
-   * Builds 1 side (party or enemy row) of the battlefield from its units.
-   * Sprites are composited (not just concatenated) so a sprite wider than
-   * SLOT_WIDTH bleeds into its neighbors' slots instead of corrupting the
-   * layout — see compositeSpriteRow. The label/status rows stay simple
-   * side-by-side text, since they're always exactly SLOT_WIDTH.
-   */
   private buildSideBlock(units: { sprite: Sprite; label: string; labelColor: string; statusText: string; statusColor: string }[]): TextChunk[][] {
     const spritePart = compositeSpriteRow(
       units.map((u) => u.sprite),
@@ -1023,7 +931,6 @@ export class App {
     return lines;
   }
 
-  /** Pixel-art frame (docs: 1 pixel = 1 cell, units <=10px tall, boss <=13px): party on the left, current room's monsters/boss on the right. `hpOverride`, when set, replaces each combatant's live hp/isAlive with its value as of however far the log reveal has gotten (see displaySnapshot in render()). */
   private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
     const s = this.game.state;
 
@@ -1245,17 +1152,11 @@ export class App {
           const unusable = checkSkillUsable(actor, sk);
           const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
           const usesSuffix = usesLeft !== null ? t("ui.usesLeftSuffix", { count: usesLeft }) : "";
-          // Raw damage before the target's defense is subtracted (see resolver.ts's damage
-          // formula) — only shown for skills with a plain damage effect, skipped for the 2
-          // dual-relation skills since their effect depends on which side the target is on.
           const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
           const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
           const dmgSuffix = dmgEffect ? `, ~${Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat))} dmg` : "";
           const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
           if (unusable) {
-            // The reason (cooldown/MP status) replaces the description here rather than
-            // trailing after it — the main panel can be quite narrow, and the reason is
-            // the more important thing to see when a skill can't be used right now.
             lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
           } else {
             lines.push([plainChunk(`${head} — ${truncateText(sk.description, 34)}`)]);
@@ -1388,8 +1289,6 @@ export class App {
       }
 
       default: {
-        // Compile-time exhaustiveness check: a UiState kind added without a case here
-        // fails to build instead of silently falling through to a blank main panel.
         const _exhaustive: never = this.ui;
         return _exhaustive;
       }

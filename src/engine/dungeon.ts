@@ -25,13 +25,6 @@ function roomHasLivingMonsters(room: Room, ctx: EngineContext): boolean {
   });
 }
 
-/**
- * Moves the party into `targetRoomId` (must be connected to the current
- * room). Counts as 1 dungeon action for survival stats and triggers
- * combat/rest as appropriate. Fear no longer accrues from room movement —
- * see docs/gameplay-decisions/03-survival-stats.md §3 for the round-based
- * combat mechanic instead.
- */
 export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineContext): void {
   const current = getRoom(state.floor, state.currentRoomId);
   if (!current.connectedRoomIds.includes(targetRoomId)) {
@@ -63,15 +56,6 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   state.message = t("dungeon.arrived", { room: room.name });
 }
 
-/**
- * docs/gameplay-decisions/08-events.md §8.1 — rolls the room's event on
- * first entry only (Room.rolledEventId persists it), then auto-resolves the
- * 2 kinds that need no player decision: instantReward (open-chest, grants
- * immediately) and combatReward (guardian-fight/desecrated-altar, starts
- * combat immediately, same as a combat-room ambush). Every other kind just
- * surfaces its flavor text and description — the player resolves it via the
- * matching Game.* method from the UI's dedicated event screen.
- */
 function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
   if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
   const event = getEvent(room.rolledEventId);
@@ -93,13 +77,6 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
     return;
   }
 
-  // merchant/cursed-shrine/twin-altars "reveal before decide" — pre-roll the
-  // offer(s) once and cache them so the UI can show a fixed choice; every
-  // other kind (hpGamble/artifactExchange/rescueGamble) rolls atomically
-  // inside its Game.* method instead, no pre-roll needed. Guarded by
-  // `!state.activeEvent` so re-entering an already-open event (shouldn't
-  // happen — the UI has no room-navigation path out of an unresolved event,
-  // same as "rest") can't reroll the offer.
   if (!state.activeEvent) {
     if (event.id === "merchant") {
       const offerCount = ctx.rng.int(2, 3);

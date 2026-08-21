@@ -6,25 +6,20 @@ import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 
-// Floor structure is generated at runtime (see src/data/floorPatterns.ts for
-// the stage/branch/rest/event rules). This module turns the generated
-// stages into an actual Floor + spawned Monster[], choosing room names and
-// monster composition randomly via the shared engine Rng.
-
 const COMBAT_ROOM_NAMES = [
-  "Cửa Hầm Ngục",
-  "Hành Lang Ẩm Ướt",
-  "Phòng Giam Cũ",
-  "Kho Đổ Nát",
-  "Ngách Tối",
-  "Hầm Chứa Xương",
-  "Đại Sảnh Đổ Nát",
-  "Lối Đi Sụp Lở",
-  "Phòng Nghi Lễ Cũ",
-  "Hang Ẩm Thấp",
+  "Dungeon Gate",
+  "Damp Corridor",
+  "Old Cell",
+  "Ruined Storeroom",
+  "Dark Alcove",
+  "Bone Vault",
+  "Ruined Hall",
+  "Collapsed Passage",
+  "Old Ritual Chamber",
+  "Damp Low Cave",
 ];
-const REST_ROOM_NAMES = ["Nơi Trú Ẩn", "Góc Nghỉ An Toàn", "Điện Thờ Bỏ Hoang"];
-const BOSS_ROOM_NAMES = ["Sảnh Đường Chúa Ngục", "Ngai Vàng Bóng Tối", "Hầm Mộ Đại Tướng"];
+const REST_ROOM_NAMES = ["Shelter", "Safe Resting Corner", "Abandoned Shrine"];
+const BOSS_ROOM_NAMES = ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"];
 
 function namePool(type: RoomType): string[] {
   if (type === "rest") return REST_ROOM_NAMES;
@@ -40,10 +35,6 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
   return name;
 }
 
-// Regular combat rooms pick from every archetype except guard-only ones (elite/boss-exclusive
-// monsters like Dragon or Dark Knight never show up as a plain trash mob). The guard room itself
-// picks among every archetype that actually has an elite/boss skill kit — guard-only archetypes
-// plus skeleton-guard, which (unlike them) also doubles as a regular combat-room spawn.
 const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => !a.guardOnly);
 const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds);
 
@@ -55,11 +46,6 @@ const ARCHETYPES_BY_TIER: Record<PowerTier, MonsterArchetype[]> = {
   strong: COMBAT_ROOM_ARCHETYPES.filter((a) => a.powerTier === "strong"),
 };
 
-// Every allowed tier makeup for a combat room, chosen so the room's EXP stays
-// balanced (docs/gameplay-decisions.md §2 update 2026-08-17 "monster power
-// tiers"): no single-weak room (too trivial), no all-strong room (too punishing
-// for the room count), and total representative EXP (weak=6, medium≈9,
-// strong≈13) lands within [15, 35] — which also rules out any 1-monster room.
 const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = [
   ["weak", "medium"],
   ["weak", "strong"],
@@ -76,7 +62,6 @@ const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = [
   ["medium", "strong", "strong"],
 ];
 
-/** Spawns the monsters for 1 room of a given type; returns [] for room types that spawn nothing. */
 type RoomSpawnFn = (rng: Rng, depth: number) => Monster[];
 
 function spawnCombatRoomMonsters(rng: Rng, depth: number): Monster[] {
@@ -88,25 +73,13 @@ function spawnCombatRoomMonsters(rng: Rng, depth: number): Monster[] {
 }
 
 function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
-  // "boss" here is the room tag (always the floor's single guard room) — the
-  // monster inside is "elite" most floors, "boss" every BOSS_FLOOR_INTERVAL
-  // floors instead (mutually exclusive, §6.11), not the room type.
   const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
   const archetype = rng.pick(GUARD_ROOM_ARCHETYPES).id;
   return [spawnMonster(archetype, depth, { tier })];
 }
 
-/** Value: data/balance-config.json BALANCE.events.eventGuardianStatMultiplier. */
 const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
 
-/**
- * docs/gameplay-decisions/08-events.md §8.3 (guardian-fight/desecrated-altar)
- * — 1-2 monsters from the regular combat-room pool, +20% hp/attack/defense
- * over their normal spawn-time stats. Unlike combat/boss rooms, this isn't
- * wired into ROOM_SPAWN_STRATEGIES — event rooms don't know which of the 11
- * events they'll resolve to until entered (src/engine/dungeon.ts), so this
- * is called at resolve time instead of floor-build time.
- */
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   const count = rng.int(1, 2);
   return Array.from({ length: count }, () => {
@@ -120,14 +93,11 @@ export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   });
 }
 
-// Room types not listed here spawn nothing (rest/treasure/empty/event) — adding
-// a new type that spawns monsters is a single entry, no change to the loop below.
 const ROOM_SPAWN_STRATEGIES: Partial<Record<RoomType, RoomSpawnFn>> = {
   combat: spawnCombatRoomMonsters,
   boss: spawnBossRoomMonsters,
 };
 
-/** Builds a Floor from a generated set of stages — exported mainly so tests can cover the generator's output directly instead of always going through `createFloor`. */
 export function buildFloorFromStages(stages: RoomToken[][], rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const monsters: Monster[] = [];
   const usedNames = new Set<string>();

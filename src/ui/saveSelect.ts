@@ -13,7 +13,6 @@ function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleString();
 }
 
-/** "Tiếp tục" screen — lists every save on disk (newest first), digit picks one. Esc backs out to the main menu (resolves null). */
 export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
@@ -48,8 +47,6 @@ export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> 
     lines.push([colorChunk(t("saveSelect.hint"), PALETTE.dim)]);
     body.content = joinLines(lines);
 
-    // Persistent listener, removed explicitly on Esc/pick — see characterSelect.ts's onKey note:
-    // re-registering via .once() from inside its own handler only survives 1 hop on this renderer.
     const onKey = (key: KeyEvent) => {
       if (key.name === "escape") {
         renderer.keyInput.off("keypress", onKey);

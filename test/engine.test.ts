@@ -50,17 +50,12 @@ function makeCtx(seed = 1) {
   return { ctx, floor, monsters, party };
 }
 
-/** Spawns a specific archetype straight into ctx.monsters — the random floor's composition now
- * draws from a much larger archetype pool (11+ regular, several guard-only), so tests that need a
- * particular monster (e.g. the tanky skeleton-guard, or exactly 2 dungeon-rats) can't rely on it
- * showing up by chance anymore. */
 function spawnInto(ctx: EngineContext, archetypeId: string, depth = 1) {
   const m = spawnMonster(archetypeId, depth);
   ctx.monsters.push(m);
   return m;
 }
 
-/** Picks a singleEnemy skill if the character has one unlocked, else falls back to whatever's available. */
 function pickAnyAction(
   ctx: EngineContext,
   combat: ReturnType<typeof startCombat>,
@@ -129,8 +124,8 @@ describe("character creation", () => {
 describe("resolver", () => {
   test("damage formula: max(1, round(amount + mitigatedOffense(attack, defense)))", () => {
     const { ctx } = makeCtx();
-    const attacker = ctx.party[0]!; // vanguard, attack 14
-    const target = ctx.party[1]!; // mage, defense 4
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
     const before = target.hp;
     resolveSkillEffect({ kind: "damage", amount: 10 }, attacker, target, { log: [] });
     expect(before - target.hp).toBe(Math.max(1, Math.round(10 + mitigatedOffense(attacker.attack, target.defense))));
@@ -138,8 +133,8 @@ describe("resolver", () => {
 
   test("damage is floored at 1 even vs. huge defense", () => {
     const { ctx } = makeCtx();
-    const attacker = ctx.party[1]!; // low attack
-    const target = ctx.party[0]!; // high defense
+    const attacker = ctx.party[1]!;
+    const target = ctx.party[0]!;
     target.defense = 999;
     const before = target.hp;
     resolveSkillEffect({ kind: "damage", amount: 1 }, attacker, target, { log: [] });
@@ -170,19 +165,19 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(baseDef + 6);
 
-    tickStatusEffects(vanguard, { log }); // 1 -> 0, expires
+    tickStatusEffects(vanguard, { log });
     expect(vanguard.defense).toBe(baseDef);
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
-  test("a status effect's own recurring damage tick (DoT, e.g. Trúng Độc) is flat, not attack-minus-defense (regression: source===target self-tick was going through the full damage formula)", () => {
+  test("a status effect's own recurring damage tick (DoT, e.g. Poisoned) is flat, not attack-minus-defense (regression: source===target self-tick was going through the full damage formula)", () => {
     const { ctx } = makeCtx();
-    const victim = ctx.monsters[0]!; // has nonzero attack/defense, unlike a flat 0-0 stub
+    const victim = ctx.monsters[0]!;
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
     const before = victim.hp;
     tickStatusEffects(victim, { log });
-    expect(before - victim.hp).toBe(4); // status-effects.json: poisoned perTurnEffects damage amount 4, flat
+    expect(before - victim.hp).toBe(4);
   });
 
   test("re-applying an active status effect refreshes duration instead of stacking (bong: 2-turn debuff)", () => {
@@ -190,10 +185,10 @@ describe("resolver", () => {
     const vanguard = ctx.party[0]!;
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
-    tickStatusEffects(vanguard, { log }); // 2 -> 1
+    tickStatusEffects(vanguard, { log });
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
     expect(vanguard.activeStatusEffects).toHaveLength(1);
-    expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2); // refreshed to full duration, not stacked to a 2nd entry
+    expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);
   });
 
   test("fear tiers match docs/gameplay-decisions.md §3", () => {
@@ -207,7 +202,7 @@ describe("resolver", () => {
   });
 
   test("rollLosesControl only ever triggers at fear tier 4", () => {
-    const alwaysTrue = () => 0; // roll < 0.25 always true
+    const alwaysTrue = () => 0;
     expect(rollLosesControl(99, alwaysTrue)).toBe(false);
     expect(rollLosesControl(100, alwaysTrue)).toBe(true);
     const alwaysFalse = () => 0.9;
@@ -234,8 +229,7 @@ describe("aggro-weighted targeting", () => {
 describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
     const { ctx } = makeCtx();
-    // Tanky enough (skeleton-guard, 55hp) that no single hit ends combat mid-round,
-    // so every character's turn actually runs and shows up in the log.
+
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     for (const ref of livingCharacterRefs(combat, ctx)) {
@@ -244,11 +238,11 @@ describe("combat round structure", () => {
       expect(err).toBeNull();
     }
     resolveRound(combat, ctx);
-    const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("dùng"));
-    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("dùng"));
+    const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("uses"));
+    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("uses"));
     expect(rogueLine).toBeGreaterThanOrEqual(0);
     expect(vanguardLine).toBeGreaterThanOrEqual(0);
-    expect(rogueLine).toBeLessThan(vanguardLine); // rogue speed 16 > vanguard speed 8
+    expect(rogueLine).toBeLessThan(vanguardLine);
   });
 
   test("isBuff skills get +20 speed for this round's turn order only, not a persistent stat change (§4.7)", () => {
@@ -257,19 +251,19 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx); // isBuff — vanguard (speed 8) would normally act last
+    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === vanguard.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
       queueAction(combat, ref, skillId, targets, ctx);
     }
     resolveRound(combat, ctx);
-    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("dùng"));
-    const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("dùng"));
+    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("uses"));
+    const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("uses"));
     expect(vanguardLine).toBeGreaterThanOrEqual(0);
     expect(rogueLine).toBeGreaterThanOrEqual(0);
-    expect(vanguardLine).toBeLessThan(rogueLine); // +20 (=28) now outranks rogue's speed 16
-    expect(vanguard.speed).toBe(8); // the bonus never touches the real stat
+    expect(vanguardLine).toBeLessThan(rogueLine);
+    expect(vanguard.speed).toBe(8);
   });
 
   test("MP is deducted at queue time, not at resolution", () => {
@@ -291,7 +285,7 @@ describe("combat round structure", () => {
     const err1 = queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     expect(err1).toBeNull();
     expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(2);
-    combat.queuedActions = []; // simulate a fresh round without going through resolution
+    combat.queuedActions = [];
     const err2 = queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     expect(err2).not.toBeNull();
   });
@@ -304,14 +298,14 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
 
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx); // cooldownTurns 2
-    resolveRound(combat, ctx); // round 1 -> 2, cooldown 2 -> 1
+    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    resolveRound(combat, ctx);
     expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(1);
-    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).not.toBeNull(); // still cooling down
+    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).not.toBeNull();
 
-    resolveRound(combat, ctx); // round 2 -> 3, cooldown 1 -> 0
+    resolveRound(combat, ctx);
     expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(0);
-    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).toBeNull(); // usable again
+    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).toBeNull();
   });
 
   test("dead singleEnemy target redirects to another living enemy instead of fizzling", () => {
@@ -320,7 +314,7 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", rats.map((m) => m.id), ctx, false);
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     const [enemyA, enemyB] = livingMonsterRefs(combat, ctx);
-    // Kill enemyA "before" rogue's turn by zeroing its hp directly, simulating an earlier actor finishing it off.
+
     const targetA = getActorByRef(enemyA!, ctx);
     targetA.hp = 0;
     queueAction(combat, { kind: "character", id: rogue.id }, "rogue-stab", [enemyA!], ctx);
@@ -330,17 +324,16 @@ describe("combat round structure", () => {
       queueAction(combat, ref, skillId, targets, ctx);
     }
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("mục tiêu không còn"))).toBe(false);
+    expect(combat.log.some((l) => l.text.includes("the target is gone"))).toBe(false);
     const enemyBActor = getActorByRef(enemyB!, ctx);
-    expect(enemyBActor.hp).toBeLessThan(enemyBActor.maxHp); // redirected hit landed on the surviving rat
+    expect(enemyBActor.hp).toBeLessThan(enemyBActor.maxHp);
   });
 
   test("combat resolves to victory once the last monster dies, even across multiple rounds", () => {
     const { ctx } = makeCtx();
     const oneRat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [oneRat.id], ctx, false);
-    // Rats now have enough HP (2026-08-16 rebalance) to survive a round or two of basic attacks,
-    // so resolve rounds until the fight actually ends instead of assuming a 1-round kill.
+
     for (let round = 0; round < 10 && !isCombatOver(combat, ctx); round++) {
       for (const ref of livingCharacterRefs(combat, ctx)) {
         const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -362,11 +355,9 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     const self: CombatantRef = { kind: "character", id: vanguard.id };
     queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     resolveRound(combat, ctx);
-    // Both are now 1-turn buffs, so by the time resolveRound's end-of-round tick runs they've
-    // already expired again (correct — that's the "buff luôn 1 lượt" rule) — assert via the log
-    // instead of activeStatusEffects, which is empty again by the time resolveRound returns.
-    expect(combat.log.some((l) => l.text.includes("nhận hiệu ứng Guard"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("nhận hiệu ứng Taunt"))).toBe(true);
+
+    expect(combat.log.some((l) => l.text.includes("gains the Guard effect"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
   });
 
   test("stuns status makes the bearer skip their turn entirely (§4.3)", () => {
@@ -383,11 +374,11 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
       queueAction(combat, ref, skillId, targets, ctx);
     }
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("đang choáng"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("Rogue") && l.text.includes("dùng"))).toBe(false);
+    expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("Rogue") && l.text.includes("uses"))).toBe(false);
   });
 
-  test("Tẩm Độc buff makes a landed damage hit auto-apply Trúng Độc (on-hit rider, §4.2)", () => {
+  test("Poison Coat buff makes a landed damage hit auto-apply Poisoned (on-hit rider, §4.2)", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     const tanky = spawnInto(ctx, "skeleton-guard");
@@ -423,8 +414,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     ctx.party.push(acolyte);
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
-    // skeleton-guard (55hp), not dungeon-rat (16hp) — Purify's enemy branch (15 + mitigatedOffense(magicPower, defense))
-    // would one-shot a rat and end combat before the 2nd (ally-branch) queueAction in this test runs.
+
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
@@ -433,20 +423,20 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     const hpBefore = getActorByRef(enemyRef, ctx).hp;
     expect(queueAction(combat, acolyteRef, "acolyte-purify", [enemyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
-    expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore); // enemy branch: damage 15
+    expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore);
 
     const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
     expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false); // ally branch: removeStatusEffect
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
   });
 
   test("ultimate skills always hit even at high fear, but scale damage down instead of missing", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("vanguard-sword-judgment"); // unlockLevel 35 — force-unlock for the test
+    vanguard.unlockedSkillIds.push("vanguard-sword-judgment");
     vanguard.mp = 999;
-    vanguard.survival.fear = 99; // Hoảng Loạn (tier 3): normal skills would get -20% accuracy, -15% dmg
+    vanguard.survival.fear = 99;
     const skeleton = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [skeleton.id], ctx, false);
     const enemyRef: CombatantRef = { kind: "monster", id: skeleton.id };
@@ -458,9 +448,9 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - enemyActor.hp;
 
-    expect(combat.log.some((l) => l.text.includes("trượt"))).toBe(false); // ultimate never misses
+    expect(combat.log.some((l) => l.text.includes("misses its attack"))).toBe(false);
     expect(actualDamage).toBeGreaterThan(0);
-    expect(actualDamage).toBeLessThan(fullPowerDamage); // fear-scaled effectiveness kicked in instead
+    expect(actualDamage).toBeLessThan(fullPowerDamage);
   });
 });
 
@@ -473,8 +463,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
   }
 
   test("elite and boss pick from a weighted action pool (data/monsters.json actionWeights): both their named skill kit and a plain basic attack are reachable outcomes", () => {
-    // Unlike the old hardcoded chance rolls, elite/boss can now also fall back to a flat "tấn công"
-    // (actionWeights.elite/boss.basicAttack) — see docs request "boss và elite cũng có thể đánh thường".
+
     let sawNamedKit = false;
     let sawBasicAttack = false;
     for (let seed = 0; seed < 30 && !(sawNamedKit && sawBasicAttack); seed++) {
@@ -486,10 +475,10 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
-        if (monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave") || l.text.includes("kết liễu") || l.text.includes("Crush"))) {
+        if (monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave") || l.text.includes("finishing blow") || l.text.includes("Crush"))) {
           sawNamedKit = true;
         }
-        if (monsterLines.some((l) => l.text.includes("tấn công"))) sawBasicAttack = true;
+        if (monsterLines.some((l) => l.text.includes("attacks"))) sawBasicAttack = true;
       }
     }
     expect(sawNamedKit).toBe(true);
@@ -498,50 +487,46 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
 
   test("normal-tier skeleton-guard is unaffected — still uses the old flat attack (regression)", () => {
     const { ctx } = makeCtx(1);
-    const monster = spawnMonster("skeleton-guard", 1); // tier defaults to "normal"
+    const monster = spawnMonster("skeleton-guard", 1);
     ctx.monsters.push(monster);
     const combat = startCombat("r1", [monster.id], ctx, false);
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
     const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
-    expect(monsterLines.some((l) => l.text.includes("tấn công"))).toBe(true);
+    expect(monsterLines.some((l) => l.text.includes("attacks"))).toBe(true);
     expect(monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
   });
 
-  test("boss telegraphs Đòn Kết Liễu 1 turn ahead, locking in a target, then releases a huge flat hit on release (not HP%-based)", () => {
+  test("boss telegraphs its Finishing Blow 1 turn ahead, locking in a target, then releases a huge flat hit on release (not HP%-based)", () => {
     const { ctx } = makeCtx();
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
-    // Pinned well above its natural depth-1 HP so it reliably survives to the charge/release round
-    // regardless of the party's exact per-round damage (which depends on the attack/defense damage
-    // formula, not the mechanic under test here) — this test is about the execute telegraph, not a DPS race.
+
     boss.maxHp = 1000;
     boss.hp = 1000;
     ctx.monsters.push(boss);
     const combat = startCombat("r1", [boss.id], ctx, false);
 
-    // Cooldown starts at EXECUTE_COOLDOWN_TURNS (§6.12) — run rounds until the charge/warning turn fires.
     let charged = false;
     for (let round = 0; round < 10 && combat.phase !== "over" && !charged; round++) {
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      charged = combat.log.some((l) => l.text.includes("bắt đầu tích lực"));
+      charged = combat.log.some((l) => l.text.includes("begins charging"));
     }
     expect(charged).toBe(true);
     expect(boss.isChargingExecute).toBe(true);
     const markedTarget = ctx.party.find((p) => p.id === boss.executeTargetId);
     expect(markedTarget).toBeDefined();
-    markedTarget!.hp = markedTarget!.maxHp; // reset to full so the release's damage is measured cleanly, independent of whatever chip damage landed during the charge-up rounds
+    markedTarget!.hp = markedTarget!.maxHp;
 
     const hpBefore = markedTarget!.hp;
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("tung đòn kết liễu đã tích lực") && l.text.includes(markedTarget!.name))).toBe(true);
-    // §6.12: fixed, very high damage regardless of the target's HP going in (not a %-HP trigger) —
-    // amount 71 (dominant over mitigatedOffense(boss.attack, target.defense) at low level) comfortably exceeds half a squishy class's maxHp.
+    expect(combat.log.some((l) => l.text.includes("unleashes its charged finishing blow") && l.text.includes(markedTarget!.name))).toBe(true);
+
     const damageDealt = Math.max(0, hpBefore - markedTarget!.hp);
     expect(damageDealt).toBeGreaterThan(markedTarget!.maxHp * 0.5);
-    expect(boss.isChargingExecute).toBe(false); // resets after releasing
-    expect(boss.executeCooldownTurns).toBeGreaterThan(0); // back on cooldown, won't charge again immediately
+    expect(boss.isChargingExecute).toBe(false);
+    expect(boss.executeCooldownTurns).toBeGreaterThan(0);
   });
 
   test("elite cleave (Sweeping Cleave), when it fires, damages every living character in the same round", () => {
@@ -560,9 +545,9 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
         const c = ctx.party.find((p) => p.id === id)!;
         return c.hp < hp;
       }).length;
-      expect(hitCount).toBe(hpBefore.size); // every character alive before the round took damage
+      expect(hitCount).toBe(hpBefore.size);
     }
-    expect(found).toBe(true); // cleave should fire at least once across 50 seeds at a 30% chance/round
+    expect(found).toBe(true);
   });
 
   test("boss debuff (Crush) applies weakened, weakening the target's defense", () => {
@@ -579,7 +564,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
       const debuffed = ctx.party.find((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "weakened"));
       expect(debuffed).toBeDefined();
     }
-    expect(found).toBe(true); // debuff should fire at least once across 50 seeds at a 30% chance/round
+    expect(found).toBe(true);
   });
 });
 
@@ -641,17 +626,17 @@ describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
   test("queueItemAction deducts inventory at queue time and applies the item's effect on resolve", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
-    vanguard.hp = vanguard.maxHp - 30; // otherwise heal clamps at maxHp and the log line reads "hồi 0 HP."
+    vanguard.hp = vanguard.maxHp - 30;
     ctx.inventory["small-health-potion"] = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
-    rat.attack = 0; // keep vanguard's hp deterministic regardless of turn order (damage still floors at 1)
+    rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
     const err = queueItemAction(combat, self, "small-health-potion", [self], ctx);
     expect(err).toBeNull();
-    expect(ctx.inventory["small-health-potion"]).toBe(0); // spent at queue time, like skill MP (technical-decisions.md §2)
+    expect(ctx.inventory["small-health-potion"]).toBe(0);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("hồi 30 HP"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("recovers 30 HP"))).toBe(true);
   });
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {
@@ -679,7 +664,7 @@ describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
     target.activeStatusEffects.push({ statusEffectId: "poison-vulnerable", turnsRemaining: 2 });
     const before = target.hp;
     tickStatusEffects(target, { log: [] });
-    expect(before - target.hp).toBe(8); // 4 base * 2 multiplier
+    expect(before - target.hp).toBe(8);
   });
 
   test("Game.useItemOutOfCombat heals outside combat, decrements inventory, and rejects singleEnemy items", () => {
@@ -727,7 +712,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(game.equipArtifact(c.id, "sharp-claw")).toBeNull();
     expect(game.equipArtifact(c.id, "ancient-sword")).toBeNull();
     expect(c.equippedArtifactIds).toHaveLength(MAX_EQUIPPED_ARTIFACTS);
-    expect(game.equipArtifact(c.id, "heart-of-stone")).not.toBeNull(); // 4th slot rejected
+    expect(game.equipArtifact(c.id, "heart-of-stone")).not.toBeNull();
     expect(game.state.unequippedArtifactIds).toEqual(["heart-of-stone"]);
 
     expect(game.unequipArtifact(c.id, "sharp-claw")).toBeNull();
@@ -739,7 +724,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     const game = new Game(2);
     const c = game.state.party[0]!;
     const baseAttack = c.attack;
-    game.state.unequippedArtifactIds.push("iron-gauntlet"); // +3 attack
+    game.state.unequippedArtifactIds.push("iron-gauntlet");
     expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
     expect(c.attack).toBe(baseAttack + 3);
 
@@ -751,7 +736,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
   test("rollDodge fires close to the equipped artifact's chance", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    c.equippedArtifactIds.push("featherweight-boots"); // dodgeChance 6%
+    c.equippedArtifactIds.push("featherweight-boots");
     const rng = new Rng(9);
     let dodges = 0;
     const total = 6000;
@@ -763,30 +748,30 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
   test("aggregation helpers sum correctly across multi-effect and stacked artifacts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    c.equippedArtifactIds.push("immortal-heart"); // reflectDamage 15 + statBoost defense+10 + statBoost maxHp+60
+    c.equippedArtifactIds.push("immortal-heart");
     expect(totalReflectDamagePercent(c)).toBe(15);
     expect(artifactStatBoostSum(c).defense).toBe(10);
     expect(artifactStatBoostSum(c).maxHp).toBe(60);
 
-    c.equippedArtifactIds.push("reapers-covenant"); // healOnKill 25 + lifesteal 8
+    c.equippedArtifactIds.push("reapers-covenant");
     expect(totalHealOnKill(c)).toBe(25);
     expect(totalLifestealPercent(c)).toBe(8);
 
-    c.equippedArtifactIds.push("thunder-totem", "thunder-totem"); // 2 copies -> 2 separate auto-damage ticks
+    c.equippedArtifactIds.push("thunder-totem", "thunder-totem");
     expect(autoDamageAmounts(c)).toEqual([6, 6]);
   });
 
   test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction/survivalDrainReduction are per-character", () => {
     const { ctx } = makeCtx();
-    ctx.party[0]!.equippedArtifactIds.push("scholars-insight"); // expBoost 15
-    ctx.party[1]!.equippedArtifactIds.push("eternal-scholars-tome"); // expBoost 25 + cooldownReduction 1
+    ctx.party[0]!.equippedArtifactIds.push("scholars-insight");
+    ctx.party[1]!.equippedArtifactIds.push("eternal-scholars-tome");
     expect(totalExpBoostPercent(ctx.party)).toBe(40);
     expect(totalCooldownReduction(ctx.party[1]!)).toBe(1);
     expect(totalCooldownReduction(ctx.party[0]!)).toBe(0);
 
-    ctx.party[0]!.equippedArtifactIds.push("pendant-of-calm"); // fearResist 10%
+    ctx.party[0]!.equippedArtifactIds.push("pendant-of-calm");
     expect(fearResistMultiplier(ctx.party[0]!)).toBeCloseTo(0.9);
-    ctx.party[0]!.equippedArtifactIds.push("travelers-ration"); // survivalDrainReduction 15%
+    ctx.party[0]!.equippedArtifactIds.push("travelers-ration");
     expect(survivalDrainMultiplier(ctx.party[0]!)).toBeCloseTo(0.85);
   });
 
@@ -800,24 +785,24 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 1)).toBe(3); // not 1 + 3
+    expect(fearGainForRound(c, 1)).toBe(3);
   });
 
   test("fearGainForRound: scales +5%/floor depth, capped separately for base vs low-HP", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForRound(c, 40)).toBe(3); // 1 * (1 + 0.05*39) = 2.95 -> rounds to the 3 cap
-    expect(fearGainForRound(c, 100)).toBe(3); // scaled value (5.95) is well past the cap, stays at 3
+    expect(fearGainForRound(c, 40)).toBe(3);
+    expect(fearGainForRound(c, 100)).toBe(3);
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 100)).toBe(6); // low-HP capped at 6
+    expect(fearGainForRound(c, 100)).toBe(6);
   });
 
   test("fearGainForRound: reduced by fearResist artifacts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
-    c.equippedArtifactIds.push("pendant-of-calm"); // fearResist 10%
-    expect(fearGainForRound(c, 1)).toBe(3); // round(3 * 0.9) = round(2.7) = 3
+    c.equippedArtifactIds.push("pendant-of-calm");
+    expect(fearGainForRound(c, 1)).toBe(3);
   });
 
   test("applyRoundFear adds the gain and skips dead characters", () => {
@@ -829,7 +814,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
 
     c.isAlive = false;
     applyRoundFear(c, 1);
-    expect(c.survival.fear).toBe(11); // unchanged — dead characters don't accrue fear
+    expect(c.survival.fear).toBe(11);
   });
 
   test("applyVictoryFearRelief: normal victory -10, boss victory -15 (not stacked)", () => {
@@ -848,8 +833,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
     elite.hp = 1;
     ctx.monsters.push(elite);
-    // isBossFight: false on purpose — proves the relief is driven by the monster's actual
-    // tier, not by whichever room flag started the fight.
+
     const combat = startCombat("r1", [elite.id], ctx, false);
     for (const c of ctx.party) c.survival.fear = 50;
     for (const ref of livingCharacterRefs(combat, ctx)) {
@@ -864,81 +848,78 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
   test("survivalDrainReduction reduces hunger/thirst drain per action (survival.ts integration)", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    c.equippedArtifactIds.push("travelers-ration"); // survivalDrainReduction 15%
+    c.equippedArtifactIds.push("travelers-ration");
     tickSurvivalOnAction(c, []);
-    expect(c.survival.hunger).toBeCloseTo(99.1, 5); // 100 - round(1 * 0.85 * 10)/10
-    expect(c.survival.thirst).toBeCloseTo(98.7, 5); // 100 - round(1.5 * 0.85 * 10)/10
+    expect(c.survival.hunger).toBeCloseTo(99.1, 5);
+    expect(c.survival.thirst).toBeCloseTo(98.7, 5);
   });
 
   test("reflectDamage: a monster's attack on the bearer reflects a percent back (combat.ts integration)", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("thorned-armor"); // reflectDamage 5%
-    // Knock out every other party member so the rat's aggro-weighted target pick (pickAggroWeighted)
-    // has only 1 living candidate — deterministic, instead of relying on Taunt's aggro edge winning
-    // a weighted roll (it doesn't guarantee 100%, and the RNG draw it lands on shifts with unrelated
-    // engine changes upstream in the same round).
+    vanguard.equippedArtifactIds.push("thorned-armor");
+
     for (const c of ctx.party) {
       if (c.id !== vanguard.id) c.isAlive = false;
     }
     const rat = spawnInto(ctx, "dungeon-rat");
-    rat.attack = 200; // guarantee a hit big enough that 5% doesn't round down to 0
+    rat.attack = 200;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx); // self-target, so only the rat's attack matters this round
+    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     const ratHpBefore = rat.hp;
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("phản lại từ artifact"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("reflected from"))).toBe(true);
     expect(rat.hp).toBeLessThan(ratHpBefore);
   });
 
   test("lifesteal and healOnKill heal the equipped character on their own damage (combat.ts integration)", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("reapers-covenant"); // healOnKill 25 + lifesteal 8%
-    vanguard.hp = Math.max(1, vanguard.maxHp - 100); // room to see the heal in the log
+    vanguard.equippedArtifactIds.push("reapers-covenant");
+    vanguard.hp = Math.max(1, vanguard.maxHp - 100);
     const rat = spawnInto(ctx, "dungeon-rat");
-    rat.hp = 1; // guaranteed killing blow
+    rat.hp = 1;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const attackSkill = vanguard.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, { kind: "character", id: vanguard.id }, attackSkill.id, [enemyRef], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("nhờ artifact khi hạ gục địch"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("hồi") && l.text.includes("nhờ artifact") && !l.text.includes("khi hạ gục"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("upon defeating an enemy"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
   });
 
   test("autoDamage fires at the start of the round, independent of turn order (combat.ts integration)", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("thunder-totem"); // autoDamage 6
+    vanguard.equippedArtifactIds.push("thunder-totem");
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
     queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes(`Artifact của ${vanguard.name} gây 6 sát thương`))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes(`${vanguard.name}'s artifact deals 6 damage`))).toBe(true);
   });
 
   test("cooldownReduction shortens a skill's cooldown at queue time (combat.ts integration)", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
-    rogue.equippedArtifactIds.push("quickcharge-rune"); // cooldownReduction 1
+    rogue.equippedArtifactIds.push("quickcharge-rune");
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
     expect(queueAction(combat, self, "rogue-poison-coat", [self], ctx)).toBeNull();
-    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(3); // base cooldown 4, minus 1
+    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(3);
   });
 
   test("expBoost artifacts increase EXP gained on victory (Game integration)", () => {
     const game = new Game(3);
     const vanguard = game.state.party[0]!;
-    game.state.unequippedArtifactIds.push("scholars-insight"); // expBoost 15%
+    game.state.unequippedArtifactIds.push("scholars-insight");
     expect(game.equipArtifact(vanguard.id, "scholars-insight")).toBeNull();
 
     const rat = spawnMonster("dungeon-rat", 1);
-    rat.hp = 1; // guaranteed 1-hit kill
+    rat.hp = 1;
     game.ctx.monsters.push(rat);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.monsterIds = [rat.id];
@@ -951,7 +932,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     game.resolve();
 
     const expectedExp = Math.round(rat.expReward * 1.15);
-    expect(game.state.combat!.log.some((l) => l.text.includes(`nhận ${expectedExp} EXP`))).toBe(true);
+    expect(game.state.combat!.log.some((l) => l.text.includes(`gains ${expectedExp} EXP`))).toBe(true);
   });
 });
 
@@ -1051,7 +1032,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     const game = new Game(4);
     forceEventRoom(game, "merchant");
     const payer = game.state.party[0]!;
-    game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"] }; // common -> 15%
+    game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"] };
     const before = payer.hp;
     const cost = Math.floor((payer.maxHp * 15) / 100);
     expect(game.merchantPurchase(0, payer.id)).toBeNull();
@@ -1100,7 +1081,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     const c = game.state.party[0]!;
     expect(game.twinAltarsChoose(0, c.id)).toBeNull();
     expect(c.equippedArtifactIds).toContain("iron-gauntlet");
-    expect(game.state.unequippedArtifactIds).not.toContain("sharp-claw"); // discarded, never entered anywhere
+    expect(game.state.unequippedArtifactIds).not.toContain("sharp-claw");
 
     const game2 = new Game(10);
     const c2 = game2.state.party[0]!;
@@ -1110,11 +1091,11 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game2.equipArtifact(c2.id, "eternal-vial")).toBeNull();
     forceEventRoom(game2, "twin-altars");
     game2.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
-    expect(game2.twinAltarsChoose(0, c2.id)).not.toBeNull(); // full, no unequip pick given
+    expect(game2.twinAltarsChoose(0, c2.id)).not.toBeNull();
     expect(game2.twinAltarsChoose(0, c2.id, "ancient-sword")).toBeNull();
     expect(c2.equippedArtifactIds).toContain("iron-gauntlet");
     expect(c2.equippedArtifactIds).not.toContain("ancient-sword");
-    expect(game2.state.unequippedArtifactIds).toContain("ancient-sword"); // swapped out, back in the pool
+    expect(game2.state.unequippedArtifactIds).toContain("ancient-sword");
   });
 
   test("sacrifice consumes the sacrificed artifact and rolls at/above its rarity; room only closes via sacrificeLeave", () => {
@@ -1122,7 +1103,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     forceEventRoom(game, "sacrificial-circle");
     let sawSubUnique = false;
     for (let i = 0; i < 60 && !sawSubUnique; i++) {
-      game.state.unequippedArtifactIds = ["scholars-insight"]; // unique tier, reset each iteration
+      game.state.unequippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
       const rarity = getArtifact(game.state.unequippedArtifactIds[0]!).rarity;
       if (rarity === "common" || rarity === "rare") sawSubUnique = true;
@@ -1198,12 +1179,12 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
   test("curseAggroBoost adds flat aggro, curseDrainBoost speeds up survival drain", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    c.equippedArtifactIds.push("unstable-core"); // curseAggroBoost 25
+    c.equippedArtifactIds.push("unstable-core");
     expect(curseAggroBoostSum(c)).toBe(25);
 
     const { ctx: ctx2 } = makeCtx();
     const c2 = ctx2.party[0]!;
-    c2.equippedArtifactIds.push("shackle-of-hunger"); // curseDrainBoost 30%
+    c2.equippedArtifactIds.push("shackle-of-hunger");
     expect(survivalDrainMultiplier(c2)).toBeCloseTo(1.3);
   });
 

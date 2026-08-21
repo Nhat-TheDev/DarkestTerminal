@@ -12,8 +12,6 @@ import { loadSave, gameFromSave } from "./engine/save";
 async function main() {
   const renderer = await createCliRenderer({ exitOnCtrlC: true, backgroundColor: PALETTE.bg });
 
-  // Loops back to the main menu if "Tiếp tục" is chosen but the player then backs out (Esc)
-  // of the save list without picking one.
   for (;;) {
     const choice = await showMainMenu(renderer);
     if (choice === "new") {

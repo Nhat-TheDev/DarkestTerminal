@@ -3,7 +3,6 @@ import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
-/** No explicit buff/debuff flag exists on StatusEffectDefinition, so infer it from its mechanical effect: anything that stuns, damages, weakens a combat stat, or carries a vulnerability is harmful; everything else (heals, positive stat boosts, or a no-op rider like Poison Coat) is helpful. Used only to pick a log-line color (see LOG_KIND_STYLE). */
 function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
@@ -34,7 +33,6 @@ export function isActorAlive(actor: Actor): boolean {
   return isCharacter(actor) ? actor.isAlive && actor.hp > 0 : actor.hp > 0;
 }
 
-// docs/gameplay-decisions.md §3: 4 bậc fear.
 export type FearTier = 1 | 2 | 3 | 4;
 
 export function getFearTier(fear: number): FearTier {
@@ -44,26 +42,20 @@ export function getFearTier(fear: number): FearTier {
   return 1;
 }
 
-// docs/gameplay-decisions.md §4.
 export function getFearAccuracyPenalty(tier: FearTier): number {
   if (tier === 1) return 0;
   if (tier === 2) return 0.1;
-  return 0.2; // tiers 3 and 4 share the same accuracy/damage penalty
+  return 0.2;
 }
 
 export function getFearDamagePenalty(tier: FearTier): number {
   return tier >= 3 ? 0.15 : 0;
 }
 
-/** Tier 4 only: 25% chance per turn to lose control entirely (skip the action). */
 export function rollLosesControl(fear: number, roll: () => number): boolean {
   return getFearTier(fear) === 4 && roll() < 0.25;
 }
 
-/**
- * Accuracy check for skills that target enemies ("kỹ năng nhắm địch" per
- * gameplay-decisions.md §4). Only characters have fear; monsters always hit.
- */
 export function rollHits(source: Actor, roll: () => number): boolean {
   if (!isCharacter(source)) return true;
   const penalty = getFearAccuracyPenalty(getFearTier(source.survival.fear));
@@ -78,54 +70,30 @@ function damageMultiplierFor(source: Actor): number {
 function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
   if (stat === "aggro") {
     if (isCharacter(actor)) actor.aggro += amount;
-    return; // monsters have no aggro
+    return;
   }
   actor[stat] += amount;
 }
 
 export interface ResolveContext {
   log: LogEntry[];
-  /** Set only for a status effect's own recurring tick (DoT) — names the effect in the damage log instead of the nonsensical "X nhận sát thương từ X". */
   statusEffectName?: string;
-  /** Set when resolving an elemental/holy skill (SkillDefinition.isMagic) — damage/heal scale off the caster's magicPower instead of attack. */
   isMagic?: boolean;
 }
 
-/** damage/heal offensive stat for `source`: magicPower for a Character casting an isMagic skill, attack otherwise (monsters have no magicPower). */
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
   if (isMagic && isCharacter(source)) return source.magicPower;
   return source.attack;
 }
 
-// Percentage-mitigation defense curve (tuned 2026-08-19, see docs/gameplay-decisions/06-level-system.md
-// §6.7 "hits-to-die" note): replaces the old flat `attack - defense` subtraction, which could floor
-// damage to 1 far too easily once defense caught up to offense (e.g. an under-leveled Vanguard vs a
-// deep-floor Boss). `off * (def/(X+def))` asymptotically approaches (but never reaches) 100% mitigation
-// as defense grows — at `def === X`, exactly half of `off` is mitigated. `def/Y` is a small additional
-// flat chip on top (never dominant within the game's real defense range, verified by simulation up to
-// floor 250) so defense still has a little extra bite beyond the pure percentage curve.
-// X/Y live in data/balance-config.json (BALANCE.combat.defenseMitigation*) so they can be retuned without touching this file.
 export function mitigatedOffense(off: number, def: number): number {
   return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
 }
 
-/**
- * Applies a single SkillEffect from `source` onto `target`. Returns the
- * notional amount applied for `damage`/`heal` (0 for every other kind) —
- * used by artifact hooks (docs/gameplay-decisions/07-items-artifacts.md §7.2:
- * reflectDamage/lifesteal) that need the *intended* damage, not hp lost
- * clamped by an overkill/dead target's remaining hp.
- */
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
   switch (effect.kind) {
     case "damage": {
-      // source === target only for a status effect's own recurring tick
-      // (e.g. Trúng Độc's DoT, applied via tickStatusEffects below) — that's
-      // not "an attack", so it's flat effect.amount with no attack/defense/
-      // fear roll involved (gameplay-decisions.md §1.3: "mỗi lượt damage 4").
       const isSelfTick = source === target;
-      // ignoreDefensePercent (e.g. a boss's execute "finishing blow") shrinks the defense fed into
-      // the mitigation formula, not the raw stat itself — target.defense elsewhere (UI, other effects) is untouched.
       const effectiveDefense = target.defense * (1 - (effect.ignoreDefensePercent ?? 0) / 100);
       const finalDamage = isSelfTick
         ? Math.max(1, Math.round(effect.amount ?? 0))
@@ -171,13 +139,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const before = target.survival[effect.stat];
       target.survival[effect.stat] = clamp(before + (effect.amount ?? 0), 0, 100);
       const delta = target.survival[effect.stat] - before;
-      // Target-as-subject, same convention as the heal/damage lines above — naming
-      // the target IS the "who got buffed/debuffed" info, no separate "cho X" needed.
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
         ctx.log.push({
           text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: SURVIVAL_STAT_LABEL[effect.stat] }),
-          kind: delta < 0 ? "buff" : "debuff", // for survival stats (fear/hunger/thirst), lower is better
+          kind: delta < 0 ? "buff" : "debuff",
         });
       }
       return 0;
@@ -190,13 +156,12 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
         ctx.log.push({
           text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: COMBAT_STAT_LABEL[effect.combatStat] }),
-          kind: delta < 0 ? "debuff" : "buff", // for combat stats (attack/defense/speed/aggro), higher is generally better
+          kind: delta < 0 ? "debuff" : "buff",
         });
       }
       return 0;
     }
     case "triggerMiniGame": {
-      // Out of scope for this prototype (see README.md) — no skill/monster uses it.
       ctx.log.push({ text: t("resolver.miniGameSkipped"), kind: "info" });
       return 0;
     }
@@ -221,9 +186,6 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
   }
   const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
   actor.activeStatusEffects.push(entry);
-  // Combat-stat modifiers install once immediately; they're undone once at
-  // expiry (technical-decisions.md §3). Other perTurnEffects (damage/heal/
-  // modifyStat) are recurring and tick at end-of-round instead (see combat.ts).
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
       applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
@@ -235,12 +197,11 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
   const target = statusEffectId
     ? actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId)
-    : actor.activeStatusEffects[0]; // "gỡ 1 debuff bất kỳ" (Thanh Tẩy) — no id given, remove the first active one.
+    : actor.activeStatusEffects[0];
   if (!target) return;
   expireStatusEffect(actor, target, ctx);
 }
 
-/** Undoes any modifyCombatStat effects and removes the entry from the actor. */
 export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
   const def = getStatusEffect(active.statusEffectId);
   for (const e of def.perTurnEffects) {
@@ -252,12 +213,6 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
   ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: def.name }), kind: "info" });
 }
 
-/**
- * Product of every `vulnerableTo` multiplier currently active on `actor`
- * that targets `statusEffectId` — e.g. Venom Thorn's `poison-vulnerable`
- * doubles `poisoned`'s own DoT tick (docs/gameplay-decisions/07-items-artifacts.md
- * §7.1). 1 (no-op) when nothing matches.
- */
 function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   let multiplier = 1;
   for (const active of actor.activeStatusEffects) {
@@ -267,11 +222,6 @@ function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   return multiplier;
 }
 
-/**
- * End-of-round tick for one actor's active status effects: applies the
- * recurring (non-combat-stat) perTurnEffects once, decrements duration, and
- * expires anything that reaches 0.
- */
 export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
   for (const active of [...actor.activeStatusEffects]) {
     const def = getStatusEffect(active.statusEffectId);

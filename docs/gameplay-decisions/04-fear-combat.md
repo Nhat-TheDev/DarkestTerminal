@@ -1,31 +1,31 @@
-# §4. Fear ảnh hưởng ngược lại combat — có, nhưng có trần và có lối thoát
+# §4. Fear feeds back into combat — yes, but capped, with ways to escape it
 
-*(mục 4 của `00-index.md`)*
+*(section 4 of `00-index.md`)*
 
-**Fear có ảnh hưởng tới hiệu suất combat**, áp dụng theo bậc ở `03-survival-stats.md` mục 3. Ảnh hưởng bị **chặn trần ở bậc 4**. Có công cụ hạ fear chủ động: skill Acolyte, item, rest room.
+**Fear does affect combat performance**, applied per the tiers in `03-survival-stats.md` section 3. The effect is **capped at tier 4**. Active tools exist to lower fear: Acolyte's skills, items, the rest room.
 
-| Bậc fear | Ảnh hưởng combat |
+| Fear tier | Combat effect |
 |---|---|
-| Bình Tĩnh (0-39) | Không ảnh hưởng |
-| Bất An (40-69) | Độ chính xác kỹ năng nhắm địch giảm 10% |
-| Hoảng Loạn (70-99) | Độ chính xác giảm 20%, sát thương gây ra giảm 15% |
-| Suy Sụp (100) | Mỗi lượt có 25% khả năng "mất kiểm soát" — bỏ lượt hoàn toàn (tương đương stun); 75% còn lại hành động bình thường (không giảm thêm accuracy/damage so với bậc Hoảng Loạn) |
+| Calm (0-39) | No effect |
+| Uneasy (40-69) | Accuracy of skills targeting enemies drops by 10% |
+| Panicked (70-99) | Accuracy drops by 20%, damage dealt drops by 15% |
+| Broken (100) | Each turn has a 25% chance of "losing control" — skipping the turn entirely (equivalent to being stunned); the remaining 75% acts normally (no further accuracy/damage penalty beyond the Panicked tier) |
 
-Bậc 4 là mức tối đa, không tăng nặng thêm theo fear.
+Tier 4 is the maximum — it does not get worse as fear climbs further.
 
-### 4.1 Roll accuracy theo từng mục tiêu (AoE) + ultimate luôn trúng nhưng giảm hiệu quả theo fear
+### 4.1 Per-target accuracy rolls (AoE) + ultimates that always hit but scale down with fear
 
-Bảng trên là quy tắc **mặc định cho skill thường** (đơn mục tiêu hoặc AoE), áp dụng theo 2 trường hợp:
+The table above is the **default rule for ordinary skills** (single-target or AoE), applied in 2 cases:
 
-- **Skill đơn mục tiêu** (`singleEnemy`, nửa "địch" khi người chơi chọn địch cho skill 2 phe kiểu Purify): roll accuracy 1 lần cho cả skill — không đổi so với trước.
-- **Skill AoE nhắm địch** (`allEnemies`, nửa "địch" của skill 2 phe kiểu Divine Descent): roll accuracy **riêng cho từng địch** trong danh sách mục tiêu — 1 địch có thể trúng trong khi địch khác né được cùng 1 lần dùng skill. Nửa "đồng đội" của skill 2 phe (heal/buff) không roll accuracy, giữ nguyên quy tắc cũ (fear chỉ ảnh hưởng "kỹ năng nhắm địch").
-- **Skill ultimate** (skill ở slot 5, `isUltimate: true`, `cooldownTurns: 5`): **bỏ qua hoàn toàn** roll accuracy lẫn mức giảm 15% sát thương ở bảng trên — ultimate luôn thi triển thành công. Thay vào đó, **hiệu quả** (giá trị `amount` của mọi effect `damage`/`heal` trong skill) bị nhân hệ số theo bậc fear của người dùng, **trước khi** đưa vào công thức sát thương/hồi máu bình thường:
+- **Single-target skills** (`singleEnemy`, or the "enemy" half when the player chooses an enemy for a two-sided skill like Purify): accuracy is rolled once for the whole skill — unchanged from before.
+- **AoE skills targeting enemies** (`allEnemies`, or the "enemy" half of a two-sided skill like Divine Descent): accuracy is rolled **separately for each enemy** in the target list — one enemy can be hit while another dodges within the same use of the skill. The "ally" half of a two-sided skill (heal/buff) does not roll accuracy at all, keeping the old rule intact (fear only affects "skills targeting enemies").
+- **Ultimate skills** (the skill in slot 5, `isUltimate: true`, `cooldownTurns: 5`): **entirely bypass** both the accuracy roll and the 15% damage reduction from the table above — an ultimate always succeeds. Instead, its **effectiveness** (the `amount` value of every `damage`/`heal` effect in the skill) is multiplied by a coefficient based on the caster's fear tier, **before** being plugged into the normal damage/healing formula:
 
-  | Bậc fear | Hệ số hiệu quả ultimate |
+  | Fear tier | Ultimate effectiveness multiplier |
   |---|---|
-  | Bình Tĩnh (0-39) | 100% |
-  | Bất An (40-69) | 90% |
-  | Hoảng Loạn (70-99) | 75% |
-  | Suy Sụp (100) | 60% |
+  | Calm (0-39) | 100% |
+  | Uneasy (40-69) | 90% |
+  | Panicked (70-99) | 75% |
+  | Broken (100) | 60% |
 
-  Kỹ thuật: cần 1 field đánh dấu "đây là ultimate" tách biệt khỏi `usesPerCombat` — xem `docs/technical-decisions.md` §4.
+  Technical note: this requires a field marking "this is an ultimate" distinct from `usesPerCombat` — see `docs/technical-decisions.md` §4.

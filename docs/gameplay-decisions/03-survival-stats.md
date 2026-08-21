@@ -1,46 +1,46 @@
-# §3. Ngưỡng số cho survival stats
+# §3. Numeric thresholds for survival stats
 
-*(mục 3 của `00-index.md`)*
+*(section 3 of `00-index.md`)*
 
-Cả 3 chỉ số (`fear`, `hunger`, `thirst`) nằm trong khoảng **0–100**.
+All 3 stats (`fear`, `hunger`, `thirst`) fall within the range **0–100**.
 
-### Giá trị khởi tạo — giống nhau cho mọi class
-`hunger: 100, thirst: 100, fear: 0`. Không có field riêng cho việc này trên `CharacterClass` — đây là hằng số áp dụng khi tạo `Character` mới, độc lập với class.
+### Starting values — identical across classes
+`hunger: 100, thirst: 100, fear: 0`. There is no per-class field for this — these are constants applied whenever a new `Character` is created, independent of class.
 
 ### Hunger / Thirst
-- Mỗi hành động trong dungeon loop (di chuyển 1 phòng, hoặc 1 lượt combat): `hunger -1`, `thirst -1.5` (khát giảm nhanh hơn đói).
-- Khi `hunger` hoặc `thirst` chạm 0: nhân vật nhận `damage = 2% maxHp` mỗi hành động tiếp theo cho tới khi được nạp lại (2 chỉ số cộng dồn nếu cả hai cùng chạm đáy).
-- Hồi qua item: `Ration` (+40 hunger) và `Water Flask` (+40 thirst), dùng effect `modifyStat` giống mọi item khác (`07-items-artifacts.md` §7).
-- Rest room **không** hồi `hunger`/`thirst` — cả 3 lựa chọn của rest room chỉ tác động `hp`/`mp`/`fear` (xem mục "Rest room" bên dưới); hunger/thirst chỉ hồi được qua item.
+- Each action within the dungeon loop (moving to a new room, or 1 combat turn): `hunger -1`, `thirst -1.5` (thirst drains faster than hunger).
+- When `hunger` or `thirst` hits 0: the character takes `damage = 2% maxHp` on every subsequent action until it's replenished (both stats stack if they hit bottom at the same time).
+- Restored via items: `Ration` (+40 hunger) and `Water Flask` (+40 thirst), using the `modifyStat` effect like any other item (`07-items-artifacts.md` §7).
+- The rest room does **not** restore `hunger`/`thirst` — all 3 rest-room choices only affect `hp`/`mp`/`fear` (see the "Rest room" section below); hunger/thirst can only be restored via items.
 
 ### Fear
-- **Theo round combat**: cuối mỗi round mà trận **chưa kết thúc**, mỗi nhân vật còn sống nhận thêm fear:
-  - `+1` bình thường, hoặc **`+3` thay vào đó (không cộng dồn với `+1`)** nếu nhân vật đang dưới **60% maxHP**.
-  - Cả 2 mức đều **scale +5%/tầng** (`depth 1` = mức gốc, không bonus), mỗi mức có trần riêng: mức thường tối đa **3/round**, mức dưới 60% HP tối đa **6/round**.
-  - Bị giảm theo artifact `fearResist` — xem `07-items-artifacts.md` §7.2.
-  - Implementation: `fearGainForRound`/`applyRoundFear` trong `src/engine/survival.ts`, gọi từ `resolveRound` (`src/engine/combat.ts`) mỗi round không kết thúc trận.
-- **Thắng trận**: `fear -= 10` cho cả team (mọi nhân vật còn sống); nếu trận đó có **Elite hoặc Boss** thì `fear -= 15` **thay thế** (không cộng dồn với `-10`) — xét theo tier thật của quái vừa hạ (`Monster.tier !== "normal"`), không phải theo loại phòng. Implementation: `applyVictoryFearRelief`, gọi từ `finalizeRound` khi `outcome === "victory"`.
-- Thua mini-game: `fear += 15` (cố định, không phụ thuộc loại mini-game).
-- Rest room (lựa chọn "Trò chuyện"): `fear -= 20`.
+- **Per combat round**: at the end of each round where the fight has **not yet ended**, every living character gains additional fear:
+  - `+1` normally, or **`+3` instead (not additive with `+1`)** if the character is below **60% maxHP**.
+  - Both amounts **scale +5%/floor** (`depth 1` = base amount, no bonus), each with its own cap: the normal tier caps at **3/round**, the below-60%-HP tier caps at **6/round**.
+  - Reduced by the `fearResist` artifact — see `07-items-artifacts.md` §7.2.
+  - Implementation: `fearGainForRound`/`applyRoundFear` in `src/engine/survival.ts`, called from `resolveRound` (`src/engine/combat.ts`) every round that doesn't end the fight.
+- **Winning a fight**: `fear -= 10` for the whole team (every living character); if the fight was against an **Elite or Boss**, `fear -= 15` **instead** (not additive with `-10`) — determined by the actual tier of the monster just defeated (`Monster.tier !== "normal"`), not by the room type. Implementation: `applyVictoryFearRelief`, called from `finalizeRound` when `outcome === "victory"`.
+- Losing a mini-game: `fear += 15` (fixed, regardless of mini-game type).
+- Rest room ("Chat" option): `fear -= 20`.
 
-Fear không tăng khi di chuyển giữa các phòng — chỉ tăng trong lúc combat kéo dài (theo round, như mô tả ở trên).
+Fear does not increase while moving between rooms — it only increases during combat that drags on (per round, as described above).
 
 ### Rest room
 
-Vào phòng rest room, người chơi chọn 1 trong 3 lựa chọn (`Game.restAction`), mỗi lựa chọn chỉ tác động `hp`/`mp`/`fear`, không đụng đến `hunger`/`thirst`:
+Entering a rest room, the player picks 1 of 3 options (`Game.restAction`); each option only affects `hp`/`mp`/`fear`, never touching `hunger`/`thirst`:
 
-| Lựa chọn | Hiệu ứng |
+| Option | Effect |
 |---|---|
-| **Ăn uống** (`restEatDrink`) | `hp += 50% maxHp`, `mp += 50% maxMp` |
-| **Trò chuyện** (`restChat`) | `hp += 10% maxHp`, `mp += 10% maxMp`, `fear -= 20` |
-| **Bỏ qua** | Không hiệu ứng gì, chỉ đánh dấu phòng đã dọn (`room.cleared = true`) và đi tiếp |
+| **Eat & Drink** (`restEatDrink`) | `hp += 50% maxHp`, `mp += 50% maxMp` |
+| **Chat** (`restChat`) | `hp += 10% maxHp`, `mp += 10% maxMp`, `fear -= 20` |
+| **Skip** | No effect at all, just marks the room as cleared (`room.cleared = true`) and moves on |
 
-Cả 3 lựa chọn đều đánh dấu phòng đã "cleared" sau khi chọn (không lặp lại được).
+All 3 options mark the room as "cleared" once chosen (cannot be repeated).
 
-### 4 bậc fear (dùng chung cho `04-fear-combat.md` mục 4 bên dưới)
-| Bậc | Khoảng | Tên |
+### 4 fear tiers (shared with `04-fear-combat.md` section 4 below)
+| Tier | Range | Name |
 |---|---|---|
-| 1 | 0–39 | Bình Tĩnh |
-| 2 | 40–69 | Bất An |
-| 3 | 70–99 | Hoảng Loạn |
-| 4 | 100 | Suy Sụp |
+| 1 | 0–39 | Calm |
+| 2 | 40–69 | Uneasy |
+| 3 | 70–99 | Panicked |
+| 4 | 100 | Broken |

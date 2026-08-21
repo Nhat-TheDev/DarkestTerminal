@@ -1,22 +1,22 @@
-# §6. Hệ thống level 1-100 & cân bằng sát thương
+# §6. Level 1-100 system & damage balance
 
-*(mục 6 của `00-index.md` — mọi tham chiếu "mục 6.X"/"§6.X" trong file này trỏ nội bộ, cùng file)*
+*(section 6 of `00-index.md` — every reference to "section 6.X"/"§6.X" in this file points internally, within the same file)*
 
-### 6.1 Công thức tăng trưởng
+### 6.1 Growth formula
 
-Hệ thống dùng **tapered growth theo 5 tier**, không dùng công thức tuyến tính đều theo level.
+The system uses **tapered growth across 5 tiers**, not a flat linear formula per level.
 
-### 6.2 Công thức damage
+### 6.2 Damage formula
 
-Shape resolver: `damage = amount + mitigatedOffense(offense, defense)` (công thức mitigation đầy đủ ở §6.7), kết hợp **tapered growth theo 5 tier** (§6.3) và tính đối xứng nhân vật/quái (§6.6).
+Shape resolver: `damage = amount + mitigatedOffense(offense, defense)` (full mitigation formula in §6.7), combined with **tapered growth across 5 tiers** (§6.3) and character/monster symmetry (§6.6).
 
-### 6.3 Bảng tăng trưởng theo tier
+### 6.3 Tier growth table
 
-**Dùng chung cho cả nhân vật và quái**: nhân vật dùng biến `level`, nhân thêm `growthWeights` theo class (§6.8); quái dùng biến `floorDepth` thay cho `level`, không qua trọng số (§6.6).
+**Shared by both characters and monsters**: characters use the `level` variable, further multiplied by `growthWeights` per class (§6.8); monsters use `floorDepth` in place of `level`, with no weighting applied (§6.6).
 
-5 tier, mỗi tier có tốc độ tăng/level riêng (giảm dần — tier sau luôn ≤ tier trước), định nghĩa ở `data/level-growth.json` field `tiers[]`:
+5 tiers, each with its own per-level growth rate (decreasing — each later tier is always ≤ the previous one), defined in `data/level-growth.json` field `tiers[]`:
 
-| Tier | Khoảng level | Số lần lên cấp trong tier | attack/lvl | defense/lvl | maxHp/lvl | maxMp/lvl |
+| Tier | Level range | Level-ups in tier | attack/lvl | defense/lvl | maxHp/lvl | maxMp/lvl |
 |---|---|---|---|---|---|---|
 | 1 | 1–10 | 9 | 3 | 2 | 14 | 6 |
 | 2 | 11–25 | 15 | 2 | 1 | 10 | 4 |
@@ -24,17 +24,17 @@ Shape resolver: `damage = amount + mitigatedOffense(offense, defense)` (công th
 | 4 | 51–75 | 25 | 0.5 | 1/3 | 5 | 2 |
 | 5 | 76–100 | 25 | 1/3 | 0.25 | 3 | 1 |
 
-`magicPower` (§6.8) dùng đúng rate của `attack` trên cùng bảng tier.
+`magicPower` (§6.8) uses the exact same rate as `attack` on this same tier table.
 
-**Công thức**: `bonus(stat, level) = floor(Σ rate(stat, tier(l)) với l chạy từ 2 tới level)` — cộng dồn tốc độ của tier chứa level đang "tới", làm tròn xuống. `tier(l)` = tier chứa level `l` (VD level 11 dùng rate tier 2, level 50 vẫn dùng rate tier 3, level 51 chuyển sang tier 4).
+**Formula**: `bonus(stat, level) = floor(Σ rate(stat, tier(l)) for l running from 2 to level)` — accumulating the rate of the tier containing the level being "reached", rounded down. `tier(l)` = the tier containing level `l` (e.g. level 11 uses tier-2 rate, level 50 still uses tier-3 rate, level 51 switches to tier 4).
 
-Giá trị cuối cùng: `stat(level) = base<stat> + bonus(stat, level)`. `base<stat>` lấy từ bảng 6 chỉ số ở `01-class-skill.md` mục 1 (VD `baseAttack` của Vanguard = 14).
+Final value: `stat(level) = base<stat> + bonus(stat, level)`. `base<stat>` comes from the 6-stat table in `01-class-skill.md` section 1 (e.g. Vanguard's `baseAttack` = 14).
 
-Chi phí EXP để lên cấp tách riêng khỏi bảng 5 tier stat ở trên — bucket mịn hơn (mỗi 5 level), đặt ở `expTiers[]` cùng file, xem §6.9.
+EXP cost to level up is a separate table from the 5-tier stat table above — a finer bucket (every 5 levels), placed in `expTiers[]` in the same file, see §6.9.
 
-### 6.4 Bảng mốc (bonus cộng thêm, áp dụng như nhau cho mọi class)
+### 6.4 Milestone table (additive bonus, applies the same to every class)
 
-**Dùng chung cho cả nhân vật và quái**: nhân vật dùng bảng này rồi nhân `growthWeights` theo class (§6.8); quái dùng thẳng bảng này, không qua trọng số (§6.6).
+**Shared by both characters and monsters**: characters use this table then multiply by `growthWeights` per class (§6.8); monsters use this table directly, with no weighting (§6.6).
 
 | Level | +attack | +defense | +maxHp | +maxMp |
 |---|---|---|---|---|
@@ -45,33 +45,33 @@ Chi phí EXP để lên cấp tách riêng khỏi bảng 5 tier stat ở trên �
 | 75 | 94 | 53 | 576 | 239 |
 | 100 | 102 | 60 | 651 | 264 |
 
-**Đây là đường cong dùng chung, không phải bonus thật nhận được**: bonus thật mỗi class = `round(bonus_ở_bảng_trên × growthWeights[class][stat])` (§6.8). Chỉ số quái vật (§6.6) vẫn dùng thẳng bảng này không qua trọng số.
+**This is the shared underlying curve, not the actual bonus received**: the real bonus per class = `round(bonus_in_table_above × growthWeights[class][stat])` (§6.8). Monster stats (§6.6) still use this table directly, unweighted.
 
-### 6.5 Hệ số elite/boss tách riêng theo chỉ số, không nhân đều
+### 6.5 Elite/boss multipliers are split per-stat, not applied uniformly
 
-Hệ số elite/boss tách riêng theo từng chỉ số, thiên về HP — xem bảng số thật ở §6.11.
+Elite/boss multipliers are split per individual stat, skewed toward HP — see the actual numbers in §6.11.
 
-### 6.6 Quái vật dùng chung công thức (theo `floorDepth` thay cho `level`)
+### 6.6 Monsters share the same formula (using `floorDepth` instead of `level`)
 
-Quái không có khái niệm `level` riêng — chỉ số quái scale theo `floorDepth` bằng đúng bảng tier ở §6.3 (`growthBonusForDepth`, `src/data/monsters.ts`), giữ nguyên tính đối xứng nhân vật/quái: cả 2 bên cùng tốc độ tăng, tầng sâu bao nhiêu quái mạnh tương ứng bấy nhiêu.
+Monsters have no separate `level` concept — monster stats scale with `floorDepth` using the exact same tier table as §6.3 (`growthBonusForDepth`, `src/data/monsters.ts`), preserving character/monster symmetry: both sides grow at the same rate, so the deeper the floor, the stronger the monster, proportionally.
 
-### 6.7 Kiểm chứng cân bằng (time-to-kill, TTK)
+### 6.7 Balance verification (time-to-kill, TTK)
 
-**Phương pháp**: mô phỏng party dọn sạch mọi phòng combat + guard-room liên tục từ tầng 1 tới tầng đích (dùng `createFloor(rng, depth)` thật cho từng tầng, cộng dồn `expReward` mọi quái gặp phải vào `partyExp`, tra `levelForTotalExp` để ra level tại mỗi mốc tầng), lặp lại trên nhiều seed khác nhau rồi lấy trung bình. Mỗi tầng sinh trung bình **~7-8 phòng combat/guard** (`generateFloorLayout`, `technical-decisions.md` §1).
+**Method**: simulate a party clearing every combat room and guard-room continuously from floor 1 to the target floor (using the real `createFloor(rng, depth)` for each floor, accumulating the `expReward` of every monster encountered into `partyExp`, then looking up `levelForTotalExp` to get the level at each floor milestone), repeated across multiple different seeds and averaged. Each floor spawns an average of **~7-8 combat/guard rooms** (`generateFloorLayout`, `technical-decisions.md` §1).
 
-**Level nhân vật theo độ sâu tầng** (trung bình nhiều lượt mô phỏng, làm tròn):
+**Character level by floor depth** (average across multiple simulation runs, rounded):
 
-| Độ sâu tầng | 1 | 10 | 25 | 50 | 75 | 100 | 150 | 200 | 250 |
+| Floor depth | 1 | 10 | 25 | 50 | 75 | 100 | 150 | 200 | 250 |
 |---|---|---|---|---|---|---|---|---|---|
-| Level nhân vật | 2 | 18 | 35 | 54 | 68 | 80 | 99 | 100 | 100 |
+| Character level | 2 | 18 | 35 | 54 | 68 | 80 | 99 | 100 | 100 |
 
-Party chạm trần level 100 quanh **tầng ~152** trung bình (VD tầng 50 → level 54, tầng 100 → level 80).
+The party hits the level-100 ceiling around **floor ~152** on average (e.g. floor 50 → level 54, floor 100 → level 80).
 
-**Quái thường** (Dungeon Rat, đòn đánh thường của **Vanguard** — không có skill `isMagic`, vẫn là kịch bản chậm nhất trong 4 class vì `attack` growth weight thấp nhất nhóm, 1.0 so với Rogue 1.7):
+**Regular monster** (Dungeon Rat, basic attack from a **Vanguard** — no `isMagic` skill, and still the slowest of the 4 classes since its `attack` growth weight is the lowest in the group, 1.0 versus Rogue's 1.7):
 
-Bảng dưới dùng chỉ số Dungeon Rat hiện hành ở `02-monster.md` mục 2 (`baseDefense 1`, `baseHp 45`, `baseAttack 17`), level nhân vật lấy từ bảng trên.
+The table below uses the current Dungeon Rat stats from `02-monster.md` section 2 (`baseDefense 1`, `baseHp 45`, `baseAttack 17`), with character level taken from the table above.
 
-| Độ sâu tầng | Level nhân vật | dmg (Vanguard) | HP quái | TTK Vanguard (hit) |
+| Floor depth | Character level | dmg (Vanguard) | Monster HP | TTK Vanguard (hits) |
 |---|---|---|---|---|
 | 1 | 2 | 17 | 45 | 3 |
 | 10 | 18 | 43 | 171 | 4 |
@@ -83,13 +83,13 @@ Bảng dưới dùng chỉ số Dungeon Rat hiện hành ở `02-monster.md` m�
 | 200 | 100 | 45 | 996 | 23 |
 | 250 | 100 | 41 | 1146 | 28 |
 
-**Elite guard-room** (dùng **Skeleton Guard** làm archetype tham chiếu — 1 trong 5 archetype guard-room, xem `02-monster.md` mục 2; 4 archetype còn lại theo cùng công thức multiplier nhưng base stat khác):
+**Elite guard-room** (using **Skeleton Guard** as the reference archetype — 1 of the 5 guard-room archetypes, see `02-monster.md` section 2; the other 4 archetypes follow the same multiplier formula but with different base stats):
 
-Bảng dưới dùng chỉ số base Skeleton Guard hiện hành (`baseHp 55`, `baseAttack 23`, `baseDefense 7`), hệ số elite (§6.11), skill sơ cấp mỗi class (Vanguard: Shield Throw `amount 10`, dùng `attack`; Mage: Fireball `amount 10`, dùng `magicPower`; Rogue: Knife Throw `amount 12`, dùng `attack`; Acolyte: Purify `amount 15` từ level 10 trở đi, dùng `magicPower`):
+The table below uses Skeleton Guard's current base stats (`baseHp 55`, `baseAttack 23`, `baseDefense 7`), the elite multiplier (§6.11), and each class's tier-1 skill (Vanguard: Shield Throw `amount 10`, uses `attack`; Mage: Fireball `amount 10`, uses `magicPower`; Rogue: Knife Throw `amount 12`, uses `attack`; Acolyte: Purify `amount 15` from level 10 onward, uses `magicPower`):
 
-| Độ sâu tầng | Level | HP | Def | Vanguard (hit) | Mage (hit) | Rogue (hit) | Acolyte (hit) |
+| Floor depth | Level | HP | Def | Vanguard (hits) | Mage (hits) | Rogue (hits) | Acolyte (hits) |
 |---|---|---|---|---|---|---|---|
-| 1 | 2 | 121 | 8 | 5 | 5 | 5 | — (chưa mở Purify) |
+| 1 | 2 | 121 | 8 | 5 | 5 | 5 | — (Purify not yet unlocked) |
 | 10 | 18 | 398 | 28 | 9 | 6 | 6 | 8 |
 | 25 | 35 | 728 | 44 | 14 | 9 | 9 | 12 |
 | 50 | 54 | 1113 | 57 | 20 | 13 | 13 | 18 |
@@ -99,40 +99,40 @@ Bảng dưới dùng chỉ số base Skeleton Guard hiện hành (`baseHp 55`, `
 | 200 | 100 | 2213 | 101 | 45 | 30 | 29 | 39 |
 | 250 | 100 | 2543 | 114 | 56 | 36 | 35 | 48 |
 
-**Sát thương NHẬN vào ("mon → char")** dùng công thức mitigation `finalDamage = max(1, round(amount + off − off·(def/(60+def)) − def/30))` (`mitigatedOffense` trong `resolver.ts`). Công thức áp dụng chung cho **cả 2 chiều** (nhân vật đánh quái lẫn quái đánh nhân vật, cùng 1 hàm `mitigatedOffense`, không phân biệt hướng). 2 hằng số dùng trong công thức: `x=60, y=30` (`data/balance-config.json` field `combat.defenseMitigationX`/`Y`).
+**Damage TAKEN ("mon → char")** uses the mitigation formula `finalDamage = max(1, round(amount + off − off·(def/(60+def)) − def/30))` (`mitigatedOffense` in `resolver.ts`). This formula applies uniformly in **both directions** (character hitting monster, and monster hitting character both go through the same `mitigatedOffense` function, with no directional distinction). The 2 constants used in the formula: `x=60, y=30` (`data/balance-config.json` field `combat.defenseMitigationX`/`Y`).
 
-Hits-to-die trung bình từ Skeleton Guard **Elite** đánh vào từng class (đòn đánh thường, `amount 0`), tổng hợp trên toàn dải tầng ở bảng level-theo-độ-sâu trên:
+Average hits-to-die from an **Elite** Skeleton Guard attacking each class (basic attack, `amount 0`), aggregated across the whole floor range in the level-by-depth table above:
 
-| Class | min – max (toàn game) | avg |
+| Class | min – max (whole game) | avg |
 |---|---|---|
 | Vanguard | 6.2 – 15.6 | 13.1 |
 | Rogue | 3.9 – 9.6 | 8.1 |
 | Acolyte | 4.3 – 9.0 | 7.7 |
 | Mage | 2.9 – 6.0 | 5.1 |
 
-**Giới hạn đã biết**:
-- Bảng TTK trên dùng giá trị trung bình (số phòng combat, số quái/phòng, archetype ngẫu nhiên trong 11 archetype combat thường) — chưa tính phương sai giữa các seed cụ thể.
-- 4/5 archetype guard-room (Giant Spider, Dragon, Zombie Knight, Dark Knight) chưa có bảng TTK riêng như Skeleton Guard — số liệu dao động quanh bảng trên theo tỉ lệ `baseAttack`/`baseHp`/`baseDefense` khác nhau của từng archetype (`02-monster.md` mục 2).
-- Mốc mở skill (slot 2-4) nằm ở level 10/20/35 (`01-class-skill.md` mục 1, mọi class), dàn đều theo dải 1-100 thay vì dồn hết vào 7 level đầu.
+**Known limitations**:
+- The TTK table above uses average values (number of combat rooms, monsters per room, random archetype among the 11 regular combat archetypes) — it does not account for variance between specific seeds.
+- 4 of the 5 guard-room archetypes (Giant Spider, Dragon, Zombie Knight, Dark Knight) don't yet have their own TTK table like Skeleton Guard does — their numbers vary around the table above proportionally to each archetype's different `baseAttack`/`baseHp`/`baseDefense` (`02-monster.md` section 2).
+- Skill-unlock milestones (slots 2-4) sit at levels 10/20/35 (`01-class-skill.md` section 1, all classes), spread evenly across the 1-100 range instead of being front-loaded into the first 7 levels.
 
-### 6.8 Tăng trưởng phụ thuộc class (`growthWeights`)
+### 6.8 Class-dependent growth (`growthWeights`)
 
-Mỗi class có thêm `growthWeights: { attack, defense, maxHp, maxMp, magicPower }` — hệ số nhân riêng cho từng chỉ số, áp lên **cùng một đường cong `growthBonus()`** ở §6.3:
+Each class additionally has `growthWeights: { attack, defense, maxHp, maxMp, magicPower }` — a separate multiplier per stat, applied on top of the **same `growthBonus()` curve** from §6.3:
 
 ```
 classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
 ```
 
-`magicPower` là chỉ số tấn công riêng cho skill đánh dấu `isMagic` (fire/lightning/ice của Mage, holy heal/purge của Acolyte — xem `01-class-skill.md` mục 1.6) — resolver dùng `magicPower` thay `attack` cho đúng những skill này; `attack` vẫn giữ nguyên vai trò cũ cho mọi skill vật lý (kể cả đòn đánh thường của Mage/Acolyte). Ngân sách "không class nào được tổng tăng trưởng nhiều hơn class khác" tính trên cả 5 trọng số — tổng hiện tại là **5.0** cho mọi class:
+`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` section 1.6) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills (including the basic attacks of Mage/Acolyte). The "no class gets more total growth than another" budget is computed across all 5 weights — the current total is **5.0** for every class:
 
-| Class | attack | magicPower | defense | maxHp | maxMp | Tổng | Vai trò |
+| Class | attack | magicPower | defense | maxHp | maxMp | Total | Role |
 |---|---|---|---|---|---|---|---|
 | Vanguard | 1.0 | 0.4 | 1.5 | 1.5 | 0.6 | 5.0 | Tank |
-| Mage | 0.1 | 1.7 | 0.7 | 0.9 | 1.6 | 5.0 | Glass cannon phép |
-| Rogue | 1.7 | 0.3 | 0.9 | 1.3 | 0.8 | 5.0 | Glass cannon cận chiến |
-| Acolyte | 0.5 | 1.1 | 1.0 | 1.1 | 1.3 | 5.0 | Thuần hỗ trợ |
+| Mage | 0.1 | 1.7 | 0.7 | 0.9 | 1.6 | 5.0 | Magic glass cannon |
+| Rogue | 1.7 | 0.3 | 0.9 | 1.3 | 0.8 | 5.0 | Melee glass cannon |
+| Acolyte | 0.5 | 1.1 | 1.0 | 1.1 | 1.3 | 5.0 | Pure support |
 
-**Kết quả tới level 100** (`createCharacter`, base + `classGrowthBonus`):
+**Result by level 100** (`createCharacter`, base + `classGrowthBonus`):
 
 | Class | attack | magicPower | defense | maxHp | maxMp |
 |---|---|---|---|---|---|
@@ -141,32 +141,32 @@ classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weigh
 | Rogue | 189 | 31 | 60 | 936 | 241 |
 | Acolyte | 57 | 122 | 68 | 816 | 393 |
 
-`growthWeights` chỉ áp dụng cho nhân vật (`party.ts`); quái vật vẫn dùng `growthBonus()` không trọng số (§6.6).
+`growthWeights` applies only to characters (`party.ts`); monsters still use the unweighted `growthBonus()` (§6.6).
 
-### 6.9 Tách level nhân vật khỏi level tầng ngục — hệ EXP
+### 6.9 Decoupling character level from dungeon-floor level — the EXP system
 
-Level nhân vật và độ sâu tầng ngục là **2 trục tiến triển độc lập**, không ràng buộc 1-1:
+Character level and dungeon floor depth are **2 independent progression axes**, with no 1-1 coupling:
 
-| Trục | Tăng khi nào | Tăng qua đâu | Trần |
+| Axis | Grows when | Grows via | Cap |
 |---|---|---|---|
-| **Level nhân vật** (`Character.level`, dùng chung cho cả party — không track XP riêng từng người) | Giết quái (bất kỳ quái nào, kể cả boss) | EXP tích lũy (`GameState.partyExp`), tra bảng ngưỡng theo tier — công thức bên dưới | **100** |
-| **Level tầng ngục** (`Floor.depth`) | Hạ quái trấn giữ phòng cuối tầng (Elite hoặc Boss — xem §6.11) | Tăng `depth` thêm 1 khi phòng đó được dọn sạch, sinh tầng mới | **Không giới hạn** — xem §6.10 |
+| **Character level** (`Character.level`, shared across the whole party — no per-member XP tracking) | Killing any monster (any monster at all, including bosses) | Accumulated EXP (`GameState.partyExp`), looked up against a per-tier threshold table — formula below | **100** |
+| **Dungeon floor level** (`Floor.depth`) | Defeating the guardian monster of the floor's final room (Elite or Boss — see §6.11) | `depth` increases by 1 once that room is cleared, generating a new floor | **Unlimited** — see §6.10 |
 
-`Game.resolve()` (`src/engine/game.ts`) gọi `applyPartyExp(state, expGained)` (`src/engine/party.ts`) ngay khi 1 trận thắng, cộng EXP + lên cấp đồng loạt cả party nếu đủ ngưỡng; `Game.clearFinishedCombat()` gọi `advanceToNextFloor()` khi phòng vừa thắng là phòng guard-room (`type === "boss"`), sinh tầng kế qua `createFloor(ctx.rng, nextDepth)`.
+`Game.resolve()` (`src/engine/game.ts`) calls `applyPartyExp(state, expGained)` (`src/engine/party.ts`) the moment a battle is won, adding EXP and leveling up the whole party at once if the threshold is met; `Game.clearFinishedCombat()` calls `advanceToNextFloor()` when the just-won room was the guard-room (`type === "boss"`), generating the next floor via `createFloor(ctx.rng, nextDepth)`.
 
-Quái scale theo `floorDepth` (không đổi, §6.6); nhân vật scale theo tiến độ combat thực tế của người chơi, không theo số tầng đã đi qua.
+Monsters scale with `floorDepth` (unchanged, §6.6); characters scale with the player's actual combat progress, not with how many floors they've passed through.
 
-**Công thức EXP quái (cộng vào `partyExp` khi giết)**: dùng công thức **tuyến tính đơn giản**:
+**Monster EXP formula (added to `partyExp` on kill)**: uses a **simple linear** formula:
 
 ```
 expReward(archetype, floorDepth) = archetype.expReward + floor(floorDepth × 0.1)
 ```
 
-Hệ số `0.1` (EXP bonus/tầng) là hằng số riêng, đặt cạnh `eliteMultiplier`/`bossMultiplier` trong `data/level-growth.json` (không phải 1 cột trong `tiers[]`). Quái trấn giữ phòng cuối tầng nhân hệ số EXP khác nhau tùy loại (§6.11) — Elite (đa số các tầng) nhân `eliteMultiplier.exp` (**x3**), Boss thật (mỗi 5 tầng) nhân `bossMultiplier.exp` (**x6**).
+The `0.1` coefficient (EXP bonus/floor) is a standalone constant, placed alongside `eliteMultiplier`/`bossMultiplier` in `data/level-growth.json` (not a column in `tiers[]`). The guardian monster of a floor's final room multiplies EXP by a different factor depending on type (§6.11) — Elite (most floors) multiplies by `eliteMultiplier.exp` (**x3**), a real Boss (every 5 floors) multiplies by `bossMultiplier.exp` (**x6**).
 
-**Ngưỡng lên cấp nhân vật — `expTiers[]`**, tách riêng khỏi bảng stat, bucket theo **mỗi 5 level** (1-5, 6-10, ..., 96-100 — 20 bucket):
+**Character level-up thresholds — `expTiers[]`**, a separate table from the stat table, bucketed **every 5 levels** (1-5, 6-10, ..., 96-100 — 20 buckets):
 
-| Level | expCost/lần lên cấp | Level | expCost/lần lên cấp |
+| Level | expCost per level-up | Level | expCost per level-up |
 |---|---|---|---|
 | 1-5 | 115 | 51-55 | 490 |
 | 6-10 | 135 | 56-60 | 555 |
@@ -179,41 +179,41 @@ Hệ số `0.1` (EXP bonus/tầng) là hằng số riêng, đặt cạnh `eliteM
 | 41-45 | 375 | 91-95 | 1410 |
 | 46-50 | 430 | 96-100 | 1605 |
 
-Tổng EXP cần để lên level 100: **59 610**.
+Total EXP needed to reach level 100: **59,610**.
 
-`expCostForLevel(level)` = tổng dồn `expCost` của bucket 5-level chứa từng level, từ level 2 tới level đang xét (đúng công thức cumulative-sum như `growthBonus` ở §6.3, nhưng đọc từ `expTiers[]` qua hàm `expTierFor()` riêng, không dùng chung `tierFor()` của bảng stat — `src/data/levelGrowth.ts`) — clamp trần ở level 100 (nhân vật vẫn cap, khác quái/tầng).
+`expCostForLevel(level)` = the cumulative sum of the `expCost` of the 5-level bucket containing each level, from level 2 up to the level in question (the exact same cumulative-sum formula as `growthBonus` in §6.3, but reading from `expTiers[]` through a separate `expTierFor()` function, not sharing the stat table's `tierFor()` — `src/data/levelGrowth.ts`) — clamped at level 100 (characters still have a cap, unlike monsters/floors).
 
-**Lên cấp**: mỗi khi `partyExp` vượt ngưỡng `expCostForLevel(nextLevel)`, cả party lên cấp đồng loạt (vẫn dùng chung 1 level, chỉ đổi nguồn kích hoạt) — `hp`/`mp` hồi đầy, mở khóa skill nếu `unlockLevel` khớp, giữ nguyên quy tắc "lên cấp = hồi phục toàn phần" ở `05-character-stats.md` mục 5.
+**Leveling up**: whenever `partyExp` exceeds the `expCostForLevel(nextLevel)` threshold, the whole party levels up together (still sharing a single level, only the trigger source differs) — `hp`/`mp` fully restore, skills unlock if `unlockLevel` matches, keeping the "leveling up = full recovery" rule from `05-character-stats.md` section 5.
 
-Số quái giết được ở mỗi tầng cố định theo layout được sinh ra (`technical-decisions.md` §1) — không có cơ chế farm thêm trong 1 tầng. Event room (`08-events.md` §8) là lựa chọn ghé qua lấy Item/Artifact hay đi thẳng.
+The number of monsters killable per floor is fixed by the generated layout (`technical-decisions.md` §1) — there's no mechanism to farm extra kills within a single floor. The event room (`08-events.md` §8) is an optional detour for Item/Artifact rewards, or the player can go straight through.
 
-### 6.10 Level tầng ngục vô hạn — quái/boss không còn trần scale
+### 6.10 Infinite dungeon-floor level — monsters/bosses have no scaling ceiling
 
-Công thức scale quái ở §6.6 không dùng clamp-trần-100 cho `floorDepth` (§6.9).
+The monster-scaling formula in §6.6 does not apply a 100-cap clamp to `floorDepth` (§6.9).
 
-`growthBonusForDepth(stat, floorDepth)` — cùng công thức cumulative-sum theo tier như `growthBonus`, nhưng bỏ clamp trần (chỉ giữ clamp sàn ở level 1), dùng cơ chế fallback sẵn có (`tierFor()` tự rơi về tier 5 khi không tier nào khớp `maxLevel`). Từ tầng 101 trở đi, quái tiếp tục tăng stat theo tốc độ tier 5.
+`growthBonusForDepth(stat, floorDepth)` — uses the same cumulative-sum-by-tier formula as `growthBonus`, but drops the ceiling clamp (keeping only the floor clamp at level 1), relying on the existing fallback mechanism (`tierFor()` naturally falls back to tier 5 when no tier matches `maxLevel`). From floor 101 onward, monsters keep growing their stats at tier 5's rate.
 
-**Hệ quả**: level nhân vật cap ở 100 (§6.9, chạm trần thật quanh tầng ~152 theo mô phỏng ở §6.7); level tầng vô hạn. Sau khi party đạt max level, sức mạnh nhân vật đứng yên trong khi quái/boss tiếp tục mạnh dần vô thời hạn. Không có trạng thái `gameOver: "victory"` — hạ boss luôn dẫn sang tầng kế tiếp qua `advanceToNextFloor()`.
+**Consequence**: character level caps at 100 (§6.9, actually reached around floor ~152 per the simulation in §6.7); floor level is unlimited. Once the party hits max level, character power plateaus while monsters/bosses keep getting stronger indefinitely. There is no `gameOver: "victory"` state — defeating a boss always leads to the next floor via `advanceToNextFloor()`.
 
-### 6.11 Elite khác Boss thật — Boss mạnh hơn, đòi hỏi chiến thuật
+### 6.11 Elite vs real Boss — Boss is stronger, demands more tactics
 
-Phòng cuối mỗi tầng (tag `boss` trong pattern) chia thành 2 cấp quái:
-- **Elite**: mặc định, xuất hiện ở hầu hết các tầng — `eliteMultiplier` (`data/level-growth.json`): `maxHp×2.2, attack×1.4, defense×1.1`.
-- **Boss thật**: xuất hiện **mỗi 5 tầng** (`floorDepth % 5 === 0`, `bossFloorInterval`), **thay thế** Elite tầng đó (loại trừ nhau — không tầng nào có cả 2). Dùng hệ số riêng, mạnh hơn hẳn Elite trên cả 3 trục — `bossMultiplier`: `maxHp×2.7, attack×1.8, defense×1.2`.
+The final room of each floor (tagged `boss` in the pattern) splits into 2 monster tiers:
+- **Elite**: the default, appearing on most floors — `eliteMultiplier` (`data/level-growth.json`): `maxHp×2.2, attack×1.4, defense×1.1`.
+- **Real Boss**: appears **every 5 floors** (`floorDepth % 5 === 0`, `bossFloorInterval`), **replacing** the Elite for that floor (mutually exclusive — no floor has both). Uses its own multiplier, clearly stronger than Elite across all 3 axes — `bossMultiplier`: `maxHp×2.7, attack×1.8, defense×1.2`.
 
-| Hệ số | Elite | Boss thật |
+| Multiplier | Elite | Real Boss |
 |---|---|---|
 | maxHp | ×2.2 | ×2.7 |
 | attack | ×1.4 | ×1.8 |
 | defense | ×1.1 | ×1.2 |
 
-DoT (Poisoned/Burning — `effect.amount` cố định, không trừ defense, `src/engine/resolver.ts`) không né được defense cao. **Stunned** (`data/status-effects.json`, từ Lightning Bolt/Lightning Storm) bỏ qua hoàn toàn 1 lượt của Boss, không phụ thuộc defense.
+DoT (Poisoned/Burning — `effect.amount` fixed, not reduced by defense, `src/engine/resolver.ts`) can't be dodged via high defense. **Stunned** (`data/status-effects.json`, from Lightning Bolt/Lightning Storm) completely skips 1 of the Boss's turns, independent of defense.
 
-Bảng dưới dùng chỉ số base **Skeleton Guard** (`baseHp 55`, `baseAttack 23`, `baseDefense 7` — `02-monster.md` mục 2); level theo độ sâu tầng dùng bảng mô phỏng ở §6.7.
+The table below uses **Skeleton Guard**'s base stats (`baseHp 55`, `baseAttack 23`, `baseDefense 7` — `02-monster.md` section 2); level by floor depth uses the simulation table from §6.7.
 
-**TTK Boss thật vs Elite cùng tầng** (skill sơ cấp Rogue/Mage, party ở level tương ứng theo §6.7 — dùng Rogue/Mage vì Vanguard/Acolyte "bất tử hóa" từ khá sớm, xem §6.7):
+**TTK: real Boss vs Elite on the same floor** (Rogue/Mage's tier-1 skill, party at the corresponding level per §6.7 — using Rogue/Mage since Vanguard/Acolyte become "unkillable" fairly early, see §6.7):
 
-| Tầng | Level | Loại | HP | Def | Rogue (hit) | Mage (hit) |
+| Floor | Level | Type | HP | Def | Rogue (hits) | Mage (hits) |
 |---|---|---|---|---|---|---|
 | 10 | 18 | Elite | 398 | 28 | 6 | 6 |
 | 10 | 18 | **Boss** | 489 | 30 | 7 | 8 |
@@ -224,38 +224,38 @@ Bảng dưới dùng chỉ số base **Skeleton Guard** (`baseHp 55`, `baseAttac
 | 100 | 80 | Elite | 1553 | 74 | 18 | 18 |
 | 100 | 80 | **Boss** | 1906 | 80 | 23 | 23 |
 
-Không có mini-game boss-phase. Xem §6.12 cho bộ skill riêng của Elite/Boss.
+There's no boss-phase mini-game. See §6.12 for Elite/Boss's own skillset.
 
-### 6.12 Elite/Boss có skill riêng — AoE, kết liễu, debuff ngẫu nhiên
+### 6.12 Elite/Boss have their own skills — AoE, finishers, random debuffs
 
-Elite và Boss thật (không áp dụng cho quái thường, kể cả 1 archetype guard-room khi spawn ở phòng combat thường) có 1 bộ skill kích hoạt tại chỗ ở đúng lượt của chúng (không qua `queueAction`/MP/cooldown như player — quái luôn "miễn phí" và luôn trúng, giữ đúng bất biến sẵn có ở `resolver.ts`). Bảng skill áp dụng cho cả 5 archetype guard-room (`data/monster-skills.json`), mỗi archetype có tên riêng theo flavor nhưng cùng 1 bộ `amount` và cơ chế kích hoạt — chỉ khác debuff status để tạo bản sắc riêng cho mỗi archetype (Skeleton Guard → `weakened`; Giant Spider → `poisoned`; Dragon → `burning`; Zombie Knight → `weakened`; Dark Knight → `stunned`):
+Elite and real Boss (not applicable to regular monsters, including a guard-room archetype when it spawns in a regular combat room) have a skillset that activates automatically on their own turn (not through `queueAction`/MP/cooldown like the player — monsters are always "free" and always hit, preserving the existing invariant in `resolver.ts`). The skill table applies to all 5 guard-room archetypes (`data/monster-skills.json`), each archetype having its own name per its flavor but sharing the same set of `amount` values and trigger mechanics — only the debuff status differs, to give each archetype its own identity (Skeleton Guard → `weakened`; Giant Spider → `poisoned`; Dragon → `burning`; Zombie Knight → `weakened`; Dark Knight → `stunned`):
 
-| Skill (tên chung) | Tier | Target | Hiệu ứng | Khi nào dùng |
+| Skill (generic name) | Tier | Target | Effect | When used |
 |---|---|---|---|---|
-| **Strike** (VD Cleaving Strike — Skeleton Guard) | Elite + Boss | 1 địch | `damage amount 3` | Hành động mặc định, chọn mục tiêu theo `aiPattern` như quái thường (`02-monster.md` mục 2) |
-| **Cleave** (VD Sweeping Cleave) | Elite + Boss | Cả đội | `damage amount 2` | 30%/lượt, thay cho Strike |
-| **Execute/Finishing Blow** | Chỉ Boss | 1 địch | `damage amount 71`, `ignoreDefensePercent 50` (chỉ tính 50% defense mục tiêu) | Xem cơ chế tích lực riêng bên dưới — **không** dựa theo %HP mục tiêu |
-| **Debuff** (VD Crush — Skeleton Guard) | Chỉ Boss | 1 địch | `damage amount 4` + áp 1 status debuff riêng theo archetype (`weakened`/`poisoned`/`burning`/`stunned`) | 30%/lượt khi Boss không đang tích lực/tung Execute, thay cho roll Cleave/Strike |
+| **Strike** (e.g. Cleaving Strike — Skeleton Guard) | Elite + Boss | 1 enemy | `damage amount 3` | Default action, target chosen via `aiPattern` like a regular monster (`02-monster.md` section 2) |
+| **Cleave** (e.g. Sweeping Cleave) | Elite + Boss | Whole party | `damage amount 2` | 30%/turn, replaces Strike |
+| **Execute/Finishing Blow** | Boss only | 1 enemy | `damage amount 71`, `ignoreDefensePercent 50` (only 50% of the target's defense counts) | See the separate charge-up mechanic below — **not** based on the target's %HP |
+| **Debuff** (e.g. Crush — Skeleton Guard) | Boss only | 1 enemy | `damage amount 4` + applies 1 archetype-specific debuff status (`weakened`/`poisoned`/`burning`/`stunned`) | 30%/turn when the Boss isn't charging up or unleashing Execute, replacing a Cleave/Strike roll |
 
-Thứ tự ưu tiên mỗi lượt của Boss: **đang tích lực?** → tung Execute → nếu không, **hết cooldown Execute?** → bắt đầu tích lực (bỏ qua mọi hành động khác lượt đó) → nếu không, roll **Debuff** (30%) → roll **Cleave** (30%) → **Strike**. Elite (không có Execute/Debuff): roll **Cleave** (30%) → **Strike**.
+The Boss's per-turn priority order: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, roll **Debuff** (30%) → roll **Cleave** (30%) → **Strike**. Elite (no Execute/Debuff): roll **Cleave** (30%) → **Strike**.
 
-**Execute — cơ chế "tích lực rồi dồn 1 đòn cực mạnh"** (không trigger theo %HP mục tiêu):
+**Execute — the "charge up, then unleash 1 massive blow" mechanic** (not triggered by target %HP):
 
-- **Cơ chế kích hoạt riêng, không qua roll `chance()` như Debuff/Cleave**: Boss track `executeCooldownTurns` (khởi tạo `EXECUTE_COOLDOWN_TURNS = 3` lúc spawn, `src/data/monsters.ts`). Khi cooldown chạm 0, lượt đó Boss **tích lực** thay vì tấn công — chọn 1 mục tiêu ngay lúc đó (vẫn theo `aggro` như bình thường, `pickAggroWeighted`) và **khoá lại** (`Monster.executeTargetId`), log cảnh báo tên mục tiêu, không gây sát thương gì lượt này. Lượt kế tiếp của Boss, bất kể cooldown/roll gì khác, **luôn** tung Execute vào đúng người đã khoá (đọc lại từ `executeTargetId`, không tính lại target) rồi reset cooldown về `EXECUTE_COOLDOWN_TURNS`.
-- **Sát thương gần như cố định, chỉ chịu 1 nửa defense mục tiêu**: `amount 71` cộng `attack` của Boss trừ `defense` mục tiêu đã giảm 50% (`ignoreDefensePercent 50`) — xem bảng kiểm chứng bên dưới cho tỉ lệ % maxHp thực tế theo từng class.
-- **Mục tiêu khoá tại thời điểm tích lực**: mục tiêu bị chọn dựa trên `aggro` tại thời điểm tích lực — Taunt dùng trước lượt tích lực của Boss trong cùng round (+40 aggro của status `taunt`, `01-class-skill.md` mục 1) có thể ảnh hưởng ai bị khoá. Sau khi đã khoá, đổi aggro/taunt ở round kế tiếp không ảnh hưởng target đã chọn. Log cảnh báo tên mục tiêu hiện ngay khi khoá.
+- **Its own dedicated trigger mechanism, not a `chance()` roll like Debuff/Cleave**: the Boss tracks `executeCooldownTurns` (initialized to `EXECUTE_COOLDOWN_TURNS = 3` on spawn, `src/data/monsters.ts`). When the cooldown hits 0, that turn the Boss **charges up** instead of attacking — it picks 1 target right then (still following `aggro` as normal, via `pickAggroWeighted`) and **locks it in** (`Monster.executeTargetId`), logging a warning naming the target, dealing no damage that turn. On the Boss's next turn, regardless of any other cooldown/roll, it **always** unleashes Execute on exactly the locked-in target (read back from `executeTargetId`, not recalculated), then resets the cooldown to `EXECUTE_COOLDOWN_TURNS`.
+- **Damage is nearly fixed, only halved by the target's defense**: `amount 71` plus the Boss's `attack`, minus the target's `defense` reduced by 50% (`ignoreDefensePercent 50`) — see the verification table below for the actual %maxHp ratio per class.
+- **Target locked at the moment of charging**: the target is chosen based on `aggro` at the moment of charging — a Taunt used before the Boss's charge-up turn in the same round (+40 aggro from the `taunt` status, `01-class-skill.md` section 1) can affect who gets locked in. Once locked, changing aggro/taunt on the following round doesn't affect the already-chosen target. A warning log naming the target appears the instant it's locked in.
 
-`weakened` (`data/status-effects.json`) gỡ được bằng Purify của Acolyte (nhánh ally = `removeStatusEffect`). 3 archetype guard-room còn lại dùng `poisoned`/`burning`/`stunned` cho debuff riêng thay vì `weakened`.
+`weakened` (`data/status-effects.json`) can be cleared by the Acolyte's Purify (ally branch = `removeStatusEffect`). The 3 remaining guard-room archetypes use `poisoned`/`burning`/`stunned` for their own debuffs instead of `weakened`.
 
-**Kiểm chứng bằng số (party level 1, `createCharacter(..., level = 1)`)**, dùng **Skeleton Guard** ở tầng 1 làm tham chiếu:
+**Numeric verification (party at level 1, `createCharacter(..., level = 1)`)**, using **Skeleton Guard** at floor 1 as reference:
 
-| Loại | Atk | Def | HP | Class | maxHp | Strike (%maxHp) | Cleave (%maxHp) | Execute (%maxHp) |
+| Type | Atk | Def | HP | Class | maxHp | Strike (%maxHp) | Cleave (%maxHp) | Execute (%maxHp) |
 |---|---|---|---|---|---|---|---|---|
 | Elite | 32 | 8 | 121 | Vanguard | 140 | 30 (21%) | 29 (21%) | — |
 | Elite | 32 | 8 | 121 | Mage | 70 | 33 (47%) | 32 (46%) | — |
 | Elite | 32 | 8 | 121 | Rogue | 90 | 32 (36%) | 31 (34%) | — |
 | Elite | 32 | 8 | 121 | Acolyte | 100 | 31 (31%) | 30 (30%) | — |
 | Boss | 41 | 8 | 149 | Vanguard | 140 | 38 (27%) | 37 (26%) | 109 (**78%**) |
-| Boss | 41 | 8 | 149 | Mage | 70 | 41 (59%) | 40 (57%) | 111 (**159%, dứt điểm**) |
-| Boss | 41 | 8 | 149 | Rogue | 90 | 40 (44%) | 39 (43%) | 110 (**122%, dứt điểm**) |
-| Boss | 41 | 8 | 149 | Acolyte | 100 | 39 (39%) | 38 (38%) | 109 (**109%, dứt điểm**) |
+| Boss | 41 | 8 | 149 | Mage | 70 | 41 (59%) | 40 (57%) | 111 (**159%, kill**) |
+| Boss | 41 | 8 | 149 | Rogue | 90 | 40 (44%) | 39 (43%) | 110 (**122%, kill**) |
+| Boss | 41 | 8 | 149 | Acolyte | 100 | 39 (39%) | 38 (38%) | 109 (**109%, kill**) |

@@ -1,25 +1,25 @@
 # §8. Event Room
 
-*(mục 8 của `00-index.md`)*
+*(item 8 of `00-index.md`)*
 
-Event room logic sống ở `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/data/events.ts`, `data/events.json`. Event room tách khỏi Treasure room (Treasure room giữ nguyên spec ở `07-items-artifacts.md` §7.2: 100% Artifact, không combat, không lựa chọn — nhưng floor generator hiện không sinh loại phòng đó, xem ghi chú ở §7.2).
+Event room logic lives in `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/data/events.ts`, `data/events.json`. The Event room is separate from the Treasure room (the Treasure room keeps its spec unchanged in `07-items-artifacts.md` §7.2: 100% Artifact, no combat, no choices — but the floor generator currently doesn't spawn that room type; see the note in §7.2).
 
-**Quy ước đặt tên**: `id` bằng tiếng Anh (khớp §7), mô tả/flavor text tiếng Việt.
+**Naming convention**: `id` is in English (matching §7), the description/flavor text is in English (translated).
 
 ---
 
-## 8.1 Tổng quan cơ chế
+## 8.1 Mechanic Overview
 
-Mỗi lần party bước vào 1 phòng có `RoomType === "event"`, hệ thống roll **1 trong 11 loại sự kiện**, chia 2 tier, roll đều trong từng tier:
+Every time the party steps into a room with `RoomType === "event"`, the system rolls **1 of 11 event types**, split across 2 tiers, with an even roll within each tier:
 
-| Tier | Trọng số tổng | Roll đều/loại | Gồm |
+| Tier | Total weight | Even roll/type | Includes |
 |---|---|---|---|
-| **Common** (nhẹ, quen thuộc, ít rẽ nhánh) | 65% | 16.25%/loại (4 loại) | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar` |
-| **Rare** (nặng, có rủi ro/đánh đổi sâu) | 35% | 5%/loại (7 loại) | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor` |
+| **Common** (light, familiar, few branches) | 65% | 16.25%/type (4 types) | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar` |
+| **Rare** (heavier, with deeper risk/trade-offs) | 35% | 5%/type (7 types) | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor` |
 
-Roll độc lập với tầng/trạng thái party — không có logic đặc biệt cho tầng cao/thấp.
+The roll is independent of floor/party state — there's no special logic for high/low floors.
 
-Toàn bộ Artifact thưởng ở §8 dùng chung đúng 1 bảng độ hiếm 50/30/15/5% (Common/Rare/Unique/Epic) đã định nghĩa ở `07-items-artifacts.md` §7.2 "Độ hiếm & tỷ lệ rơi từng bậc", **trừ khi event tự nêu bảng riêng** (VD `collapsed-floor` chỉ roll Unique/Epic, `sacrificial-circle` roll có sàn tier tối thiểu).
+All Artifact rewards in §8 share the exact same 50/30/15/5% rarity table (Common/Rare/Unique/Epic) already defined in `07-items-artifacts.md` §7.2 "Rarity & drop rate per tier", **unless an event states its own table** (e.g. `collapsed-floor` only rolls Unique/Epic, `sacrificial-circle`'s roll has a minimum tier floor).
 
 ```
 EventDefinition {
@@ -27,201 +27,201 @@ EventDefinition {
   name: string
   description: string
   kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "choiceReveal" | "artifactExchange" | "rescueGamble"
-  forceEquip?: boolean       // true chỉ cho twin-altars, xem §8.13
+  forceEquip?: boolean       // true only for twin-altars, see §8.13
 }
 ```
 
-`guardian-fight` và `desecrated-altar` cùng dùng `kind: "combatReward"` — **cùng cơ chế xử lý ở engine, chỉ khác `id`/`name`/`description`**. Tương tự, `cursed-shrine`/`twin-altars` dùng chung `kind: "choiceReveal"` (hiện thông tin trước khi quyết định); `sacrificial-circle`/`gambling-den`/`wandering-hermit` dùng chung `kind: "artifactExchange"` (thao tác trên artifact đã sở hữu thay vì roll mới đơn thuần).
+`guardian-fight` and `desecrated-altar` both use `kind: "combatReward"` — **they share the same handling mechanics in the engine, differing only in `id`/`name`/`description`**. Likewise, `cursed-shrine`/`twin-altars` share `kind: "choiceReveal"` (reveal information before deciding); `sacrificial-circle`/`gambling-den`/`wandering-hermit` share `kind: "artifactExchange"` (operating on an artifact you already own rather than a plain new roll).
 
 ---
 
-## 8.2 Mở Rương (`open-chest`) — *Common*
+## 8.2 Open Chest (`open-chest`) — *Common*
 
-> "Một chiếc rương gỗ sồi nứt nẻ nằm lệch giữa đống đá vụn, nắp hé mở như đang chờ ai đó đủ tò mò để lại gần."
+> "A cracked oak chest sits crooked amid a pile of rubble, its lid ajar as if waiting for someone curious enough to come closer."
 
-Không combat, không trả giá. Vào phòng → cho ngay **1 Artifact** roll theo bảng độ hiếm chuẩn, cộng vào `GameState.unequippedArtifactIds` — hệt cơ chế Treasure room ở `07-items-artifacts.md` §7.2, chỉ khác đây là 1 trong 11 kết quả có thể của Event room thay vì phòng riêng biệt.
-
----
-
-## 8.3 Đánh Quái Canh Giữ (`guardian-fight`) & Phá Tế Đàn (`desecrated-altar`) — *Common*
-
-**Cơ chế chung** (`kind: "combatReward"`):
-
-- Spawn **1-2 quái** từ đúng pool quái thường của tầng hiện tại (không phải Elite/Boss riêng — tái dùng `spawnMonster()` ở `src/data/monsters.ts:55-84`), scale thêm **+20% baseHp/baseAttack/baseDefense** so với mức spawn thường cùng tầng — nặng hơn combat room bình thường, nhẹ hơn hẳn Elite (không dùng `eliteSkillIds`).
-- Thắng trận → chắc chắn **1 Artifact** roll theo bảng độ hiếm chuẩn.
-- Thua trận / bỏ chạy → không có Artifact, áp dụng đúng hệ quả combat-loss hiện có của game (không có luật riêng cho Event room).
-
-**Khác biệt duy nhất giữa 2 id**: flavor text.
-- `guardian-fight`: "Tiếng móng vuốt cà lên đá vọng ra từ góc tối — thứ gì đó đang canh giữ báu vật trong phòng này, và nó vừa đánh hơi thấy các bạn."
-- `desecrated-altar`: "Tế đàn đá rực lên thứ ánh sáng đỏ nhợt, phập phồng như đang thở — chạm vào nó chắc chắn sẽ đánh thức thứ đang ngủ bên dưới."
+No combat, no price to pay. Enter the room → immediately grants **1 Artifact** rolled on the standard rarity table, added to `GameState.unequippedArtifactIds` — exactly the same mechanic as the Treasure room in `07-items-artifacts.md` §7.2, the only difference being that this is 1 of 11 possible Event room outcomes rather than its own dedicated room.
 
 ---
 
-## 8.4 Gặp Thương Nhân (`merchant`) — *Common*
+## 8.3 Guardian Fight (`guardian-fight`) & Desecrate the Altar (`desecrated-altar`) — *Common*
 
-> "Ánh đèn dầu run rẩy hắt lên tấm vải trải đầy món hàng kỳ lạ. Một bóng người cúi đầu chào, tay vẫy nhẹ mời các bạn lại gần."
+**Shared mechanic** (`kind: "combatReward"`):
 
-Không combat. Khi vào phòng:
+- Spawns **1-2 monsters** from the current floor's normal monster pool (not a separate Elite/Boss pool — reuses `spawnMonster()` in `src/data/monsters.ts:55-84`), scaled up by an extra **+20% baseHp/baseAttack/baseDefense** compared to the normal spawn level for that floor — heavier than a normal combat room, but well below an Elite (no `eliteSkillIds` used).
+- Win the fight → guaranteed **1 Artifact** rolled on the standard rarity table.
+- Lose the fight / flee → no Artifact, the game's existing combat-loss consequences apply as normal (no special rules for the Event room).
 
-1. Roll sẵn **2-3 Artifact cụ thể** (mỗi cái roll độc lập 1 lần theo bảng độ hiếm chuẩn §7.2) — cố định cho lượt ghé phòng này, không đổi nếu rời rồi quay lại (nếu game cho phép quay lại phòng).
-2. Mỗi offer hiển thị rõ **tên, mô tả, độ hiếm, giá HP** trước khi mua:
+**The only difference between the two ids**: flavor text.
+- `guardian-fight`: "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and it just caught your scent."
+- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath."
 
-| Độ hiếm | Giá (% maxHP của nhân vật trả) |
+---
+
+## 8.4 Merchant Encounter (`merchant`) — *Common*
+
+> "A trembling oil lamp casts light on a cloth spread with strange wares. A hooded figure bows in greeting, waving you closer."
+
+No combat. On entering the room:
+
+1. **2-3 specific Artifacts** are pre-rolled (each rolled independently, once, on the standard §7.2 rarity table) — fixed for this visit to the room, and won't change if you leave and come back (if the game allows returning to a room).
+2. Each offer clearly displays its **name, description, rarity, and HP price** before purchase:
+
+| Rarity | Price (% of the paying character's maxHP) |
 |---|---|
 | Common | 15% |
 | Rare | 25% |
 | Unique | 35% |
 | Epic | 50% |
 
-3. Người chơi chọn **1 nhân vật bất kỳ trong party** để trả giá (không nhất thiết là người sẽ gắn Artifact — Artifact vẫn vào kho chung `unequippedArtifactIds` như mọi nguồn khác, gắn cho ai là quyết định riêng ở màn hình quản lý đội).
-4. Mua tối đa **1 offer** mỗi lượt ghé phòng, hoặc từ chối tất cả và rời đi tay không.
-5. **Giới hạn an toàn**: nếu giá tính theo % maxHP ≥ HP hiện tại của nhân vật được chọn (tức sẽ khiến HP về 0 trở xuống), offer đó bị **khoá/ẩn** cho nhân vật đó — không thể giao dịch tới mức tử vong. Người chơi có thể đổi sang chọn nhân vật khác đủ HP, hoặc bỏ qua offer đó.
+3. The player chooses **any one character in the party** to pay the price (not necessarily the one who will equip the Artifact — the Artifact still goes into the shared `unequippedArtifactIds` pool like any other source; deciding who equips it happens separately on the party management screen).
+4. Buy at most **1 offer** per visit to the room, or decline all and leave empty-handed.
+5. **Safety limit**: if the % maxHP price is ≥ the chosen character's current HP (i.e. it would bring HP to 0 or below), that offer is **locked/hidden** for that character — no trade can be made that would kill them. The player can switch to a different character with enough HP, or skip that offer.
 
 ---
 
-## 8.5 Đổi HP Lấy Artifact (`blood-altar`) — *Rare*
+## 8.5 Trade HP for an Artifact (`blood-altar`) — *Rare*
 
-> "Những đường khắc cổ trên bệ đá rỉ ra thứ chất lỏng sẫm màu, vẫn còn ấm. Nó đòi một cái giá bằng máu, không hơn không kém."
+> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid. It demands a price paid in blood, nothing more, nothing less."
 
-Không combat. Khi vào phòng, người chơi có thể:
+No combat. On entering the room, the player may:
 
-- Chọn 1 nhân vật trong party, trả **cố định 25% maxHP** của nhân vật đó (làm tròn xuống) → nhận ngay **1 Artifact hoàn toàn ngẫu nhiên** theo đúng bảng độ hiếm chuẩn §7.2 (không biết trước sẽ nhận gì — khác Thương Nhân ở chỗ không thấy trước Artifact cụ thể).
-- Hoặc từ chối, rời phòng không mất gì.
+- Choose 1 character in the party, pay a **flat 25% of that character's maxHP** (rounded down) → immediately receive **1 fully random Artifact** rolled on the standard §7.2 rarity table (you don't know what you'll get in advance — unlike the Merchant, where the specific Artifact is shown up front).
+- Or decline, leaving the room without losing anything.
 
-**Giới hạn an toàn**: cùng luật với Thương Nhân (§8.4 mục 5) — nếu 25% maxHP ≥ HP hiện tại của nhân vật đang chọn, lựa chọn "trả giá" bị khoá cho nhân vật đó cho tới khi chọn nhân vật khác đủ HP hoặc rời phòng.
+**Safety limit**: same rule as the Merchant (§8.4, item 5) — if 25% of maxHP is ≥ the chosen character's current HP, the "pay the price" option is locked for that character until a different character with enough HP is chosen, or the room is left.
 
 ---
 
-## 8.6 Cơ chế nền mới — Cursed Artifact
+## 8.6 New Underlying Mechanic — Cursed Artifact
 
-6 event mới ở §8.7–8.12 cần 1 khái niệm chưa tồn tại trong `07-items-artifacts.md` §7.2: **Artifact có effect âm**. Mở rộng schema:
+The 6 new events in §8.7–8.12 require a concept that doesn't yet exist in `07-items-artifacts.md` §7.2: **Artifacts with a negative effect**. Schema extension:
 
 ```
 ArtifactDefinition {
   ...
-  isCursed?: boolean   // true = artifact có ≥1 effect âm, hiển thị cảnh báo khi offer ở event
+  isCursed?: boolean   // true = artifact has ≥1 negative effect, shown as a warning when offered at an event
 }
 ```
 
-Không cần thêm `ArtifactEffect` kind mới — tái dùng field có sẵn với giá trị âm/nghịch đảo:
+No new `ArtifactEffect` kind is needed — existing fields are reused with negative/inverted values:
 
-| Effect | Cách dùng cho Cursed |
+| Effect | How it's used for Cursed |
 |---|---|
-| `statBoost` | `amount` âm (VD `maxHp -20`) — tái dùng nguyên field |
-| `curseAggroBoost` | `{ kind: "curseAggroBoost"; amount: number }` — cộng aggro cho nhân vật đang gắn, quái ưu tiên nhắm người này |
-| `curseDrainBoost` | `{ kind: "curseDrainBoost"; percent: number }` — nghịch đảo `survivalDrainReduction`, tăng tốc độ giảm hunger/thirst |
+| `statBoost` | negative `amount` (e.g. `maxHp -20`) — reuses the field as-is |
+| `curseAggroBoost` | `{ kind: "curseAggroBoost"; amount: number }` — adds aggro to the character wearing it, monsters prioritize targeting this character |
+| `curseDrainBoost` | `{ kind: "curseDrainBoost"; percent: number }` — inverts `survivalDrainReduction`, speeds up hunger/thirst depletion |
 
-**Catalog gợi ý — 4 Cursed Artifact**, mỗi cái luôn ghép 1 effect âm + 1 effect dương mạnh hơn mức thường:
+**Suggested catalog — 4 Cursed Artifacts**, each always pairing 1 negative effect with 1 positive effect stronger than the usual level:
 
-| id | Name | Effect âm | Effect dương bù lại |
+| id | Name | Negative effect | Positive effect to compensate |
 |---|---|---|---|
 | `blackened-locket` | Blackened Locket | `statBoost maxHp -20` | `statBoost attack +10` |
 | `shackle-of-hunger` | Shackle of Hunger | `curseDrainBoost 30%` | `statBoost attack +8` |
 | `unstable-core` | Unstable Core | `curseAggroBoost 25` | `statBoost maxMp +30` |
 | `heavy-guilt` | Heavy Guilt | `statBoost defense -6` | `lifesteal 8%` |
 
-Cursed Artifact **chiếm slot trang bị bình thường** (tốn 1/3 slot của nhân vật), không mất gì thêm khi gắn. Chỉ xuất hiện qua `cursed-shrine` (§8.7) hoặc làm kết quả xui của `sacrificial-circle`/`gambling-den` nếu roll trúng đúng 4 id này trong pool chuẩn.
+A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character's 3 slots), with no additional cost beyond that when equipped. It only appears via `cursed-shrine` (§8.7) or as an unlucky outcome of `sacrificial-circle`/`gambling-den` if the roll happens to land on exactly one of these 4 ids in the standard pool.
 
 ---
 
-## 8.7 Đền Thờ Nguyền Rủa (`cursed-shrine`) — *Rare*
+## 8.7 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "Bức tượng có 3 con mắt. Một trong số chúng đang mở."
+> "A statue with 3 eyes. One of them is open."
 
-**Không combat** (`kind: "choiceReveal"`). Roll sẵn **1 Artifact ngẫu nhiên có thể là Cursed** (30% rơi vào pool 4 Cursed Artifact ở §8.6, 70% roll bình thường theo bảng chuẩn) — **hiển thị rõ trước khi nhận** (khác `blood-altar` — thấy được artifact cụ thể, biết nó nguyền hay không, chỉ không biết trước sẽ ra gì cho tới khi roll xong 1 lần).
+**No combat** (`kind: "choiceReveal"`). Pre-rolls **1 random Artifact that may be Cursed** (30% chance of landing in the 4-Cursed-Artifact pool from §8.6, 70% chance of a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
-- Bước 1: roll, hiện kết quả (tên + toàn bộ effect, kể cả effect âm nếu có).
-- Bước 2: người chơi chọn **Nhận** hoặc **Từ chối** (không mất gì nếu từ chối — không giống `blood-altar` phải trả trước).
-- Nếu Nhận: vào kho chung như artifact thường, **optional-equip** theo quy tắc chung §8.13 (không bắt buộc gắn ngay, kể cả nếu là Cursed) — nguy cơ chỉ hiện thực khi người chơi chủ động trang bị sau.
-
----
-
-## 8.8 Hai Bàn Thờ (`twin-altars`) — *Rare*
-
-> "Hai bệ đá đối diện nhau. Chọn 1 — bệ còn lại vỡ vụn ngay khi bạn chạm bệ kia."
-
-**Không combat** (`kind: "choiceReveal"`, `forceEquip: true` — event duy nhất bắt buộc trang bị ngay, xem §8.13). Không trả giá bằng resource — trả giá bằng cơ hội bỏ lỡ.
-
-- Roll sẵn **2 Artifact cụ thể độc lập** (2 roll riêng theo bảng chuẩn), hiện đầy đủ tên/hiệu ứng/độ hiếm cả 2 cùng lúc.
-- Chọn **đúng 1**, cái còn lại biến mất vĩnh viễn (không rời phòng rồi quay lại đổi ý — chọn xong phòng cleared ngay).
-- **Không có lựa chọn "từ chối cả 2"** — đây là phòng buộc quyết định, khác mọi event khác trong game.
-- Artifact được chọn **bắt buộc trang bị ngay** vào 1 nhân vật do người chơi chỉ định — nếu party đã đầy 12/12 slot, bắt buộc gỡ 1 artifact đang gắn (bất kỳ) để lấy chỗ (xem §8.13).
+- Step 1: roll, show the result (name + all effects, including the negative one if any).
+- Step 2: the player chooses **Accept** or **Decline** (nothing is lost by declining — unlike `blood-altar`, which requires paying up front).
+- If Accepted: it goes into the shared pool like a normal artifact, **optional-equip** under the general rule in §8.13 (no obligation to equip it right away, even if it's Cursed) — the risk only becomes real once the player actively equips it later.
 
 ---
 
-## 8.9 Vòng Nghi Lễ (`sacrificial-circle`) — *Rare*
+## 8.8 Twin Altars (`twin-altars`) — *Rare*
 
-> "Máu khô đã cũ trên đá. Vòng tròn không nhận lễ vật tầm thường — chỉ nhận thứ đã có phép."
+> "Two stone pedestals facing each other. Choose 1 — the other shatters the instant you touch its twin."
 
-**Không combat** (`kind: "artifactExchange"`). Hiến tế **1 Artifact** (từ kho chung hoặc đang gắn — nếu đang gắn thì tự gỡ trước khi hiến) để roll 1 Artifact mới, độ hiếm ràng buộc ở mức **bằng hoặc cao hơn** artifact hiến tế (renormalize bảng chuẩn 50/30/15/5, loại các tier thấp hơn ngưỡng):
+**No combat** (`kind: "choiceReveal"`, `forceEquip: true` — the only event that forces immediate equipping, see §8.13). No resource is paid — the price is the missed opportunity.
 
-| Hiến tế (tier) | Bảng roll kết quả |
+- **2 specific Artifacts are pre-rolled independently** (2 separate rolls on the standard table), with full name/effects/rarity shown for both at once.
+- Choose **exactly 1**, the other disappears forever (no leaving and coming back to change your mind — once chosen, the room clears immediately).
+- **There's no "decline both" option** — this room forces a decision, unlike every other event in the game.
+- The chosen Artifact **must be equipped immediately** on a character the player designates — if the party already has all 12/12 slots full, one currently-equipped artifact (any) must be unequipped first to make room (see §8.13).
+
+---
+
+## 8.9 Ritual Circle (`sacrificial-circle`) — *Rare*
+
+> "Old dried blood stains the stone. The circle doesn't accept ordinary offerings — only something already enchanted."
+
+**No combat** (`kind: "artifactExchange"`). Sacrifice **1 Artifact** (from the shared pool or currently equipped — if equipped, it's automatically unequipped before the sacrifice) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact (the standard 50/30/15/5 table is renormalized, excluding tiers below the threshold):
+
+| Sacrificed (tier) | Resulting roll table |
 |---|---|
-| Common | Common 50% / Rare 30% / Unique 15% / Epic 5% *(= bảng gốc, không lợi gì — hiến Common chỉ để đổi vận nếu không cần giữ)* |
+| Common | Common 50% / Rare 30% / Unique 15% / Epic 5% *(= the original table, no real benefit — sacrificing a Common only makes sense if you don't need to keep it)* |
 | Rare | Rare 60% / Unique 30% / Epic 10% |
 | Unique | Unique 75% / Epic 25% |
-| Epic | Epic 100% *(reroll sang 1 Epic khác trong catalog, không đổi tier)* |
+| Epic | Epic 100% *(rerolls into a different Epic in the catalog, tier doesn't change)* |
 
-Chọn artifact để hiến từ danh sách sở hữu (kho chung + đang gắn trên toàn party), xác nhận → roll ngay, kết quả **optional-equip** theo quy tắc chung §8.13. Không giới hạn số lần hiến tế trong 1 lượt ghé phòng nếu vẫn còn artifact để hiến — mỗi lần hiến/roll tính là 1 hành động riêng, có thể lặp lại tới khi hài lòng hoặc hết artifact.
+Choose the artifact to sacrifice from your owned list (shared pool + everything equipped across the party), confirm → roll immediately, the result is **optional-equip** under the general rule in §8.13. There's no limit on the number of sacrifices in a single visit to the room as long as there's still an artifact to sacrifice — each sacrifice/roll counts as its own action and can be repeated until satisfied or out of artifacts.
 
 ---
 
-## 8.10 Sòng Bạc Lang Thang (`gambling-den`) — *Rare*
+## 8.10 Wandering Gambling Den (`gambling-den`) — *Rare*
 
-> "Một gã lạ mặt xóc 3 chiếc cốc úp ngược, cười khẩy trong bóng tối. 'Đưa ta thứ ngươi có. Ta gấp đôi nó, hoặc giữ luôn.'"
+> "A stranger shuffles 3 overturned cups, sneering in the dark. 'Give me what you have. I'll double it, or keep it for good.'"
 
-**Không combat** (`kind: "artifactExchange"`). Cược **1 Artifact** — chỉ chọn từ kho chưa gắn (`unequippedArtifactIds`, không cược artifact đang gắn) — để đổi lấy cơ hội nhân đôi cùng tier:
+**No combat** (`kind: "artifactExchange"`). Wager **1 Artifact** — chosen only from the unequipped pool (`unequippedArtifactIds`, currently-equipped artifacts can't be wagered) — for a chance to double it within the same tier:
 
-- Chọn 1 artifact chưa gắn, xác nhận cược.
+- Choose 1 unequipped artifact, confirm the wager.
 - Roll 50/50:
-  - **Thắng**: giữ nguyên artifact đã cược, **cộng thêm 1 Artifact khác roll trong đúng tier vừa cược** (VD cược Rare → thắng nhận thêm 1 Rare khác, không nhất thiết cùng id — nếu tier đó chỉ còn đúng id đã cược thì cho phép trùng).
-  - **Thua**: **mất artifact đã cược** (rời khỏi kho vĩnh viễn), không nhận gì.
-- Không có artifact chưa gắn nào → chỉ có thể rời đi.
+  - **Win**: keep the wagered artifact, **plus receive 1 additional Artifact rolled within the exact tier wagered** (e.g. wager a Rare → winning grants another Rare, not necessarily the same id — if that tier only has the wagered id left, a duplicate is allowed).
+  - **Lose**: **the wagered artifact is lost** (leaves the pool permanently), nothing is received.
+- No unequipped artifacts available → the only option is to leave.
 
-Artifact thắng thêm **optional-equip** theo §8.13.
+An artifact won this way is **optional-equip** under §8.13.
 
 ---
 
-## 8.11 Ẩn Sĩ Lang Thang (`wandering-hermit`) — *Rare*
+## 8.11 Wandering Hermit (`wandering-hermit`) — *Rare*
 
-> "Ông già ngồi thiền giữa đống đổ nát, mắt nhắm nghiền. 'Ta không bán gì. Ta chỉ... trao đổi thôi.'"
+> "An old man sits meditating amid the rubble, eyes closed. 'I sell nothing. I only... trade.'"
 
-**Không combat** (`kind: "artifactExchange"`), không tạo Artifact mới — dịch vụ tương tác với artifact đã có. Chọn đúng 1 trong các dịch vụ (miễn phí, dùng 1 lần/lượt ghé phòng):
+**No combat** (`kind: "artifactExchange"`), doesn't create a new Artifact — it's a service that interacts with artifacts you already have. Choose exactly one of the following services (free, usable once per visit to the room):
 
-| Dịch vụ | Điều kiện | Hiệu quả |
+| Service | Condition | Effect |
 |---|---|---|
-| Gỡ nguyền | Có ≥1 Cursed Artifact đang gắn trong party | Gỡ artifact đó khỏi nhân vật, artifact **biến mất hoàn toàn** (không về kho chung, kể cả phần dương đi kèm) |
-| Đổi vận | Có ≥1 Artifact bất kỳ (kho chung hoặc đang gắn) | Chọn 1 artifact, đổi lấy 1 Artifact ngẫu nhiên khác roll theo bảng chuẩn (không được chọn cái mới) |
-| *(không có gì để tương tác)* | — | Chỉ có thể rời đi |
+| Remove curse | Party has ≥1 Cursed Artifact currently equipped | Removes that artifact from the character; the artifact **disappears entirely** (doesn't return to the shared pool, including its accompanying positive effect) |
+| Exchange fortune | Has ≥1 Artifact of any kind (shared pool or equipped) | Choose 1 artifact, trade it for 1 different random Artifact rolled on the standard table (can't pick the same new one) |
+| *(nothing to interact with)* | — | Can only leave |
 
-Kết quả "Đổi vận" **optional-equip** theo §8.13.
+The result of "Exchange fortune" is **optional-equip** under §8.13.
 
 ---
 
-## 8.12 Sàn Nhà Sập (`collapsed-floor`) — *Rare*
+## 8.12 Collapsed Floor (`collapsed-floor`) — *Rare*
 
-> "Một bước sai và cả người rơi xuống tầng dưới. Có tiếng rên yếu ớt vọng lên từ khe nứt — vẫn còn ai đó mắc kẹt."
+> "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack — someone else is still trapped down there."
 
-Cơ chế cứu người: trả trước 1 mức HP cố định để thử cứu, kết quả quyết định có thưởng hay không.
+A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the outcome determines whether you get a reward.
 
-- Chọn 1 nhân vật "trèo xuống cứu": trả **cố định 15% maxHP** của người đó (làm tròn xuống) dù kết quả thế nào.
+- Choose 1 character to "climb down and rescue": pay a **flat 15% of that character's maxHP** (rounded down) regardless of the outcome.
 - Roll 60/40:
-  - **60% (cứu được)**: nhận **1 Artifact**, roll giới hạn trong {Unique, Epic} — dùng lại đúng tỷ lệ bảng Boss đã có ở `07-items-artifacts.md` §7.2 (Unique 65% / Epic 35%), không tạo bảng mới.
-  - **40% (không kịp)**: không nhận gì thêm — chỉ mất 15% maxHP đã trả trước.
-- Giới hạn an toàn: nếu 15% maxHP ≥ HP hiện tại của nhân vật được chọn, lựa chọn "Trèo xuống cứu" bị khoá cho người đó.
-- Có thể bỏ qua từ đầu, không mất gì.
+  - **60% (rescue succeeds)**: receive **1 Artifact**, rolled restricted to {Unique, Epic} — reusing the exact same ratio as the existing Boss table in `07-items-artifacts.md` §7.2 (Unique 65% / Epic 35%), no new table created.
+  - **40% (too late)**: nothing further is received — only the 15% maxHP already paid is lost.
+- Safety limit: if 15% of maxHP is ≥ the chosen character's current HP, the "climb down and rescue" option is locked for that character.
+- Can be skipped from the start, losing nothing.
 
-Artifact thưởng (nếu có) **optional-equip** theo §8.13.
+The Artifact reward (if any) is **optional-equip** under §8.13.
 
 ---
 
-## 8.13 Nhận Artifact từ Event — quy tắc trang bị
+## 8.13 Receiving an Artifact from an Event — equipping rules
 
-`07-items-artifacts.md` §7.2 định nghĩa artifact nhặt được luôn vào kho chung `unequippedArtifactIds` trước, gắn/gỡ là hành động rời, tự do, không giới hạn số lần, tối đa **3 artifact/nhân vật × 4 nhân vật = 12 slot toàn đội**.
+`07-items-artifacts.md` §7.2 defines that any artifact picked up always goes into the shared pool `unequippedArtifactIds` first; equipping/unequipping is a separate, free action with no limit on how many times it can be done, up to a maximum of **3 artifacts/character × 4 characters = 12 slots for the whole party**.
 
-**10/11 event** (mọi event trừ `twin-altars`): artifact vào thẳng kho chung, không có màn hình hỏi "gắn ngay hay để đó" riêng — người chơi gắn khi nào tuỳ ý ở màn hình quản lý đội (đã có sẵn, phím `a`).
+**10/11 events** (every event except `twin-altars`): the artifact goes straight into the shared pool, with no separate "equip now or set aside" prompt — the player equips it whenever they like on the party management screen (already exists, key `a`).
 
-**`twin-altars` (`forceEquip: true`)** — event duy nhất bắt buộc trang bị ngay, không có lựa chọn "để đó":
+**`twin-altars` (`forceEquip: true`)** — the only event that forces immediate equipping, with no "set aside" option:
 
-- Sau khi chọn 1 trong 2 Artifact hiện ra, người chơi **bắt buộc chỉ định ngay 1 nhân vật** để gắn.
-- Nhân vật được chỉ định đã đủ 3/3 slot → **bắt buộc** chọn 1 artifact đang gắn trên nhân vật đó để gỡ trước (không được né bằng cách chọn nhân vật khác đã đầy).
+- After choosing 1 of the 2 Artifacts shown, the player **must immediately designate 1 character** to equip it.
+- If the designated character already has 3/3 slots full, they **must** choose one currently-equipped artifact on that character to unequip first (you can't dodge this by picking a different, already-full character).

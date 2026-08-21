@@ -34,11 +34,8 @@ import { getEvent } from "../data/events";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
-/** §8.4 "Gặp Thương Nhân" — HP price by the offered artifact's rarity. Exported so the UI can show the price before the player commits. Value: data/balance-config.json BALANCE.events.merchantPricePercent. */
 export const MERCHANT_PRICE_PERCENT: Record<ArtifactRarity, number> = BALANCE.events.merchantPricePercent;
-/** §8.5 "Đổi HP Lấy Artifact" — fixed cost, unlike merchant's rarity-scaled price. Value: data/balance-config.json BALANCE.events.bloodAltarHpPercent. */
 export const BLOOD_ALTAR_HP_PERCENT = BALANCE.events.bloodAltarHpPercent;
-/** §8.12 "Sàn Nhà Sập". Value: data/balance-config.json BALANCE.events.collapsedFloorHpPercent. */
 export const COLLAPSED_FLOOR_HP_PERCENT = BALANCE.events.collapsedFloorHpPercent;
 const COLLAPSED_FLOOR_SUCCESS_CHANCE = BALANCE.events.collapsedFloorSuccessChance;
 
@@ -46,18 +43,6 @@ export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
 
-  /**
-   * `classIds` picks which classes fill the party (character-select screen) —
-   * defaults to every class in the catalog, matching the original prototype
-   * behavior and every existing `new Game(seed)` test call.
-   *
-   * `restore`, when set, reconstructs a `Game` from a save file instead of
-   * generating a fresh floor/party: `rng` resumes from the exact state it
-   * was saved at, and `state`/`monsters` are used as-is (already-resolved
-   * GameState/Monster[] from src/engine/save.ts). The entry-room ambush
-   * check is skipped since a restored state was already past that point (or
-   * mid-combat, which the saved CombatState already captures).
-   */
   constructor(seed = Date.now(), classIds?: Id[], restore?: { state: GameState; monsters: Monster[]; rngState: number }) {
     const rng = new Rng(seed);
     if (restore) {
@@ -69,7 +54,7 @@ export class Game {
     const { floor, monsters } = createFloor(rng);
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
     const party = classes.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-    const inventory: Record<Id, number> = {}; // shared reference — see EngineContext.inventory doc comment
+    const inventory: Record<Id, number> = {};
     this.ctx = { party, monsters, rng, inventory };
     this.state = {
       party,
@@ -115,7 +100,6 @@ export class Game {
     }
   }
 
-  /** Resolves the current rest room's 3-way choice, then hands control back to room navigation. */
   restAction(choice: "eat" | "chat" | "skip"): void {
     const room = getRoom(this.state.floor, this.state.currentRoomId);
     if (room.type !== "rest" || room.cleared) return;
@@ -156,14 +140,6 @@ export class Game {
     return queueItemAction(this.state.combat, actorRef, itemId, targets, this.ctx);
   }
 
-  /**
-   * Uses an item outside combat (docs/gameplay-decisions/07-items-artifacts.md
-   * §7.1: "Có thể dùng ngoài combat"). No CombatState/turn structure needed —
-   * applies the item's effects directly via resolveSkillEffect. `allAllies`
-   * items (Dragon Scale) hit the whole living party at once; everything else
-   * needs a `characterId` to act on. `singleEnemy` items have no valid target
-   * outside combat.
-   */
   useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
     const item = getItem(itemId);
     if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
@@ -200,7 +176,6 @@ export class Game {
     return unequipArtifactFromCharacter(this.state, characterId, artifactId);
   }
 
-  /** Pays `percent` of `character.maxHp` from their current hp — returns null (no payment made) if that would take them to 0 or below (docs/gameplay-decisions/08-events.md §8.4 mục 5 "giới hạn an toàn"), otherwise the HP actually paid. */
   private payHpPercent(character: (typeof this.state.party)[number], percent: number): number | null {
     const cost = Math.floor((character.maxHp * percent) / 100);
     if (cost >= character.hp) return null;
@@ -208,13 +183,11 @@ export class Game {
     return cost;
   }
 
-  /** Marks the current room resolved and clears any pending offer — shared tail call for every event-resolution method below. */
   private closeEvent(): void {
     getRoom(this.state.floor, this.state.currentRoomId).cleared = true;
     this.state.activeEvent = null;
   }
 
-  /** §8.4 — buys 1 of the pre-rolled merchant offers, paying HP from `payerCharacterId`. */
   merchantPurchase(offerIndex: number, payerCharacterId: Id): PartyActionError | null {
     const active = this.state.activeEvent;
     if (!active || active.eventId !== "merchant") return { reason: t("errors.noActiveTrade") };
@@ -235,7 +208,6 @@ export class Game {
     this.closeEvent();
   }
 
-  /** §8.5 — pays a fixed HP cost for 1 fully random Artifact (unlike merchant, the result isn't shown beforehand). */
   bloodAltarPay(characterId: Id): PartyActionError | null {
     const character = this.state.party.find((c) => c.id === characterId);
     if (!character) return { reason: t("errors.characterNotFound") };
@@ -253,7 +225,6 @@ export class Game {
     this.closeEvent();
   }
 
-  /** §8.7 — accept or decline the pre-rolled (possibly Cursed) offer; declining costs nothing. */
   cursedShrineDecide(accept: boolean): PartyActionError | null {
     const active = this.state.activeEvent;
     if (!active || active.eventId !== "cursed-shrine") return { reason: t("errors.nothingToDecide") };
@@ -268,7 +239,6 @@ export class Game {
     return null;
   }
 
-  /** §8.8/§8.13 — picks 1 of the 2 pre-rolled offers and equips it immediately (forceEquip, no "để đó"). If `characterId` is already at MAX_EQUIPPED_ARTIFACTS, `unequipArtifactId` must name which of their equipped artifacts to swap out first. */
   twinAltarsChoose(offerIndex: 0 | 1, characterId: Id, unequipArtifactId?: Id): PartyActionError | null {
     const active = this.state.activeEvent;
     if (!active || active.eventId !== "twin-altars") return { reason: t("errors.noActiveChoice") };
@@ -277,7 +247,7 @@ export class Game {
     const character = this.state.party.find((c) => c.id === characterId);
     if (!character) return { reason: t("errors.characterNotFound") };
 
-    this.state.unequippedArtifactIds.push(artifactId); // the unchosen offer simply never enters anywhere — gone for good
+    this.state.unequippedArtifactIds.push(artifactId);
     if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) {
       if (!unequipArtifactId) return { reason: t("errors.needUnequipFirst") };
       const unequipErr = unequipArtifactFromCharacter(this.state, characterId, unequipArtifactId);
@@ -290,7 +260,6 @@ export class Game {
     return null;
   }
 
-  /** §8.9 — sacrifices `sacrificeArtifactId` (auto-unequips first if worn) for 1 new roll at or above its rarity. Repeatable — call sacrificeLeave() to close the room. */
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
     const owner = this.state.party.find((c) => c.equippedArtifactIds.includes(sacrificeArtifactId));
     if (owner) {
@@ -304,7 +273,7 @@ export class Game {
     const newArtifactId = rollArtifactWithMinRarity(rarity, this.ctx.rng);
     this.state.unequippedArtifactIds.push(newArtifactId);
     this.state.message = t("game.sacrificeResult", { old: getArtifact(sacrificeArtifactId).name, new: getArtifact(newArtifactId).name });
-    return null; // room stays open — repeatable until satisfied or out of artifacts (§8.9)
+    return null;
   }
 
   sacrificeLeave(): void {
@@ -312,7 +281,6 @@ export class Game {
     this.closeEvent();
   }
 
-  /** §8.10 — bets 1 unequipped artifact on a 50/50: win adds another of the same rarity, lose removes the bet permanently. */
   gamblingDenBet(artifactId: Id): PartyActionError | null {
     const idx = this.state.unequippedArtifactIds.indexOf(artifactId);
     if (idx === -1) return { reason: t("errors.artifactMustBeUnequippedToBet") };
@@ -334,7 +302,6 @@ export class Game {
     this.closeEvent();
   }
 
-  /** §8.11 "Gỡ nguyền" — removes a Cursed Artifact equipped on `characterId` entirely; does not return to the pool (the cost of removal). */
   hermitRemoveCurse(characterId: Id, artifactId: Id): PartyActionError | null {
     const character = this.state.party.find((c) => c.id === characterId);
     if (!character) return { reason: t("errors.characterNotFound") };
@@ -348,7 +315,6 @@ export class Game {
     return null;
   }
 
-  /** §8.11 "Đổi vận" — trades any owned artifact (equipped or not) for 1 random roll off the base table. */
   hermitRerollFortune(artifactId: Id): PartyActionError | null {
     const owner = this.state.party.find((c) => c.equippedArtifactIds.includes(artifactId));
     if (owner) {
@@ -370,7 +336,6 @@ export class Game {
     this.closeEvent();
   }
 
-  /** §8.12 — pays a fixed HP cost up front, then a 60/40 roll decides whether an Artifact (Unique/Epic only, same table as Boss) is granted. */
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
     const character = this.state.party.find((c) => c.id === characterId);
     if (!character) return { reason: t("errors.characterNotFound") };
@@ -403,19 +368,14 @@ export class Game {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
         const baseExpGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
-        // §7.2 group 4 — expBoost artifacts (party-wide, any equipped copy on anyone).
         const expGained = Math.round(baseExpGained * (1 + totalExpBoostPercent(this.state.party) / 100));
         const levelBefore = this.state.party[0]?.level ?? 1;
         applyPartyExp(this.state, expGained);
         this.state.combat.log.push({ text: t("game.expGained", { amount: expGained }), kind: "info" });
         const levelAfter = this.state.party[0]?.level ?? levelBefore;
         if (levelAfter > levelBefore) this.state.combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
-        // §7.1/§7.2 "Nguồn rơi" — collected alongside the existing log lines so the UI's
-        // post-victory reward-reveal screen (src/ui/app.ts) can show exactly what this
-        // room's clear granted, distinct from the scrolling combat log.
         const droppedItemIds: Id[] = [];
         const droppedArtifactIds: Id[] = [];
-        // §7.1 "Nguồn rơi" — each killed monster rolls its own item drop independently.
         for (const id of room.monsterIds) {
           const monster = this.ctx.monsters.find((m) => m.id === id);
           if (!monster) continue;
@@ -424,16 +384,12 @@ export class Game {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
             droppedItemIds.push(itemId);
           }
-          // §7.2 "Nguồn rơi" — only Elite/Boss kills roll an Artifact (100% each), own rarity table per tier.
           if (monster.tier === "elite" || monster.tier === "boss") {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
             this.state.unequippedArtifactIds.push(artifactId);
             droppedArtifactIds.push(artifactId);
           }
         }
-        // §8.3 — guardian-fight/desecrated-altar: winning the event's fight grants 1 Artifact
-        // off the standard table (the spawned monsters are "normal" tier, so they don't hit the
-        // elite/boss branch above).
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
           this.state.unequippedArtifactIds.push(artifactId);
@@ -447,16 +403,6 @@ export class Game {
     this.postMoveCheck();
   }
 
-  /**
-   * Clearing the floor's guard room (elite or boss, §6.11) advances depth
-   * instead of ending the game (docs/gameplay-decisions.md §6.9/6.10) — floor
-   * depth is uncapped, so a run only ends via party wipe, never "victory".
-   * Public (not called automatically by clearFinishedCombat()) so the caller
-   * can hold off until any post-victory UI (e.g. the roomReward reveal
-   * screen) has been dismissed — calling it any earlier would silently
-   * replace state.combat with the next floor's entry-room ambush while that
-   * screen is still showing the just-cleared room's battlefield.
-   */
   advanceToNextFloor(): void {
     const nextDepth = this.state.floor.depth + 1;
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
@@ -467,7 +413,6 @@ export class Game {
     this.checkEntryRoomAmbush();
   }
 
-  /** Returns whether the just-cleared room was the floor's guard room (elite/boss) — the caller decides when (if at all deferred) to follow up with advanceToNextFloor(). */
   clearFinishedCombat(): boolean {
     if (this.state.combat?.phase !== "over") return false;
     const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";

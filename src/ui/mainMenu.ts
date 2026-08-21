@@ -6,12 +6,6 @@ import { listSaves } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
 
-/**
- * Title screen shown once before the game boots, followed by a New/Continue
- * choice. "Tiếp tục" only appears when at least 1 save exists on disk.
- * Resolves once the player picks, tearing down its own renderables so the
- * next screen (character select or save list) starts on a clean root.
- */
 export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
@@ -47,9 +41,6 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
 
     const hasSaves = listSaves().length > 0;
 
-    // "Button"-styled option boxes (bordered, own background) instead of bare numbered text
-    // lines — otherwise the 2 choices blend into the title/subtitle block above them and are
-    // easy to miss.
     const buttonsRow = new BoxRenderable(renderer, {
       id: "menu-buttons",
       flexDirection: "row",
@@ -86,9 +77,6 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       root.add(buttonsRow);
       root.add(chooseHint);
 
-      // Persistent listener, removed explicitly on a valid choice — see the note on
-      // characterSelect.ts's onKey: opentui's InternalKeyHandler bypasses .once()'s
-      // self-removal, so re-registering .once() from inside its own handler only survives 1 hop.
       const onChoiceKey = (key: KeyEvent) => {
         if (key.name === "1") {
           renderer.keyInput.off("keypress", onChoiceKey);

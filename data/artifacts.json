@@ -1,32 +1,32 @@
 [
-  { "id": "iron-gauntlet", "name": "Iron Gauntlet", "description": "Găng sắt cũ kỹ, từng thuộc về một chiến binh vô danh.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 3 }] },
-  { "id": "worn-wooden-shield", "name": "Worn Wooden Shield", "description": "Khiên gỗ chằng chịt vết chém, nhưng vẫn còn chắc chắn.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
-  { "id": "charm-of-life", "name": "Charm of Life", "description": "Bùa hộ mệnh khắc hình trái tim, ấm áp lạ thường khi đeo sát người.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 20 }] },
-  { "id": "small-mana-gem", "name": "Small Mana Gem", "description": "Viên đá nhỏ phát sáng dịu, mạch năng lượng bên trong chưa từng tắt.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
-  { "id": "sharp-claw", "name": "Sharp Claw", "description": "Móng vuốt quái thú được mài nhọn thành vũ khí phụ.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
-  { "id": "stone-of-endurance", "name": "Stone of Endurance", "description": "Tảng đá nặng trịch khắc rune cổ, mang lại cảm giác vững chãi lạ kỳ.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
-  { "id": "ring-of-focus", "name": "Ring of Focus", "description": "Chiếc nhẫn bạc giúp tâm trí tĩnh lặng, dễ dàng chạm tới nguồn phép thuật hơn.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
-  { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "Vòng cổ đúc từ răng nanh quái vật, biểu tượng của một trận thắng đã qua.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
-  { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "Mặt dây chuyền khắc hình mặt trăng, toả ra cảm giác an tâm giữa bóng tối.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
-  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "Túi lương khô nhỏ luôn mang theo bên mình, phòng khi hành trình kéo dài hơn dự tính.", "rarity": "common", "effects": [{ "kind": "survivalDrainReduction", "percent": 15 }] },
+  { "id": "iron-gauntlet", "name": "Iron Gauntlet", "description": "A weathered iron gauntlet, once belonging to a nameless warrior.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 3 }] },
+  { "id": "worn-wooden-shield", "name": "Worn Wooden Shield", "description": "A wooden shield scarred with countless blade marks, yet still sturdy.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
+  { "id": "charm-of-life", "name": "Charm of Life", "description": "A heart-shaped charm, strangely warm when held close.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 20 }] },
+  { "id": "small-mana-gem", "name": "Small Mana Gem", "description": "A small gem giving off a soft glow, its inner current of energy never fading.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
+  { "id": "sharp-claw", "name": "Sharp Claw", "description": "A monster's claw honed into a secondary weapon.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
+  { "id": "stone-of-endurance", "name": "Stone of Endurance", "description": "A heavy stone etched with ancient runes, giving off a strange sense of steadiness.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
+  { "id": "ring-of-focus", "name": "Ring of Focus", "description": "A silver ring that calms the mind, making it easier to reach for magic.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
+  { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "A necklace forged from monster fangs, a symbol of a battle once won.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
+  { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "A pendant engraved with a crescent moon, radiating calm amid the dark.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
+  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "A small pouch of dried rations always kept close, in case the journey runs longer than expected.", "rarity": "common", "effects": [{ "kind": "survivalDrainReduction", "percent": 15 }] },
 
-  { "id": "ancient-sword", "name": "Ancient Sword", "description": "Thanh kiếm cổ với hoa văn đã mờ, lưỡi thép vẫn sắc như ngày rèn.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
-  { "id": "heart-of-stone", "name": "Heart of Stone", "description": "Một mảnh đá hình trái tim, lạnh băng nhưng khiến người mang trở nên bất khuất.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
-  { "id": "eternal-vial", "name": "Eternal Vial", "description": "Lọ thuỷ tinh chứa thứ chất lỏng không bao giờ cạn, mạch sống cuộn chảy bên trong.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
-  { "id": "arcane-core", "name": "Arcane Core", "description": "Lõi năng lượng arcane kết tinh, rì rầm như đang thì thầm những câu thần chú.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
-  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Áo giáp phủ đầy gai nhọn hướng ra ngoài — kẻ nào đánh vào cũng phải trả giá.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
-  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "Dao găm cổ tẩm độc đã ngấm sâu vào từng thớ thép, không bao giờ phai.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
-  { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "Chiếc nanh nhọn hoắt, mỗi lần cắn trúng lại rút thêm chút sinh lực từ đối phương.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
-  { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "Đôi giày nhẹ tựa lông vũ, bước chân gần như không chạm đất.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
-  { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "Phù văn khắc vội, rút ngắn khoảng lặng giữa hai lần thi triển kỹ năng.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
+  { "id": "ancient-sword", "name": "Ancient Sword", "description": "An ancient sword with a faded engraving, its steel blade still as sharp as the day it was forged.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
+  { "id": "heart-of-stone", "name": "Heart of Stone", "description": "A heart-shaped piece of stone, ice-cold yet it makes its bearer unyielding.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
+  { "id": "eternal-vial", "name": "Eternal Vial", "description": "A glass vial holding a liquid that never runs dry, a current of life swirling within.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
+  { "id": "arcane-core", "name": "Arcane Core", "description": "A crystallized core of arcane energy, humming as if whispering incantations.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
+  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Armor bristling with outward-facing thorns — whoever strikes it pays the price.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
+  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "An ancient dagger whose venom has soaked deep into every layer of steel, never fading.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
+  { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "A razor-sharp fang that drains a bit of life force with every bite that lands.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
+  { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "A pair of boots as light as a feather, footsteps barely touching the ground.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
+  { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "A hastily carved rune that shortens the lull between two skill casts.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
 
-  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "Áo choàng đính đầy gai sắt, nhìn qua đã thấy không nên lại gần.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
-  { "id": "serpent-ring", "name": "Serpent Ring", "description": "Chiếc nhẫn tạc hình rắn cuộn, răng nanh ẩn giấu vẫn còn tứa độc.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
-  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Vật tổ khắc hình tia sét, thỉnh thoảng tự phóng ra một luồng điện giật.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
+  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A cloak studded with iron spikes — one glance tells you not to get close.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
+  { "id": "serpent-ring", "name": "Serpent Ring", "description": "A ring carved into a coiled serpent, its hidden fangs still dripping venom.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
+  { "id": "thunder-totem", "name": "Thunder Totem", "description": "A totem carved with a lightning bolt, occasionally discharging a jolt of electricity on its own.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
   {
     "id": "armor-of-wholeness",
     "name": "Armor of Wholeness",
-    "description": "Bộ giáp toàn vẹn không một vết nứt, như thể chưa từng nếm mùi chiến trận.",
+    "description": "A suit of armor without a single crack, as if it had never tasted battle.",
     "rarity": "unique",
     "effects": [
       { "kind": "statBoost", "stat": "attack", "amount": 6 },
@@ -34,14 +34,14 @@
       { "kind": "statBoost", "stat": "maxHp", "amount": 40 }
     ]
   },
-  { "id": "bloodthirsty-blade", "name": "Bloodthirsty Blade", "description": "Lưỡi kiếm khát máu, càng chém càng như được tiếp thêm sức mạnh.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
-  { "id": "phantom-step", "name": "Phantom Step", "description": "Đôi ủng phủ sương mờ, mỗi bước đi để lại một bóng hình mờ ảo đánh lạc hướng đòn tấn công.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
-  { "id": "scholars-insight", "name": "Scholar's Insight", "description": "Cuốn sổ tay của một học giả hầm ngục, ghi chép tỉ mỉ cách rút kinh nghiệm nhanh nhất từ mỗi trận đánh.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
+  { "id": "bloodthirsty-blade", "name": "Bloodthirsty Blade", "description": "A blood-thirsty blade that seems to grow stronger with every strike.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
+  { "id": "phantom-step", "name": "Phantom Step", "description": "A pair of mist-shrouded boots, each step leaving a faint afterimage to throw off incoming attacks.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
+  { "id": "scholars-insight", "name": "Scholar's Insight", "description": "A dungeon scholar's notebook, meticulously recording the fastest ways to learn from every battle.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
 
   {
     "id": "crown-of-destruction",
     "name": "Crown of Destruction",
-    "description": "Vương miện nứt vỡ của một bạo chúa đã diệt vong, vẫn còn rền vang tham vọng huỷ diệt.",
+    "description": "The cracked crown of a fallen tyrant, still echoing with a hunger for destruction.",
     "rarity": "epic",
     "effects": [
       { "kind": "autoDamage", "amount": 12 },
@@ -51,7 +51,7 @@
   {
     "id": "immortal-heart",
     "name": "Immortal Heart",
-    "description": "Trái tim vẫn đập dù đã tách khỏi cơ thể từ lâu, không thứ gì có thể khiến nó ngừng lại.",
+    "description": "A heart that keeps beating long after being severed from its body — nothing can make it stop.",
     "rarity": "epic",
     "effects": [
       { "kind": "reflectDamage", "percent": 15 },
@@ -62,7 +62,7 @@
   {
     "id": "reapers-covenant",
     "name": "Reaper's Covenant",
-    "description": "Giao ước với thần chết — mỗi sinh mạng bị đoạt lấy sẽ trả lại một phần sức sống cho người mang.",
+    "description": "A pact with death itself — every life claimed returns a share of vitality to its bearer.",
     "rarity": "epic",
     "effects": [
       { "kind": "healOnKill", "amount": 25 },
@@ -72,7 +72,7 @@
   {
     "id": "eternal-scholars-tome",
     "name": "Eternal Scholar's Tome",
-    "description": "Cuốn cổ thư không bao giờ cũ đi, từng trang đều dạy thêm một cách chiến đấu khôn ngoan hơn.",
+    "description": "An ancient tome that never grows old, every page teaching a wiser way to fight.",
     "rarity": "epic",
     "effects": [
       { "kind": "expBoost", "percent": 25 },
@@ -83,7 +83,7 @@
   {
     "id": "blackened-locket",
     "name": "Blackened Locket",
-    "description": "Mặt dây chuyền ám khói đen, mở ra chỉ thấy một khoảng trống lạnh lẽo — nhưng sức mạnh nó trao thì rất thật.",
+    "description": "A locket shrouded in black smoke, opening onto nothing but a cold void — yet the power it grants is very real.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -94,7 +94,7 @@
   {
     "id": "shackle-of-hunger",
     "name": "Shackle of Hunger",
-    "description": "Xiềng xích rỉ sét luôn khiến người đeo cảm thấy đói khát dai dẳng, đổi lại là một cơn thịnh nộ khó kiềm chế.",
+    "description": "A rusted shackle that leaves its wearer perpetually hungry and thirsty, in exchange for a rage that's hard to contain.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -105,7 +105,7 @@
   {
     "id": "unstable-core",
     "name": "Unstable Core",
-    "description": "Lõi năng lượng bất ổn, rung lắc dữ dội và thu hút mọi ánh nhìn thù địch về phía người mang.",
+    "description": "An unstable core of energy, shaking violently and drawing every hostile gaze toward its bearer.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -116,7 +116,7 @@
   {
     "id": "heavy-guilt",
     "name": "Heavy Guilt",
-    "description": "Một gánh nặng vô hình đè lên vai, khiến những đòn phòng thủ trở nên chậm chạp và hớ hênh hơn.",
+    "description": "An invisible weight pressing down on the shoulders, making defensive moves slower and more careless.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [

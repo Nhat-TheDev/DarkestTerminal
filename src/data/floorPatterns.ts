@@ -2,13 +2,6 @@ import type { RoomType } from "../types";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 
-// Floor layouts are generated at runtime (see docs/technical-decisions.md §1)
-// instead of picked from a hand-authored pattern library — a stage-based DAG
-// where every room in stage N connects forward to every room in stage N+1
-// only (no other edges), which is what guarantees "no dead ends, every
-// branch reaches the boss" by construction, without a generate-then-validate
-// loop.
-
 export interface RoomToken {
   stage: number;
   roomId: number;
@@ -34,20 +27,15 @@ export function roomTypeForTag(tag: string): RoomType {
   }
 }
 
-// A "path" is start → boss walking exactly 1 room per stage (fixed length =
-// stage count, regardless of which branch a player takes — same guarantee
-// as the old pattern library). All bounds below are per-path.
-// Values: data/balance-config.json BALANCE.floorGeneration.*.
 export const MIN_PATH_ROOMS = BALANCE.floorGeneration.minPathRooms;
 export const MAX_PATH_ROOMS = BALANCE.floorGeneration.maxPathRooms;
 export const MAX_BRANCHES = BALANCE.floorGeneration.maxBranches;
-export const MIN_BRANCH_START_STAGE = BALANCE.floorGeneration.minBranchStartStage; // room #3 onward (0-indexed stage)
-export const MIN_BRANCH_SPACING = BALANCE.floorGeneration.minBranchSpacing; // stages between 2 consecutive branch stages
+export const MIN_BRANCH_START_STAGE = BALANCE.floorGeneration.minBranchStartStage;
+export const MIN_BRANCH_SPACING = BALANCE.floorGeneration.minBranchSpacing;
 export const MAX_EVENT_ROOMS_PER_PATH = BALANCE.floorGeneration.maxEventRoomsPerPath;
 export const MIN_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.minRestRoomsPerPath;
 export const MAX_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.maxRestRoomsPerPath;
 
-/** Distributes `total` indistinguishable units randomly across `parts` bins (each >= 0). */
 function randomPartition(total: number, parts: number, rng: Rng): number[] {
   const bins: number[] = [];
   let remaining = total;
@@ -59,12 +47,6 @@ function randomPartition(total: number, parts: number, rng: Rng): number[] {
   return bins;
 }
 
-/**
- * Picks 0..min(MAX_BRANCHES, feasible) branch stage indices inside
- * [minStage, maxStage], each consecutive pair spaced >= MIN_BRANCH_SPACING
- * apart. Feasible count is capped by how many spaced-out slots fit in the
- * region — a short path (MIN_PATH_ROOMS) can't always fit MAX_BRANCHES.
- */
 function pickBranchStages(rng: Rng, minStage: number, maxStage: number): number[] {
   const span = maxStage - minStage;
   if (span < 0) return [];
@@ -86,7 +68,6 @@ function pickBranchStages(rng: Rng, minStage: number, maxStage: number): number[
   return stages;
 }
 
-/** Picks MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH stage indices from `candidates` (already excludes start/boss/branch stages). */
 function pickRestStages(rng: Rng, candidates: number[]): number[] {
   const count = rng.int(MIN_REST_ROOMS_PER_PATH, Math.min(MAX_REST_ROOMS_PER_PATH, candidates.length));
   const pool = [...candidates];
@@ -98,16 +79,6 @@ function pickRestStages(rng: Rng, candidates: number[]): number[] {
   return picked;
 }
 
-/**
- * Generates 1 floor layout as stages of room tokens, obeying:
- * - stage 0 (start) is exactly 1 combat room
- * - final stage is exactly 1 boss room
- * - branch stages (>1 room) only start at stage >= MIN_BRANCH_START_STAGE,
- *   at most MAX_BRANCHES of them, each pair spaced >= MIN_BRANCH_SPACING apart
- * - every branch stage offers exactly 2 rooms: 1 combat + 1 event
- * - MIN_REST_ROOMS_PER_PATH..MAX_REST_ROOMS_PER_PATH non-branch stages are rest rooms
- * - path length (stage count, including start + boss) is MIN_PATH_ROOMS..MAX_PATH_ROOMS
- */
 export function generateFloorLayout(rng: Rng): RoomToken[][] {
   const pathLength = rng.int(MIN_PATH_ROOMS, MAX_PATH_ROOMS);
   const lastStage = pathLength - 1;
@@ -158,11 +129,6 @@ function pathRoomBounds(stages: RoomToken[][]): PathRoomBounds {
   return bounds;
 }
 
-/**
- * Re-validates a generated layout against every rule above. Generation is
- * correct by construction, so this only exists as a safety net for tests /
- * future changes to the generator.
- */
 export function validateGeneratedStages(stages: RoomToken[][]): void {
   if (stages.length < MIN_PATH_ROOMS || stages.length > MAX_PATH_ROOMS) {
     throw new Error(`layout has ${stages.length} stages, expected ${MIN_PATH_ROOMS}-${MAX_PATH_ROOMS}`);

@@ -1,14 +1,6 @@
 import type { CharacterClass, SkillDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 
-// Design data now lives in ../../data/classes.json (loaded once at import
-// time) so the character kit can be tweaked without touching TypeScript.
-// This module stays a thin accessor layer — see docs/gameplay-decisions.md
-// §1 for the design rationale behind the numbers themselves.
-//
-// JSON imports lose TS's string-literal-union narrowing (e.g. `target`
-// becomes `string`, not `SkillTarget`), so we cast once here after a light
-// sanity check, instead of hand-writing a full runtime schema validator.
 export const CLASSES = classesJson as unknown as CharacterClass[];
 
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");

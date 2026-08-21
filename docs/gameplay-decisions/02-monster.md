@@ -1,38 +1,38 @@
-# §2. Monster — chỉ số, targeting theo aggro & AI pattern
+# §2. Monster — stats, aggro-based targeting & AI patterns
 
-*(mục 2 của `00-index.md`)*
+*(section 2 of `00-index.md`)*
 
-**Quy ước đặt tên**: mọi `id`/`name` monster đều bằng **tiếng Anh**, khớp `data/monsters.json`.
+**Naming convention**: every monster `id`/`name` is in **English**, matching `data/monsters.json`.
 
-### Công thức scaling theo độ sâu tầng (`floorDepth`, tầng 1 = depth 1)
+### Scaling formula by floor depth (`floorDepth`, floor 1 = depth 1)
 
-Số liệu hiện hành: `growthBonus(stat, floorDepth)`, tapered theo 5 tier — xem `06-level-system.md` **§6.3/§6.6**. `speed = baseSpeed` (không scale theo tầng).
+Current implementation: `growthBonus(stat, floorDepth)`, tapered across 5 tiers — see `06-level-system.md` **§6.3/§6.6**. `speed = baseSpeed` (does not scale with floor).
 
-Đây là công thức archetype → instance, dùng khi spawn quái vào `Room.monsterIds`; các field `attack/defense/hp/maxHp/speed` trên `Monster` luôn là giá trị đã resolve, không lưu công thức.
+This is the archetype → instance formula, used when spawning monsters into `Room.monsterIds`; the `attack/defense/hp/maxHp/speed` fields on a `Monster` are always the resolved values — the formula itself is never stored.
 
-### Chọn mục tiêu theo `aggro` ("thu hút")
+### Targeting by `aggro`
 
-Quy tắc mặc định (dùng cho mọi pattern trừ khi nói khác ở dưới): **random có trọng số** trên toàn bộ nhân vật còn sống trong party, trọng số = `Character.aggro` hiện tại. Nhân vật `aggro` càng cao thì xác suất bị chọn làm mục tiêu càng lớn.
+Default rule (used by every pattern unless stated otherwise below): **weighted random** over every living character in the party, weighted by the character's current `Character.aggro`. The higher a character's `aggro`, the more likely it is to be picked as the target.
 
-Công thức: `P(target = X) = X.aggro / tổng aggro toàn bộ nhân vật còn sống`.
+Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
-### 3 AI pattern (`MonsterAiPattern`)
-- **`aggressive`** (Hung Hãn): dùng thẳng quy tắc random có trọng số theo `aggro` ở trên.
-- **`defensive`** (Phòng Thủ): nếu HP bản thân < 40% và có skill hồi/phòng thủ trong `skillIds` thì dùng skill đó (target: bản thân); ngược lại rơi về quy tắc random có trọng số theo `aggro` như `aggressive`.
-- **`erratic`** (Hỗn Loạn): **bỏ qua** trọng số `aggro` — chọn target ngẫu nhiên đều (uniform) trong các nhân vật còn sống.
+### 3 AI patterns (`MonsterAiPattern`)
+- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly.
+- **`defensive`**: if its own HP is below 40% and it has a heal/defensive skill in `skillIds`, it uses that skill (targeting itself); otherwise it falls back to the same weighted-random-by-`aggro` rule as `aggressive`.
+- **`erratic`**: **ignores** the `aggro` weighting entirely — picks a uniformly random target among living characters.
 
-### Kiến trúc 2 nhóm archetype — combat thường vs guard-room (elite/boss)
+### Two archetype groups — regular combat vs guard-room (elite/boss)
 
-15 archetype, tách rõ 2 nhóm bằng field `guardOnly?: boolean` (`MonsterArchetype`, `src/types.ts`):
+15 archetypes, clearly split into 2 groups by the `guardOnly?: boolean` field (`MonsterArchetype`, `src/types.ts`):
 
-- **Combat thường** (`guardOnly` không set/`false`, **11 archetype**): xuất hiện random trong phòng combat thông thường (1-3 quái/phòng) — `COMBAT_ROOM_ARCHETYPES` ở `src/data/floor.ts`, lọc bỏ mọi archetype `guardOnly: true`.
-- **Guard-room** (**5 archetype**, có cả `eliteSkillIds` lẫn `bossSkillIds` — xem `06-level-system.md` §6.12): trấn giữ phòng boss/tinh anh cuối mỗi tầng — `GUARD_ROOM_ARCHETYPES` ở `floor.ts`, lọc theo archetype có đủ 2 field skill kit đó, random chọn 1 khi build phòng `boss`. **Skeleton Guard** là archetype duy nhất thuộc **cả 2 nhóm** (vẫn xuất hiện ở combat thường lẫn được chọn làm guard-room) — 4 archetype còn lại (Giant Spider, Dragon, Zombie Knight, Dark Knight) đánh dấu `guardOnly: true`, **chỉ** xuất hiện ở tier elite/boss, không bao giờ là quái trash thường (VD Dragon sẽ không bao giờ lẻ tẻ xuất hiện làm quái lót đường).
+- **Regular combat** (`guardOnly` unset/`false`, **11 archetypes**): appear randomly in ordinary combat rooms (1-3 monsters/room) — `COMBAT_ROOM_ARCHETYPES` in `src/data/floor.ts`, filtering out any archetype with `guardOnly: true`.
+- **Guard-room** (**5 archetypes**, each with both `eliteSkillIds` and `bossSkillIds` — see `06-level-system.md` §6.12): guard the boss/elite room at the end of each floor — `GUARD_ROOM_ARCHETYPES` in `floor.ts`, filtered to archetypes that have both skill-kit fields, with 1 randomly chosen when building a `boss` room. **Skeleton Guard** is the only archetype that belongs to **both groups** (it still appears in regular combat as well as being eligible as a guard-room pick) — the remaining 4 archetypes (Giant Spider, Dragon, Zombie Knight, Dark Knight) are marked `guardOnly: true`, appearing **only** at the elite/boss tier and never as ordinary trash monsters (e.g. Dragon will never randomly show up as filler on the way to the boss).
 
-Mọi phòng guard-room random giữa 5 archetype mỗi lần build phòng, dùng chung công thức scaling (elite/boss vẫn dùng `eliteMultiplier`/`bossMultiplier` chung, §6.5/§6.11).
+Every guard-room randomly picks among the 5 archetypes each time the room is built, using the same shared scaling formula (elite/boss still use the shared `eliteMultiplier`/`bossMultiplier`, §6.5/§6.11).
 
-### 11 archetype combat thường
+### 11 regular combat archetypes
 
-| id | Tên | baseHp | baseAtk | baseDef | baseSpeed | AI pattern | expReward |
+| id | Name | baseHp | baseAtk | baseDef | baseSpeed | AI pattern | expReward |
 |---|---|---|---|---|---|---|---|
 | `dungeon-rat` | Dungeon Rat | 45 | 17 | 1 | 9 | erratic | 6 |
 | `black-bat` | Black Bat | 42 | 22 | 1 | 18 | aggressive | 6 |
@@ -46,37 +46,37 @@ Mọi phòng guard-room random giữa 5 archetype mỗi lần build phòng, dùn
 | `skeleton-warrior` | Skeleton Warrior | 40 | 22 | 7 | 7 | defensive | 13 |
 | `skeleton-guard`* | Skeleton Guard | 55 | 23 | 7 | 6 | defensive | 15 |
 
-\* `skeleton-guard` cũng là 1 trong 5 archetype guard-room (mục trên) — bảng dưới liệt kê riêng cho rõ, không trùng lặp dữ liệu.
+\* `skeleton-guard` is also one of the 5 guard-room archetypes (see above) — listed separately in the table below for clarity, not duplicated data.
 
-### 5 archetype guard-room (elite/boss)
+### 5 guard-room archetypes (elite/boss)
 
-| id | Tên | baseHp | baseAtk | baseDef | baseSpeed | AI pattern | expReward | guardOnly |
+| id | Name | baseHp | baseAtk | baseDef | baseSpeed | AI pattern | expReward | guardOnly |
 |---|---|---|---|---|---|---|---|---|
-| `skeleton-guard` | Skeleton Guard | 55 | 23 | 7 | 6 | defensive | 15 | không (dùng chung combat thường) |
-| `giant-spider` | Giant Spider | 50 | 26 | 5 | 14 | aggressive | 16 | có |
-| `dragon` | Dragon | 65 | 31 | 7 | 10 | aggressive | 20 | có |
-| `zombie-knight` | Zombie Knight | 60 | 19 | 10 | 5 | defensive | 17 | có |
-| `dark-knight` | Dark Knight | 58 | 27 | 10 | 9 | defensive | 18 | có |
+| `skeleton-guard` | Skeleton Guard | 55 | 23 | 7 | 6 | defensive | 15 | no (shared with regular combat) |
+| `giant-spider` | Giant Spider | 50 | 26 | 5 | 14 | aggressive | 16 | yes |
+| `dragon` | Dragon | 65 | 31 | 7 | 10 | aggressive | 20 | yes |
+| `zombie-knight` | Zombie Knight | 60 | 19 | 10 | 5 | defensive | 17 | yes |
+| `dark-knight` | Dark Knight | 58 | 27 | 10 | 9 | defensive | 18 | yes |
 
-Mỗi archetype có bộ skill kit elite/boss riêng (`eliteSkillIds`/`bossSkillIds`, `data/monster-skills.json`) — chi tiết đầy đủ, cơ chế Finishing Blow, và bảng kiểm chứng damage ở `06-level-system.md` §6.12.
+Each archetype has its own elite/boss skill kit (`eliteSkillIds`/`bossSkillIds`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and a damage verification table are in `06-level-system.md` §6.12.
 
-### Kiểm chứng damage vào Vanguard
+### Damage verification against Vanguard
 
-Sát thương được tính bằng công thức mitigation theo % (`mitigatedOffense`, `docs/technical-decisions.md`): `off − off × (def / (60 + def)) − def / 30`, trong đó `off` là `attack` (hoặc `magicPower` cho skill `isMagic`) của nguồn gây damage.
+Damage is computed via the percentage-based mitigation formula (`mitigatedOffense`, `docs/technical-decisions.md`): `off − off × (def / (60 + def)) − def / 30`, where `off` is the `attack` (or `magicPower` for `isMagic` skills) of the damage source.
 
-Damage 1 hit vào Vanguard (`baseDefense 10`, không buff/debuff) từ đòn đánh thường (`amount 0`, tầng 1 nên không có bonus theo độ sâu):
+Single-hit damage against Vanguard (`baseDefense 10`, no buffs/debuffs) from a basic attack (`amount 0`, floor 1 so no depth bonus applies):
 
-| Nhóm | Archetype | atk | dmg → Vanguard |
+| Group | Archetype | atk | dmg → Vanguard |
 |---|---|---|---|
-| Thấp nhất | Slime | 15 | 13 |
+| Lowest | Slime | 15 | 13 |
 | … | Dungeon Rat | 17 | 14 |
 | … | Zombie | 18 | 15 |
 | … | Skeleton, Lizard | 19 | 16 |
 | … | Snake | 20 | 17 |
 | … | Spider | 21 | 18 |
-| Cao nhất (combat thường) | Black Bat, Skeleton Archer, Skeleton Warrior, Skeleton Guard | 22-23 | 19 |
+| Highest (regular combat) | Black Bat, Skeleton Archer, Skeleton Warrior, Skeleton Guard | 22-23 | 19 |
 
-Elite tier (skill strike, `amount 3`, target `singleEnemy`, attack đã nhân `eliteMultiplier.attack ×1.4` — `06-level-system.md` §6.5):
+Elite tier (skill strike, `amount 3`, target `singleEnemy`, attack already multiplied by `eliteMultiplier.attack ×1.4` — `06-level-system.md` §6.5):
 
 | Archetype | eliteAtk | strike dmg → Vanguard |
 |---|---|---|
@@ -86,6 +86,6 @@ Elite tier (skill strike, `amount 3`, target `singleEnemy`, attack đã nhân `e
 | Dark Knight | 38 | 35 |
 | Dragon | 43 | 40 |
 
-Boss tier tự nhiên cao hơn Elite (dùng `bossMultiplier.attack ×1.8` thay vì `×1.4`, cùng công thức skill), và Đòn Kết Liễu (boss execute) là 1 cú đánh riêng biệt, nặng hơn hẳn — xem bảng đầy đủ ở `06-level-system.md` §6.12.
+Boss tier is naturally higher than Elite (using `bossMultiplier.attack ×1.8` instead of `×1.4`, with the same skill formula), and the Finishing Blow (boss execute) is a separate hit, noticeably heavier — see the full table in `06-level-system.md` §6.12.
 
-Skill strike/cleave dùng `amount` nhỏ (3/2): phần lớn sát thương của elite/boss đến từ `baseAttack` đã nhân multiplier + scale theo độ sâu tầng. Cleave (`amount 2`, `allEnemies`) nhẹ hơn Strike (`amount 3`, `singleEnemy`) trên từng mục tiêu.
+Strike/cleave skills use a small `amount` (3/2): most of an elite/boss's damage comes from its `baseAttack` after the multiplier and floor-depth scaling are applied. Cleave (`amount 2`, `allEnemies`) is lighter than Strike (`amount 3`, `singleEnemy`) on a per-target basis.

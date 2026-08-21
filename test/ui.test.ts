@@ -7,11 +7,6 @@ import type { Character } from "../src/types";
 import { getActorByRef } from "../src/engine/combat";
 
 describe("headless UI smoke test", () => {
-  // docs/gameplay-decisions.md §6.9/6.10: floor depth is uncapped (clearing the
-  // guard room always advances to the next floor instead of ending the game),
-  // so a bounded scripted run can no longer expect to reach "gameover" at
-  // all — early floors are comfortably survivable. Assert progression +
-  // no-crash + "victory" being unreachable instead of "run finishes".
   test("boots and plays a scripted run via real keypresses across multiple floors without crashing", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
     const app = new App(renderer, new Game(7));
@@ -27,7 +22,7 @@ describe("headless UI smoke test", () => {
       const ui = app.debugUiState;
 
       if (ui.kind === "roomReward") {
-        mockInput.pressKey("RETURN"); // "Tiếp tục" is Enter-only now — skip viewing detail in the smoke test
+        mockInput.pressKey("RETURN");
         await renderOnce();
         continue;
       }
@@ -38,7 +33,7 @@ describe("headless UI smoke test", () => {
         const idx = choices.findIndex((r) => !r.cleared);
         key = String((idx >= 0 ? idx : 0) + 1);
       } else if (ui.kind === "pickAction") {
-        key = "1"; // always Fight
+        key = "1";
       } else if (ui.kind === "pickSkill") {
         const actor = getActorByRef(ui.actorRef, app.debugGame.ctx) as Character;
         const skills = actor.unlockedSkillIds.map(getSkill);
@@ -47,7 +42,7 @@ describe("headless UI smoke test", () => {
       } else if (ui.kind === "pickTarget") {
         key = "1";
       } else {
-        key = "1"; // roundResolved / combatOver: any key advances
+        key = "1";
       }
 
       mockInput.pressKey(key);
@@ -55,9 +50,8 @@ describe("headless UI smoke test", () => {
     }
 
     const outcome = app.debugGame.state.gameOver;
-    expect(outcome).not.toBe("victory"); // boss-clear always advances the floor now, never ends the game
+    expect(outcome).not.toBe("victory");
     if (outcome === null) {
-      // didn't die within the guard — expected given uncapped floor depth; confirm real progression happened instead.
       expect(app.debugGame.state.floor.depth).toBeGreaterThan(startingDepth);
     } else {
       expect(outcome).toBe("defeat");
@@ -87,7 +81,6 @@ describe("headless UI smoke test", () => {
   });
 
   test("ctrl+c quits the process", async () => {
-    // Smoke-check the key is wired without actually exiting the test process.
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 80, height: 24 });
     const originalExit = process.exit;
     let exitCode: number | undefined;

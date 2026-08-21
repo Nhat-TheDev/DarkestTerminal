@@ -1,11 +1,6 @@
 import balanceConfigJson from "../../data/balance-config.json";
 import type { ArtifactRarity } from "../types";
 
-// Central home for balance constants that used to be scattered as literal
-// numbers across src/engine/*.ts and src/data/*.ts — see data/balance-config.json
-// for the field-by-field rationale. Design data with its own existing JSON
-// (classes/monsters/items/level-growth/status-effects/artifacts/events/strings)
-// stays in those files; this is only for what was previously a bare `const X = 0.3`.
 interface BalanceConfig {
   combat: {
     defenseMitigationX: number;

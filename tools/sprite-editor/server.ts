@@ -1,6 +1,3 @@
-// Local dev tool: a tiny pixel-sprite editor for data/sprites.json. Run with
-// `bun run sprite-editor`, then open the printed URL. Not part of the game
-// itself — this only touches the repo's own filesystem, on localhost.
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -16,7 +13,6 @@ interface SpriteData {
 interface SpritesFile {
   classes: Record<string, SpriteData>;
   monsters: Record<string, SpriteData>;
-  /** Only the 5 archetypes with both eliteSkillIds and bossSkillIds (see GUARD_ROOM_ARCHETYPES in src/data/floor.ts) ever resolve to these. */
   elites: Record<string, SpriteData>;
   bosses: Record<string, SpriteData>;
 }
@@ -28,31 +24,29 @@ function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as string[]).includes(value);
 }
 
-/** height cap per category — mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts. */
 const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 13 };
 
-/** Mirrors the invariants test/sprites.test.ts checks — reject anything that would fail that suite. */
 function validateSprite(sprite: unknown, category: Category): string | null {
-  if (typeof sprite !== "object" || sprite === null) return "Thiếu dữ liệu sprite.";
+  if (typeof sprite !== "object" || sprite === null) return "Missing sprite data.";
   const { rows, palette } = sprite as Record<string, unknown>;
-  if (!Array.isArray(rows) || rows.length === 0) return "Sprite cần ít nhất 1 dòng.";
-  if (rows.length > MAX_HEIGHT[category]) return `Sprite cao tối đa ${MAX_HEIGHT[category]} dòng cho loại này.`;
+  if (!Array.isArray(rows) || rows.length === 0) return "Sprite needs at least 1 row.";
+  if (rows.length > MAX_HEIGHT[category]) return `Sprite height must be at most ${MAX_HEIGHT[category]} rows for this category.`;
   const width = typeof rows[0] === "string" ? rows[0].length : 0;
-  if (width === 0) return "Chiều rộng sprite phải lớn hơn 0.";
+  if (width === 0) return "Sprite width must be greater than 0.";
   for (const row of rows) {
-    if (typeof row !== "string" || row.length !== width) return "Tất cả các dòng phải có cùng chiều rộng.";
+    if (typeof row !== "string" || row.length !== width) return "All rows must have the same width.";
   }
-  if (typeof palette !== "object" || palette === null) return "Thiếu palette.";
+  if (typeof palette !== "object" || palette === null) return "Missing palette.";
   const paletteEntries = Object.entries(palette as Record<string, unknown>);
   for (const [key, value] of paletteEntries) {
-    if (key === ".") return `Không thể dùng "." làm ký tự màu (dành cho ô trống).`;
-    if (key.length !== 1) return `Ký tự palette "${key}" phải là đúng 1 ký tự.`;
-    if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) return `Màu của "${key}" không hợp lệ: ${String(value)}`;
+    if (key === ".") return `Can't use "." as a color character (reserved for empty cells).`;
+    if (key.length !== 1) return `Palette character "${key}" must be exactly 1 character.`;
+    if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) return `Invalid color for "${key}": ${String(value)}`;
   }
   const used = new Set((rows as string[]).join("").split("").filter((c) => c !== "."));
   const paletteKeys = new Set(paletteEntries.map(([key]) => key));
   for (const c of used) {
-    if (!paletteKeys.has(c)) return `Ký tự "${c}" được dùng trong hình nhưng chưa có màu trong palette.`;
+    if (!paletteKeys.has(c)) return `Character "${c}" is used in the sprite but has no color in the palette.`;
   }
   return null;
 }
@@ -81,13 +75,13 @@ Bun.serve({
       try {
         body = (await req.json()) as typeof body;
       } catch {
-        return badRequest("Body không phải JSON hợp lệ.");
+        return badRequest("Body is not valid JSON.");
       }
 
       const { category, id, sprite } = body;
-      if (!isCategory(category)) return badRequest(`category phải là 1 trong: ${CATEGORIES.join(", ")}.`);
+      if (!isCategory(category)) return badRequest(`category must be one of: ${CATEGORIES.join(", ")}.`);
       if (typeof id !== "string" || !/^[a-z][a-z0-9-]*$/.test(id)) {
-        return badRequest("id phải bắt đầu bằng chữ thường, chỉ gồm chữ thường/số/dấu gạch ngang.");
+        return badRequest("id must start with a lowercase letter and contain only lowercase letters/digits/hyphens.");
       }
       const validationError = validateSprite(sprite, category);
       if (validationError) return badRequest(validationError);

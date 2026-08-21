@@ -4,7 +4,6 @@ import { spawnMonster } from "../src/data/monsters";
 import { getClass, CLASSES } from "../src/data/classes";
 import { createCharacter } from "../src/engine/party";
 
-// Milestone values from docs/gameplay-decisions.md §6.4.
 const MILESTONES: Record<number, { attack: number; defense: number; maxHp: number; maxMp: number }> = {
   1: { attack: 0, defense: 0, maxHp: 0, maxMp: 0 },
   10: { attack: 27, defense: 18, maxHp: 126, maxMp: 54 },
@@ -58,7 +57,7 @@ describe("createCharacter applies growth for its level (regression: used to igno
     expect(lvl50.defense).toBeGreaterThan(lvl1.defense);
     expect(lvl50.maxHp).toBeGreaterThan(lvl1.maxHp);
     expect(lvl50.maxMp).toBeGreaterThan(lvl1.maxMp);
-    expect(lvl50.hp).toBe(lvl50.maxHp); // spawns at full health
+    expect(lvl50.hp).toBe(lvl50.maxHp);
   });
 
   test("aggro/speed never scale with level (§5: fixed role/tempo identifiers)", () => {
@@ -100,22 +99,13 @@ describe("growth is class-dependent (§6.8): weights reinforce each class's iden
 describe("spawnMonster: elite guard stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
   test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > elite defense, not just barely floored at 1)", () => {
     const elite = spawnMonster("skeleton-guard", 50, { tier: "elite" });
-    const basicSkillAmount = 10; // e.g. Shield Throw (Vanguard)
-    // Acolyte is intentionally pure-support (§6.8: lowest attack weight) —
-    // its paid skills only deal damage situationally (Purify/Divine Descent
-    // when aimed at an enemy), not via a reliable amount-10-tier skill like
-    // the other 3 classes, so it's excluded here. Its attack stat trailing an
-    // elite's defense is by design, not the bug this test guards.
+    const basicSkillAmount = 10;
     const damageDealers = CLASSES.filter((c) => c.id !== "acolyte");
     for (const cls of damageDealers) {
       const character = createCharacter("c", cls.name, cls, 50);
-      // Mage's reference skill (Fireball) is isMagic — it scales off magicPower, not attack.
       const isMagicClass = cls.skills.some((s) => s.isMagic);
       const offensiveStat = isMagicClass ? character.magicPower : character.attack;
       const damage = Math.max(1, basicSkillAmount + offensiveStat - elite.defense);
-      // The bug this guards against: uniform x2 elite scaling let elite.defense
-      // approach total offense, flooring damage to ~1 (near-unkillable) even
-      // for the game's highest-attack classes.
       expect(damage).toBeGreaterThan(basicSkillAmount);
     }
   });
@@ -123,7 +113,7 @@ describe("spawnMonster: elite guard stays killable at deep floors (regression fo
   test("elite multiplier is asymmetric: heavy on HP, light on defense", () => {
     expect(ELITE_MULTIPLIER.maxHp).toBeGreaterThan(ELITE_MULTIPLIER.attack);
     expect(ELITE_MULTIPLIER.attack).toBeGreaterThan(ELITE_MULTIPLIER.defense);
-    expect(ELITE_MULTIPLIER.defense).toBeLessThan(1.5); // never more than a mild bump over a normal monster's defense
+    expect(ELITE_MULTIPLIER.defense).toBeLessThan(1.5);
   });
 
   test("an elite is always tankier (more HP) than a normal monster of the same archetype and depth", () => {

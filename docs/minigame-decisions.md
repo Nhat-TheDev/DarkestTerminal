@@ -1,68 +1,68 @@
-# Mini-game — Định hướng tương lai (chưa implement)
+# Mini-game — Future direction (not yet implemented)
 
-**Chưa có trong code hiện tại.** Tài liệu này là spec tham khảo cho khi
-triển khai mini-game, không mô tả trạng thái game hiện có — xem
-`../design-doc.md` mục "Định hướng tương lai".
-**Liên quan**: `./design-doc.md` mục 1.7, 1.8
-
----
-
-## 1. Quan hệ boss-fight ↔ mini-game
-
-Quyết định: **boss fight KHÔNG bị thay hoàn toàn bằng mini-game** — vẫn là combat turn-based bình thường (turn queue, skill, item như combat thường), mini-game chỉ chen vào như **1 "phase" ngắt quãng**, đúng tinh thần `GameMode.miniGame.reason: "bossPhase"` đã có sẵn trong data model.
-
-Cơ chế:
-- Mỗi boss có 1 hoặc nhiều **ngưỡng HP kích hoạt phase** (VD: 50% HP). Khi HP boss chạm ngưỡng, combat tạm dừng (không mất turn queue hiện có — `CombatState` giữ nguyên), `GameMode` chuyển sang `{ kind: "miniGame", reason: "bossPhase" }`.
-- Mini-game dùng cho phase: mặc định **Magic Tiles** (đã đơn giản hóa đủ an toàn để dùng rộng — xem mục 1.8 trong design doc chính), nhưng field `miniGameId` trên `SkillEffect`/cấu hình boss vẫn cho phép gán game khác nếu muốn đa dạng hóa.
-- Thắng phase: `MiniGameResult.maxCombo` quy đổi thành sát thương thẳng vào boss (xem công thức combo ở mục 2) — tính là 1 "đòn" ngoài turn queue, không tốn lượt của ai.
-- Thua phase: không insta-kill, không mất turn — chỉ `fear += 15` cho cả party (như thua mini-game thường, `gameplay-decisions/03-survival-stats.md` mục 3) rồi combat turn-based tiếp tục bình thường từ đúng chỗ đang dừng.
-- Mỗi ngưỡng HP chỉ kích hoạt phase **đúng 1 lần** (tránh spam mini-game liên tục nếu boss dao động quanh ngưỡng do heal/lifesteal).
+**Not present in the current code.** This document is a reference spec for
+when the mini-game is built, and does not describe the current state of the
+game — see `../design-doc.md`, section "Future direction".
+**Related**: `./design-doc.md` items 1.7, 1.8
 
 ---
 
-## 2. Magic Tiles — số liệu cụ thể
+## 1. Boss-fight ↔ mini-game relationship
 
-Nguyên tắc (đã chốt ở design doc 1.8): tune theo kỳ vọng người chơi trung bình, không cần giữ combo liên tục mới thắng.
+Decision: **the boss fight is NOT fully replaced by a mini-game** — it remains a normal turn-based combat (turn queue, skills, items just like regular combat), the mini-game only cuts in as **a brief interrupting "phase"**, in keeping with the `GameMode.miniGame.reason: "bossPhase"` already present in the data model.
 
-| Biến | Dùng để trị debuff | Dùng ở boss phase |
+Mechanic:
+- Every boss has 1 or more **HP thresholds that trigger a phase** (e.g. 50% HP). When the boss's HP hits a threshold, combat pauses (the existing turn queue isn't lost — `CombatState` is preserved), and `GameMode` switches to `{ kind: "miniGame", reason: "bossPhase" }`.
+- The mini-game used for the phase: **Magic Tiles** by default (already simplified enough to be safely used broadly — see item 1.8 in the main design doc), but the `miniGameId` field on `SkillEffect`/the boss config still allows assigning a different game for variety.
+- Winning the phase: `MiniGameResult.maxCombo` converts into direct damage to the boss (see the combo formula in section 2) — counted as one "hit" outside the turn queue, costing no one a turn.
+- Losing the phase: no insta-kill, no turn lost — just `fear += 15` for the whole party (same as losing a normal mini-game, `gameplay-decisions/03-survival-stats.md` section 3), then turn-based combat resumes normally from exactly where it left off.
+- Each HP threshold triggers the phase **exactly once** (to avoid spamming the mini-game repeatedly if the boss's HP oscillates around the threshold due to healing/lifesteal).
+
+---
+
+## 2. Magic Tiles — specific numbers
+
+Principle (already settled in design doc 1.8): tune for the average player's expectations, without needing to maintain an unbroken combo to win.
+
+| Variable | Used for curing debuffs | Used for boss phase |
 |---|---|---|
-| Thời lượng ván | 20 giây | 30 giây |
-| Tốc độ spawn tile (khoảng cách giữa 2 tile) | bắt đầu 700ms, giảm dần theo độ sâu tầng tới sàn 400ms (`spawnIntervalMs = max(400, 700 - floorDepth * 15)`) | cố định 500ms (khó hơn debuff-cure mặc định, không phụ thuộc tầng) |
-| Điểm mục tiêu | `targetScore = round(duration_seconds * 1.2)` → 24 điểm | `round(30 * 1.2)` → 36 điểm |
+| Round duration | 20 seconds | 30 seconds |
+| Tile spawn rate (gap between 2 tiles) | starts at 700ms, decreases with floor depth down to a floor of 400ms (`spawnIntervalMs = max(400, 700 - floorDepth * 15)`) | fixed at 500ms (harder than the default debuff-cure, independent of floor) |
+| Target score | `targetScore = round(duration_seconds * 1.2)` → 24 points | `round(30 * 1.2)` → 36 points |
 
-- Mỗi tile hit = **+1 điểm** (nhị phân, không graded — đã chốt ở 1.8).
-- **Combo**: mỗi 5 hit liên tiếp không trượt tăng hệ số nhân thêm **+0.1x**, trần **2.0x** (tức tối đa combo 50 hit liên tục). Trượt 1 tile → combo về 0, nhưng **điểm đã ghi không bị trừ** (điều kiện thắng chỉ nhìn tổng điểm, không nhìn combo).
-- Hệ số combo cuối ván (`maxCombo` quy đổi ra hệ số, VD combo 20 → 1.4x) nhân vào:
-  - Hiệu quả trị debuff (VD: giảm `durationTurns` còn lại của status effect theo tỉ lệ hệ số) khi dùng cho debuff-cure.
-  - Sát thương lên boss khi dùng cho boss phase: `bossDamage = baseBossPhaseDamage * comboMultiplier`, với `baseBossPhaseDamage` là hằng số balancing riêng theo từng boss (không cố định ở đây).
-- Thắng/thua: đủ `targetScore` trong `duration` = thắng (map vào `MiniGameResult.won = true`), hết giờ mà chưa đủ = thua (`won = false`, `fearDelta = +15`).
-
----
-
-## 3. Magic Tiles — UI hiển thị live progress
-
-- **Thanh điểm**: progress bar ngang trên cùng màn hình mini-game, hiển thị `score / targetScore` (VD "14 / 24"), cập nhật ngay mỗi lần hit — không đợi tick định kỳ.
-- **Thanh thời gian**: progress bar mỏng ngay dưới thanh điểm, đếm ngược từ `duration` về 0, dùng chung `performance.now()` với logic spawn tile (đã chốt ở kiến trúc — tránh desync).
-- **Combo counter**: số hiển thị góc, chỉ **nhấp nháy** (highlight 1 frame) mỗi khi combo chạm mốc chia hết cho 5 (tức mỗi lần hệ số nhân tăng thêm 0.1x).
-- Redraw của 3 thành phần trên nằm trong cùng tick loop của mini-game (real-time, tick cố định — theo kiến trúc dual-loop đã chốt), không redraw riêng lẻ ngoài luồng.
+- Each tile hit = **+1 point** (binary, not graded — already settled in 1.8).
+- **Combo**: every 5 consecutive hits without a miss increases the multiplier by an additional **+0.1x**, capped at **2.0x** (i.e. a max combo of 50 consecutive hits). Missing 1 tile → combo resets to 0, but **points already scored are not deducted** (the win condition only looks at total score, not combo).
+- The end-of-round combo multiplier (`maxCombo` converted into a multiplier, e.g. combo 20 → 1.4x) multiplies into:
+  - Debuff-cure effectiveness (e.g. reducing the remaining `durationTurns` of a status effect proportionally to the multiplier) when used for debuff-curing.
+  - Damage dealt to the boss when used for a boss phase: `bossDamage = baseBossPhaseDamage * comboMultiplier`, with `baseBossPhaseDamage` being a balancing constant specific to each boss (not fixed here).
+- Win/lose: reaching `targetScore` within `duration` = win (maps to `MiniGameResult.won = true`), running out of time without enough score = lose (`won = false`, `fearDelta = +15`).
 
 ---
 
-## 4. Snake / Tetris / Brick Breaker — cơ chế cụ thể
+## 3. Magic Tiles — live progress UI
 
-Cả 3 đều theo khung thắng/thua chung: đủ điều kiện trong thời gian quy định = thắng; hết giờ hoặc chết giữa chừng = thua (`fearDelta = +15`, giống Magic Tiles). Không có hit-combo kiểu Magic Tiles — đây là 3 game "eval nhị phân" đơn giản hơn.
+- **Score bar**: a horizontal progress bar at the top of the mini-game screen, showing `score / targetScore` (e.g. "14 / 24"), updated immediately on every hit — not waiting for a periodic tick.
+- **Time bar**: a thin progress bar just below the score bar, counting down from `duration` to 0, sharing the same `performance.now()` as the tile-spawn logic (already settled in the architecture — to avoid desync).
+- **Combo counter**: a number displayed in a corner, only **flashing** (highlighted for 1 frame) each time the combo hits a multiple of 5 (i.e. each time the multiplier increases by another 0.1x).
+- Redrawing these 3 components happens within the same mini-game tick loop (real-time, fixed tick — per the settled dual-loop architecture), with no separate redraw outside that flow.
+
+---
+
+## 4. Snake / Tetris / Brick Breaker — specific mechanics
+
+All 3 follow the same win/lose framework: meeting the condition within the time limit = win; running out of time or dying partway = lose (`fearDelta = +15`, same as Magic Tiles). There's no hit-combo like Magic Tiles — these are 3 simpler "binary eval" games.
 
 ### Snake
-- Grid-based, tick cố định (300ms/tick ở độ khó chuẩn, giảm dần theo tầng tới sàn 180ms, tương tự cách scale của Magic Tiles).
-- Điều kiện thắng: ăn đủ **N = 8 food** trong **25 giây**.
-- Điều kiện thua: đâm tường hoặc tự đâm thân — thua ngay lập tức (không chờ hết giờ), không có "mạng" phụ.
+- Grid-based, fixed tick (300ms/tick at standard difficulty, decreasing with floor depth down to a floor of 180ms, similar to how Magic Tiles scales).
+- Win condition: eat **N = 8 food** within **25 seconds**.
+- Lose condition: hitting a wall or biting your own tail — lose immediately (doesn't wait for time to run out), no extra "lives".
 
 ### Tetris
-- Chuẩn 10x20 grid, tốc độ rơi tăng dần theo thời gian trong ván (không phụ thuộc tầng — độ khó tự thân của game đã đủ biến thiên).
-- Điều kiện thắng: xóa đủ **4 hàng** trong **40 giây**.
-- Điều kiện thua: khối chồng tới đỉnh grid (game-over chuẩn của Tetris) hoặc hết giờ chưa đủ 4 hàng.
+- Standard 10x20 grid, fall speed increases over the course of the round (independent of floor — the game's own inherent difficulty already varies enough).
+- Win condition: clear **4 lines** within **40 seconds**.
+- Lose condition: blocks stack to the top of the grid (standard Tetris game-over) or time runs out without 4 lines cleared.
 
 ### Brick Breaker
-- Paddle di chuyển liên tục khi giữ phím trái/phải, dùng Kitty keyboard key-release event để dừng paddle ngay khi nhả phím (giải quyết đúng vấn đề kỹ thuật đã nêu ở design doc 1.7).
-- Điều kiện thắng: phá đủ **60% tổng số gạch** trong **35 giây**.
-- Số mạng (bóng rơi khỏi paddle): **3 mạng**; hết mạng trước khi đạt 60% hoặc hết giờ = thua.
+- Paddle moves continuously while holding the left/right key, using the Kitty keyboard key-release event to stop the paddle the instant the key is released (solving exactly the technical issue already raised in design doc 1.7).
+- Win condition: break **60% of all bricks** within **35 seconds**.
+- Number of lives (ball falling past the paddle): **3 lives**; running out of lives before reaching 60%, or running out of time, = lose.

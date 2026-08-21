@@ -1,19 +1,3 @@
-// Pixel-art sprites for the battlefield panel.
-//
-// A "pixel" here = 1 terminal cell (a space character with a background
-// color) — see docs/gameplay-decisions.md-style rationale in the darkest-
-// terminal README. Characters/monsters top out at 10 pixels tall, bosses at
-// 13 (both hard limits the user specified). Sprite width is a free design
-// choice; humanoids use 9 cols, the boss uses 11 for extra presence.
-//
-// The actual pixel grids live in ../../data/sprites.json (loaded below) so
-// they can be tweaked without touching TypeScript. Each sprite is a grid of
-// rows (equal-length strings); every character is either '.' (transparent —
-// shows the panel background) or a key into that sprite's own `palette`
-// (char -> hex color). test/sprites.test.ts asserts row-length/height/
-// palette consistency so a JSON typo fails loudly instead of silently
-// misrendering.
-
 import { bg, type TextChunk } from "@opentui/core";
 import { plainChunk } from "./theme";
 import type { MonsterTier } from "../types";
@@ -27,11 +11,6 @@ export interface Sprite {
 interface SpritesFile {
   classes: Record<string, Sprite>;
   monsters: Record<string, Sprite>;
-  /**
-   * 1 sprite per tier per archetype that can actually spawn as elite/boss
-   * guard (has both eliteSkillIds and bossSkillIds — see src/data/floor.ts's
-   * GUARD_ROOM_ARCHETYPES). Visual weight steps up normal -> elite -> boss.
-   */
   elites: Record<string, Sprite>;
   bosses: Record<string, Sprite>;
 }
@@ -47,7 +26,6 @@ export const MONSTER_SPRITES: Record<string, Sprite> = SPRITES.monsters;
 export const ELITE_SPRITES: Record<string, Sprite> = SPRITES.elites;
 export const BOSS_SPRITES: Record<string, Sprite> = SPRITES.bosses;
 
-/** Shown in place of a unit's own sprite once it's defeated (character, monster, elite, or boss alike). */
 export const TOMBSTONE_SPRITE: Sprite = {
   rows: [
     ".............",
@@ -68,7 +46,6 @@ export const TOMBSTONE_SPRITE: Sprite = {
   },
 };
 
-/** Shown on the enemy side of the battlefield while the party is in a rest room. */
 export const CAMPFIRE_SPRITE: Sprite = {
   rows: [
     ".............",
@@ -120,20 +97,14 @@ function renderSpriteRow(sprite: Sprite, rowIndex: number): TextChunk[] {
   return chunks;
 }
 
-/**
- * Renders `sprite` bottom-aligned and horizontally centered inside a
- * `slotHeight` x `slotWidth` cell box (always returns exactly `slotHeight`
- * lines of exactly `slotWidth` cells) — lets a short creature and the tall
- * boss share one visual "ground line" when placed side by side.
- */
 export function renderSpriteInSlot(sprite: Sprite, slotHeight: number, slotWidth: number): TextChunk[][] {
   const h = spriteHeight(sprite);
   const w = spriteWidth(sprite);
   const topPad = Math.max(0, slotHeight - h);
-  const topCrop = Math.max(0, h - slotHeight); // sprite taller than slot: bottom-aligned, so drop overflow rows from the top
+  const topCrop = Math.max(0, h - slotHeight);
   const leftPad = Math.max(0, Math.floor((slotWidth - w) / 2));
   const rightPad = Math.max(0, slotWidth - w - leftPad);
-  const leftCrop = Math.max(0, Math.floor((w - slotWidth) / 2)); // sprite wider than slot: crop centered, mirroring leftPad's centering
+  const leftCrop = Math.max(0, Math.floor((w - slotWidth) / 2));
 
   const lines: TextChunk[][] = [];
   for (let i = 0; i < topPad; i++) lines.push([plainChunk(" ".repeat(slotWidth))]);
@@ -147,17 +118,6 @@ export function renderSpriteInSlot(sprite: Sprite, slotHeight: number, slotWidth
   return lines;
 }
 
-/**
- * Composites `sprites` side by side into 1 bottom-aligned block of exactly
- * `slotHeight` rows — 1 nominal `slotWidth`-cell slot per sprite, `gap` blank
- * columns between slot edges. Unlike renderSpriteInSlot, a sprite wider than
- * `slotWidth` is NOT clamped: it's centered on its own slot (same rounding
- * as renderSpriteInSlot) and allowed to bleed into neighboring slots. Where
- * 2 sprites' opaque pixels overlap, the sprite later in the array always
- * wins (painted last) — so on the battlefield the rightmost unit in a row is
- * always shown in full, and an oversized sprite can partially cover its left
- * neighbor instead of corrupting the layout.
- */
 export function compositeSpriteRow(sprites: Sprite[], slotWidth: number, slotHeight: number, gap: number): TextChunk[][] {
   if (sprites.length === 0) return Array.from({ length: slotHeight }, () => []);
 
@@ -178,11 +138,11 @@ export function compositeSpriteRow(sprites: Sprite[], slotWidth: number, slotHei
     const canvasStart = starts[i]! + shift;
     for (let spriteRow = 0; spriteRow < h; spriteRow++) {
       const canvasRow = topPad + spriteRow;
-      if (canvasRow >= slotHeight) continue; // sprite taller than the slot — a separate concern from width overflow
+      if (canvasRow >= slotHeight) continue;
       const row = sprite.rows[spriteRow]!;
       for (let c = 0; c < row.length; c++) {
         const ch = row[c]!;
-        if (ch === ".") continue; // transparent — don't cover whatever another sprite already painted there
+        if (ch === ".") continue;
         buffer[canvasRow]![canvasStart + c] = bg(sprite.palette[ch]!)(" ") as TextChunk;
       }
     }
@@ -191,9 +151,6 @@ export function compositeSpriteRow(sprites: Sprite[], slotWidth: number, slotHei
   return buffer.map((row) => row.map((cell) => cell ?? plainChunk(" ")));
 }
 
-// Derived from whatever data/sprites.json actually contains, so a newly
-// added class/monster sprite is automatically covered by
-// test/sprites.test.ts without also having to update this list by hand.
 export const ALL_SPRITES: { name: string; sprite: Sprite; maxHeight: number }[] = [
   ...Object.entries(CLASS_SPRITES).map(([name, sprite]) => ({ name, sprite, maxHeight: MAX_UNIT_HEIGHT })),
   ...Object.entries(MONSTER_SPRITES).map(([name, sprite]) => ({ name, sprite, maxHeight: MAX_UNIT_HEIGHT })),
