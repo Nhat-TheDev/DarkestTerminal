@@ -2,3 +2,6 @@ node_modules/
 *.log
 saves/
 /.claude
+dist/
+npm/*/darkest-terminal
+npm/*/darkest-terminal.exe

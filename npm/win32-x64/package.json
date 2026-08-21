@@ -1,0 +1,9 @@
+{
+  "name": "darkest-terminal-win32-x64",
+  "version": "0.1.1",
+  "description": "Windows (x64) binary for darkest-terminal",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["darkest-terminal.exe"]
+}

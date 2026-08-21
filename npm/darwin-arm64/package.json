@@ -1,0 +1,9 @@
+{
+  "name": "darkest-terminal-darwin-arm64",
+  "version": "0.1.1",
+  "description": "macOS (Apple Silicon) binary for darkest-terminal",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "files": ["darkest-terminal"]
+}

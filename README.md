@@ -10,9 +10,19 @@ speed-ordered execution), and items/artifacts/event rooms. Runs on
 
 ## Try it out
 
+Contributing / running from source (needs [Bun](https://bun.sh)):
+
 ```bash
 bun install
 bun run start
+```
+
+Once published to npm, players on macOS or Windows will be able to run the
+game via a self-contained binary (embeds the Bun runtime) without installing
+Bun or Node build tooling themselves:
+
+```bash
+npx darkest-terminal
 ```
 
 You'll first see the title (splash) screen — press any key to reach the menu,

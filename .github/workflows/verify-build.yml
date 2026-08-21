@@ -1,0 +1,71 @@
+name: Verify Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin-arm64
+            outfile: npm/darwin-arm64/darkest-terminal
+          - os: macos-13
+            platform: darwin-x64
+            outfile: npm/darwin-x64/darkest-terminal
+          - os: windows-latest
+            platform: win32-x64
+            outfile: npm/win32-x64/darkest-terminal.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
+      - name: Build standalone binary
+        run: bun run build
+        env:
+          OUTFILE: ${{ matrix.outfile }}
+
+      - name: Smoke test binary (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          "${{ matrix.outfile }}" < /dev/null > smoke.log 2>&1 &
+          pid=$!
+          sleep 2
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          test -s smoke.log
+
+      - name: Smoke test binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath "${{ matrix.outfile }}" -RedirectStandardOutput smoke.log -RedirectStandardError smoke-err.log -PassThru
+          Start-Sleep -Seconds 2
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          if ((Get-Item smoke.log).Length -eq 0) { throw "binary produced no output" }
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: darkest-terminal-${{ matrix.platform }}
+          path: ${{ matrix.outfile }}
