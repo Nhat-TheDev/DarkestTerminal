@@ -1,0 +1,327 @@
+[
+  {
+    "id": "skeleton-elite-strike",
+    "name": "Cleaving Strike",
+    "description": "A heavy weapon strike from an elite/boss Skeleton Guard — replaces the basic attack, noticeably higher damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-elite-cleave",
+    "name": "Sweeping Cleave",
+    "description": "Swings its weapon across the whole party, wide-area damage but lighter per target than Cleaving Strike.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-boss-execute",
+    "name": "Finishing Blow",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-boss-crush",
+    "name": "Crush",
+    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 4
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "giant-spider-elite-strike",
+    "name": "Venomous Bite",
+    "description": "A heavy fanged bite from an elite/boss Giant Spider — replaces the basic attack, noticeably higher damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "giant-spider-elite-cleave",
+    "name": "Web Barrage",
+    "description": "Sprays webbing across the whole party, wide-area damage but lighter per target than Venomous Bite.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "giant-spider-boss-execute",
+    "name": "Death Bite",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating bite — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "giant-spider-boss-debuff",
+    "name": "Web Trap",
+    "description": "Moderate damage, also poisons the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 4
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dragon-elite-strike",
+    "name": "Claw Rake",
+    "description": "A heavy claw strike from an elite/boss Dragon — replaces the basic attack, noticeably higher damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dragon-elite-cleave",
+    "name": "Fire Breath",
+    "description": "Breathes fire across the whole party, wide-area damage but lighter per target than Claw Rake.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dragon-boss-execute",
+    "name": "Inferno Bite",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating bite — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dragon-boss-debuff",
+    "name": "Scorching Breath",
+    "description": "Moderate damage, also sets the target on fire.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 4
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "zombie-knight-elite-strike",
+    "name": "Rusted Blade",
+    "description": "A heavy blade strike from an elite/boss Zombie Knight — replaces the basic attack, noticeably higher damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "zombie-knight-elite-cleave",
+    "name": "Rotting Swing",
+    "description": "Swings its blade across the whole party, wide-area damage but lighter per target than Rusted Blade.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "zombie-knight-boss-execute",
+    "name": "Grave Judgment",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "zombie-knight-boss-debuff",
+    "name": "Diseased Strike",
+    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 4
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dark-knight-elite-strike",
+    "name": "Shadow Slash",
+    "description": "A heavy blade strike from an elite/boss Dark Knight — replaces the basic attack, noticeably higher damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dark-knight-elite-cleave",
+    "name": "Dark Wave",
+    "description": "Unleashes a wave of dark energy across the whole party, wide-area damage but lighter per target than Shadow Slash.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dark-knight-boss-execute",
+    "name": "Abyssal Judgment",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "dark-knight-boss-debuff",
+    "name": "Crushing Blow",
+    "description": "Moderate damage, also stuns the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 4
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  }
+]

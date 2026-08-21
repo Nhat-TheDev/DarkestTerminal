@@ -1,0 +1,32 @@
+{
+  "name": "darkest-terminal",
+  "version": "0.1.0",
+  "description": "Prototype: 1-floor playable slice of the terminal dungeon crawler design.",
+  "type": "module",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Nguyen Doan Quoc Nhat",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@quocnhatthedev/Nhat-TheDev/DarkestTerminal.git"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "bin": {
+    "darkest-terminal": "src/main.ts"
+  },
+  "files": ["src", "data", "README.md", "LICENSE"],
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "sprite-editor": "bun run tools/sprite-editor/server.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.5.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^7.0.2"
+  }
+}

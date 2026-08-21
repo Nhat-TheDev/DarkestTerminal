@@ -1,0 +1,140 @@
+{
+  "tiers": [
+    {
+      "maxLevel": 10,
+      "attack": 3,
+      "defense": 2,
+      "maxHp": 14,
+      "maxMp": 6,
+      "magicPower": 3
+    },
+    {
+      "maxLevel": 25,
+      "attack": 2,
+      "defense": 1,
+      "maxHp": 10,
+      "maxMp": 4,
+      "magicPower": 2
+    },
+    {
+      "maxLevel": 50,
+      "attack": 1,
+      "defense": 0.5,
+      "maxHp": 7,
+      "maxMp": 3,
+      "magicPower": 1
+    },
+    {
+      "maxLevel": 75,
+      "attack": 0.5,
+      "defense": 0.3333333333333333,
+      "maxHp": 5,
+      "maxMp": 2,
+      "magicPower": 0.5
+    },
+    {
+      "maxLevel": 100,
+      "attack": 0.3333333333333333,
+      "defense": 0.25,
+      "maxHp": 3,
+      "maxMp": 1,
+      "magicPower": 0.3333333333333333
+    }
+  ],
+  "expTiers": [
+    {
+      "maxLevel": 5,
+      "expCost": 115
+    },
+    {
+      "maxLevel": 10,
+      "expCost": 135
+    },
+    {
+      "maxLevel": 15,
+      "expCost": 150
+    },
+    {
+      "maxLevel": 20,
+      "expCost": 165
+    },
+    {
+      "maxLevel": 25,
+      "expCost": 195
+    },
+    {
+      "maxLevel": 30,
+      "expCost": 255
+    },
+    {
+      "maxLevel": 35,
+      "expCost": 285
+    },
+    {
+      "maxLevel": 40,
+      "expCost": 330
+    },
+    {
+      "maxLevel": 45,
+      "expCost": 375
+    },
+    {
+      "maxLevel": 50,
+      "expCost": 430
+    },
+    {
+      "maxLevel": 55,
+      "expCost": 490
+    },
+    {
+      "maxLevel": 60,
+      "expCost": 555
+    },
+    {
+      "maxLevel": 65,
+      "expCost": 640
+    },
+    {
+      "maxLevel": 70,
+      "expCost": 730
+    },
+    {
+      "maxLevel": 75,
+      "expCost": 825
+    },
+    {
+      "maxLevel": 80,
+      "expCost": 945
+    },
+    {
+      "maxLevel": 85,
+      "expCost": 1080
+    },
+    {
+      "maxLevel": 90,
+      "expCost": 1230
+    },
+    {
+      "maxLevel": 95,
+      "expCost": 1410
+    },
+    {
+      "maxLevel": 100,
+      "expCost": 1605
+    }
+  ],
+  "eliteMultiplier": {
+    "maxHp": 2.2,
+    "attack": 1.4,
+    "defense": 1.1,
+    "exp": 3
+  },
+  "bossMultiplier": {
+    "maxHp": 2.7,
+    "attack": 1.8,
+    "defense": 1.2,
+    "exp": 6
+  },
+  "expRewardDepthRate": 0.1,
+  "bossFloorInterval": 5
+}

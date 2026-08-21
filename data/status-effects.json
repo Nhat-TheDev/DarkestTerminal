@@ -1,0 +1,109 @@
+[
+  {
+    "id": "guard",
+    "name": "Guard",
+    "description": "Shield Guard (Vanguard): +6 defense per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "taunt",
+    "name": "Taunt",
+    "description": "Shield Guard (Vanguard): +40 aggro per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 40 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "rally",
+    "name": "Rally",
+    "description": "Rally (Vanguard): +4 attack per turn, applied to the whole party.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "poison-coat",
+    "name": "Poison Coat",
+    "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitStatusEffectId": "poisoned"
+  },
+  {
+    "id": "poisoned",
+    "name": "Poisoned",
+    "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP per turn.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
+    "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
+    "durationTurns": 3
+  },
+  {
+    "id": "burning",
+    "name": "Burning",
+    "description": "Fireball/Fire Pillar (Mage): lose 5 HP per turn. Not curable via mini-game (deliberate — distinguishes it from Poisoned).",
+    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "weakened",
+    "name": "Weakened",
+    "description": "Crush (Skeleton Guard - Boss): lowers the target's defense for a few turns.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "stunned",
+    "name": "Stunned",
+    "description": "Lightning Bolt/Lightning Storm (Mage): skips the turn entirely while active. Not curable via mini-game.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 1,
+    "stuns": true
+  },
+  {
+    "id": "empower",
+    "name": "Empower",
+    "description": "+6 attack per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "fortify",
+    "name": "Fortify",
+    "description": "+8 defense per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 8 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "distracted",
+    "name": "Distracted",
+    "description": "-20 aggro per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": -20 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "regeneration",
+    "name": "Regeneration",
+    "description": "heal 10 HP per turn.",
+    "perTurnEffects": [{ "kind": "heal", "amount": 10 }],
+    "curableByMiniGame": [],
+    "durationTurns": 3
+  },
+  {
+    "id": "poison-vulnerable",
+    "name": "Poison Vulnerable",
+    "description": "While active, doubles the per-turn damage of the bearer's own Poisoned tick.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 2,
+    "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
+  }
+]

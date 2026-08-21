@@ -1,0 +1,366 @@
+[
+  {
+    "id": "vanguard",
+    "name": "Vanguard",
+    "description": "Tank, high durability, holds enemy aggro.",
+    "baseMaxHp": 140,
+    "baseMaxMp": 20,
+    "baseAttack": 14,
+    "baseDefense": 10,
+    "baseAggro": 20,
+    "baseSpeed": 8,
+    "baseMagicPower": 0,
+    "growthWeights": { "attack": 1.0, "defense": 1.5, "maxHp": 1.5, "maxMp": 0.6, "magicPower": 0.4 },
+    "skills": [
+      {
+        "id": "vanguard-slash",
+        "name": "Slash",
+        "description": "A sword slash — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "vanguard-shield-guard",
+        "name": "Shield Guard",
+        "description": "Raises a defensive shield, boosting both defense and self-aggro for 1 turn.",
+        "mpCost": 8,
+        "target": "self",
+        "effects": [
+          { "kind": "applyStatusEffect", "statusEffectId": "guard" },
+          { "kind": "applyStatusEffect", "statusEffectId": "taunt" }
+        ],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isBuff": true,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "vanguard-shield-throw",
+        "name": "Shield Throw",
+        "description": "Throws the shield at an enemy, dealing ranged damage.",
+        "mpCost": 5,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 10 }],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "vanguard-rally",
+        "name": "Rally",
+        "description": "Rallies the party, instantly lowering fear and boosting attack for 1 turn for the whole team.",
+        "mpCost": 12,
+        "target": "allAllies",
+        "effects": [
+          { "kind": "modifyStat", "stat": "fear", "amount": -8 },
+          { "kind": "applyStatusEffect", "statusEffectId": "rally" }
+        ],
+        "slot": 3,
+        "unlockLevel": 10,
+        "isBuff": true,
+        "cooldownTurns": 2
+      },
+      {
+        "id": "vanguard-heavy-charge",
+        "name": "Heavy Charge",
+        "description": "Charges straight into the enemy group, dealing area damage.",
+        "mpCost": 14,
+        "target": "allEnemies",
+        "effects": [{ "kind": "damage", "amount": 12 }],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3
+      },
+      {
+        "id": "vanguard-sword-judgment",
+        "name": "Sword Judgment",
+        "description": "A decisive sword strike, heavy damage. Always hits, effectiveness reduced by fear.",
+        "mpCost": 14,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 30 }],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  },
+  {
+    "id": "mage",
+    "name": "Mage",
+    "description": "Ranged magic damage, fragile — fire/lightning/ice element.",
+    "baseMaxHp": 70,
+    "baseMaxMp": 60,
+    "baseAttack": 6,
+    "baseDefense": 4,
+    "baseAggro": 8,
+    "baseSpeed": 10,
+    "baseMagicPower": 14,
+    "growthWeights": { "attack": 0.1, "defense": 0.7, "maxHp": 0.9, "maxMp": 1.6, "magicPower": 1.7 },
+    "skills": [
+      {
+        "id": "mage-bludgeon",
+        "name": "Bludgeon",
+        "description": "Strikes with a staff — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "mage-fireball",
+        "name": "Fireball",
+        "description": "Summons a ball of fire dealing damage, may cause Burning.",
+        "mpCost": 5,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 10 },
+          { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.3 }
+        ],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isMagic": true
+      },
+      {
+        "id": "mage-lightning-bolt",
+        "name": "Lightning Bolt",
+        "description": "Fires a bolt of lightning for fast damage, may cause Stunned.",
+        "mpCost": 6,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.2 }
+        ],
+        "slot": 2,
+        "unlockLevel": 1,
+        "isMagic": true
+      },
+      {
+        "id": "mage-fire-pillar",
+        "name": "Fire Pillar",
+        "description": "Raises a pillar of fire burning the whole enemy group, high chance to cause Burning.",
+        "mpCost": 14,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.5 }
+        ],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 2,
+        "isMagic": true
+      },
+      {
+        "id": "mage-lightning-storm",
+        "name": "Lightning Storm",
+        "description": "Calls down a lightning storm on all enemies, may cause Stunned.",
+        "mpCost": 16,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 13 },
+          { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.3 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3,
+        "isMagic": true
+      },
+      {
+        "id": "mage-ice-age",
+        "name": "Ice Age",
+        "description": "Blankets the whole battlefield in frost, wide-area damage. Always hits, effectiveness reduced by fear.",
+        "mpCost": 20,
+        "target": "allEnemies",
+        "effects": [{ "kind": "damage", "amount": 22 }],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5,
+        "isMagic": true
+      }
+    ]
+  },
+  {
+    "id": "rogue",
+    "name": "Rogue",
+    "description": "Single-target burst, highest speed in the party.",
+    "baseMaxHp": 90,
+    "baseMaxMp": 30,
+    "baseAttack": 16,
+    "baseDefense": 6,
+    "baseAggro": 10,
+    "baseSpeed": 16,
+    "baseMagicPower": 0,
+    "growthWeights": { "attack": 1.7, "defense": 0.9, "maxHp": 1.3, "maxMp": 0.8, "magicPower": 0.3 },
+    "skills": [
+      {
+        "id": "rogue-stab",
+        "name": "Stab",
+        "description": "Stabs with a dagger — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "rogue-poison-coat",
+        "name": "Poison Coat",
+        "description": "Coats the blade with poison — while active, hits that land also inflict poison.",
+        "mpCost": 3,
+        "target": "self",
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isBuff": true,
+        "cooldownTurns": 4
+      },
+      {
+        "id": "rogue-knife-throw",
+        "name": "Knife Throw",
+        "description": "Throws a dagger, dealing ranged damage.",
+        "mpCost": 4,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 12 }],
+        "slot": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "rogue-backstab",
+        "name": "Backstab",
+        "description": "A vicious stab from a blind spot, high damage.",
+        "mpCost": 8,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 20 }],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 1
+      },
+      {
+        "id": "rogue-poison-bomb",
+        "name": "Poison Bomb",
+        "description": "Throws a poison bomb, poisoning every enemy.",
+        "mpCost": 10,
+        "target": "allEnemies",
+        "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned" }],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3
+      },
+      {
+        "id": "rogue-flurry-assault",
+        "name": "Flurry Assault",
+        "description": "Rushes in for 3 consecutive stabs. Always hits, effectiveness reduced by fear.",
+        "mpCost": 16,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 12 },
+          { "kind": "damage", "amount": 12 },
+          { "kind": "damage", "amount": 12 }
+        ],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5
+      }
+    ]
+  },
+  {
+    "id": "acolyte",
+    "name": "Acolyte",
+    "description": "Healing + lowers fear for the whole party.",
+    "baseMaxHp": 100,
+    "baseMaxMp": 50,
+    "baseAttack": 6,
+    "baseDefense": 8,
+    "baseAggro": 12,
+    "baseSpeed": 9,
+    "baseMagicPower": 10,
+    "growthWeights": { "attack": 0.5, "defense": 1.0, "maxHp": 1.1, "maxMp": 1.3, "magicPower": 1.1 },
+    "skills": [
+      {
+        "id": "acolyte-punch",
+        "name": "Punch",
+        "description": "A bare-handed punch — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "acolyte-prayer",
+        "name": "Prayer",
+        "description": "A calming prayer, lowers fear for 1 ally.",
+        "mpCost": 4,
+        "target": "singleAlly",
+        "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -10 }],
+        "slot": 1,
+        "unlockLevel": 1
+      },
+      {
+        "id": "acolyte-heal",
+        "name": "Heal",
+        "description": "Restores HP to 1 ally.",
+        "mpCost": 6,
+        "target": "singleAlly",
+        "effects": [{ "kind": "heal", "amount": 16 }],
+        "slot": 2,
+        "unlockLevel": 1,
+        "isMagic": true
+      },
+      {
+        "id": "acolyte-purify",
+        "name": "Purify",
+        "description": "Target an ally to remove 1 debuff, or target an enemy to deal purging damage.",
+        "mpCost": 9,
+        "target": "singleAllyOrEnemy",
+        "effectsByRelation": {
+          "ally": [{ "kind": "removeStatusEffect" }],
+          "enemy": [{ "kind": "damage", "amount": 15 }]
+        },
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 1,
+        "isMagic": true
+      },
+      {
+        "id": "acolyte-mass-heal",
+        "name": "Mass Heal",
+        "description": "Heals + lowers fear for the whole party.",
+        "mpCost": 10,
+        "target": "allAllies",
+        "effects": [
+          { "kind": "heal", "amount": 10 },
+          { "kind": "modifyStat", "stat": "fear", "amount": -6 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 2,
+        "isMagic": true
+      },
+      {
+        "id": "acolyte-divine-descent",
+        "name": "Divine Descent",
+        "description": "Holy light descends over the whole battlefield: heals + strongly lowers fear for allies, damages enemies. Always hits, effectiveness reduced by fear.",
+        "mpCost": 20,
+        "target": "allAlliesAndEnemies",
+        "effectsByRelation": {
+          "ally": [
+            { "kind": "heal", "amount": 25 },
+            { "kind": "modifyStat", "stat": "fear", "amount": -15 }
+          ],
+          "enemy": [{ "kind": "damage", "amount": 20 }]
+        },
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5,
+        "isMagic": true
+      }
+    ]
+  }
+]
