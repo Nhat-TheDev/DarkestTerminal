@@ -119,7 +119,7 @@ Elite and real Boss (not applicable to regular monsters, including a guard-room 
 | **Execute/Finishing Blow** | Boss only | 1 enemy | Large `damage` + partial defense-ignore (`ignoreDefensePercent`) | See the separate charge-up mechanic below — **not** based on the target's %HP |
 | **Debuff** (e.g. Crush — Skeleton Guard) | Boss only | 1 enemy | `damage` + applies 1 archetype-specific debuff status | Chance-based when the Boss isn't charging up or unleashing Execute, replacing a Cleave/Strike roll |
 
-The Boss's per-turn priority order: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, roll **Debuff** → roll **Cleave** → **Strike**. Elite (no Execute/Debuff): roll **Cleave** → **Strike**. The proc chances for Debuff/Cleave rolls are named constants in `src/engine/combat.ts`.
+The Boss's per-turn priority: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, the actual action (Debuff/Cleave/Strike for Boss; Cleave/Strike for Elite) is picked in a single weighted random choice by `pickMonsterAction` (`src/engine/combat.ts`), not a sequence of independent rolls. The weights driving that choice are per-archetype data — field `actionWeights` in `data/monsters.json`, not a constant in `combat.ts`.
 
 **Execute — the "charge up, then unleash 1 massive blow" mechanic** (not triggered by target %HP):
 
