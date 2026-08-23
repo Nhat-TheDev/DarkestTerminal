@@ -53,7 +53,7 @@ jobs:
           - os: macos-latest
             platform: darwin-arm64
             outfile: npm/darwin-arm64/darkest-terminal
-          - os: macos-13
+          - os: macos-15-intel
             platform: darwin-x64
             outfile: npm/darwin-x64/darkest-terminal
           - os: windows-latest
