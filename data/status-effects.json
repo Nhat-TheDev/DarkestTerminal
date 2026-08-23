@@ -8,6 +8,22 @@
     "durationTurns": 1
   },
   {
+    "id": "guard-ii",
+    "name": "Guard II",
+    "description": "Shield Guard rank 2 (Vanguard): +8 defense per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 8 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "guard-iii",
+    "name": "Guard III",
+    "description": "Shield Guard rank 3 (Vanguard): +10 defense per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 10 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
     "id": "taunt",
     "name": "Taunt",
     "description": "Shield Guard (Vanguard): +40 aggro per turn.",
@@ -24,6 +40,22 @@
     "durationTurns": 1
   },
   {
+    "id": "rally-ii",
+    "name": "Rally II",
+    "description": "Rally rank 2 (Vanguard): +6 attack per turn, applied to the whole party.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
+    "id": "rally-iii",
+    "name": "Rally III",
+    "description": "Rally rank 3 (Vanguard): +8 attack per turn, applied to the whole party.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 8 }],
+    "curableByMiniGame": [],
+    "durationTurns": 1
+  },
+  {
     "id": "poison-coat",
     "name": "Poison Coat",
     "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit.",
@@ -33,10 +65,44 @@
     "onHitStatusEffectId": "poisoned"
   },
   {
+    "id": "poison-coat-ii",
+    "name": "Poison Coat II",
+    "description": "Poison Coat rank 2 (Rogue): +4 attack per turn, on top of the same on-hit Poisoned rider.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitStatusEffectId": "poisoned"
+  },
+  {
+    "id": "poison-coat-iii",
+    "name": "Poison Coat III",
+    "description": "Poison Coat rank 3 (Rogue): +6 attack per turn, on top of the same on-hit Poisoned rider.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitStatusEffectId": "poisoned"
+  },
+  {
     "id": "poisoned",
     "name": "Poisoned",
     "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP per turn.",
     "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
+    "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
+    "durationTurns": 3
+  },
+  {
+    "id": "poisoned-ii",
+    "name": "Poisoned II",
+    "description": "Poison Bomb rank 2 (Rogue): lose 6 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 6 }],
+    "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
+    "durationTurns": 3
+  },
+  {
+    "id": "poisoned-iii",
+    "name": "Poisoned III",
+    "description": "Poison Bomb rank 3 (Rogue): lose 8 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 8 }],
     "curableByMiniGame": [{ "miniGameId": "snake", "clearScore": 8 }],
     "durationTurns": 3
   },
@@ -105,5 +171,68 @@
     "curableByMiniGame": [],
     "durationTurns": 2,
     "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
+  },
+  {
+    "id": "corroded",
+    "name": "Corroded",
+    "description": "Acid Spit (Slime): lose 3 HP and 4 defense per turn.",
+    "perTurnEffects": [
+      { "kind": "damage", "amount": 3 },
+      { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 }
+    ],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "webbed",
+    "name": "Webbed",
+    "description": "Web Spit (Spider): lose 20 speed per turn.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "speed", "amount": -20 }],
+    "curableByMiniGame": [],
+    "durationTurns": 2
+  },
+  {
+    "id": "storm-empowered",
+    "name": "Storm-Empowered",
+    "description": "Lightning Axe (Viking): every landed hit also splashes lightning damage across all enemies.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitAoeDamage": { "amount": 6, "isMagic": true, "ignoreDefensePercent": 30 }
+  },
+  {
+    "id": "storm-empowered-ii",
+    "name": "Storm-Empowered II",
+    "description": "Lightning Axe rank 2 (Viking): every landed hit also splashes stronger lightning damage across all enemies.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitAoeDamage": { "amount": 8, "isMagic": true, "ignoreDefensePercent": 30 }
+  },
+  {
+    "id": "storm-empowered-iii",
+    "name": "Storm-Empowered III",
+    "description": "Lightning Axe rank 3 (Viking): every landed hit also splashes the strongest lightning damage across all enemies.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 3,
+    "onHitAoeDamage": { "amount": 10, "isMagic": true, "ignoreDefensePercent": 30 }
+  },
+  {
+    "id": "bleeding",
+    "name": "Bleeding",
+    "description": "Frenzied Slash/Spinning Axe (Viking): lose 5 HP per turn.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
+    "curableByMiniGame": [],
+    "durationTurns": 3
+  },
+  {
+    "id": "blinded",
+    "name": "Blinded",
+    "description": "Blinding Vial (Plague Doctor): the bearer's own attacks/skills miss 60% more often for the duration.",
+    "perTurnEffects": [],
+    "curableByMiniGame": [],
+    "durationTurns": 2,
+    "accuracyPenaltyPercent": 60
   }
 ]

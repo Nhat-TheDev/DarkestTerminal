@@ -2,7 +2,7 @@
 
 *(item 9 of `00-index.md`)*
 
-**This is a design proposal for a future expansion direction — not yet built into the game.** There is no Viking or Plague Doctor in the current `data/classes.json` (only the classes listed in `01-class-skill.md` item 1 exist), and the current schema in `src/types.ts` doesn't yet have 2 fields this design needs (`onHitAoeDamage`, `conditionalBonus` — see §9.3.2). **No numbers in this document are finalized** — they're an initial proposal, not yet playtested, and not present anywhere in `data/*.json` yet. When this is actually implemented, the real values belong in `data/classes.json`/`data/status-effects.json` (tuned there), not hand-copied back into this doc.
+**Status: implemented.** Viking and Plague Doctor are now real classes in `data/classes.json`, alongside the classes in `01-class-skill.md` item 1. The 2 schema fields this design needed (`onHitAoeDamage` on `StatusEffectDefinition`, `conditionalBonus` on `SkillDefinition` — see §9.3.2) exist in `src/types.ts`. This document describes the mechanics/shape of these 2 classes — **not the current tuning numbers**, which live in `data/classes.json`/`data/status-effects.json` and drift independently of this doc as balance changes; read those files directly rather than trusting a hand-copied value here.
 
 ## 9.1 Base stats balancing formula (`Balance Points`)
 
@@ -18,19 +18,19 @@ BalancePoints = attack/tier1.attack + defense/tier1.defense + maxHp/tier1.maxHp 
 
 `aggro`/`speed` are not part of the formula.
 
-**How to use it**: compute `BalancePoints` for every class's base stats (existing + proposed), compare against the group average — a class that deviates too far from the average (rule of thumb: roughly ±10%) is a sign that base stats are off-balance and need adjusting before moving into the skill-numbers playtest stage. Don't hand-maintain a comparison table here — recompute it against the current `data/classes.json` (plus the proposed stats below) whenever this proposal is revisited, since existing classes' stats can drift independently of this document.
+**How to use it**: compute `BalancePoints` for every class's base stats, compare against the group average — a class that deviates too far from the average (rule of thumb: roughly ±10%) is a sign that base stats are off-balance and need adjusting. Don't hand-maintain a comparison table here — recompute it against the current `data/classes.json` whenever this needs re-checking, since every class's stats can drift independently of this document.
 
 ## 9.2 Rogue rebalance (base stats)
 
-Adding Viking/Plague Doctor to the roster also calls for a small rebalance of Rogue's `maxHp`/`maxMp` (upward, to keep its `BalancePoints` in line with the other 5), while keeping `attack`/`defense`/`aggro`/`speed`/`magicPower` and `growthWeights` unchanged. Exact target values: TBD at implementation time, computed from §9.1's formula against whatever the other 5 classes' finalized stats are at that point.
+Adding Viking/Plague Doctor to the roster also called for a small rebalance of Rogue's `maxHp`/`maxMp` (upward, to keep its `BalancePoints` in line with the other 5), while keeping `attack`/`defense`/`aggro`/`speed`/`magicPower` and `growthWeights` unchanged. Current values: `data/classes.json`.
 
 ## 9.3 Viking — hybrid physical/lightning berserker, high risk/extremely high damage
 
-Base stats (attack/magicPower/defense/maxHp/maxMp/aggro/speed) and `growthWeights`: proposed, not finalized — to be added to `data/classes.json` at implementation time, sized via the §9.1 formula against the other classes.
+Base stats (attack/magicPower/defense/maxHp/maxMp/aggro/speed) and `growthWeights`: `data/classes.json`.
 
 `magicPower` feeds the damage portion of the passive proc `storm-empowered` (§9.3.2); it is not used to scale active skills — all of the Viking's active skills are physical.
 
-### 9.3.1 Skill table (shape only — MP/damage/cooldown TBD)
+### 9.3.1 Skill table (shape only — mp/damage/cooldown live in `data/classes.json`)
 
 Basic attack (slot 0, same as every class — `01-class-skill.md` item 1.0): **Axe Slash** (`viking-axe-slash`), physical.
 
@@ -54,7 +54,7 @@ The Viking needs **2 new fields not present** in the current schema (`src/types.
 onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
 ```
 
-New status effect `storm-empowered` (shape — actual `durationTurns`/`amount`/`ignoreDefensePercent` TBD, would live in `data/status-effects.json`):
+New status effect `storm-empowered` (shape — actual `durationTurns`/`amount`/`ignoreDefensePercent` live in `data/status-effects.json`):
 ```json
 {
   "id": "storm-empowered",
@@ -77,7 +77,7 @@ conditionalBonus?: {
 
 Placed at the `SkillDefinition` level (not `SkillEffect`) — it only triggers when the condition is met.
 
-New status `bleeding` (physical DoT, structured like `poisoned`) — shape only, magnitude/duration TBD:
+New status `bleeding` (physical DoT, structured like `poisoned`) — shape only, magnitude/duration in `data/status-effects.json`:
 ```json
 {
   "id": "bleeding",
@@ -90,7 +90,7 @@ New status `bleeding` (physical DoT, structured like `poisoned`) — shape only,
 
 ## 9.4 Plague Doctor — debuffer/support, favors effects over raw damage
 
-Base stats and `growthWeights`: proposed, not finalized — same caveat as §9.3.
+Base stats and `growthWeights`: `data/classes.json`, same caveat as §9.3.
 
 Role: an AoE debuffer (burn/poison/blind/weaken), with 1 single-target heal skill and 1 dual-purpose heal+debuff ultimate.
 
@@ -110,20 +110,24 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true`.
 
 ### New status effects needed
 
-`burning`, `poisoned`, `weakened` already exist (`01-class-skill.md` item 1.5), reused as-is. Only `blinded` is new (shape only, magnitude/duration TBD):
+`burning`, `poisoned`, `weakened` already exist (`01-class-skill.md` item 1.5), reused as-is. `blinded` is new (shape below; current `durationTurns`/`accuracyPenaltyPercent` live in `data/status-effects.json`):
 
 ```json
 {
   "id": "blinded",
   "name": "Blinded",
-  "durationTurns": "<tbd>",
-  "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<tbd, negative>" }],
+  "durationTurns": "<see data/status-effects.json>",
+  "accuracyPenaltyPercent": "<see data/status-effects.json>",
+  "perTurnEffects": [],
   "curableByMiniGame": []
 }
 ```
 
-## General notes — remaining work before implementation
+`blinded` reduces the bearer's own chance to land its attacks/skills by a flat percentage for the duration, rather than weakening its `attack` stat — thematically "can't see" means "misses more", not "hits softer". This needed a new `StatusEffectDefinition` field, `accuracyPenaltyPercent?: number`, and a change to `rollHits()` (`src/engine/resolver.ts`): previously `rollHits` returned `true` unconditionally for any non-`Character` source (`if (!isCharacter(source)) return true`), meaning monsters always hit with no accuracy roll. Applying `blinded` to a monster (the only target `plaguedoc-blinding-vial` can hit) required `rollHits` to also check the source's active statuses for `accuracyPenaltyPercent` regardless of whether the source is a character or a monster, combining it with the existing fear-based penalty when both apply, clamped to 100%. This was the first status effect that gives a *monster* a chance to miss.
 
-- **Data-only**: add the 2 classes to `data/classes.json`, update Rogue's base stats, add the `bleeding`/`blinded` statuses to `data/status-effects.json`.
-- **Requires code changes** (`src/types.ts` + combat resolver): the fields `onHitAoeDamage` (StatusEffectDefinition) and `conditionalBonus` (SkillDefinition) — these 2 fields exist solely to support the Viking.
-- Every MP/damage/cooldown/duration figure in this document needs playtesting before being finalized — none of it should be copied straight into `data/classes.json`/`data/status-effects.json` as-is.
+## General notes — what this required
+
+- **Data**: the 2 classes in `data/classes.json`, Rogue's rebalanced base stats, the `storm-empowered`/`bleeding`/`blinded` statuses in `data/status-effects.json`.
+- **Code changes** (`src/types.ts` + combat resolver): the fields `onHitAoeDamage` (StatusEffectDefinition) and `conditionalBonus` (SkillDefinition) exist solely to support the Viking. `accuracyPenaltyPercent` (StatusEffectDefinition) + the `rollHits()` change in `src/engine/resolver.ts` described above support the Plague Doctor's `blinded`.
+- **Also required a fix to `isHelpfulStatusEffect()`** (`src/engine/resolver.ts`, used only for combat-log "buff"/"debuff" coloring): it previously inferred "helpful" from `stuns`/`vulnerableTo`, a `damage` `perTurnEffect`, or a negative `modifyCombatStat` — `blinded` has none of those (`perTurnEffects: []`, only `accuracyPenaltyPercent`), so without this fix it would log as a buff despite being a debuff. A 4th check was added: any status with `accuracyPenaltyPercent` set is not helpful.
+- MP/damage/cooldown figures: `data/classes.json`/`data/status-effects.json` are the source of truth — this document does not hand-maintain them.

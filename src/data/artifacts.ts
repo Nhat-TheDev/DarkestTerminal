@@ -1,6 +1,8 @@
 import type { ArtifactDefinition, ArtifactRarity, ArtifactEffect, Id } from "../types";
 import artifactsJson from "../../data/artifacts.json";
 import type { Rng } from "../engine/rng";
+import { t } from "./strings";
+import { signed } from "./items";
 
 export const ARTIFACTS = artifactsJson as unknown as ArtifactDefinition[];
 
@@ -10,38 +12,43 @@ export function getArtifact(id: Id): ArtifactDefinition {
   return found;
 }
 
-const STAT_LABEL: Record<string, string> = { attack: "attack", defense: "defense", maxHp: "max HP", maxMp: "max MP" };
+const STAT_LABEL: Record<string, string> = {
+  attack: t("resolver.statLabelAttack"),
+  defense: t("resolver.statLabelDefense"),
+  maxHp: t("artifact.statLabelMaxHp"),
+  maxMp: t("artifact.statLabelMaxMp"),
+};
 
 function artifactEffectSummary(effect: ArtifactEffect): string {
   switch (effect.kind) {
     case "statBoost":
-      return `${effect.amount >= 0 ? "+" : ""}${effect.amount} ${STAT_LABEL[effect.stat]}`;
+      return t("effect.signedStat", { amount: signed(effect.amount), stat: STAT_LABEL[effect.stat] ?? effect.stat });
     case "reflectDamage":
-      return `Reflects ${effect.percent}% of damage taken back to the attacker`;
+      return t("artifact.effectReflectDamage", { percent: effect.percent });
     case "poisonOnHit":
-      return `${effect.chance}% chance to inflict Poisoned on hit`;
+      return t("artifact.effectPoisonOnHit", { chance: effect.chance });
     case "lifesteal":
-      return `Heals ${effect.percent}% of damage dealt`;
+      return t("artifact.effectLifesteal", { percent: effect.percent });
     case "dodgeChance":
-      return `${effect.chance}% chance to fully dodge an attack`;
+      return t("artifact.effectDodgeChance", { chance: effect.chance });
     case "healOnKill":
-      return `Heals ${effect.amount} HP on defeating a target`;
+      return t("artifact.effectHealOnKill", { amount: effect.amount });
     case "autoDamage":
-      return `Deals ${effect.amount} fixed damage to 1 random enemy at the start of each round`;
+      return t("artifact.effectAutoDamage", { amount: effect.amount });
     case "expBoost":
-      return `+${effect.percent}% EXP gained for the party`;
+      return t("artifact.effectExpBoost", { percent: effect.percent });
     case "fearResist":
-      return `-${effect.percent}% fear accumulated`;
+      return t("artifact.effectFearResist", { percent: effect.percent });
     case "cooldownReduction":
-      return `-${effect.turns} turn skill cooldown`;
+      return t("artifact.effectCooldownReduction", { turns: effect.turns });
     case "survivalDrainReduction":
-      return `-${effect.percent}% hunger/thirst drain rate`;
+      return t("artifact.effectSurvivalDrainReduction", { percent: effect.percent });
     case "curseAggroBoost":
-      return `+${effect.amount} aggro`;
+      return t("artifact.effectCurseAggroBoost", { amount: effect.amount });
     case "curseDrainBoost":
-      return `+${effect.percent}% hunger/thirst drain rate`;
+      return t("artifact.effectCurseDrainBoost", { percent: effect.percent });
     default:
-      return "Special effect";
+      return t("effect.default");
   }
 }
 

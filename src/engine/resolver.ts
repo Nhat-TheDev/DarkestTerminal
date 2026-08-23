@@ -3,8 +3,8 @@ import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
-function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
-  if (def.stuns || def.vulnerableTo) return false;
+export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
+  if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
   if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && (e.amount ?? 0) < 0)) return false;
   return true;
@@ -56,9 +56,18 @@ export function rollLosesControl(fear: number, roll: () => number): boolean {
   return getFearTier(fear) === 4 && roll() < 0.25;
 }
 
+function statusAccuracyPenaltyPercent(source: Actor): number {
+  let total = 0;
+  for (const active of source.activeStatusEffects) {
+    const def = getStatusEffect(active.statusEffectId);
+    if (def.accuracyPenaltyPercent) total += def.accuracyPenaltyPercent;
+  }
+  return total;
+}
+
 export function rollHits(source: Actor, roll: () => number): boolean {
-  if (!isCharacter(source)) return true;
-  const penalty = getFearAccuracyPenalty(getFearTier(source.survival.fear));
+  const fearPenalty = isCharacter(source) ? getFearAccuracyPenalty(getFearTier(source.survival.fear)) : 0;
+  const penalty = Math.min(1, fearPenalty + statusAccuracyPenaltyPercent(source) / 100);
   return roll() >= penalty;
 }
 
@@ -108,6 +117,13 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       ctx.log.push({ text: t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel }), kind: "attack" });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
+      if (!isSelfTick && effect.lifestealPercent) {
+        const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
+        if (healed > 0) {
+          source.hp += healed;
+          ctx.log.push({ text: t("resolver.heal", { target: nameOf(source), amount: healed }), kind: "heal" });
+        }
+      }
       return finalDamage;
     }
     case "heal": {

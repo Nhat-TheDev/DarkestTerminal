@@ -22,6 +22,7 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
     root.add(body);
 
     const picked: Id[] = [];
+    let showFullWarning = false;
 
     const render = () => {
       const lines = [[colorChunk(t("charSelect.title", { count: picked.length }), PALETTE.title)], []];
@@ -35,7 +36,8 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
         ]);
       });
       lines.push([]);
-      lines.push([colorChunk(picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : t("charSelect.hint"), PALETTE.dim)]);
+      const hintText = showFullWarning ? t("charSelect.fullWarning") : picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : t("charSelect.hint");
+      lines.push([colorChunk(hintText, showFullWarning ? PALETTE.dead : PALETTE.dim)]);
       body.content = joinLines(lines);
     };
     render();
@@ -51,8 +53,15 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
       const cls = digit !== null ? classes[digit - 1] : undefined;
       if (cls) {
         const idx = picked.indexOf(cls.id);
-        if (idx >= 0) picked.splice(idx, 1);
-        else if (picked.length < PARTY_SIZE) picked.push(cls.id);
+        if (idx >= 0) {
+          picked.splice(idx, 1);
+          showFullWarning = false;
+        } else if (picked.length < PARTY_SIZE) {
+          picked.push(cls.id);
+          showFullWarning = false;
+        } else {
+          showFullWarning = true;
+        }
         render();
       }
     };

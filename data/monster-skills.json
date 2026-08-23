@@ -323,5 +323,114 @@
     ],
     "slot": 0,
     "unlockLevel": 1
+  },
+  {
+    "id": "dungeon-rat-bite",
+    "name": "Bite",
+    "description": "A gnawing bite, dealing slightly more damage than a plain scratch.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 2 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "black-bat-blood-drain",
+    "name": "Blood Drain",
+    "description": "Drains blood from the target, dealing damage and healing itself for half of it.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 2, "lifestealPercent": 50 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "slime-acid-spit",
+    "name": "Acid Spit",
+    "description": "Spits corrosive acid, damaging and possibly corroding the target's armor.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      { "kind": "damage", "amount": 2 },
+      { "kind": "applyStatusEffect", "statusEffectId": "corroded", "chance": 0.5 }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-bone-throw",
+    "name": "Bone Throw",
+    "description": "Throws a sharpened bone at the target, ranged damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 3 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "zombie-regeneration",
+    "name": "Regeneration",
+    "description": "Rotting flesh knits back together, restoring HP.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [{ "kind": "heal", "amount": 15 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "snake-poison-bite",
+    "name": "Poison Bite",
+    "description": "A venomous bite, dealing damage and possibly poisoning the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      { "kind": "damage", "amount": 2 },
+      { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.5 }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "lizard-quick-bite",
+    "name": "Quick Bite",
+    "description": "A fast snapping bite, dealing slightly more damage than a plain scratch.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 3 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "spider-web-spit",
+    "name": "Web Spit",
+    "description": "Sprays sticky webbing at the target, damaging and possibly slowing it down.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      { "kind": "damage", "amount": 2 },
+      { "kind": "applyStatusEffect", "statusEffectId": "webbed", "chance": 0.5 }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-archer-arrow-shot",
+    "name": "Arrow Shot",
+    "description": "Fires an arrow at the target, ranged damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 3 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "skeleton-warrior-guard-stance",
+    "name": "Guard Stance",
+    "description": "Raises its shield into a defensive stance, boosting its own defense.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "guard" }],
+    "slot": 0,
+    "unlockLevel": 1
   }
 ]

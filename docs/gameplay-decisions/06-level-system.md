@@ -112,14 +112,17 @@ There's no boss-phase mini-game. See §6.12 for Elite/Boss's own skillset. As wi
 
 Elite and real Boss (not applicable to regular monsters, including a guard-room archetype when it spawns in a regular combat room) have a skillset that activates automatically on their own turn (not through `queueAction`/MP/cooldown like the player — monsters are always "free" and always hit, preserving the existing invariant in `resolver.ts`). The skill table applies to every guard-room archetype (`data/monster-skills.json`), each archetype having its own name per its flavor but sharing the same set of trigger mechanics — only the debuff status differs, to give each archetype its own identity (the exact archetype → debuff-status mapping: `data/monster-skills.json`):
 
-| Skill (generic name) | Tier | Target | Effect (shape) | When used |
+| Skill (generic name) | Tier | Target | Effect (shape) | Weight |
 |---|---|---|---|---|
-| **Strike** (e.g. Cleaving Strike — Skeleton Guard) | Elite + Boss | 1 enemy | `damage` | Default action, target chosen via `aiPattern` like a regular monster (`02-monster.md` section 2) |
-| **Cleave** (e.g. Sweeping Cleave) | Elite + Boss | Whole party | `damage`/target | Chance-based, replaces Strike |
-| **Execute/Finishing Blow** | Boss only | 1 enemy | Large `damage` + partial defense-ignore (`ignoreDefensePercent`) | See the separate charge-up mechanic below — **not** based on the target's %HP |
-| **Debuff** (e.g. Crush — Skeleton Guard) | Boss only | 1 enemy | `damage` + applies 1 archetype-specific debuff status | Chance-based when the Boss isn't charging up or unleashing Execute, replacing a Cleave/Strike roll |
+| **Basic Attack** (unscaled) | Elite + Boss | 1 enemy, target chosen via `aiPattern` like a regular monster (`02-monster.md` section 2) | ordinary attack, no elite/boss bonus | `actionWeights.elite.basicAttack` / `actionWeights.boss.basicAttack` |
+| **Strike** (e.g. Cleaving Strike — Skeleton Guard) | Elite + Boss | 1 enemy | `damage`, magnitude per `data/monster-skills.json` | `actionWeights.elite.strike` / `actionWeights.boss.strike` |
+| **Cleave** (e.g. Sweeping Cleave) | Elite + Boss | Whole party | `damage`, magnitude per `data/monster-skills.json` | `actionWeights.elite.cleave` / `actionWeights.boss.cleave` |
+| **Execute/Finishing Blow** | Boss only | 1 enemy | Large `damage` + partial defense-ignore (`ignoreDefensePercent`), both fields on the execute entry in `data/monster-skills.json` | See the separate charge-up mechanic below — **not** based on the target's %HP, and not part of the weighted roll |
+| **Debuff** (e.g. Crush — Skeleton Guard) | Boss only | 1 enemy | `damage` + applies 1 archetype-specific debuff status (`weakened`/`poisoned`/`burning`/`stunned`) | `actionWeights.boss.debuff`, only rolled on turns the Boss isn't charging up or unleashing Execute |
 
-The Boss's per-turn priority: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, the actual action (Debuff/Cleave/Strike for Boss; Cleave/Strike for Elite) is picked in a single weighted random choice by `pickMonsterAction` (`src/engine/combat.ts`), not a sequence of independent rolls. The weights driving that choice are per-archetype data — field `actionWeights` in `data/monsters.json`, not a constant in `combat.ts`.
+**Weights are data-driven, not hardcoded**: each archetype's `actionWeights.elite`/`actionWeights.boss` in `data/monsters.json` lists the weight per action, resolved by weighted-random pick in `pickMonsterAction` (`src/engine/combat.ts`) — read the current weights there rather than trusting a hand-copied percentage here, since the field allows per-archetype tuning. Note that **Basic Attack is always a real, non-trivial possibility on both Elite and Boss turns** (it carries its own weight, not merely a rare fallback) — any damage-verification table covering only Strike/Cleave/Execute understates the actual average damage variance per turn.
+
+The Boss's per-turn priority order: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, weighted-random pick among Basic Attack / Strike / Cleave / Debuff per `actionWeights.boss`. Elite (no Execute/Debuff): weighted-random pick among Basic Attack / Strike / Cleave per `actionWeights.elite`.
 
 **Execute — the "charge up, then unleash 1 massive blow" mechanic** (not triggered by target %HP):
 

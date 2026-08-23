@@ -15,6 +15,7 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | [`06-level-system.md`](./06-level-system.md) | §6 | Level system, EXP, infinite dungeon-floor level, Elite/Boss, Elite/Boss-exclusive skills — `data/level-growth.json` |
 | [`07-items-artifacts.md`](./07-items-artifacts.md) | §7 | Consumable items + Artifacts (permanent relics within a run), rarity, drop sources |
 | [`08-events.md`](./08-events.md) | §8 | Event rooms: event types split by rarity tier |
-| [`09-new-classes-viking-plaguedoctor.md`](./09-new-classes-viking-plaguedoctor.md) | §9 | **Not yet implemented** — proposal for 2 new classes, Viking & Plague Doctor; see "Future Direction" in `../design-doc.md` |
+| [`09-new-classes-viking-plaguedoctor.md`](./09-new-classes-viking-plaguedoctor.md) | §9 | 2 new classes, Viking & Plague Doctor — implemented in `data/classes.json` |
+| [`10-skill-ranks-and-monster-skills.md`](./10-skill-ranks-and-monster-skills.md) | §10 | 3-rank power-scaling system on character skills (incl. Viking/Plague Doctor from `09`), first-ever skills for regular monster archetypes, and the `aiPattern: "defensive"` code fix it depended on — all implemented |
 
 Other files in `docs/` (`technical-decisions.md`, `minigame-decisions.md`) reference this document via the path `gameplay-decisions/<file>.md §N`.

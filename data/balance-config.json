@@ -2,7 +2,8 @@
   "combat": {
     "defenseMitigationX": 60,
     "defenseMitigationY": 30,
-    "executeCooldownTurns": 3
+    "executeCooldownTurns": 3,
+    "defensiveLowHpSkillChance": 0.7
   },
   "survival": {
     "initialHunger": 100,

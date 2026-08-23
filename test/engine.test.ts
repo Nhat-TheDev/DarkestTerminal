@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { CLASSES, getClass, getSkill } from "../src/data/classes";
+import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../src/data/classes";
+import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
 import { Rng } from "../src/engine/rng";
@@ -17,10 +18,20 @@ import {
   isCombatOver,
   type EngineContext,
 } from "../src/engine/combat";
-import { resolveSkillEffect, getFearTier, rollLosesControl, isActorAlive, tickStatusEffects, mitigatedOffense } from "../src/engine/resolver";
-import type { LogEntry } from "../src/types";
+import {
+  resolveSkillEffect,
+  getFearTier,
+  rollLosesControl,
+  isActorAlive,
+  tickStatusEffects,
+  mitigatedOffense,
+  rollHits,
+  getFearAccuracyPenalty,
+  isHelpfulStatusEffect,
+} from "../src/engine/resolver";
+import type { LogEntry, SkillDefinition } from "../src/types";
 import { connectedRooms, getRoom, moveToRoom } from "../src/engine/dungeon";
-import { spawnMonster } from "../src/data/monsters";
+import { spawnMonster, getMonsterSkill, getArchetype } from "../src/data/monsters";
 import { rollItemDrop, getItem, ITEMS } from "../src/data/items";
 import { rollArtifactRarity, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
 import { rollEvent, getEvent, EVENTS } from "../src/data/events";
@@ -488,6 +499,8 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
   test("normal-tier skeleton-guard is unaffected — still uses the old flat attack (regression)", () => {
     const { ctx } = makeCtx(1);
     const monster = spawnMonster("skeleton-guard", 1);
+    monster.maxHp = 500;
+    monster.hp = 500;
     ctx.monsters.push(monster);
     const combat = startCombat("r1", [monster.id], ctx, false);
     queueTrivialActions(ctx, combat);
@@ -1197,6 +1210,868 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(c.aggro).toBe(baseAggro + 25);
     expect(game.unequipArtifact(c.id, "unstable-core")).toBeNull();
     expect(c.aggro).toBe(baseAggro);
+  });
+});
+
+describe("skill rank resolution (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+  const mockSkill: SkillDefinition = {
+    id: "mock-skill",
+    name: "Mock Skill",
+    description: "",
+    mpCost: 5,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount: 10 }],
+    slot: 1,
+    unlockLevel: 1,
+    ranks: [
+      { rank: 1, unlockLevel: 1, mpCost: 5, effects: [{ kind: "damage", amount: 10 }] },
+      { rank: 2, unlockLevel: 7, mpCost: 6, effects: [{ kind: "damage", amount: 13 }] },
+      { rank: 3, unlockLevel: 15, mpCost: 7, effects: [{ kind: "damage", amount: 16 }] },
+    ],
+  };
+
+  test("below rank-2 threshold resolves to rank-1 numbers", () => {
+    const effective = getEffectiveSkill(mockSkill, 6);
+    expect(effective.mpCost).toBe(5);
+    expect(effective.effects).toEqual([{ kind: "damage", amount: 10 }]);
+  });
+
+  test("at/above rank-2 threshold but below rank-3 resolves to rank-2 numbers", () => {
+    const effective = getEffectiveSkill(mockSkill, 7);
+    expect(effective.mpCost).toBe(6);
+    expect(effective.effects).toEqual([{ kind: "damage", amount: 13 }]);
+    expect(getEffectiveSkill(mockSkill, 14).mpCost).toBe(6);
+  });
+
+  test("at/above rank-3 threshold resolves to rank-3 numbers", () => {
+    const effective = getEffectiveSkill(mockSkill, 15);
+    expect(effective.mpCost).toBe(7);
+    expect(effective.effects).toEqual([{ kind: "damage", amount: 16 }]);
+    expect(getEffectiveSkill(mockSkill, 100).mpCost).toBe(7);
+  });
+
+  test("a skill with no ranks is returned unchanged", () => {
+    const noRanks = getSkill("vanguard-slash");
+    expect(getEffectiveSkill(noRanks, 100)).toBe(noRanks);
+  });
+});
+
+describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPercent)", () => {
+  test("onHitAoeDamage: a landed hit splashes AoE damage to every living enemy", () => {
+    STATUS_EFFECTS.push({
+      id: "test-storm-empowered",
+      name: "Test Storm-Empowered",
+      description: "",
+      perTurnEffects: [],
+      curableByMiniGame: [],
+      durationTurns: 3,
+      onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
+    });
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered", turnsRemaining: 3 });
+    const rat1 = spawnInto(ctx, "dungeon-rat");
+    const rat2 = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
+    const enemyRefs = livingMonsterRefs(combat, ctx);
+    const hpBefore = enemyRefs.map((r) => getActorByRef(r, ctx).hp);
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [enemyRefs[0]!], ctx);
+    resolveRound(combat, ctx);
+
+    for (let i = 0; i < enemyRefs.length; i++) {
+      expect(getActorByRef(enemyRefs[i]!, ctx).hp).toBeLessThan(hpBefore[i]!);
+    }
+  });
+
+  test("onHitAoeDamage: an AoE skill hitting multiple enemies splashes only once per cast, not once per target (no quadratic blowup)", () => {
+    STATUS_EFFECTS.push({
+      id: "test-storm-empowered-aoe",
+      name: "Test Storm-Empowered AoE",
+      description: "",
+      perTurnEffects: [],
+      curableByMiniGame: [],
+      durationTurns: 3,
+      onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
+    });
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.mp = 999;
+    vanguard.unlockedSkillIds.push("vanguard-heavy-charge");
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-aoe", turnsRemaining: 3 });
+    const rat1 = spawnInto(ctx, "dungeon-rat");
+    const rat2 = spawnInto(ctx, "dungeon-rat");
+    rat1.maxHp = 500;
+    rat1.hp = 500;
+    rat2.maxHp = 500;
+    rat2.hp = 500;
+    const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const targets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
+
+    const directDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, rat1.defense) + 12));
+    const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower, rat1.defense * 0.7) + 6));
+
+    queueAction(combat, self, "vanguard-heavy-charge", targets, ctx);
+    resolveRound(combat, ctx);
+
+    const dmgTaken1 = 500 - getActorByRef({ kind: "monster", id: rat1.id }, ctx).hp;
+    const dmgTaken2 = 500 - getActorByRef({ kind: "monster", id: rat2.id }, ctx).hp;
+
+    expect(dmgTaken1).toBe(directDmg + splashDmg);
+    expect(dmgTaken2).toBe(directDmg + splashDmg);
+  });
+
+  test("conditionalBonus: adds ignoreDefensePercent when the required status is active, and keeps it when consumesStatus is absent", () => {
+    STATUS_EFFECTS.push({
+      id: "test-conditional-buff",
+      name: "Test Conditional Buff",
+      description: "",
+      perTurnEffects: [],
+      curableByMiniGame: [],
+      durationTurns: 3,
+    });
+    CLASSES[0]!.skills.push({
+      id: "test-conditional-skill",
+      name: "Test Conditional Skill",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 10 }],
+      slot: 1,
+      unlockLevel: 1,
+      conditionalBonus: { requiresStatusId: "test-conditional-buff", ignoreDefensePercentBonus: 30 },
+    });
+
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.unlockedSkillIds.push("test-conditional-skill");
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const tanky = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    const hpBefore = getActorByRef(enemyRef, ctx).hp;
+    const noBonusDamage = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, getActorByRef(enemyRef, ctx).defense)) + 10);
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "test-conditional-skill", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+    const actualDamage = hpBefore - getActorByRef(enemyRef, ctx).hp;
+
+    expect(actualDamage).toBeGreaterThan(noBonusDamage);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
+  });
+
+  test("conditionalBonus: consumesStatus removes the status after casting", () => {
+    CLASSES[0]!.skills.push({
+      id: "test-consuming-skill",
+      name: "Test Consuming Skill",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 10 }],
+      slot: 1,
+      unlockLevel: 1,
+      isUltimate: true,
+      conditionalBonus: { requiresStatusId: "test-conditional-buff", ignoreDefensePercentBonus: 60, consumesStatus: true },
+    });
+
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.unlockedSkillIds.push("test-consuming-skill");
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    const hpBefore = getActorByRef(enemyRef, ctx).hp;
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "test-consuming-skill", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+
+    expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(false);
+  });
+
+  test("conditionalBonus: consumesStatus does NOT remove the status if the bonus effect never actually connects", () => {
+    CLASSES[0]!.skills.push({
+      id: "test-whiff-consuming-skill",
+      name: "Test Whiff Consuming Skill",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 10, chance: 0 }],
+      slot: 1,
+      unlockLevel: 1,
+      conditionalBonus: { requiresStatusId: "test-conditional-buff", ignoreDefensePercentBonus: 60, consumesStatus: true },
+    });
+
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.unlockedSkillIds.push("test-whiff-consuming-skill");
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    const hpBefore = getActorByRef(enemyRef, ctx).hp;
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "test-whiff-consuming-skill", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+
+    expect(getActorByRef(enemyRef, ctx).hp).toBe(hpBefore);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
+  });
+
+  test("lifestealPercent heals the source by the given % of dealt damage, capped at maxHp", () => {
+    const { ctx } = makeCtx();
+    const bat = spawnInto(ctx, "black-bat");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    bat.hp = 1;
+    const log: LogEntry[] = [];
+    const dealt = resolveSkillEffect({ kind: "damage", amount: 2, lifestealPercent: 50 }, bat, rat, { log });
+    expect(bat.hp).toBe(Math.min(bat.maxHp, 1 + Math.round(dealt * 0.5)));
+    expect(log.some((l) => l.kind === "heal")).toBe(true);
+  });
+
+  test("lifestealPercent heal is capped at the source's maxHp", () => {
+    const { ctx } = makeCtx();
+    const bat = spawnInto(ctx, "black-bat");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    bat.hp = bat.maxHp;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 2, lifestealPercent: 50 }, bat, rat, { log });
+    expect(bat.hp).toBe(bat.maxHp);
+  });
+
+  test("rollHits: a monster with no accuracyPenaltyPercent status always hits (no regression)", () => {
+    const { ctx } = makeCtx();
+    const rat = spawnInto(ctx, "dungeon-rat");
+    expect(rollHits(rat, () => 0)).toBe(true);
+  });
+
+  test("rollHits: a monster carrying an accuracyPenaltyPercent status misses below the threshold, hits at/above it", () => {
+    STATUS_EFFECTS.push({
+      id: "test-blinded",
+      name: "Test Blinded",
+      description: "",
+      perTurnEffects: [],
+      curableByMiniGame: [],
+      durationTurns: 2,
+      accuracyPenaltyPercent: 60,
+    });
+    const { ctx } = makeCtx();
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
+    expect(rollHits(rat, () => 0.5)).toBe(false);
+    expect(rollHits(rat, () => 0.7)).toBe(true);
+  });
+
+  test("rollHits: a character's fear penalty and accuracyPenaltyPercent status combine, clamped at 100%", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.survival.fear = 50;
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
+    expect(getFearAccuracyPenalty(getFearTier(vanguard.survival.fear))).toBeCloseTo(0.1);
+    expect(rollHits(vanguard, () => 0.65)).toBe(false);
+    expect(rollHits(vanguard, () => 0.75)).toBe(true);
+
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
+    expect(rollHits(vanguard, () => 0.99)).toBe(false);
+  });
+
+  test("isHelpfulStatusEffect: a status with only accuracyPenaltyPercent set is a debuff, not a buff", () => {
+    expect(isHelpfulStatusEffect(getStatusEffect("test-blinded"))).toBe(false);
+  });
+
+  test("a monster's basicAttack now rolls rollHits: never misses without accuracyPenaltyPercent, can miss when Blinded", () => {
+    let missWithoutBlinded = 0;
+    let missWithBlinded = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      const plain = makeCtx(seed).ctx;
+      const zombiePlain = spawnInto(plain, "zombie");
+      const combatPlain = startCombat("r1", [zombiePlain.id], plain, false);
+      resolveRound(combatPlain, plain);
+      if (combatPlain.log.some((l) => l.text.includes("misses its attack"))) missWithoutBlinded++;
+
+      const blinded = makeCtx(seed).ctx;
+      const zombieBlinded = spawnInto(blinded, "zombie");
+      zombieBlinded.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+      const combatBlinded = startCombat("r1", [zombieBlinded.id], blinded, false);
+      resolveRound(combatBlinded, blinded);
+      if (combatBlinded.log.some((l) => l.text.includes("misses its attack"))) missWithBlinded++;
+    }
+    expect(missWithoutBlinded).toBe(0);
+    expect(missWithBlinded).toBeGreaterThan(0);
+  });
+});
+
+describe("Vanguard skill ranks (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+  test("Shield Guard ranks resolve to guard-ii/guard-iii at lv7/lv15", () => {
+    const skill = getSkill("vanguard-shield-guard");
+    expect(getEffectiveSkill(skill, 1).mpCost).toBe(8);
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "guard" },
+      { kind: "applyStatusEffect", statusEffectId: "taunt" },
+    ]);
+    expect(getEffectiveSkill(skill, 7).mpCost).toBe(9);
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "guard-ii" },
+      { kind: "applyStatusEffect", statusEffectId: "taunt" },
+    ]);
+    expect(getEffectiveSkill(skill, 15).mpCost).toBe(10);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "guard-iii" },
+      { kind: "applyStatusEffect", statusEffectId: "taunt" },
+    ]);
+  });
+
+  test("Sword Judgment ranks resolve to dmg 30/38/47 at lv35/70/100", () => {
+    const skill = getSkill("vanguard-sword-judgment");
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 38 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 47 }]);
+  });
+});
+
+describe("Mage skill ranks (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+  test("Fireball ranks resolve dmg/mp/burn-chance at lv1/7/15", () => {
+    const skill = getSkill("mage-fireball");
+    expect(getEffectiveSkill(skill, 1)).toMatchObject({
+      mpCost: 5,
+      effects: [
+        { kind: "damage", amount: 10 },
+        { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.3 },
+      ],
+    });
+    expect(getEffectiveSkill(skill, 7)).toMatchObject({
+      mpCost: 6,
+      effects: [
+        { kind: "damage", amount: 13 },
+        { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.4 },
+      ],
+    });
+    expect(getEffectiveSkill(skill, 15)).toMatchObject({
+      mpCost: 7,
+      effects: [
+        { kind: "damage", amount: 16 },
+        { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.5 },
+      ],
+    });
+  });
+
+  test("Ice Age ranks resolve dmg 22/28/35 at lv35/70/100", () => {
+    const skill = getSkill("mage-ice-age");
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 22 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 28 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35 }]);
+  });
+});
+
+describe("Rogue rebalance + Plague Doctor class base (docs/gameplay-decisions/09-new-classes-viking-plaguedoctor.md §9.2/§9.4)", () => {
+  test("Rogue's maxHp/maxMp are rebalanced to 109/40, other fields unchanged", () => {
+    const rogue = getClass("rogue");
+    expect(rogue.baseMaxHp).toBe(109);
+    expect(rogue.baseMaxMp).toBe(40);
+    expect(rogue.baseAttack).toBe(16);
+    expect(rogue.baseDefense).toBe(6);
+    expect(rogue.baseAggro).toBe(10);
+    expect(rogue.baseSpeed).toBe(16);
+    expect(rogue.growthWeights).toEqual({ attack: 1.7, defense: 0.9, maxHp: 1.3, maxMp: 0.8, magicPower: 0.3 });
+  });
+
+  test("Plague Doctor base stats and growthWeights match §9.4", () => {
+    const doc = getClass("plague-doctor");
+    expect({
+      baseAttack: doc.baseAttack,
+      baseMagicPower: doc.baseMagicPower,
+      baseDefense: doc.baseDefense,
+      baseMaxHp: doc.baseMaxHp,
+      baseMaxMp: doc.baseMaxMp,
+      baseAggro: doc.baseAggro,
+      baseSpeed: doc.baseSpeed,
+    }).toEqual({ baseAttack: 4, baseMagicPower: 13, baseDefense: 6, baseMaxHp: 85, baseMaxMp: 60, baseAggro: 8, baseSpeed: 11 });
+    expect(doc.growthWeights).toEqual({ attack: 0.2, defense: 0.9, maxHp: 1.1, maxMp: 1.3, magicPower: 1.5 });
+    expect(doc.skills.length).toBe(6);
+  });
+
+  test("blinded status has accuracyPenaltyPercent 60, no perTurnEffects", () => {
+    const blinded = getStatusEffect("blinded");
+    expect(blinded.accuracyPenaltyPercent).toBe(60);
+    expect(blinded.perTurnEffects).toEqual([]);
+    expect(blinded.durationTurns).toBe(2);
+    expect(isHelpfulStatusEffect(blinded)).toBe(false);
+  });
+
+  test("Fire Vial ranks resolve dmg/burn% at lv1/7/15", () => {
+    const skill = getSkill("plaguedoc-fire-vial");
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([
+      { kind: "damage", amount: 5 },
+      { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.6 },
+    ]);
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([
+      { kind: "damage", amount: 7 },
+      { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.7 },
+    ]);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([
+      { kind: "damage", amount: 9 },
+      { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8 },
+    ]);
+  });
+
+  test("Total Plague ranks resolve effectsByRelation at lv35/70/100", () => {
+    const skill = getSkill("plaguedoc-total-plague");
+    expect(getEffectiveSkill(skill, 35).effectsByRelation).toEqual({
+      ally: [
+        { kind: "heal", amount: 20 },
+        { kind: "removeStatusEffect" },
+      ],
+      enemy: [
+        { kind: "damage", amount: 10 },
+        { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.8 },
+        { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8 },
+      ],
+    });
+    expect(getEffectiveSkill(skill, 100).effectsByRelation).toEqual({
+      ally: [
+        { kind: "heal", amount: 31 },
+        { kind: "removeStatusEffect" },
+      ],
+      enemy: [
+        { kind: "damage", amount: 16 },
+        { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.9 },
+        { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.9 },
+      ],
+    });
+  });
+
+  test("Blinding Vial, when its proc succeeds, applies blinded to the target and logs it as a debuff", () => {
+    let found = false;
+    for (let seed = 0; seed < 50 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const doc = ctx.party.find((p) => p.classId === "plague-doctor")!;
+      doc.unlockedSkillIds.push("plaguedoc-blinding-vial");
+      doc.mp = 999;
+      const tanky = spawnInto(ctx, "skeleton-guard");
+      const combat = startCombat("r1", [tanky.id], ctx, false);
+      const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+      queueAction(combat, { kind: "character", id: doc.id }, "plaguedoc-blinding-vial", [enemyRef], ctx);
+      resolveRound(combat, ctx);
+      const enemyActor = getActorByRef(enemyRef, ctx);
+      if (!enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "blinded")) continue;
+      found = true;
+      expect(combat.log.some((l) => l.text.includes("gains the Blinded effect") && l.kind === "debuff")).toBe(true);
+    }
+    expect(found).toBe(true);
+  });
+
+  test("blinded's accuracyPenaltyPercent makes the bearer miss more via rollHits (real status, not a mock)", () => {
+    const { ctx } = makeCtx();
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+    expect(rollHits(rat, () => 0.5)).toBe(false);
+    expect(rollHits(rat, () => 0.7)).toBe(true);
+  });
+
+  test("Total Plague heals+cures allies and damages+afflicts enemies in the same cast", () => {
+    let found = false;
+    for (let seed = 0; seed < 50 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const doc = ctx.party.find((p) => p.classId === "plague-doctor")!;
+      doc.unlockedSkillIds.push("plaguedoc-total-plague");
+      doc.mp = 999;
+      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+      vanguard.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
+      vanguard.hp = 1;
+      const tanky = spawnInto(ctx, "skeleton-guard");
+      const combat = startCombat("r1", [tanky.id], ctx, false);
+      const docRef: CombatantRef = { kind: "character", id: doc.id };
+      const targets = autoResolveTargets("allAlliesAndEnemies", docRef, combat, ctx) ?? [];
+      queueAction(combat, docRef, "plaguedoc-total-plague", targets, ctx);
+      resolveRound(combat, ctx);
+
+      expect(combat.log.some((l) => l.text.startsWith(vanguard.name) && l.text.includes("recovers"))).toBe(true);
+      expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
+      const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+      const enemyActor = getActorByRef(enemyRef, ctx);
+      if (!enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "poisoned" || s.statusEffectId === "burning")) continue;
+      found = true;
+    }
+    expect(found).toBe(true);
+  });
+});
+
+describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoctor.md §9.3)", () => {
+  test("Viking base stats and growthWeights match §9.3", () => {
+    const viking = getClass("viking");
+    expect({
+      baseAttack: viking.baseAttack,
+      baseMagicPower: viking.baseMagicPower,
+      baseDefense: viking.baseDefense,
+      baseMaxHp: viking.baseMaxHp,
+      baseMaxMp: viking.baseMaxMp,
+      baseAggro: viking.baseAggro,
+      baseSpeed: viking.baseSpeed,
+    }).toEqual({ baseAttack: 18, baseMagicPower: 6, baseDefense: 6, baseMaxHp: 105, baseMaxMp: 30, baseAggro: 16, baseSpeed: 11 });
+    expect(viking.growthWeights).toEqual({ attack: 1.5, defense: 0.7, maxHp: 1.2, maxMp: 0.7, magicPower: 0.9 });
+    expect(viking.skills.length).toBe(6);
+  });
+
+  test("Lightning Axe applies storm-empowered + self def-4/aggro+8 at rank 1", () => {
+    const skill = getSkill("viking-lightning-axe");
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "storm-empowered" },
+      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
+      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+    ]);
+  });
+
+  test("Lightning Axe ranks reference storm-empowered-ii/iii, self-debuff unchanged", () => {
+    const skill = getSkill("viking-lightning-axe");
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "storm-empowered-ii" },
+      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
+      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+    ]);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([
+      { kind: "applyStatusEffect", statusEffectId: "storm-empowered-iii" },
+      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
+      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+    ]);
+  });
+
+  test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 32/40/50", () => {
+    const skill = getSkill("viking-thunder-god-fury");
+    expect(skill.conditionalBonus).toEqual({ requiresStatusId: "storm-empowered", ignoreDefensePercentBonus: 60, consumesStatus: true });
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 32 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50 }]);
+  });
+
+  test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed% per §10.4", () => {
+    const slash = getSkill("viking-frenzied-slash");
+    expect(getEffectiveSkill(slash, 7).effects).toEqual([
+      { kind: "damage", amount: 12 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6 },
+    ]);
+    expect(getEffectiveSkill(slash, 15).effects).toEqual([
+      { kind: "damage", amount: 15 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.7 },
+    ]);
+
+    const throwAxe = getSkill("viking-throw-axe");
+    expect(getEffectiveSkill(throwAxe, 25).effects).toEqual([{ kind: "damage", amount: 20 }]);
+    expect(getEffectiveSkill(throwAxe, 45).effects).toEqual([{ kind: "damage", amount: 25 }]);
+
+    const spinAxe = getSkill("viking-spin-axe");
+    expect(getEffectiveSkill(spinAxe, 50).effects).toEqual([
+      { kind: "damage", amount: 18 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.4 },
+    ]);
+    expect(getEffectiveSkill(spinAxe, 75).effects).toEqual([
+      { kind: "damage", amount: 22 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.5 },
+    ]);
+  });
+
+  test("storm-empowered-ii/iii and bleeding statuses exist with the documented fields", () => {
+    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, ignoreDefensePercent: 30 });
+    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, ignoreDefensePercent: 30 });
+    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 5 }]);
+  });
+
+  test("full combat sequence: Lightning Axe -> Frenzied Slash (bonus + AoE splash) -> Thunder God's Fury (bonus + consumes)", () => {
+    const { ctx } = makeCtx();
+    const viking = ctx.party.find((p) => p.classId === "viking")!;
+    viking.mp = 999;
+    viking.unlockedSkillIds.push("viking-thunder-god-fury");
+    const rat1 = spawnInto(ctx, "dungeon-rat");
+    const rat2 = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: viking.id };
+    const rat1Ref: CombatantRef = { kind: "monster", id: rat1.id };
+
+    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("gains the Storm-Empowered effect"))).toBe(true);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(true);
+
+    const rat2HpBefore = getActorByRef({ kind: "monster", id: rat2.id }, ctx).hp;
+    queueAction(combat, self, "viking-frenzied-slash", [rat1Ref], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("misses"))).toBe(false);
+    const rat2HpAfter = getActorByRef({ kind: "monster", id: rat2.id }, ctx).hp;
+    expect(rat2HpAfter).toBeLessThan(rat2HpBefore);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(true);
+
+    const ultimateTargets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
+    queueAction(combat, self, "viking-thunder-god-fury", ultimateTargets, ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("Thunder God's Fury"))).toBe(true);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(false);
+  });
+
+  test("rank-resolution picks up Viking's rank-2/3 numbers at the correct character level", () => {
+    const skill = getSkill("viking-throw-axe");
+    const character = createCharacter("vk-test", "Viking Test", getClass("viking"), 25);
+    expect(getEffectiveSkill(skill, character.level).effects).toEqual([{ kind: "damage", amount: 20 }]);
+  });
+});
+
+describe("Rogue skill ranks + poison exclusivity (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+  test("Poison Bomb ranks apply poisoned-ii/iii, exclusive to this skill", () => {
+    const bomb = getSkill("rogue-poison-bomb");
+    expect(getEffectiveSkill(bomb, 20).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "poisoned" }]);
+    expect(getEffectiveSkill(bomb, 50).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "poisoned-ii" }]);
+    expect(getEffectiveSkill(bomb, 75).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "poisoned-iii" }]);
+  });
+
+  test("Poison Coat's on-hit rider always applies plain poisoned, even at rank 2/3", () => {
+    const coat = getSkill("rogue-poison-coat");
+    expect(getStatusEffect("poison-coat-ii").onHitStatusEffectId).toBe("poisoned");
+    expect(getStatusEffect("poison-coat-iii").onHitStatusEffectId).toBe("poisoned");
+
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    rogue.unlockedSkillIds.push(coat.id);
+    rogue.level = 15;
+    const tanky = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: rogue.id };
+    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat-iii")).toBe(true);
+
+    const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
+    queueAction(combat, self, "rogue-knife-throw", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+    const enemyActor = getActorByRef(enemyRef, ctx);
+    expect(enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "poisoned")).toBe(true);
+    expect(enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "poisoned-ii" || s.statusEffectId === "poisoned-iii")).toBe(false);
+  });
+});
+
+describe("Acolyte skill ranks incl. effectsByRelation (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+  test("Heal ranks resolve heal 16/22/30 at lv1/7/15", () => {
+    const skill = getSkill("acolyte-heal");
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16 }]);
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "heal", amount: 22 }]);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "heal", amount: 30 }]);
+  });
+
+  test("Divine Descent ranks resolve effectsByRelation (ally heal+fear, enemy dmg) at lv35/70/100", () => {
+    const skill = getSkill("acolyte-divine-descent");
+    expect(getEffectiveSkill(skill, 35).effectsByRelation).toEqual({
+      ally: [
+        { kind: "heal", amount: 25 },
+        { kind: "modifyStat", stat: "fear", amount: -15 },
+      ],
+      enemy: [{ kind: "damage", amount: 20 }],
+    });
+    expect(getEffectiveSkill(skill, 70).effectsByRelation).toEqual({
+      ally: [
+        { kind: "heal", amount: 30 },
+        { kind: "modifyStat", stat: "fear", amount: -20 },
+      ],
+      enemy: [{ kind: "damage", amount: 25 }],
+    });
+    expect(getEffectiveSkill(skill, 100).effectsByRelation).toEqual({
+      ally: [
+        { kind: "heal", amount: 40 },
+        { kind: "modifyStat", stat: "fear", amount: -25 },
+      ],
+      enemy: [{ kind: "damage", amount: 30 }],
+    });
+  });
+
+  test("Purify ranks resolve the enemy-branch damage only, ally branch always removeStatusEffect", () => {
+    const skill = getSkill("acolyte-purify");
+    expect(getEffectiveSkill(skill, 10).effectsByRelation).toEqual({
+      ally: [{ kind: "removeStatusEffect" }],
+      enemy: [{ kind: "damage", amount: 15 }],
+    });
+    expect(getEffectiveSkill(skill, 45).effectsByRelation).toEqual({
+      ally: [{ kind: "removeStatusEffect" }],
+      enemy: [{ kind: "damage", amount: 27 }],
+    });
+  });
+});
+
+describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.2)", () => {
+  test("Black Bat's Blood Drain has lifestealPercent 50", () => {
+    expect(getMonsterSkill("black-bat-blood-drain").effects).toEqual([{ kind: "damage", amount: 2, lifestealPercent: 50 }]);
+  });
+
+  test("Zombie's Regeneration is a self-heal", () => {
+    const skill = getMonsterSkill("zombie-regeneration");
+    expect(skill.target).toBe("self");
+    expect(skill.effects).toEqual([{ kind: "heal", amount: 15 }]);
+  });
+
+  test("Slime's Acid Spit procs corroded, Spider's Web Spit procs webbed", () => {
+    expect(getMonsterSkill("slime-acid-spit").effects).toEqual([
+      { kind: "damage", amount: 2 },
+      { kind: "applyStatusEffect", statusEffectId: "corroded", chance: 0.5 },
+    ]);
+    expect(getMonsterSkill("spider-web-spit").effects).toEqual([
+      { kind: "damage", amount: 2 },
+      { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5 },
+    ]);
+  });
+
+  test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
+    const skill = getMonsterSkill("skeleton-warrior-guard-stance");
+    expect(skill.target).toBe("self");
+    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard" }]);
+  });
+
+  test("actionWeights.normal is 70/30 for the 8 randomly-triggered archetypes, 100/0 for Zombie/Skeleton Warrior", () => {
+    for (const id of ["dungeon-rat", "black-bat", "slime", "skeleton", "snake", "lizard", "spider", "skeleton-archer"]) {
+      const a = getArchetype(id);
+      expect(a.skillIds.length).toBe(1);
+      expect(a.actionWeights?.normal).toEqual({ basicAttack: 70, skill: 30 });
+    }
+    for (const id of ["zombie", "skeleton-warrior"]) {
+      const a = getArchetype(id);
+      expect(a.skillIds.length).toBe(1);
+      expect(a.actionWeights?.normal).toEqual({ basicAttack: 100, skill: 0 });
+    }
+  });
+
+  test("Skeleton Guard is untouched — no normal-tier skill, elite/boss kit intact", () => {
+    const guard = getArchetype("skeleton-guard");
+    expect(guard.skillIds).toEqual([]);
+    expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100, skill: 0 });
+    expect(guard.eliteSkillIds).toEqual({ strike: "skeleton-elite-strike", cleave: "skeleton-elite-cleave" });
+  });
+});
+
+describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.3)", () => {
+  test("a Zombie below 40% HP is biased toward self-casting Regeneration, but not deterministically (weighted, not 'always')", () => {
+    let castCount = 0;
+    let notCastCount = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const { ctx } = makeCtx(seed);
+      const zombie = spawnInto(ctx, "zombie");
+      zombie.hp = Math.floor(zombie.maxHp * 0.3);
+      const combat = startCombat("r1", [zombie.id], ctx, false);
+      resolveRound(combat, ctx);
+      if (combat.log.some((l) => l.text.includes("Regeneration"))) castCount++;
+      else notCastCount++;
+    }
+    expect(castCount).toBeGreaterThan(notCastCount);
+    expect(notCastCount).toBeGreaterThan(0);
+  });
+
+  test("a Zombie at/above 40% HP never self-casts (falls through to actionWeights, which never rolls skill for it)", () => {
+    const { ctx } = makeCtx();
+    const zombie = spawnInto(ctx, "zombie");
+    zombie.hp = Math.ceil(zombie.maxHp * 0.4);
+    const combat = startCombat("r1", [zombie.id], ctx, false);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("Regeneration"))).toBe(false);
+  });
+
+  test("a Skeleton Warrior below 40% HP is biased toward Guard Stance but can still attack (fixes the permanently-passive bug)", () => {
+    let guardCount = 0;
+    let attackCount = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const { ctx } = makeCtx(seed);
+      const warrior = spawnInto(ctx, "skeleton-warrior");
+      warrior.hp = Math.floor(warrior.maxHp * 0.3);
+      const combat = startCombat("r1", [warrior.id], ctx, false);
+      resolveRound(combat, ctx);
+      if (combat.log.some((l) => l.text.includes("uses Guard Stance"))) guardCount++;
+      if (combat.log.some((l) => l.text.includes(`${warrior.name} attacks`))) attackCount++;
+    }
+    expect(guardCount).toBeGreaterThan(attackCount);
+    expect(attackCount).toBeGreaterThan(0);
+  });
+
+  test("other defensive archetypes with empty skillIds are unaffected even below 40% HP (regression)", () => {
+    const { ctx } = makeCtx();
+    const knight = spawnInto(ctx, "zombie-knight");
+    knight.hp = Math.floor(knight.maxHp * 0.1);
+    const combat = startCombat("r1", [knight.id], ctx, false);
+    const hpBefore = knight.hp;
+    resolveRound(combat, ctx);
+    expect(getArchetype("zombie-knight").skillIds).toEqual([]);
+    expect(knight.hp).toBe(hpBefore);
+  });
+
+  test("the low-HP self-skill branch only applies at normal tier, even if the archetype has skillIds (regression guard)", () => {
+    const { ctx } = makeCtx();
+    const zombieAsBoss = spawnMonster("zombie", 1, { tier: "boss" });
+    zombieAsBoss.hp = Math.floor(zombieAsBoss.maxHp * 0.1);
+    ctx.monsters.push(zombieAsBoss);
+    const combat = startCombat("r1", [zombieAsBoss.id], ctx, false);
+    const hpBefore = zombieAsBoss.hp;
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("Regeneration"))).toBe(false);
+    expect(zombieAsBoss.hp).toBe(hpBefore);
+  });
+});
+
+describe("regular monster skills end-to-end (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.2)", () => {
+  function queueTrivialPartyActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+  }
+
+  test("Slime's Acid Spit, when it fires and procs, applies corroded (damage + defense debuff per turn)", () => {
+    let found = false;
+    for (let seed = 0; seed < 100 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const slime = spawnMonster("slime", 1);
+      slime.maxHp = 500;
+      slime.hp = 500;
+      ctx.monsters.push(slime);
+      const combat = startCombat("r1", [slime.id], ctx, false);
+      queueTrivialPartyActions(ctx, combat);
+      resolveRound(combat, ctx);
+      if (!combat.log.some((l) => l.text.includes("Acid Spit"))) continue;
+      const target = ctx.party.find((p) => p.activeStatusEffects.some((s) => s.statusEffectId === "corroded"));
+      if (!target) continue;
+      found = true;
+    }
+    expect(found).toBe(true);
+  });
+
+  test("Spider's Web Spit, when it fires and procs, applies webbed (speed -20 per turn)", () => {
+    let found = false;
+    for (let seed = 0; seed < 100 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const spider = spawnMonster("spider", 1);
+      spider.maxHp = 500;
+      spider.hp = 500;
+      ctx.monsters.push(spider);
+      const combat = startCombat("r1", [spider.id], ctx, false);
+      queueTrivialPartyActions(ctx, combat);
+      resolveRound(combat, ctx);
+      if (!combat.log.some((l) => l.text.includes("Web Spit"))) continue;
+      const target = ctx.party.find((p) => p.activeStatusEffects.some((s) => s.statusEffectId === "webbed"));
+      if (!target) continue;
+      found = true;
+    }
+    expect(found).toBe(true);
+  });
+
+  test("Black Bat's Blood Drain, when it fires, damages the target and heals the bat via lifesteal", () => {
+    let found = false;
+    for (let seed = 0; seed < 100 && !found; seed++) {
+      const { ctx } = makeCtx(seed);
+      const bat = spawnMonster("black-bat", 1);
+      bat.maxHp = 500;
+      bat.hp = 100;
+      ctx.monsters.push(bat);
+      const combat = startCombat("r1", [bat.id], ctx, false);
+      queueTrivialPartyActions(ctx, combat);
+      resolveRound(combat, ctx);
+      const batLines = combat.log.filter((l) => l.text.startsWith(bat.name));
+      if (!batLines.some((l) => l.text.includes("Blood Drain"))) continue;
+      found = true;
+      expect(batLines.some((l) => l.text.includes("recovers") && l.text.includes("HP"))).toBe(true);
+    }
+    expect(found).toBe(true);
   });
 });
 

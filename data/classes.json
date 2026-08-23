@@ -35,7 +35,36 @@
         "slot": 1,
         "unlockLevel": 1,
         "isBuff": true,
-        "cooldownTurns": 2
+        "cooldownTurns": 2,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 8,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "guard" },
+              { "kind": "applyStatusEffect", "statusEffectId": "taunt" }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 9,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "guard-ii" },
+              { "kind": "applyStatusEffect", "statusEffectId": "taunt" }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 10,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "guard-iii" },
+              { "kind": "applyStatusEffect", "statusEffectId": "taunt" }
+            ]
+          }
+        ]
       },
       {
         "id": "vanguard-shield-throw",
@@ -45,7 +74,12 @@
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 10 }],
         "slot": 2,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 5, "effects": [{ "kind": "damage", "amount": 10 }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 6, "effects": [{ "kind": "damage", "amount": 13 }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 7, "effects": [{ "kind": "damage", "amount": 16 }] }
+        ]
       },
       {
         "id": "vanguard-rally",
@@ -60,7 +94,36 @@
         "slot": 3,
         "unlockLevel": 10,
         "isBuff": true,
-        "cooldownTurns": 2
+        "cooldownTurns": 2,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 10,
+            "mpCost": 12,
+            "effects": [
+              { "kind": "modifyStat", "stat": "fear", "amount": -8 },
+              { "kind": "applyStatusEffect", "statusEffectId": "rally" }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 25,
+            "mpCost": 13,
+            "effects": [
+              { "kind": "modifyStat", "stat": "fear", "amount": -10 },
+              { "kind": "applyStatusEffect", "statusEffectId": "rally-ii" }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 45,
+            "mpCost": 14,
+            "effects": [
+              { "kind": "modifyStat", "stat": "fear", "amount": -12 },
+              { "kind": "applyStatusEffect", "statusEffectId": "rally-iii" }
+            ]
+          }
+        ]
       },
       {
         "id": "vanguard-heavy-charge",
@@ -71,7 +134,12 @@
         "effects": [{ "kind": "damage", "amount": 12 }],
         "slot": 4,
         "unlockLevel": 20,
-        "cooldownTurns": 3
+        "cooldownTurns": 3,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 20, "mpCost": 14, "effects": [{ "kind": "damage", "amount": 12 }] },
+          { "rank": 2, "unlockLevel": 50, "mpCost": 15, "effects": [{ "kind": "damage", "amount": 15 }] },
+          { "rank": 3, "unlockLevel": 75, "mpCost": 16, "effects": [{ "kind": "damage", "amount": 19 }] }
+        ]
       },
       {
         "id": "vanguard-sword-judgment",
@@ -83,7 +151,12 @@
         "slot": 5,
         "unlockLevel": 35,
         "isUltimate": true,
-        "cooldownTurns": 5
+        "cooldownTurns": 5,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 35, "mpCost": 14, "effects": [{ "kind": "damage", "amount": 30 }] },
+          { "rank": 2, "unlockLevel": 70, "mpCost": 15, "effects": [{ "kind": "damage", "amount": 38 }] },
+          { "rank": 3, "unlockLevel": 100, "mpCost": 16, "effects": [{ "kind": "damage", "amount": 47 }] }
+        ]
       }
     ]
   },
@@ -122,7 +195,36 @@
         ],
         "slot": 1,
         "unlockLevel": 1,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 5,
+            "effects": [
+              { "kind": "damage", "amount": 10 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.3 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 6,
+            "effects": [
+              { "kind": "damage", "amount": 13 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.4 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 7,
+            "effects": [
+              { "kind": "damage", "amount": 16 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.5 }
+            ]
+          }
+        ]
       },
       {
         "id": "mage-lightning-bolt",
@@ -136,7 +238,36 @@
         ],
         "slot": 2,
         "unlockLevel": 1,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 6,
+            "effects": [
+              { "kind": "damage", "amount": 12 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.2 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 7,
+            "effects": [
+              { "kind": "damage", "amount": 15 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.28 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 8,
+            "effects": [
+              { "kind": "damage", "amount": 19 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.35 }
+            ]
+          }
+        ]
       },
       {
         "id": "mage-fire-pillar",
@@ -151,7 +282,36 @@
         "slot": 3,
         "unlockLevel": 10,
         "cooldownTurns": 2,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 10,
+            "mpCost": 14,
+            "effects": [
+              { "kind": "damage", "amount": 12 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.5 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 25,
+            "mpCost": 15,
+            "effects": [
+              { "kind": "damage", "amount": 15 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.6 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 45,
+            "mpCost": 16,
+            "effects": [
+              { "kind": "damage", "amount": 19 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.7 }
+            ]
+          }
+        ]
       },
       {
         "id": "mage-lightning-storm",
@@ -166,7 +326,36 @@
         "slot": 4,
         "unlockLevel": 20,
         "cooldownTurns": 3,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 20,
+            "mpCost": 16,
+            "effects": [
+              { "kind": "damage", "amount": 13 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.3 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 50,
+            "mpCost": 17,
+            "effects": [
+              { "kind": "damage", "amount": 16 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.38 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 75,
+            "mpCost": 18,
+            "effects": [
+              { "kind": "damage", "amount": 20 },
+              { "kind": "applyStatusEffect", "statusEffectId": "stunned", "chance": 0.45 }
+            ]
+          }
+        ]
       },
       {
         "id": "mage-ice-age",
@@ -179,7 +368,12 @@
         "unlockLevel": 35,
         "isUltimate": true,
         "cooldownTurns": 5,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 35, "mpCost": 20, "effects": [{ "kind": "damage", "amount": 22 }] },
+          { "rank": 2, "unlockLevel": 70, "mpCost": 21, "effects": [{ "kind": "damage", "amount": 28 }] },
+          { "rank": 3, "unlockLevel": 100, "mpCost": 22, "effects": [{ "kind": "damage", "amount": 35 }] }
+        ]
       }
     ]
   },
@@ -187,8 +381,8 @@
     "id": "rogue",
     "name": "Rogue",
     "description": "Single-target burst, highest speed in the party.",
-    "baseMaxHp": 90,
-    "baseMaxMp": 30,
+    "baseMaxHp": 109,
+    "baseMaxMp": 40,
     "baseAttack": 16,
     "baseDefense": 6,
     "baseAggro": 10,
@@ -216,7 +410,12 @@
         "slot": 1,
         "unlockLevel": 1,
         "isBuff": true,
-        "cooldownTurns": 4
+        "cooldownTurns": 4,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 3, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 4, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat-ii" }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 5, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat-iii" }] }
+        ]
       },
       {
         "id": "rogue-knife-throw",
@@ -226,7 +425,12 @@
         "target": "singleEnemy",
         "effects": [{ "kind": "damage", "amount": 12 }],
         "slot": 2,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 4, "effects": [{ "kind": "damage", "amount": 12 }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 5, "effects": [{ "kind": "damage", "amount": 15 }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 6, "effects": [{ "kind": "damage", "amount": 19 }] }
+        ]
       },
       {
         "id": "rogue-backstab",
@@ -237,7 +441,12 @@
         "effects": [{ "kind": "damage", "amount": 20 }],
         "slot": 3,
         "unlockLevel": 10,
-        "cooldownTurns": 1
+        "cooldownTurns": 1,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 10, "mpCost": 8, "effects": [{ "kind": "damage", "amount": 20 }] },
+          { "rank": 2, "unlockLevel": 25, "mpCost": 9, "effects": [{ "kind": "damage", "amount": 25 }] },
+          { "rank": 3, "unlockLevel": 45, "mpCost": 10, "effects": [{ "kind": "damage", "amount": 31 }] }
+        ]
       },
       {
         "id": "rogue-poison-bomb",
@@ -248,7 +457,12 @@
         "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned" }],
         "slot": 4,
         "unlockLevel": 20,
-        "cooldownTurns": 3
+        "cooldownTurns": 3,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 20, "mpCost": 10, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned" }] },
+          { "rank": 2, "unlockLevel": 50, "mpCost": 11, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned-ii" }] },
+          { "rank": 3, "unlockLevel": 75, "mpCost": 12, "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poisoned-iii" }] }
+        ]
       },
       {
         "id": "rogue-flurry-assault",
@@ -260,6 +474,38 @@
           { "kind": "damage", "amount": 12 },
           { "kind": "damage", "amount": 12 },
           { "kind": "damage", "amount": 12 }
+        ],
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 35,
+            "mpCost": 16,
+            "effects": [
+              { "kind": "damage", "amount": 12 },
+              { "kind": "damage", "amount": 12 },
+              { "kind": "damage", "amount": 12 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 70,
+            "mpCost": 17,
+            "effects": [
+              { "kind": "damage", "amount": 15 },
+              { "kind": "damage", "amount": 15 },
+              { "kind": "damage", "amount": 15 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 100,
+            "mpCost": 18,
+            "effects": [
+              { "kind": "damage", "amount": 20 },
+              { "kind": "damage", "amount": 20 },
+              { "kind": "damage", "amount": 20 }
+            ]
+          }
         ],
         "slot": 5,
         "unlockLevel": 35,
@@ -299,7 +545,12 @@
         "target": "singleAlly",
         "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -10 }],
         "slot": 1,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 4, "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -10 }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 5, "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -13 }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 6, "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -16 }] }
+        ]
       },
       {
         "id": "acolyte-heal",
@@ -310,7 +561,12 @@
         "effects": [{ "kind": "heal", "amount": 16 }],
         "slot": 2,
         "unlockLevel": 1,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 6, "effects": [{ "kind": "heal", "amount": 16 }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 7, "effects": [{ "kind": "heal", "amount": 22 }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 8, "effects": [{ "kind": "heal", "amount": 30 }] }
+        ]
       },
       {
         "id": "acolyte-purify",
@@ -325,7 +581,27 @@
         "slot": 3,
         "unlockLevel": 10,
         "cooldownTurns": 1,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 10,
+            "mpCost": 9,
+            "effectsByRelation": { "ally": [{ "kind": "removeStatusEffect" }], "enemy": [{ "kind": "damage", "amount": 15 }] }
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 25,
+            "mpCost": 10,
+            "effectsByRelation": { "ally": [{ "kind": "removeStatusEffect" }], "enemy": [{ "kind": "damage", "amount": 20 }] }
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 45,
+            "mpCost": 11,
+            "effectsByRelation": { "ally": [{ "kind": "removeStatusEffect" }], "enemy": [{ "kind": "damage", "amount": 27 }] }
+          }
+        ]
       },
       {
         "id": "acolyte-mass-heal",
@@ -340,7 +616,36 @@
         "slot": 4,
         "unlockLevel": 20,
         "cooldownTurns": 2,
-        "isMagic": true
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 20,
+            "mpCost": 10,
+            "effects": [
+              { "kind": "heal", "amount": 10 },
+              { "kind": "modifyStat", "stat": "fear", "amount": -6 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 50,
+            "mpCost": 11,
+            "effects": [
+              { "kind": "heal", "amount": 14 },
+              { "kind": "modifyStat", "stat": "fear", "amount": -8 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 75,
+            "mpCost": 12,
+            "effects": [
+              { "kind": "heal", "amount": 20 },
+              { "kind": "modifyStat", "stat": "fear", "amount": -10 }
+            ]
+          }
+        ]
       },
       {
         "id": "acolyte-divine-descent",
@@ -359,7 +664,490 @@
         "unlockLevel": 35,
         "isUltimate": true,
         "cooldownTurns": 5,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 35,
+            "mpCost": 20,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 25 },
+                { "kind": "modifyStat", "stat": "fear", "amount": -15 }
+              ],
+              "enemy": [{ "kind": "damage", "amount": 20 }]
+            }
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 70,
+            "mpCost": 21,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 30 },
+                { "kind": "modifyStat", "stat": "fear", "amount": -20 }
+              ],
+              "enemy": [{ "kind": "damage", "amount": 25 }]
+            }
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 100,
+            "mpCost": 22,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 40 },
+                { "kind": "modifyStat", "stat": "fear", "amount": -25 }
+              ],
+              "enemy": [{ "kind": "damage", "amount": 30 }]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "viking",
+    "name": "Viking",
+    "description": "Hybrid physical/lightning berserker, high risk/extremely high damage.",
+    "baseMaxHp": 105,
+    "baseMaxMp": 30,
+    "baseAttack": 18,
+    "baseDefense": 6,
+    "baseAggro": 16,
+    "baseSpeed": 11,
+    "baseMagicPower": 6,
+    "growthWeights": { "attack": 1.5, "defense": 0.7, "maxHp": 1.2, "maxMp": 0.7, "magicPower": 0.9 },
+    "skills": [
+      {
+        "id": "viking-axe-slash",
+        "name": "Axe Slash",
+        "description": "An axe slash — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1
+      },
+      {
+        "id": "viking-lightning-axe",
+        "name": "Lightning Axe",
+        "description": "Channels storm energy into the axe, empowering every hit with a lightning splash for a few turns, at the cost of defense and self-aggro.",
+        "mpCost": 8,
+        "target": "self",
+        "effects": [
+          { "kind": "applyStatusEffect", "statusEffectId": "storm-empowered" },
+          { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
+          { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
+        ],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isBuff": true,
+        "cooldownTurns": 4,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 8,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "storm-empowered" },
+              { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
+              { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 9,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "storm-empowered-ii" },
+              { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
+              { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 10,
+            "effects": [
+              { "kind": "applyStatusEffect", "statusEffectId": "storm-empowered-iii" },
+              { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
+              { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viking-frenzied-slash",
+        "name": "Frenzied Slash",
+        "description": "A wild physical slash, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "mpCost": 5,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 9 },
+          { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.5 }
+        ],
+        "slot": 2,
+        "unlockLevel": 1,
+        "conditionalBonus": { "requiresStatusId": "storm-empowered", "ignoreDefensePercentBonus": 30 },
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 5,
+            "effects": [
+              { "kind": "damage", "amount": 9 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.5 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 6,
+            "effects": [
+              { "kind": "damage", "amount": 12 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.6 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 7,
+            "effects": [
+              { "kind": "damage", "amount": 15 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.7 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viking-throw-axe",
+        "name": "Throw Axe",
+        "description": "Throws the axe at an enemy, dealing ranged damage. Hits harder while Storm-Empowered.",
+        "mpCost": 9,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 16 }],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 2,
+        "conditionalBonus": { "requiresStatusId": "storm-empowered", "ignoreDefensePercentBonus": 30 },
+        "ranks": [
+          { "rank": 1, "unlockLevel": 10, "mpCost": 9, "effects": [{ "kind": "damage", "amount": 16 }] },
+          { "rank": 2, "unlockLevel": 25, "mpCost": 10, "effects": [{ "kind": "damage", "amount": 20 }] },
+          { "rank": 3, "unlockLevel": 45, "mpCost": 11, "effects": [{ "kind": "damage", "amount": 25 }] }
+        ]
+      },
+      {
+        "id": "viking-spin-axe",
+        "name": "Spinning Axe",
+        "description": "Spins the axe through the whole enemy group, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "mpCost": 14,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 14 },
+          { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.3 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3,
+        "conditionalBonus": { "requiresStatusId": "storm-empowered", "ignoreDefensePercentBonus": 30 },
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 20,
+            "mpCost": 14,
+            "effects": [
+              { "kind": "damage", "amount": 14 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.3 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 50,
+            "mpCost": 15,
+            "effects": [
+              { "kind": "damage", "amount": 18 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.4 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 75,
+            "mpCost": 16,
+            "effects": [
+              { "kind": "damage", "amount": 22 },
+              { "kind": "applyStatusEffect", "statusEffectId": "bleeding", "chance": 0.5 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "viking-thunder-god-fury",
+        "name": "Thunder God's Fury",
+        "description": "Unleashes the storm's full fury on every enemy. Always hits, effectiveness reduced by fear. Hits far harder and consumes Storm-Empowered.",
+        "mpCost": 20,
+        "target": "allEnemies",
+        "effects": [{ "kind": "damage", "amount": 32 }],
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5,
+        "conditionalBonus": { "requiresStatusId": "storm-empowered", "ignoreDefensePercentBonus": 60, "consumesStatus": true },
+        "ranks": [
+          { "rank": 1, "unlockLevel": 35, "mpCost": 20, "effects": [{ "kind": "damage", "amount": 32 }] },
+          { "rank": 2, "unlockLevel": 70, "mpCost": 21, "effects": [{ "kind": "damage", "amount": 40 }] },
+          { "rank": 3, "unlockLevel": 100, "mpCost": 22, "effects": [{ "kind": "damage", "amount": 50 }] }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plague-doctor",
+    "name": "Plague Doctor",
+    "description": "AoE debuffer/support, favors effects over raw damage.",
+    "baseMaxHp": 85,
+    "baseMaxMp": 60,
+    "baseAttack": 4,
+    "baseDefense": 6,
+    "baseAggro": 8,
+    "baseSpeed": 11,
+    "baseMagicPower": 13,
+    "growthWeights": { "attack": 0.2, "defense": 0.9, "maxHp": 1.1, "maxMp": 1.3, "magicPower": 1.5 },
+    "skills": [
+      {
+        "id": "plaguedoc-vial-toss",
+        "name": "Vial Toss",
+        "description": "Tosses a crude vial — basic damage, free.",
+        "mpCost": 0,
+        "target": "singleEnemy",
+        "effects": [{ "kind": "damage", "amount": 0 }],
+        "slot": 0,
+        "unlockLevel": 1,
         "isMagic": true
+      },
+      {
+        "id": "plaguedoc-fire-vial",
+        "name": "Fire Vial",
+        "description": "Throws a vial of alchemical fire, dealing damage and possibly setting the target ablaze.",
+        "mpCost": 4,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.6 }
+        ],
+        "slot": 1,
+        "unlockLevel": 1,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 4,
+            "effects": [
+              { "kind": "damage", "amount": 5 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.6 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 5,
+            "effects": [
+              { "kind": "damage", "amount": 7 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.7 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 6,
+            "effects": [
+              { "kind": "damage", "amount": 9 },
+              { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.8 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "plaguedoc-healing-draught",
+        "name": "Healing Draught",
+        "description": "A restorative draught for 1 ally.",
+        "mpCost": 6,
+        "target": "singleAlly",
+        "effects": [{ "kind": "heal", "amount": 15 }],
+        "slot": 2,
+        "unlockLevel": 1,
+        "isMagic": true,
+        "ranks": [
+          { "rank": 1, "unlockLevel": 1, "mpCost": 6, "effects": [{ "kind": "heal", "amount": 15 }] },
+          { "rank": 2, "unlockLevel": 7, "mpCost": 7, "effects": [{ "kind": "heal", "amount": 19 }] },
+          { "rank": 3, "unlockLevel": 15, "mpCost": 8, "effects": [{ "kind": "heal", "amount": 24 }] }
+        ]
+      },
+      {
+        "id": "plaguedoc-blinding-vial",
+        "name": "Blinding Vial",
+        "description": "A vial of caustic powder, dealing damage and possibly blinding the target — a blinded target's own attacks miss far more often.",
+        "mpCost": 7,
+        "target": "singleEnemy",
+        "effects": [
+          { "kind": "damage", "amount": 4 },
+          { "kind": "applyStatusEffect", "statusEffectId": "blinded", "chance": 0.7 }
+        ],
+        "slot": 3,
+        "unlockLevel": 10,
+        "cooldownTurns": 2,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 10,
+            "mpCost": 7,
+            "effects": [
+              { "kind": "damage", "amount": 4 },
+              { "kind": "applyStatusEffect", "statusEffectId": "blinded", "chance": 0.7 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 25,
+            "mpCost": 8,
+            "effects": [
+              { "kind": "damage", "amount": 5 },
+              { "kind": "applyStatusEffect", "statusEffectId": "blinded", "chance": 0.8 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 45,
+            "mpCost": 9,
+            "effects": [
+              { "kind": "damage", "amount": 7 },
+              { "kind": "applyStatusEffect", "statusEffectId": "blinded", "chance": 0.9 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "plaguedoc-toxic-fog",
+        "name": "Spreading Toxic Fog",
+        "description": "Spreads a toxic fog over the whole enemy group, dealing damage and possibly poisoning/weakening each of them.",
+        "mpCost": 12,
+        "target": "allEnemies",
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.6 },
+          { "kind": "applyStatusEffect", "statusEffectId": "weakened", "chance": 0.4 }
+        ],
+        "slot": 4,
+        "unlockLevel": 20,
+        "cooldownTurns": 3,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 20,
+            "mpCost": 12,
+            "effects": [
+              { "kind": "damage", "amount": 5 },
+              { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.6 },
+              { "kind": "applyStatusEffect", "statusEffectId": "weakened", "chance": 0.4 }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 50,
+            "mpCost": 13,
+            "effects": [
+              { "kind": "damage", "amount": 6 },
+              { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.7 },
+              { "kind": "applyStatusEffect", "statusEffectId": "weakened", "chance": 0.5 }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 75,
+            "mpCost": 14,
+            "effects": [
+              { "kind": "damage", "amount": 8 },
+              { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.8 },
+              { "kind": "applyStatusEffect", "statusEffectId": "weakened", "chance": 0.6 }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "plaguedoc-total-plague",
+        "name": "Total Plague",
+        "description": "Unleashes the full plague over the battlefield: heals + cures allies, damages and afflicts enemies with poison and fire. Always hits, effectiveness reduced by fear.",
+        "mpCost": 22,
+        "target": "allAlliesAndEnemies",
+        "effectsByRelation": {
+          "ally": [
+            { "kind": "heal", "amount": 20 },
+            { "kind": "removeStatusEffect" }
+          ],
+          "enemy": [
+            { "kind": "damage", "amount": 10 },
+            { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.8 },
+            { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.8 }
+          ]
+        },
+        "slot": 5,
+        "unlockLevel": 35,
+        "isUltimate": true,
+        "cooldownTurns": 5,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 35,
+            "mpCost": 22,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 20 },
+                { "kind": "removeStatusEffect" }
+              ],
+              "enemy": [
+                { "kind": "damage", "amount": 10 },
+                { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.8 },
+                { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.8 }
+              ]
+            }
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 70,
+            "mpCost": 23,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 25 },
+                { "kind": "removeStatusEffect" }
+              ],
+              "enemy": [
+                { "kind": "damage", "amount": 13 },
+                { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.85 },
+                { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.85 }
+              ]
+            }
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 100,
+            "mpCost": 24,
+            "effectsByRelation": {
+              "ally": [
+                { "kind": "heal", "amount": 31 },
+                { "kind": "removeStatusEffect" }
+              ],
+              "enemy": [
+                { "kind": "damage", "amount": 16 },
+                { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.9 },
+                { "kind": "applyStatusEffect", "statusEffectId": "burning", "chance": 0.9 }
+              ]
+            }
+          }
+        ]
       }
     ]
   }
