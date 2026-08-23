@@ -84,7 +84,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds...) | `src/data/balanceConfig.ts` |
-| `data/sprites.json` | Pixel-art (character grid + palette) for 4 classes + 15 monster archetypes + 1 shared boss | `src/ui/sprites.ts` |
+| `data/sprites.json` | Pixel-art (character grid + palette) for the 4 classes + every monster archetype, with dedicated elite/boss variants for the guard-room archetypes | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI | `src/data/strings.ts` |
 
 ## Floor structure — generated at runtime
@@ -123,9 +123,11 @@ Skeleton Guard, bosses tinted red). HP changes color by threshold
 A dedicated panel right under the header, showing the party of 4 characters
 (left) and the monsters/boss in the current room (right), rendered as pixel
 art: **1 pixel = 1 character cell** (a space with a background color, no
-visible glyph). Regular characters/monsters are up to **10 pixels** tall,
-bosses up to **13 pixels** tall (and wider — 11 columns vs 9); every unit is
-bottom-aligned within a shared 13-pixel frame. Below each sprite are 2 lines
+visible glyph). Characters/regular monsters are up to **10 pixels** tall,
+elites up to **11 pixels**, bosses up to **13 pixels** (`MAX_UNIT_HEIGHT`/
+`MAX_ELITE_HEIGHT`/`MAX_BOSS_HEIGHT`, `src/ui/sprites.ts`) — every unit is
+rendered into the same fixed-width slot (`SLOT_WIDTH`, `src/ui/app.ts`) and
+bottom-aligned within a shared 13-pixel-tall frame. Below each sprite are 2 lines
 of text (abbreviation + current HP) — full detail (long names, MP, effects...)
 lives in the "Expedition"/"Monsters" panels below. Sprite data lives in
 `src/ui/sprites.ts`, with its own tests (`test/sprites.test.ts`) that catch
@@ -169,10 +171,17 @@ data/                  # design data as JSON — see "Design data" above
 src/
   types.ts            # runtime types, cross-referenced against ./dungeon-crawler-data-model.ts
   data/                # loaders for data/*.json + build logic (spawnMonster, floor layout generation, ...)
-    floorPatterns.ts   # generateFloorLayout(rng) — generates floor structure at runtime
-    levelGrowth.ts      # growthBonus(stat, level) by tier + elite/boss coefficients + expTiers
-    balanceConfig.ts    # shared balancing constants, read from data/balance-config.json
-    strings.ts          # UI text loader from data/strings.json
+    classes.ts          # data/classes.json loader — getClass, getSkill
+    monsters.ts          # data/monsters.json + data/monster-skills.json loader — spawnMonster, getArchetype, getMonsterSkill
+    statusEffects.ts     # data/status-effects.json loader — getStatusEffect
+    items.ts             # data/items.json loader — getItem, rollItemDrop
+    artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
+    events.ts            # data/events.json loader — getEvent, rollEvent
+    floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters
+    floorPatterns.ts     # generateFloorLayout(rng) — generates floor structure at runtime
+    levelGrowth.ts        # growthBonus(stat, level)/growthBonusForDepth by tier + elite/boss coefficients + expTiers
+    balanceConfig.ts      # shared balancing constants, read from data/balance-config.json
+    strings.ts            # UI text loader from data/strings.json
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, artifacts, save, game) — testable without the UI
   ui/theme.ts          # color palette + StyledText helpers (chips, HP/fear-based coloring)
   ui/sprites.ts        # loads pixel-art sprites from JSON + renders them into a fixed frame

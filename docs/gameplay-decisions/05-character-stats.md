@@ -11,9 +11,9 @@ Sections 1-4 (`01-class-skill.md`, `02-monster.md`, `03-survival-stats.md`, `04-
 
 ### MP
 - Not having enough MP to cover a skill's `mpCost` → that skill is **not selectable** at the action-selection step (validated by the caller/UI, the same way `usesPerCombat` is checked before the resolver is invoked — `docs/technical-decisions.md` §3); the resolver never encounters an insufficient-MP case.
-- MP does **not** auto-regenerate per action the way hunger/thirst auto-deplete — it only increases via a skill/item with a `restoreMp` effect, partially through the rest room (50% when choosing "Eat & Drink", 10% when choosing "Chat" — `03-survival-stats.md`, "Rest room" section), or fully refills on level-up (see below).
+- MP does **not** auto-regenerate per action the way hunger/thirst auto-deplete — it only increases via a skill/item with a `restoreMp` effect, partially through the rest room (`03-survival-stats.md`, "Rest room" section), or fully refills on level-up (see below).
 
 ### Growth by level
-- Level is shared across the whole party (no per-character XP tracking). Source of level gain: EXP accumulated from killing monsters — see `06-level-system.md` **§6.9**, kept separate from the dungeon floor level (§6.10). Max level is **100**; the full growth formula is in `06-level-system.md` §6.
+- Level is shared across the whole party (no per-character XP tracking). Source of level gain: EXP accumulated from killing monsters — see `06-level-system.md` **§6.9**, kept separate from the dungeon floor level (§6.10). Max level is capped by the `MAX_LEVEL` constant (`src/data/levelGrowth.ts`, see `06-level-system.md` §6); the full growth formula is in `06-level-system.md` §6.
 - `aggro` and `speed` **do not** grow with level — they stay at `baseAggro`/`baseSpeed` for the whole game.
 - On every level-up: current `hp`/`mp` are reset to **full (= the new maxHp/maxMp)**. Level-up trigger: "enough EXP to level up" (`06-level-system.md` §6.9) — leveling is not tied to descending a floor.

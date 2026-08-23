@@ -1,14 +1,35 @@
 {
   "name": "darkest-terminal",
   "version": "0.1.2",
-  "description": "Prototype: 1-floor playable slice of the terminal dungeon crawler design.",
+  "description": "Terminal roguelike dungeon crawler — turn-based combat, procedurally generated floors, permadeath. Runs on Bun + OpenTUI, playable via npx.",
   "type": "module",
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": "Nguyen Doan Quoc Nhat",
+  "homepage": "https://github.com/Nhat-TheDev/DarkestTerminal#readme",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@quocnhatthedev/Nhat-TheDev/DarkestTerminal.git"
+    "url": "git+https://github.com/Nhat-TheDev/DarkestTerminal.git"
   },
+  "bugs": {
+    "url": "https://github.com/Nhat-TheDev/DarkestTerminal/issues"
+  },
+  "keywords": [
+    "game",
+    "terminal-game",
+    "terminal",
+    "cli-game",
+    "cli",
+    "tui",
+    "opentui",
+    "roguelike",
+    "rogue",
+    "dungeon-crawler",
+    "dungeon",
+    "rpg",
+    "turn-based",
+    "ascii",
+    "bun"
+  ],
   "engines": {
     "bun": ">=1.0.0"
   },

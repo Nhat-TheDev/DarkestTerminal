@@ -15,11 +15,11 @@ existing gameplay.
 
 ### 1.1 Gameplay overview
 - Genre: roguelike dungeon crawler, running on a terminal (TUI)
-- A party of 4 characters (chosen from 4 classes at the start of the game), descending progressively through dungeon floors
+- A party of characters (fixed size, `PARTY_SIZE` in `src/ui/characterSelect.ts`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
 - Main loop: fighting monsters (combat) — exploring (moving between rooms) — surviving (survival management)
 
 ### 1.2 Combat
-- Turn-based by round, each round has 2 phases: **command** (the player picks an action + target for all 4 characters up front, without seeing what the monsters will do) then **execution** (characters and monsters act in turn order by **speed**, highest first)
+- Turn-based by round, each round has 2 phases: **command** (the player picks an action + target for every party member up front, without seeing what the monsters will do) then **execution** (characters and monsters act in turn order by **speed**, highest first)
 - **True permadeath** — a dead character is gone for good, no revival
 - The full 2-phase algorithm (dead-before-turn targeting rule, when MP is deducted, etc.): **[`technical-decisions.md`](./technical-decisions.md)** §2
 - HP/MP/attack/defense/aggro/speed stats + per-level growth formulas: **[`gameplay-decisions/05-character-stats.md`](./gameplay-decisions/05-character-stats.md)** §5
@@ -36,14 +36,14 @@ existing gameplay.
 - The specific floor-generation algorithm: **[`technical-decisions.md`](./technical-decisions.md)** §1
 
 ### 1.5 Class & Skill
-- Each class has **6 skills total**: 1 **basic attack** (free, shares the same structure across all classes, deals pure weapon damage) + **5 class-specific skills**, starting with 2 unlocked and gradually unlocking the remaining 3 as the character levels up
-- 6 stats shape each class: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first)
-- Some class-specific skills also have a **per-turn cooldown**
-- 4 classes, with full stat tables + skill content: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte)
+- Each class has a shared **basic attack** (free, same structure across all classes, deals pure weapon damage) + several class-specific skills, defined in `data/classes.json`, unlocked gradually as the character levels up (`unlockLevel` field)
+- Class stats: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first) — values in `data/classes.json`
+- Some class-specific skills also have a **per-turn cooldown** (`cooldownTurns` field)
+- Full stat tables + skill content for each class: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte)
 
 ### 1.6 Item & Artifact
 - **Consumable items**: help with survival (hunger/thirst/fear) and restore HP/MP, usable in or out of combat, dropped randomly by monsters
-- **Artifact**: a relic **equipped** on one specific character (max 3 per character, effects only apply to whoever has it equipped), permanent for the run, with multiple rarity tiers, dropped by Elites/Bosses/event rooms
+- **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, permanent for the run, with multiple rarity tiers, dropped by Elites/Bosses/event rooms
 - Full spec (item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.7 Event room
@@ -88,11 +88,11 @@ Main type groups:
 ## 5. Detailed decisions (split into separate files)
 
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
-- The 4 class names + the 6-stat table + the full list of 6 skills per class (Vanguard, Mage, Rogue, Acolyte)
-- Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns
-- Specific numeric thresholds for fear/hunger/thirst and the 4 fear tiers, and their effect back on combat
-- Level 1-100 system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped)
-- Elite (found on most floors) is separate from a true Boss (every 5 floors) — both have their own skill sets
+- The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte) — `data/classes.json`
+- Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns — `data/monsters.json`
+- Fear/hunger/thirst thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
+- Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`
+- Elite (found on most floors) is separate from a true Boss (found at a fixed floor interval, `data/level-growth.json` field `bossFloorInterval`) — both have their own skill sets
 - Consumable items + equippable Artifacts, rarity, drop sources
 - Event room: event types, split by rarity tier
 
