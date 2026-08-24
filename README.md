@@ -41,6 +41,7 @@ bun test        # unit tests for the engine (resolver, combat, aggro, level, flo
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
 bun run sprite-editor  # dev tool: edit pixel-art sprites in the browser (tools/sprite-editor/)
+bun run rebalance-editor  # dev tool: inspect/compare character & monster stats, damage, and level-by-depth projections (tools/rebalance-editor/)
 ```
 
 ## What's implemented
@@ -193,6 +194,7 @@ src/
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
   sprite-editor/        # dev tool: edit pixel-art sprites in the browser (bun run sprite-editor)
+  rebalance-editor/     # dev tool: inspect/compare character & monster stats, damage, and level-by-depth projections (bun run rebalance-editor)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless smoke test: boot + play a full run via simulated keyboard input

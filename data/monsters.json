@@ -7,7 +7,9 @@
     "baseDefense": 1,
     "baseSpeed": 9,
     "aiPattern": "erratic",
-    "skillIds": ["bite"],
+    "skillIds": [
+      "bite"
+    ],
     "expReward": 6,
     "powerTier": "weak",
     "actionWeights": {
@@ -25,7 +27,9 @@
     "baseDefense": 1,
     "baseSpeed": 18,
     "aiPattern": "aggressive",
-    "skillIds": ["blood-drain"],
+    "skillIds": [
+      "blood-drain"
+    ],
     "expReward": 6,
     "powerTier": "weak",
     "actionWeights": {
@@ -43,7 +47,9 @@
     "baseDefense": 1,
     "baseSpeed": 5,
     "aiPattern": "erratic",
-    "skillIds": ["acid-spit"],
+    "skillIds": [
+      "acid-spit"
+    ],
     "expReward": 6,
     "powerTier": "weak",
     "actionWeights": {
@@ -61,7 +67,9 @@
     "baseDefense": 4,
     "baseSpeed": 8,
     "aiPattern": "aggressive",
-    "skillIds": ["bone-throw"],
+    "skillIds": [
+      "bone-throw"
+    ],
     "expReward": 9,
     "powerTier": "medium",
     "actionWeights": {
@@ -79,7 +87,9 @@
     "baseDefense": 6,
     "baseSpeed": 4,
     "aiPattern": "defensive",
-    "skillIds": ["regeneration"],
+    "skillIds": [
+      "regeneration"
+    ],
     "expReward": 12,
     "powerTier": "strong",
     "actionWeights": {
@@ -97,7 +107,9 @@
     "baseDefense": 2,
     "baseSpeed": 17,
     "aiPattern": "erratic",
-    "skillIds": ["poison-bite"],
+    "skillIds": [
+      "poison-bite"
+    ],
     "expReward": 8,
     "powerTier": "medium",
     "actionWeights": {
@@ -115,7 +127,9 @@
     "baseDefense": 3,
     "baseSpeed": 11,
     "aiPattern": "aggressive",
-    "skillIds": ["quick-bite"],
+    "skillIds": [
+      "quick-bite"
+    ],
     "expReward": 9,
     "powerTier": "medium",
     "actionWeights": {
@@ -133,7 +147,9 @@
     "baseDefense": 1,
     "baseSpeed": 15,
     "aiPattern": "aggressive",
-    "skillIds": ["web-spit"],
+    "skillIds": [
+      "web-spit"
+    ],
     "expReward": 9,
     "powerTier": "medium",
     "actionWeights": {
@@ -151,7 +167,9 @@
     "baseDefense": 3,
     "baseSpeed": 12,
     "aiPattern": "erratic",
-    "skillIds": ["arrow-shot"],
+    "skillIds": [
+      "arrow-shot"
+    ],
     "expReward": 10,
     "powerTier": "medium",
     "actionWeights": {
@@ -169,7 +187,9 @@
     "baseDefense": 7,
     "baseSpeed": 7,
     "aiPattern": "defensive",
-    "skillIds": ["guard-stance"],
+    "skillIds": [
+      "guard-stance"
+    ],
     "expReward": 13,
     "powerTier": "strong",
     "actionWeights": {

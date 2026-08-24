@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Darkest Terminal — Rebalance Editor</title>
+<style>
+  :root {
+    --bg: #100d0a;
+    --panel-bg: #171310;
+    --border: #4a3a2a;
+    --border-accent: #8a5a2a;
+    --text: #d8cbb0;
+    --dim: #8a7d68;
+    --title: #c9a227;
+    --danger: #c0392b;
+    --ok: #5fa85f;
+    --accent: #7aa2c9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 15px;
+    color: var(--title);
+    margin: 0;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  #status { font-size: 12px; color: var(--dim); }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  nav {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  nav button {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid transparent;
+    border-bottom: none;
+    padding: 7px 14px;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+  nav button.active {
+    color: var(--title);
+    border-color: var(--border);
+    background: var(--panel-bg);
+  }
+  main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  section.panel { display: none; }
+  section.panel.active { display: block; }
+  fieldset {
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    border-radius: 4px;
+    padding: 10px 14px 14px;
+    margin: 0 0 14px;
+  }
+  legend {
+    color: var(--title);
+    padding: 0 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 3px; min-width: 130px; }
+  label { color: var(--dim); font-size: 11px; }
+  select, input[type="text"], input[type="number"] {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 6px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  input[type="range"] { width: 160px; }
+  button.action {
+    background: var(--border);
+    color: var(--text);
+    border: 1px solid var(--border-accent);
+    border-radius: 3px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button.action:hover { background: var(--border-accent); }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 4px; font-size: 12px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--dim); font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--dim); }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    margin-left: 4px;
+  }
+  .tag.magic { color: var(--accent); border-color: var(--accent); }
+  .tag.locked { color: var(--danger); border-color: var(--danger); }
+  .tag.boss { color: var(--danger); border-color: var(--danger); }
+  .tag.elite { color: var(--title); border-color: var(--title); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .card {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 12px; color: var(--title); font-weight: normal; letter-spacing: 0.03em; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 14px; }
+  .stat-grid div { font-size: 11px; overflow-wrap: anywhere; }
+  .stat-grid b { color: var(--text); font-variant-numeric: tabular-nums; display: block; font-size: 14px; }
+  .hint { color: var(--dim); font-size: 11px; margin: 4px 0 10px; line-height: 1.5; }
+  .big { color: var(--title); font-size: 16px; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 13px; margin: 8px 0; padding: 4px 0; }
+  details summary:hover { color: var(--text); }
+  .scroll-y { max-height: 420px; overflow-y: auto; }
+  .edit-form { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin: 8px 0; }
+  .edit-form .field { min-width: 110px; }
+  .edit-form input[type="number"] { width: 100%; }
+  .save-status { font-size: 11px; margin-left: 8px; }
+  .save-status.ok { color: var(--ok); }
+  .save-status.error { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚖ Rebalance Editor</h1>
+  <div class="field">
+    <label for="global-fear-tier">Fear tier (for character-sourced damage)</label>
+    <select id="global-fear-tier">
+      <option value="1">1 — Calm (no penalty)</option>
+      <option value="2">2 — Uneasy (-10% acc)</option>
+      <option value="3">3 — Panicked (-20% acc, -15% dmg)</option>
+      <option value="4">4 — Broken (-20% acc, -15% dmg, 25% lose-control)</option>
+    </select>
+  </div>
+  <span id="status"></span>
+</header>
+
+<nav>
+  <button data-panel="simulator" class="active">Simulator (Char × Monster)</button>
+  <button data-panel="damage">Damage Calc</button>
+  <button data-panel="floor">Floor ↔ Level</button>
+  <button data-panel="reference">Reference</button>
+</nav>
+
+<main>
+
+  <!-- ============================== SIMULATOR (Character × Monster × Matchup) ============================== -->
+  <section class="panel active" id="panel-simulator">
+    <fieldset>
+      <legend>Simulate a character vs. a monster — both directions of damage</legend>
+      <div class="row">
+        <div class="field">
+          <label for="char-class">Class</label>
+          <select id="char-class"></select>
+        </div>
+        <div class="field">
+          <label for="char-level">Level (1-100)</label>
+          <input type="number" id="char-level" min="1" max="100" value="1" />
+        </div>
+        <div class="field">
+          <input type="range" id="char-level-slider" min="1" max="100" value="1" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="mon-archetype">Archetype</label>
+          <select id="mon-archetype"></select>
+        </div>
+        <div class="field">
+          <label for="mon-depth">Floor depth</label>
+          <input type="number" id="mon-depth" min="1" value="1" />
+        </div>
+        <div class="field">
+          <label for="mon-tier">Tier</label>
+          <select id="mon-tier">
+            <option value="normal">Normal</option>
+            <option value="elite">Elite</option>
+            <option value="boss">Boss</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="two-col" id="overview-output"></div>
+
+    <div id="char-skills-output"></div>
+    <div id="mon-actions-output"></div>
+
+    <div id="round-summary-output"></div>
+  </section>
+
+  <!-- ============================== DAMAGE CALC ============================== -->
+  <section class="panel" id="panel-damage">
+    <fieldset>
+      <legend>Freeform damage calculator</legend>
+      <p class="hint">Raw access to <code>mitigatedOffense(offense, defense) = offense − offense × (defense / X) − defense / Y</code> and the full damage pipeline (fear penalty, %maxHp, hits-to-kill) — punch in any numbers, no character/monster lookup needed. Uses the <b>Fear tier</b> selector in the header above.</p>
+      <div class="row">
+        <div class="field"><label for="dmg-offense">Offense (attack or magicPower)</label><input type="number" id="dmg-offense" value="20" /></div>
+        <div class="field"><label for="dmg-defense">Target defense</label><input type="number" id="dmg-defense" value="10" /></div>
+        <div class="field"><label for="dmg-amount">Skill amount</label><input type="number" id="dmg-amount" value="10" /></div>
+        <div class="field"><label for="dmg-ignore">Ignore defense %</label><input type="number" id="dmg-ignore" value="0" /></div>
+        <div class="field"><label for="dmg-source"><input type="checkbox" id="dmg-source" checked /> Source is a character (fear applies)</label></div>
+        <div class="field"><label for="dmg-maxhp">Target maxHp (optional)</label><input type="number" id="dmg-maxhp" placeholder="—" /></div>
+        <button class="action" id="dmg-run">Calculate</button>
+      </div>
+    </fieldset>
+    <div id="dmg-output"></div>
+  </section>
+
+  <!-- ============================== FLOOR <-> LEVEL ============================== -->
+  <section class="panel" id="panel-floor">
+    <fieldset>
+      <legend>Floor depth ↔ average character level</legend>
+      <p class="hint">
+        Reproduces the methodology in <code>docs/gameplay-decisions/06-level-system.md</code> §6.7: replays the
+        real <code>createFloor(rng, depth)</code> floor generator from floor 1 onward, summing every monster's
+        <code>expReward</code> (combat rooms + the guard room — event-branch rooms spawn no combat monsters, so this
+        already matches "1 path through" with no extra bookkeeping), across multiple seeds, averaged.
+        This is a live simulation against the current data — not a hand-maintained table.
+      </p>
+      <div class="row">
+        <div class="field"><label for="floor-seeds">Seeds to average</label><input type="number" id="floor-seeds" min="1" max="500" value="30" /></div>
+        <div class="field"><label for="floor-maxdepth">Max depth</label><input type="number" id="floor-maxdepth" min="1" max="500" value="60" /></div>
+        <button class="action" id="floor-run">Run simulation</button>
+      </div>
+    </fieldset>
+    <div id="floor-output"></div>
+  </section>
+
+  <!-- ============================== REFERENCE ============================== -->
+  <section class="panel" id="panel-reference">
+    <div id="reference-output"></div>
+  </section>
+
+</main>
+
+<script>
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+let META = null;
+
+function setStatus(text, kind) {
+  const el = $("#status");
+  el.textContent = text;
+  el.className = kind || "";
+}
+
+async function api(path) {
+  const res = await fetch(path);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
+async function apiPost(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
+function fmt(n, digits) {
+  if (n === null || n === undefined) return "—";
+  if (digits === undefined) digits = Number.isInteger(n) ? 0 : 1;
+  return Number(n).toFixed(digits).replace(/\.0+$/, "");
+}
+
+function pct(n) {
+  return n === null || n === undefined ? "—" : fmt(n, 1) + "%";
+}
+
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "text") node.textContent = v;
+    else if (k === "html") node.innerHTML = v;
+    else node.setAttribute(k, v);
+  }
+  for (const child of children || []) node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+  return node;
+}
+
+function editField(id, label, value) {
+  return el("div", { class: "field" }, [el("label", { text: label }), el("input", { type: "number", id, value: String(value), step: "any" })]);
+}
+
+/** Wires a Save button: reads `readBody()` on click, POSTs it to `apiPath`, then reloads the page on success so the recomputed catalog reflects the edit. `readBody` may throw to abort with a client-side error message. */
+function wireSaveButton(saveBtn, status, apiPath, readBody) {
+  saveBtn.addEventListener("click", async () => {
+    status.textContent = "Saving...";
+    status.className = "save-status";
+    try {
+      await apiPost(apiPath, readBody());
+      status.textContent = "Saved — reloading…";
+      status.className = "save-status ok";
+      setTimeout(() => location.reload(), 1200);
+    } catch (err) {
+      status.textContent = "Error: " + err.message;
+      status.className = "save-status error";
+    }
+  });
+}
+
+function effectSummary(effect) {
+  const parts = [effect.kind];
+  if (effect.amount !== undefined) parts.push("amount " + effect.amount);
+  if (effect.statusEffectId) parts.push("→ " + effect.statusEffectId);
+  if (effect.chance !== undefined) parts.push("(" + Math.round(effect.chance * 100) + "% chance)");
+  if (effect.combatStat) parts.push(effect.combatStat + " " + (effect.amount > 0 ? "+" : "") + effect.amount);
+  if (effect.ignoreDefensePercent) parts.push("ignores " + effect.ignoreDefensePercent + "% defense");
+  return parts.join(" ");
+}
+
+function skillTags(skill) {
+  const tags = [];
+  if (skill.isMagic) tags.push('<span class="tag magic">magic</span>');
+  if (skill.isUltimate) tags.push('<span class="tag">ultimate</span>');
+  if (skill.isBuff) tags.push('<span class="tag">buff</span>');
+  if (skill.cooldownTurns) tags.push('<span class="tag">cd ' + skill.cooldownTurns + "</span>");
+  if (skill.usesPerCombat) tags.push('<span class="tag">uses ' + skill.usesPerCombat + "/combat</span>");
+  return tags.join(" ");
+}
+
+// --------------------------------------------------------------------------
+// Bootstrap: load catalog, populate dropdowns
+// --------------------------------------------------------------------------
+
+async function boot() {
+  try {
+    META = await api("/api/meta");
+    setStatus("Catalog loaded: " + META.classes.length + " classes, " + META.monsters.length + " monster archetypes.", "ok");
+  } catch (err) {
+    setStatus("Failed to load catalog: " + err.message, "error");
+    return;
+  }
+
+  for (const sel of [$("#char-class")]) {
+    for (const c of META.classes) sel.appendChild(el("option", { value: c.id, text: c.name + " (" + c.id + ")" }));
+  }
+  for (const sel of [$("#mon-archetype")]) {
+    for (const m of META.monsters) {
+      const label = m.name + (m.guardOnly ? " [guard-only]" : "") + (m.powerTier ? " [" + m.powerTier + "]" : "") + (m.isGuardCapable ? " ★elite/boss-capable" : "");
+      sel.appendChild(el("option", { value: m.id, text: label }));
+    }
+  }
+
+  $("#char-level-slider").addEventListener("input", (e) => { $("#char-level").value = e.target.value; renderSimulator(); });
+  $("#char-level").addEventListener("input", (e) => { $("#char-level-slider").value = e.target.value; renderSimulator(); });
+  $("#char-class").addEventListener("change", renderSimulator);
+  $("#global-fear-tier").addEventListener("change", renderSimulator);
+
+  $("#mon-archetype").addEventListener("change", () => { syncTierOptions("mon-archetype", "mon-tier"); renderSimulator(); });
+  $("#mon-depth").addEventListener("input", renderSimulator);
+  $("#mon-tier").addEventListener("change", renderSimulator);
+
+  syncTierOptions("mon-archetype", "mon-tier");
+
+  $("#dmg-run").addEventListener("click", runDamageCalc);
+  $("#floor-run").addEventListener("click", runFloorSim);
+
+  for (const btn of $$("nav button")) {
+    btn.addEventListener("click", () => {
+      for (const b of $$("nav button")) b.classList.remove("active");
+      for (const p of $$("section.panel")) p.classList.remove("active");
+      btn.classList.add("active");
+      $("#panel-" + btn.dataset.panel).classList.add("active");
+    });
+  }
+
+  renderReference();
+  renderSimulator();
+}
+
+/** Disables (rather than hides, so the reason stays visible) the Elite/Boss <option>s in `tierSelId` when the
+ * currently-selected archetype in `archetypeSelId` has no elite/boss skill kit — matches the real constraint in
+ * computeMonster()/spawnMonster(). Falls back to "normal" if the current selection just became invalid. */
+function syncTierOptions(archetypeSelId, tierSelId) {
+  const archetypeSel = $("#" + archetypeSelId);
+  const tierSel = $("#" + tierSelId);
+  const archetype = META.monsters.find((m) => m.id === archetypeSel.value);
+  const capable = archetype ? archetype.isGuardCapable : false;
+  const guardOnly = archetype ? archetype.guardOnly : false;
+  for (const opt of $$("option", tierSel)) {
+    if (opt.value === "elite" || opt.value === "boss") {
+      opt.disabled = !capable;
+      opt.textContent = (opt.value === "elite" ? "Elite" : "Boss") + (capable ? "" : " (archetype has no elite/boss kit)");
+    }
+    if (opt.value === "normal") {
+      opt.disabled = guardOnly;
+      opt.textContent = "Normal" + (guardOnly ? " (this archetype never spawns at normal tier — guard-only)" : "");
+    }
+  }
+  if (!capable && tierSel.value !== "normal") tierSel.value = "normal";
+  if (guardOnly && tierSel.value === "normal") tierSel.value = "elite";
+}
+
+function fearTier() {
+  return Number($("#global-fear-tier").value);
+}
+
+// --------------------------------------------------------------------------
+// Parameter editors — edit base stats/weights, save straight to the JSON
+// files under data/ (same files the real game reads), same pattern as
+// tools/sprite-editor. The dev server runs with `bun --watch`, so a save
+// restarts it and the reload below picks up the fresh values.
+// --------------------------------------------------------------------------
+
+function buildClassEditCard(classId, data) {
+  const clsMeta = META.classes.find((c) => c.id === classId);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Edit — saves to data/classes.json" })]);
+
+  card.appendChild(el("p", { class: "hint", text: "Base stats" }));
+  card.appendChild(
+    el("div", { class: "edit-form" }, [
+      editField("edit-baseAttack", "baseAttack", data.base.attack),
+      editField("edit-baseDefense", "baseDefense", data.base.defense),
+      editField("edit-baseMaxHp", "baseMaxHp", data.base.maxHp),
+      editField("edit-baseMaxMp", "baseMaxMp", data.base.maxMp),
+      editField("edit-baseMagicPower", "baseMagicPower", data.base.magicPower),
+      editField("edit-baseAggro", "baseAggro", data.final.aggro),
+      editField("edit-baseSpeed", "baseSpeed", data.final.speed),
+    ])
+  );
+
+  const growthIds = ["edit-gwAttack", "edit-gwDefense", "edit-gwMaxHp", "edit-gwMaxMp", "edit-gwMagicPower"];
+  const growthTotalEl = el("b", { text: fmt(clsMeta.growthWeightTotal, 2) });
+  function recomputeGrowthTotal() {
+    const total = growthIds.reduce((sum, id) => sum + (Number($("#" + id).value) || 0), 0);
+    growthTotalEl.textContent = fmt(total, 2);
+  }
+  card.appendChild(el("p", { class: "hint" }, ["Growth weights — total: ", growthTotalEl]));
+  const growthForm = el("div", { class: "edit-form" }, [
+    editField("edit-gwAttack", "growth: attack", clsMeta.growthWeights.attack),
+    editField("edit-gwDefense", "growth: defense", clsMeta.growthWeights.defense),
+    editField("edit-gwMaxHp", "growth: maxHp", clsMeta.growthWeights.maxHp),
+    editField("edit-gwMaxMp", "growth: maxMp", clsMeta.growthWeights.maxMp),
+    editField("edit-gwMagicPower", "growth: magicPower", clsMeta.growthWeights.magicPower),
+  ]);
+  for (const id of growthIds) $("#" + id, growthForm).addEventListener("input", recomputeGrowthTotal);
+  card.appendChild(growthForm);
+
+  const saveRow = el("div", { class: "edit-form" });
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(saveBtn, status, "/api/edit/class", () => ({
+    classId,
+    base: {
+      baseAttack: Number($("#edit-baseAttack").value),
+      baseDefense: Number($("#edit-baseDefense").value),
+      baseMaxHp: Number($("#edit-baseMaxHp").value),
+      baseMaxMp: Number($("#edit-baseMaxMp").value),
+      baseMagicPower: Number($("#edit-baseMagicPower").value),
+      baseAggro: Number($("#edit-baseAggro").value),
+      baseSpeed: Number($("#edit-baseSpeed").value),
+    },
+    growthWeights: {
+      attack: Number($("#edit-gwAttack").value),
+      defense: Number($("#edit-gwDefense").value),
+      maxHp: Number($("#edit-gwMaxHp").value),
+      maxMp: Number($("#edit-gwMaxMp").value),
+      magicPower: Number($("#edit-gwMagicPower").value),
+    },
+  }));
+  saveRow.appendChild(saveBtn);
+  saveRow.appendChild(status);
+  card.appendChild(saveRow);
+  return card;
+}
+
+// --------------------------------------------------------------------------
+// Simulator panel — pick a character + a monster, then Preview any of
+// their skills/actions straight against each other (no manual target entry).
+// --------------------------------------------------------------------------
+
+/** A skill/action row's Preview button — always targets the actual selected opponent (monster.final for character skills, character.final for monster actions), never a hand-typed defense/maxHp. */
+function makePreviewButton(skillId, source, target, sourceIsCharacter, characterLevel, outBoxId) {
+  const btn = el("button", { class: "action", text: "Preview →" });
+  btn.addEventListener("click", async () => {
+    const box = $("#" + outBoxId);
+    try {
+      const url =
+        `/api/skill-preview?skillId=${encodeURIComponent(skillId)}&sourceAttack=${source.attack}` +
+        (source.magicPower !== undefined ? `&sourceMagicPower=${source.magicPower}` : "") +
+        `&targetDefense=${target.defense}` +
+        (target.maxHp !== undefined && target.maxHp !== null ? `&targetMaxHp=${target.maxHp}` : "") +
+        `&fearTier=${fearTier()}&sourceIsCharacter=${sourceIsCharacter}` +
+        (characterLevel !== undefined ? `&characterLevel=${characterLevel}` : "");
+      const preview = await api(url);
+      box.innerHTML = "";
+      box.appendChild(previewTable(preview));
+    } catch (err) {
+      box.innerHTML = "";
+      box.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
+    }
+  });
+  return btn;
+}
+
+function previewTable(preview) {
+  const table = el("table", {}, [
+    el("tr", {}, [
+      el("th", { text: preview.skillName }),
+      el("th", { class: "num", text: "Raw dmg (no def)" }),
+      el("th", { class: "num", text: "Mitigated off." }),
+      el("th", { class: "num", text: "Final dmg" }),
+      el("th", { class: "num", text: "Def −%" }),
+      el("th", { class: "num", text: "% target maxHp" }),
+      el("th", { class: "num", text: "Hits to kill" }),
+      el("th", { class: "num", text: "Hit chance" }),
+      el("th", { class: "num", text: "Expected dmg" }),
+    ]),
+  ]);
+  for (const e of preview.perEffect) {
+    table.appendChild(
+      el("tr", {}, [
+        el("td", { text: "amount " + e.effectAmount + (e.effectChancePercent !== null ? " (" + fmt(e.effectChancePercent) + "% proc)" : "") }),
+        el("td", { class: "num", text: fmt(e.unmitigatedTotal, 1) }),
+        el("td", { class: "num", text: fmt(e.mitigatedOffense, 1) }),
+        el("td", { class: "num big", text: fmt(e.finalDamage) }),
+        el("td", { class: "num muted", text: "−" + pct(e.defenseReductionPercent) }),
+        el("td", { class: "num", text: pct(e.percentOfTargetMaxHp) }),
+        el("td", { class: "num", text: e.hitsToKill === null ? "—" : String(e.hitsToKill) }),
+        el("td", { class: "num", text: pct(e.hitChancePercent) }),
+        el("td", { class: "num", text: fmt(e.expectedDamage, 1) }),
+      ])
+    );
+  }
+  const total = el("p", { class: "hint" });
+  total.innerHTML = `Total (all effects, weighted by proc chance): <b>${fmt(preview.totalFinalDamage, 1)}</b> dmg if everything procs · <b>${fmt(preview.totalExpectedDamage, 1)}</b> expected.`;
+  const wrap = el("div", {}, [table, total]);
+  return wrap;
+}
+
+function statTable(stats, base, growthUnweighted, growthWeighted, final) {
+  const table = el("table", {}, [
+    el("tr", {}, [el("th", { text: "Stat" }), el("th", { class: "num", text: "Base" }), el("th", { class: "num", text: "Growth (curve)" }), el("th", { class: "num", text: "Growth (weighted)" }), el("th", { class: "num", text: "Final" })]),
+  ]);
+  for (const stat of stats) {
+    table.appendChild(
+      el("tr", {}, [
+        el("td", { text: stat }),
+        el("td", { class: "num", text: fmt(base[stat]) }),
+        el("td", { class: "num muted", text: growthUnweighted ? "+" + fmt(growthUnweighted[stat]) : "—" }),
+        el("td", { class: "num", text: growthWeighted ? "+" + fmt(growthWeighted[stat]) : "—" }),
+        el("td", { class: "num big", text: fmt(final[stat]) }),
+      ])
+    );
+  }
+  return table;
+}
+
+function buildMonsterEditCard(archetypeId, data, tier) {
+  const card = el("div", { class: "card" }, [el("h3", { text: "Edit — saves to data/monsters.json" })]);
+
+  card.appendChild(el("p", { class: "hint", text: "Base stats" }));
+  card.appendChild(
+    el("div", { class: "edit-form" }, [
+      editField("edit-mon-baseHp", "baseHp", data.base.hp),
+      editField("edit-mon-baseAttack", "baseAttack", data.base.attack),
+      editField("edit-mon-baseDefense", "baseDefense", data.base.defense),
+      editField("edit-mon-baseSpeed", "baseSpeed", data.base.speed),
+      editField("edit-mon-expReward", "expReward", data.final.expReward),
+    ])
+  );
+
+  const weightIds = [];
+  if (data.actionWeights) {
+    const weightTotalEl = el("b", { text: fmt(Object.values(data.actionWeights).reduce((a, b) => a + (b || 0), 0)) });
+    function recomputeWeightTotal() {
+      const total = weightIds.reduce((sum, { id }) => sum + (Number($("#" + id).value) || 0), 0);
+      weightTotalEl.textContent = fmt(total);
+    }
+    card.appendChild(el("p", { class: "hint" }, ["Weights (tier: " + tier + ") — total: ", weightTotalEl, " (should sum to 100)"]));
+    const weightForm = el("div", { class: "edit-form" });
+    for (const [key, value] of Object.entries(data.actionWeights)) {
+      const id = "edit-mon-weight-" + key;
+      weightIds.push({ id, key });
+      weightForm.appendChild(editField(id, key, value));
+    }
+    for (const { id } of weightIds) $("#" + id, weightForm).addEventListener("input", recomputeWeightTotal);
+    card.appendChild(weightForm);
+  }
+
+  const saveRow = el("div", { class: "edit-form" });
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(saveBtn, status, "/api/edit/monster", () => {
+    const body = {
+      archetypeId,
+      base: {
+        baseHp: Number($("#edit-mon-baseHp").value),
+        baseAttack: Number($("#edit-mon-baseAttack").value),
+        baseDefense: Number($("#edit-mon-baseDefense").value),
+        baseSpeed: Number($("#edit-mon-baseSpeed").value),
+        expReward: Number($("#edit-mon-expReward").value),
+      },
+    };
+    if (weightIds.length) {
+      const tierPatch = {};
+      for (const { id, key } of weightIds) tierPatch[key] = Number($("#" + id).value);
+      body.actionWeights = { [tier]: tierPatch };
+    }
+    return body;
+  });
+  saveRow.appendChild(saveBtn);
+  saveRow.appendChild(status);
+  card.appendChild(saveRow);
+  return card;
+}
+
+// --------------------------------------------------------------------------
+// Overview cards — compact stats for both sides, with the full breakdown
+// and the parameter-edit form tucked into a collapsed <details> so the
+// panel isn't dominated by editing controls most visits don't need.
+// --------------------------------------------------------------------------
+
+function buildOverviewCards(charData, monData, tier) {
+  const charCard = el("div", { class: "card" }, [
+    el("h3", { text: charData.classId + " lvl " + charData.level }),
+    el("div", { class: "stat-grid" }, [
+      el("div", {}, [el("b", { text: fmt(charData.final.maxHp) }), "maxHp"]),
+      el("div", {}, [el("b", { text: fmt(charData.final.attack) }), "attack"]),
+      el("div", {}, [el("b", { text: fmt(charData.final.magicPower) }), "magicPower"]),
+      el("div", {}, [el("b", { text: fmt(charData.final.defense) }), "defense"]),
+      el("div", {}, [el("b", { text: fmt(charData.final.aggro) }), "aggro"]),
+      el("div", {}, [el("b", { text: fmt(charData.final.speed) }), "speed"]),
+    ]),
+  ]);
+  const charDetails = el("details", {}, [el("summary", { text: "Base → growth breakdown & edit stats" })]);
+  charDetails.appendChild(statTable(["attack", "defense", "maxHp", "maxMp", "magicPower"], charData.base, charData.growthBonusUnweighted, charData.growthBonusWeighted, charData.final));
+  charDetails.appendChild(buildClassEditCard(charData.classId, charData));
+  charCard.appendChild(charDetails);
+
+  const monCard = el("div", { class: "card" }, [
+    el("h3", { text: monData.archetypeId + " — depth " + monData.depth + " (" + monData.tier + ")" + (monData.isBossFloor && monData.tier === "boss" ? " ★" : "") }),
+    el("div", { class: "stat-grid" }, [
+      el("div", {}, [el("b", { text: fmt(monData.final.maxHp) }), "maxHp"]),
+      el("div", {}, [el("b", { text: fmt(monData.final.attack) }), "attack"]),
+      el("div", {}, [el("b", { text: fmt(monData.final.defense) }), "defense"]),
+      el("div", {}, [el("b", { text: fmt(monData.final.speed) }), "speed"]),
+      el("div", {}, [el("b", { text: fmt(monData.final.expReward) }), "exp reward"]),
+    ]),
+  ]);
+  const monDetails = el("details", {}, [el("summary", { text: "Base → depth/tier breakdown & edit stats" })]);
+  const monTable = el("table", {}, [el("tr", {}, [el("th", { text: "Stat" }), el("th", { class: "num", text: "Base" }), el("th", { class: "num", text: "+depth growth" }), el("th", { class: "num", text: "×tier mult" }), el("th", { class: "num", text: "Final" })])]);
+  for (const stat of ["attack", "defense", "maxHp"]) {
+    const growth = monData.growthBonus[stat] ?? 0;
+    const mult = monData.multiplier ? monData.multiplier[stat] : 1;
+    const finalKey = stat === "maxHp" ? "maxHp" : stat;
+    const baseKey = stat === "maxHp" ? "hp" : stat;
+    monTable.appendChild(
+      el("tr", {}, [
+        el("td", { text: stat }),
+        el("td", { class: "num", text: fmt(monData.base[baseKey]) }),
+        el("td", { class: "num muted", text: "+" + fmt(growth) }),
+        el("td", { class: "num muted", text: mult === 1 ? "×1" : "×" + fmt(mult, 2) }),
+        el("td", { class: "num big", text: fmt(monData.final[finalKey]) }),
+      ])
+    );
+  }
+  monTable.appendChild(el("tr", {}, [el("td", { text: "speed" }), el("td", { class: "num", text: fmt(monData.base.speed) }), el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num big", text: fmt(monData.final.speed) })]));
+  monDetails.appendChild(monTable);
+  monDetails.appendChild(el("p", { class: "hint", text: "EXP reward on kill: " + monData.final.expReward }));
+  monDetails.appendChild(buildMonsterEditCard(monData.archetypeId, monData, tier));
+  monCard.appendChild(monDetails);
+
+  return [charCard, monCard];
+}
+
+// --------------------------------------------------------------------------
+// Character skills → dmg vs. the selected monster
+// --------------------------------------------------------------------------
+
+function buildCharSkillsCard(charData, monData) {
+  const card = el("div", { class: "card" }, [el("h3", { text: "Character skills → dmg vs. " + monData.archetypeId })]);
+  const table = el("table", {}, [
+    el("tr", {}, [el("th", { text: "Slot" }), el("th", { text: "Name" }), el("th", { text: "Rank" }), el("th", { class: "num", text: "Unlock Lv" }), el("th", { class: "num", text: "MP" }), el("th", { text: "Target" }), el("th", { text: "Effects (at current rank)" }), el("th", { text: "" })]),
+  ]);
+  const target = { defense: monData.final.defense, maxHp: monData.final.maxHp };
+  const source = { attack: charData.final.attack, magicPower: charData.final.magicPower };
+  for (const s of charData.skills) {
+    const rankText = s.rankInfo ? s.rankInfo.current + "/" + s.rankInfo.total + (s.rankInfo.nextUnlockLevel ? " (next @ lv " + s.rankInfo.nextUnlockLevel + ")" : "") : "—";
+    const btn = makePreviewButton(s.id, source, target, true, charData.level, "char-skills-preview-output");
+    if (!s.unlocked) btn.disabled = true;
+    table.appendChild(
+      el("tr", {}, [
+        el("td", { text: String(s.slot) }),
+        el("td", { html: s.name + (s.unlocked ? "" : ' <span class="tag locked">locked</span>') + " " + skillTags(s) }),
+        el("td", { class: "muted", text: rankText }),
+        el("td", { class: "num", text: String(s.unlockLevel) }),
+        el("td", { class: "num", text: String(s.mpCost) }),
+        el("td", { text: s.target }),
+        el("td", { html: (s.effects || (s.effectsByRelation ? s.effectsByRelation.enemy : [])).map(effectSummary).join("; ") || "—" }),
+        el("td", {}, [btn]),
+      ])
+    );
+  }
+  card.appendChild(table);
+  card.appendChild(el("div", { id: "char-skills-preview-output" }));
+  return card;
+}
+
+// --------------------------------------------------------------------------
+// Monster actions (basic attack + regular skills + elite/boss kit for the
+// current tier) → dmg vs. the selected character
+// --------------------------------------------------------------------------
+
+function buildMonActionsCard(monData, charData, tier) {
+  const card = el("div", { class: "card" }, [el("h3", { text: "Monster actions → dmg vs. " + charData.classId + " lvl " + charData.level })]);
+  const weights = monData.actionWeights;
+  const weightTotal = weights ? Object.values(weights).reduce((a, b) => a + (b || 0), 0) : 0;
+  const table = el("table", {}, [el("tr", {}, [el("th", { text: "Action" }), el("th", { class: "num", text: "Weight %" }), el("th", { text: "Skill" }), el("th", { text: "Effects" }), el("th", { text: "" })])]);
+  const target = { defense: charData.final.defense, maxHp: charData.final.maxHp };
+  const source = { attack: monData.final.attack };
+
+  function row(label, wPct, skill) {
+    const btn = makePreviewButton(skill ? skill.id : "basic-attack", source, target, false, undefined, "mon-actions-preview-output");
+    table.appendChild(
+      el("tr", {}, [
+        el("td", { text: label }),
+        el("td", { class: "num", text: wPct === null ? "—" : fmt(wPct) + "%" }),
+        el("td", { text: skill ? skill.name : "(basic attack, amount 0)" }),
+        el("td", { html: skill ? (skill.effects || []).map(effectSummary).join("; ") : "damage, amount 0" }),
+        el("td", {}, [btn]),
+      ])
+    );
+  }
+
+  row("Basic Attack", weights && weightTotal > 0 && weights.basicAttack !== undefined ? (weights.basicAttack / weightTotal) * 100 : null, null);
+
+  // "skill" action rolls uniformly among archetype.skillIds at runtime (src/engine/combat.ts, case "skill": ctx.rng.pick(archetype.skillIds)) —
+  // so each regular skill's individual odds are the "skill" bucket's weight split evenly across however many skillIds the archetype has.
+  const regularIds = monData.skillKit.regularSkillIds;
+  if (regularIds.length > 0) {
+    const perSkillPct = weights && weightTotal > 0 && weights.skill !== undefined ? ((weights.skill / weightTotal) * 100) / regularIds.length : null;
+    for (const id of regularIds) {
+      const skill = META.monsterSkills.find((sk) => sk.id === id);
+      if (skill) row(skill.name, perSkillPct, skill);
+    }
+  }
+
+  if ((tier === "elite" || tier === "boss") && monData.skillKit.elite) {
+    row("Strike", weights && weightTotal > 0 && weights.strike !== undefined ? (weights.strike / weightTotal) * 100 : null, monData.skillKit.elite.strike);
+    row("Cleave (AoE)", weights && weightTotal > 0 && weights.cleave !== undefined ? (weights.cleave / weightTotal) * 100 : null, monData.skillKit.elite.cleave);
+  }
+  if (tier === "boss" && monData.skillKit.boss) {
+    row("Execute", null, monData.skillKit.boss.execute);
+    row("Debuff", weights && weightTotal > 0 && weights.debuff !== undefined ? (weights.debuff / weightTotal) * 100 : null, monData.skillKit.boss.debuff);
+  }
+
+  card.appendChild(table);
+  if (tier === "normal" && regularIds.length === 0) {
+    card.appendChild(el("p", { class: "hint", text: "This archetype's skillIds is empty, so at normal tier it only ever does the basic attack." }));
+  }
+  if (tier === "boss") {
+    card.appendChild(el("p", { class: "hint", html: `Execute isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, then cools down for <b>${META.levelGrowth.executeCooldownTurns}</b> turns before it can charge again (~1 every ${META.levelGrowth.executeCooldownTurns + 2} rounds). Row shown here uses its own cadence, not the weight column.` }));
+  }
+  card.appendChild(el("div", { id: "mon-actions-preview-output" }));
+  return card;
+}
+
+// --------------------------------------------------------------------------
+// Round summary — the one aggregate number Preview-per-skill can't give:
+// expected dmg/round across the monster's whole weighted roll.
+// --------------------------------------------------------------------------
+
+async function renderRoundSummary(classId, level, archetypeId, depth, tier) {
+  const out = $("#round-summary-output");
+  out.innerHTML = "";
+  try {
+    const data = await api(`/api/matchup?classId=${classId}&level=${level}&archetypeId=${archetypeId}&depth=${depth}&tier=${tier}&fearTier=${fearTier()}`);
+    const p = el("p", { class: "hint" });
+    p.innerHTML = `Expected damage/round from the monster's weighted roll (excludes Execute): <b>${fmt(data.expectedDamagePerRoundFromRolling, 1)}</b> ≈ character dies to this alone in <b>${Math.ceil(data.character.final.maxHp / Math.max(1, data.expectedDamagePerRoundFromRolling))}</b> rounds if unhealed.`;
+    out.appendChild(p);
+    if (data.executeCycleNote) out.appendChild(el("p", { class: "hint", text: data.executeCycleNote }));
+  } catch (err) {
+    out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
+  }
+}
+
+// --------------------------------------------------------------------------
+// Simulator — orchestrates the 3 sections above from the shared character +
+// monster selectors.
+// --------------------------------------------------------------------------
+
+async function renderSimulator() {
+  const classId = $("#char-class").value;
+  const level = Number($("#char-level").value);
+  const archetypeId = $("#mon-archetype").value;
+  const depth = Number($("#mon-depth").value);
+  const tier = $("#mon-tier").value;
+  if (!classId || !archetypeId) return;
+
+  const overviewOut = $("#overview-output");
+  const charSkillsOut = $("#char-skills-output");
+  const monActionsOut = $("#mon-actions-output");
+  try {
+    const [charData, monData] = await Promise.all([
+      api(`/api/character?classId=${classId}&level=${level}`),
+      api(`/api/monster?archetypeId=${archetypeId}&depth=${depth}&tier=${tier}`),
+    ]);
+
+    overviewOut.innerHTML = "";
+    for (const card of buildOverviewCards(charData, monData, tier)) overviewOut.appendChild(card);
+
+    charSkillsOut.innerHTML = "";
+    charSkillsOut.appendChild(buildCharSkillsCard(charData, monData));
+
+    monActionsOut.innerHTML = "";
+    monActionsOut.appendChild(buildMonActionsCard(monData, charData, tier));
+  } catch (err) {
+    overviewOut.innerHTML = "";
+    overviewOut.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
+    charSkillsOut.innerHTML = "";
+    monActionsOut.innerHTML = "";
+    return;
+  }
+
+  renderRoundSummary(classId, level, archetypeId, depth, tier);
+}
+
+// --------------------------------------------------------------------------
+// Damage calculator panel
+// --------------------------------------------------------------------------
+
+async function runDamageCalc() {
+  const out = $("#dmg-output");
+  try {
+    const body = {
+      offense: Number($("#dmg-offense").value),
+      defense: Number($("#dmg-defense").value),
+      amount: Number($("#dmg-amount").value),
+      ignoreDefensePercent: Number($("#dmg-ignore").value || 0),
+      fearTier: fearTier(),
+      sourceIsCharacter: $("#dmg-source").checked,
+      targetMaxHp: $("#dmg-maxhp").value ? Number($("#dmg-maxhp").value) : undefined,
+    };
+    const data = await apiPost("/api/damage", body);
+    out.innerHTML = "";
+    const card = el("div", { class: "card" }, [el("h3", { text: "Breakdown (fear tier " + body.fearTier + ")" })]);
+    const grid = el("div", { class: "stat-grid" }, [
+      el("div", {}, [el("b", { text: fmt(data.unmitigatedTotal, 2) }), "raw dmg (no defense)"]),
+      el("div", {}, [el("b", { class: "big", text: "−" + pct(data.defenseReductionPercent) }), "reduction from defense"]),
+      el("div", {}, [el("b", { text: fmt(data.mitigatedOffense, 2) }), "mitigatedOffense(off, def)"]),
+      el("div", {}, [el("b", { text: fmt(data.effectiveDefense, 2) }), "effective defense (after ignore%)"]),
+      el("div", {}, [el("b", { text: fmt(data.rawTotal, 2) }), "raw total (before floor/round)"]),
+      el("div", {}, [el("b", { text: "×" + fmt(data.fearDamageMultiplier, 2) }), "fear damage multiplier"]),
+      el("div", {}, [el("b", { class: "big", text: fmt(data.finalDamage) }), "final damage"]),
+      el("div", {}, [el("b", { text: pct(data.percentOfTargetMaxHp) }), "% of target maxHp"]),
+      el("div", {}, [el("b", { text: data.hitsToKill === null ? "—" : String(data.hitsToKill) }), "hits to kill"]),
+      el("div", {}, [el("b", { text: pct(data.hitChancePercent) }), "hit chance"]),
+      el("div", {}, [el("b", { text: fmt(data.expectedDamage, 1) }), "expected damage (dmg × hit%)"]),
+    ]);
+    card.appendChild(grid);
+    out.appendChild(card);
+  } catch (err) {
+    out.innerHTML = "";
+    out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
+  }
+}
+
+// --------------------------------------------------------------------------
+// Floor <-> level panel
+// --------------------------------------------------------------------------
+
+async function runFloorSim() {
+  const out = $("#floor-output");
+  out.innerHTML = "";
+  out.appendChild(el("p", { class: "hint", text: "Simulating…" }));
+  try {
+    const seeds = Number($("#floor-seeds").value);
+    const maxDepth = Number($("#floor-maxdepth").value);
+    const data = await api(`/api/level-by-depth?seeds=${seeds}&maxDepth=${maxDepth}`);
+    out.innerHTML = "";
+    const card = el("div", { class: "card scroll-y" }, [el("h3", { text: `Averaged over ${data.seeds} seeds, depth 1-${data.maxDepth}` })]);
+    const table = el("table", {}, [el("tr", {}, [el("th", { text: "Depth" }), el("th", { text: "Guard" }), el("th", { class: "num", text: "Avg party EXP" }), el("th", { class: "num", text: "Avg level" }), el("th", { class: "num", text: "Level range" })])]);
+    for (const row of data.rows) {
+      table.appendChild(
+        el("tr", {}, [
+          el("td", { text: String(row.depth) }),
+          el("td", { html: row.isBossFloor ? '<span class="tag boss">boss</span>' : '<span class="tag elite">elite</span>' }),
+          el("td", { class: "num", text: fmt(row.avgPartyExp) }),
+          el("td", { class: "num big", text: String(row.avgLevel) }),
+          el("td", { class: "num muted", text: row.minLevel + "–" + row.maxLevel }),
+        ])
+      );
+    }
+    card.appendChild(table);
+    out.appendChild(card);
+  } catch (err) {
+    out.innerHTML = "";
+    out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
+  }
+}
+
+// --------------------------------------------------------------------------
+// Reference panel
+// --------------------------------------------------------------------------
+
+function renderReference() {
+  const out = $("#reference-output");
+  out.innerHTML = "";
+
+  const combatCard = el("div", { class: "card" }, [el("h3", { text: "Combat constants (data/balance-config.json, data/level-growth.json)" })]);
+  combatCard.appendChild(
+    el("div", { class: "stat-grid" }, [
+      el("div", {}, [el("b", { text: String(META.balance.combat.defenseMitigationX) }), "defenseMitigationX"]),
+      el("div", {}, [el("b", { text: String(META.balance.combat.defenseMitigationY) }), "defenseMitigationY"]),
+      el("div", {}, [el("b", { text: String(META.levelGrowth.executeCooldownTurns) }), "executeCooldownTurns"]),
+      el("div", {}, [el("b", { text: String(META.levelGrowth.bossFloorInterval) }), "bossFloorInterval"]),
+      el("div", {}, [el("b", { text: String(META.levelGrowth.expRewardDepthRate) }), "expRewardDepthRate"]),
+      el("div", {}, [el("b", { text: String(META.levelGrowth.maxLevel) }), "maxLevel"]),
+    ])
+  );
+  out.appendChild(combatCard);
+
+  const combatEditCard = el("div", { class: "card" }, [el("h3", { text: "Edit combat constants — saves to data/balance-config.json" })]);
+  const combatForm = el("div", { class: "edit-form" }, [
+    editField("edit-bal-defenseMitigationX", "defenseMitigationX", META.balance.combat.defenseMitigationX),
+    editField("edit-bal-defenseMitigationY", "defenseMitigationY", META.balance.combat.defenseMitigationY),
+    editField("edit-bal-executeCooldownTurns", "executeCooldownTurns", META.balance.combat.executeCooldownTurns),
+    editField("edit-bal-defensiveLowHpSkillChance", "defensiveLowHpSkillChance", META.balance.combat.defensiveLowHpSkillChance),
+  ]);
+  const combatSaveBtn = el("button", { class: "action", text: "Save" });
+  const combatStatus = el("span", { class: "save-status" });
+  wireSaveButton(combatSaveBtn, combatStatus, "/api/edit/balance", () => ({
+    combat: {
+      defenseMitigationX: Number($("#edit-bal-defenseMitigationX").value),
+      defenseMitigationY: Number($("#edit-bal-defenseMitigationY").value),
+      executeCooldownTurns: Number($("#edit-bal-executeCooldownTurns").value),
+      defensiveLowHpSkillChance: Number($("#edit-bal-defensiveLowHpSkillChance").value),
+    },
+  }));
+  combatForm.appendChild(combatSaveBtn);
+  combatForm.appendChild(combatStatus);
+  combatEditCard.appendChild(combatForm);
+  out.appendChild(combatEditCard);
+
+  const multCard = el("div", { class: "card" }, [el("h3", { text: "Elite / Boss multipliers" })]);
+  const multTable = el("table", {}, [el("tr", {}, [el("th", { text: "" }), el("th", { class: "num", text: "maxHp" }), el("th", { class: "num", text: "attack" }), el("th", { class: "num", text: "defense" }), el("th", { class: "num", text: "exp" })])]);
+  for (const [label, m] of [["Elite", META.levelGrowth.eliteMultiplier], ["Boss", META.levelGrowth.bossMultiplier]]) {
+    multTable.appendChild(el("tr", {}, [el("td", { text: label }), el("td", { class: "num", text: "×" + m.maxHp }), el("td", { class: "num", text: "×" + m.attack }), el("td", { class: "num", text: "×" + m.defense }), el("td", { class: "num", text: "×" + m.exp })]));
+  }
+  multCard.appendChild(multTable);
+  out.appendChild(multCard);
+
+  const multEditCard = el("div", { class: "card" }, [el("h3", { text: "Edit multipliers — saves to data/level-growth.json" })]);
+  const multForm = el("div", { class: "edit-form" }, [
+    editField("edit-lg-elite-maxHp", "Elite maxHp ×", META.levelGrowth.eliteMultiplier.maxHp),
+    editField("edit-lg-elite-attack", "Elite attack ×", META.levelGrowth.eliteMultiplier.attack),
+    editField("edit-lg-elite-defense", "Elite defense ×", META.levelGrowth.eliteMultiplier.defense),
+    editField("edit-lg-elite-exp", "Elite exp ×", META.levelGrowth.eliteMultiplier.exp),
+    editField("edit-lg-boss-maxHp", "Boss maxHp ×", META.levelGrowth.bossMultiplier.maxHp),
+    editField("edit-lg-boss-attack", "Boss attack ×", META.levelGrowth.bossMultiplier.attack),
+    editField("edit-lg-boss-defense", "Boss defense ×", META.levelGrowth.bossMultiplier.defense),
+    editField("edit-lg-boss-exp", "Boss exp ×", META.levelGrowth.bossMultiplier.exp),
+    editField("edit-lg-expRewardDepthRate", "expRewardDepthRate", META.levelGrowth.expRewardDepthRate),
+    editField("edit-lg-bossFloorInterval", "bossFloorInterval", META.levelGrowth.bossFloorInterval),
+  ]);
+  const multSaveBtn = el("button", { class: "action", text: "Save" });
+  const multStatus = el("span", { class: "save-status" });
+  wireSaveButton(multSaveBtn, multStatus, "/api/edit/level-growth", () => ({
+    eliteMultiplier: {
+      maxHp: Number($("#edit-lg-elite-maxHp").value),
+      attack: Number($("#edit-lg-elite-attack").value),
+      defense: Number($("#edit-lg-elite-defense").value),
+      exp: Number($("#edit-lg-elite-exp").value),
+    },
+    bossMultiplier: {
+      maxHp: Number($("#edit-lg-boss-maxHp").value),
+      attack: Number($("#edit-lg-boss-attack").value),
+      defense: Number($("#edit-lg-boss-defense").value),
+      exp: Number($("#edit-lg-boss-exp").value),
+    },
+    top: {
+      expRewardDepthRate: Number($("#edit-lg-expRewardDepthRate").value),
+      bossFloorInterval: Number($("#edit-lg-bossFloorInterval").value),
+    },
+  }));
+  multForm.appendChild(multSaveBtn);
+  multForm.appendChild(multStatus);
+  multEditCard.appendChild(multForm);
+  out.appendChild(multEditCard);
+
+  const fearCard = el("div", { class: "card" }, [el("h3", { text: "Fear tiers (src/engine/resolver.ts)" })]);
+  const fearTable = el("table", {}, [el("tr", {}, [el("th", { text: "Tier" }), el("th", { class: "num", text: "Accuracy penalty" }), el("th", { class: "num", text: "Damage penalty" })])]);
+  for (const f of META.fearTiers) {
+    fearTable.appendChild(el("tr", {}, [el("td", { text: String(f.tier) }), el("td", { class: "num", text: pct(f.accuracyPenaltyPercent) }), el("td", { class: "num", text: pct(f.damagePenaltyPercent) })]));
+  }
+  fearCard.appendChild(fearTable);
+  fearCard.appendChild(el("p", { class: "hint", text: "Tier 4 additionally has a 25% chance/turn of losing control entirely (skips the turn) — not a damage/accuracy modifier, see rollLosesControl()." }));
+  out.appendChild(fearCard);
+
+  const expCard = el("div", { class: "card scroll-y" }, [el("h3", { text: "EXP curve (cumulative EXP required per level)" })]);
+  const expTable = el("table", {}, [el("tr", {}, [el("th", { text: "Level" }), el("th", { class: "num", text: "Cumulative EXP" }), el("th", { class: "num", text: "Δ from previous" })])]);
+  let prev = 0;
+  for (const row of META.expCurve) {
+    expTable.appendChild(el("tr", {}, [el("td", { text: String(row.level) }), el("td", { class: "num", text: fmt(row.cumulativeExp) }), el("td", { class: "num muted", text: fmt(row.cumulativeExp - prev) })]));
+    prev = row.cumulativeExp;
+  }
+  expCard.appendChild(expTable);
+  out.appendChild(expCard);
+
+  const statusCard = el("div", { class: "card" }, [el("h3", { text: "Status effects (data/status-effects.json)" })]);
+  const statusTable = el("table", {}, [el("tr", {}, [el("th", { text: "ID" }), el("th", { text: "Name" }), el("th", { class: "num", text: "Duration" }), el("th", { text: "Per-turn effects" }), el("th", { text: "Flags" })])]);
+  for (const s of META.statusEffects) {
+    const flags = [s.stuns ? "stuns" : null, s.onHitStatusEffectId ? "on-hit → " + s.onHitStatusEffectId : null, s.vulnerableTo ? "vulnerable to " + s.vulnerableTo.statusEffectId + " ×" + s.vulnerableTo.multiplier : null].filter(Boolean).join(", ");
+    statusTable.appendChild(
+      el("tr", {}, [
+        el("td", { text: s.id }),
+        el("td", { text: s.name }),
+        el("td", { class: "num", text: s.durationTurns ? s.durationTurns + "t" : "—" }),
+        el("td", { html: (s.perTurnEffects || []).map(effectSummary).join("; ") || "—" }),
+        el("td", { class: "muted", text: flags || "—" }),
+      ])
+    );
+  }
+  statusCard.appendChild(statusTable);
+  out.appendChild(statusCard);
+}
+
+boot();
+</script>
+</body>
+</html>

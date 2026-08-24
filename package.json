@@ -42,7 +42,8 @@
     "build": "bun build ./src/main.ts --compile --outfile dist/darkest-terminal",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "sprite-editor": "bun run tools/sprite-editor/server.ts"
+    "sprite-editor": "bun run tools/sprite-editor/server.ts",
+    "rebalance-editor": "bun --watch tools/rebalance-editor/server.ts"
   },
   "dependencies": {
     "@opentui/core": "^0.5.3"
