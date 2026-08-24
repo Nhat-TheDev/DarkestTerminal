@@ -20,7 +20,7 @@ import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
 import { getItem } from "../data/items";
 import { BALANCE } from "../data/balanceConfig";
-import { getStatusEffect } from "../data/statusEffects";
+import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import {
   rollDodge,
   rollPoisonOnHit,
@@ -338,7 +338,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
       : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }),
     kind: announceKind,
   });
-  applySkillEffects(skill, actor, targets, ctx, combat.log);
+  applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
 }
 
 function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): Character {
@@ -384,7 +384,7 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
     if (actor.isChargingExecute) {
       const target = livingChars.find((c) => c.id === actor.executeTargetId) ?? pickAggroWeighted(livingChars, ctx.rng);
       combat.log.push({ text: t("combat.bossExecuteRelease", { actor: actor.name, target: target.name }), kind: "attack" });
-      applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], ctx, combat.log);
+      applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], combat, ctx, combat.log);
       actor.isChargingExecute = false;
       actor.executeTargetId = undefined;
       actor.executeCooldownTurns = EXECUTE_COOLDOWN_TURNS;
@@ -409,7 +409,7 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
   ) {
     const skill = getMonsterSkill(archetype.skillIds[0]!);
     combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-    applySkillEffects(skill, actor, [actor], ctx, combat.log);
+    applySkillEffects(skill, actor, [actor], combat, ctx, combat.log);
     return;
   }
 
@@ -418,27 +418,27 @@ function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineConte
       const target = pickAggroWeighted(livingChars, ctx.rng);
       const skill = getMonsterSkill(archetype.bossSkillIds!.debuff);
       combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-      applySkillEffects(skill, actor, [target], ctx, combat.log);
+      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
       return;
     }
     case "cleave": {
       const skill = getMonsterSkill(archetype.eliteSkillIds!.cleave);
       combat.log.push({ text: t("combat.eliteCleave", { actor: actor.name, skill: skill.name }), kind: "attack" });
-      applySkillEffects(skill, actor, livingChars, ctx, combat.log);
+      applySkillEffects(skill, actor, livingChars, combat, ctx, combat.log);
       return;
     }
     case "strike": {
       const target = pickMonsterTarget(actor, livingChars, ctx.rng);
       const skill = getMonsterSkill(archetype.eliteSkillIds!.strike);
       combat.log.push({ text: t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }), kind: "attack" });
-      applySkillEffects(skill, actor, [target], ctx, combat.log);
+      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
       return;
     }
     case "skill": {
       const skill = getMonsterSkill(ctx.rng.pick(archetype.skillIds));
       const targets = resolveMonsterSkillTargets(skill, actor, livingChars, ctx.rng);
       combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-      applySkillEffects(skill, actor, targets, ctx, combat.log);
+      applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
       return;
     }
     case "basicAttack": {
@@ -532,11 +532,12 @@ function applyOnHitRider(source: Character, target: Actor, log: LogEntry[]): voi
   }
 }
 
-function applyOnHitAoeDamage(source: Character, ctx: EngineContext, log: LogEntry[]): void {
+function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
     if (!def.onHitAoeDamage) continue;
-    for (const enemy of ctx.monsters.filter((m) => isActorAlive(m))) {
+    for (const ref of livingMonsterRefs(combat, ctx)) {
+      const enemy = getActorByRef(ref, ctx);
       resolveSkillEffect(
         { kind: "damage", amount: def.onHitAoeDamage.amount, ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent },
         source,
@@ -575,7 +576,7 @@ function hasConditionalBonusStatus(skill: SkillDefinition, source: Actor): boole
   return (
     skill.conditionalBonus !== undefined &&
     isCharacter(source) &&
-    source.activeStatusEffects.some((a) => a.statusEffectId === skill.conditionalBonus!.requiresStatusId)
+    source.activeStatusEffects.some((a) => statusSatisfiesRequirement(a.statusEffectId, skill.conditionalBonus!.requiresStatusId))
   );
 }
 
@@ -586,11 +587,11 @@ function applyConditionalBonus(skill: SkillDefinition, effect: SkillEffect, hasB
 
 function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bonusLanded: boolean): void {
   if (!bonusLanded || !skill.conditionalBonus?.consumesStatus || !isCharacter(source)) return;
-  const statusId = skill.conditionalBonus.requiresStatusId;
-  source.activeStatusEffects = source.activeStatusEffects.filter((a) => a.statusEffectId !== statusId);
+  const requiredId = skill.conditionalBonus.requiresStatusId;
+  source.activeStatusEffects = source.activeStatusEffects.filter((a) => !statusSatisfiesRequirement(a.statusEffectId, requiredId));
 }
 
-function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], ctx: EngineContext, log: LogEntry[]): void {
+function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
@@ -630,7 +631,7 @@ function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor
       }
     }
   }
-  if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, ctx, log);
+  if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
 }
 

@@ -38,7 +38,7 @@ export function getEffectiveSkill(skill: SkillDefinition, level: number): SkillD
   return {
     ...skill,
     mpCost: effective.mpCost,
-    ...(effective.effects ? { effects: effective.effects } : {}),
-    ...(effective.effectsByRelation ? { effectsByRelation: effective.effectsByRelation } : {}),
+    effects: effective.effects,
+    effectsByRelation: effective.effectsByRelation,
   };
 }

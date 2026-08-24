@@ -1,5 +1,5 @@
 import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition } from "../types";
-import { getStatusEffect } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -197,7 +197,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
   const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
   if (existing) {
     existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
-    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
   const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
@@ -207,7 +207,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
       applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
     }
   }
-  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
@@ -226,7 +226,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
-  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: def.name }), kind: "info" });
+  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: "info" });
 }
 
 function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
@@ -245,7 +245,7 @@ export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
       if (e.kind !== "modifyCombatStat") {
         const multiplier = e.kind === "damage" ? vulnerabilityMultiplier(actor, active.statusEffectId) : 1;
         const effectToApply = multiplier !== 1 ? { ...e, amount: (e.amount ?? 0) * multiplier } : e;
-        resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: def.name });
+        resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
     }
     if (!isActorAlive(actor)) continue;

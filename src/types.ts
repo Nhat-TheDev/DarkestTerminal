@@ -126,6 +126,9 @@ export interface StatusEffectDefinition {
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
+  /** If set, this status is a higher-rank variant of the status with id `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match a skill's `conditionalBonus.requiresStatusId` across ranks, and to compose the displayed name as `${name} II`/`${name} III`. */
+  rankOf?: Id;
+  rankLevel?: 2 | 3;
 }
 
 export interface ItemDefinition {

@@ -202,21 +202,25 @@
   },
   {
     "id": "storm-empowered-ii",
-    "name": "Storm-Empowered II",
+    "name": "Storm-Empowered",
     "description": "Lightning Axe rank 2 (Viking): every landed hit also splashes stronger lightning damage across all enemies.",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 3,
-    "onHitAoeDamage": { "amount": 8, "isMagic": true, "ignoreDefensePercent": 30 }
+    "onHitAoeDamage": { "amount": 8, "isMagic": true, "ignoreDefensePercent": 30 },
+    "rankOf": "storm-empowered",
+    "rankLevel": 2
   },
   {
     "id": "storm-empowered-iii",
-    "name": "Storm-Empowered III",
+    "name": "Storm-Empowered",
     "description": "Lightning Axe rank 3 (Viking): every landed hit also splashes the strongest lightning damage across all enemies.",
     "perTurnEffects": [],
     "curableByMiniGame": [],
     "durationTurns": 3,
-    "onHitAoeDamage": { "amount": 10, "isMagic": true, "ignoreDefensePercent": 30 }
+    "onHitAoeDamage": { "amount": 10, "isMagic": true, "ignoreDefensePercent": 30 },
+    "rankOf": "storm-empowered",
+    "rankLevel": 3
   },
   {
     "id": "bleeding",

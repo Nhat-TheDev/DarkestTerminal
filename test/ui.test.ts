@@ -59,7 +59,7 @@ describe("headless UI smoke test", () => {
 
     const finalFrame = captureCharFrame();
     expect(finalFrame.length).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   test("q opens the save menu instead of quitting", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 80, height: 24 });

@@ -109,16 +109,16 @@ Previously all 11 regular-combat archetypes (`02-monster.md`) had `skillIds: []`
 
 | Archetype | Skill id | Name | Target | Effect (shape) | AI pattern | Trigger |
 |---|---|---|---|---|---|---|
-| Dungeon Rat | `dungeon-rat-bite` | Bite | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
-| Black Bat | `black-bat-blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (new field, see below) | aggressive | `actionWeights.normal.skill` |
-| Slime | `slime-acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` (new status) | erratic | `actionWeights.normal.skill` |
-| Skeleton | `skeleton-bone-throw` | Bone Throw | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
-| **Zombie** | `zombie-regeneration` | Regeneration | self | `heal` | defensive | **only** via §10.3 low-HP logic |
-| Snake | `snake-poison-bite` | Poison Bite | singleEnemy | `damage` + chance to `applyStatusEffect "poisoned"` (existing) | erratic | `actionWeights.normal.skill` |
-| Lizard | `lizard-quick-bite` | Quick Bite | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
-| Spider | `spider-web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` (new status) | aggressive | `actionWeights.normal.skill` |
-| Skeleton Archer | `skeleton-archer-arrow-shot` | Arrow Shot | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
-| **Skeleton Warrior** | `skeleton-warrior-guard-stance` | Guard Stance | self | `applyStatusEffect "guard"` (existing) | defensive | **only** via §10.3 low-HP logic |
+| Dungeon Rat | `bite` | Bite | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
+| Black Bat | `blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (new field, see below) | aggressive | `actionWeights.normal.skill` |
+| Slime | `acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` (new status) | erratic | `actionWeights.normal.skill` |
+| Skeleton | `bone-throw` | Bone Throw | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
+| **Zombie** | `regeneration` | Regeneration | self | `heal` | defensive | **only** via §10.3 low-HP logic |
+| Snake | `poison-bite` | Poison Bite | singleEnemy | `damage` + chance to `applyStatusEffect "poisoned"` (existing) | erratic | `actionWeights.normal.skill` |
+| Lizard | `quick-bite` | Quick Bite | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
+| Spider | `web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` (new status) | aggressive | `actionWeights.normal.skill` |
+| Skeleton Archer | `arrow-shot` | Arrow Shot | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
+| **Skeleton Warrior** | `guard-stance` | Guard Stance | self | `applyStatusEffect "guard"` (existing) | defensive | **only** via §10.3 low-HP logic |
 
 Current damage/heal amounts and proc chances: `data/monster-skills.json`. *Snake keeps plain `poisoned` (already its established theme) while Spider gets the new `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 "erratic/aggressive poison-flavored" archetypes rather than having them share an identical proc.*
 

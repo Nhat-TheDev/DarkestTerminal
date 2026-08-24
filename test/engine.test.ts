@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, afterAll } from "bun:test";
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../src/data/classes";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createFloor } from "../src/data/floor";
@@ -52,6 +52,16 @@ import {
 import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, tickSurvivalOnAction } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
 import type { Character, CombatantRef } from "../src/types";
+
+// Several tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills to exercise new mechanics.
+// Bun shares module state across test files within one run, so truncate back to the original length once
+// this file's tests are done to avoid leaking mock entries into other test files' assertions.
+const initialStatusEffectsCount = STATUS_EFFECTS.length;
+const initialVanguardSkillsCount = CLASSES[0]!.skills.length;
+afterAll(() => {
+  STATUS_EFFECTS.length = initialStatusEffectsCount;
+  CLASSES[0]!.skills.length = initialVanguardSkillsCount;
+});
 
 function makeCtx(seed = 1) {
   const rng = new Rng(seed);
@@ -1254,6 +1264,26 @@ describe("skill rank resolution (docs/gameplay-decisions/10-skill-ranks-and-mons
     const noRanks = getSkill("vanguard-slash");
     expect(getEffectiveSkill(noRanks, 100)).toBe(noRanks);
   });
+
+  test("a rank switching from effectsByRelation to plain effects (or vice versa) doesn't leak the stale field", () => {
+    const mixedSkill: SkillDefinition = {
+      id: "mock-mixed-skill",
+      name: "Mock Mixed Skill",
+      description: "",
+      mpCost: 5,
+      target: "singleAllyOrEnemy",
+      effectsByRelation: { ally: [{ kind: "heal", amount: 10 }], enemy: [{ kind: "damage", amount: 10 }] },
+      slot: 1,
+      unlockLevel: 1,
+      ranks: [
+        { rank: 1, unlockLevel: 1, mpCost: 5, effectsByRelation: { ally: [{ kind: "heal", amount: 10 }], enemy: [{ kind: "damage", amount: 10 }] } },
+        { rank: 2, unlockLevel: 7, mpCost: 6, effects: [{ kind: "damage", amount: 13 }] },
+      ],
+    };
+    const rank2 = getEffectiveSkill(mixedSkill, 7);
+    expect(rank2.effects).toEqual([{ kind: "damage", amount: 13 }]);
+    expect(rank2.effectsByRelation).toBeUndefined();
+  });
 });
 
 describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPercent)", () => {
@@ -1320,6 +1350,33 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
 
     expect(dmgTaken1).toBe(directDmg + splashDmg);
     expect(dmgTaken2).toBe(directDmg + splashDmg);
+  });
+
+  test("onHitAoeDamage: splash damage is scoped to the current combat's enemies, not every monster on the floor", () => {
+    STATUS_EFFECTS.push({
+      id: "test-storm-empowered-scope",
+      name: "Test Storm-Empowered Scope",
+      description: "",
+      perTurnEffects: [],
+      curableByMiniGame: [],
+      durationTurns: 3,
+      onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
+    });
+    const { ctx, monsters } = makeCtx();
+    const offFloor = monsters.slice(0, 2);
+    const offFloorHpBefore = offFloor.map((m) => m.hp);
+
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-scope", turnsRemaining: 3 });
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+
+    for (let i = 0; i < offFloor.length; i++) {
+      expect(offFloor[i]!.hp).toBe(offFloorHpBefore[i]!);
+    }
   });
 
   test("conditionalBonus: adds ignoreDefensePercent when the required status is active, and keeps it when consumesStatus is absent", () => {
@@ -1813,6 +1870,61 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     const character = createCharacter("vk-test", "Viking Test", getClass("viking"), 25);
     expect(getEffectiveSkill(skill, character.level).effects).toEqual([{ kind: "damage", amount: 20 }]);
   });
+
+  test("conditionalBonus still triggers once Lightning Axe's buff is the rank-2 variant (storm-empowered-ii)", () => {
+    const { ctx } = makeCtx();
+    const viking = ctx.party.find((p) => p.classId === "viking")!;
+    viking.level = 10;
+    viking.mp = 999;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.defense = 15;
+    rat.maxHp = 500;
+    rat.hp = 500;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: viking.id };
+    const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
+
+    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-ii")).toBe(true);
+
+    // storm-empowered's own onHitAoeDamage splash also lands on the same single enemy every cast, independent of
+    // whether Frenzied Slash's conditionalBonus applies — so the fix must be verified on the DIRECT hit's exact
+    // damage (parsed from the log), not the round's total HP delta, which the splash would confound either way.
+    const withBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense * 0.7)));
+    const noBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense)));
+    expect(withBonusDamage).toBeGreaterThan(noBonusDamage);
+
+    const logBefore = combat.log.length;
+    queueAction(combat, self, "viking-frenzied-slash", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+    const directHitLine = combat.log.slice(logBefore).find((l) => /^Dungeon Rat takes \d+ damage from Viking\.$/.test(l.text));
+    const directDamage = Number(directHitLine!.text.match(/takes (\d+) damage/)![1]);
+
+    expect(directDamage).toBe(withBonusDamage);
+  });
+
+  test("consumesStatus still removes the buff once it's the rank-3 variant (storm-empowered-iii)", () => {
+    const { ctx } = makeCtx();
+    const viking = ctx.party.find((p) => p.classId === "viking")!;
+    viking.level = 40;
+    viking.mp = 999;
+    viking.unlockedSkillIds.push("viking-thunder-god-fury");
+    const rat1 = spawnInto(ctx, "dungeon-rat");
+    const rat2 = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: viking.id };
+
+    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-iii")).toBe(true);
+
+    const ultimateTargets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
+    queueAction(combat, self, "viking-thunder-god-fury", ultimateTargets, ctx);
+    resolveRound(combat, ctx);
+
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId.startsWith("storm-empowered"))).toBe(false);
+  });
 });
 
 describe("Rogue skill ranks + poison exclusivity (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
@@ -1896,28 +2008,28 @@ describe("Acolyte skill ranks incl. effectsByRelation (docs/gameplay-decisions/1
 
 describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.2)", () => {
   test("Black Bat's Blood Drain has lifestealPercent 50", () => {
-    expect(getMonsterSkill("black-bat-blood-drain").effects).toEqual([{ kind: "damage", amount: 2, lifestealPercent: 50 }]);
+    expect(getMonsterSkill("blood-drain").effects).toEqual([{ kind: "damage", amount: 2, lifestealPercent: 50 }]);
   });
 
   test("Zombie's Regeneration is a self-heal", () => {
-    const skill = getMonsterSkill("zombie-regeneration");
+    const skill = getMonsterSkill("regeneration");
     expect(skill.target).toBe("self");
     expect(skill.effects).toEqual([{ kind: "heal", amount: 15 }]);
   });
 
   test("Slime's Acid Spit procs corroded, Spider's Web Spit procs webbed", () => {
-    expect(getMonsterSkill("slime-acid-spit").effects).toEqual([
+    expect(getMonsterSkill("acid-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
       { kind: "applyStatusEffect", statusEffectId: "corroded", chance: 0.5 },
     ]);
-    expect(getMonsterSkill("spider-web-spit").effects).toEqual([
+    expect(getMonsterSkill("web-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
       { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5 },
     ]);
   });
 
   test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
-    const skill = getMonsterSkill("skeleton-warrior-guard-stance");
+    const skill = getMonsterSkill("guard-stance");
     expect(skill.target).toBe("self");
     expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard" }]);
   });
@@ -1939,7 +2051,7 @@ describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-mon
     const guard = getArchetype("skeleton-guard");
     expect(guard.skillIds).toEqual([]);
     expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100, skill: 0 });
-    expect(guard.eliteSkillIds).toEqual({ strike: "skeleton-elite-strike", cleave: "skeleton-elite-cleave" });
+    expect(guard.eliteSkillIds).toEqual({ strike: "elite-strike-skeleton-guard", cleave: "elite-cleave-skeleton-guard" });
   });
 });
 
