@@ -20,7 +20,11 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
 ### AI patterns (`MonsterAiPattern`)
 - **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/combat.ts`).
-- **`defensive`**: currently resolves through the exact same code path as `aggressive` (`pickMonsterTarget` only special-cases `erratic`) — reserved for a self-preserving behavior (e.g. preferring a heal skill at low HP) once regular archetypes actually carry combat `skillIds` in `data/monsters.json`, which none currently do.
+- **`defensive`**: **Status: implemented.** `runMonsterTurn` (`src/engine/combat.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/combat.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
+
+  This only takes effect for archetypes that (a) are `aiPattern: "defensive"` and (b) have at least 1 entry in `skillIds` — that's Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The other `defensive` archetypes (Zombie Knight, Dark Knight, Skeleton Guard) keep `skillIds: []` for this branch, so it's a no-op for them — their Elite/Boss kits (`eliteSkillIds`/`bossSkillIds`) are untouched by this.
+
+  *Prior state, for context: before this was implemented, `pickMonsterTarget` only special-cased `"erratic"` — both `"aggressive"` and `"defensive"` fell through to the same weighted-random call, with no HP-check or skill-priority branch anywhere in `src/` for `"defensive"`, even though this section already documented it as the intended design.*
 - **`erratic`**: **ignores** the `aggro` weighting entirely — picks a uniformly random target among living characters.
 
 Which pattern each archetype uses: `data/monsters.json` field `aiPattern`. Action selection beyond plain targeting (basic attack vs. a skill vs., for guard-room archetypes, strike/cleave/debuff) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/combat.ts`.
@@ -37,6 +41,82 @@ Every guard-room randomly picks among the guard-room archetypes each time the ro
 ### Regular combat archetypes
 
 The full roster (id, name, base stats, AI pattern, `expReward`) lives in `data/monsters.json`; the loader is `src/data/monsters.ts`. As of writing this covers a set of low/mid-tier archetypes including Dungeon Rat, Black Bat, Slime, Skeleton, Zombie, Snake, Lizard, Spider, Skeleton Archer, Skeleton Warrior, and Skeleton Guard (also a guard-room archetype — see below) — check the JSON directly for the current list rather than trusting an enumeration here, since new archetypes can be added without a doc update.
+
+10 of these 11 archetypes now carry a `skillIds` entry (see "Regular monster skill kits" below) — Skeleton Guard is the deliberate exception, since it already has a full Elite/Boss kit for its guard-room role.
+
+### Regular monster skill kits
+
+**Status: implemented.** Previously all 11 regular-combat archetypes had `skillIds: []` and never used anything but a plain basic attack. This adds exactly **1 flavor skill per archetype** for 10 of the 11 (Skeleton Guard deliberately excluded — see above, since a 3rd "normal-tier" skill on top of its existing Elite/Boss kit risks overlapping with Skeleton Warrior's flavor, both being melee skeleton archetypes, and isn't needed for the goal of giving every *skill-less* archetype an identity), each thematically distinct, reusing existing status effects where the theme matches and introducing 2 new ones where it doesn't.
+
+**Usage rate**: for 8 of the 10 archetypes, `actionWeights.normal` (`data/monsters.json`) gives the flavor skill a real per-turn chance alongside the basic attack. The other 2 (Zombie, Skeleton Warrior) keep `actionWeights.normal` at basic-attack-only — their skill is exclusively triggered by the `aiPattern: "defensive"` low-HP logic above, not by the normal weighted roll (a Zombie randomly self-healing at full HP would waste turns; a self-heal should only ever fire when it's actually needed). Current weights: `data/monsters.json`.
+
+#### Skill table
+
+| Archetype | Skill id | Name | Target | Effect (shape) | AI pattern | Trigger |
+|---|---|---|---|---|---|---|
+| Dungeon Rat | `bite` | Bite | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
+| Black Bat | `blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (new field, see below) | aggressive | `actionWeights.normal.skill` |
+| Slime | `acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` (new status) | erratic | `actionWeights.normal.skill` |
+| Skeleton | `bone-throw` | Bone Throw | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
+| **Zombie** | `regeneration` | Regeneration | self | `heal` | defensive | **only** via the `defensive` low-HP logic above |
+| Snake | `poison-bite` | Poison Bite | singleEnemy | `damage` + chance to `applyStatusEffect "poisoned"` (existing — `01-class-skill.md` §1.7) | erratic | `actionWeights.normal.skill` |
+| Lizard | `quick-bite` | Quick Bite | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
+| Spider | `web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` (new status) | aggressive | `actionWeights.normal.skill` |
+| Skeleton Archer | `arrow-shot` | Arrow Shot | singleEnemy | `damage` | erratic | `actionWeights.normal.skill` |
+| **Skeleton Warrior** | `guard-stance` | Guard Stance | self | `applyStatusEffect "guard"` (existing — `01-class-skill.md` §1.7) | defensive | **only** via the `defensive` low-HP logic above |
+
+Current damage/heal amounts and proc chances: `data/monster-skills.json`. *Snake keeps plain `poisoned` (already its established theme) while Spider gets the new `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 "erratic/aggressive poison-flavored" archetypes rather than having them share an identical proc.*
+
+#### New status effects — 2
+
+**`corroded`** (Slime's Acid Spit) — deliberately reserved for reuse by Plague Doctor's kit (`01-class-skill.md` §1.6 lists `burning`/`poisoned`/`weakened`/`blinded`; an acid/corrosion debuff was not among them and fits the "debuffer" theme, though Plague Doctor doesn't currently use it):
+
+```json
+{
+  "id": "corroded",
+  "name": "Corroded",
+  "durationTurns": "<see data/status-effects.json>",
+  "perTurnEffects": [
+    { "kind": "damage", "amount": "<see data/status-effects.json>" },
+    { "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }
+  ],
+  "curableByMiniGame": []
+}
+```
+
+Distinct from both `weakened` (`01-class-skill.md` §1.7 — pure defense reduction, no DoT) and `poisoned` (pure DoT, no defense change) — acid does both at once, at a lighter magnitude than either alone.
+
+**`webbed`** (Spider's Web Spit):
+
+```json
+{
+  "id": "webbed",
+  "name": "Webbed",
+  "durationTurns": "<see data/status-effects.json>",
+  "perTurnEffects": [
+    { "kind": "modifyCombatStat", "combatStat": "speed", "amount": "<see data/status-effects.json>" }
+  ],
+  "curableByMiniGame": []
+}
+```
+
+#### New `SkillEffect` field — `lifestealPercent`
+
+Black Bat's Blood Drain needs the caster to heal off its own damage — no existing effect kind supports this. Adds an optional field to the `damage` effect kind:
+
+```
+SkillEffect (kind: "damage") {
+  ...existing fields (amount, chance?, ignoreDefensePercent?, ...)
+  lifestealPercent?: number   // heals the source actor by this % of the damage actually dealt, capped at maxHp
+}
+```
+
+This required a resolver change (`resolver.ts`): after computing final mitigated damage for a `damage` effect that carries `lifestealPercent`, apply a `heal` to the source actor for `round(finalDamage * lifestealPercent / 100)`, clamped to `maxHp`. This is the only new resolver mechanic the monster skill kits introduced, besides the `aiPattern: "defensive"` fix above.
+
+#### Engine/data summary
+
+- **Data**: `data/monsters.json` — `skillIds` populated for 10 archetypes, `actionWeights.normal` updated for 8 of them (Zombie/Skeleton Warrior unchanged, per "Usage rate" above); `data/monster-skills.json` — the 10 new monster skill entries (same file/shape already used for Elite/Boss skills); `data/status-effects.json` — `corroded`, `webbed`.
+- **Code** (`src/types.ts` + `src/engine/resolver.ts`/`combat.ts`): `SkillEffect.lifestealPercent` + resolver handling; the `aiPattern: "defensive"` branch in `runMonsterTurn` (see "AI patterns" above).
 
 ### Guard-room archetypes (elite/boss)
 

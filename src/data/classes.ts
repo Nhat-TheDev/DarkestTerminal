@@ -1,4 +1,4 @@
-import type { CharacterClass, SkillDefinition } from "../types";
+import type { CharacterClass, SkillDefinition, SkillRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 
 export const CLASSES = classesJson as unknown as CharacterClass[];
@@ -22,4 +22,23 @@ export function getSkill(id: string): SkillDefinition {
     if (found) return found;
   }
   throw new Error(`Unknown skill: ${id}`);
+}
+
+/**
+ * Resolves a skill's mpCost/effects(ByRelation) to the highest rank unlocked at `level`.
+ * Returns the skill unchanged if it has no `ranks` or none are unlocked yet.
+ */
+export function getEffectiveSkill(skill: SkillDefinition, level: number): SkillDefinition {
+  if (!skill.ranks || skill.ranks.length === 0) return skill;
+  let effective: SkillRankDefinition | undefined;
+  for (const r of skill.ranks) {
+    if (r.unlockLevel <= level && (!effective || r.rank > effective.rank)) effective = r;
+  }
+  if (!effective) return skill;
+  return {
+    ...skill,
+    mpCost: effective.mpCost,
+    effects: effective.effects,
+    effectsByRelation: effective.effectsByRelation,
+  };
 }

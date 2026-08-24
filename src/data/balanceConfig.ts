@@ -6,6 +6,7 @@ interface BalanceConfig {
     defenseMitigationX: number;
     defenseMitigationY: number;
     executeCooldownTurns: number;
+    defensiveLowHpSkillChance: number;
   };
   survival: {
     initialHunger: number;

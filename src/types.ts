@@ -29,6 +29,7 @@ export interface SkillEffect {
   miniGameId?: MiniGameId;
   chance?: number;
   ignoreDefensePercent?: number;
+  lifestealPercent?: number;
 }
 
 export type SkillTarget =
@@ -39,6 +40,14 @@ export type SkillTarget =
   | "allEnemies"
   | "singleAllyOrEnemy"
   | "allAlliesAndEnemies";
+
+export interface SkillRankDefinition {
+  rank: 1 | 2 | 3;
+  unlockLevel: number;
+  mpCost: number;
+  effects?: SkillEffect[];
+  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
+}
 
 export interface SkillDefinition {
   id: Id;
@@ -55,6 +64,8 @@ export interface SkillDefinition {
   isUltimate?: boolean;
   isBuff?: boolean;
   isMagic?: boolean;
+  ranks?: SkillRankDefinition[];
+  conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
 }
 
 export interface GrowthWeights {
@@ -111,8 +122,13 @@ export interface StatusEffectDefinition {
   curableByMiniGame: { miniGameId: MiniGameId; clearScore: number }[];
   durationTurns?: number;
   onHitStatusEffectId?: Id;
+  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
+  accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
+  /** If set, this status is a higher-rank variant of the status with id `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match a skill's `conditionalBonus.requiresStatusId` across ranks, and to compose the displayed name as `${name} II`/`${name} III`. */
+  rankOf?: Id;
+  rankLevel?: 2 | 3;
 }
 
 export interface ItemDefinition {

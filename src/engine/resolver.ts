@@ -1,10 +1,10 @@
 import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition } from "../types";
-import { getStatusEffect } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
-function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
-  if (def.stuns || def.vulnerableTo) return false;
+export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
+  if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
   if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && (e.amount ?? 0) < 0)) return false;
   return true;
@@ -56,9 +56,18 @@ export function rollLosesControl(fear: number, roll: () => number): boolean {
   return getFearTier(fear) === 4 && roll() < 0.25;
 }
 
+function statusAccuracyPenaltyPercent(source: Actor): number {
+  let total = 0;
+  for (const active of source.activeStatusEffects) {
+    const def = getStatusEffect(active.statusEffectId);
+    if (def.accuracyPenaltyPercent) total += def.accuracyPenaltyPercent;
+  }
+  return total;
+}
+
 export function rollHits(source: Actor, roll: () => number): boolean {
-  if (!isCharacter(source)) return true;
-  const penalty = getFearAccuracyPenalty(getFearTier(source.survival.fear));
+  const fearPenalty = isCharacter(source) ? getFearAccuracyPenalty(getFearTier(source.survival.fear)) : 0;
+  const penalty = Math.min(1, fearPenalty + statusAccuracyPenaltyPercent(source) / 100);
   return roll() >= penalty;
 }
 
@@ -108,6 +117,13 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       ctx.log.push({ text: t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel }), kind: "attack" });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
+      if (!isSelfTick && effect.lifestealPercent) {
+        const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
+        if (healed > 0) {
+          source.hp += healed;
+          ctx.log.push({ text: t("resolver.heal", { target: nameOf(source), amount: healed }), kind: "heal" });
+        }
+      }
       return finalDamage;
     }
     case "heal": {
@@ -181,7 +197,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
   const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
   if (existing) {
     existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
-    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
   const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
@@ -191,7 +207,7 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
       applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
     }
   }
-  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: def.name }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
@@ -210,7 +226,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
-  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: def.name }), kind: "info" });
+  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: "info" });
 }
 
 function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
@@ -229,7 +245,7 @@ export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
       if (e.kind !== "modifyCombatStat") {
         const multiplier = e.kind === "damage" ? vulnerabilityMultiplier(actor, active.statusEffectId) : 1;
         const effectToApply = multiplier !== 1 ? { ...e, amount: (e.amount ?? 0) * multiplier } : e;
-        resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: def.name });
+        resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
     }
     if (!isActorAlive(actor)) continue;

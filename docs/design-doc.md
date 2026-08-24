@@ -39,7 +39,7 @@ existing gameplay.
 - Each class has a shared **basic attack** (free, same structure across all classes, deals pure weapon damage) + several class-specific skills, defined in `data/classes.json`, unlocked gradually as the character levels up (`unlockLevel` field)
 - Class stats: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first) — values in `data/classes.json`
 - Some class-specific skills also have a **per-turn cooldown** (`cooldownTurns` field)
-- Full stat tables + skill content for each class: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte)
+- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor)
 
 ### 1.6 Item & Artifact
 - **Consumable items**: help with survival (hunger/thirst/fear) and restore HP/MP, usable in or out of combat, dropped randomly by monsters
@@ -88,8 +88,8 @@ Main type groups:
 ## 5. Detailed decisions (split into separate files)
 
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
-- The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte) — `data/classes.json`
-- Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns — `data/monsters.json`
+- The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor), plus the 3-rank skill power-scaling system — `data/classes.json`
+- Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns + regular-monster skill kits — `data/monsters.json`
 - Fear/hunger/thirst thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
 - Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`
 - Elite (found on most floors) is separate from a true Boss (found at a fixed floor interval, `data/level-growth.json` field `bossFloorInterval`) — both have their own skill sets
@@ -110,7 +110,6 @@ a reference spec for future implementation, and do not describe the game's
 current state.
 
 - **4 mini-games** (Snake, Tetris, Brick Breaker, Magic Tiles) used to cure debuffs and as boss phases — specific numbers + Magic Tiles mechanics (hit/miss, combo, score/time): **[`minigame-decisions.md`](./minigame-decisions.md)**
-- **2 new classes** (Viking, Plague Doctor) + the shared base-stats balancing formula: **[`gameplay-decisions/09-new-classes-viking-plaguedoctor.md`](./gameplay-decisions/09-new-classes-viking-plaguedoctor.md)**
 - **FOV** (shadowcasting) and **pathfinding** (A* for monsters)
 - **Diff-based rendering**
 - **Treasure room** — a room type that always drops an Artifact, with a type (`RoomType: "treasure"`) and spec (`gameplay-decisions/07-items-artifacts.md` §7.2) already defined, but the current floor-generation algorithm doesn't produce this room type yet

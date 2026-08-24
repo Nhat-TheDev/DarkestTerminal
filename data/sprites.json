@@ -2,15 +2,15 @@
   "classes": {
     "vanguard": {
       "rows": [
-        "....FFFFF....",
-        "...FFBEBEB...",
-        "...FFBEBEB...",
-        "...AAAARRRRRR",
-        "G.AAACCRFFFFR",
-        "DGAAAACRFFFFR",
-        ".DSAAAAARRRR.",
-        "...NNNNNNN...",
-        "...NNN.NNN..."
+        ".....FFFFF....",
+        "....FFBEBEB...",
+        "....FFBEBEB...",
+        "D...AAAARRRRRR",
+        "DG.AAACCRFFFFR",
+        ".DGAAAACRFFFFR",
+        "..DSAAAAARRRR.",
+        "....NNNNNNN...",
+        "....NNN.NNN..."
       ],
       "palette": {
         "H": "#2b3a4a",
@@ -94,6 +94,60 @@
         "A": "#d4c05a",
         "C": "#fbf6e4",
         "N": "#4a4028"
+      }
+    },
+    "viking": {
+      "rows": [
+        "......E.......",
+        "....GGEGG.....",
+        "...GGEESSS....",
+        "...GGGSSES....",
+        "...ACAAACA....",
+        ".BBRACCCAAA...",
+        "BFFFRACAAAA.RD",
+        "BFFFRCCCAFSFFR",
+        ".BBRNNNNNN.RDR",
+        "...NNN.NNN...."
+      ],
+      "palette": {
+        "H": "#2b3a4a",
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "A": "#578d44",
+        "C": "#1e3a5c",
+        "F": "#696b6d",
+        "R": "#c9d8e8",
+        "N": "#2b3a4a",
+        "B": "#cec7db",
+        "D": "#ffffff",
+        "G": "#9c93be"
+      }
+    },
+    "plague-doctor": {
+      "rows": [
+        "....HHHHH....",
+        "..HHHHHHHHH..",
+        "...SSSSEES...",
+        "...SSSSSSSSS.",
+        "...GGGIGGG...",
+        "D.AAAACAAAA.D",
+        ".FFAAACAAABB.",
+        ".FFACCCCCABB.",
+        "..AAAACAAAA..",
+        ".AAAAACAAAAA."
+      ],
+      "palette": {
+        "H": "#8a7050",
+        "S": "#786f64",
+        "E": "#d9d9d9",
+        "A": "#9eb18c",
+        "C": "#685f41",
+        "N": "#4a4028",
+        "B": "#8d5fd3",
+        "D": "#ffffff",
+        "F": "#f9c824",
+        "G": "#d5ccae",
+        "I": "#423c29"
       }
     }
   },

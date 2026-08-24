@@ -2,7 +2,7 @@ import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type Cl
 import type { Character, CombatantRef, Monster, SkillDefinition, ItemDefinition, Id, LogEntry, CombatantSnapshot } from "../types";
 import { Game, MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../engine/combat";
-import { getSkill, getClass } from "../data/classes";
+import { getSkill, getClass, getEffectiveSkill } from "../data/classes";
 import { getItem, formatItemEffect } from "../data/items";
 import { getArtifact, formatArtifactEffect } from "../data/artifacts";
 import { getEvent } from "../data/events";
@@ -138,7 +138,7 @@ function cursedEquippedEntries(party: Character[]): { character: Character; arti
 }
 
 function skillEntries(actor: Character): SkillDefinition[] {
-  return actor.unlockedSkillIds.map((id) => getSkill(id));
+  return actor.unlockedSkillIds.map((id) => getEffectiveSkill(getSkill(id), actor.level));
 }
 
 function eventUiState(eventId: Id): UiState {
@@ -767,7 +767,7 @@ export class App {
       [
         boldColorChunk(room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
-        colorChunk(s.combat ? `Round ${s.combat.roundNumber}` : t("ui.exploring"), PALETTE.dim),
+        colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
       ],
     ]);
 
@@ -797,7 +797,7 @@ export class App {
     const items = inventoryEntries(s.inventory);
     if (items.length > 0) {
       partyLines.push([], [colorChunk(t("ui.itemsLabel"), PALETTE.title)]);
-      for (const { item, qty } of items) partyLines.push([plainChunk(`  ${item.name} x${qty}`)]);
+      for (const { item, qty } of items) partyLines.push([plainChunk(t("ui.inventoryLineNoIndex", { name: item.name, qty }))]);
     }
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
@@ -858,13 +858,13 @@ export class App {
       return [[chip(style.abbr, PALETTE.dead), plainChunk(t("ui.fallenSuffix", { name: c.name }))]];
     }
 
-    const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name} `), colorChunk(`Lv.${c.level}`, PALETTE.title)];
+    const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name} `), colorChunk(t("ui.levelTag", { level: c.level }), PALETTE.title)];
     const tier = getFearTier(c.survival.fear);
     const line2: TextChunk[] = [
       plainChunk("  "),
-      colorChunk(`HP ${c.hp}/${c.maxHp}`, hpColorFor(c.hp, c.maxHp)),
+      colorChunk(t("ui.hpStat", { hp: c.hp, maxHp: c.maxHp }), hpColorFor(c.hp, c.maxHp)),
       plainChunk(" "),
-      colorChunk(`MP ${c.mp}/${c.maxMp}`, PALETTE.mp),
+      colorChunk(t("ui.mpStat", { mp: c.mp, maxMp: c.maxMp }), PALETTE.mp),
       plainChunk(" "),
       colorChunk(t("ui.fearStat", { fear: c.survival.fear }), fearColorFor(tier)),
     ];
@@ -977,7 +977,7 @@ export class App {
     for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
       divider.push(
         i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom
-          ? [colorChunk(centerText("vs", DIVIDER_WIDTH), PALETTE.dim)]
+          ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
           : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
       );
     }
@@ -1008,7 +1008,7 @@ export class App {
         chip(style.abbr, style.color),
         plainChunk(` ${m.name}`),
         plainChunk("\n   "),
-        colorChunk(`HP ${hp}/${m.maxHp}`, hpColorFor(hp, m.maxHp)),
+        colorChunk(t("ui.hpStat", { hp, maxHp: m.maxHp }), hpColorFor(hp, m.maxHp)),
       ]);
     }
     return lines.length > 0 ? lines : [[colorChunk(t("ui.noMoreMonsters"), PALETTE.dim)]];
@@ -1051,7 +1051,7 @@ export class App {
       case "artifactDetail": {
         const artifact = getArtifact(this.ui.artifactId);
         const lines = [
-          `${artifact.name} (${artifact.rarity})${artifact.isCursed ? " ⚠ CURSED" : ""}`,
+          `${artifact.name} (${artifact.rarity})${artifact.isCursed ? t("ui.cursedTag") : ""}`,
           "",
           t("ui.effectLabel"),
           formatArtifactEffect(artifact),
@@ -1068,14 +1068,14 @@ export class App {
       case "pickCharacterForArtifact": {
         const artifact = getArtifact(this.ui.artifactId);
         const lines = [t("ui.equipPrompt", { artifact: artifact.name })];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} (${c.equippedArtifactIds.length}/${MAX_EQUIPPED_ARTIFACTS} slot)`));
+        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} ${t("ui.artifactSlotsTag", { count: c.equippedArtifactIds.length, max: MAX_EQUIPPED_ARTIFACTS })}`));
         return lines.join("\n");
       }
 
       case "pickItemOutOfCombat": {
         const lines = [t("ui.chooseItemToUse")];
         inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(`  [${i + 1}] ${item.name} x${qty}`);
+          lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
         });
         return lines.join("\n");
       }
@@ -1154,7 +1154,7 @@ export class App {
           const usesSuffix = usesLeft !== null ? t("ui.usesLeftSuffix", { count: usesLeft }) : "";
           const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
           const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
-          const dmgSuffix = dmgEffect ? `, ~${Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat))} dmg` : "";
+          const dmgSuffix = dmgEffect ? t("ui.dmgEstimateSuffix", { amount: Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat)) }) : "";
           const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
           if (unusable) {
             lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
@@ -1168,7 +1168,7 @@ export class App {
       case "pickItemInCombat": {
         const lines = [t("ui.chooseItemToUse")];
         inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(`  [${i + 1}] ${item.name} x${qty}`);
+          lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
         });
         return lines.join("\n");
       }
@@ -1180,7 +1180,7 @@ export class App {
         const isDualRelation = sourceTarget === "singleAllyOrEnemy";
         this.ui.candidates.forEach((ref, i) => {
           const target = getActorByRef(ref, this.game.ctx);
-          const hpInfo = "hp" in target ? ` (${target.hp}/${target.maxHp} HP)` : "";
+          const hpInfo = "hp" in target ? t("ui.hpSuffix", { hp: target.hp, maxHp: target.maxHp }) : "";
           const sidePrefix = isDualRelation ? (ref.kind === "character" ? t("ui.allySidePrefix") : t("ui.enemySidePrefix")) : "";
           lines.push(`  [${i + 1}] ${sidePrefix}${target.name}${hpInfo}`);
         });
@@ -1201,14 +1201,14 @@ export class App {
       case "eventMerchantPickPayer": {
         const artifactId = s.activeEvent?.offerArtifactIds[this.ui.offerIndex];
         const lines = [t("ui.whoPaysFor", { artifact: artifactId ? getArtifact(artifactId).name : t("ui.unknownArtifact") })];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} (${c.hp}/${c.maxHp} HP)`));
+        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
         return lines.join("\n");
       }
 
       case "eventCursedShrine": {
         const artifactId = s.activeEvent?.offerArtifactIds[0];
         const a = artifactId ? getArtifact(artifactId) : null;
-        const curseTag = a?.isCursed ? " ⚠ CURSED" : "";
+        const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
         return [
           a ? `${a.name} (${a.rarity})${curseTag} — ${a.description}` : "...",
           "",
@@ -1229,7 +1229,7 @@ export class App {
 
       case "eventTwinAltarsPickCharacter": {
         const lines = [t("ui.equipNowPrompt")];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} (${c.equippedArtifactIds.length}/${MAX_EQUIPPED_ARTIFACTS} slot)`));
+        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} ${t("ui.artifactSlotsTag", { count: c.equippedArtifactIds.length, max: MAX_EQUIPPED_ARTIFACTS })}`));
         return lines.join("\n");
       }
 
@@ -1249,7 +1249,7 @@ export class App {
 
       case "eventHpGamblePickPayer": {
         const lines = [t("ui.whoPays")];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} (${c.hp}/${c.maxHp} HP)`));
+        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
         return lines.join("\n");
       }
 

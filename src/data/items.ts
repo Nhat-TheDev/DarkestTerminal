@@ -3,6 +3,7 @@ import itemsJson from "../../data/items.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import { getStatusEffect } from "./statusEffects";
+import { t } from "./strings";
 
 export const ITEMS = itemsJson as unknown as ItemDefinition[];
 
@@ -12,54 +13,61 @@ export function getItem(id: Id): ItemDefinition {
   return found;
 }
 
-const STAT_LABEL: Record<string, string> = { hunger: "hunger", thirst: "thirst", fear: "fear" };
-const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "attack", defense: "defense", aggro: "aggro", speed: "speed" };
+const STAT_LABEL: Record<string, string> = { hunger: t("resolver.statLabelHunger"), thirst: t("resolver.statLabelThirst"), fear: t("resolver.statLabelFear") };
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
+  attack: t("resolver.statLabelAttack"),
+  defense: t("resolver.statLabelDefense"),
+  aggro: t("resolver.statLabelAggro"),
+  speed: t("resolver.statLabelSpeed"),
+};
+
+export function signed(amount: number): string {
+  return `${amount >= 0 ? "+" : ""}${amount}`;
+}
 
 function statusEffectSummary(statusEffectId: Id): string {
   const status = getStatusEffect(statusEffectId);
   const parts = status.perTurnEffects.map((e) => {
-    if (e.kind === "damage") return `lose ${e.amount} HP/turn`;
-    if (e.kind === "heal") return `restore ${e.amount} HP/turn`;
-    if (e.kind === "modifyCombatStat" && e.combatStat) return `${(e.amount ?? 0) >= 0 ? "+" : ""}${e.amount} ${COMBAT_STAT_LABEL[e.combatStat]}/turn`;
+    if (e.kind === "damage") return t("item.effectPerTurnDamage", { amount: e.amount ?? 0 });
+    if (e.kind === "heal") return t("item.effectPerTurnHeal", { amount: e.amount ?? 0 });
+    if (e.kind === "modifyCombatStat" && e.combatStat) return t("item.effectPerTurnStat", { amount: signed(e.amount ?? 0), stat: COMBAT_STAT_LABEL[e.combatStat] });
     return "";
   }).filter(Boolean);
-  if (status.onHitStatusEffectId) parts.push(`every landed hit also applies ${getStatusEffect(status.onHitStatusEffectId).name}`);
-  if (status.vulnerableTo) parts.push(`doubles damage from ${getStatusEffect(status.vulnerableTo.statusEffectId).name} while active`);
-  if (status.stuns) parts.push("skips the turn entirely");
-  const body = parts.length > 0 ? parts.join(", ") : "no per-turn effect";
-  return `${status.name} (${status.durationTurns ?? "?"} turns): ${body}`;
+  if (status.onHitStatusEffectId) parts.push(t("item.effectOnHitRider", { status: getStatusEffect(status.onHitStatusEffectId).name }));
+  if (status.vulnerableTo) parts.push(t("item.effectVulnerable", { status: getStatusEffect(status.vulnerableTo.statusEffectId).name }));
+  if (status.stuns) parts.push(t("item.effectStuns"));
+  const body = parts.length > 0 ? parts.join(", ") : t("item.effectNoPerTurn");
+  return t("item.statusSummary", { name: status.name, turns: status.durationTurns ?? "?", body });
 }
 
 function itemEffectSummary(effect: SkillEffect): string {
   switch (effect.kind) {
     case "heal":
-      return `Instantly restores ${effect.amount} HP`;
+      return t("item.effectHeal", { amount: effect.amount ?? 0 });
     case "restoreMp":
-      return `Instantly restores ${effect.amount} MP`;
+      return t("item.effectRestoreMp", { amount: effect.amount ?? 0 });
     case "modifyStat": {
       const label = effect.stat ? STAT_LABEL[effect.stat] ?? effect.stat : "";
-      const amount = effect.amount ?? 0;
-      return `${amount >= 0 ? "+" : ""}${amount} ${label}`;
+      return t("effect.signedStat", { amount: signed(effect.amount ?? 0), stat: label });
     }
     case "removeStatusEffect":
-      return "Removes 1 active negative status effect";
+      return t("item.effectRemoveStatus");
     case "applyStatusEffect":
-      return effect.statusEffectId ? `Applies ${statusEffectSummary(effect.statusEffectId)}` : "Applies 1 status effect";
+      return effect.statusEffectId ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId) }) : t("item.effectApplyStatusGeneric");
     case "modifyCombatStat": {
       const label = effect.combatStat ? COMBAT_STAT_LABEL[effect.combatStat] : "";
-      const amount = effect.amount ?? 0;
-      return `${amount >= 0 ? "+" : ""}${amount} ${label}`;
+      return t("effect.signedStat", { amount: signed(effect.amount ?? 0), stat: label });
     }
     default:
-      return "Special effect";
+      return t("effect.default");
   }
 }
 
 const TARGET_NOTE: Record<string, string> = {
-  self: " (choose any character, including allies)",
-  singleAlly: " (choose 1 ally)",
-  allAllies: " (whole party)",
-  singleEnemy: " (choose 1 enemy — combat only)",
+  self: t("item.targetNoteSelf"),
+  singleAlly: t("item.targetNoteSingleAlly"),
+  allAllies: t("item.targetNoteAllAllies"),
+  singleEnemy: t("item.targetNoteSingleEnemy"),
 };
 
 export function formatItemEffect(item: ItemDefinition): string {
