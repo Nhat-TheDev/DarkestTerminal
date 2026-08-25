@@ -1,22 +1,16 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, CombatantRef, Monster, SkillDefinition, ItemDefinition, Id, LogEntry, CombatantSnapshot } from "../types";
-import { Game, MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../engine/game";
-import { getActorByRef, checkSkillUsable, checkItemUsable } from "../engine/combat";
-import { getSkill, getClass, getEffectiveSkill } from "../data/classes";
-import { getItem, formatItemEffect } from "../data/items";
-import { getArtifact, formatArtifactEffect } from "../data/artifacts";
-import { getEvent } from "../data/events";
-import { MAX_EQUIPPED_ARTIFACTS } from "../engine/party";
+import type { Character, Monster, Id, LogEntry, CombatantSnapshot } from "../types";
+import { Game } from "../engine/game";
+import { getActorByRef } from "../engine/combat";
+import { getClass } from "../data/classes";
+import { getArtifact } from "../data/artifacts";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";
 import { t } from "../data/strings";
-import { manualSave, quickSave, autoSave } from "../engine/save";
+import { quickSave } from "../engine/save";
 import {
   PALETTE,
   CLASS_STYLE,
-  MONSTER_STYLE,
-  BOSS_COLOR,
-  ELITE_COLOR,
   chip,
   plainChunk,
   colorChunk,
@@ -36,128 +30,20 @@ import {
   CAMPFIRE_SPRITE,
   type Sprite,
 } from "./sprites";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { type UiState, inventoryEntries, eventUiState } from "./state";
+import type { ScreenContext } from "./screens/context";
+import * as eventsScreen from "./screens/events";
+import * as roomScreen from "./screens/room";
+import * as combatScreen from "./screens/combat";
+import * as inventoryScreen from "./screens/inventory";
+import * as artifactsScreen from "./screens/artifacts";
+import * as rewardsScreen from "./screens/rewards";
+import * as saveScreen from "./screens/save";
+import * as gameoverScreen from "./screens/gameover";
 
-const SLOT_WIDTH = 13;
-const SLOT_GAP = 2;
-const DIVIDER_WIDTH = 3;
-const EMPTY_ENEMY_WIDTH = 24;
-const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
 const LOG_HISTORY_SIZE = 20;
 const LOG_REVEAL_INTERVAL_MS = 500;
-
-function centerText(text: string, width: number): string {
-  if (text.length >= width) return text.slice(0, width);
-  const pad = width - text.length;
-  const left = Math.floor(pad / 2);
-  return " ".repeat(left) + text + " ".repeat(pad - left);
-}
-
-function monsterStyle(m: Monster): { abbr: string; color: string } {
-  if (m.tier === "boss") return { abbr: "BOSS", color: BOSS_COLOR };
-  if (m.tier === "elite") return { abbr: "ELITE", color: ELITE_COLOR };
-  return MONSTER_STYLE[m.archetypeId] ?? { abbr: "??", color: PALETTE.dim };
-}
-
-function truncateText(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen - 1).trimEnd() + "…";
-}
-
-function mergeBlocksHorizontally(blocks: TextChunk[][][], gapWidth: number): TextChunk[][] {
-  const lineCount = blocks[0]?.length ?? 0;
-  const merged: TextChunk[][] = [];
-  for (let i = 0; i < lineCount; i++) {
-    const line: TextChunk[] = [];
-    blocks.forEach((block, idx) => {
-      if (idx > 0) line.push(plainChunk(" ".repeat(gapWidth)));
-      line.push(...(block[i] ?? []));
-    });
-    merged.push(line);
-  }
-  return merged;
-}
-
-type PickTargetSource = { kind: "skill"; skill: SkillDefinition } | { kind: "item"; item: ItemDefinition };
-
-type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { kind: "outOfCombat" };
-
-type ArtifactDetailOrigin = { kind: "unequipped" } | { kind: "equipped"; characterId: Id };
-
-type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id };
-
-type UiState =
-  | { kind: "room" }
-  | { kind: "rest" }
-  | { kind: "pickAction"; actorRef: CombatantRef }
-  | { kind: "pickSkill"; actorRef: CombatantRef }
-  | { kind: "pickItemInCombat"; actorRef: CombatantRef }
-  | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
-  | { kind: "roundResolved" }
-  | { kind: "combatOver" }
-  | { kind: "pickItemOutOfCombat" }
-  | { kind: "itemDetail"; item: ItemDefinition; origin: ItemDetailOrigin }
-  | { kind: "artifactMenu" }
-  | { kind: "artifactDetail"; artifactId: Id; origin: ArtifactDetailOrigin }
-  | { kind: "pickCharacterForArtifact"; artifactId: Id }
-  | { kind: "saveMenu"; previous: UiState }
-  | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
-  | { kind: "eventMerchant" }
-  | { kind: "eventMerchantPickPayer"; offerIndex: number }
-  | { kind: "eventCursedShrine" }
-  | { kind: "eventTwinAltars" }
-  | { kind: "eventTwinAltarsPickCharacter"; offerIndex: 0 | 1 }
-  | { kind: "eventTwinAltarsPickUnequip"; offerIndex: 0 | 1; characterId: Id }
-  | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventHpGamblePickPayer"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventArtifactPick"; eventId: "sacrificial-circle" | "gambling-den" }
-  | { kind: "eventHermit" }
-  | { kind: "eventHermitPickArtifact"; service: "removeCurse" | "reroll" }
-  | { kind: "gameover" };
-
-function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
-  return Object.entries(inventory)
-    .filter(([, qty]) => qty > 0)
-    .map(([id, qty]) => ({ item: getItem(id), qty }));
-}
-
-function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[] }): RewardEntry[] {
-  const itemQty = new Map<Id, number>();
-  for (const id of drops.itemIds) itemQty.set(id, (itemQty.get(id) ?? 0) + 1);
-  const entries: RewardEntry[] = [];
-  for (const [id, qty] of itemQty) entries.push({ kind: "item", id, qty });
-  for (const id of drops.artifactIds) entries.push({ kind: "artifact", id });
-  return entries;
-}
-
-function ownedArtifactIds(party: Character[], unequippedArtifactIds: Id[]): Id[] {
-  return [...unequippedArtifactIds, ...party.flatMap((c) => c.equippedArtifactIds)];
-}
-
-function cursedEquippedEntries(party: Character[]): { character: Character; artifactId: Id }[] {
-  return party.flatMap((character) => character.equippedArtifactIds.filter((id) => getArtifact(id).isCursed).map((artifactId) => ({ character, artifactId })));
-}
-
-function skillEntries(actor: Character): SkillDefinition[] {
-  return actor.unlockedSkillIds.map((id) => getEffectiveSkill(getSkill(id), actor.level));
-}
-
-function eventUiState(eventId: Id): UiState {
-  const event = getEvent(eventId);
-  switch (event.kind) {
-    case "merchant":
-      return { kind: "eventMerchant" };
-    case "choiceReveal":
-      return eventId === "twin-altars" ? { kind: "eventTwinAltars" } : { kind: "eventCursedShrine" };
-    case "artifactExchange":
-      return eventId === "wandering-hermit" ? { kind: "eventHermit" } : { kind: "eventArtifactPick", eventId: eventId as "sacrificial-circle" | "gambling-den" };
-    case "hpGamble":
-      return { kind: "eventHpGamble", eventId: "blood-altar" };
-    case "rescueGamble":
-      return { kind: "eventHpGamble", eventId: "collapsed-floor" };
-    default:
-      return { kind: "room" };
-  }
-}
 
 const FEAR_TIER_LABEL: Record<number, string> = {
   1: t("ui.fearTier1"),
@@ -166,8 +52,8 @@ const FEAR_TIER_LABEL: Record<number, string> = {
   4: t("ui.fearTier4"),
 };
 
-export class App {
-  private game: Game;
+export class App implements ScreenContext {
+  game: Game;
   private ui: UiState = { kind: "room" };
   private root: BoxRenderable;
   private header: TextRenderable;
@@ -277,7 +163,15 @@ export class App {
     return this.game;
   }
 
-  private syncUiToGameState(): void {
+  setUi(next: UiState): void {
+    this.ui = next;
+  }
+
+  logInfo(text: string): void {
+    this.logHistory.push({ text, kind: "info" });
+  }
+
+  syncUiToGameState(): void {
     if (this.game.state.gameOver) {
       this.ui = { kind: "gameover" };
       return;
@@ -345,311 +239,46 @@ export class App {
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
     switch (this.ui.kind) {
-      case "room": {
-        if (key.name === "i") {
-          if (inventoryEntries(this.game.state.inventory).length > 0) this.ui = { kind: "pickItemOutOfCombat" };
-          break;
-        }
-        if (key.name === "a") {
-          this.ui = { kind: "artifactMenu" };
-          break;
-        }
-        if (digit === null) break;
-        const choices = this.game.connectedRoomChoices();
-        const choice = choices[digit - 1];
-        if (choice) this.game.move(choice.id);
-        this.syncUiToGameState();
+      case "room":
+      case "rest":
+        roomScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "rest": {
-        const choice = digit === 1 ? "eat" : digit === 2 ? "chat" : digit === 3 ? "skip" : null;
-        if (choice === null) break;
-        this.game.restAction(choice);
-        this.syncUiToGameState();
-        break;
-      }
-      case "pickAction": {
-        if (digit === 1) {
-          this.ui = { kind: "pickSkill", actorRef: this.ui.actorRef };
-        } else if (digit === 2) {
-          if (inventoryEntries(this.game.state.inventory).length === 0) {
-            this.reportUnusable(t("ui.noItemsToUse"));
-            break;
-          }
-          this.ui = { kind: "pickItemInCombat", actorRef: this.ui.actorRef };
-        }
-        break;
-      }
-      case "pickSkill": {
-        if (digit === null) break;
-        const actor = getActorByRef(this.ui.actorRef, this.game.ctx) as Character;
-        const skill = skillEntries(actor)[digit - 1];
-        if (!skill) break;
-        this.trySelectSkill(this.ui.actorRef, skill);
-        break;
-      }
-      case "pickItemInCombat": {
-        if (digit === null) break;
-        const entry = inventoryEntries(this.game.state.inventory)[digit - 1];
-        if (!entry) break;
-        this.ui = { kind: "itemDetail", item: entry.item, origin: { kind: "combat", actorRef: this.ui.actorRef } };
-        break;
-      }
-      case "pickTarget": {
-        if (digit === null) break;
-        const target = this.ui.candidates[digit - 1];
-        if (!target) break;
-        const err =
-          this.ui.source.kind === "skill"
-            ? this.game.queue(this.ui.actorRef, this.ui.source.skill.id, [target])
-            : this.game.queueItem(this.ui.actorRef, this.ui.source.item.id, [target]);
-        if (err) this.reportUnusable(err.reason);
-        this.syncUiToGameState();
-        break;
-      }
+      case "pickAction":
+      case "pickSkill":
+      case "pickItemInCombat":
+      case "pickTarget":
       case "roundResolved":
-      case "combatOver": {
-        if (this.ui.kind === "combatOver") {
-          const wasBossRoomVictory = this.game.clearFinishedCombat();
-          const drops = this.game.state.lastRoomDrops;
-          this.game.state.lastRoomDrops = null;
-          if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
-            this.pendingFloorAdvance = wasBossRoomVictory;
-            this.ui = { kind: "roomReward", entries: buildRewardEntries(drops), viewing: null };
-            break;
-          }
-          if (wasBossRoomVictory) {
-            const depthBefore = this.game.state.floor.depth;
-            this.game.advanceToNextFloor();
-            if (this.game.state.floor.depth > depthBefore) autoSave(this.game);
-          }
-        }
-        this.syncUiToGameState();
+      case "combatOver":
+        combatScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "roomReward": {
-        if (this.ui.viewing) {
-          if (digit === 1) this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
-          break;
-        }
-        if (key.name === "return") {
-          if (this.pendingFloorAdvance) {
-            this.pendingFloorAdvance = false;
-            const depthBefore = this.game.state.floor.depth;
-            this.game.advanceToNextFloor();
-            if (this.game.state.floor.depth > depthBefore) autoSave(this.game);
-          }
-          this.syncUiToGameState();
-          break;
-        }
-        if (digit === null) break;
-        if (digit <= this.ui.entries.length) {
-          this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: this.ui.entries[digit - 1]! };
-        }
+      case "roomReward":
+        rewardsScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "pickItemOutOfCombat": {
-        if (digit === null) break;
-        const entry = inventoryEntries(this.game.state.inventory)[digit - 1];
-        if (!entry) break;
-        this.ui = { kind: "itemDetail", item: entry.item, origin: { kind: "outOfCombat" } };
+      case "pickItemOutOfCombat":
+      case "itemDetail":
+        inventoryScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "itemDetail": {
-        if (this.ui.origin.kind === "outOfCombat") {
-          if (digit === 1) this.ui = { kind: "pickItemOutOfCombat" };
-        } else if (digit === 1) {
-          this.trySelectItem(this.ui.origin.actorRef, this.ui.item);
-        } else if (digit === 2) {
-          this.ui = { kind: "pickItemInCombat", actorRef: this.ui.origin.actorRef };
-        }
+      case "artifactDetail":
+      case "artifactMenu":
+      case "pickCharacterForArtifact":
+        artifactsScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "artifactDetail": {
-        if (digit === 1) {
-          if (this.ui.origin.kind === "unequipped") {
-            this.ui = { kind: "pickCharacterForArtifact", artifactId: this.ui.artifactId };
-          } else {
-            const err = this.game.unequipArtifact(this.ui.origin.characterId, this.ui.artifactId);
-            if (err) this.reportUnusable(err.reason);
-            this.syncUiToGameState();
-          }
-        } else if (digit === 2) {
-          this.ui = { kind: "artifactMenu" };
-        }
+      case "saveMenu":
+        saveScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "saveMenu": {
-        if (digit === 1) {
-          manualSave(this.game);
-          this.pushToast(t("ui.gameSavedMsg"));
-          this.ui = this.ui.previous;
-        } else if (digit === 2) {
-          manualSave(this.game);
-          this.quit();
-        } else if (digit === 3) {
-          this.ui = this.ui.previous;
-        }
+      case "eventMerchant":
+      case "eventMerchantPickPayer":
+      case "eventCursedShrine":
+      case "eventTwinAltars":
+      case "eventTwinAltarsPickCharacter":
+      case "eventTwinAltarsPickUnequip":
+      case "eventHpGamble":
+      case "eventHpGamblePickPayer":
+      case "eventArtifactPick":
+      case "eventHermit":
+      case "eventHermitPickArtifact":
+        eventsScreen.handleKey(this, this.ui, key, digit);
         break;
-      }
-      case "artifactMenu": {
-        if (digit === null) break;
-        const unequipped = this.game.state.unequippedArtifactIds;
-        if (digit <= unequipped.length) {
-          this.ui = { kind: "artifactDetail", artifactId: unequipped[digit - 1]!, origin: { kind: "unequipped" } };
-        } else {
-          const pair = this.equippedArtifactPairAt(digit - unequipped.length);
-          if (!pair) break;
-          this.ui = { kind: "artifactDetail", artifactId: pair.artifactId, origin: { kind: "equipped", characterId: pair.characterId } };
-        }
-        break;
-      }
-      case "pickCharacterForArtifact": {
-        if (digit === null) break;
-        const character = this.game.state.party[digit - 1];
-        if (!character) break;
-        const err = this.game.equipArtifact(character.id, this.ui.artifactId);
-        if (err) this.reportUnusable(err.reason);
-        this.syncUiToGameState();
-        break;
-      }
-      case "eventMerchant": {
-        if (digit === null) break;
-        const offers = this.game.state.activeEvent?.offerArtifactIds ?? [];
-        if (digit <= offers.length) {
-          this.ui = { kind: "eventMerchantPickPayer", offerIndex: digit - 1 };
-        } else if (digit === offers.length + 1) {
-          this.game.merchantLeave();
-          this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        }
-        break;
-      }
-      case "eventMerchantPickPayer": {
-        if (digit === null) break;
-        const payer = this.game.state.party[digit - 1];
-        if (!payer) break;
-        const err = this.game.merchantPurchase(this.ui.offerIndex, payer.id);
-        if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        this.syncUiToGameState();
-        break;
-      }
-      case "eventCursedShrine": {
-        if (digit === 1 || digit === 2) {
-          this.game.cursedShrineDecide(digit === 1);
-          this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        }
-        break;
-      }
-      case "eventTwinAltars": {
-        if (digit === 1 || digit === 2) this.ui = { kind: "eventTwinAltarsPickCharacter", offerIndex: (digit - 1) as 0 | 1 };
-        break;
-      }
-      case "eventTwinAltarsPickCharacter": {
-        if (digit === null) break;
-        const character = this.game.state.party[digit - 1];
-        if (!character) break;
-        if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) {
-          this.ui = { kind: "eventTwinAltarsPickUnequip", offerIndex: this.ui.offerIndex, characterId: character.id };
-          break;
-        }
-        const err = this.game.twinAltarsChoose(this.ui.offerIndex, character.id);
-        if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        this.syncUiToGameState();
-        break;
-      }
-      case "eventTwinAltarsPickUnequip": {
-        if (digit === null) break;
-        const { offerIndex, characterId } = this.ui;
-        const character = this.game.state.party.find((c) => c.id === characterId);
-        const artifactId = character?.equippedArtifactIds[digit - 1];
-        if (!artifactId) break;
-        const err = this.game.twinAltarsChoose(offerIndex, characterId, artifactId);
-        if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        this.syncUiToGameState();
-        break;
-      }
-      case "eventHpGamble": {
-        if (digit === 1) {
-          this.ui = { kind: "eventHpGamblePickPayer", eventId: this.ui.eventId };
-        } else if (digit === 2) {
-          if (this.ui.eventId === "blood-altar") this.game.bloodAltarLeave();
-          else this.game.collapsedFloorLeave();
-          this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        }
-        break;
-      }
-      case "eventHpGamblePickPayer": {
-        if (digit === null) break;
-        const character = this.game.state.party[digit - 1];
-        if (!character) break;
-        const err = this.ui.eventId === "blood-altar" ? this.game.bloodAltarPay(character.id) : this.game.collapsedFloorAttempt(character.id);
-        if (err) this.reportUnusable(err.reason);
-        else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        this.syncUiToGameState();
-        break;
-      }
-      case "eventArtifactPick": {
-        if (digit === null) break;
-        const isSacrifice = this.ui.eventId === "sacrificial-circle";
-        const candidates = isSacrifice ? ownedArtifactIds(this.game.state.party, this.game.state.unequippedArtifactIds) : this.game.state.unequippedArtifactIds;
-        if (digit <= candidates.length) {
-          const artifactId = candidates[digit - 1]!;
-          const err = isSacrifice ? this.game.sacrifice(artifactId) : this.game.gamblingDenBet(artifactId);
-          if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        } else if (digit === candidates.length + 1) {
-          if (isSacrifice) this.game.sacrificeLeave();
-          else this.game.gamblingDenLeave();
-          this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        }
-        break;
-      }
-      case "eventHermit": {
-        if (digit === 1) {
-          if (cursedEquippedEntries(this.game.state.party).length === 0) {
-            this.reportUnusable(t("ui.noCursedToRemove"));
-            break;
-          }
-          this.ui = { kind: "eventHermitPickArtifact", service: "removeCurse" };
-        } else if (digit === 2) {
-          if (ownedArtifactIds(this.game.state.party, this.game.state.unequippedArtifactIds).length === 0) {
-            this.reportUnusable(t("ui.noArtifactToReroll"));
-            break;
-          }
-          this.ui = { kind: "eventHermitPickArtifact", service: "reroll" };
-        } else if (digit === 3) {
-          this.game.hermitLeave();
-          this.logHistory.push({ text: this.game.state.message, kind: "info" });
-          this.syncUiToGameState();
-        }
-        break;
-      }
-      case "eventHermitPickArtifact": {
-        if (digit === null) break;
-        if (this.ui.service === "removeCurse") {
-          const entry = cursedEquippedEntries(this.game.state.party)[digit - 1];
-          if (!entry) break;
-          const err = this.game.hermitRemoveCurse(entry.character.id, entry.artifactId);
-          if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        } else {
-          const artifactId = ownedArtifactIds(this.game.state.party, this.game.state.unequippedArtifactIds)[digit - 1];
-          if (!artifactId) break;
-          const err = this.game.hermitRerollFortune(artifactId);
-          if (err) this.reportUnusable(err.reason);
-          else this.logHistory.push({ text: this.game.state.message, kind: "info" });
-        }
-        this.syncUiToGameState();
-        break;
-      }
       case "gameover":
         break;
     }
@@ -694,70 +323,28 @@ export class App {
     }
   }
 
-  private quit(): void {
+  quit(): void {
     if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.renderer.destroy();
     process.exit(0);
   }
 
-  private reportUnusable(reason: string): void {
+  reportUnusable(reason: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
     else this.logHistory.push({ text: reason, kind: "info" });
   }
 
-  private pushToast(text: string): void {
+  pushToast(text: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
     else this.logHistory.push({ text, kind: "info" });
   }
 
-  private trySelectSkill(actorRef: CombatantRef, skill: SkillDefinition): void {
-    const actor = getActorByRef(actorRef, this.game.ctx);
-    const unusable = checkSkillUsable(actor, skill);
-    if (unusable) {
-      this.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: unusable.reason }));
-      return;
-    }
-    if (skill.target === "singleEnemy" || skill.target === "singleAlly") {
-      const candidates = skill.target === "singleEnemy" ? this.game.livingEnemyRefs() : this.game.livingAllyRefs();
-      this.ui = { kind: "pickTarget", actorRef, source: { kind: "skill", skill }, candidates };
-      return;
-    }
-    if (skill.target === "singleAllyOrEnemy") {
-      const candidates = [...this.game.livingAllyRefs(), ...this.game.livingEnemyRefs()];
-      this.ui = { kind: "pickTarget", actorRef, source: { kind: "skill", skill }, candidates };
-      return;
-    }
-    const targets = this.game.autoTargets(skill.target, actorRef) ?? [actorRef];
-    const err = this.game.queue(actorRef, skill.id, targets);
-    if (err) this.reportUnusable(err.reason);
-    this.syncUiToGameState();
+  getPendingFloorAdvance(): boolean {
+    return this.pendingFloorAdvance;
   }
 
-  private equippedArtifactPairAt(position: number): { characterId: Id; artifactId: Id } | null {
-    let remaining = position;
-    for (const c of this.game.state.party) {
-      if (remaining <= c.equippedArtifactIds.length) return { characterId: c.id, artifactId: c.equippedArtifactIds[remaining - 1]! };
-      remaining -= c.equippedArtifactIds.length;
-    }
-    return null;
-  }
-
-  private trySelectItem(actorRef: CombatantRef, item: ItemDefinition): void {
-    const actor = getActorByRef(actorRef, this.game.ctx);
-    const unusable = checkItemUsable(actor, item.id, this.game.state.inventory);
-    if (unusable) {
-      this.reportUnusable(t("ui.itemUnusableNamed", { item: item.name, reason: unusable.reason }));
-      return;
-    }
-    if (item.target === "singleEnemy" || item.target === "singleAlly" || item.target === "self") {
-      const candidates = item.target === "singleEnemy" ? this.game.livingEnemyRefs() : this.game.livingAllyRefs();
-      this.ui = { kind: "pickTarget", actorRef, source: { kind: "item", item }, candidates };
-      return;
-    }
-    const targets = this.game.autoTargets(item.target, actorRef) ?? [actorRef];
-    const err = this.game.queueItem(actorRef, item.id, targets);
-    if (err) this.reportUnusable(err.reason);
-    this.syncUiToGameState();
+  setPendingFloorAdvance(value: boolean): void {
+    this.pendingFloorAdvance = value;
   }
 
   private render(): void {
@@ -1015,278 +602,49 @@ export class App {
   }
 
   private renderMain(): string | StyledText {
-    const s = this.game.state;
     switch (this.ui.kind) {
       case "gameover":
-        return s.gameOver === "victory" ? t("ui.victoryScreen") : t("ui.defeatScreen");
+        return gameoverScreen.renderMain(this.game);
 
-      case "room": {
-        const room = getRoom(s.floor, s.currentRoomId);
-        const choices = this.game.connectedRoomChoices();
-        const lines = [t("ui.roomTypeLine", { type: room.type, clearedTag: room.cleared ? t("ui.clearedTag") : "" }), "", t("ui.pathsLabel")];
-        choices.forEach((r, i) => lines.push(`  [${i + 1}] ${r.name} (${r.type})`));
-        if (inventoryEntries(s.inventory).length > 0) lines.push("", t("ui.pressItemHint"));
-        lines.push(t("ui.pressArtifactHint"));
-        return lines.join("\n");
-      }
+      case "room":
+      case "rest":
+        return roomScreen.renderMain(this.game, this.ui);
 
-      case "artifactMenu": {
-        const lines = [t("ui.manageArtifacts")];
-        let i = 0;
-        s.unequippedArtifactIds.forEach((id) => {
-          i++;
-          const a = getArtifact(id);
-          lines.push(t("ui.equipOption", { i, name: a.name, rarity: a.rarity }));
-        });
-        s.party.forEach((c) => {
-          c.equippedArtifactIds.forEach((id) => {
-            i++;
-            lines.push(t("ui.unequipOption", { i, name: getArtifact(id).name, character: c.name }));
-          });
-        });
-        if (i === 0) lines.push(t("ui.noArtifactsYet"));
-        return lines.join("\n");
-      }
+      case "artifactMenu":
+      case "artifactDetail":
+      case "pickCharacterForArtifact":
+        return artifactsScreen.renderMain(this.game, this.ui);
 
-      case "artifactDetail": {
-        const artifact = getArtifact(this.ui.artifactId);
-        const lines = [
-          `${artifact.name} (${artifact.rarity})${artifact.isCursed ? t("ui.cursedTag") : ""}`,
-          "",
-          t("ui.effectLabel"),
-          formatArtifactEffect(artifact),
-          "",
-          t("ui.descriptionLabel"),
-          artifact.description,
-          "",
-          this.ui.origin.kind === "unequipped" ? t("ui.artifactDetailEquipOption") : t("ui.artifactDetailUnequipOption"),
-          t("ui.artifactDetailBackOption"),
-        ];
-        return lines.join("\n");
-      }
+      case "pickItemOutOfCombat":
+      case "itemDetail":
+        return inventoryScreen.renderMain(this.game, this.ui);
 
-      case "pickCharacterForArtifact": {
-        const artifact = getArtifact(this.ui.artifactId);
-        const lines = [t("ui.equipPrompt", { artifact: artifact.name })];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} ${t("ui.artifactSlotsTag", { count: c.equippedArtifactIds.length, max: MAX_EQUIPPED_ARTIFACTS })}`));
-        return lines.join("\n");
-      }
+      case "saveMenu":
+        return saveScreen.renderMain();
 
-      case "pickItemOutOfCombat": {
-        const lines = [t("ui.chooseItemToUse")];
-        inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
-        });
-        return lines.join("\n");
-      }
+      case "roomReward":
+        return rewardsScreen.renderMain(this.game, this.ui);
 
-      case "itemDetail": {
-        const { item, origin } = this.ui;
-        const lines = [item.name, "", t("ui.effectLabel"), formatItemEffect(item), "", t("ui.descriptionLabel"), item.description, ""];
-        if (origin.kind === "outOfCombat") {
-          lines.push(t("ui.itemOutOfCombatViewOnlyHint"), "", t("ui.itemDetailBackOnlyOption"));
-        } else {
-          lines.push(t("ui.itemDetailUseOption"), t("ui.itemDetailBackOption"));
-        }
-        return lines.join("\n");
-      }
-
-      case "saveMenu": {
-        return [t("ui.saveMenuTitle"), "", t("ui.saveMenuSave"), t("ui.saveMenuSaveAndExit"), t("ui.saveMenuCancel")].join("\n");
-      }
-
-      case "roomReward": {
-        if (this.ui.viewing) {
-          const entry = this.ui.viewing;
-          const lines =
-            entry.kind === "item"
-              ? [`${getItem(entry.id).name} x${entry.qty}`, "", t("ui.effectLabel"), formatItemEffect(getItem(entry.id)), "", t("ui.descriptionLabel"), getItem(entry.id).description]
-              : [
-                  `${getArtifact(entry.id).name} (${getArtifact(entry.id).rarity})`,
-                  "",
-                  t("ui.effectLabel"),
-                  formatArtifactEffect(getArtifact(entry.id)),
-                  "",
-                  t("ui.descriptionLabel"),
-                  getArtifact(entry.id).description,
-                ];
-          lines.push("", t("ui.roomRewardBackOption"));
-          return lines.join("\n");
-        }
-        const lines = [t("ui.roomRewardTitle")];
-        this.ui.entries.forEach((entry, i) => {
-          lines.push(entry.kind === "item" ? t("ui.roomRewardItemLine", { i: i + 1, name: getItem(entry.id).name, qty: entry.qty }) : t("ui.roomRewardArtifactLine", { i: i + 1, name: getArtifact(entry.id).name, rarity: getArtifact(entry.id).rarity }));
-        });
-        lines.push(t("ui.roomRewardContinueOption"));
-        return lines.join("\n");
-      }
-
-      case "rest": {
-        const room = getRoom(s.floor, s.currentRoomId);
-        return [t("dungeon.restEnter", { room: room.name }), "", t("ui.restOptEat"), t("ui.restOptChat"), t("ui.restOptSkip")].join("\n");
-      }
-
-      case "combatOver": {
-        const combat = s.combat!;
-        return combat.outcome === "victory" ? t("ui.combatOverVictory") : t("ui.combatOverDefeat");
-      }
-
+      case "combatOver":
       case "roundResolved":
-        return t("ui.roundResolved");
+      case "pickAction":
+      case "pickSkill":
+      case "pickItemInCombat":
+      case "pickTarget":
+        return combatScreen.renderMain(this.game, this.ui);
 
-      case "pickAction": {
-        const actor = getActorByRef(this.ui.actorRef, this.game.ctx) as Character;
-        const hasItems = inventoryEntries(s.inventory).length > 0;
-        const lines = [
-          t("ui.turnOfChooseAction", { actor: actor.name }),
-          t("ui.fightOption"),
-          t("ui.useItemOption", { suffix: hasItems ? "" : t("ui.noItemsSuffix") }),
-        ];
-        return lines.join("\n");
-      }
-
-      case "pickSkill": {
-        const actor = getActorByRef(this.ui.actorRef, this.game.ctx) as Character;
-        const lines: TextChunk[][] = [[plainChunk(t("ui.turnOfChooseSkill", { actor: actor.name }))]];
-        skillEntries(actor).forEach((sk, i) => {
-          const unusable = checkSkillUsable(actor, sk);
-          const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
-          const usesSuffix = usesLeft !== null ? t("ui.usesLeftSuffix", { count: usesLeft }) : "";
-          const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
-          const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
-          const dmgSuffix = dmgEffect ? t("ui.dmgEstimateSuffix", { amount: Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat)) }) : "";
-          const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
-          if (unusable) {
-            lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
-          } else {
-            lines.push([plainChunk(`${head} — ${truncateText(sk.description, 34)}`)]);
-          }
-        });
-        return joinLines(lines);
-      }
-
-      case "pickItemInCombat": {
-        const lines = [t("ui.chooseItemToUse")];
-        inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
-          lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
-        });
-        return lines.join("\n");
-      }
-
-      case "pickTarget": {
-        const sourceName = this.ui.source.kind === "skill" ? this.ui.source.skill.name : this.ui.source.item.name;
-        const sourceTarget = this.ui.source.kind === "skill" ? this.ui.source.skill.target : this.ui.source.item.target;
-        const lines = [t("ui.chooseTargetFor", { source: sourceName })];
-        const isDualRelation = sourceTarget === "singleAllyOrEnemy";
-        this.ui.candidates.forEach((ref, i) => {
-          const target = getActorByRef(ref, this.game.ctx);
-          const hpInfo = "hp" in target ? t("ui.hpSuffix", { hp: target.hp, maxHp: target.maxHp }) : "";
-          const sidePrefix = isDualRelation ? (ref.kind === "character" ? t("ui.allySidePrefix") : t("ui.enemySidePrefix")) : "";
-          lines.push(`  [${i + 1}] ${sidePrefix}${target.name}${hpInfo}`);
-        });
-        return lines.join("\n");
-      }
-
-      case "eventMerchant": {
-        const offers = s.activeEvent?.offerArtifactIds ?? [];
-        const lines = [t("ui.merchantOffers")];
-        offers.forEach((id, i) => {
-          const a = getArtifact(id);
-          lines.push(t("ui.merchantOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, price: MERCHANT_PRICE_PERCENT[a.rarity], desc: truncateText(a.description, 34) }));
-        });
-        lines.push(t("ui.leaveEmptyHandedOption", { i: offers.length + 1 }));
-        return lines.join("\n");
-      }
-
-      case "eventMerchantPickPayer": {
-        const artifactId = s.activeEvent?.offerArtifactIds[this.ui.offerIndex];
-        const lines = [t("ui.whoPaysFor", { artifact: artifactId ? getArtifact(artifactId).name : t("ui.unknownArtifact") })];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
-        return lines.join("\n");
-      }
-
-      case "eventCursedShrine": {
-        const artifactId = s.activeEvent?.offerArtifactIds[0];
-        const a = artifactId ? getArtifact(artifactId) : null;
-        const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
-        return [
-          a ? `${a.name} (${a.rarity})${curseTag} — ${a.description}` : "...",
-          "",
-          t("ui.acceptOption"),
-          t("ui.declineOption"),
-        ].join("\n");
-      }
-
-      case "eventTwinAltars": {
-        const offers = s.activeEvent?.offerArtifactIds ?? [];
-        const lines = [t("ui.twinAltarsIntro")];
-        offers.forEach((id, i) => {
-          const a = getArtifact(id);
-          lines.push(`  [${i + 1}] ${a.name} (${a.rarity}) — ${truncateText(a.description, 40)}`);
-        });
-        return lines.join("\n");
-      }
-
-      case "eventTwinAltarsPickCharacter": {
-        const lines = [t("ui.equipNowPrompt")];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name} ${t("ui.artifactSlotsTag", { count: c.equippedArtifactIds.length, max: MAX_EQUIPPED_ARTIFACTS })}`));
-        return lines.join("\n");
-      }
-
-      case "eventTwinAltarsPickUnequip": {
-        const { characterId } = this.ui;
-        const character = s.party.find((c) => c.id === characterId);
-        const lines = [t("ui.maxSlotsPrompt", { character: character?.name ?? "" })];
-        character?.equippedArtifactIds.forEach((id, i) => lines.push(`  [${i + 1}] ${getArtifact(id).name}`));
-        return lines.join("\n");
-      }
-
-      case "eventHpGamble": {
-        const percent = this.ui.eventId === "blood-altar" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
-        const resultLine = this.ui.eventId === "blood-altar" ? t("ui.bloodAltarResult") : t("ui.collapsedFloorResult");
-        return [t("ui.payToTry", { percent }), resultLine, "", t("ui.payOption"), t("ui.leaveOption")].join("\n");
-      }
-
-      case "eventHpGamblePickPayer": {
-        const lines = [t("ui.whoPays")];
-        s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
-        return lines.join("\n");
-      }
-
-      case "eventArtifactPick": {
-        const isSacrifice = this.ui.eventId === "sacrificial-circle";
-        const candidates = isSacrifice ? ownedArtifactIds(s.party, s.unequippedArtifactIds) : s.unequippedArtifactIds;
-        const lines = [isSacrifice ? t("ui.chooseSacrifice") : t("ui.chooseBet")];
-        candidates.forEach((id, i) => {
-          const a = getArtifact(id);
-          lines.push(`  [${i + 1}] ${a.name} (${a.rarity})`);
-        });
-        lines.push(`  [${candidates.length + 1}] ${isSacrifice ? t("ui.leaveRitualOption") : t("ui.leaveNoBetOption")}`);
-        if (candidates.length === 0) lines.push(t("ui.noSuitableArtifacts"));
-        return lines.join("\n");
-      }
-
-      case "eventHermit": {
-        const hasCursed = cursedEquippedEntries(s.party).length > 0;
-        const hasAny = ownedArtifactIds(s.party, s.unequippedArtifactIds).length > 0;
-        return [
-          t("ui.hermitIntro"),
-          t("ui.hermitRemoveCurseOption", { suffix: hasCursed ? "" : t("ui.hermitNoCursedSuffix") }),
-          t("ui.hermitRerollOption", { suffix: hasAny ? "" : t("ui.hermitNoArtifactSuffix") }),
-          t("ui.hermitLeaveOption"),
-        ].join("\n");
-      }
-
-      case "eventHermitPickArtifact": {
-        if (this.ui.service === "removeCurse") {
-          const lines = [t("ui.removeCurseIntro")];
-          cursedEquippedEntries(s.party).forEach(({ character, artifactId }, i) => lines.push(t("ui.removeCurseLine", { i: i + 1, name: getArtifact(artifactId).name, character: character.name })));
-          return lines.join("\n");
-        }
-        const lines = [t("ui.rerollIntro")];
-        ownedArtifactIds(s.party, s.unequippedArtifactIds).forEach((id, i) => lines.push(`  [${i + 1}] ${getArtifact(id).name} (${getArtifact(id).rarity})`));
-        return lines.join("\n");
-      }
+      case "eventMerchant":
+      case "eventMerchantPickPayer":
+      case "eventCursedShrine":
+      case "eventTwinAltars":
+      case "eventTwinAltarsPickCharacter":
+      case "eventTwinAltarsPickUnequip":
+      case "eventHpGamble":
+      case "eventHpGamblePickPayer":
+      case "eventArtifactPick":
+      case "eventHermit":
+      case "eventHermitPickArtifact":
+        return eventsScreen.renderMain(this.game, this.ui);
 
       default: {
         const _exhaustive: never = this.ui;
@@ -1298,52 +656,40 @@ export class App {
   private renderFooter(): string {
     switch (this.ui.kind) {
       case "room":
-        return t("ui.footerRoom");
       case "rest":
-        return t("ui.footerChooseActivity");
+        return roomScreen.renderFooter(this.ui);
       case "pickAction":
-        return t("ui.footerChooseAction");
       case "pickSkill":
-        return t("ui.footerChooseSkillEsc");
       case "pickItemInCombat":
-        return t("ui.footerChooseItemEsc");
       case "pickTarget":
-        return t("ui.footerChooseTargetEsc");
-      case "pickItemOutOfCombat":
-        return t("ui.footerChooseItemEsc");
-      case "itemDetail":
-        return t("ui.detailFooter");
-      case "artifactMenu":
-        return t("ui.footerEquipUnequipEsc");
-      case "artifactDetail":
-        return t("ui.detailFooter");
-      case "pickCharacterForArtifact":
-        return t("ui.footerChooseCharacterEsc");
-      case "saveMenu":
-        return t("ui.saveMenuFooter");
-      case "roomReward":
-        return this.ui.viewing ? t("ui.detailFooter") : t("ui.roomRewardFooter");
-      case "eventMerchantPickPayer":
-      case "eventTwinAltarsPickCharacter":
-      case "eventHpGamblePickPayer":
-        return t("ui.footerChooseCharacter");
-      case "eventMerchant":
-      case "eventArtifactPick":
-        return t("ui.footerChoose");
-      case "eventCursedShrine":
-      case "eventTwinAltars":
-      case "eventHpGamble":
-      case "eventHermit":
-        return t("ui.footerChoose");
-      case "eventTwinAltarsPickUnequip":
-        return t("ui.footerChooseArtifactToRemove");
-      case "eventHermitPickArtifact":
-        return t("ui.footerChooseArtifact");
       case "roundResolved":
       case "combatOver":
-        return t("ui.footerPressAnyKey");
+        return combatScreen.renderFooter(this.ui);
+      case "pickItemOutOfCombat":
+      case "itemDetail":
+        return inventoryScreen.renderFooter(this.ui);
+      case "artifactMenu":
+      case "artifactDetail":
+      case "pickCharacterForArtifact":
+        return artifactsScreen.renderFooter(this.ui);
+      case "saveMenu":
+        return saveScreen.renderFooter();
+      case "roomReward":
+        return rewardsScreen.renderFooter(this.ui);
+      case "eventMerchant":
+      case "eventMerchantPickPayer":
+      case "eventCursedShrine":
+      case "eventTwinAltars":
+      case "eventTwinAltarsPickCharacter":
+      case "eventTwinAltarsPickUnequip":
+      case "eventHpGamble":
+      case "eventHpGamblePickPayer":
+      case "eventArtifactPick":
+      case "eventHermit":
+      case "eventHermitPickArtifact":
+        return eventsScreen.renderFooter(this.ui);
       case "gameover":
-        return t("ui.footerGameOver");
+        return gameoverScreen.renderFooter();
     }
   }
 }
