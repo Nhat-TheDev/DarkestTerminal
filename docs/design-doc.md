@@ -113,3 +113,4 @@ current state.
 - **FOV** (shadowcasting) and **pathfinding** (A* for monsters)
 - **Diff-based rendering**
 - **Treasure room** — a room type that always drops an Artifact, with a type (`RoomType: "treasure"`) and spec (`gameplay-decisions/07-items-artifacts.md` §7.2) already defined, but the current floor-generation algorithm doesn't produce this room type yet
+- **Artifact rework, a new currency (Cursed Coins), a Satiety-based survival rework replacing hunger/thirst, and a fear-victory-relief rebalance** — full spec: **[`artifact-currency-survival-decisions.md`](./artifact-currency-survival-decisions.md)**

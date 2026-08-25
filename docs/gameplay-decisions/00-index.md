@@ -17,3 +17,5 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | [`08-events.md`](./08-events.md) | §8 | Event rooms: event types split by rarity tier |
 
 Other files in `docs/` (`technical-decisions.md`, `minigame-decisions.md`) reference this document via the path `gameplay-decisions/<file>.md §N`.
+
+`../artifact-currency-survival-decisions.md` is a **future-direction proposal** (not yet implemented) that amends §3, §4, and §7/§8 above — an Artifact-system rework (permanent equip, no unequip), a new currency (Cursed Coins), a Satiety-based survival rework replacing hunger/thirst, and a fear-victory-relief rebalance. The files above still describe the *current* implemented state; that document describes the planned change.
