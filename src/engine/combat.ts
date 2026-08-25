@@ -1,8 +1,6 @@
 import type {
   Character,
   Monster,
-  MonsterArchetype,
-  MonsterTier,
   CombatState,
   Combatant,
   CombatantRef,
@@ -17,22 +15,14 @@ import type {
   CombatantSnapshot,
 } from "../types";
 import { getSkill, getEffectiveSkill } from "../data/classes";
-import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
 import { getItem } from "../data/items";
-import { BALANCE } from "../data/balanceConfig";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
-import {
-  rollDodge,
-  rollPoisonOnHit,
-  totalReflectDamagePercent,
-  totalLifestealPercent,
-  totalHealOnKill,
-  autoDamageAmounts,
-  totalCooldownReduction,
-} from "./artifacts";
+import { rollDodge, autoDamageAmounts, totalCooldownReduction } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { applyRoundFear, applyVictoryFearRelief } from "./survival";
+import { combatHooks } from "./combatHooks";
+import { runMonsterTurn } from "./monsterAI";
 import {
   type Actor,
   isCharacter,
@@ -304,7 +294,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 }
 
-function hasStunningStatus(actor: Actor): boolean {
+export function hasStunningStatus(actor: Actor): boolean {
   return actor.activeStatusEffects.some((a) => getStatusEffect(a.statusEffectId).stuns === true);
 }
 
@@ -339,128 +329,6 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
     kind: announceKind,
   });
   applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
-}
-
-function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): Character {
-  if (actor.aiPattern === "erratic") return rng.pick(livingChars);
-  return pickAggroWeighted(livingChars, rng);
-}
-
-type MonsterAction = "basicAttack" | "skill" | "strike" | "cleave" | "debuff";
-
-function pickMonsterAction(archetype: MonsterArchetype, tier: MonsterTier, rng: Rng): MonsterAction {
-  const weights = archetype.actionWeights?.[tier];
-  if (!weights) return "basicAttack";
-  const candidates: [MonsterAction, number][] = [];
-  for (const [key, weight] of Object.entries(weights) as [MonsterAction, number | undefined][]) {
-    if (!weight || weight <= 0) continue;
-    if (key === "skill" && archetype.skillIds.length === 0) continue;
-    if ((key === "strike" || key === "cleave") && !archetype.eliteSkillIds) continue;
-    if (key === "debuff" && !archetype.bossSkillIds) continue;
-    candidates.push([key, weight]);
-  }
-  if (candidates.length === 0) return "basicAttack";
-  return rng.weightedPick(candidates, ([, weight]) => weight)[0];
-}
-
-function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingChars: Character[], rng: Rng): Character[] {
-  if (skill.target === "allEnemies") return livingChars;
-  return [pickMonsterTarget(actor, livingChars, rng)];
-}
-
-function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
-  const actor = getActorByRef(ref, ctx) as Monster;
-  if (hasStunningStatus(actor)) {
-    combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
-    return;
-  }
-
-  const livingChars = livingCharacterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Character);
-  if (livingChars.length === 0) return;
-
-  const archetype = getArchetype(actor.archetypeId);
-
-  if (actor.tier === "boss" && archetype.bossSkillIds) {
-    if (actor.isChargingExecute) {
-      const target = livingChars.find((c) => c.id === actor.executeTargetId) ?? pickAggroWeighted(livingChars, ctx.rng);
-      combat.log.push({ text: t("combat.bossExecuteRelease", { actor: actor.name, target: target.name }), kind: "attack" });
-      applySkillEffects(getMonsterSkill(archetype.bossSkillIds.execute), actor, [target], combat, ctx, combat.log);
-      actor.isChargingExecute = false;
-      actor.executeTargetId = undefined;
-      actor.executeCooldownTurns = EXECUTE_COOLDOWN_TURNS;
-      return;
-    }
-    if ((actor.executeCooldownTurns ?? 0) <= 0) {
-      const target = pickAggroWeighted(livingChars, ctx.rng);
-      actor.isChargingExecute = true;
-      actor.executeTargetId = target.id;
-      combat.log.push({ text: t("combat.bossExecuteCharge", { actor: actor.name, target: target.name }), kind: "info" });
-      return;
-    }
-    actor.executeCooldownTurns = (actor.executeCooldownTurns ?? 0) - 1;
-  }
-
-  if (
-    actor.tier === "normal" &&
-    archetype.aiPattern === "defensive" &&
-    archetype.skillIds.length > 0 &&
-    actor.hp < actor.maxHp * 0.4 &&
-    ctx.rng.chance(BALANCE.combat.defensiveLowHpSkillChance)
-  ) {
-    const skill = getMonsterSkill(archetype.skillIds[0]!);
-    combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-    applySkillEffects(skill, actor, [actor], combat, ctx, combat.log);
-    return;
-  }
-
-  switch (pickMonsterAction(archetype, actor.tier, ctx.rng)) {
-    case "debuff": {
-      const target = pickAggroWeighted(livingChars, ctx.rng);
-      const skill = getMonsterSkill(archetype.bossSkillIds!.debuff);
-      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
-      return;
-    }
-    case "cleave": {
-      const skill = getMonsterSkill(archetype.eliteSkillIds!.cleave);
-      combat.log.push({ text: t("combat.eliteCleave", { actor: actor.name, skill: skill.name }), kind: "attack" });
-      applySkillEffects(skill, actor, livingChars, combat, ctx, combat.log);
-      return;
-    }
-    case "strike": {
-      const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-      const skill = getMonsterSkill(archetype.eliteSkillIds!.strike);
-      combat.log.push({ text: t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }), kind: "attack" });
-      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
-      return;
-    }
-    case "skill": {
-      const skill = getMonsterSkill(ctx.rng.pick(archetype.skillIds));
-      const targets = resolveMonsterSkillTargets(skill, actor, livingChars, ctx.rng);
-      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-      applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
-      return;
-    }
-    case "basicAttack": {
-      const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-      if (!rollHits(actor, () => ctx.rng.next())) {
-        combat.log.push({ text: t("combat.missedFear", { source: actor.name, target: target.name }), kind: "info" });
-        return;
-      }
-      if (rollDodge(target, ctx.rng)) {
-        combat.log.push({ text: t("combat.dodge", { target: target.name, actor: actor.name }), kind: "info" });
-        return;
-      }
-      combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: target.name }), kind: "attack" });
-      const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
-      if (damageDealt > 0) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
-      return;
-    }
-  }
-}
-
-function pickAggroWeighted(characters: Character[], rng: Rng): Character {
-  return rng.weightedPick(characters, (c) => Math.max(1, c.aggro));
 }
 
 type ExecutionTargets = Actor[] | "fizzle";
@@ -523,15 +391,6 @@ function scaleEffectForUltimate(effect: SkillEffect, source: Actor): SkillEffect
   return { ...effect, amount: Math.round(effect.amount * mult) };
 }
 
-function applyOnHitRider(source: Character, target: Actor, log: LogEntry[]): void {
-  for (const active of source.activeStatusEffects) {
-    const def = getStatusEffect(active.statusEffectId);
-    if (def.onHitStatusEffectId) {
-      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: def.onHitStatusEffectId }, source, target, { log });
-    }
-  }
-}
-
 function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
@@ -546,30 +405,6 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
       );
     }
   }
-}
-
-function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
-  const percent = totalReflectDamagePercent(bearer);
-  const reflected = Math.round(damageDealt * (percent / 100));
-  if (reflected <= 0) return;
-  attacker.hp = Math.max(0, attacker.hp - reflected);
-  log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
-}
-
-function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
-  const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
-  if (healed <= 0) return;
-  const before = bearer.hp;
-  bearer.hp = Math.min(bearer.maxHp, bearer.hp + healed);
-  if (bearer.hp > before) log.push({ text: t("combat.lifesteal", { bearer: bearer.name, amount: bearer.hp - before }), kind: "heal" });
-}
-
-function applyArtifactHealOnKill(bearer: Character, log: LogEntry[]): void {
-  const amount = totalHealOnKill(bearer);
-  if (amount <= 0) return;
-  const before = bearer.hp;
-  bearer.hp = Math.min(bearer.maxHp, bearer.hp + amount);
-  if (bearer.hp > before) log.push({ text: t("combat.healOnKill", { bearer: bearer.name, amount: bearer.hp - before }), kind: "heal" });
 }
 
 function hasConditionalBonusStatus(skill: SkillDefinition, source: Actor): boolean {
@@ -591,7 +426,7 @@ function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bo
   source.activeStatusEffects = source.activeStatusEffects.filter((a) => !statusSatisfiesRequirement(a.statusEffectId, requiredId));
 }
 
-function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
@@ -613,20 +448,18 @@ function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor
 
       const wasAliveBefore = isActorAlive(target);
       const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log, isMagic: skill.isMagic });
-      if (effect.kind === "damage" && isCharacter(source)) {
-        applyOnHitRider(source, target, log);
-        landedDamageHit = true;
-        if (hasBonus) bonusEffectLanded = true;
+      if (effect.kind === "damage") {
+        for (const hook of combatHooks) hook.onHit?.(source, target, log);
+        if (isCharacter(source)) {
+          landedDamageHit = true;
+          if (hasBonus) bonusEffectLanded = true;
+        }
       }
 
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
-        if (isCharacter(target) && isEnemyFacing) applyArtifactReflectDamage(target, source, appliedAmount, log);
-        if (isCharacter(source)) {
-          applyArtifactLifesteal(source, appliedAmount, log);
-          if (rollPoisonOnHit(source, ctx.rng)) {
-            resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, source, target, { log });
-          }
-          if (wasAliveBefore && !isActorAlive(target)) applyArtifactHealOnKill(source, log);
+        for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+        if (wasAliveBefore && !isActorAlive(target)) {
+          for (const hook of combatHooks) hook.onKill?.(source, target, log);
         }
       }
     }
