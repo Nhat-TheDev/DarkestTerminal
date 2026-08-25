@@ -2,13 +2,12 @@ import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
 import type { Character, CombatantRef, SkillDefinition, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
-import { autoSave } from "../../engine/save";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { truncateText } from "../layout";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries } from "../state";
-import type { ScreenContext } from "./context";
+import { advanceFloorWithAutoSave, type ScreenContext } from "./context";
 
 export type CombatUiState = Extract<
   UiState,
@@ -113,11 +112,7 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, _key: KeyEvent,
           ctx.setUi({ kind: "roomReward", entries: buildRewardEntries(drops), viewing: null });
           break;
         }
-        if (wasBossRoomVictory) {
-          const depthBefore = ctx.game.state.floor.depth;
-          ctx.game.advanceToNextFloor();
-          if (ctx.game.state.floor.depth > depthBefore) autoSave(ctx.game);
-        }
+        if (wasBossRoomVictory) advanceFloorWithAutoSave(ctx);
       }
       ctx.syncUiToGameState();
       break;

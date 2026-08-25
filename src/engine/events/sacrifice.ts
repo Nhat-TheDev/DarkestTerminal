@@ -3,10 +3,10 @@ import { unequipArtifact as unequipArtifactFromCharacter, type PartyActionError 
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { closeEvent } from "./shared";
+import { closeEvent, findArtifactOwner } from "./shared";
 
 export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifactId: Id): PartyActionError | null {
-  const owner = state.party.find((c) => c.equippedArtifactIds.includes(sacrificeArtifactId));
+  const owner = findArtifactOwner(state, sacrificeArtifactId);
   if (owner) {
     const err = unequipArtifactFromCharacter(state, owner.id, sacrificeArtifactId);
     if (err) return err;

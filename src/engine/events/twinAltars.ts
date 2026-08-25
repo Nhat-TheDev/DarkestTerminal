@@ -2,15 +2,15 @@ import type { GameState, Id } from "../../types";
 import { equipArtifact as equipArtifactOnCharacter, unequipArtifact as unequipArtifactFromCharacter, MAX_EQUIPPED_ARTIFACTS, type PartyActionError } from "../party";
 import { getArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { closeEvent } from "./shared";
+import { closeEvent, findPartyMemberOrError } from "./shared";
 
 export function twinAltarsChoose(state: GameState, offerIndex: 0 | 1, characterId: Id, unequipArtifactId?: Id): PartyActionError | null {
   const active = state.activeEvent;
   if (!active || active.eventId !== "twin-altars") return { reason: t("errors.noActiveChoice") };
   const artifactId = active.offerArtifactIds[offerIndex];
   if (!artifactId) return { reason: t("errors.noSuchOffer") };
-  const character = state.party.find((c) => c.id === characterId);
-  if (!character) return { reason: t("errors.characterNotFound") };
+  const character = findPartyMemberOrError(state, characterId);
+  if ("reason" in character) return character;
 
   state.unequippedArtifactIds.push(artifactId);
   if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) {

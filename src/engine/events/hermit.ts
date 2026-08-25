@@ -3,11 +3,11 @@ import { recomputeCharacterStats, unequipArtifact as unequipArtifactFromCharacte
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { closeEvent } from "./shared";
+import { closeEvent, findPartyMemberOrError, findArtifactOwner } from "./shared";
 
 export function hermitRemoveCurse(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
-  const character = state.party.find((c) => c.id === characterId);
-  if (!character) return { reason: t("errors.characterNotFound") };
+  const character = findPartyMemberOrError(state, characterId);
+  if ("reason" in character) return character;
   if (!getArtifact(artifactId).isCursed) return { reason: t("errors.artifactNotCursed") };
   const idx = character.equippedArtifactIds.indexOf(artifactId);
   if (idx === -1) return { reason: t("errors.artifactNotEquippedOnCharacter") };
@@ -19,7 +19,7 @@ export function hermitRemoveCurse(state: GameState, characterId: Id, artifactId:
 }
 
 export function hermitRerollFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
-  const owner = state.party.find((c) => c.equippedArtifactIds.includes(artifactId));
+  const owner = findArtifactOwner(state, artifactId);
   if (owner) {
     const err = unequipArtifactFromCharacter(state, owner.id, artifactId);
     if (err) return err;

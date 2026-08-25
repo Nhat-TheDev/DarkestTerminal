@@ -2,7 +2,6 @@ import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type Cl
 import type { Character, Monster, Id, LogEntry, CombatantSnapshot } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
-import { getClass } from "../data/classes";
 import { getArtifact } from "../data/artifacts";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";

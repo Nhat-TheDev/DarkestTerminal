@@ -2,10 +2,9 @@ import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { getItem, formatItemEffect } from "../../data/items";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { autoSave } from "../../engine/save";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
-import type { ScreenContext } from "./context";
+import { advanceFloorWithAutoSave, type ScreenContext } from "./context";
 
 export type RewardsUiState = Extract<UiState, { kind: "roomReward" }>;
 
@@ -17,9 +16,7 @@ export function handleKey(ctx: ScreenContext, ui: RewardsUiState, key: KeyEvent,
   if (key.name === "return") {
     if (ctx.getPendingFloorAdvance()) {
       ctx.setPendingFloorAdvance(false);
-      const depthBefore = ctx.game.state.floor.depth;
-      ctx.game.advanceToNextFloor();
-      if (ctx.game.state.floor.depth > depthBefore) autoSave(ctx.game);
+      advanceFloorWithAutoSave(ctx);
     }
     ctx.syncUiToGameState();
     return;

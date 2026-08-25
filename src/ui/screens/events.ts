@@ -1,4 +1,5 @@
 import type { StyledText, KeyEvent } from "@opentui/core";
+import type { Character } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { MAX_EQUIPPED_ARTIFACTS } from "../../engine/party";
@@ -23,6 +24,10 @@ export type EventUiState = Extract<
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
 >;
+
+function partyHpPickerLines(party: Character[]): string[] {
+  return party.map((c, i) => `  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`);
+}
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, _key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
@@ -182,8 +187,7 @@ export function renderMain(game: Game, ui: EventUiState): string | StyledText {
 
     case "eventMerchantPickPayer": {
       const artifactId = s.activeEvent?.offerArtifactIds[ui.offerIndex];
-      const lines = [t("ui.whoPaysFor", { artifact: artifactId ? getArtifact(artifactId).name : t("ui.unknownArtifact") })];
-      s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
+      const lines = [t("ui.whoPaysFor", { artifact: artifactId ? getArtifact(artifactId).name : t("ui.unknownArtifact") }), ...partyHpPickerLines(s.party)];
       return lines.join("\n");
     }
 
@@ -230,8 +234,7 @@ export function renderMain(game: Game, ui: EventUiState): string | StyledText {
     }
 
     case "eventHpGamblePickPayer": {
-      const lines = [t("ui.whoPays")];
-      s.party.forEach((c, i) => lines.push(`  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`));
+      const lines = [t("ui.whoPays"), ...partyHpPickerLines(s.party)];
       return lines.join("\n");
     }
 
