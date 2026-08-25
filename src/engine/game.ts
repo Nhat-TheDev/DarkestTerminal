@@ -1,13 +1,11 @@
-import type { CombatantRef, GameState, SkillTarget, Id, ArtifactRarity, LogEntry, Monster } from "../types";
+import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
   createCharacter,
   applyPartyExp,
-  recomputeCharacterStats,
   equipArtifact as equipArtifactOnCharacter,
   unequipArtifact as unequipArtifactFromCharacter,
-  MAX_EQUIPPED_ARTIFACTS,
   type PartyActionError,
 } from "./party";
 import { restEatDrink, restChat } from "./survival";
@@ -27,17 +25,21 @@ import {
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { tickSurvivalOnAction } from "./survival";
 import { getItem, rollItemDrop } from "../data/items";
-import { getArtifact, rollArtifact, rollArtifactWithMinRarity, pickArtifactOfRarity } from "../data/artifacts";
+import { rollArtifact } from "../data/artifacts";
 import { totalExpBoostPercent } from "./artifacts";
 import { resolveSkillEffect } from "./resolver";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
-import { BALANCE } from "../data/balanceConfig";
+import { merchantPurchase, merchantLeave, MERCHANT_PRICE_PERCENT } from "./events/merchant";
+import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
+import { cursedShrineDecide } from "./events/cursedShrine";
+import { twinAltarsChoose } from "./events/twinAltars";
+import { sacrifice, sacrificeLeave } from "./events/sacrifice";
+import { gamblingDenBet, gamblingDenLeave } from "./events/gamblingDen";
+import { hermitRemoveCurse, hermitRerollFortune, hermitLeave } from "./events/hermit";
+import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 
-export const MERCHANT_PRICE_PERCENT: Record<ArtifactRarity, number> = BALANCE.events.merchantPricePercent;
-export const BLOOD_ALTAR_HP_PERCENT = BALANCE.events.bloodAltarHpPercent;
-export const COLLAPSED_FLOOR_HP_PERCENT = BALANCE.events.collapsedFloorHpPercent;
-const COLLAPSED_FLOOR_SUCCESS_CHANCE = BALANCE.events.collapsedFloorSuccessChance;
+export { MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
 export class Game {
   readonly ctx: EngineContext;
@@ -176,185 +178,64 @@ export class Game {
     return unequipArtifactFromCharacter(this.state, characterId, artifactId);
   }
 
-  private payHpPercent(character: (typeof this.state.party)[number], percent: number): number | null {
-    const cost = Math.floor((character.maxHp * percent) / 100);
-    if (cost >= character.hp) return null;
-    character.hp -= cost;
-    return cost;
-  }
-
-  private closeEvent(): void {
-    getRoom(this.state.floor, this.state.currentRoomId).cleared = true;
-    this.state.activeEvent = null;
-  }
-
   merchantPurchase(offerIndex: number, payerCharacterId: Id): PartyActionError | null {
-    const active = this.state.activeEvent;
-    if (!active || active.eventId !== "merchant") return { reason: t("errors.noActiveTrade") };
-    const artifactId = active.offerArtifactIds[offerIndex];
-    if (!artifactId) return { reason: t("errors.noSuchOffer") };
-    const payer = this.state.party.find((c) => c.id === payerCharacterId);
-    if (!payer) return { reason: t("errors.characterNotFound") };
-    const cost = this.payHpPercent(payer, MERCHANT_PRICE_PERCENT[getArtifact(artifactId).rarity]);
-    if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
-    this.state.unequippedArtifactIds.push(artifactId);
-    this.state.message = t("game.paidHpForArtifact", { payer: payer.name, cost, artifact: getArtifact(artifactId).name });
-    this.closeEvent();
-    return null;
+    return merchantPurchase(this.state, offerIndex, payerCharacterId);
   }
 
   merchantLeave(): void {
-    this.state.message = t("game.leftEmptyHanded");
-    this.closeEvent();
+    merchantLeave(this.state);
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
-    const character = this.state.party.find((c) => c.id === characterId);
-    if (!character) return { reason: t("errors.characterNotFound") };
-    const cost = this.payHpPercent(character, BLOOD_ALTAR_HP_PERCENT);
-    if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
-    const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
-    this.state.unequippedArtifactIds.push(artifactId);
-    this.state.message = t("game.paidHpForArtifact", { payer: character.name, cost, artifact: getArtifact(artifactId).name });
-    this.closeEvent();
-    return null;
+    return bloodAltarPay(this.state, this.ctx, characterId);
   }
 
   bloodAltarLeave(): void {
-    this.state.message = t("game.leftWithoutPaying");
-    this.closeEvent();
+    bloodAltarLeave(this.state);
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
-    const active = this.state.activeEvent;
-    if (!active || active.eventId !== "cursed-shrine") return { reason: t("errors.nothingToDecide") };
-    const artifactId = active.offerArtifactIds[0]!;
-    if (accept) {
-      this.state.unequippedArtifactIds.push(artifactId);
-      this.state.message = t("game.receivedArtifact", { artifact: getArtifact(artifactId).name });
-    } else {
-      this.state.message = t("game.declinedLeft");
-    }
-    this.closeEvent();
-    return null;
+    return cursedShrineDecide(this.state, accept);
   }
 
   twinAltarsChoose(offerIndex: 0 | 1, characterId: Id, unequipArtifactId?: Id): PartyActionError | null {
-    const active = this.state.activeEvent;
-    if (!active || active.eventId !== "twin-altars") return { reason: t("errors.noActiveChoice") };
-    const artifactId = active.offerArtifactIds[offerIndex];
-    if (!artifactId) return { reason: t("errors.noSuchOffer") };
-    const character = this.state.party.find((c) => c.id === characterId);
-    if (!character) return { reason: t("errors.characterNotFound") };
-
-    this.state.unequippedArtifactIds.push(artifactId);
-    if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) {
-      if (!unequipArtifactId) return { reason: t("errors.needUnequipFirst") };
-      const unequipErr = unequipArtifactFromCharacter(this.state, characterId, unequipArtifactId);
-      if (unequipErr) return unequipErr;
-    }
-    const equipErr = equipArtifactOnCharacter(this.state, characterId, artifactId);
-    if (equipErr) return equipErr;
-    this.state.message = t("game.equippedImmediately", { character: character.name, artifact: getArtifact(artifactId).name });
-    this.closeEvent();
-    return null;
+    return twinAltarsChoose(this.state, offerIndex, characterId, unequipArtifactId);
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
-    const owner = this.state.party.find((c) => c.equippedArtifactIds.includes(sacrificeArtifactId));
-    if (owner) {
-      const err = unequipArtifactFromCharacter(this.state, owner.id, sacrificeArtifactId);
-      if (err) return err;
-    }
-    const idx = this.state.unequippedArtifactIds.indexOf(sacrificeArtifactId);
-    if (idx === -1) return { reason: t("errors.artifactNotOwned") };
-    const rarity = getArtifact(sacrificeArtifactId).rarity;
-    this.state.unequippedArtifactIds.splice(idx, 1);
-    const newArtifactId = rollArtifactWithMinRarity(rarity, this.ctx.rng);
-    this.state.unequippedArtifactIds.push(newArtifactId);
-    this.state.message = t("game.sacrificeResult", { old: getArtifact(sacrificeArtifactId).name, new: getArtifact(newArtifactId).name });
-    return null;
+    return sacrifice(this.state, this.ctx, sacrificeArtifactId);
   }
 
   sacrificeLeave(): void {
-    this.state.message = t("game.leftRitual");
-    this.closeEvent();
+    sacrificeLeave(this.state);
   }
 
   gamblingDenBet(artifactId: Id): PartyActionError | null {
-    const idx = this.state.unequippedArtifactIds.indexOf(artifactId);
-    if (idx === -1) return { reason: t("errors.artifactMustBeUnequippedToBet") };
-    const rarity = getArtifact(artifactId).rarity;
-    if (this.ctx.rng.chance(0.5)) {
-      const wonArtifactId = pickArtifactOfRarity(rarity, this.ctx.rng);
-      this.state.unequippedArtifactIds.push(wonArtifactId);
-      this.state.message = t("game.gambleWin", { artifact: getArtifact(wonArtifactId).name });
-    } else {
-      this.state.unequippedArtifactIds.splice(idx, 1);
-      this.state.message = t("game.gambleLose", { artifact: getArtifact(artifactId).name });
-    }
-    this.closeEvent();
-    return null;
+    return gamblingDenBet(this.state, this.ctx, artifactId);
   }
 
   gamblingDenLeave(): void {
-    this.state.message = t("game.leftNoBet");
-    this.closeEvent();
+    gamblingDenLeave(this.state);
   }
 
   hermitRemoveCurse(characterId: Id, artifactId: Id): PartyActionError | null {
-    const character = this.state.party.find((c) => c.id === characterId);
-    if (!character) return { reason: t("errors.characterNotFound") };
-    if (!getArtifact(artifactId).isCursed) return { reason: t("errors.artifactNotCursed") };
-    const idx = character.equippedArtifactIds.indexOf(artifactId);
-    if (idx === -1) return { reason: t("errors.artifactNotEquippedOnCharacter") };
-    character.equippedArtifactIds.splice(idx, 1);
-    recomputeCharacterStats(character);
-    this.state.message = t("game.curseRemoved", { artifact: getArtifact(artifactId).name, character: character.name });
-    this.closeEvent();
-    return null;
+    return hermitRemoveCurse(this.state, characterId, artifactId);
   }
 
   hermitRerollFortune(artifactId: Id): PartyActionError | null {
-    const owner = this.state.party.find((c) => c.equippedArtifactIds.includes(artifactId));
-    if (owner) {
-      const err = unequipArtifactFromCharacter(this.state, owner.id, artifactId);
-      if (err) return err;
-    }
-    const idx = this.state.unequippedArtifactIds.indexOf(artifactId);
-    if (idx === -1) return { reason: t("errors.artifactNotOwned") };
-    this.state.unequippedArtifactIds.splice(idx, 1);
-    const newArtifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
-    this.state.unequippedArtifactIds.push(newArtifactId);
-    this.state.message = t("game.fortuneTraded", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name });
-    this.closeEvent();
-    return null;
+    return hermitRerollFortune(this.state, this.ctx, artifactId);
   }
 
   hermitLeave(): void {
-    this.state.message = t("game.leftGeneric");
-    this.closeEvent();
+    hermitLeave(this.state);
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
-    const character = this.state.party.find((c) => c.id === characterId);
-    if (!character) return { reason: t("errors.characterNotFound") };
-    const cost = this.payHpPercent(character, COLLAPSED_FLOOR_HP_PERCENT);
-    if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
-    if (this.ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE)) {
-      const artifactId = rollArtifact("boss", this.ctx.rng);
-      this.state.unequippedArtifactIds.push(artifactId);
-      this.state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
-    } else {
-      this.state.message = t("game.collapsedFloorFail", { character: character.name, cost });
-    }
-    this.closeEvent();
-    return null;
+    return collapsedFloorAttempt(this.state, this.ctx, characterId);
   }
 
   collapsedFloorLeave(): void {
-    this.state.message = t("game.skippedAttempt");
-    this.closeEvent();
+    collapsedFloorLeave(this.state);
   }
 
   resolve(): void {
