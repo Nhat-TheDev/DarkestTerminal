@@ -16,7 +16,7 @@ import type {
 } from "../types";
 import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getItem } from "../data/items";
-import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
+import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { rollDodge, autoDamageAmounts, totalCooldownReduction } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
@@ -259,6 +259,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   runArtifactAutoDamage(combat, ctx);
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
+  const actedRefs: CombatantRef[] = [];
   for (const ref of combat.turnQueue) {
     const actor = getActorByRef(ref, ctx);
     if (!isActorAlive(actor)) continue;
@@ -266,12 +267,26 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     blockStart = combat.log.length;
     if (ref.kind === "character") {
       runCharacterTurn(ref, combat, ctx);
+      actedRefs.push(ref);
     } else {
       runMonsterTurn(ref, combat, ctx);
     }
     tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
     if (isCombatOver(combat, ctx)) break;
+  }
+
+  if (isCombatOver(combat, ctx)) {
+    // Combat ended mid-round (e.g. the last monster died on an earlier turn) before some
+    // characters further down the turn order got to act — refund what queueAction/queueItemAction
+    // pre-committed for them instead of leaving mp/uses/cooldown/inventory permanently spent.
+    for (const queued of combat.queuedActions) {
+      if (queued.actor.kind !== "character") continue;
+      if (actedRefs.some((ref) => refEquals(ref, queued.actor))) continue;
+      const actor = getActorByRef(queued.actor, ctx) as Character;
+      if (!isActorAlive(actor)) continue;
+      refundQueuedAction(queued, actor, ctx);
+    }
   }
 
   if (!isCombatOver(combat, ctx)) {
@@ -300,17 +315,37 @@ export function hasStunningStatus(actor: Actor): boolean {
   return actor.activeStatusEffects.some((a) => getStatusEffect(a.statusEffectId).stuns === true);
 }
 
+/** Refunds whatever queueAction/queueItemAction pre-committed (mp, uses, cooldown, inventory) for an action that ends up never executing — stunned, feared, or its target(s) died before its turn came up. */
+function refundQueuedAction(queued: QueuedAction, actor: Character, ctx: EngineContext): void {
+  if (queued.source.kind === "item") {
+    ctx.inventory[queued.source.itemId] = (ctx.inventory[queued.source.itemId] ?? 0) + 1;
+    return;
+  }
+  const skillId = queued.source.skillId;
+  const skill = getEffectiveSkill(getSkill(skillId), actor.level);
+  actor.mp = Math.min(actor.maxMp, actor.mp + skill.mpCost);
+  if (skill.usesPerCombat !== undefined) {
+    const used = actor.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
+    actor.usesRemainingThisCombat[skillId] = Math.min(skill.usesPerCombat, used + 1);
+  }
+  if (skill.cooldownTurns !== undefined) {
+    delete actor.cooldownsRemaining[skillId];
+  }
+}
+
 function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const actor = getActorByRef(ref, ctx) as Character;
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, ref));
   if (!queued) return;
 
   if (hasStunningStatus(actor)) {
+    refundQueuedAction(queued, actor, ctx);
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
     return;
   }
 
   if (rollLosesControl(actor.survival.fear, () => ctx.rng.next())) {
+    refundQueuedAction(queued, actor, ctx);
     combat.log.push({ text: t("combat.fearLoseControl", { actor: actor.name }), kind: "info" });
     return;
   }
@@ -318,6 +353,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   const skill = actionDefinition(queued.source, actor);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
+    refundQueuedAction(queued, actor, ctx);
     combat.log.push({ text: t("combat.wastedAction", { actor: actor.name, skill: skill.name }), kind: "info" });
     return;
   }
@@ -403,7 +439,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
         { kind: "damage", amount: def.onHitAoeDamage.amount, ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent },
         source,
         enemy,
-        { log, isMagic: def.onHitAoeDamage.isMagic }
+        { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " ") }
       );
     }
   }
@@ -449,7 +485,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
       const wasAliveBefore = isActorAlive(target);
-      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log, isMagic: skill.isMagic });
+      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log, isMagic: skill.isMagic, skillName: skill.name });
       if (effect.kind === "damage") {
         for (const hook of combatHooks) hook.onHit?.(source, target, log);
         if (isCharacter(source)) {

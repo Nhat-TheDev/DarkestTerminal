@@ -4,7 +4,8 @@ import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getRoom } from "../engine/dungeon";
-import { getFearTier } from "../engine/resolver";
+import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
+import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { t } from "../data/strings";
 import { quickSave } from "../engine/save";
@@ -452,11 +453,6 @@ export class App implements ScreenContext {
       const view = hpOverride?.get(c.id);
       partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp } : c, s.satiety));
     });
-    const items = inventoryEntries(s.inventory);
-    if (items.length > 0) {
-      partyLines.push([], [colorChunk(t("ui.itemsLabel"), PALETTE.title)]);
-      for (const { item, qty } of items) partyLines.push([plainChunk(t("ui.inventoryLineNoIndex", { name: item.name, qty }))]);
-    }
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
     if (this.pendingReveal.length > 0) {
@@ -528,25 +524,24 @@ export class App implements ScreenContext {
       plainChunk(" "),
       colorChunk(t("ui.fearStat", { fear: c.survival.fear }), fearColorFor(tier)),
     ];
-
-    const notes: TextChunk[] = [];
     if (tier >= 2) {
-      notes.push(colorChunk(FEAR_TIER_LABEL[tier]!, fearColorFor(tier)));
-    }
-    for (const eff of c.activeStatusEffects) {
-      notes.push(colorChunk(eff.statusEffectId, PALETTE.dim));
-    }
-    for (const artifactId of c.equippedArtifactIds) {
-      notes.push(colorChunk(getArtifact(artifactId).name, PALETTE.title));
+      line2.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
 
-    if (notes.length === 0) return [line1, line2];
-    const line3: TextChunk[] = [plainChunk("  ")];
-    notes.forEach((n, i) => {
-      if (i > 0) line3.push(plainChunk(" · "));
-      line3.push(n);
-    });
-    return [line1, line2, line3];
+    // Artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
+    const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(getArtifact(artifactId).name, PALETTE.title)]);
+    const buffLines: TextChunk[][] = [];
+    const debuffLines: TextChunk[][] = [];
+    for (const eff of c.activeStatusEffects) {
+      const def = getStatusEffect(eff.statusEffectId);
+      const target = isHelpfulStatusEffect(def) ? buffLines : debuffLines;
+      const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
+      target.push([plainChunk("  "), colorChunk(statusDisplayName(def), color), colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color)]);
+    }
+    const noteLines = [...artifactLines, ...buffLines, ...debuffLines];
+
+    if (noteLines.length === 0) return [line1, line2];
+    return [line1, line2, ...noteLines];
   }
 
   private buildUnitMeta(label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {

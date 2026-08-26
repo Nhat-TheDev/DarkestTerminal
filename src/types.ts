@@ -189,6 +189,8 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
+  /** Debuffs only: true for the round it was applied/refreshed on — that round's end-of-round tick skips the duration countdown, so it starts counting down from the following round instead. Buffs always count down starting the round they're cast in, so this stays false/unset for them. */
+  justApplied?: boolean;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "treasure" | "empty" | "event";
