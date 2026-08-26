@@ -20,10 +20,25 @@ const COMBAT_ROOM_NAMES = [
 ];
 const REST_ROOM_NAMES = ["Shelter", "Safe Resting Corner", "Abandoned Shrine"];
 const BOSS_ROOM_NAMES = ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"];
+// Event rooms (merchant, altars, gambling den, hermit, etc.) get their own pool — the combat-room
+// names above ("Guardian Fight", "Bone Vault") read as fight-flavored and clash with those scenes.
+const EVENT_ROOM_NAMES = [
+  "Torchlit Nook",
+  "Forgotten Landing",
+  "Quiet Alcove",
+  "Sunken Chamber",
+  "Old Reliquary",
+  "Dust-Choked Vestibule",
+  "Hollow Antechamber",
+  "Silent Junction",
+  "Half-Buried Passage",
+  "Flickering Recess",
+];
 
 function namePool(type: RoomType): string[] {
   if (type === "rest") return REST_ROOM_NAMES;
   if (type === "boss") return BOSS_ROOM_NAMES;
+  if (type === "event") return EVENT_ROOM_NAMES;
   return COMBAT_ROOM_NAMES;
 }
 

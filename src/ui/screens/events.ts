@@ -8,7 +8,11 @@ import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
 import { truncateText } from "../layout";
+import { paginate, PAGE_SIZE } from "../pagination";
 import type { ScreenContext } from "./context";
+
+/** Reserves digit 9 on every page for the trailing "Leave" option. */
+const SACRIFICE_PAGE_SIZE = PAGE_SIZE - 1;
 
 const GAMBLING_DEN_ROUNDS = BALANCE.events.gamblingDenRounds;
 const MERCHANT_REFRESH_COST_COINS = BALANCE.events.merchantRefreshCostCoins;
@@ -95,13 +99,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventArtifactPick": {
       if (digit === null) break;
-      const candidates = ownedArtifactEntries(ctx.game.state.party);
-      if (digit <= candidates.length) {
-        const err = ctx.game.sacrifice(candidates[digit - 1]!.artifactId);
+      const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage(), SACRIFICE_PAGE_SIZE);
+      if (digit <= pageItems.length) {
+        const err = ctx.game.sacrifice(pageItems[digit - 1]!.artifactId);
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
-      } else if (digit === candidates.length + 1) {
+      } else if (digit === pageItems.length + 1) {
         ctx.game.sacrificeLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -152,7 +156,8 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventHermitPickArtifact": {
       if (digit === null) break;
-      const entry = ownedArtifactEntries(ctx.game.state.party)[digit - 1];
+      const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage());
+      const entry = pageItems[digit - 1];
       if (!entry) break;
       const err = ctx.game.hermitExchangeFortune(entry.artifactId);
       if (err) ctx.reportUnusable(err.reason);
@@ -163,7 +168,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
   }
 }
 
-export function renderMain(game: Game, ui: EventUiState): string | StyledText {
+export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
     case "eventMerchant": {
@@ -218,13 +223,15 @@ export function renderMain(game: Game, ui: EventUiState): string | StyledText {
 
     case "eventArtifactPick": {
       const candidates = ownedArtifactEntries(s.party);
+      const { pageItems, page: p, pages } = paginate(candidates, page, SACRIFICE_PAGE_SIZE);
       const lines = [t("ui.chooseSacrifice")];
-      candidates.forEach(({ artifactId }, i) => {
+      pageItems.forEach(({ artifactId }, i) => {
         const a = getArtifact(artifactId);
         lines.push(`  [${i + 1}] ${a.name} (${a.rarity})`);
       });
-      lines.push(`  [${candidates.length + 1}] ${t("ui.leaveRitualOption")}`);
+      lines.push(`  [${pageItems.length + 1}] ${t("ui.leaveRitualOption")}`);
       if (candidates.length === 0) lines.push(t("ui.noSuitableArtifacts"));
+      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
 
@@ -253,8 +260,10 @@ export function renderMain(game: Game, ui: EventUiState): string | StyledText {
     }
 
     case "eventHermitPickArtifact": {
+      const { pageItems, page: p, pages } = paginate(ownedArtifactEntries(s.party), page);
       const lines = [t("ui.hermitExchangeIntro", { cost: HERMIT_EXCHANGE_COST_COINS })];
-      ownedArtifactEntries(s.party).forEach(({ artifactId }, i) => lines.push(`  [${i + 1}] ${getArtifact(artifactId).name} (${getArtifact(artifactId).rarity})`));
+      pageItems.forEach(({ artifactId }, i) => lines.push(`  [${i + 1}] ${getArtifact(artifactId).name} (${getArtifact(artifactId).rarity})`));
+      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
   }

@@ -6,13 +6,14 @@ import { finishVictorySequence, type ScreenContext } from "./context";
 
 export type CampUiState = Extract<UiState, { kind: "campPrompt" }>;
 
-export function handleKey(ctx: ScreenContext, _ui: CampUiState, _key: KeyEvent, digit: number | null): void {
+export function handleKey(ctx: ScreenContext, _ui: CampUiState, key: KeyEvent, digit: number | null): void {
+  const skip = key.name === "return";
   if (digit === 1) {
     const err = ctx.game.camp();
     if (err) ctx.reportUnusable(err.reason);
     else ctx.logInfo(ctx.game.state.message);
   }
-  if (digit === 1 || digit === 2) finishVictorySequence(ctx);
+  if (digit === 1 || skip) finishVictorySequence(ctx);
 }
 
 export function renderMain(game: Game, _ui: CampUiState): string {

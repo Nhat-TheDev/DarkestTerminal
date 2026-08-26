@@ -14,6 +14,8 @@ export interface ScreenContext {
   setPendingFloorAdvance(value: boolean): void;
   getPendingCampOffer(): boolean;
   setPendingCampOffer(value: boolean): void;
+  getListPage(): number;
+  setListPage(value: number): void;
 }
 
 export function advanceFloorWithAutoSave(ctx: ScreenContext): void {

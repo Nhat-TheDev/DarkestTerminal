@@ -31,7 +31,8 @@ import {
   type Sprite,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
-import { type UiState, inventoryEntries, eventUiState } from "./state";
+import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState } from "./state";
+import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import type { ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -46,6 +47,11 @@ import * as gameoverScreen from "./screens/gameover";
 
 const LOG_HISTORY_SIZE = 20;
 const LOG_REVEAL_INTERVAL_MS = 500;
+
+/** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
+function pageSizeFor(kind: UiState["kind"]): number {
+  return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
+}
 
 const FEAR_TIER_LABEL: Record<number, string> = {
   1: t("ui.fearTier1"),
@@ -74,6 +80,7 @@ export class App implements ScreenContext {
   private displaySnapshot: CombatantSnapshot[] | null = null;
   private pendingFloorAdvance = false;
   private pendingCampOffer = false;
+  private listPage = 0;
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -167,7 +174,33 @@ export class App implements ScreenContext {
   }
 
   setUi(next: UiState): void {
+    if (next.kind !== this.ui.kind) this.listPage = 0;
     this.ui = next;
+  }
+
+  getListPage(): number {
+    return this.listPage;
+  }
+
+  setListPage(value: number): void {
+    this.listPage = value;
+  }
+
+  /** List length behind the current screen's digit-selectable options, or null if it isn't a paginated list. */
+  private listCountFor(ui: UiState): number | null {
+    switch (ui.kind) {
+      case "pickItemOutOfCombat":
+      case "pickItemInCombat":
+        return inventoryEntries(this.game.state.inventory).length;
+      case "artifactMenu":
+      case "eventArtifactPick":
+      case "eventHermitPickArtifact":
+        return ownedArtifactEntries(this.game.state.party).length;
+      case "roomReward":
+        return ui.viewing ? null : ui.entries.length;
+      default:
+        return null;
+    }
   }
 
   logInfo(text: string): void {
@@ -242,6 +275,17 @@ export class App implements ScreenContext {
     if (key.name === "escape" && this.goBack()) {
       this.render();
       return;
+    }
+    if (key.name === "left" || key.name === "right") {
+      const count = this.listCountFor(this.ui);
+      if (count !== null) {
+        const size = pageSizeFor(this.ui.kind);
+        if (pageCount(count, size) > 1) {
+          this.listPage = clampPage(this.listPage + (key.name === "right" ? 1 : -1), count, size);
+        }
+        this.render();
+        return;
+      }
     }
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
@@ -639,7 +683,7 @@ export class App implements ScreenContext {
 
       case "artifactMenu":
       case "artifactDetail":
-        return artifactsScreen.renderMain(this.game, this.ui);
+        return artifactsScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "artifactDecision":
       case "artifactDecisionPickCharacter":
@@ -648,13 +692,13 @@ export class App implements ScreenContext {
 
       case "pickItemOutOfCombat":
       case "itemDetail":
-        return inventoryScreen.renderMain(this.game, this.ui);
+        return inventoryScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "saveMenu":
         return saveScreen.renderMain();
 
       case "roomReward":
-        return rewardsScreen.renderMain(this.game, this.ui);
+        return rewardsScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "campPrompt":
         return campScreen.renderMain(this.game, this.ui);
@@ -665,7 +709,7 @@ export class App implements ScreenContext {
       case "pickSkill":
       case "pickItemInCombat":
       case "pickTarget":
-        return combatScreen.renderMain(this.game, this.ui);
+        return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "eventMerchant":
       case "eventCursedShrine":
@@ -676,7 +720,7 @@ export class App implements ScreenContext {
       case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
-        return eventsScreen.renderMain(this.game, this.ui);
+        return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
       default: {
         const _exhaustive: never = this.ui;

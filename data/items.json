@@ -76,7 +76,7 @@
   {
     "id": "grave-dust",
     "name": "Grave Dust",
-    "description": "Finely ground bone dust from an old grave — rubbed on skin, it hardens the flesh like stone.",
+    "description": "Finely ground bone dust from an old grave — rubbed on skin, it sets the flesh like old bone.",
     "target": "singleAlly",
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
     "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"],

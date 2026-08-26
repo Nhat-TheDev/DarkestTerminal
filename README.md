@@ -1,4 +1,20 @@
-# darkest-terminal
+# Darkest Terminal
+
+```
+   █████   ████  █████  ██  ██ ██████  █████ ██████
+   ██  ██ ██  ██ ██  ██ ██ ██  ██     ██       ██
+   ██  ██ ██████ █████  ████   █████   ████    ██
+   ██  ██ ██  ██ ██ ██  ██ ██  ██         ██   ██
+   █████  ██  ██ ██  ██ ██  ██ ██████ █████    ██
+
+██████ ██████ █████  ██    ██ ██ ██    ██  ████  ██
+  ██   ██     ██  ██ ███  ███ ██ ███   ██ ██  ██ ██
+  ██   █████  █████  ██ ██ ██ ██ ██ ██ ██ ██████ ██
+  ██   ██     ██ ██  ██    ██ ██ ██   ███ ██  ██ ██
+  ██   ██████ ██  ██ ██    ██ ██ ██    ██ ██  ██ ██████
+```
+
+*A dungeon doesn't care that your only monitor is a terminal window.*
 
 [![Tests](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/darkest-terminal-test.yml/badge.svg)](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/darkest-terminal-test.yml)
 [![Verify Build](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/verify-build.yml/badge.svg)](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/verify-build.yml)

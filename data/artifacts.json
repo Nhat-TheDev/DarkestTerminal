@@ -10,17 +10,17 @@
   { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "A pendant engraved with a crescent moon, radiating calm amid the dark.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
   { "id": "travelers-ration", "name": "Traveler's Ration", "description": "A small pouch of dried rations always kept close, its very presence steadying the mind for the road ahead.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 15 }] },
 
-  { "id": "ancient-sword", "name": "Ancient Sword", "description": "An ancient sword with a faded engraving, its steel blade still as sharp as the day it was forged.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
+  { "id": "ancient-sword", "name": "Ancient Sword", "description": "An ancient sword with a faded engraving no one has managed to read.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
   { "id": "heart-of-stone", "name": "Heart of Stone", "description": "A heart-shaped piece of stone, ice-cold yet it makes its bearer unyielding.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
   { "id": "eternal-vial", "name": "Eternal Vial", "description": "A glass vial holding a liquid that never runs dry, a current of life swirling within.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
   { "id": "arcane-core", "name": "Arcane Core", "description": "A crystallized core of arcane energy, humming as if whispering incantations.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
-  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Armor bristling with outward-facing thorns — whoever strikes it pays the price.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
+  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Armor bristling with outward-facing thorns, rusted brown at the tips.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
   { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "An ancient dagger whose venom has soaked deep into every layer of steel, never fading.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
   { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "A razor-sharp fang that drains a bit of life force with every bite that lands.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
   { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "A pair of boots as light as a feather, footsteps barely touching the ground.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
   { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "A hastily carved rune that shortens the lull between two skill casts.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
 
-  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A cloak studded with iron spikes — one glance tells you not to get close.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
+  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A cloak studded with iron spikes, heavy enough to drag on the ground.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
   { "id": "serpent-ring", "name": "Serpent Ring", "description": "A ring carved into a coiled serpent, its hidden fangs still dripping venom.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
   { "id": "thunder-totem", "name": "Thunder Totem", "description": "A totem carved with a lightning bolt, occasionally discharging a jolt of electricity on its own.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
   {
@@ -51,7 +51,7 @@
   {
     "id": "immortal-heart",
     "name": "Immortal Heart",
-    "description": "A heart that keeps beating long after being severed from its body — nothing can make it stop.",
+    "description": "A heart, severed from its body long ago, that still beats in your hand.",
     "rarity": "epic",
     "effects": [
       { "kind": "reflectDamage", "percent": 15 },
@@ -83,7 +83,7 @@
   {
     "id": "blackened-locket",
     "name": "Blackened Locket",
-    "description": "A locket shrouded in black smoke, opening onto nothing but a cold void — yet the power it grants is very real.",
+    "description": "A locket shrouded in black smoke. Open it and there's nothing inside but cold.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [

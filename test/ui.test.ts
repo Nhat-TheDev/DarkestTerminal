@@ -96,7 +96,7 @@ describe("headless UI smoke test", () => {
     expect(app.debugUiState.kind).toBe("campPrompt"); // Camp offer comes after the decision, before the floor advances
     expect(game.state.floor.depth).toBe(1);
 
-    mockInput.pressKey("2"); // skip Camp
+    mockInput.pressKey("RETURN"); // skip Camp
     await renderOnce();
 
     expect(game.state.floor.depth).toBe(2); // now it advances

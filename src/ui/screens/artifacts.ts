@@ -4,6 +4,7 @@ import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
+import { paginate } from "../pagination";
 import type { ScreenContext } from "./context";
 
 export type ArtifactsUiState = Extract<UiState, { kind: "artifactMenu" } | { kind: "artifactDetail" }>;
@@ -16,8 +17,8 @@ export function handleKey(ctx: ScreenContext, ui: ArtifactsUiState, _key: KeyEve
     }
     case "artifactMenu": {
       if (digit === null) break;
-      const entries = ownedArtifactEntries(ctx.game.state.party);
-      const entry = entries[digit - 1];
+      const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage());
+      const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "artifactDetail", artifactId: entry.artifactId, origin: { kind: "owned", characterId: entry.character.id } });
       break;
@@ -25,17 +26,19 @@ export function handleKey(ctx: ScreenContext, ui: ArtifactsUiState, _key: KeyEve
   }
 }
 
-export function renderMain(game: Game, ui: ArtifactsUiState): string {
+export function renderMain(game: Game, ui: ArtifactsUiState, page = 0): string {
   const s = game.state;
   switch (ui.kind) {
     case "artifactMenu": {
       const entries = ownedArtifactEntries(s.party);
       if (entries.length === 0) return t("ui.noArtifactsYet");
+      const { pageItems, page: p, pages } = paginate(entries, page);
       const lines = [t("ui.artifactsListTitle")];
-      entries.forEach((entry, i) => {
+      pageItems.forEach((entry, i) => {
         const a = getArtifact(entry.artifactId);
         lines.push(`  [${i + 1}] ${a.name} (${a.rarity})${a.isCursed ? t("ui.cursedTag") : ""} — ${entry.character.name} — ${formatArtifactEffect(a)}`);
       });
+      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
 
