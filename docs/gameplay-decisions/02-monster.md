@@ -122,6 +122,29 @@ This required a resolver change (`resolver.ts`): after computing final mitigated
 
 Skeleton Guard (shared with regular combat) plus the archetypes marked `guardOnly: true` — as of writing this includes Giant Spider, Dragon, Zombie Knight, and Dark Knight, each with its own elite/boss skill kit (`eliteSkillIds`/`bossSkillIds`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
 
+### Monster Balance Points
+
+Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skill.md`) to monster archetypes, adding a `speed` term that the char formula doesn't have — `speed` isn't part of the char formula because it never scales with level (`01-class-skill.md` §"aggro/speed are not part of the formula"); monster `speed` doesn't scale with floor depth either (see "Scaling formula by floor depth" above), so there's no `tier1` growth rate to derive a conversion constant from the way `attack`/`defense`/`maxHp` do.
+
+**Formula**:
+
+```
+MonsterBalancePoints = baseAttack/tier1.attack + baseDefense/tier1.defense + baseHp/tier1.maxHp + baseSpeed/speedRate
+```
+
+using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`: `attack=3, defense=2, maxHp=14`), plus `speedRate = 12` — a hand-picked constant (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). Starting point was the pooled average `baseSpeed` across every monster archetype and character class (~10.4), nudged up during tuning. `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
+
+**Target ranges** (rule-of-thumb bands per tier, checked against `data/monsters.json`'s base stats before any `eliteMultiplier`/`bossMultiplier` or floor-depth scaling is applied):
+
+| Tier | Target BalancePoints | Tolerance |
+|---|---|---|
+| weak | 10 | ±0.3 |
+| medium | 12 | ±0.4 |
+| strong | 14 | ±0.5 |
+| Elite/Boss (guard-room archetypes — `eliteSkillIds` + `bossSkillIds` both set) | 17 | ±1 |
+
+Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the rebalance-editor tool, `tools/rebalance-editor`, surfaces this number directly for both classes and monster archetypes).
+
 ### Balance verification
 
 Damage is computed via the percentage-based mitigation formula (`mitigatedOffense`, `docs/technical-decisions.md`): `off − off × (def / (X + def)) − def / Y`, where `off` is the `attack` (or `magicPower` for `isMagic` skills) of the damage source, and `X`/`Y` are `data/balance-config.json` fields `combat.defenseMitigationX`/`combat.defenseMitigationY`.
