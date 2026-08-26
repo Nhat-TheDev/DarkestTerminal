@@ -5,6 +5,7 @@ import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier } from "../engine/resolver";
+import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { t } from "../data/strings";
 import { quickSave } from "../engine/save";
 import {
@@ -37,7 +38,9 @@ import * as roomScreen from "./screens/room";
 import * as combatScreen from "./screens/combat";
 import * as inventoryScreen from "./screens/inventory";
 import * as artifactsScreen from "./screens/artifacts";
+import * as artifactDecisionScreen from "./screens/artifactDecision";
 import * as rewardsScreen from "./screens/rewards";
+import * as campScreen from "./screens/camp";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 
@@ -70,6 +73,7 @@ export class App implements ScreenContext {
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private displaySnapshot: CombatantSnapshot[] | null = null;
   private pendingFloorAdvance = false;
+  private pendingCampOffer = false;
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -177,6 +181,10 @@ export class App implements ScreenContext {
     }
     const combat = this.game.state.combat;
     if (!combat) {
+      if (this.game.state.pendingArtifactDecision) {
+        this.ui = { kind: "artifactDecision" };
+        return;
+      }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       if (room.type === "rest" && !room.cleared) {
         this.ui = { kind: "rest" };
@@ -253,27 +261,32 @@ export class App implements ScreenContext {
       case "roomReward":
         rewardsScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "campPrompt":
+        campScreen.handleKey(this, this.ui, key, digit);
+        break;
       case "pickItemOutOfCombat":
       case "itemDetail":
         inventoryScreen.handleKey(this, this.ui, key, digit);
         break;
       case "artifactDetail":
       case "artifactMenu":
-      case "pickCharacterForArtifact":
         artifactsScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "artifactDecision":
+      case "artifactDecisionPickCharacter":
+      case "artifactDecisionPickReplace":
+        artifactDecisionScreen.handleKey(this, this.ui, key, digit);
         break;
       case "saveMenu":
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
       case "eventMerchant":
-      case "eventMerchantPickPayer":
       case "eventCursedShrine":
       case "eventTwinAltars":
-      case "eventTwinAltarsPickCharacter":
-      case "eventTwinAltarsPickUnequip":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
       case "eventArtifactPick":
+      case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
         eventsScreen.handleKey(this, this.ui, key, digit);
@@ -305,8 +318,11 @@ export class App implements ScreenContext {
       case "artifactDetail":
         this.ui = { kind: "artifactMenu" };
         return true;
-      case "pickCharacterForArtifact":
-        this.ui = { kind: "artifactMenu" };
+      case "artifactDecisionPickCharacter":
+        this.ui = { kind: "artifactDecision" };
+        return true;
+      case "artifactDecisionPickReplace":
+        this.ui = { kind: "artifactDecisionPickCharacter" };
         return true;
       case "saveMenu":
         this.ui = this.ui.previous;
@@ -346,6 +362,14 @@ export class App implements ScreenContext {
     this.pendingFloorAdvance = value;
   }
 
+  getPendingCampOffer(): boolean {
+    return this.pendingCampOffer;
+  }
+
+  setPendingCampOffer(value: boolean): void {
+    this.pendingCampOffer = value;
+  }
+
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
@@ -354,6 +378,10 @@ export class App implements ScreenContext {
         boldColorChunk(room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
         colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
+        plainChunk("  "),
+        colorChunk(t("ui.coinsStat", { coins: s.coins }), PALETTE.title),
+        plainChunk("  "),
+        colorChunk(t("ui.satietyStat", { satiety: s.satiety }), PALETTE.title),
       ],
     ]);
 
@@ -378,7 +406,7 @@ export class App implements ScreenContext {
     s.party.forEach((c, i) => {
       if (i > 0) partyLines.push([]);
       const view = hpOverride?.get(c.id);
-      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp } : c));
+      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp } : c, s.satiety));
     });
     const items = inventoryEntries(s.inventory);
     if (items.length > 0) {
@@ -438,13 +466,15 @@ export class App implements ScreenContext {
     this.render();
   }
 
-  private renderCharacterLines(c: Character): TextChunk[][] {
+  private renderCharacterLines(c: Character, satiety: number): TextChunk[][] {
     const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
     if (!c.isAlive) {
       return [[chip(style.abbr, PALETTE.dead), plainChunk(t("ui.fallenSuffix", { name: c.name }))]];
     }
 
     const line1: TextChunk[] = [chip(style.abbr, style.color), plainChunk(` ${c.name} `), colorChunk(t("ui.levelTag", { level: c.level }), PALETTE.title)];
+    if (isPartyDying(satiety)) line1.push(colorChunk(t("ui.dyingTag"), PALETTE.hpLow));
+    else if (isPartyExhausted(satiety)) line1.push(colorChunk(t("ui.exhaustedTag"), PALETTE.hpLow));
     const tier = getFearTier(c.survival.fear);
     const line2: TextChunk[] = [
       plainChunk("  "),
@@ -459,8 +489,6 @@ export class App implements ScreenContext {
     if (tier >= 2) {
       notes.push(colorChunk(FEAR_TIER_LABEL[tier]!, fearColorFor(tier)));
     }
-    if (c.survival.hunger <= 20) notes.push(colorChunk(t("ui.hungry"), PALETTE.hpLow));
-    if (c.survival.thirst <= 20) notes.push(colorChunk(t("ui.thirsty"), PALETTE.hpLow));
     for (const eff of c.activeStatusEffects) {
       notes.push(colorChunk(eff.statusEffectId, PALETTE.dim));
     }
@@ -611,8 +639,12 @@ export class App implements ScreenContext {
 
       case "artifactMenu":
       case "artifactDetail":
-      case "pickCharacterForArtifact":
         return artifactsScreen.renderMain(this.game, this.ui);
+
+      case "artifactDecision":
+      case "artifactDecisionPickCharacter":
+      case "artifactDecisionPickReplace":
+        return artifactDecisionScreen.renderMain(this.game, this.ui);
 
       case "pickItemOutOfCombat":
       case "itemDetail":
@@ -624,6 +656,9 @@ export class App implements ScreenContext {
       case "roomReward":
         return rewardsScreen.renderMain(this.game, this.ui);
 
+      case "campPrompt":
+        return campScreen.renderMain(this.game, this.ui);
+
       case "combatOver":
       case "roundResolved":
       case "pickAction":
@@ -633,14 +668,12 @@ export class App implements ScreenContext {
         return combatScreen.renderMain(this.game, this.ui);
 
       case "eventMerchant":
-      case "eventMerchantPickPayer":
       case "eventCursedShrine":
       case "eventTwinAltars":
-      case "eventTwinAltarsPickCharacter":
-      case "eventTwinAltarsPickUnequip":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
       case "eventArtifactPick":
+      case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
         return eventsScreen.renderMain(this.game, this.ui);
@@ -669,21 +702,24 @@ export class App implements ScreenContext {
         return inventoryScreen.renderFooter(this.ui);
       case "artifactMenu":
       case "artifactDetail":
-      case "pickCharacterForArtifact":
         return artifactsScreen.renderFooter(this.ui);
+      case "artifactDecision":
+      case "artifactDecisionPickCharacter":
+      case "artifactDecisionPickReplace":
+        return artifactDecisionScreen.renderFooter(this.ui);
       case "saveMenu":
         return saveScreen.renderFooter();
       case "roomReward":
         return rewardsScreen.renderFooter(this.ui);
+      case "campPrompt":
+        return campScreen.renderFooter(this.ui);
       case "eventMerchant":
-      case "eventMerchantPickPayer":
       case "eventCursedShrine":
       case "eventTwinAltars":
-      case "eventTwinAltarsPickCharacter":
-      case "eventTwinAltarsPickUnequip":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
       case "eventArtifactPick":
+      case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
         return eventsScreen.renderFooter(this.ui);

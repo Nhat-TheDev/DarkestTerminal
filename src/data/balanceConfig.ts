@@ -9,13 +9,17 @@ interface BalanceConfig {
     defensiveLowHpSkillChance: number;
   };
   survival: {
-    initialHunger: number;
-    initialThirst: number;
+    initialSatiety: number;
     initialFear: number;
-    hungerDrainPerAction: number;
-    thirstDrainPerAction: number;
-    starvationDamagePercent: number;
+    satietyDrainCombat: number;
+    satietyDrainEvent: number;
+    exhaustedThreshold: number;
+    exhaustedStatMultiplier: number;
+    dyingThreshold: number;
+    dyingDamagePerRound: number;
+    campSatietyRestore: number;
     eatDrinkRestorePercent: number;
+    eatDrinkSatietyRestore: number;
     chatRestorePercent: number;
     chatFearRelief: number;
     fearPerRoundBase: number;
@@ -25,19 +29,43 @@ interface BalanceConfig {
     fearPerRoundDepthGrowth: number;
     fearLowHpThresholdPercent: number;
     fearVictoryRelief: number;
+    fearVictoryReliefQuick: number;
+    fearQuickVictoryRoundThreshold: number;
     fearEliteOrBossVictoryRelief: number;
+    fearEliteOrBossVictoryReliefQuick: number;
+    fearEliteOrBossQuickVictoryRoundThreshold: number;
   };
   party: {
     maxEquippedArtifacts: number;
+    startingExplorationKits: number;
+  };
+  currency: {
+    coinDropByTier: {
+      weak: [number, number];
+      medium: [number, number];
+      strong: [number, number];
+      elite: [number, number];
+      boss: [number, number];
+    };
   };
   events: {
     commonTierWeight: number;
     rareTierWeight: number;
-    merchantPricePercent: Record<ArtifactRarity, number>;
+    merchantPriceCoins: Record<ArtifactRarity, number>;
+    merchantOfferCount: number;
+    merchantRefreshCostCoins: number;
+    merchantMaxRefreshes: number;
     bloodAltarHpPercent: number;
     collapsedFloorHpPercent: number;
     collapsedFloorSuccessChance: number;
     eventGuardianStatMultiplier: number;
+    gamblingDenRounds: {
+      stake: number;
+      winChance: number;
+      jackpotArtifactCount?: number;
+      jackpotRarity?: ArtifactRarity;
+    }[];
+    wanderingHermitExchangeCostCoins: number;
   };
   items: {
     itemDropChance: number;

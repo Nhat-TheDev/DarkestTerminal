@@ -32,20 +32,14 @@
     "weight": 0.5
   },
   {
-    "id": "ration",
-    "name": "Ration",
-    "description": "Dried bread and salted meat wrapped in leaves — not tasty, but enough to survive a long day.",
-    "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "hunger", "amount": 40 }],
-    "weight": 1
-  },
-  {
-    "id": "water-flask",
-    "name": "Water Flask",
-    "description": "A leather flask of spring water, sealed tight so it won't leak through dusty corridors.",
-    "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "thirst", "amount": 40 }],
-    "weight": 1
+    "id": "exploration-kit",
+    "name": "Exploration Kit",
+    "description": "Rope, chalk, and a well-worn map case — everything needed to press on a little longer between real rests.",
+    "target": "allAllies",
+    "effects": [{ "kind": "modifyStat", "stat": "satiety", "amount": 30 }],
+    "weight": 0.15,
+    "combatUsable": false,
+    "archetypeIds": ["zombie", "zombie-knight", "skeleton", "skeleton-archer", "skeleton-warrior", "skeleton-guard", "dark-knight"]
   },
   {
     "id": "calming-draught",

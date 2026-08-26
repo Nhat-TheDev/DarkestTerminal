@@ -51,7 +51,7 @@ describe("character creation", () => {
     const c = createCharacter("c1", "Test", cls);
     expect(c.unlockedSkillIds).toEqual(["vanguard-slash", "vanguard-shield-guard", "vanguard-shield-throw"]);
     expect(c.hp).toBe(cls.baseMaxHp);
-    expect(c.survival).toEqual({ hunger: 100, thirst: 100, fear: 0 });
+    expect(c.survival).toEqual({ fear: 0 });
   });
 });
 

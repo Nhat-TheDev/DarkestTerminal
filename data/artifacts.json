@@ -8,7 +8,7 @@
   { "id": "ring-of-focus", "name": "Ring of Focus", "description": "A silver ring that calms the mind, making it easier to reach for magic.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
   { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "A necklace forged from monster fangs, a symbol of a battle once won.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
   { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "A pendant engraved with a crescent moon, radiating calm amid the dark.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
-  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "A small pouch of dried rations always kept close, in case the journey runs longer than expected.", "rarity": "common", "effects": [{ "kind": "survivalDrainReduction", "percent": 15 }] },
+  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "A small pouch of dried rations always kept close, its very presence steadying the mind for the road ahead.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 15 }] },
 
   { "id": "ancient-sword", "name": "Ancient Sword", "description": "An ancient sword with a faded engraving, its steel blade still as sharp as the day it was forged.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
   { "id": "heart-of-stone", "name": "Heart of Stone", "description": "A heart-shaped piece of stone, ice-cold yet it makes its bearer unyielding.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
@@ -94,11 +94,11 @@
   {
     "id": "shackle-of-hunger",
     "name": "Shackle of Hunger",
-    "description": "A rusted shackle that leaves its wearer perpetually hungry and thirsty, in exchange for a rage that's hard to contain.",
+    "description": "A rusted shackle that gnaws at its wearer's guard, in exchange for a rage that's hard to contain.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
-      { "kind": "curseDrainBoost", "percent": 30 },
+      { "kind": "statBoost", "stat": "defense", "amount": -6 },
       { "kind": "statBoost", "stat": "attack", "amount": 8 }
     ]
   },

@@ -1,6 +1,6 @@
 import type { GameState } from "../../types";
 import type { PartyActionError } from "../party";
-import { getArtifact } from "../../data/artifacts";
+import { grantArtifact } from "../party";
 import { t } from "../../data/strings";
 import { closeEvent } from "./shared";
 
@@ -9,8 +9,7 @@ export function cursedShrineDecide(state: GameState, accept: boolean): PartyActi
   if (!active || active.eventId !== "cursed-shrine") return { reason: t("errors.nothingToDecide") };
   const artifactId = active.offerArtifactIds[0]!;
   if (accept) {
-    state.unequippedArtifactIds.push(artifactId);
-    state.message = t("game.receivedArtifact", { artifact: getArtifact(artifactId).name });
+    grantArtifact(state, artifactId, "event");
   } else {
     state.message = t("game.declinedLeft");
   }

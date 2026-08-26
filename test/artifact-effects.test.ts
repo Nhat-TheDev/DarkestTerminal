@@ -5,7 +5,7 @@ import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharac
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { rollArtifactRarity } from "../src/data/artifacts";
-import { applyPartyExp, statsForLevel, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
+import { applyPartyExp, statsForLevel, recomputeCharacterStats, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
 import {
   rollDodge,
   artifactStatBoostSum,
@@ -16,9 +16,8 @@ import {
   totalExpBoostPercent,
   fearResistMultiplier,
   totalCooldownReduction,
-  survivalDrainMultiplier,
 } from "../src/engine/artifacts";
-import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, tickSurvivalOnAction } from "../src/engine/survival";
+import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
 import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
@@ -37,28 +36,39 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect([...seen.treasureOrEvent].sort()).toEqual(["common", "epic", "rare", "unique"]);
   });
 
-  test("equipArtifact/unequipArtifact move ids between the shared pool and a character, capped at MAX_EQUIPPED_ARTIFACTS", () => {
+  test("A.2 pending-artifact-decision flow: equip fills slots up to MAX_EQUIPPED_ARTIFACTS, then requires a replacement to go further", () => {
     const game = new Game(1);
     const c = game.state.party[0]!;
-    game.state.unequippedArtifactIds.push("iron-gauntlet", "sharp-claw", "ancient-sword", "heart-of-stone");
-    expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
-    expect(game.equipArtifact(c.id, "sharp-claw")).toBeNull();
-    expect(game.equipArtifact(c.id, "ancient-sword")).toBeNull();
+    for (const artifactId of ["iron-gauntlet", "sharp-claw", "ancient-sword"]) {
+      game.state.pendingArtifactDecision = { artifactId, forceEquip: false, source: "event" };
+      expect(game.resolveArtifactEquip(c.id)).toBeNull();
+    }
     expect(c.equippedArtifactIds).toHaveLength(MAX_EQUIPPED_ARTIFACTS);
-    expect(game.equipArtifact(c.id, "heart-of-stone")).not.toBeNull();
-    expect(game.state.unequippedArtifactIds).toEqual(["heart-of-stone"]);
+    expect(game.state.pendingArtifactDecision).toBeNull();
 
-    expect(game.unequipArtifact(c.id, "sharp-claw")).toBeNull();
-    expect(c.equippedArtifactIds).toHaveLength(2);
-    expect(game.state.unequippedArtifactIds).toContain("sharp-claw");
+    game.state.pendingArtifactDecision = { artifactId: "heart-of-stone", forceEquip: false, source: "event" };
+    expect(game.resolveArtifactEquip(c.id)).not.toBeNull(); // full — needs a replaceArtifactId
+    expect(game.resolveArtifactEquip(c.id, "sharp-claw")).toBeNull();
+    expect(c.equippedArtifactIds).toEqual(["iron-gauntlet", "ancient-sword", "heart-of-stone"]);
+  });
+
+  test("discarding a pending ordinary artifact leaves no trace; a forceEquip one can't be discarded", () => {
+    const game = new Game(1);
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false, source: "event" };
+    expect(game.discardPendingArtifact()).toBeNull();
+    expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(game.state.party.some((c) => c.equippedArtifactIds.includes("iron-gauntlet"))).toBe(false);
+
+    game.state.pendingArtifactDecision = { artifactId: "shackle-of-hunger", forceEquip: true, source: "event" };
+    expect(game.discardPendingArtifact()).not.toBeNull();
   });
 
   test("statBoost recomputes attack from scratch and survives a level-up", () => {
     const game = new Game(2);
     const c = game.state.party[0]!;
     const baseAttack = c.attack;
-    game.state.unequippedArtifactIds.push("iron-gauntlet");
-    expect(game.equipArtifact(c.id, "iron-gauntlet")).toBeNull();
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false, source: "event" };
+    expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.attack).toBe(baseAttack + 3);
 
     applyPartyExp(game.state, 999999);
@@ -94,7 +104,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(autoDamageAmounts(c)).toEqual([6, 6]);
   });
 
-  test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction/survivalDrainReduction are per-character", () => {
+  test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction are per-character", () => {
     const { ctx } = makeCtx();
     ctx.party[0]!.equippedArtifactIds.push("scholars-insight");
     ctx.party[1]!.equippedArtifactIds.push("eternal-scholars-tome");
@@ -104,8 +114,6 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
 
     ctx.party[0]!.equippedArtifactIds.push("pendant-of-calm");
     expect(fearResistMultiplier(ctx.party[0]!)).toBeCloseTo(0.9);
-    ctx.party[0]!.equippedArtifactIds.push("travelers-ration");
-    expect(survivalDrainMultiplier(ctx.party[0]!)).toBeCloseTo(0.85);
   });
 
   test("fearGainForRound: base amount at depth 1, no fearResist", () => {
@@ -150,18 +158,26 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(c.survival.fear).toBe(11);
   });
 
-  test("applyVictoryFearRelief: normal victory -10, boss victory -15 (not stacked)", () => {
+  test("applyVictoryFearRelief (D): regular -5 (or -10 quick, round<3), elite/boss -8 (or -12 quick, round<5), never stacked", () => {
     const { ctx } = makeCtx();
     for (const c of ctx.party) c.survival.fear = 50;
-    applyVictoryFearRelief(ctx.party, false);
+    applyVictoryFearRelief(ctx.party, false, 5); // not a quick win
+    expect(ctx.party.every((c) => c.survival.fear === 45)).toBe(true);
+
+    for (const c of ctx.party) c.survival.fear = 50;
+    applyVictoryFearRelief(ctx.party, false, 2); // quick win (round < 3)
     expect(ctx.party.every((c) => c.survival.fear === 40)).toBe(true);
 
     for (const c of ctx.party) c.survival.fear = 50;
-    applyVictoryFearRelief(ctx.party, true);
-    expect(ctx.party.every((c) => c.survival.fear === 35)).toBe(true);
+    applyVictoryFearRelief(ctx.party, true, 5); // not a quick win
+    expect(ctx.party.every((c) => c.survival.fear === 42)).toBe(true);
+
+    for (const c of ctx.party) c.survival.fear = 50;
+    applyVictoryFearRelief(ctx.party, true, 4); // quick win (round < 5)
+    expect(ctx.party.every((c) => c.survival.fear === 38)).toBe(true);
   });
 
-  test("beating an Elite gets the bigger -15 fear relief too, even outside the boss room (combat.ts integration)", () => {
+  test("beating an Elite in round 1 gets the quick elite/boss relief (-12), even outside the boss room (combat.ts integration)", () => {
     const { ctx } = makeCtx();
     const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
     elite.hp = 1;
@@ -175,16 +191,41 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     }
     resolveRound(combat, ctx, 1);
     expect(combat.outcome).toBe("victory");
-    expect(ctx.party.every((c) => c.survival.fear === 35)).toBe(true);
+    expect(ctx.party.every((c) => c.survival.fear === 38)).toBe(true);
   });
 
-  test("survivalDrainReduction reduces hunger/thirst drain per action (survival.ts integration)", () => {
+  test("satiety: drain by room type (combat 10 / non-combat event 5 / rest 0), Exhausted (≤30) and Dying (≤10) thresholds", () => {
+    const state = { satiety: 100 } as unknown as import("../src/types").GameState;
+    drainSatiety(state, SATIETY_DRAIN_COMBAT, []);
+    expect(state.satiety).toBe(90);
+    drainSatiety(state, SATIETY_DRAIN_EVENT, []);
+    expect(state.satiety).toBe(85);
+    drainSatiety(state, 0, []); // Rest room
+    expect(state.satiety).toBe(85);
+    expect(isPartyExhausted(state.satiety)).toBe(false);
+    expect(isPartyDying(state.satiety)).toBe(false);
+
+    state.satiety = 30;
+    expect(isPartyExhausted(state.satiety)).toBe(true);
+    expect(isPartyDying(state.satiety)).toBe(false);
+
+    state.satiety = 10;
+    expect(isPartyExhausted(state.satiety)).toBe(true);
+    expect(isPartyDying(state.satiety)).toBe(true);
+  });
+
+  test("Exhausted multiplies a character's own base stats by 2/3 but leaves artifact statBoost untouched", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    c.equippedArtifactIds.push("travelers-ration");
-    tickSurvivalOnAction(c, []);
-    expect(c.survival.hunger).toBeCloseTo(99.1, 5);
-    expect(c.survival.thirst).toBeCloseTo(98.7, 5);
+    c.equippedArtifactIds.push("iron-gauntlet"); // +3 attack
+    const baseAttack = statsForLevel(getClass(c.classId), c.level).attack;
+
+    recomputeCharacterStats(c, 100);
+    expect(c.attack).toBe(baseAttack + 3);
+
+    recomputeCharacterStats(c, 30); // Exhausted threshold
+    expect(c.attack).toBe(Math.round(baseAttack * (2 / 3)) + 3);
+    expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp); // never reduced
   });
 
   test("reflectDamage: a monster's attack on the bearer reflects a percent back (combat.ts integration)", () => {
@@ -248,8 +289,8 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
   test("expBoost artifacts increase EXP gained on victory (Game integration)", () => {
     const game = new Game(3);
     const vanguard = game.state.party[0]!;
-    game.state.unequippedArtifactIds.push("scholars-insight");
-    expect(game.equipArtifact(vanguard.id, "scholars-insight")).toBeNull();
+    game.state.pendingArtifactDecision = { artifactId: "scholars-insight", forceEquip: false, source: "event" };
+    expect(game.resolveArtifactEquip(vanguard.id)).toBeNull();
 
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;

@@ -4,7 +4,7 @@ import { getItem, formatItemEffect } from "../../data/items";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
-import { advanceFloorWithAutoSave, type ScreenContext } from "./context";
+import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type RewardsUiState = Extract<UiState, { kind: "roomReward" }>;
 
@@ -14,11 +14,7 @@ export function handleKey(ctx: ScreenContext, ui: RewardsUiState, key: KeyEvent,
     return;
   }
   if (key.name === "return") {
-    if (ctx.getPendingFloorAdvance()) {
-      ctx.setPendingFloorAdvance(false);
-      advanceFloorWithAutoSave(ctx);
-    }
-    ctx.syncUiToGameState();
+    proceedAfterVictory(ctx);
     return;
   }
   if (digit === null) return;

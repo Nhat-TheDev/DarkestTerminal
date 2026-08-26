@@ -7,7 +7,7 @@ import { truncateText } from "../layout";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries } from "../state";
-import { advanceFloorWithAutoSave, type ScreenContext } from "./context";
+import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type CombatUiState = Extract<
   UiState,
@@ -104,15 +104,18 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, _key: KeyEvent,
     case "roundResolved":
     case "combatOver": {
       if (ui.kind === "combatOver") {
+        const wasVictory = ctx.game.state.combat?.outcome === "victory";
         const wasBossRoomVictory = ctx.game.clearFinishedCombat();
+        ctx.setPendingFloorAdvance(wasBossRoomVictory);
+        ctx.setPendingCampOffer(wasVictory);
         const drops = ctx.game.state.lastRoomDrops;
         ctx.game.state.lastRoomDrops = null;
         if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
-          ctx.setPendingFloorAdvance(wasBossRoomVictory);
           ctx.setUi({ kind: "roomReward", entries: buildRewardEntries(drops), viewing: null });
           break;
         }
-        if (wasBossRoomVictory) advanceFloorWithAutoSave(ctx);
+        proceedAfterVictory(ctx);
+        break;
       }
       ctx.syncUiToGameState();
       break;

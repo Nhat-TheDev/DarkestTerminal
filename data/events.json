@@ -60,7 +60,7 @@
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
     "description": "A stranger shuffles 3 overturned cups, sneering in the dark. 'Give me what you have. I'll double it, or keep it for good.'",
-    "kind": "artifactExchange",
+    "kind": "coinGamble",
     "tier": "rare"
   },
   {

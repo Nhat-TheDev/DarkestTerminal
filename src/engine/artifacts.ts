@@ -58,12 +58,6 @@ export function totalCooldownReduction(character: Character): number {
   return sumOf(character, "cooldownReduction", "turns");
 }
 
-export function survivalDrainMultiplier(character: Character): number {
-  const reduction = 1 - Math.min(1, sumOf(character, "survivalDrainReduction", "percent") / 100);
-  const curse = 1 + sumOf(character, "curseDrainBoost", "percent") / 100;
-  return reduction * curse;
-}
-
 export function curseAggroBoostSum(character: Character): number {
   return sumOf(character, "curseAggroBoost", "amount");
 }

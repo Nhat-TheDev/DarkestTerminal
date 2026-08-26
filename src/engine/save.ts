@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
+import { migrateGameState } from "./migration";
+import { recomputeAllPartyStats } from "./party";
 
 const APP_DIR_NAME = "darkest-terminal";
 
@@ -97,5 +99,8 @@ export function loadSave(id: Id): SaveFile {
 }
 
 export function gameFromSave(save: SaveFile, seed = Date.now()): Game {
-  return new Game(seed, undefined, { state: save.state, monsters: save.monsters, rngState: save.rngState });
+  const state = migrateGameState(save.state);
+  const game = new Game(seed, undefined, { state, monsters: save.monsters, rngState: save.rngState });
+  recomputeAllPartyStats(game.state);
+  return game;
 }

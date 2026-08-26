@@ -25,9 +25,9 @@ existing gameplay.
 - HP/MP/attack/defense/aggro/speed stats + per-level growth formulas: **[`gameplay-decisions/05-character-stats.md`](./gameplay-decisions/05-character-stats.md)** §5
 
 ### 1.3 Survival stats
-- 3 stats: **fear**, **hunger**, **thirst** — on top of their own HP, MP
-- Fear rises with floor depth and adverse events; hunger/thirst decay gradually with actions
-- Restored via items or by resting at a rest room
+- 2 stats, tracked at different scopes: **fear** (per character) and **satiety** (party-wide) — on top of HP/MP
+- Fear rises with floor depth and adverse events, relieved by winning fights (faster wins relieve more) and the rest room; satiety drains once per room resolved (amount depends on room type — combat costs more than a non-combat event, the rest room costs nothing) and is restored by the rest room's Eat & Drink or by Camp (a post-victory option paid for with an Exploration Kit item)
+- Low satiety escalates through 2 party-wide conditions: **Exhausted** (stats reduced) and, lower still, **Dying** (a recurring HP tick on top of Exhausted)
 - Specific numeric thresholds: **[`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)** §3; fear's effect back on combat: **[`gameplay-decisions/04-fear-combat.md`](./gameplay-decisions/04-fear-combat.md)** §4
 
 ### 1.4 Floor/Room structure
@@ -42,13 +42,14 @@ existing gameplay.
 - Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor)
 
 ### 1.6 Item & Artifact
-- **Consumable items**: help with survival (hunger/thirst/fear) and restore HP/MP, usable in or out of combat, dropped randomly by monsters
-- **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, permanent for the run, with multiple rarity tiers, dropped by Elites/Bosses/event rooms
-- Full spec (item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
+- **Consumable items**: restore HP/MP/fear/satiety, usable in or out of combat unless flagged `combatUsable: false` (e.g. the Camp-only Exploration Kit), dropped randomly by monsters
+- **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, **permanent for the run once equipped — no manual unequip** beyond 3 narrow exceptions, with multiple rarity tiers, dropped by Elites/Bosses/event rooms. Every pickup is a single immediate decision: equip now (on a chosen character, replacing 1 of their own artifacts if full) or discard for good.
+- Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.7 Event room
 - Event room: stepping in rolls randomly for one of several event types, split by rarity tier
-- Details of each event type: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8
+- 3 of these events spend **Cursed Coins**, a party-wide currency earned from every monster kill, instead of HP
+- Details of each event type: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
 
 ### 1.8 Status Effect (buff/debuff)
 - Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rally`), expiring after `durationTurns`, without stacking — reapplying one only refreshes its duration
@@ -81,7 +82,7 @@ Main type groups:
 - `Room`, `Floor` (dungeon structure)
 - `EventDefinition` (event room)
 - `Monster`, `Combatant`, `QueuedAction`, `CombatState` (`phase: "command" | "resolution"`)
-- `GameState`
+- `GameState` — includes `coins` (Cursed Coins, §1.7/§9), `satiety` (§1.3), and `pendingArtifactDecision` (the in-flight Artifact equip/discard decision, §1.6)
 
 ---
 
@@ -90,11 +91,12 @@ Main type groups:
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
 - The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor), plus the 3-rank skill power-scaling system — `data/classes.json`
 - Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns + regular-monster skill kits — `data/monsters.json`
-- Fear/hunger/thirst thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
+- Fear/Satiety thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
 - Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`
 - Elite (found on most floors) is separate from a true Boss (found at a fixed floor interval, `data/level-growth.json` field `bossFloorInterval`) — both have their own skill sets
-- Consumable items + equippable Artifacts, rarity, drop sources
+- Consumable items + equippable Artifacts (permanent, one-shot equip/discard decision), rarity, drop sources
 - Event room: event types, split by rarity tier
+- Cursed Coins: a party-wide currency from combat kills, spent in 3 of the event rooms
 
 ### Technical — [`technical-decisions.md`](./technical-decisions.md)
 - Generating rooms/floors via a runtime algorithm, guaranteeing no dead ends and that every branch converges on the boss by construction (no need for validate-and-retry)
@@ -113,4 +115,3 @@ current state.
 - **FOV** (shadowcasting) and **pathfinding** (A* for monsters)
 - **Diff-based rendering**
 - **Treasure room** — a room type that always drops an Artifact, with a type (`RoomType: "treasure"`) and spec (`gameplay-decisions/07-items-artifacts.md` §7.2) already defined, but the current floor-generation algorithm doesn't produce this room type yet
-- **Artifact rework, a new currency (Cursed Coins), a Satiety-based survival rework replacing hunger/thirst, and a fear-victory-relief rebalance** — full spec: **[`artifact-currency-survival-decisions.md`](./artifact-currency-survival-decisions.md)**

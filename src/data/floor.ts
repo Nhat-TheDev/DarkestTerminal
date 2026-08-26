@@ -80,10 +80,14 @@ function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
 
 const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
 
+// Guarding a treasure/event reward should feel like a real threat — never draw from the weak tier
+// (e.g. a lone dungeon rat "guarding" a chest reads as a joke, not a guardian).
+const EVENT_GUARDIAN_ARCHETYPES = [...ARCHETYPES_BY_TIER.medium, ...ARCHETYPES_BY_TIER.strong];
+
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   const count = rng.int(1, 2);
   return Array.from({ length: count }, () => {
-    const archetype = rng.pick(COMBAT_ROOM_ARCHETYPES).id;
+    const archetype = rng.pick(EVENT_GUARDIAN_ARCHETYPES).id;
     const m = spawnMonster(archetype, depth);
     m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER);
     m.hp = m.maxHp;

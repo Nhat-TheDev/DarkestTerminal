@@ -6,13 +6,17 @@
     "defensiveLowHpSkillChance": 0.7
   },
   "survival": {
-    "initialHunger": 100,
-    "initialThirst": 100,
     "initialFear": 0,
-    "hungerDrainPerAction": 1,
-    "thirstDrainPerAction": 1.5,
-    "starvationDamagePercent": 0.02,
-    "eatDrinkRestorePercent": 0.5,
+    "initialSatiety": 100,
+    "satietyDrainCombat": 10,
+    "satietyDrainEvent": 5,
+    "exhaustedThreshold": 30,
+    "exhaustedStatMultiplier": 0.667,
+    "dyingThreshold": 10,
+    "dyingDamagePerRound": 6,
+    "campSatietyRestore": 30,
+    "eatDrinkRestorePercent": 0.3,
+    "eatDrinkSatietyRestore": 30,
     "chatRestorePercent": 0.1,
     "chatFearRelief": 20,
     "fearPerRoundBase": 1,
@@ -21,20 +25,44 @@
     "fearPerRoundLowHpCap": 6,
     "fearPerRoundDepthGrowth": 0.05,
     "fearLowHpThresholdPercent": 0.6,
-    "fearVictoryRelief": 10,
-    "fearEliteOrBossVictoryRelief": 15
+    "fearVictoryRelief": 5,
+    "fearVictoryReliefQuick": 10,
+    "fearQuickVictoryRoundThreshold": 3,
+    "fearEliteOrBossVictoryRelief": 8,
+    "fearEliteOrBossVictoryReliefQuick": 12,
+    "fearEliteOrBossQuickVictoryRoundThreshold": 5
   },
   "party": {
-    "maxEquippedArtifacts": 3
+    "maxEquippedArtifacts": 3,
+    "startingExplorationKits": 4
+  },
+  "currency": {
+    "coinDropByTier": {
+      "weak": [4, 6],
+      "medium": [7, 8],
+      "strong": [9, 11],
+      "elite": [13, 15],
+      "boss": [26, 30]
+    }
   },
   "events": {
     "commonTierWeight": 65,
     "rareTierWeight": 35,
-    "merchantPricePercent": { "common": 15, "rare": 25, "unique": 35, "epic": 50 },
+    "merchantPriceCoins": { "common": 50, "rare": 70, "unique": 100, "epic": 150 },
+    "merchantOfferCount": 4,
+    "merchantRefreshCostCoins": 10,
+    "merchantMaxRefreshes": 3,
     "bloodAltarHpPercent": 25,
     "collapsedFloorHpPercent": 15,
     "collapsedFloorSuccessChance": 0.6,
-    "eventGuardianStatMultiplier": 1.2
+    "eventGuardianStatMultiplier": 1.2,
+    "gamblingDenRounds": [
+      { "stake": 20, "winChance": 0.7 },
+      { "stake": 40, "winChance": 0.6 },
+      { "stake": 80, "winChance": 0.5 },
+      { "stake": 160, "winChance": 0.3, "jackpotArtifactCount": 2, "jackpotRarity": "epic" }
+    ],
+    "wanderingHermitExchangeCostCoins": 50
   },
   "items": {
     "itemDropChance": 0.6,

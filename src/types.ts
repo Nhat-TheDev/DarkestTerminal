@@ -2,8 +2,6 @@ export type Id = string;
 
 export interface SurvivalStats {
   fear: number;
-  hunger: number;
-  thirst: number;
 }
 
 export type MiniGameId = "snake" | "tetris" | "brickBreaker" | "magicTiles";
@@ -23,7 +21,8 @@ export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 export interface SkillEffect {
   kind: SkillEffectKind;
   amount?: number;
-  stat?: keyof SurvivalStats;
+  /** "satiety" is party-wide (GameState.satiety, not per-character) — resolveSkillEffect needs a GameState reference in its context to apply it. */
+  stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
   miniGameId?: MiniGameId;
@@ -139,6 +138,7 @@ export interface ItemDefinition {
   effects: SkillEffect[];
   archetypeIds?: Id[];
   weight?: number;
+  combatUsable?: boolean;
 }
 
 export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
@@ -154,9 +154,7 @@ export type ArtifactEffect =
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
-  | { kind: "survivalDrainReduction"; percent: number }
-  | { kind: "curseAggroBoost"; amount: number }
-  | { kind: "curseDrainBoost"; percent: number };
+  | { kind: "curseAggroBoost"; amount: number };
 
 export interface ArtifactDefinition {
   id: Id;
@@ -176,7 +174,8 @@ export type EventKind =
   | "hpGamble"
   | "choiceReveal"
   | "artifactExchange"
-  | "rescueGamble";
+  | "rescueGamble"
+  | "coinGamble";
 
 export interface EventDefinition {
   id: Id;
@@ -310,7 +309,11 @@ export interface GameState {
   gameOver: "victory" | "defeat" | null;
   partyExp: number;
   inventory: Record<Id, number>;
-  unequippedArtifactIds: Id[];
-  activeEvent?: { eventId: Id; offerArtifactIds: Id[] } | null;
+  coins: number;
+  satiety: number;
+  pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null;
+  /** Gambling Den's round-4 jackpot grants 2 Epic artifacts at once; decisions resolve sequentially (A.3), so the 2nd one waits here until the 1st is resolved. */
+  secondJackpotArtifactId?: Id | null;
+  activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;
 }
