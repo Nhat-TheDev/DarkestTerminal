@@ -1,5 +1,5 @@
 import type { GameState, Id } from "../../types";
-import type { PartyActionError } from "../party";
+import { grantArtifact, type PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
@@ -16,8 +16,8 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
   if (ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE)) {
     const artifactId = rollArtifact("boss", ctx.rng);
-    state.unequippedArtifactIds.push(artifactId);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
+    grantArtifact(state, artifactId, "event");
   } else {
     state.message = t("game.collapsedFloorFail", { character: character.name, cost });
   }

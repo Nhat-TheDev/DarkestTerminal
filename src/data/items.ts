@@ -13,7 +13,7 @@ export function getItem(id: Id): ItemDefinition {
   return found;
 }
 
-const STAT_LABEL: Record<string, string> = { hunger: t("resolver.statLabelHunger"), thirst: t("resolver.statLabelThirst"), fear: t("resolver.statLabelFear") };
+const STAT_LABEL: Record<string, string> = { fear: t("resolver.statLabelFear"), satiety: t("resolver.statLabelSatiety") };
 const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   attack: t("resolver.statLabelAttack"),
   defense: t("resolver.statLabelDefense"),

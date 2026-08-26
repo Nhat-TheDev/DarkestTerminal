@@ -12,9 +12,9 @@ The 2 concepts are kept clearly separate, not sharing 1 system:
 
 | | Item | Artifact |
 |---|---|---|
-| Nature | Consumable — used once, then gone | Permanent relic for 1 run — once picked up, kept until permadeath |
+| Nature | Consumable — used once, then gone | Permanent relic for 1 run — once equipped, kept until permadeath |
 | Effect | Instant, active (player chooses when to use it) | Passive, continuous for the whole run (no "use" needed) |
-| Used in combat? | Yes — replaces choosing a skill during the command phase | No — adds straight to stats/behavior, doesn't consume a turn |
+| Used in combat? | Yes, unless `combatUsable: false` — replaces choosing a skill during the command phase | No — adds straight to stats/behavior, doesn't consume a turn |
 | Lost when | Used up (decrements 1 from inventory) | Party wipe (permadeath, `05-character-stats.md` section 5) |
 | Rarity | No rarity tiers — only differs by effect type | Multiple tiers: Common / Rare / Unique / Epic (`ArtifactRarity`, `src/types.ts`) |
 
@@ -31,11 +31,14 @@ ItemDefinition {
   id: Id
   name: string
   description: string
-  effects: SkillEffect[]   // reuses the exact same existing resolver — no new effect kind needed for items
+  effects: SkillEffect[]     // reuses the exact same existing resolver — no new effect kind needed for items
+  weight?: number            // drop weight (default 1), see "Drop source" below
+  archetypeIds?: Id[]        // monster-specific items only, see "Monster-specific items" below
+  combatUsable?: boolean     // default true; false hides it from the in-combat "use item" list (e.g. Exploration Kit, §3)
 }
 ```
 
-Used in combat: during the command phase, a character chooses "use item" instead of a skill — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). Can also be used outside combat (e.g. restoring hunger/thirst while walking the dungeon loop, no need to wait for combat).
+Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). Can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
 
 ### Drop source
 
@@ -51,29 +54,47 @@ Added directly to `GameState.inventory[itemId] += 1` as before, with no change t
 
 ### Catalog — common items
 
-Full list (id, name, effect, notes): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, hunger/thirst restoratives (`Ration`/`Water Flask`), a fear-calming item, a debuff-cure (`Antidote`), and 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source).
+Full list (id, name, effect, notes): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, a fear-calming item, a debuff-cure (`Antidote`), and 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare monster-specific Exploration Kit drop described there.
 
 ### Monster-specific items
 
-Assigned by **monster group by name/tag** (1 monster can belong to multiple groups — see the multi-group roll mechanic above). Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`. Reuses `effects: SkillEffect[]` and the existing resolver as much as possible; a few entries introduce new status effects (check `data/status-effects.json` for any status referenced by an item that doesn't already exist from the skill kits).
+Assigned by **monster group by name/tag** (1 monster can belong to multiple groups — see the multi-group roll mechanic above). Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`. Reuses `effects: SkillEffect[]` and the existing resolver as much as possible; a few entries introduce new status effects (check `data/status-effects.json` for any status referenced by an item that doesn't already exist from the skill kits). The Exploration Kit (§3, Camp) is one of these — a humanoid-archetype-only drop with a deliberately low weight (`0.15`) and `combatUsable: false`.
 
 ---
 
 ## 7.2 Artifacts (permanent relics for the run)
 
-### Equipment — an Artifact is attached to 1 specific character, not the whole party
+### Equipment — permanent, one-shot decision on pickup
 
-An Artifact is **equipment**. Once picked up → it goes into a shared unequipped pool (`GameState.unequippedArtifactIds: Id[]`) → the player **actively attaches** it to any character outside combat (same party-management screen, "Expedition Roster" panel — cannot be changed while combat is in progress, to avoid loadout shuffling mid-fight).
+An Artifact is **equipment**, attached to 1 specific character (not the whole party). Unlike a normal equipment system, there is **no free reassignment**: the moment an Artifact is granted, the player makes a single, immediate, permanent decision.
 
 ```
 Character.equippedArtifactIds: Id[]   // capped per data/balance-config.json field party.maxEquippedArtifacts
-GameState.unequippedArtifactIds: Id[] // shared pool, artifacts picked up but not yet equipped on anyone
+GameState.pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null
 ```
 
-- **Capped Artifacts per character** (`party.maxEquippedArtifacts`, `data/balance-config.json`) — multiplied by the party size (`PARTY_SIZE`, `src/ui/characterSelect.ts`) gives the total equip-slot budget for a run.
-- Attaching/detaching is **free, unlimited, no cost** — an artifact isn't "consumed" when detached, it just goes back into the shared pool and can be attached to a different character at any time (outside combat).
-- Picking up more artifacts than there are total party slots → the surplus sits in the shared pool, still owned but **inactive** until equipped (replacing another currently equipped artifact).
-- **Effects only apply to the exact character wearing it** (except `expBoost`, an exception because EXP is shared — see the "Why" table below).
+There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` is the only transient state: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.10, 2 Epics), decisions resolve **sequentially**: the 2nd artifact isn't even rolled/revealed until the 1st is fully resolved.
+
+**The decision flow**, every time an Artifact is granted:
+
+1. **Reveal** — name, rarity, full effect list, description.
+2. **Decision**:
+   - **Ordinary artifact**: **Equip** (choose any character — including one already at 3/3, which becomes a voluntary *replacement*: pick 1 of that character's own currently-equipped *ordinary*, non-Cursed artifacts to permanently discard, freeing the slot) or **Discard** (gone for good, never offered for a Cursed artifact).
+   - **Cursed artifact** (`isCursed: true`) or an event marked `forceEquip: true` (Twin Altars, §8.8): **no Discard option** — the player must designate a character, including one at 3/3 (same forced-replacement rule as above, still restricted to discarding an *ordinary* artifact on that character).
+3. Equipping consumes 1 of that character's 3 personal slots (1 of the party's 12 total), **permanently** — see "Ways an Artifact can leave a character" below for the only 3 exceptions.
+
+- **Capped Artifacts per character** (`party.maxEquippedArtifacts`, `data/balance-config.json`) — multiplied by party size gives the total equip-slot budget for a run (3 × 4 = 12).
+- **Effects only apply to the exact character wearing it** (except `expBoost`, an exception because EXP is shared — see the "Who it applies to" note below).
+
+Implementation: `grantArtifact`/`resolveArtifactEquip`/`discardPendingArtifact`/`removeArtifactFromCharacter` (`src/engine/party.ts`); UI flow in `src/ui/screens/artifactDecision.ts`, given top priority by `App.syncUiToGameState()` and `finishVictorySequence` (`src/ui/screens/context.ts`) — a pending decision is always resolved before the player can act on anything else, including a fresh floor's entry-room ambush.
+
+### Ways an equipped Artifact can still leave a character
+
+1. **Wandering Hermit — Exchange fortune** (50 coins, any artifact including Cursed, §8.11) — the room's only service; this is also the *only* way to shed a Cursed artifact.
+2. **Sacrificial Circle** — sacrifice-for-reroll (§8.9).
+3. **Replacement on a full character** (the decision flow above) — voluntary for an ordinary artifact, mandatory for a Cursed/`forceEquip` one; either way, only ever costs an *ordinary* artifact.
+
+Nothing else ever unequips or reassigns an artifact — there's no free swap screen for artifacts anymore. Pressing `a` in-game opens a **view-only** artifact list (name, rarity, wearer, full effect text) rather than a management screen.
 
 ### Effect data structure
 
@@ -96,11 +117,13 @@ ArtifactEffect =
   // Group 3 — automatic damage, tied to the equipping character but doesn't consume their turn
   | { kind: "autoDamage"; amount: number }        // at the start of every round, as long as the equipping character is alive, automatically deals `amount` damage to 1 random living monster — no `queueAction`, no turn/MP cost, no target selection
 
-  // Group 4 — affects out-of-combat systems (survival/cooldown are already per-character; EXP is the exception since partyExp is shared)
+  // Group 4 — affects out-of-combat systems (fear/cooldown are already per-character; EXP is the exception since partyExp is shared)
   | { kind: "expBoost"; percent: number }         // adds % to the expReward of EVERY kill while this artifact is equipped by anyone (EXP is the shared `partyExp` — §6.9 — so this is the sole exception not restricted to a single person)
-  | { kind: "fearResist"; percent: number }       // reduces % of every fear-gain source for the EXACT equipping character (`Character.survival.fear` is already per-character — `03-survival-stats.md` section 3), doesn't apply to active fear reduction
+  | { kind: "fearResist"; percent: number }       // reduces % of every fear-gain source for the EXACT equipping character (`Character.survival.fear` is already per-character — `03-survival-stats.md`), doesn't apply to active fear reduction
   | { kind: "cooldownReduction"; turns: number }  // reduces the `cooldownTurns` of the EXACT equipping character's skills directly (minimum 0) — `Character.cooldownsRemaining` is already per-character
-  | { kind: "survivalDrainReduction"; percent: number } // reduces % of the per-action hunger/thirst drain rate for the EXACT equipping character (`03-survival-stats.md` section 3), already per-character
+
+  // Cursed-only (§8.6) — never appears on an ordinary artifact
+  | { kind: "curseAggroBoost"; amount: number }   // adds aggro to the EXACT equipping character, monsters prioritize targeting them
 
 ArtifactDefinition {
   id: Id
@@ -108,12 +131,13 @@ ArtifactDefinition {
   description: string
   rarity: ArtifactRarity
   effects: ArtifactEffect[]   // usually just 1, epic ones may combine several
+  isCursed?: boolean          // §8.6
 }
 ```
 
 **Stacking on duplicates**: if 1 character equips 2 artifacts of the same type (taking up 2 of their slots) → the effect stacks directly for that person alone (2× `statBoost`, 2 independent rolls for `poisonOnHit`/`dodgeChance`/etc.). If 2 different characters each equip 1 of the same artifact type, **each is computed independently** per person, with no shared stacking.
 
-**Who it applies to**: `statBoost` adds directly to the stats of the **exact equipping character** (not multiplied by `growthWeights`). All Group 2-4 effects likewise only count for the exact equipping character (except `expBoost` — the exception, since EXP is the shared `partyExp`, noted right in the effect block above) — computed at the `Character` level (field `equippedArtifactIds`).
+**Who it applies to**: `statBoost` adds directly to the stats of the **exact equipping character** (not multiplied by `growthWeights`) — computed alongside the Exhausted multiplier in `recomputeCharacterStats` (`src/engine/party.ts`, `03-survival-stats.md`), applied *after* it so Exhausted never reduces an artifact bonus. All Group 2-4 effects likewise only count for the exact equipping character (except `expBoost`, noted above) — computed at the `Character` level (field `equippedArtifactIds`).
 
 ### Drop source
 
@@ -126,7 +150,7 @@ ArtifactDefinition {
 | **Treasure room** | Guaranteed, when visited | `RoomType "treasure"` exists in the code but the floor generator currently doesn't spawn this room type (only spawns Event rooms at the branch stage) — in practice, never encountered in-game |
 | **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`). Rarity uses the `treasureOrEvent` weights in `RARITY_WEIGHTS` |
 
-**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the 2 room types drop Artifacts.
+**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (see below). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the 2 room types drop Artifacts.
 
 ### Rarity & drop rate per tier
 
@@ -144,7 +168,7 @@ Full list (id, name, rarity, effects): `data/artifacts.json`. Loosely, higher ra
 
 ### `autoDamage` trigger mechanism
 
-`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md` section 3), picking 1 living monster **uniformly at random** (uniform, like the `erratic` pattern in `02-monster.md` section 2, not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn.
+`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md`), picking 1 living monster **uniformly at random** (uniform, like the `erratic` pattern in `02-monster.md` section 2, not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn.
 
 ### Engine hooks for the Group 2-4 effects
 
@@ -156,6 +180,6 @@ None of the Group 2-4 effects exist in any form in the current skill/status syst
 - **`dodgeChance`**: rolled **before** the `finalDamage` calculation step when a monster targets `damage` at the **exact character wearing this artifact** — on a hit, the entire effect is skipped (damage = 0, not just reduced), distinct from the existing fear-based accuracy roll (`04-fear-combat.md` section 4, which only applies to character skills targeting enemies, not monster attacks targeting characters). A monster targeting a different ally doesn't roll this dodge.
 - **`healOnKill`**: hooks into the exact point where a monster is removed from `CombatState.combatants` (hp ≤ 0) — **only triggers if the finishing blow (the final `damage` effect that brought hp to ≤ 0) was dealt by the exact character wearing this artifact**, healing `amount` straight to themself (capped at `maxHp`, not applicable to other allies).
 - **`expBoost`**: multiplies into the step where `applyPartyExp` receives `expGained` from `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + sum of percent across every expBoost artifact currently equipped by anyone in the party))`. This is the **only effect not restricted to the person who landed the kill** — `partyExp` is a single value shared by the whole party (§6.9).
-- **`fearResist`**: multiplies into the **per-round combat fear-gain** of the **exact character wearing this artifact** (`fearGainForRound` — `03-survival-stats.md` section 3) — via `actualFear = round(baseFear × (1 − sum of percent))`, doesn't apply to active fear reduction (Acolyte skill/item, unaffected, counted at full 100%) or victory relief. Allies not wearing this artifact still receive fear at full rate as usual.
+- **`fearResist`**: multiplies into the **per-round combat fear-gain** of the **exact character wearing this artifact** (`fearGainForRound` — `03-survival-stats.md`) — via `actualFear = round(baseFear × (1 − sum of percent))`, doesn't apply to active fear reduction (Acolyte skill/item, unaffected, counted at full 100%) or victory relief. Allies not wearing this artifact still receive fear at full rate as usual.
 - **`cooldownReduction`**: subtracted directly from the `cooldownTurns` assigned when 1 of the **exact character wearing this artifact**'s skills goes on cooldown (`Character.cooldownsRemaining[skillId] = skill.cooldownTurns − sum of turns`, minimum 0) — doesn't instantly refresh a skill already on cooldown from before the artifact was equipped, doesn't affect other allies' cooldowns.
-- **`survivalDrainReduction`**: multiplies into the base per-action drain rate of the **exact character wearing this artifact** (`03-survival-stats.md` section 3: `hungerDrainPerAction`/`thirstDrainPerAction`, already tracked separately per `Character.survival`) — `actualDrain = round(baseDrain × (1 − sum of percent), rounded to 1 decimal place)`.
+- **`curseAggroBoost`**: added directly to `Character.aggro` in `recomputeCharacterStats` (`src/engine/party.ts`), on top of the class base + Exhausted multiplier — see §8.6.

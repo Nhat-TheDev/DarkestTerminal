@@ -20,7 +20,7 @@ import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffec
 import { rollDodge, autoDamageAmounts, totalCooldownReduction } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
-import { applyRoundFear, applyVictoryFearRelief } from "./survival";
+import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
 import {
@@ -168,6 +168,7 @@ export function queueAction(
 export function checkItemUsable(actor: Actor, itemId: Id, inventory: Record<Id, number>): QueueActionError | null {
   if (!isCharacter(actor)) return { reason: t("errors.characterPhaseOnly") };
   if ((inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
+  if (getItem(itemId).combatUsable === false) return { reason: t("errors.itemNotUsableInCombat") };
   return null;
 }
 
@@ -248,7 +249,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
   }
 }
 
-export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1): void {
+export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1, satiety = 100): void {
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
   combat.activeTurnIndex = 0;
@@ -286,6 +287,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
       }
     }
     for (const c of ctx.party) applyRoundFear(c, floorDepth);
+    if (isPartyDying(satiety)) applyDyingDamage(ctx.party, combat.log);
     tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
   }
 
@@ -487,7 +489,7 @@ function finalizeRound(combat: CombatState, ctx: EngineContext): void {
     combat.phase = "over";
     combat.outcome = "victory";
     const hasEliteOrBoss = combat.combatants.some((c) => c.ref.kind === "monster" && (getActorByRef(c.ref, ctx) as Monster).tier !== "normal");
-    applyVictoryFearRelief(ctx.party, hasEliteOrBoss);
+    applyVictoryFearRelief(ctx.party, hasEliteOrBoss, combat.roundNumber);
     combat.log.push({ text: t("combat.roomCleared"), kind: "info" });
     return;
   }

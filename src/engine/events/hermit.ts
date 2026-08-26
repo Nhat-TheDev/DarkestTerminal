@@ -1,35 +1,25 @@
 import type { GameState, Id } from "../../types";
-import { recomputeCharacterStats, unequipArtifact as unequipArtifactFromCharacter, type PartyActionError } from "../party";
+import { removeArtifactFromCharacter, grantArtifact, type PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
-import { getArtifact, rollArtifact } from "../../data/artifacts";
+import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { closeEvent, findPartyMemberOrError, findArtifactOwner } from "./shared";
+import { BALANCE } from "../../data/balanceConfig";
+import { closeEvent, findArtifactOwner } from "./shared";
 
-export function hermitRemoveCurse(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
-  const character = findPartyMemberOrError(state, characterId);
-  if ("reason" in character) return character;
-  if (!getArtifact(artifactId).isCursed) return { reason: t("errors.artifactNotCursed") };
-  const idx = character.equippedArtifactIds.indexOf(artifactId);
-  if (idx === -1) return { reason: t("errors.artifactNotEquippedOnCharacter") };
-  character.equippedArtifactIds.splice(idx, 1);
-  recomputeCharacterStats(character);
-  state.message = t("game.curseRemoved", { artifact: getArtifact(artifactId).name, character: character.name });
-  closeEvent(state);
-  return null;
-}
+const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
 
-export function hermitRerollFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
+/** "Remove curse" no longer exists — Exchange fortune is the room's only service (confirmed decision). It's also the sole remaining way a Cursed artifact can leave a character. */
+export function hermitExchangeFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
   const owner = findArtifactOwner(state, artifactId);
-  if (owner) {
-    const err = unequipArtifactFromCharacter(state, owner.id, artifactId);
-    if (err) return err;
-  }
-  const idx = state.unequippedArtifactIds.indexOf(artifactId);
-  if (idx === -1) return { reason: t("errors.artifactNotOwned") };
-  state.unequippedArtifactIds.splice(idx, 1);
-  const newArtifactId = rollArtifact("treasureOrEvent", ctx.rng);
-  state.unequippedArtifactIds.push(newArtifactId);
-  state.message = t("game.fortuneTraded", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name });
+  if (!owner) return { reason: t("errors.artifactNotOwned") };
+  if (state.coins < HERMIT_EXCHANGE_COST_COINS) return { reason: t("errors.notEnoughCoins") };
+  const rarity = getArtifact(artifactId).rarity;
+  state.coins -= HERMIT_EXCHANGE_COST_COINS;
+  const err = removeArtifactFromCharacter(state, owner.id, artifactId);
+  if (err) return err;
+  const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
+  state.message = t("game.hermitExchanged", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name, cost: HERMIT_EXCHANGE_COST_COINS });
+  grantArtifact(state, newArtifactId, "event");
   closeEvent(state);
   return null;
 }

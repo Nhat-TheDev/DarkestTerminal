@@ -1,24 +1,40 @@
-import type { GameState, Id, ArtifactRarity } from "../../types";
-import type { PartyActionError } from "../party";
-import { getArtifact } from "../../data/artifacts";
+import type { GameState, ArtifactRarity } from "../../types";
+import { grantArtifact, type PartyActionError } from "../party";
+import type { EngineContext } from "../combat";
+import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { payHpPercent, closeEvent, findPartyMemberOrError } from "./shared";
+import { closeEvent } from "./shared";
 
-export const MERCHANT_PRICE_PERCENT: Record<ArtifactRarity, number> = BALANCE.events.merchantPricePercent;
+export const MERCHANT_PRICE_COINS: Record<ArtifactRarity, number> = BALANCE.events.merchantPriceCoins;
+const MERCHANT_OFFER_COUNT = BALANCE.events.merchantOfferCount;
+const MERCHANT_REFRESH_COST_COINS = BALANCE.events.merchantRefreshCostCoins;
+const MERCHANT_MAX_REFRESHES = BALANCE.events.merchantMaxRefreshes;
 
-export function merchantPurchase(state: GameState, offerIndex: number, payerCharacterId: Id): PartyActionError | null {
+export function merchantPurchase(state: GameState, offerIndex: number): PartyActionError | null {
   const active = state.activeEvent;
   if (!active || active.eventId !== "merchant") return { reason: t("errors.noActiveTrade") };
   const artifactId = active.offerArtifactIds[offerIndex];
   if (!artifactId) return { reason: t("errors.noSuchOffer") };
-  const payer = findPartyMemberOrError(state, payerCharacterId);
-  if ("reason" in payer) return payer;
-  const cost = payHpPercent(payer, MERCHANT_PRICE_PERCENT[getArtifact(artifactId).rarity]);
-  if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
-  state.unequippedArtifactIds.push(artifactId);
-  state.message = t("game.paidHpForArtifact", { payer: payer.name, cost, artifact: getArtifact(artifactId).name });
+  const cost = MERCHANT_PRICE_COINS[getArtifact(artifactId).rarity];
+  if (state.coins < cost) return { reason: t("errors.notEnoughCoins") };
+  state.coins -= cost;
+  state.message = t("game.merchantPurchaseCoins", { cost, artifact: getArtifact(artifactId).name });
+  grantArtifact(state, artifactId, "event");
   closeEvent(state);
+  return null;
+}
+
+export function merchantRefresh(state: GameState, ctx: EngineContext): PartyActionError | null {
+  const active = state.activeEvent;
+  if (!active || active.eventId !== "merchant") return { reason: t("errors.noActiveTrade") };
+  const refreshCount = active.refreshCount ?? 0;
+  if (refreshCount >= MERCHANT_MAX_REFRESHES) return { reason: t("errors.merchantMaxRefreshesReached") };
+  if (state.coins < MERCHANT_REFRESH_COST_COINS) return { reason: t("errors.notEnoughCoins") };
+  state.coins -= MERCHANT_REFRESH_COST_COINS;
+  active.offerArtifactIds = Array.from({ length: MERCHANT_OFFER_COUNT }, () => rollArtifact("treasureOrEvent", ctx.rng));
+  active.refreshCount = refreshCount + 1;
+  state.message = t("game.merchantRefreshed");
   return null;
 }
 

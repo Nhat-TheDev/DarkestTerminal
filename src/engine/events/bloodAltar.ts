@@ -1,5 +1,6 @@
 import type { GameState, Id } from "../../types";
 import type { PartyActionError } from "../party";
+import { grantArtifact } from "../party";
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
@@ -14,8 +15,8 @@ export function bloodAltarPay(state: GameState, ctx: EngineContext, characterId:
   const cost = payHpPercent(character, BLOOD_ALTAR_HP_PERCENT);
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
   const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
-  state.unequippedArtifactIds.push(artifactId);
   state.message = t("game.paidHpForArtifact", { payer: character.name, cost, artifact: getArtifact(artifactId).name });
+  grantArtifact(state, artifactId, "event");
   closeEvent(state);
   return null;
 }

@@ -1,14 +1,8 @@
 import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
-import {
-  createCharacter,
-  applyPartyExp,
-  equipArtifact as equipArtifactOnCharacter,
-  unequipArtifact as unequipArtifactFromCharacter,
-  type PartyActionError,
-} from "./party";
-import { restEatDrink, restChat } from "./survival";
+import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
+import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
 import { Rng } from "./rng";
 import {
   type EngineContext,
@@ -23,23 +17,24 @@ import {
   livingCharacterRefs,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
-import { tickSurvivalOnAction } from "./survival";
 import { getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
+import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
 import { resolveSkillEffect } from "./resolver";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
-import { merchantPurchase, merchantLeave, MERCHANT_PRICE_PERCENT } from "./events/merchant";
+import { BALANCE } from "../data/balanceConfig";
+import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
 import { twinAltarsChoose } from "./events/twinAltars";
 import { sacrifice, sacrificeLeave } from "./events/sacrifice";
-import { gamblingDenBet, gamblingDenLeave } from "./events/gamblingDen";
-import { hermitRemoveCurse, hermitRerollFortune, hermitLeave } from "./events/hermit";
+import { gamblingDenEnter, gamblingDenContinue, gamblingDenStop, gamblingDenLeave } from "./events/gamblingDen";
+import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 
-export { MERCHANT_PRICE_PERCENT, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
+export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
 export class Game {
   readonly ctx: EngineContext;
@@ -56,7 +51,7 @@ export class Game {
     const { floor, monsters } = createFloor(rng);
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
     const party = classes.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-    const inventory: Record<Id, number> = {};
+    const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, rng, inventory };
     this.state = {
       party,
@@ -67,7 +62,10 @@ export class Game {
       gameOver: null,
       partyExp: 0,
       inventory,
-      unequippedArtifactIds: [],
+      coins: 0,
+      satiety: BALANCE.survival.initialSatiety,
+      pendingArtifactDecision: null,
+      secondJackpotArtifactId: null,
       activeEvent: null,
       lastRoomDrops: null,
     };
@@ -107,6 +105,8 @@ export class Game {
     if (room.type !== "rest" || room.cleared) return;
     if (choice === "eat") {
       for (const c of this.state.party) restEatDrink(c);
+      restEatDrinkSatiety(this.state);
+      recomputeAllPartyStats(this.state);
       this.state.message = t("game.restEat");
     } else if (choice === "chat") {
       for (const c of this.state.party) restChat(c);
@@ -115,6 +115,13 @@ export class Game {
       this.state.message = t("game.restSkip");
     }
     room.cleared = true;
+  }
+
+  camp(): PartyActionError | null {
+    const err = campAction(this.state);
+    if (err) return err;
+    recomputeAllPartyStats(this.state);
+    return null;
   }
 
   autoTargets(target: SkillTarget, actor: CombatantRef): CombatantRef[] | null {
@@ -148,16 +155,24 @@ export class Game {
     if (item.target === "singleEnemy") return { reason: t("errors.itemNotUsableOutOfCombat") };
 
     const log: LogEntry[] = [];
+    // `satiety` effects are party-wide (GameState-scoped, not per-character) — for an "allAllies" item,
+    // applying them once per living character would multiply the effect by party size. Apply those once;
+    // apply every other effect per character as usual.
+    const partyWideEffects = item.effects.filter((e) => e.kind === "modifyStat" && e.stat === "satiety");
+    const perCharacterEffects = item.effects.filter((e) => !(e.kind === "modifyStat" && e.stat === "satiety"));
     const applyTo = (character: (typeof this.state.party)[number]) => {
-      for (const effect of item.effects) resolveSkillEffect(effect, character, character, { log });
+      for (const effect of perCharacterEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
     };
 
     if (item.target === "allAllies") {
       for (const c of this.state.party) if (c.isAlive) applyTo(c);
+      const anyAlive = this.state.party.find((c) => c.isAlive);
+      if (anyAlive) for (const effect of partyWideEffects) resolveSkillEffect(effect, anyAlive, anyAlive, { log, gameState: this.state });
     } else {
       const character = this.state.party.find((c) => c.id === characterId && c.isAlive);
       if (!character) return { reason: t("errors.needLivingCharacter") };
       applyTo(character);
+      for (const effect of partyWideEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
     }
 
     this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
@@ -170,16 +185,20 @@ export class Game {
     return allLivingCharactersHaveQueuedActions(this.state.combat, this.ctx);
   }
 
-  equipArtifact(characterId: Id, artifactId: Id): PartyActionError | null {
-    return equipArtifactOnCharacter(this.state, characterId, artifactId);
+  resolveArtifactEquip(characterId: Id, replaceArtifactId?: Id): PartyActionError | null {
+    return resolveArtifactEquip(this.state, characterId, replaceArtifactId);
   }
 
-  unequipArtifact(characterId: Id, artifactId: Id): PartyActionError | null {
-    return unequipArtifactFromCharacter(this.state, characterId, artifactId);
+  discardPendingArtifact(): PartyActionError | null {
+    return discardPendingArtifact(this.state);
   }
 
-  merchantPurchase(offerIndex: number, payerCharacterId: Id): PartyActionError | null {
-    return merchantPurchase(this.state, offerIndex, payerCharacterId);
+  merchantPurchase(offerIndex: number): PartyActionError | null {
+    return merchantPurchase(this.state, offerIndex);
+  }
+
+  merchantRefresh(): PartyActionError | null {
+    return merchantRefresh(this.state, this.ctx);
   }
 
   merchantLeave(): void {
@@ -198,8 +217,8 @@ export class Game {
     return cursedShrineDecide(this.state, accept);
   }
 
-  twinAltarsChoose(offerIndex: 0 | 1, characterId: Id, unequipArtifactId?: Id): PartyActionError | null {
-    return twinAltarsChoose(this.state, offerIndex, characterId, unequipArtifactId);
+  twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
+    return twinAltarsChoose(this.state, offerIndex);
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
@@ -210,20 +229,24 @@ export class Game {
     sacrificeLeave(this.state);
   }
 
-  gamblingDenBet(artifactId: Id): PartyActionError | null {
-    return gamblingDenBet(this.state, this.ctx, artifactId);
+  gamblingDenEnter(): PartyActionError | null {
+    return gamblingDenEnter(this.state, this.ctx);
+  }
+
+  gamblingDenContinue(): PartyActionError | null {
+    return gamblingDenContinue(this.state, this.ctx);
+  }
+
+  gamblingDenStop(): PartyActionError | null {
+    return gamblingDenStop(this.state);
   }
 
   gamblingDenLeave(): void {
     gamblingDenLeave(this.state);
   }
 
-  hermitRemoveCurse(characterId: Id, artifactId: Id): PartyActionError | null {
-    return hermitRemoveCurse(this.state, characterId, artifactId);
-  }
-
-  hermitRerollFortune(artifactId: Id): PartyActionError | null {
-    return hermitRerollFortune(this.state, this.ctx, artifactId);
+  hermitExchangeFortune(artifactId: Id): PartyActionError | null {
+    return hermitExchangeFortune(this.state, this.ctx, artifactId);
   }
 
   hermitLeave(): void {
@@ -240,14 +263,13 @@ export class Game {
 
   resolve(): void {
     if (!this.state.combat) return;
-    resolveRound(this.state.combat, this.ctx, this.state.floor.depth);
-    for (const c of this.state.party) {
-      if (c.isAlive) tickSurvivalOnAction(c, this.state.combat.log);
-    }
+    resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
     if (this.state.combat.phase === "over") {
       if (this.state.combat.outcome === "victory") {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
+        drainSatiety(this.state, SATIETY_DRAIN_COMBAT, this.state.combat.log);
+        recomputeAllPartyStats(this.state);
         const baseExpGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
         const expGained = Math.round(baseExpGained * (1 + totalExpBoostPercent(this.state.party) / 100));
         const levelBefore = this.state.party[0]?.level ?? 1;
@@ -257,9 +279,11 @@ export class Game {
         if (levelAfter > levelBefore) this.state.combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
         const droppedItemIds: Id[] = [];
         const droppedArtifactIds: Id[] = [];
+        let coinsGained = 0;
         for (const id of room.monsterIds) {
           const monster = this.ctx.monsters.find((m) => m.id === id);
           if (!monster) continue;
+          coinsGained += rollCoinDrop(monster, this.ctx.rng);
           const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng, this.state.floor.depth);
           if (itemId) {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
@@ -267,13 +291,17 @@ export class Game {
           }
           if (monster.tier === "elite" || monster.tier === "boss") {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
-            this.state.unequippedArtifactIds.push(artifactId);
+            grantArtifact(this.state, artifactId, monster.tier);
             droppedArtifactIds.push(artifactId);
           }
         }
+        if (coinsGained > 0) {
+          this.state.coins += coinsGained;
+          this.state.combat.log.push({ text: t("game.coinsEarned", { amount: coinsGained }), kind: "info" });
+        }
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
-          this.state.unequippedArtifactIds.push(artifactId);
+          grantArtifact(this.state, artifactId, "event");
           droppedArtifactIds.push(artifactId);
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;

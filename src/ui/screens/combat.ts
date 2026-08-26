@@ -7,7 +7,8 @@ import { truncateText } from "../layout";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries } from "../state";
-import { advanceFloorWithAutoSave, type ScreenContext } from "./context";
+import { paginate } from "../pagination";
+import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type CombatUiState = Extract<
   UiState,
@@ -84,7 +85,8 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, _key: KeyEvent,
     }
     case "pickItemInCombat": {
       if (digit === null) break;
-      const entry = inventoryEntries(ctx.game.state.inventory)[digit - 1];
+      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
+      const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "itemDetail", item: entry.item, origin: { kind: "combat", actorRef: ui.actorRef } });
       break;
@@ -104,15 +106,18 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, _key: KeyEvent,
     case "roundResolved":
     case "combatOver": {
       if (ui.kind === "combatOver") {
+        const wasVictory = ctx.game.state.combat?.outcome === "victory";
         const wasBossRoomVictory = ctx.game.clearFinishedCombat();
+        ctx.setPendingFloorAdvance(wasBossRoomVictory);
+        ctx.setPendingCampOffer(wasVictory);
         const drops = ctx.game.state.lastRoomDrops;
         ctx.game.state.lastRoomDrops = null;
         if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
-          ctx.setPendingFloorAdvance(wasBossRoomVictory);
           ctx.setUi({ kind: "roomReward", entries: buildRewardEntries(drops), viewing: null });
           break;
         }
-        if (wasBossRoomVictory) advanceFloorWithAutoSave(ctx);
+        proceedAfterVictory(ctx);
+        break;
       }
       ctx.syncUiToGameState();
       break;
@@ -120,7 +125,7 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, _key: KeyEvent,
   }
 }
 
-export function renderMain(game: Game, ui: CombatUiState): string | StyledText {
+export function renderMain(game: Game, ui: CombatUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
     case "combatOver": {
@@ -163,10 +168,12 @@ export function renderMain(game: Game, ui: CombatUiState): string | StyledText {
     }
 
     case "pickItemInCombat": {
+      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
       const lines = [t("ui.chooseItemToUse")];
-      inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
+      pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
       });
+      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
 

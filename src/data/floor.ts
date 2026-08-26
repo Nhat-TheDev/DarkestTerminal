@@ -20,10 +20,25 @@ const COMBAT_ROOM_NAMES = [
 ];
 const REST_ROOM_NAMES = ["Shelter", "Safe Resting Corner", "Abandoned Shrine"];
 const BOSS_ROOM_NAMES = ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"];
+// Event rooms (merchant, altars, gambling den, hermit, etc.) get their own pool — the combat-room
+// names above ("Guardian Fight", "Bone Vault") read as fight-flavored and clash with those scenes.
+const EVENT_ROOM_NAMES = [
+  "Torchlit Nook",
+  "Forgotten Landing",
+  "Quiet Alcove",
+  "Sunken Chamber",
+  "Old Reliquary",
+  "Dust-Choked Vestibule",
+  "Hollow Antechamber",
+  "Silent Junction",
+  "Half-Buried Passage",
+  "Flickering Recess",
+];
 
 function namePool(type: RoomType): string[] {
   if (type === "rest") return REST_ROOM_NAMES;
   if (type === "boss") return BOSS_ROOM_NAMES;
+  if (type === "event") return EVENT_ROOM_NAMES;
   return COMBAT_ROOM_NAMES;
 }
 
@@ -80,10 +95,14 @@ function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
 
 const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
 
+// Guarding a treasure/event reward should feel like a real threat — never draw from the weak tier
+// (e.g. a lone dungeon rat "guarding" a chest reads as a joke, not a guardian).
+const EVENT_GUARDIAN_ARCHETYPES = [...ARCHETYPES_BY_TIER.medium, ...ARCHETYPES_BY_TIER.strong];
+
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   const count = rng.int(1, 2);
   return Array.from({ length: count }, () => {
-    const archetype = rng.pick(COMBAT_ROOM_ARCHETYPES).id;
+    const archetype = rng.pick(EVENT_GUARDIAN_ARCHETYPES).id;
     const m = spawnMonster(archetype, depth);
     m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER);
     m.hp = m.maxHp;

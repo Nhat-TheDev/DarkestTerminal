@@ -1,4 +1,4 @@
-import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition } from "../types";
+import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState } from "../types";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -12,8 +12,6 @@ export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
 
 const SURVIVAL_STAT_LABEL: Record<keyof SurvivalStats, string> = {
   fear: t("resolver.statLabelFear"),
-  hunger: t("resolver.statLabelHunger"),
-  thirst: t("resolver.statLabelThirst"),
 };
 
 const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
@@ -88,6 +86,8 @@ export interface ResolveContext {
   log: LogEntry[];
   statusEffectName?: string;
   isMagic?: boolean;
+  /** Required for a `modifyStat` effect targeting `"satiety"` — that stat lives on GameState (party-wide), not on the Character. */
+  gameState?: GameState;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -151,7 +151,22 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
     case "modifyStat": {
-      if (!isCharacter(target) || !effect.stat) return 0;
+      if (!effect.stat) return 0;
+      if (effect.stat === "satiety") {
+        if (!ctx.gameState) return 0;
+        const before = ctx.gameState.satiety;
+        ctx.gameState.satiety = clamp(before + (effect.amount ?? 0), 0, 100);
+        const delta = ctx.gameState.satiety - before;
+        if (delta !== 0) {
+          const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
+          ctx.log.push({
+            text: t("resolver.statChange", { target: t("resolver.partyTarget"), verb, amount: Math.abs(delta), stat: t("resolver.statLabelSatiety") }),
+            kind: delta < 0 ? "debuff" : "buff",
+          });
+        }
+        return 0;
+      }
+      if (!isCharacter(target)) return 0;
       const before = target.survival[effect.stat];
       target.survival[effect.stat] = clamp(before + (effect.amount ?? 0), 0, 100);
       const delta = target.survival[effect.stat] - before;

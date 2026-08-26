@@ -35,7 +35,10 @@ describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
     expect(signatureHits / totalDrops).toBeLessThan(0.6);
   });
 
-  test("an archetype in 2 groups (Zombie Knight) splits the signature half evenly between both items", () => {
+  test("an archetype in 3 groups (Zombie Knight) splits the signature share by weight, not evenly", () => {
+    // Zombie Knight's signature pool is now rotten-flesh (weight 1), broken-blade-fragment (weight 0.5),
+    // and the low-weight Exploration Kit (weight 0.15, shared across several humanoid archetypes) — so
+    // the 50% signature share splits ~30/15/5 by weight rather than evenly across "both" items.
     const rng = new Rng(11);
     const counts: Record<string, number> = {};
     let totalDrops = 0;
@@ -47,10 +50,10 @@ describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
     }
     const rottenFleshRatio = (counts["rotten-flesh"] ?? 0) / totalDrops;
     const bladeFragmentRatio = (counts["broken-blade-fragment"] ?? 0) / totalDrops;
-    expect(rottenFleshRatio).toBeGreaterThan(0.15);
-    expect(rottenFleshRatio).toBeLessThan(0.35);
-    expect(bladeFragmentRatio).toBeGreaterThan(0.15);
-    expect(bladeFragmentRatio).toBeLessThan(0.35);
+    expect(rottenFleshRatio).toBeGreaterThan(0.25);
+    expect(rottenFleshRatio).toBeLessThan(0.37);
+    expect(bladeFragmentRatio).toBeGreaterThan(0.1);
+    expect(bladeFragmentRatio).toBeLessThan(0.2);
   });
 
   test("a base-pool item is still reachable for an archetype that also has a signature item", () => {

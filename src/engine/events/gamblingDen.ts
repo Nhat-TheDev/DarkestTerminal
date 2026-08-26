@@ -1,22 +1,75 @@
-import type { GameState, Id } from "../../types";
-import type { PartyActionError } from "../party";
+import type { GameState } from "../../types";
+import { grantArtifact, type PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
-import { getArtifact, pickArtifactOfRarity } from "../../data/artifacts";
+import { pickArtifactOfRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
+import { BALANCE } from "../../data/balanceConfig";
 import { closeEvent } from "./shared";
 
-export function gamblingDenBet(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
-  const idx = state.unequippedArtifactIds.indexOf(artifactId);
-  if (idx === -1) return { reason: t("errors.artifactMustBeUnequippedToBet") };
-  const rarity = getArtifact(artifactId).rarity;
-  if (ctx.rng.chance(0.5)) {
-    const wonArtifactId = pickArtifactOfRarity(rarity, ctx.rng);
-    state.unequippedArtifactIds.push(wonArtifactId);
-    state.message = t("game.gambleWin", { artifact: getArtifact(wonArtifactId).name });
-  } else {
-    state.unequippedArtifactIds.splice(idx, 1);
-    state.message = t("game.gambleLose", { artifact: getArtifact(artifactId).name });
+const ROUNDS = BALANCE.events.gamblingDenRounds;
+
+function activeGambleOrError(state: GameState): PartyActionError | NonNullable<GameState["activeEvent"]> {
+  const active = state.activeEvent;
+  if (!active || active.eventId !== "gambling-den") return { reason: t("errors.noActiveChoice") };
+  return active;
+}
+
+/** Rolls the round at `roundIndex` (0-based) against the already-staked pot, and resolves the outcome. */
+function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot: number): void {
+  const cfg = ROUNDS[roundIndex]!;
+  const won = ctx.rng.chance(cfg.winChance);
+  if (!won) {
+    state.message = t("game.gamblingDenLost");
+    if (state.activeEvent) state.activeEvent.gambleState = undefined;
+    closeEvent(state);
+    return;
   }
+  const isFinalRound = roundIndex === ROUNDS.length - 1;
+  if (isFinalRound) {
+    state.message = t("game.gamblingDenJackpot");
+    if (state.activeEvent) state.activeEvent.gambleState = undefined;
+    const rarity = cfg.jackpotRarity ?? "epic";
+    const [first, second] = [pickArtifactOfRarity(rarity, ctx.rng), pickArtifactOfRarity(rarity, ctx.rng)];
+    state.secondJackpotArtifactId = second;
+    grantArtifact(state, first, "event");
+    closeEvent(state);
+    return;
+  }
+  const newPot = pot * 2;
+  // gambleState.round stores the human round number just won (1-indexed) — that number IS the
+  // 0-based array index of the next round to play (round index i corresponds to human round i+1).
+  if (state.activeEvent) state.activeEvent.gambleState = { round: roundIndex + 1, pot: newPot, maxRounds: ROUNDS.length };
+  state.message = t("game.gamblingDenPotDoubled", { pot: newPot });
+}
+
+export function gamblingDenEnter(state: GameState, ctx: EngineContext): PartyActionError | null {
+  const active = activeGambleOrError(state);
+  if ("reason" in active) return active;
+  const round1 = ROUNDS[0]!;
+  if (state.coins < round1.stake) return { reason: t("errors.notEnoughCoins") };
+  state.coins -= round1.stake;
+  rollRound(state, ctx, 0, round1.stake);
+  return null;
+}
+
+export function gamblingDenContinue(state: GameState, ctx: EngineContext): PartyActionError | null {
+  const active = activeGambleOrError(state);
+  if ("reason" in active) return active;
+  const gamble = active.gambleState;
+  if (!gamble) return { reason: t("errors.noActiveChoice") };
+  const nextRoundIndex = gamble.round; // round just won (1-indexed) == the 0-based array index of the next round
+  rollRound(state, ctx, nextRoundIndex, gamble.pot);
+  return null;
+}
+
+export function gamblingDenStop(state: GameState): PartyActionError | null {
+  const active = activeGambleOrError(state);
+  if ("reason" in active) return active;
+  const gamble = active.gambleState;
+  if (!gamble) return { reason: t("errors.noActiveChoice") };
+  state.coins += gamble.pot;
+  state.message = t("game.gamblingDenBanked", { pot: gamble.pot });
+  active.gambleState = undefined;
   closeEvent(state);
   return null;
 }

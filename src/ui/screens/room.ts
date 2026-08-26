@@ -27,7 +27,7 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
       break;
     }
     case "rest": {
-      const choice = digit === 1 ? "eat" : digit === 2 ? "chat" : digit === 3 ? "skip" : null;
+      const choice = key.name === "return" ? "skip" : digit === 1 ? "eat" : digit === 2 ? "chat" : null;
       if (choice === null) break;
       ctx.game.restAction(choice);
       ctx.syncUiToGameState();

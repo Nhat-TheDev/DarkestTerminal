@@ -41,12 +41,8 @@ function artifactEffectSummary(effect: ArtifactEffect): string {
       return t("artifact.effectFearResist", { percent: effect.percent });
     case "cooldownReduction":
       return t("artifact.effectCooldownReduction", { turns: effect.turns });
-    case "survivalDrainReduction":
-      return t("artifact.effectSurvivalDrainReduction", { percent: effect.percent });
     case "curseAggroBoost":
       return t("artifact.effectCurseAggroBoost", { amount: effect.amount });
-    case "curseDrainBoost":
-      return t("artifact.effectCurseDrainBoost", { percent: effect.percent });
     default:
       return t("effect.default");
   }

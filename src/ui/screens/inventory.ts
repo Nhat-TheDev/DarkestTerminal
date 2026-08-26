@@ -4,6 +4,7 @@ import { formatItemEffect } from "../../data/items";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries } from "../state";
+import { paginate } from "../pagination";
 import type { ScreenContext } from "./context";
 import { trySelectItem } from "./combat";
 
@@ -13,7 +14,8 @@ export function handleKey(ctx: ScreenContext, ui: InventoryUiState, _key: KeyEve
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
       if (digit === null) break;
-      const entry = inventoryEntries(ctx.game.state.inventory)[digit - 1];
+      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
+      const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "itemDetail", item: entry.item, origin: { kind: "outOfCombat" } });
       break;
@@ -31,14 +33,16 @@ export function handleKey(ctx: ScreenContext, ui: InventoryUiState, _key: KeyEve
   }
 }
 
-export function renderMain(game: Game, ui: InventoryUiState): string {
+export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
   const s = game.state;
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
+      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
       const lines = [t("ui.chooseItemToUse")];
-      inventoryEntries(s.inventory).forEach(({ item, qty }, i) => {
+      pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
       });
+      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
 

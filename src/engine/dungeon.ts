@@ -1,11 +1,13 @@
 import type { Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
-import { tickSurvivalOnAction } from "./survival";
+import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
 import { getEvent, rollEvent } from "../data/events";
-import { rollArtifact, rollArtifactOrCursed, getArtifact } from "../data/artifacts";
+import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
+import { grantArtifact, recomputeAllPartyStats } from "./party";
 import { spawnEventGuardianMonsters } from "../data/floor";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 
 export function getRoom(floor: Floor, roomId: string): Room {
   const room = floor.rooms.find((r) => r.id === roomId);
@@ -32,11 +34,11 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
     return;
   }
 
-  for (const c of state.party) tickSurvivalOnAction(c, state.combat?.log ?? []);
-
   state.currentRoomId = targetRoomId;
   const room = getRoom(state.floor, targetRoomId);
 
+  // Satiety drains once per room — but for a room that starts a fight, the drain happens on
+  // victory (game.ts's resolve()) instead of here, not on the ambush itself.
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");
     state.message = t("dungeon.ambush", { room: room.name });
@@ -44,15 +46,22 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   }
 
   if (room.type === "rest" && !room.cleared) {
+    // Rest room: no satiety drain at all.
     state.message = t("dungeon.restEnter", { room: room.name });
     return;
   }
 
   if (room.type === "event" && !room.cleared) {
     resolveEventEntry(state, room, ctx);
+    if (!state.combat) {
+      drainSatiety(state, SATIETY_DRAIN_EVENT, []);
+      recomputeAllPartyStats(state);
+    }
     return;
   }
 
+  drainSatiety(state, SATIETY_DRAIN_COMBAT, []);
+  recomputeAllPartyStats(state);
   state.message = t("dungeon.arrived", { room: room.name });
 }
 
@@ -63,8 +72,7 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
 
   if (event.kind === "instantReward") {
     const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
-    state.unequippedArtifactIds.push(artifactId);
-    state.message += t("dungeon.artifactRewardSuffix", { artifact: getArtifact(artifactId).name });
+    grantArtifact(state, artifactId, "event");
     room.cleared = true;
     return;
   }
@@ -79,12 +87,14 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
 
   if (!state.activeEvent) {
     if (event.id === "merchant") {
-      const offerCount = ctx.rng.int(2, 3);
-      state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng)) };
+      const offerCount = BALANCE.events.merchantOfferCount;
+      state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng)), refreshCount: 0 };
     } else if (event.id === "cursed-shrine") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifactOrCursed(ctx.rng)] };
     } else if (event.id === "twin-altars") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifact("treasureOrEvent", ctx.rng), rollArtifact("treasureOrEvent", ctx.rng)] };
+    } else if (event.id === "gambling-den") {
+      state.activeEvent = { eventId: event.id, offerArtifactIds: [] };
     }
   }
 }

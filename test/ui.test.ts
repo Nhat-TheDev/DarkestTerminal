@@ -4,7 +4,9 @@ import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { getSkill } from "../src/data/classes";
 import type { Character } from "../src/types";
-import { getActorByRef } from "../src/engine/combat";
+import { getActorByRef, startCombat } from "../src/engine/combat";
+import { spawnMonster } from "../src/data/monsters";
+import { getRoom } from "../src/engine/dungeon";
 
 describe("headless UI smoke test", () => {
   test("boots and plays a scripted run via real keypresses across multiple floors without crashing", async () => {
@@ -59,6 +61,45 @@ describe("headless UI smoke test", () => {
 
     const finalFrame = captureCharFrame();
     expect(finalFrame.length).toBeGreaterThan(0);
+  }, 20000);
+
+  test("a boss kill's pending artifact decision surfaces before the floor advances, even if the new floor's entry room ambushes the party", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
+    const game = new Game(7);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "boss";
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = 1;
+    game.ctx.monsters.push(boss);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+    const app = new App(renderer, game);
+    await renderOnce();
+
+    let guard = 0;
+    while (app.debugUiState.kind !== "artifactDecision" && guard < 40) {
+      guard++;
+      if (app.debugUiState.kind === "roomReward") mockInput.pressKey("RETURN");
+      else mockInput.pressKey("1");
+      await renderOnce();
+    }
+    expect(app.debugUiState.kind).toBe("artifactDecision");
+    expect(game.state.floor.depth).toBe(1); // must not have advanced yet — the decision comes first
+
+    mockInput.pressKey("1"); // Equip
+    await renderOnce();
+    mockInput.pressKey("1"); // pick character 1
+    await renderOnce();
+
+    expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(app.debugUiState.kind).toBe("campPrompt"); // Camp offer comes after the decision, before the floor advances
+    expect(game.state.floor.depth).toBe(1);
+
+    mockInput.pressKey("RETURN"); // skip Camp
+    await renderOnce();
+
+    expect(game.state.floor.depth).toBe(2); // now it advances
   }, 20000);
 
   test("q opens the save menu instead of quitting", async () => {
