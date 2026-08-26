@@ -21,7 +21,8 @@ import { getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
-import { resolveSkillEffect } from "./resolver";
+import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
+import { getStatusEffect } from "../data/statusEffects";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -268,6 +269,15 @@ export class Game {
       if (this.state.combat.outcome === "victory") {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
+        // Buffs don't carry past a cleared room — debuffs do, and keep ticking down into the next fight.
+        for (const c of this.state.party) {
+          if (!c.isAlive) continue;
+          for (const active of [...c.activeStatusEffects]) {
+            if (isHelpfulStatusEffect(getStatusEffect(active.statusEffectId))) {
+              expireStatusEffect(c, active, { log: this.state.combat.log });
+            }
+          }
+        }
         drainSatiety(this.state, SATIETY_DRAIN_COMBAT, this.state.combat.log);
         recomputeAllPartyStats(this.state);
         const baseExpGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);

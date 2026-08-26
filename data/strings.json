@@ -129,7 +129,6 @@
   "ui.skillUnusableNamed": "Can't use {{skill}}: {{reason}}",
   "ui.itemUnusableNamed": "Can't use {{item}}: {{reason}}",
   "ui.exploring": "Exploring",
-  "ui.itemsLabel": "Items:",
   "ui.fallenSuffix": " {{name}} — Fallen",
   "ui.fearStat": "Fear {{fear}}/100",
   "ui.satietyStat": "Satiety {{satiety}}/100",
@@ -309,5 +308,5 @@
   "ui.dmgEstimateSuffix": ", ~{{amount}} dmg",
   "ui.hpSuffix": " ({{hp}}/{{maxHp}} HP)",
   "ui.inventoryLine": "  [{{i}}] {{name}} x{{qty}}",
-  "ui.inventoryLineNoIndex": "  {{name}} x{{qty}}"
+  "ui.statusTurnsSuffix": " ({{turns}}t)"
 }

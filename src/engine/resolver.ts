@@ -209,13 +209,18 @@ function nameOf(actor: Actor): string {
 
 function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: ResolveContext): void {
   const def = getStatusEffect(statusEffectId);
+  // Buffs count down starting the same round they're cast in (tick right after that round's action
+  // phase). Debuffs delay their countdown by 1 round — the round they're cast in is "free," and the
+  // duration is only consumed starting from the action phase after the one that cast it.
+  const deferFirstTick = !isHelpfulStatusEffect(def);
   const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
   if (existing) {
     existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
+    existing.justApplied = deferFirstTick;
     ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
-  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
+  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1, justApplied: deferFirstTick };
   actor.activeStatusEffects.push(entry);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
@@ -264,6 +269,11 @@ export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
       }
     }
     if (!isActorAlive(actor)) continue;
+    if (active.justApplied) {
+      // Debuff applied/refreshed this same round — its countdown starts next round instead.
+      active.justApplied = false;
+      continue;
+    }
     active.turnsRemaining -= 1;
     if (active.turnsRemaining <= 0) {
       expireStatusEffect(actor, active, ctx);
