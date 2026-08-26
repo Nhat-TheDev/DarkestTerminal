@@ -85,6 +85,8 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
 export interface ResolveContext {
   log: LogEntry[];
   statusEffectName?: string;
+  /** Name of the skill this effect came from, shown in the damage log line ("X takes N damage from Y's Skill."). Omit for basic attacks and other unnamed sources. */
+  skillName?: string;
   isMagic?: boolean;
   /** Required for a `modifyStat` effect targeting `"satiety"` — that stat lives on GameState (party-wide), not on the Character. */
   gameState?: GameState;
@@ -114,7 +116,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
           );
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
-      ctx.log.push({ text: t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel }), kind: "attack" });
+      const damageText =
+        !isSelfTick && ctx.skillName
+          ? t("resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
+          : t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
+      ctx.log.push({ text: damageText, kind: "attack" });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && effect.lifestealPercent) {

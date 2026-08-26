@@ -67,8 +67,8 @@
 
   "combat.started": "Battle begins in room {{roomId}}.",
   "combat.artifactAutoDamage": "{{character}}'s artifact deals {{amount}} damage to {{target}}.",
-  "combat.stunnedSkipTurn": "{{actor}} is stunned and skips their turn.",
-  "combat.fearLoseControl": "{{actor}} loses control from fear and skips their turn.",
+  "combat.stunnedSkipTurn": "{{actor}} is stunned, too dazed to act.",
+  "combat.fearLoseControl": "{{actor}} freezes up, too afraid to act.",
   "combat.wastedAction": "{{actor}} uses {{skill}} but the target is gone — the action is wasted.",
   "combat.useSkillOnTarget": "{{actor}} uses {{skill}} on {{target}}.",
   "combat.useSkillPlain": "{{actor}} uses {{skill}}.",
@@ -92,6 +92,7 @@
   "resolver.statLabelAggro": "aggro",
   "resolver.statLabelSpeed": "speed",
   "resolver.damage": "{{target}} takes {{amount}} damage from {{source}}.",
+  "resolver.damageWithSkill": "{{target}} takes {{amount}} damage from {{source}}'s {{skill}}.",
   "resolver.defeated": "{{target}} is defeated.",
   "resolver.heal": "{{target}} recovers {{amount}} HP.",
   "resolver.restoreMp": "{{target}} recovers {{amount}} MP.",

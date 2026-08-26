@@ -123,8 +123,118 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     expect(actualDamage).toBeGreaterThan(0);
     expect(actualDamage).toBeLessThan(fullPowerDamage);
   });
+
+  test("the damage log line names the skill that dealt it, so it's clear which attack landed", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
+
+    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-knife-throw", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+
+    expect(combat.log.some((l) => /^Dungeon Rat takes \d+ damage from Rogue's Knife Throw\.$/.test(l.text))).toBe(true);
+  });
+
+  test("a plain basic attack (no skillName passed to resolveSkillEffect) keeps the old damage log wording", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const log: LogEntry[] = [];
+
+    resolveSkillEffect({ kind: "damage", amount: 0 }, rat, rogue, { log });
+
+    expect(log.some((l) => new RegExp(`^${rogue.name} takes \\d+ damage from Dungeon Rat\\.$`).test(l.text))).toBe(true);
+  });
+
+  test("Storm-Empowered's on-hit lightning splash names its source in the damage log too, with the hyphen dropped for readability", () => {
+    const { ctx } = makeCtx();
+    const viking = ctx.party.find((p) => p.classId === "viking")!;
+    viking.mp = 999;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const self: CombatantRef = { kind: "character", id: viking.id };
+    const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
+    const combat = startCombat("r1", [rat.id], ctx, false);
+
+    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    resolveRound(combat, ctx);
+    const logBefore = combat.log.length;
+    queueAction(combat, self, "viking-axe-slash", [enemyRef], ctx);
+    resolveRound(combat, ctx);
+
+    const newLines = combat.log.slice(logBefore).map((l) => l.text);
+    expect(newLines.some((t) => /^Dungeon Rat takes \d+ damage from Viking's Axe Slash\.$/.test(t))).toBe(true);
+    expect(newLines.some((t) => /^Dungeon Rat takes \d+ damage from Viking's Storm Empowered\.$/.test(t))).toBe(true);
+  });
 });
 
+describe("queued action refund when it never executes (bugfix: mp/uses/cooldown/item were lost on fizzle)", () => {
+  test("skill mp is refunded when the last monster dies to a faster ally before the caster's own turn comes up", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    vanguard.speed = 999;
+    rogue.speed = 1;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.hp = 1;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const ratRef: CombatantRef = { kind: "monster", id: rat.id };
+
+    const rogueMpBefore = rogue.mp;
+    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [ratRef], ctx);
+    expect(queueAction(combat, { kind: "character", id: rogue.id }, "rogue-knife-throw", [ratRef], ctx)).toBeNull();
+    expect(rogue.mp).toBe(rogueMpBefore - 4);
+
+    resolveRound(combat, ctx);
+
+    expect(combat.outcome).toBe("victory");
+    expect(combat.log.some((l) => l.text.includes(rogue.name))).toBe(false);
+    expect(rogue.mp).toBe(rogueMpBefore);
+  });
+
+  test("skill mp is refunded when a singleAlly heal's target is already dead, even though combat continues (in-loop fizzle, not the mid-round-end case above)", () => {
+    const { ctx } = makeCtx();
+    const acolyte = createCharacter("acolyte1", "Acolyte", getClass("acolyte"));
+    ctx.party.push(acolyte);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const monster = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [monster.id], ctx, false);
+
+    const acolyteMpBefore = acolyte.mp;
+    expect(queueAction(combat, { kind: "character", id: acolyte.id }, "acolyte-heal", [vanguardRef], ctx)).toBeNull();
+    expect(acolyte.mp).toBeLessThan(acolyteMpBefore);
+
+    vanguard.hp = 0;
+    vanguard.isAlive = false;
+    resolveRound(combat, ctx);
+
+    expect(combat.outcome).toBeUndefined();
+    expect(combat.log.some((l) => l.text.includes(acolyte.name) && l.text.includes("wasted"))).toBe(true);
+    expect(acolyte.mp).toBe(acolyteMpBefore);
+  });
+
+  test("skill mp and cooldown are refunded when the caster is stunned before acting", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const selfRef: CombatantRef = { kind: "character", id: vanguard.id };
+
+    const mpBefore = vanguard.mp;
+    expect(queueAction(combat, selfRef, "vanguard-shield-guard", [selfRef], ctx)).toBeNull();
+    expect(vanguard.mp).toBe(mpBefore - 8);
+    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(2);
+
+    resolveRound(combat, ctx);
+
+    expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
+    expect(vanguard.mp).toBe(mpBefore);
+    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBeUndefined();
+  });
+});
 
 describe("skill rank resolution (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
   const mockSkill: SkillDefinition = {
@@ -806,7 +916,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     const logBefore = combat.log.length;
     queueAction(combat, self, "viking-frenzied-slash", [enemyRef], ctx);
     resolveRound(combat, ctx);
-    const directHitLine = combat.log.slice(logBefore).find((l) => /^Dungeon Rat takes \d+ damage from Viking\.$/.test(l.text));
+    const directHitLine = combat.log.slice(logBefore).find((l) => /^Dungeon Rat takes \d+ damage from Viking's Frenzied Slash\.$/.test(l.text));
     const directDamage = Number(directHitLine!.text.match(/takes (\d+) damage/)![1]);
 
     expect(directDamage).toBe(withBonusDamage);
