@@ -3,9 +3,9 @@
     "id": "dungeon-rat",
     "name": "Dungeon Rat",
     "baseHp": 45,
-    "baseAttack": 17,
+    "baseAttack": 16,
     "baseDefense": 1,
-    "baseSpeed": 9,
+    "baseSpeed": 12,
     "aiPattern": "erratic",
     "skillIds": [
       "bite"
@@ -23,7 +23,7 @@
     "id": "black-bat",
     "name": "Black Bat",
     "baseHp": 42,
-    "baseAttack": 22,
+    "baseAttack": 15,
     "baseDefense": 1,
     "baseSpeed": 18,
     "aiPattern": "aggressive",
@@ -42,10 +42,10 @@
   {
     "id": "slime",
     "name": "Slime",
-    "baseHp": 40,
-    "baseAttack": 15,
+    "baseHp": 52,
+    "baseAttack": 16,
     "baseDefense": 1,
-    "baseSpeed": 5,
+    "baseSpeed": 4,
     "aiPattern": "erratic",
     "skillIds": [
       "acid-spit"
@@ -62,8 +62,8 @@
   {
     "id": "skeleton",
     "name": "Skeleton",
-    "baseHp": 42,
-    "baseAttack": 19,
+    "baseHp": 55,
+    "baseAttack": 16,
     "baseDefense": 4,
     "baseSpeed": 8,
     "aiPattern": "aggressive",
@@ -82,8 +82,8 @@
   {
     "id": "zombie",
     "name": "Zombie",
-    "baseHp": 45,
-    "baseAttack": 18,
+    "baseHp": 61,
+    "baseAttack": 13,
     "baseDefense": 6,
     "baseSpeed": 4,
     "aiPattern": "defensive",
@@ -91,7 +91,7 @@
       "regeneration"
     ],
     "expReward": 12,
-    "powerTier": "strong",
+    "powerTier": "medium",
     "actionWeights": {
       "normal": {
         "basicAttack": 100,
@@ -102,10 +102,10 @@
   {
     "id": "snake",
     "name": "Snake",
-    "baseHp": 38,
-    "baseAttack": 20,
-    "baseDefense": 2,
-    "baseSpeed": 17,
+    "baseHp": 46,
+    "baseAttack": 21,
+    "baseDefense": 1,
+    "baseSpeed": 16,
     "aiPattern": "erratic",
     "skillIds": [
       "poison-bite"
@@ -122,10 +122,10 @@
   {
     "id": "lizard",
     "name": "Lizard",
-    "baseHp": 46,
-    "baseAttack": 19,
-    "baseDefense": 3,
-    "baseSpeed": 11,
+    "baseHp": 52,
+    "baseAttack": 13,
+    "baseDefense": 6,
+    "baseSpeed": 12,
     "aiPattern": "aggressive",
     "skillIds": [
       "quick-bite"
@@ -142,9 +142,9 @@
   {
     "id": "spider",
     "name": "Spider",
-    "baseHp": 40,
-    "baseAttack": 21,
-    "baseDefense": 1,
+    "baseHp": 49,
+    "baseAttack": 16,
+    "baseDefense": 4,
     "baseSpeed": 15,
     "aiPattern": "aggressive",
     "skillIds": [
@@ -162,16 +162,16 @@
   {
     "id": "skeleton-archer",
     "name": "Skeleton Archer",
-    "baseHp": 40,
-    "baseAttack": 22,
-    "baseDefense": 3,
+    "baseHp": 55,
+    "baseAttack": 24,
+    "baseDefense": 2,
     "baseSpeed": 12,
     "aiPattern": "erratic",
     "skillIds": [
       "arrow-shot"
     ],
     "expReward": 10,
-    "powerTier": "medium",
+    "powerTier": "strong",
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
@@ -182,10 +182,10 @@
   {
     "id": "skeleton-warrior",
     "name": "Skeleton Warrior",
-    "baseHp": 40,
-    "baseAttack": 22,
-    "baseDefense": 7,
-    "baseSpeed": 7,
+    "baseHp": 64,
+    "baseAttack": 14,
+    "baseDefense": 8,
+    "baseSpeed": 8,
     "aiPattern": "defensive",
     "skillIds": [
       "guard-stance"
@@ -202,9 +202,9 @@
   {
     "id": "skeleton-guard",
     "name": "Skeleton Guard",
-    "baseHp": 55,
-    "baseAttack": 23,
-    "baseDefense": 7,
+    "baseHp": 66,
+    "baseAttack": 20,
+    "baseDefense": 10,
     "baseSpeed": 6,
     "aiPattern": "defensive",
     "skillIds": [],
@@ -241,7 +241,7 @@
     "id": "giant-spider",
     "name": "Giant Spider",
     "baseHp": 50,
-    "baseAttack": 26,
+    "baseAttack": 29,
     "baseDefense": 5,
     "baseSpeed": 14,
     "aiPattern": "aggressive",
@@ -275,7 +275,7 @@
     "id": "dragon",
     "name": "Dragon",
     "baseHp": 65,
-    "baseAttack": 31,
+    "baseAttack": 24,
     "baseDefense": 7,
     "baseSpeed": 10,
     "aiPattern": "aggressive",
@@ -343,7 +343,7 @@
     "id": "dark-knight",
     "name": "Dark Knight",
     "baseHp": 58,
-    "baseAttack": 27,
+    "baseAttack": 21,
     "baseDefense": 10,
     "baseSpeed": 9,
     "aiPattern": "defensive",

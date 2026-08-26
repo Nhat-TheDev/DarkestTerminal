@@ -36,6 +36,35 @@ export function badInput(message: string): { error: string } {
 }
 
 // ---------------------------------------------------------------------------
+// Balance Points — docs/gameplay-decisions/01-class-skill.md "Base stats
+// balancing formula (Balance Points)" (char), extended in
+// docs/gameplay-decisions/02-monster.md "Monster Balance Points" with a
+// speed term for monster archetypes. tier1 rates are read via growthBonus()
+// rather than hand-copied, so this never drifts from level-growth.json.
+// ---------------------------------------------------------------------------
+
+/** Hand-picked constant (not derived from any growth table — speed never scales for char or monster) — see "Monster Balance Points" in 02-monster.md. */
+const BALANCE_POINTS_SPEED_RATE = 12;
+
+function balancePointsRate(stat: GrowthStat): number {
+  return growthBonus(stat, 2);
+}
+
+export function characterBalancePoints(base: { attack: number; defense: number; maxHp: number; maxMp: number; magicPower: number }): number {
+  return (
+    base.attack / balancePointsRate("attack") +
+    base.defense / balancePointsRate("defense") +
+    base.maxHp / balancePointsRate("maxHp") +
+    base.maxMp / balancePointsRate("maxMp") +
+    base.magicPower / balancePointsRate("magicPower")
+  );
+}
+
+export function monsterBalancePoints(base: { attack: number; defense: number; hp: number; speed: number }): number {
+  return base.attack / balancePointsRate("attack") + base.defense / balancePointsRate("defense") + base.hp / balancePointsRate("maxHp") + base.speed / BALANCE_POINTS_SPEED_RATE;
+}
+
+// ---------------------------------------------------------------------------
 // Catalog (static reference data for populating the UI)
 // ---------------------------------------------------------------------------
 
@@ -95,6 +124,8 @@ export interface CharacterComputation {
   growthBonusUnweighted: Record<GrowthStat, number>;
   growthBonusWeighted: Record<GrowthStat, number>;
   final: { maxHp: number; maxMp: number; attack: number; defense: number; magicPower: number; aggro: number; speed: number };
+  /** Base-stat Balance Points (docs/gameplay-decisions/01-class-skill.md) — computed off `base`, not `final`/leveled stats. */
+  balancePoints: number;
   unlockedSkillIds: string[];
   skills: (SkillDefinition & { unlocked: boolean; rankInfo: { current: number; total: number; nextUnlockLevel: number | null } | null })[];
 }
@@ -140,6 +171,7 @@ export function computeCharacter(classId: string, level: number): CharacterCompu
     growthBonusUnweighted,
     growthBonusWeighted,
     final: { maxHp: stats.maxHp, maxMp: stats.maxMp, attack: stats.attack, defense: stats.defense, magicPower: stats.magicPower, aggro: cls.baseAggro, speed: cls.baseSpeed },
+    balancePoints: characterBalancePoints(base),
     unlockedSkillIds: stats.unlockedSkillIds,
     skills: cls.skills.map((s) => {
       const unlocked = stats.unlockedSkillIds.includes(s.id);
@@ -158,6 +190,8 @@ export interface MonsterComputation {
   depth: number;
   tier: MonsterTier;
   base: { hp: number; attack: number; defense: number; speed: number };
+  /** Base-stat Balance Points (docs/gameplay-decisions/02-monster.md "Monster Balance Points") — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
+  balancePoints: number;
   growthBonus: { maxHp: number; attack: number; defense: number };
   multiplier: { maxHp: number; attack: number; defense: number; exp: number } | null;
   final: { hp: number; maxHp: number; attack: number; defense: number; speed: number; expReward: number };
@@ -193,6 +227,7 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     depth,
     tier,
     base: { hp: archetype.baseHp, attack: archetype.baseAttack, defense: archetype.baseDefense, speed: archetype.baseSpeed },
+    balancePoints: monsterBalancePoints({ attack: archetype.baseAttack, defense: archetype.baseDefense, hp: archetype.baseHp, speed: archetype.baseSpeed }),
     growthBonus: { maxHp: growthBonusForDepth("maxHp", depth), attack: growthBonusForDepth("attack", depth), defense: growthBonusForDepth("defense", depth) },
     multiplier,
     final: { hp: monster.hp, maxHp: monster.maxHp, attack: monster.attack, defense: monster.defense, speed: monster.speed, expReward: monster.expReward },

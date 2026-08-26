@@ -419,6 +419,10 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
     vanguard.unlockedSkillIds.push("test-conditional-skill");
     vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
     const tanky = spawnInto(ctx, "skeleton-guard");
+    // Explicit high defense, independent of skeleton-guard's current base stats: the ignoreDefensePercent
+    // bonus only becomes visible in rounded damage once defense is high enough to cross a rounding
+    // boundary — a hand-set value keeps that margin regardless of how base archetype stats get retuned.
+    tanky.defense = 30;
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     const hpBefore = getActorByRef(enemyRef, ctx).hp;

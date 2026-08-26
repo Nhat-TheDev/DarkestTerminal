@@ -315,16 +315,48 @@ function editField(id, label, value) {
   return el("div", { class: "field" }, [el("label", { text: label }), el("input", { type: "number", id, value: String(value), step: "any" })]);
 }
 
-/** Wires a Save button: reads `readBody()` on click, POSTs it to `apiPath`, then reloads the page on success so the recomputed catalog reflects the edit. `readBody` may throw to abort with a client-side error message. */
-function wireSaveButton(saveBtn, status, apiPath, readBody) {
+async function refreshMeta() {
+  META = await api("/api/meta");
+}
+
+/** The dev server runs with `bun --watch`: saving a data/*.json file makes bun restart the whole
+ * process (calc.ts imports src/data/*.ts, which statically `import`s the JSON — only a process
+ * restart re-reads it). Polls /api/meta until it responds again, refreshing META in the process,
+ * instead of guessing a fixed delay.
+ *
+ * The POST that saved the file is handled by the *old* process, which is still alive and would
+ * happily serve a /api/meta request with stale cached data for a moment after responding — bun's
+ * watcher needs a beat to notice the write and actually kill+restart it. So this waits one interval
+ * before the very first check, instead of trusting an immediate success. */
+async function waitForServerRestart(maxAttempts = 40, intervalMs = 250) {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    try {
+      await refreshMeta();
+      return;
+    } catch {
+      // still restarting — keep polling
+    }
+  }
+  throw new Error("Server didn't come back after save (bun --watch restart timed out).");
+}
+
+/** Wires a Save button: reads `readBody()` on click, POSTs it to `apiPath`, waits for the
+ * bun --watch restart to finish (see waitForServerRestart), then calls `afterSave()` to
+ * re-render just the affected panel(s) — same pattern as tools/sprite-editor (refetch + patch
+ * the DOM in place, no full-page reload). `readBody` may throw to abort with a client-side error. */
+function wireSaveButton(saveBtn, status, apiPath, readBody, afterSave) {
   saveBtn.addEventListener("click", async () => {
     status.textContent = "Saving...";
     status.className = "save-status";
     try {
       await apiPost(apiPath, readBody());
-      status.textContent = "Saved — reloading…";
+      status.textContent = "Saved — refreshing…";
       status.className = "save-status ok";
-      setTimeout(() => location.reload(), 1200);
+      await waitForServerRestart();
+      status.textContent = "Saved.";
+      status.className = "save-status ok";
+      if (afterSave) await afterSave();
     } catch (err) {
       status.textContent = "Error: " + err.message;
       status.className = "save-status error";
@@ -431,9 +463,9 @@ function fearTier() {
 
 // --------------------------------------------------------------------------
 // Parameter editors — edit base stats/weights, save straight to the JSON
-// files under data/ (same files the real game reads), same pattern as
-// tools/sprite-editor. The dev server runs with `bun --watch`, so a save
-// restarts it and the reload below picks up the fresh values.
+// files under data/ (same files the real game reads). See wireSaveButton
+// above for how a save avoids a full-page reload despite the bun --watch
+// server restart underneath it.
 // --------------------------------------------------------------------------
 
 function buildClassEditCard(classId, data) {
@@ -491,7 +523,7 @@ function buildClassEditCard(classId, data) {
       maxMp: Number($("#edit-gwMaxMp").value),
       magicPower: Number($("#edit-gwMagicPower").value),
     },
-  }));
+  }), renderSimulator);
   saveRow.appendChild(saveBtn);
   saveRow.appendChild(status);
   card.appendChild(saveRow);
@@ -632,7 +664,7 @@ function buildMonsterEditCard(archetypeId, data, tier) {
       body.actionWeights = { [tier]: tierPatch };
     }
     return body;
-  });
+  }, renderSimulator);
   saveRow.appendChild(saveBtn);
   saveRow.appendChild(status);
   card.appendChild(saveRow);
@@ -655,6 +687,7 @@ function buildOverviewCards(charData, monData, tier) {
       el("div", {}, [el("b", { text: fmt(charData.final.defense) }), "defense"]),
       el("div", {}, [el("b", { text: fmt(charData.final.aggro) }), "aggro"]),
       el("div", {}, [el("b", { text: fmt(charData.final.speed) }), "speed"]),
+      el("div", {}, [el("b", { text: fmt(charData.balancePoints, 2) }), "Balance Points"]),
     ]),
   ]);
   const charDetails = el("details", {}, [el("summary", { text: "Base → growth breakdown & edit stats" })]);
@@ -670,6 +703,7 @@ function buildOverviewCards(charData, monData, tier) {
       el("div", {}, [el("b", { text: fmt(monData.final.defense) }), "defense"]),
       el("div", {}, [el("b", { text: fmt(monData.final.speed) }), "speed"]),
       el("div", {}, [el("b", { text: fmt(monData.final.expReward) }), "exp reward"]),
+      el("div", {}, [el("b", { text: fmt(monData.balancePoints, 2) }), "Balance Points"]),
     ]),
   ]);
   const monDetails = el("details", {}, [el("summary", { text: "Base → depth/tier breakdown & edit stats" })]);
@@ -961,7 +995,7 @@ function renderReference() {
       executeCooldownTurns: Number($("#edit-bal-executeCooldownTurns").value),
       defensiveLowHpSkillChance: Number($("#edit-bal-defensiveLowHpSkillChance").value),
     },
-  }));
+  }), async () => { renderReference(); await renderSimulator(); });
   combatForm.appendChild(combatSaveBtn);
   combatForm.appendChild(combatStatus);
   combatEditCard.appendChild(combatForm);
@@ -1007,7 +1041,7 @@ function renderReference() {
       expRewardDepthRate: Number($("#edit-lg-expRewardDepthRate").value),
       bossFloorInterval: Number($("#edit-lg-bossFloorInterval").value),
     },
-  }));
+  }), async () => { renderReference(); await renderSimulator(); });
   multForm.appendChild(multSaveBtn);
   multForm.appendChild(multStatus);
   multEditCard.appendChild(multForm);
