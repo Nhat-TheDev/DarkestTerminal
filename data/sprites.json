@@ -5,12 +5,12 @@
         ".....FFFFF....",
         "....FFBEBEB...",
         "....FFBEBEB...",
-        "D...AAAARRRRRR",
-        "DG.AAACCRFFFFR",
-        ".DGAAAACRFFFFR",
-        "..DSAAAAARRRR.",
-        "....NNNNNNN...",
-        "....NNN.NNN..."
+        "D...CAAARRRRRR",
+        "DG.ANCCARFFFFR",
+        ".DGAANNCRFFFFR",
+        "..DSAAANNRRRR.",
+        "....HHHHHHH...",
+        "....HHH.HHH..."
       ],
       "palette": {
         "H": "#2b3a4a",
@@ -20,7 +20,7 @@
         "C": "#1e3a5c",
         "F": "#7f9ab5",
         "R": "#c9d8e8",
-        "N": "#2b3a4a",
+        "N": "#394c60",
         "B": "#cec7db",
         "D": "#ffffff",
         "G": "#e6e6e6"
@@ -55,8 +55,8 @@
         "....HHHHH....",
         "EECHHHHSSS...",
         ".E.HHHSSES...",
-        "DE.AAAAAAA..D",
-        "D.AAACACAAA.D",
+        "BE.AAAAAAA..B",
+        "B.AAACACAAA.B",
         "BDAAAACAAAADB",
         ".BSAACACAASB.",
         "..ENNNNNNNE..",
@@ -77,15 +77,15 @@
     },
     "acolyte": {
       "rows": [
-        "....HHHHH....",
-        "...HHSSSSS...",
+        "....CCCCC....",
+        "...HHHSSSS...",
         "...HHSSESS...",
-        "...AAACAAA...",
-        "..AACCCCCAA..",
-        "..AAAACAAAA..",
-        "..SAAACAAAS..",
-        "...NNNNNNN...",
-        "...NNN.NNN..."
+        "...AABCBAA...",
+        "..AABCCCBAA..",
+        "..AAABCBAAA..",
+        "..SAABCBAAS..",
+        "...AABCBAA...",
+        "..AAABCBAAA.."
       ],
       "palette": {
         "H": "#8a7050",
@@ -93,7 +93,8 @@
         "E": "#2a1f18",
         "A": "#d4c05a",
         "C": "#fbf6e4",
-        "N": "#4a4028"
+        "N": "#4a4028",
+        "B": "#00eb71"
       }
     },
     "viking": {
@@ -125,16 +126,16 @@
     },
     "plague-doctor": {
       "rows": [
+        ".............",
         "....HHHHH....",
         "..HHHHHHHHH..",
         "...SSSSEES...",
         "...SSSSSSSSS.",
-        "...GGGIGGG...",
-        "D.AAAACAAAA.D",
-        ".FFAAACAAABB.",
-        ".FFACCCCCABB.",
-        "..AAAACAAAA..",
-        ".AAAAACAAAAA."
+        "D.AAIICIIAA.D",
+        ".FFAAICIAABB.",
+        ".FFAAICIAABB.",
+        "..AAAICIAAA..",
+        ".AAAAICIAAAA."
       ],
       "palette": {
         "H": "#8a7050",
@@ -147,25 +148,26 @@
         "D": "#ffffff",
         "F": "#f9c824",
         "G": "#d5ccae",
-        "I": "#423c29"
+        "I": "#cdc29d"
       }
     }
   },
   "monsters": {
     "dungeon-rat": {
       "rows": [
-        "..E...E...",
-        ".OOOOOOO..",
-        "OOOSOOSOO.",
-        "OOOOOOOOO.",
-        ".OOOOOOO.T",
-        "..O...O.TT"
+        "....AA......",
+        "OOSOOO......",
+        ".OOOOOOO....",
+        "..OOOOOOOO..",
+        "...OOOOOOT.T",
+        "...E.E.EETTT"
       ],
       "palette": {
         "O": "#7a5230",
         "E": "#4a3320",
         "S": "#2a1a10",
-        "T": "#c9a878"
+        "T": "#c9a878",
+        "A": "#807b6b"
       }
     },
     "black-bat": {

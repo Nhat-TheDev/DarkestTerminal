@@ -31,6 +31,7 @@ export type UiState =
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
   | { kind: "eventMerchant" }
+  | { kind: "eventMerchantDetail"; offerIndex: number }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
   | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
