@@ -326,6 +326,7 @@ export class App implements ScreenContext {
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
       case "eventMerchant":
+      case "eventMerchantDetail":
       case "eventCursedShrine":
       case "eventTwinAltars":
       case "eventHpGamble":
@@ -707,6 +708,7 @@ export class App implements ScreenContext {
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "eventMerchant":
+      case "eventMerchantDetail":
       case "eventCursedShrine":
       case "eventTwinAltars":
       case "eventHpGamble":
@@ -753,6 +755,7 @@ export class App implements ScreenContext {
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
       case "eventMerchant":
+      case "eventMerchantDetail":
       case "eventCursedShrine":
       case "eventTwinAltars":
       case "eventHpGamble":
