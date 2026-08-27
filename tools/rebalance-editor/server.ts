@@ -51,8 +51,74 @@ const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp"
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
 const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed", "expReward"] as const;
 const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "executeCooldownTurns", "defensiveLowHpSkillChance"] as const;
+const BALANCE_SURVIVAL_FIELDS = [
+  "initialFear",
+  "initialSatiety",
+  "satietyDrainCombat",
+  "satietyDrainEvent",
+  "exhaustedThreshold",
+  "exhaustedStatMultiplier",
+  "dyingThreshold",
+  "dyingDamagePerRound",
+  "campSatietyRestore",
+  "eatDrinkRestorePercent",
+  "eatDrinkSatietyRestore",
+  "chatRestorePercent",
+  "chatFearRelief",
+  "fearPerRoundBase",
+  "fearPerRoundLowHp",
+  "fearPerRoundBaseCap",
+  "fearPerRoundLowHpCap",
+  "fearPerRoundDepthGrowth",
+  "fearLowHpThresholdPercent",
+  "fearVictoryRelief",
+  "fearVictoryReliefQuick",
+  "fearQuickVictoryRoundThreshold",
+  "fearEliteOrBossVictoryRelief",
+  "fearEliteOrBossVictoryReliefQuick",
+  "fearEliteOrBossQuickVictoryRoundThreshold",
+] as const;
+const BALANCE_PARTY_FIELDS = ["maxEquippedArtifacts", "startingExplorationKits"] as const;
+const BALANCE_ITEMS_FIELDS = ["itemDropChance", "itemWeightDepthGrowth"] as const;
+const BALANCE_FLOOR_GENERATION_FIELDS = [
+  "minPathRooms",
+  "maxPathRooms",
+  "maxBranches",
+  "minBranchStartStage",
+  "minBranchSpacing",
+  "maxEventRoomsPerPath",
+  "minRestRoomsPerPath",
+  "maxRestRoomsPerPath",
+] as const;
+const BALANCE_EVENTS_FIELDS = [
+  "commonTierWeight",
+  "rareTierWeight",
+  "merchantOfferCount",
+  "merchantRefreshCostCoins",
+  "merchantMaxRefreshes",
+  "bloodAltarHpPercent",
+  "collapsedFloorHpPercent",
+  "collapsedFloorSuccessChance",
+  "eventGuardianStatMultiplier",
+  "wanderingHermitExchangeCostCoins",
+] as const;
+const COIN_DROP_TIERS = ["weak", "medium", "strong", "elite", "boss"] as const;
 const LEVEL_GROWTH_MULTIPLIER_FIELDS = ["maxHp", "attack", "defense", "exp"] as const;
 const LEVEL_GROWTH_TOP_FIELDS = ["expRewardDepthRate", "bossFloorInterval"] as const;
+
+/** Like applyNumericPatch, but for `data/balance-config.json`'s `currency.coinDropByTier` shape — each tier is a `[min, max]` pair, not a single number. */
+function applyTierRangePatch(target: Record<string, unknown>, patch: Record<string, unknown>, allowedTiers: readonly string[]): string | null {
+  for (const [tier, value] of Object.entries(patch)) {
+    if (!allowedTiers.includes(tier)) return `Tier "${tier}" is not editable.`;
+    if (!Array.isArray(value) || value.length !== 2 || !value.every((n) => typeof n === "number" && Number.isFinite(n))) {
+      return `coinDropByTier.${tier} must be a [min, max] pair of finite numbers.`;
+    }
+    const [min, max] = value as [number, number];
+    if (min > max) return `coinDropByTier.${tier}: min (${min}) must be <= max (${max}).`;
+    target[tier] = [min, max];
+  }
+  return null;
+}
 
 async function handleEditClass(req: Request): Promise<Response> {
   let body: { classId?: unknown; base?: unknown; growthWeights?: unknown };
@@ -119,17 +185,41 @@ async function handleEditMonster(req: Request): Promise<Response> {
 }
 
 async function handleEditBalance(req: Request): Promise<Response> {
-  let body: { combat?: unknown };
+  let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return badRequest("Body is not valid JSON.");
   }
-  if (typeof body.combat !== "object" || body.combat === null) return badRequest("combat is required.");
 
   const balance = (await readJsonFile("balance-config.json")) as Record<string, unknown>;
-  const err = applyNumericPatch(balance.combat as Record<string, unknown>, body.combat as Record<string, unknown>, BALANCE_COMBAT_FIELDS);
-  if (err) return badRequest(err);
+
+  const flatSections: [string, readonly string[]][] = [
+    ["combat", BALANCE_COMBAT_FIELDS],
+    ["survival", BALANCE_SURVIVAL_FIELDS],
+    ["party", BALANCE_PARTY_FIELDS],
+    ["items", BALANCE_ITEMS_FIELDS],
+    ["floorGeneration", BALANCE_FLOOR_GENERATION_FIELDS],
+    ["events", BALANCE_EVENTS_FIELDS],
+  ];
+  for (const [key, allowed] of flatSections) {
+    const patch = (body as Record<string, unknown>)[key];
+    if (patch === undefined) continue;
+    if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
+    const err = applyNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, allowed);
+    if (err) return badRequest(err);
+  }
+
+  if (body.currency !== undefined) {
+    if (typeof body.currency !== "object" || body.currency === null) return badRequest("currency must be an object.");
+    const currencyPatch = body.currency as { coinDropByTier?: unknown };
+    if (currencyPatch.coinDropByTier !== undefined) {
+      if (typeof currencyPatch.coinDropByTier !== "object" || currencyPatch.coinDropByTier === null) return badRequest("currency.coinDropByTier must be an object.");
+      const currency = balance.currency as Record<string, unknown>;
+      const err = applyTierRangePatch(currency.coinDropByTier as Record<string, unknown>, currencyPatch.coinDropByTier as Record<string, unknown>, COIN_DROP_TIERS);
+      if (err) return badRequest(err);
+    }
+  }
 
   await writeJsonFile("balance-config.json", balance);
   return json({ ok: true });

@@ -124,7 +124,7 @@ Skeleton Guard (shared with regular combat) plus the archetypes marked `guardOnl
 
 ### Monster Balance Points
 
-Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skill.md`) to monster archetypes, adding a `speed` term that the char formula doesn't have — `speed` isn't part of the char formula because it never scales with level (`01-class-skill.md` §"aggro/speed are not part of the formula"); monster `speed` doesn't scale with floor depth either (see "Scaling formula by floor depth" above), so there's no `tier1` growth rate to derive a conversion constant from the way `attack`/`defense`/`maxHp` do.
+Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skill.md`) to monster archetypes, using the same `speed` term the char formula now has — neither char nor monster `speed` scales with level/floor depth (see "Scaling formula by floor depth" above), so there's no `tier1` growth rate to derive a conversion constant from the way `attack`/`defense`/`maxHp` do; both use the same hand-picked `speedRate` instead.
 
 **Formula**:
 
