@@ -37,10 +37,10 @@ export function badInput(message: string): { error: string } {
 
 // ---------------------------------------------------------------------------
 // Balance Points — docs/gameplay-decisions/01-class-skill.md "Base stats
-// balancing formula (Balance Points)" (char), extended in
-// docs/gameplay-decisions/02-monster.md "Monster Balance Points" with a
-// speed term for monster archetypes. tier1 rates are read via growthBonus()
-// rather than hand-copied, so this never drifts from level-growth.json.
+// balancing formula (Balance Points)" (char) and docs/gameplay-decisions/
+// 02-monster.md "Monster Balance Points" (monster) share the same shape,
+// including the speed term. tier1 rates are read via growthBonus() rather
+// than hand-copied, so this never drifts from level-growth.json.
 // ---------------------------------------------------------------------------
 
 /** Hand-picked constant (not derived from any growth table — speed never scales for char or monster) — see "Monster Balance Points" in 02-monster.md. */
@@ -50,13 +50,14 @@ function balancePointsRate(stat: GrowthStat): number {
   return growthBonus(stat, 2);
 }
 
-export function characterBalancePoints(base: { attack: number; defense: number; maxHp: number; maxMp: number; magicPower: number }): number {
+export function characterBalancePoints(base: { attack: number; defense: number; maxHp: number; maxMp: number; magicPower: number; speed: number }): number {
   return (
     base.attack / balancePointsRate("attack") +
     base.defense / balancePointsRate("defense") +
     base.maxHp / balancePointsRate("maxHp") +
     base.maxMp / balancePointsRate("maxMp") +
-    base.magicPower / balancePointsRate("magicPower")
+    base.magicPower / balancePointsRate("magicPower") +
+    base.speed / BALANCE_POINTS_SPEED_RATE
   );
 }
 
@@ -171,7 +172,7 @@ export function computeCharacter(classId: string, level: number): CharacterCompu
     growthBonusUnweighted,
     growthBonusWeighted,
     final: { maxHp: stats.maxHp, maxMp: stats.maxMp, attack: stats.attack, defense: stats.defense, magicPower: stats.magicPower, aggro: cls.baseAggro, speed: cls.baseSpeed },
-    balancePoints: characterBalancePoints(base),
+    balancePoints: characterBalancePoints({ ...base, speed: cls.baseSpeed }),
     unlockedSkillIds: stats.unlockedSkillIds,
     skills: cls.skills.map((s) => {
       const unlocked = stats.unlockedSkillIds.includes(s.id);
