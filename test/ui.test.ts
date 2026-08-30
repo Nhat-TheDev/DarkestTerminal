@@ -7,6 +7,7 @@ import type { Character } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom } from "../src/engine/dungeon";
+import { ARTIFACTS } from "../src/data/artifacts";
 
 describe("headless UI smoke test", () => {
   test("boots and plays a scripted run via real keypresses across multiple floors without crashing", async () => {
@@ -101,6 +102,46 @@ describe("headless UI smoke test", () => {
 
     expect(game.state.floor.depth).toBe(2); // now it advances
   }, 20000);
+
+  test("merchant offer detail: viewing then cancelling returns to the list, viewing then buying purchases and closes the event", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
+    const game = new Game(7);
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event";
+    room.rolledEventId = "merchant";
+    room.cleared = false;
+    const artifactId = ARTIFACTS[0]!.id;
+    game.state.activeEvent = { eventId: "merchant", offerArtifactIds: [artifactId] };
+    game.state.coins = 9999;
+    const app = new App(renderer, game);
+    await renderOnce();
+
+    expect(app.debugUiState.kind).toBe("eventMerchant");
+
+    mockInput.pressKey("1"); // view the first offer's detail
+    await renderOnce();
+    let ui = app.debugUiState;
+    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    expect(ui.viewingOfferIndex).toBe(0);
+
+    mockInput.pressKey("2"); // cancel back to the offer list
+    await renderOnce();
+    ui = app.debugUiState;
+    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    expect(ui.viewingOfferIndex).toBeNull();
+    expect(game.state.coins).toBe(9999);
+    expect(game.state.activeEvent).not.toBeNull();
+
+    mockInput.pressKey("1"); // view again
+    await renderOnce();
+    mockInput.pressKey("1"); // buy
+    await renderOnce();
+
+    expect(game.state.coins).toBeLessThan(9999);
+    expect(game.state.pendingArtifactDecision?.artifactId).toBe(artifactId);
+    expect(app.debugUiState.kind).toBe("artifactDecision");
+  });
 
   test("q opens the save menu instead of quitting", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 80, height: 24 });

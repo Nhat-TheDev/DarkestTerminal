@@ -30,8 +30,7 @@ export type UiState =
   | { kind: "saveMenu"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
-  | { kind: "eventMerchant" }
-  | { kind: "eventMerchantDetail"; offerIndex: number }
+  | { kind: "eventMerchant"; viewingOfferIndex: number | null }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
   | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
@@ -70,7 +69,7 @@ export function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
     case "merchant":
-      return { kind: "eventMerchant" };
+      return { kind: "eventMerchant", viewingOfferIndex: null };
     case "choiceReveal":
       return eventId === "twin-altars" ? { kind: "eventTwinAltars" } : { kind: "eventCursedShrine" };
     case "artifactExchange":
