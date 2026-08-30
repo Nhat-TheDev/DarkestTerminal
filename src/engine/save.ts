@@ -5,8 +5,27 @@ import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
 import { migrateGameState } from "./migration";
 import { recomputeAllPartyStats } from "./party";
+import pkg from "../../package.json";
 
 const APP_DIR_NAME = "darkest-terminal";
+
+/** Save-format version, stamped on every save at write time. Tied to the app's own release version (package.json). */
+export const APP_VERSION: string = pkg.version;
+
+/** Sentinel for a save file with no `saveVersion` field (written before this versioning feature existed). */
+export const UNVERSIONED = "unversioned";
+
+/**
+ * Older save versions still safe to load with the current code. Saves whose version is neither
+ * `APP_VERSION` nor listed here are hidden from Continue (file stays on disk, untouched).
+ * Add an old version here only after confirming its save shape still loads cleanly via migrateGameState.
+ */
+export const ALLOWED_LEGACY_SAVE_VERSIONS: string[] = ["0.1.2"];
+
+export function isSaveVersionAllowed(version: string | undefined): boolean {
+  const normalized = version ?? UNVERSIONED;
+  return normalized === APP_VERSION || ALLOWED_LEGACY_SAVE_VERSIONS.includes(normalized);
+}
 
 function resolveSaveDir(): string {
   if (process.platform === "darwin") {
@@ -29,6 +48,8 @@ export interface SaveMeta {
   floorDepth: number;
   partyLevel: number;
   partyClassIds: Id[];
+  /** Absent on saves written before this versioning feature existed. */
+  saveVersion?: string;
 }
 
 export interface SaveFile {
@@ -54,6 +75,7 @@ function buildSaveFile(game: Game, id: Id): SaveFile {
       floorDepth: game.state.floor.depth,
       partyLevel: game.state.party[0]?.level ?? 1,
       partyClassIds: game.state.party.map((c) => c.classId),
+      saveVersion: APP_VERSION,
     },
     state: JSON.parse(JSON.stringify(game.state)),
     monsters: JSON.parse(JSON.stringify(game.ctx.monsters)),
@@ -87,7 +109,7 @@ export function listSaves(): SaveMeta[] {
     if (!file.endsWith(".json")) continue;
     try {
       const save = JSON.parse(readFileSync(join(SAVE_DIR, file), "utf8")) as SaveFile;
-      metas.push(save.meta);
+      if (isSaveVersionAllowed(save.meta.saveVersion)) metas.push(save.meta);
     } catch {
     }
   }
