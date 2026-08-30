@@ -30,7 +30,7 @@ export type UiState =
   | { kind: "saveMenu"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
-  | { kind: "eventMerchant" }
+  | { kind: "eventMerchant"; viewingOfferIndex: number | null }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
   | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
@@ -39,6 +39,7 @@ export type UiState =
   | { kind: "eventGamblingDen" }
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
+  | { kind: "eventGuardianFight" }
   | { kind: "gameover" };
 
 export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
@@ -69,7 +70,7 @@ export function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
     case "merchant":
-      return { kind: "eventMerchant" };
+      return { kind: "eventMerchant", viewingOfferIndex: null };
     case "choiceReveal":
       return eventId === "twin-altars" ? { kind: "eventTwinAltars" } : { kind: "eventCursedShrine" };
     case "artifactExchange":
@@ -80,6 +81,8 @@ export function eventUiState(eventId: Id): UiState {
       return { kind: "eventHpGamble", eventId: "collapsed-floor" };
     case "coinGamble":
       return { kind: "eventGamblingDen" };
+    case "combatReward":
+      return { kind: "eventGuardianFight" };
     default:
       return { kind: "room" };
   }

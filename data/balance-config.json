@@ -75,7 +75,11 @@
     "bloodAltarHpPercent": 25,
     "collapsedFloorHpPercent": 15,
     "collapsedFloorSuccessChance": 0.6,
-    "eventGuardianStatMultiplier": 1.2,
+    "eventGuardianStatMultiplier": {
+      "maxHp": 1.7,
+      "attack": 1.2,
+      "defense": 1.2
+    },
     "gamblingDenRounds": [
       {
         "stake": 20,

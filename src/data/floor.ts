@@ -104,10 +104,10 @@ export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   return Array.from({ length: count }, () => {
     const archetype = rng.pick(EVENT_GUARDIAN_ARCHETYPES).id;
     const m = spawnMonster(archetype, depth);
-    m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER);
+    m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER.maxHp);
     m.hp = m.maxHp;
-    m.attack = Math.round(m.attack * EVENT_GUARDIAN_STAT_MULTIPLIER);
-    m.defense = Math.round(m.defense * EVENT_GUARDIAN_STAT_MULTIPLIER);
+    m.attack = Math.round(m.attack * EVENT_GUARDIAN_STAT_MULTIPLIER.attack);
+    m.defense = Math.round(m.defense * EVENT_GUARDIAN_STAT_MULTIPLIER.defense);
     return m;
   });
 }

@@ -33,6 +33,7 @@ import { twinAltarsChoose } from "./events/twinAltars";
 import { sacrifice, sacrificeLeave } from "./events/sacrifice";
 import { gamblingDenEnter, gamblingDenContinue, gamblingDenStop, gamblingDenLeave } from "./events/gamblingDen";
 import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
+import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
@@ -260,6 +261,14 @@ export class Game {
 
   collapsedFloorLeave(): void {
     collapsedFloorLeave(this.state);
+  }
+
+  enterGuardianFight(): PartyActionError | null {
+    return guardianFightEnter(this.state, this.ctx);
+  }
+
+  skipGuardianFight(): PartyActionError | null {
+    return guardianFightSkip(this.state);
   }
 
   resolve(): void {

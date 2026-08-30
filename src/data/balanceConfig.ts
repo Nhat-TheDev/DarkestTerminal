@@ -58,7 +58,7 @@ interface BalanceConfig {
     bloodAltarHpPercent: number;
     collapsedFloorHpPercent: number;
     collapsedFloorSuccessChance: number;
-    eventGuardianStatMultiplier: number;
+    eventGuardianStatMultiplier: { maxHp: number; attack: number; defense: number };
     gamblingDenRounds: {
       stake: number;
       winChance: number;
