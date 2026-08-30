@@ -334,6 +334,7 @@ export class App implements ScreenContext {
       case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
+      case "eventGuardianFight":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
@@ -715,6 +716,7 @@ export class App implements ScreenContext {
       case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
+      case "eventGuardianFight":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
       default: {
@@ -761,6 +763,7 @@ export class App implements ScreenContext {
       case "eventGamblingDen":
       case "eventHermit":
       case "eventHermitPickArtifact":
+      case "eventGuardianFight":
         return eventsScreen.renderFooter(this.ui);
       case "gameover":
         return gameoverScreen.renderFooter();

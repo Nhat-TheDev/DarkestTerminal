@@ -39,6 +39,7 @@ export type UiState =
   | { kind: "eventGamblingDen" }
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
+  | { kind: "eventGuardianFight" }
   | { kind: "gameover" };
 
 export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
@@ -80,6 +81,8 @@ export function eventUiState(eventId: Id): UiState {
       return { kind: "eventHpGamble", eventId: "collapsed-floor" };
     case "coinGamble":
       return { kind: "eventGamblingDen" };
+    case "combatReward":
+      return { kind: "eventGuardianFight" };
     default:
       return { kind: "room" };
   }

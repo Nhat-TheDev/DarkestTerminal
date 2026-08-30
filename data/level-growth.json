@@ -126,13 +126,13 @@
   "eliteMultiplier": {
     "maxHp": 2.2,
     "attack": 1.4,
-    "defense": 1.1,
+    "defense": 1.2,
     "exp": 3
   },
   "bossMultiplier": {
     "maxHp": 2.7,
     "attack": 1.8,
-    "defense": 1.2,
+    "defense": 1.35,
     "exp": 6
   },
   "expRewardDepthRate": 0.1,

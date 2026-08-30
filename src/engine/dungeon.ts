@@ -5,7 +5,6 @@ import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survi
 import { getEvent, rollEvent } from "../data/events";
 import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
 import { grantArtifact, recomputeAllPartyStats } from "./party";
-import { spawnEventGuardianMonsters } from "../data/floor";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -78,10 +77,8 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
   }
 
   if (event.kind === "combatReward") {
-    const monsters = spawnEventGuardianMonsters(ctx.rng, state.floor.depth);
-    ctx.monsters.push(...monsters);
-    room.monsterIds = monsters.map((m) => m.id);
-    state.combat = startCombat(room.id, room.monsterIds, ctx, false);
+    // Deferred: player confirms via Game.enterGuardianFight()/skipGuardianFight() from the
+    // "eventGuardianFight" UI screen, instead of the fight starting immediately on room entry.
     return;
   }
 

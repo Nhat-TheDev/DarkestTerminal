@@ -6,6 +6,8 @@ import { rollEvent, EVENTS } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
 import { removeArtifactFromCharacter } from "../src/engine/party";
 import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
+import { spawnEventGuardianMonsters } from "../src/data/floor";
+import { spawnMonster } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
 import { makeCtx } from "./helpers";
 
@@ -76,16 +78,72 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(room.cleared).toBe(true);
   });
 
-  test("moveToRoom auto-resolves guardian-fight: starts combat with 1-2 scaled monsters", () => {
+  test("moveToRoom does not start combat for a guardian-fight room — it waits for the player to confirm", () => {
     const game = new Game(2);
+    game.state.combat = null;
     const target = game.connectedRoomChoices()[0]!;
     const room = getRoom(game.state.floor, target.id);
     room.type = "event";
+    room.monsterIds = [];
+    room.rolledEventId = "guardian-fight";
+    const monsterCountBefore = game.ctx.monsters.length;
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.combat).toBeNull();
+    expect(room.monsterIds.length).toBe(0);
+    expect(game.ctx.monsters.length).toBe(monsterCountBefore);
+    expect(room.cleared).toBe(false);
+  });
+
+  test("enterGuardianFight spawns 1-2 scaled monsters and starts combat; skipGuardianFight closes the room with no fight", () => {
+    const game = new Game(2);
+    game.state.combat = null;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.monsterIds = [];
     room.rolledEventId = "guardian-fight";
     moveToRoom(game.state, target.id, game.ctx);
+
+    expect(game.enterGuardianFight()).toBeNull();
     expect(game.state.combat).not.toBeNull();
     expect(room.monsterIds.length).toBeGreaterThanOrEqual(1);
     expect(room.monsterIds.length).toBeLessThanOrEqual(2);
+
+    const game2 = new Game(9);
+    game2.state.combat = null;
+    const target2 = game2.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game2.state.floor, target2.id);
+    room2.type = "event";
+    room2.monsterIds = [];
+    room2.rolledEventId = "guardian-fight";
+    moveToRoom(game2.state, target2.id, game2.ctx);
+
+    expect(game2.skipGuardianFight()).toBeNull();
+    expect(game2.state.combat).toBeNull();
+    expect(room2.cleared).toBe(true);
+    expect(room2.monsterIds.length).toBe(0);
+  });
+
+  test("enterGuardianFight/skipGuardianFight reject when there is no pending guardian fight", () => {
+    const game = new Game(2);
+    expect(game.enterGuardianFight()).not.toBeNull();
+    expect(game.skipGuardianFight()).not.toBeNull();
+  });
+
+  test("spawnEventGuardianMonsters scales maxHp/attack/defense by the guardian multiplier, not exp", () => {
+    const rng = new Rng(1);
+    const depth = 5;
+    const monsters = spawnEventGuardianMonsters(rng, depth);
+    expect(monsters.length).toBeGreaterThanOrEqual(1);
+    expect(monsters.length).toBeLessThanOrEqual(2);
+    for (const m of monsters) {
+      const base = spawnMonster(m.archetypeId, depth);
+      expect(m.maxHp).toBe(Math.round(base.maxHp * 1.7));
+      expect(m.hp).toBe(m.maxHp);
+      expect(m.attack).toBe(Math.round(base.attack * 1.2));
+      expect(m.defense).toBe(Math.round(base.defense * 1.2));
+      expect(m.expReward).toBe(base.expReward);
+    }
   });
 
   test("moveToRoom pre-rolls a fixed 4 merchant offers into activeEvent, refreshCount starts at 0", () => {

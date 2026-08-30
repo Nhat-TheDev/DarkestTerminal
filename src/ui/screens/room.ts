@@ -22,7 +22,10 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
       if (digit === null) break;
       const choices = ctx.game.connectedRoomChoices();
       const choice = choices[digit - 1];
-      if (choice) ctx.game.move(choice.id);
+      if (choice) {
+        ctx.game.move(choice.id);
+        ctx.logInfo(ctx.game.state.message);
+      }
       ctx.syncUiToGameState();
       break;
     }

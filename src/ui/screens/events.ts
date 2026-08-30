@@ -1,8 +1,10 @@
 import type { StyledText, KeyEvent } from "@opentui/core";
-import type { Character } from "../../types";
+import type { Character, GameState } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact } from "../../data/artifacts";
+import { getEvent } from "../../data/events";
+import { getRoom } from "../../engine/dungeon";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
@@ -30,10 +32,17 @@ export type EventUiState = Extract<
   | { kind: "eventGamblingDen" }
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
+  | { kind: "eventGuardianFight" }
 >;
 
 function partyHpPickerLines(party: Character[]): string[] {
   return party.map((c, i) => `  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`);
+}
+
+/** The flavor text authored for the current room's rolled event, shown as an intro line above the mechanical prompt. */
+function currentEventDescription(state: GameState): string {
+  const room = getRoom(state.floor, state.currentRoomId);
+  return room.rolledEventId ? getEvent(room.rolledEventId).description : "";
 }
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
@@ -185,6 +194,20 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       ctx.syncUiToGameState();
       break;
     }
+    case "eventGuardianFight": {
+      if (digit === 1) {
+        const err = ctx.game.enterGuardianFight();
+        if (err) ctx.reportUnusable(err.reason);
+        else ctx.logInfo(ctx.game.state.message);
+        ctx.syncUiToGameState();
+      } else if (digit === 2 || key.name === "escape") {
+        const err = ctx.game.skipGuardianFight();
+        if (err) ctx.reportUnusable(err.reason);
+        else ctx.logInfo(ctx.game.state.message);
+        ctx.syncUiToGameState();
+      }
+      break;
+    }
   }
 }
 
@@ -210,7 +233,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
         return lines.join("\n");
       }
       const refreshCount = s.activeEvent?.refreshCount ?? 0;
-      const lines = [t("ui.merchantOffers")];
+      const lines = [currentEventDescription(s), "", t("ui.merchantOffers")];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
         lines.push(t("ui.merchantOfferLineCoins", { i: i + 1, name: a.name, rarity: a.rarity, price: MERCHANT_PRICE_COINS[a.rarity], desc: truncateText(a.description, 34) }));
@@ -229,6 +252,8 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const a = artifactId ? getArtifact(artifactId) : null;
       const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
       return [
+        currentEventDescription(s),
+        "",
         a ? `${a.name} (${a.rarity})${curseTag} — ${a.description}` : "...",
         "",
         t("ui.acceptOption"),
@@ -238,7 +263,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
 
     case "eventTwinAltars": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
-      const lines = [t("ui.twinAltarsIntro")];
+      const lines = [currentEventDescription(s), "", t("ui.twinAltarsIntro")];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
         lines.push(`  [${i + 1}] ${a.name} (${a.rarity}) — ${truncateText(a.description, 40)}`);
@@ -249,7 +274,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventHpGamble": {
       const percent = ui.eventId === "blood-altar" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
       const resultLine = ui.eventId === "blood-altar" ? t("ui.bloodAltarResult") : t("ui.collapsedFloorResult");
-      return [t("ui.payToTry", { percent }), resultLine, "", t("ui.payOption"), t("ui.leaveOption")].join("\n");
+      return [currentEventDescription(s), "", t("ui.payToTry", { percent }), resultLine, "", t("ui.payOption"), t("ui.leaveOption")].join("\n");
     }
 
     case "eventHpGamblePickPayer": {
@@ -260,7 +285,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventArtifactPick": {
       const candidates = ownedArtifactEntries(s.party);
       const { pageItems, page: p, pages } = paginate(candidates, page, SACRIFICE_PAGE_SIZE);
-      const lines = [t("ui.chooseSacrifice")];
+      const lines = [currentEventDescription(s), "", t("ui.chooseSacrifice")];
       pageItems.forEach(({ artifactId }, i) => {
         const a = getArtifact(artifactId);
         lines.push(`  [${i + 1}] ${a.name} (${a.rarity})`);
@@ -275,7 +300,14 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const gamble = s.activeEvent?.gambleState;
       if (!gamble) {
         const round1 = GAMBLING_DEN_ROUNDS[0]!;
-        return [t("ui.gamblingDenEntryPrompt", { stake: round1.stake, chance: Math.round(round1.winChance * 100) }), "", t("ui.gamblingDenEnterOption", { stake: round1.stake }), t("ui.gamblingDenLeaveOption")].join("\n");
+        return [
+          currentEventDescription(s),
+          "",
+          t("ui.gamblingDenEntryPrompt", { stake: round1.stake, chance: Math.round(round1.winChance * 100) }),
+          "",
+          t("ui.gamblingDenEnterOption", { stake: round1.stake }),
+          t("ui.gamblingDenLeaveOption"),
+        ].join("\n");
       }
       const nextRound = GAMBLING_DEN_ROUNDS[gamble.round]!;
       return [
@@ -289,6 +321,8 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventHermit": {
       const hasAny = ownedArtifactEntries(s.party).length > 0;
       return [
+        currentEventDescription(s),
+        "",
         t("ui.hermitExchangeOnlyIntro"),
         t("ui.hermitExchangeOption", { cost: HERMIT_EXCHANGE_COST_COINS, suffix: hasAny ? "" : t("ui.hermitNoArtifactSuffix") }),
         t("ui.hermitLeaveOption"),
@@ -301,6 +335,18 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       pageItems.forEach(({ artifactId }, i) => lines.push(`  [${i + 1}] ${getArtifact(artifactId).name} (${getArtifact(artifactId).rarity})`));
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
+    }
+
+    case "eventGuardianFight": {
+      const room = getRoom(s.floor, s.currentRoomId);
+      return [
+        t("ui.guardianFightIntro", { room: room.name }),
+        "",
+        currentEventDescription(s),
+        "",
+        t("ui.guardianFightEnterOption"),
+        t("ui.guardianFightSkipOption"),
+      ].join("\n");
     }
   }
 }
@@ -317,6 +363,7 @@ export function renderFooter(ui: EventUiState): string {
     case "eventHpGamble":
     case "eventGamblingDen":
     case "eventHermit":
+    case "eventGuardianFight":
       return t("ui.footerChoose");
     case "eventHermitPickArtifact":
       return t("ui.footerChooseArtifact");

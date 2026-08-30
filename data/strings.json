@@ -64,6 +64,7 @@
   "dungeon.ambush": "Ambushed at {{room}}!",
   "dungeon.restEnter": "The party stops at {{room}} and gathers around the campfire.",
   "dungeon.arrived": "Arrived at {{room}}.",
+  "dungeon.skippedGuardianFight": "You leave {{room}} without a fight.",
 
   "combat.started": "Battle begins in room {{roomId}}.",
   "combat.artifactAutoDamage": "{{character}}'s artifact deals {{amount}} damage to {{target}}.",
@@ -207,6 +208,9 @@
   "ui.noSuitableArtifacts": "  (No suitable artifacts left.)",
   "ui.hermitNoArtifactSuffix": " (no artifacts)",
   "ui.hermitLeaveOption": "  [2] Leave",
+  "ui.guardianFightIntro": "You've entered {{room}}.",
+  "ui.guardianFightEnterOption": "  [1] Enter and fight",
+  "ui.guardianFightSkipOption": "  [2] Leave without fighting",
   "ui.gamblingDenEntryPrompt": "Play round 1 for {{stake}} coins ({{chance}}% to win)?",
   "ui.gamblingDenEnterOption": "  [1] Play — {{stake}} coins",
   "ui.gamblingDenLeaveOption": "  [2] Leave",
