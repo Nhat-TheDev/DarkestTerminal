@@ -66,7 +66,14 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
 function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
   if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
   const event = getEvent(room.rolledEventId);
-  state.message = event.description;
+
+  const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
+  const returnText =
+    typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
+  state.message = alreadyMet && returnText ? returnText : event.description;
+  // `metNarrativeNpcIds` is marked in `closeEvent()` (shared.ts) instead of here, once the visit
+  // fully ends — not on room entry — so `alreadyMet` stays accurate across every re-render of the
+  // player's 1st ever visit to a personified event, not just at the moment they walk in.
 
   if (event.kind === "instantReward") {
     const artifactId = rollArtifact("treasureOrEvent", ctx.rng);

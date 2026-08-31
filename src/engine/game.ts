@@ -70,6 +70,7 @@ export class Game {
       secondJackpotArtifactId: null,
       activeEvent: null,
       lastRoomDrops: null,
+      metNarrativeNpcIds: [],
     };
     this.checkEntryRoomAmbush();
   }

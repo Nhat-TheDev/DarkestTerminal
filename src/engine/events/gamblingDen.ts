@@ -20,6 +20,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
   const won = ctx.rng.chance(cfg.winChance);
   if (!won) {
     state.message = t("game.gamblingDenLost");
+    state.lastGamblingDenOutcome = "lost";
     if (state.activeEvent) state.activeEvent.gambleState = undefined;
     closeEvent(state);
     return;
@@ -27,6 +28,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
   const isFinalRound = roundIndex === ROUNDS.length - 1;
   if (isFinalRound) {
     state.message = t("game.gamblingDenJackpot");
+    state.lastGamblingDenOutcome = "won";
     if (state.activeEvent) state.activeEvent.gambleState = undefined;
     const rarity = cfg.jackpotRarity ?? "epic";
     const [first, second] = [pickArtifactOfRarity(rarity, ctx.rng), pickArtifactOfRarity(rarity, ctx.rng)];
@@ -68,6 +70,7 @@ export function gamblingDenStop(state: GameState): PartyActionError | null {
   if (!gamble) return { reason: t("errors.noActiveChoice") };
   state.coins += gamble.pot;
   state.message = t("game.gamblingDenBanked", { pot: gamble.pot });
+  state.lastGamblingDenOutcome = "won";
   active.gambleState = undefined;
   closeEvent(state);
   return null;
@@ -75,5 +78,6 @@ export function gamblingDenStop(state: GameState): PartyActionError | null {
 
 export function gamblingDenLeave(state: GameState): void {
   state.message = t("game.leftNoBet");
+  state.lastGamblingDenOutcome = "declined";
   closeEvent(state);
 }

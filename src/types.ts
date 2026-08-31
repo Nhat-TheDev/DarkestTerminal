@@ -184,6 +184,10 @@ export interface EventDefinition {
   kind: EventKind;
   tier: EventTier;
   forceEquip?: boolean;
+  /** Shown instead of `description` from the 2nd encounter onward (10-event-narrative.md §10.2).
+      Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
+      outcome of the player's last visit, so it uses the object form instead of a plain string. */
+  returnDescription?: string | Record<"won" | "lost" | "declined", string>;
 }
 
 export interface ActiveStatusEffect {
@@ -318,4 +322,11 @@ export interface GameState {
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;
+  /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
+      drives the "return" flavor text in 10-event-narrative.md §10.2. */
+  metNarrativeNpcIds: Id[];
+  /** Outcome of the player's most recent Gambling Den visit — undefined until the 1st visit closes.
+      Drives which `returnDescription` variant gambling-den shows on the next visit. "declined"
+      covers leaving before any round was played. */
+  lastGamblingDenOutcome?: "won" | "lost" | "declined";
 }

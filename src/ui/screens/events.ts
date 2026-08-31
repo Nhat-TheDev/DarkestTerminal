@@ -42,7 +42,12 @@ function partyHpPickerLines(party: Character[]): string[] {
 /** The flavor text authored for the current room's rolled event, shown as an intro line above the mechanical prompt. */
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
-  return room.rolledEventId ? getEvent(room.rolledEventId).description : "";
+  if (!room.rolledEventId) return "";
+  const event = getEvent(room.rolledEventId);
+  const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
+  const returnText =
+    typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
+  return alreadyMet && returnText ? returnText : event.description;
 }
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {

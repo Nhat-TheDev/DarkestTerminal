@@ -2,6 +2,7 @@ import type { Character, GameState, Id } from "../../types";
 import type { PartyActionError } from "../party";
 import { t } from "../../data/strings";
 import { getRoom } from "../dungeon";
+import { getEvent } from "../../data/events";
 
 export function payHpPercent(character: Character, percent: number): number | null {
   const cost = Math.floor((character.maxHp * percent) / 100);
@@ -11,8 +12,19 @@ export function payHpPercent(character: Character, percent: number): number | nu
 }
 
 export function closeEvent(state: GameState): void {
-  getRoom(state.floor, state.currentRoomId).cleared = true;
+  const room = getRoom(state.floor, state.currentRoomId);
+  room.cleared = true;
   state.activeEvent = null;
+  // Mark personified events (10-event-narrative.md §10.2) as met only once the visit fully closes,
+  // not on room entry — currentEventDescription() re-derives the same alreadyMet check on every
+  // re-render within a visit, so marking it "met" any earlier would flip the header to the "return"
+  // text mid-way through the player's 1st ever visit.
+  if (room.rolledEventId) {
+    const event = getEvent(room.rolledEventId);
+    if (event.returnDescription && !state.metNarrativeNpcIds.includes(event.id)) {
+      state.metNarrativeNpcIds.push(event.id);
+    }
+  }
 }
 
 export function findPartyMemberOrError(state: GameState, characterId: Id): Character | PartyActionError {

@@ -17,6 +17,7 @@
     "id": "merchant",
     "name": "Merchant Encounter",
     "description": "A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
+    "returnDescription": "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before.",
     "kind": "merchant",
     "tier": "common"
   },
@@ -60,6 +61,11 @@
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
     "description": "A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'",
+    "returnDescription": {
+      "won": "The stranger deals a fresh hand without looking up. \"Didn't expect a winner to come back for more.\"",
+      "lost": "The stranger deals a fresh hand without looking up. \"Back for more? I like watching the same face lose twice.\"",
+      "declined": "The stranger deals a fresh hand without looking up. \"Changed your mind, or just scared?\""
+    },
     "kind": "coinGamble",
     "tier": "rare"
   },
@@ -67,6 +73,7 @@
     "id": "wandering-hermit",
     "name": "Wandering Hermit",
     "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'",
+    "returnDescription": "The old man's eyes are already open, like he knew you'd be back. 'Trade again? I don't forget a fair deal.'",
     "kind": "artifactExchange",
     "tier": "rare"
   },

@@ -374,3 +374,103 @@ describe("events", () => {
     expect(c.aggro).toBe(baseAggro);
   });
 });
+
+describe("recurring narrative NPCs (docs/gameplay-decisions/10-event-narrative.md §10.2)", () => {
+  test("resolveEventEntry shows the original description on the 1st visit; metNarrativeNpcIds is only marked once the event closes, not on room entry", () => {
+    const game = new Game(20);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "merchant";
+    moveToRoom(game.state, target.id, game.ctx);
+    const merchantEvent = EVENTS.find((e) => e.id === "merchant")!;
+    expect(game.state.message).toBe(merchantEvent.description);
+    expect(game.state.metNarrativeNpcIds).not.toContain("merchant"); // still the 1st visit
+    game.merchantLeave();
+    expect(game.state.metNarrativeNpcIds).toContain("merchant"); // marked only once the visit closes
+  });
+
+  test("resolveEventEntry shows returnDescription once the event id is already in metNarrativeNpcIds", () => {
+    const game = new Game(21);
+    game.state.metNarrativeNpcIds = ["wandering-hermit"];
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "wandering-hermit";
+    moveToRoom(game.state, target.id, game.ctx);
+    const hermitReturnDescription = EVENTS.find((e) => e.id === "wandering-hermit")!.returnDescription;
+    expect(typeof hermitReturnDescription).toBe("string");
+    expect(game.state.message).toBe(hermitReturnDescription as string);
+  });
+
+  test("resolveEventEntry leaves events without a returnDescription unaffected by metNarrativeNpcIds (e.g. cursed-shrine)", () => {
+    const game = new Game(22);
+    game.state.metNarrativeNpcIds = ["cursed-shrine"];
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "cursed-shrine";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "cursed-shrine")!.description);
+  });
+
+  test("gambling den closing paths set lastGamblingDenOutcome to lost/won/declined", () => {
+    let sawLoss = false;
+    let sawBankedWin = false;
+    for (let seed = 1; seed < 100 && !(sawLoss && sawBankedWin); seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      if (game.state.activeEvent?.gambleState) {
+        game.gamblingDenStop();
+        expect(game.state.lastGamblingDenOutcome).toBe("won");
+        sawBankedWin = true;
+      } else {
+        expect(game.state.lastGamblingDenOutcome).toBe("lost");
+        sawLoss = true;
+      }
+    }
+    expect(sawLoss).toBe(true);
+    expect(sawBankedWin).toBe(true);
+
+    let jackpotHit = false;
+    for (let seed = 1; seed < 400 && !jackpotHit; seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      for (let round = 1; round <= 3 && game.state.activeEvent?.gambleState; round++) game.gamblingDenContinue();
+      if (game.state.pendingArtifactDecision && !game.state.activeEvent?.gambleState) {
+        expect(game.state.lastGamblingDenOutcome).toBe("won");
+        jackpotHit = true;
+      }
+    }
+    expect(jackpotHit).toBe(true);
+
+    const declinedGame = new Game(50);
+    forceEventRoom(declinedGame, "gambling-den");
+    declinedGame.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+    declinedGame.gamblingDenLeave();
+    expect(declinedGame.state.lastGamblingDenOutcome).toBe("declined");
+  });
+
+  test("resolveEventEntry picks gambling-den's returnDescription branch off lastGamblingDenOutcome", () => {
+    const gamblingEvent = EVENTS.find((e) => e.id === "gambling-den")!;
+    const returnVariants = gamblingEvent.returnDescription as Record<"won" | "lost" | "declined", string>;
+
+    for (const outcome of ["won", "lost", "declined"] as const) {
+      const game = new Game(23);
+      game.state.metNarrativeNpcIds = ["gambling-den"];
+      game.state.lastGamblingDenOutcome = outcome;
+      const target = game.connectedRoomChoices()[0]!;
+      const room = getRoom(game.state.floor, target.id);
+      room.type = "event";
+      room.rolledEventId = "gambling-den";
+      moveToRoom(game.state, target.id, game.ctx);
+      expect(game.state.message).toBe(returnVariants[outcome]);
+    }
+  });
+});

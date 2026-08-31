@@ -11,6 +11,7 @@ export function migrateGameState(raw: unknown): GameState {
   if (typeof state.satiety !== "number") state.satiety = BALANCE.survival.initialSatiety;
   if (state.pendingArtifactDecision === undefined) state.pendingArtifactDecision = null;
   if (state.secondJackpotArtifactId === undefined) state.secondJackpotArtifactId = null;
+  if (!Array.isArray(state.metNarrativeNpcIds)) state.metNarrativeNpcIds = [];
 
   // Old saves kept a shared pool of unequipped artifacts; auto-equip each one to the first
   // character with an open slot, or drop it if the party is already full.

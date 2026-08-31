@@ -68,6 +68,13 @@ describe("save-file migration", () => {
     expect(migrated.secondJackpotArtifactId).toBeNull();
   });
 
+  test("migrateGameState defaults metNarrativeNpcIds to [] on a pre-§10.2 save, leaves lastGamblingDenOutcome undefined", () => {
+    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const migrated = migrateGameState(legacy);
+    expect(migrated.metNarrativeNpcIds).toEqual([]);
+    expect(migrated.lastGamblingDenOutcome).toBeUndefined();
+  });
+
   test("migrateGameState auto-equips a legacy artifact pool onto characters with room", () => {
     const game = new Game(4);
     const legacyRaw = {
