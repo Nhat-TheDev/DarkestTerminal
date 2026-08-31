@@ -98,6 +98,7 @@ export class Game {
     this.postMoveCheck();
   }
 
+  // Sole place gameOver becomes "defeat" — App reacts here to invalidate this run's saves (permadeath).
   private postMoveCheck(): void {
     if (this.state.party.every((c) => !c.isAlive)) {
       this.state.gameOver = "defeat";

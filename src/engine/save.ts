@@ -5,8 +5,8 @@ import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
 import { migrateGameState } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
-import { getClass } from "../data/classes";
-import { getArtifact } from "../data/artifacts";
+import { CLASSES } from "../data/classes";
+import { ARTIFACTS } from "../data/artifacts";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import pkg from "../../package.json";
@@ -24,7 +24,7 @@ export const UNVERSIONED = "unversioned";
  * `APP_VERSION` nor listed here are hidden from Continue (file stays on disk, untouched).
  * Add an old version here only after confirming its save shape still loads cleanly via migrateGameState.
  */
-export const ALLOWED_LEGACY_SAVE_VERSIONS: string[] = ["0.1.2"];
+export const ALLOWED_LEGACY_SAVE_VERSIONS: string[] = [];
 
 export function isSaveVersionAllowed(version: string | undefined): boolean {
   const normalized = version ?? UNVERSIONED;
@@ -110,48 +110,56 @@ export function autoSave(game: Game): SaveMeta {
   return writeSave(game, AUTOSAVE_ID);
 }
 
-/** Deletes every save (quicksave/autosave/manual) belonging to the given run. Used to invalidate them on permadeath. */
-export function deleteSavesForRun(runId: string): void {
+/** Skips unreadable/invalid files silently. */
+function forEachSaveFile(fn: (path: string, save: SaveFile) => void): void {
   if (!existsSync(SAVE_DIR)) return;
   for (const file of readdirSync(SAVE_DIR)) {
     if (!file.endsWith(".json")) continue;
     const path = join(SAVE_DIR, file);
+    let save: SaveFile;
     try {
-      const save = JSON.parse(readFileSync(path, "utf8")) as SaveFile;
-      if (save.meta.runId === runId) unlinkSync(path);
+      save = JSON.parse(readFileSync(path, "utf8")) as SaveFile;
     } catch {
+      continue;
     }
+    fn(path, save);
   }
 }
 
-/**
- * Structural/range sanity check on a loaded GameState, independent of saveVersion. Catches both
- * corrupted files and hand-edited saves with nonsensical values (e.g. negative coins, HP above max).
- * Deliberately does NOT check that inventory item ids still exist in the catalog — migrateGameState
- * already strips unknown item ids on load, so flagging that here would hide old-but-valid saves
- * that migration would have fixed cleanly.
- */
+/** Invalidates every save (quicksave/autosave/manual) of a run — called on permadeath. */
+export function deleteSavesForRun(runId: string): void {
+  forEachSaveFile((path, save) => {
+    if (save.meta.runId !== runId) return;
+    try {
+      unlinkSync(path);
+    } catch (err) {
+      console.error(`Failed to delete save file ${path}:`, err);
+    }
+  });
+}
+
+function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
+  return catalog.some((entry) => entry.id === id);
+}
+
+// Skips inventory item-id existence on purpose — migrateGameState already prunes unknown ids on
+// load, so checking here would hide old-but-valid saves that migration would fix cleanly.
 export function isSaveStateValid(state: GameState): boolean {
   if (state.party.length !== BALANCE.party.size) return false;
   for (const c of state.party) {
-    try {
-      getClass(c.classId);
-    } catch {
-      return false;
-    }
+    if (!existsInCatalog(CLASSES, c.classId)) return false;
     if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_LEVEL) return false;
     if (!Number.isFinite(c.hp) || c.hp < 0 || c.hp > c.maxHp) return false;
     if (!Number.isFinite(c.maxHp) || c.maxHp <= 0) return false;
     if (!Number.isFinite(c.mp) || c.mp < 0 || c.mp > c.maxMp) return false;
     if (!Number.isFinite(c.maxMp) || c.maxMp < 0) return false;
-    if (c.attack < 0 || c.defense < 0 || c.magicPower < 0 || c.aggro < 0 || c.speed < 0) return false;
+    // Debuffs (e.g. Webbed: -20 speed) can legitimately push these negative — only non-finite is invalid.
+    if (!Number.isFinite(c.attack) || !Number.isFinite(c.defense) || !Number.isFinite(c.magicPower) || !Number.isFinite(c.aggro) || !Number.isFinite(c.speed)) {
+      return false;
+    }
     if (c.equippedArtifactIds.length > MAX_EQUIPPED_ARTIFACTS) return false;
     for (const artifactId of c.equippedArtifactIds) {
-      try {
-        getArtifact(artifactId);
-      } catch {
-        return false;
-      }
+      if (!existsInCatalog(ARTIFACTS, artifactId)) return false;
     }
   }
   if (state.gameOver !== "victory" && state.gameOver !== "defeat" && state.gameOver !== null) return false;
@@ -161,20 +169,20 @@ export function isSaveStateValid(state: GameState): boolean {
   for (const count of Object.values(state.inventory)) {
     if (!Number.isInteger(count) || count < 0) return false;
   }
+  if (state.combat !== null) {
+    const combat = state.combat;
+    if (combat.phase !== "command" && combat.phase !== "resolution" && combat.phase !== "over") return false;
+    if (!Number.isInteger(combat.roundNumber) || combat.roundNumber < 1) return false;
+    if (!Number.isInteger(combat.activeTurnIndex) || combat.activeTurnIndex < 0) return false;
+  }
   return true;
 }
 
 export function listSaves(): SaveMeta[] {
-  if (!existsSync(SAVE_DIR)) return [];
   const metas: SaveMeta[] = [];
-  for (const file of readdirSync(SAVE_DIR)) {
-    if (!file.endsWith(".json")) continue;
-    try {
-      const save = JSON.parse(readFileSync(join(SAVE_DIR, file), "utf8")) as SaveFile;
-      if (isSaveVersionAllowed(save.meta.saveVersion) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
-    } catch {
-    }
-  }
+  forEachSaveFile((_path, save) => {
+    if (isSaveVersionAllowed(save.meta.saveVersion) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
+  });
   return metas.sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -182,9 +190,20 @@ export function loadSave(id: Id): SaveFile {
   return JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
 }
 
-export function gameFromSave(save: SaveFile, seed = Date.now()): Game {
+// `id` lets a pre-runId save get its freshly-migrated runId written back to itself, so
+// deleteSavesForRun can later find it. Re-validates rather than trusting the caller pre-filtered.
+export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
+  if (!isSaveVersionAllowed(save.meta.saveVersion)) throw new Error(`Save version not allowed: ${save.meta.saveVersion ?? UNVERSIONED}`);
+  const hadRunId = typeof save.state.runId === "string";
   const state = migrateGameState(save.state);
+  if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
   const game = new Game(seed, undefined, { state, monsters: save.monsters, rngState: save.rngState });
   recomputeAllPartyStats(game.state);
+  if (!hadRunId) {
+    try {
+      writeSave(game, id);
+    } catch {
+    }
+  }
   return game;
 }
