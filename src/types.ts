@@ -200,6 +200,14 @@ export interface EventDefinition {
       (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Only sacrificial-circle
       (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`) set this. */
   chainEscalatedDescription?: string;
+  /** Post-event reflection content (10-event-narrative.md §10.5) — set on the 9 in-scope events
+      (all but open-chest and collapsed-floor). `escalatedPrompt` is only set on the 4 events §10.3
+      can escalate (guardian-fight, desecrated-altar, sacrificial-circle, blood-altar). */
+  reflection?: {
+    prompt: string;
+    escalatedPrompt?: string;
+    options: { curious: string; wary: string; dismissive: string };
+  };
 }
 
 export interface ActiveStatusEffect {
@@ -352,4 +360,10 @@ export interface GameState {
     artifactsSacrificed: number;
     altarPaymentsCount: number;
   };
+  /** A post-event reflection is waiting to be shown (10-event-narrative.md §10.5) — set by
+      `maybeTriggerReflection()`, cleared by `Game.pickReflectionStance()`. */
+  pendingReflection?: { eventId: Id } | null;
+  /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
+      re-trigger, not a history log. Purely flavor today. */
+  eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
 }

@@ -69,6 +69,9 @@ interface BalanceConfig {
         collapsedFloorAttempt) needed to escalate every subsequent blood-altar room. Permanent once
         crossed, no reset. */
     bloodDebtThreshold: number;
+    /** §10.5 — chance a post-event reflection shows again after the 1st (always 100%) encounter
+        with a given event id. */
+    reflectionRepeatChance: number;
     gamblingDenRounds: {
       stake: number;
       winChance: number;

@@ -9,6 +9,7 @@ import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
 import { spawnEventGuardianMonsters } from "../src/data/floor";
 import { spawnMonster } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
+import { maybeTriggerReflection, pickReflectionPrompt } from "../src/engine/events/shared";
 import { makeCtx } from "./helpers";
 
 function forceEventRoom(game: Game, eventId: string) {
@@ -630,5 +631,98 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       }
     }
     expect(sawFailure).toBe(true);
+  });
+});
+
+describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event-narrative.md)", () => {
+  test("maybeTriggerReflection is a no-op until the room is actually cleared", () => {
+    const game = new Game(60);
+    forceEventRoom(game, "wandering-hermit"); // forceEventRoom leaves cleared: false
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toBeFalsy();
+  });
+
+  test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
+    const game = new Game(61);
+    forceEventRoom(game, "wandering-hermit");
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+
+    let sawTriggered = false;
+    let sawSkipped = false;
+    for (let seed = 1; seed < 200 && !(sawTriggered && sawSkipped); seed++) {
+      const g = new Game(seed);
+      g.state.eventReflectionStances["wandering-hermit"] = "curious"; // already reflected once before
+      forceEventRoom(g, "wandering-hermit");
+      getRoom(g.state.floor, g.state.currentRoomId).cleared = true;
+      maybeTriggerReflection(g.state, g.ctx);
+      if (g.state.pendingReflection) sawTriggered = true;
+      else sawSkipped = true;
+    }
+    expect(sawTriggered).toBe(true);
+    expect(sawSkipped).toBe(true);
+  });
+
+  test("open-chest and collapsed-floor never trigger a reflection — deliberately out of scope", () => {
+    for (const eventId of ["open-chest", "collapsed-floor"]) {
+      const game = new Game(62);
+      forceEventRoom(game, eventId);
+      getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+      maybeTriggerReflection(game.state, game.ctx);
+      expect(game.state.pendingReflection).toBeFalsy();
+    }
+  });
+
+  test("pickReflectionPrompt returns the escalated prompt once the matching §10.3 chain has fired", () => {
+    const game = new Game(63);
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced");
+
+    const event = EVENTS.find((e) => e.id === "guardian-fight")!;
+    const prompt = pickReflectionPrompt(game.state, room, event);
+    expect(prompt).toBe(event.reflection!.escalatedPrompt);
+    expect(prompt).not.toBe(event.reflection!.prompt);
+  });
+
+  test("pickReflectionStance records the chosen stance and clears pendingReflection", () => {
+    const game = new Game(64);
+    forceEventRoom(game, "merchant");
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toEqual({ eventId: "merchant" });
+
+    game.pickReflectionStance("wary");
+    expect(game.state.pendingReflection).toBeNull();
+    expect(game.state.eventReflectionStances["merchant"]).toBe("wary");
+  });
+
+  test("closing a personified event's visit (hermitLeave) triggers a reflection end-to-end", () => {
+    const game = new Game(65);
+    forceEventRoom(game, "wandering-hermit");
+    game.hermitLeave();
+    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+  });
+
+  test("an action that doesn't close the event (gamblingDenContinue mid-round) never triggers a reflection", () => {
+    let seed = 1;
+    let sawContinue = false;
+    for (; seed < 100 && !sawContinue; seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      if (game.state.activeEvent?.gambleState) {
+        sawContinue = true;
+        expect(game.state.pendingReflection).toBeFalsy(); // pot doubled, visit still open
+      }
+    }
+    expect(sawContinue).toBe(true);
   });
 });

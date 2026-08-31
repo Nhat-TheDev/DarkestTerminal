@@ -5,6 +5,7 @@ import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCEN
 import { getArtifact } from "../../data/artifacts";
 import { getEvent } from "../../data/events";
 import { getRoom, pickEventText } from "../../engine/dungeon";
+import { pickReflectionPrompt } from "../../engine/events/shared";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
@@ -33,6 +34,7 @@ export type EventUiState = Extract<
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
   | { kind: "eventGuardianFight" }
+  | { kind: "eventReflection" }
 >;
 
 function partyHpPickerLines(party: Character[]): string[] {
@@ -209,6 +211,15 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
+    case "eventReflection": {
+      const stances = ["curious", "wary", "dismissive"] as const;
+      const stance = digit !== null ? stances[digit - 1] : undefined;
+      if (stance) {
+        ctx.game.pickReflectionStance(stance);
+        ctx.syncUiToGameState();
+      }
+      break;
+    }
   }
 }
 
@@ -346,6 +357,17 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       if (room.chainVariant !== "forced") lines.push(t("ui.guardianFightSkipOption"));
       return lines.join("\n");
     }
+
+    case "eventReflection": {
+      const pending = s.pendingReflection;
+      if (!pending) return "";
+      const event = getEvent(pending.eventId);
+      if (!event.reflection) return "";
+      const room = getRoom(s.floor, s.currentRoomId);
+      const prompt = pickReflectionPrompt(s, room, event) ?? "";
+      const { curious, wary, dismissive } = event.reflection.options;
+      return [prompt, "", `  [1] ${curious}`, `  [2] ${wary}`, `  [3] ${dismissive}`].join("\n");
+    }
   }
 }
 
@@ -362,6 +384,7 @@ export function renderFooter(ui: EventUiState): string {
     case "eventGamblingDen":
     case "eventHermit":
     case "eventGuardianFight":
+    case "eventReflection":
       return t("ui.footerChoose");
     case "eventHermitPickArtifact":
       return t("ui.footerChooseArtifact");

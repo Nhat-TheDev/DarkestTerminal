@@ -40,6 +40,7 @@ export type UiState =
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
   | { kind: "eventGuardianFight" }
+  | { kind: "eventReflection" }
   | { kind: "gameover" };
 
 export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {

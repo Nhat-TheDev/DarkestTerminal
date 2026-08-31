@@ -12,6 +12,11 @@
     "description": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and it just caught your scent.",
     "chainBuildupDescription": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and this time it doesn't look away.",
     "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
+    "reflection": {
+      "prompt": "The guardian's ashes still carry a trace of incense, not decay. Something tended this room, once.",
+      "escalatedPrompt": "You didn't decide to fight this one. It decided you'd stalled long enough.",
+      "options": { "curious": "Worth remembering — someone built this on purpose.", "wary": "Better not to think about who.", "dismissive": "Just a monster. Move on." }
+    },
     "kind": "combatReward",
     "tier": "common"
   },
@@ -20,6 +25,10 @@
     "name": "Merchant Encounter",
     "description": "A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
     "returnDescription": "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before.",
+    "reflection": {
+      "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
+      "options": { "curious": "You find yourself wondering what's under there.", "wary": "You don't ask. Some things are better left covered.", "dismissive": "Not your business. You got what you came for." }
+    },
     "kind": "merchant",
     "tier": "common"
   },
@@ -29,6 +38,11 @@
     "description": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath.",
     "chainBuildupDescription": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath, and it's been stirring since you walked past the last one.",
     "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
+    "reflection": {
+      "prompt": "The glow hasn't fully died down, even now. It's like the stone remembers being touched.",
+      "escalatedPrompt": "This time you just ran out of room to keep avoiding it.",
+      "options": { "curious": "Worth coming back for, once you know what you're looking for.", "wary": "Whatever's under there, you'd rather it stayed asleep.", "dismissive": "The glow's already fading. You've still got a floor left to clear." }
+    },
     "kind": "combatReward",
     "tier": "common"
   },
@@ -37,6 +51,11 @@
     "name": "Trade HP for an Artifact",
     "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid. It demands a price paid in blood, nothing more, nothing less.",
     "chainEscalatedDescription": "The stone recognizes the taste. It doesn't need to ask this time — it already knows you'll pay.",
+    "reflection": {
+      "prompt": "The wound closes faster than it should. The stone took exactly what it asked for, no more.",
+      "escalatedPrompt": "The stone barely had to ask this time. That's the part that stays with you.",
+      "options": { "curious": "That's precise, for a slab of rock — someone built it that way on purpose.", "wary": "Next time it might ask for more than skin.", "dismissive": "A fair price. You've paid worse for less." }
+    },
     "kind": "hpGamble",
     "tier": "rare"
   },
@@ -44,6 +63,10 @@
     "id": "cursed-shrine",
     "name": "Cursed Shrine",
     "description": "A statue with 3 eyes. One of them is open.",
+    "reflection": {
+      "prompt": "The open eye hasn't blinked once. You'd swear it's still watching, even from here.",
+      "options": { "curious": "Three eyes, one open — you find yourself counting the shut ones on your way out.", "wary": "One open eye is already 1 too many for your taste.", "dismissive": "It's carved stone. Nothing's actually watching you." }
+    },
     "kind": "choiceReveal",
     "tier": "rare"
   },
@@ -51,6 +74,10 @@
     "id": "twin-altars",
     "name": "Twin Altars",
     "description": "Two stone pedestals facing each other. Choose 1 — the other shatters the instant you touch its twin.",
+    "reflection": {
+      "prompt": "The shattered pedestal's dust hasn't settled. You didn't choose it, but it still feels like you broke something.",
+      "options": { "curious": "What was on that one, you'll never know now.", "wary": "Some choices aren't worth revisiting.", "dismissive": "Rigged either way — not like you had a real choice." }
+    },
     "kind": "choiceReveal",
     "tier": "rare",
     "forceEquip": true
@@ -60,6 +87,11 @@
     "name": "Ritual Circle",
     "description": "Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted.",
     "chainEscalatedDescription": "The circle recognizes your hand before you kneel. It doesn't ask anymore.",
+    "reflection": {
+      "prompt": "The circle goes quiet again, the pattern in the blood no less deliberate than before. It didn't thank you. It didn't have to.",
+      "escalatedPrompt": "You knelt before you'd even finished deciding to.",
+      "options": { "curious": "That pattern wasn't drawn by accident, and you'd like to know by what.", "wary": "Not a place you'd want to visit more than you have to.", "dismissive": "A fair trade, and a better artifact for it. That's all it needs to be." }
+    },
     "kind": "artifactExchange",
     "tier": "rare"
   },
@@ -72,6 +104,10 @@
       "lost": "The stranger deals a fresh hand without looking up. \"Back for more? I like watching the same face lose twice.\"",
       "declined": "The stranger deals a fresh hand without looking up. \"Changed your mind, or just scared?\""
     },
+    "reflection": {
+      "prompt": "The stranger's already shuffling for the next mark before you've finished walking away.",
+      "options": { "curious": "You'd bet he's been doing this longer than the dungeon's been here.", "wary": "Not worth sticking around to find out what a 2nd losing streak costs you.", "dismissive": "A hustler's a hustler — nothing more mysterious than that." }
+    },
     "kind": "coinGamble",
     "tier": "rare"
   },
@@ -80,6 +116,10 @@
     "name": "Wandering Hermit",
     "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'",
     "returnDescription": "The old man's eyes are already open, like he knew you'd be back. 'Trade again? I don't forget a fair deal.'",
+    "reflection": {
+      "prompt": "His eyes never opened again after the trade closed. You're not sure he needed them to.",
+      "options": { "curious": "Whoever he used to be, before this — he's not telling, and you find yourself wanting to know.", "wary": "Some pasts are better left buried, not traded for.", "dismissive": "Strange old man, but he held up his end of it." }
+    },
     "kind": "artifactExchange",
     "tier": "rare"
   },

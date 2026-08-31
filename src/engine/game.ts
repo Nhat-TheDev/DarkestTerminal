@@ -35,6 +35,7 @@ import { gamblingDenEnter, gamblingDenContinue, gamblingDenStop, gamblingDenLeav
 import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
+import { maybeTriggerReflection } from "./events/shared";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
@@ -72,6 +73,8 @@ export class Game {
       lastRoomDrops: null,
       metNarrativeNpcIds: [],
       narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0 },
+      pendingReflection: null,
+      eventReflectionStances: {},
     };
     this.checkEntryRoomAmbush();
   }
@@ -198,7 +201,9 @@ export class Game {
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {
-    return merchantPurchase(this.state, offerIndex);
+    const err = merchantPurchase(this.state, offerIndex);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   merchantRefresh(): PartyActionError | null {
@@ -207,22 +212,30 @@ export class Game {
 
   merchantLeave(): void {
     merchantLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
-    return bloodAltarPay(this.state, this.ctx, characterId);
+    const err = bloodAltarPay(this.state, this.ctx, characterId);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   bloodAltarLeave(): void {
     bloodAltarLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
-    return cursedShrineDecide(this.state, accept);
+    const err = cursedShrineDecide(this.state, accept);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
-    return twinAltarsChoose(this.state, offerIndex);
+    const err = twinAltarsChoose(this.state, offerIndex);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
@@ -231,38 +244,52 @@ export class Game {
 
   sacrificeLeave(): void {
     sacrificeLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   gamblingDenEnter(): PartyActionError | null {
-    return gamblingDenEnter(this.state, this.ctx);
+    const err = gamblingDenEnter(this.state, this.ctx);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   gamblingDenContinue(): PartyActionError | null {
-    return gamblingDenContinue(this.state, this.ctx);
+    const err = gamblingDenContinue(this.state, this.ctx);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   gamblingDenStop(): PartyActionError | null {
-    return gamblingDenStop(this.state);
+    const err = gamblingDenStop(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   gamblingDenLeave(): void {
     gamblingDenLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   hermitExchangeFortune(artifactId: Id): PartyActionError | null {
-    return hermitExchangeFortune(this.state, this.ctx, artifactId);
+    const err = hermitExchangeFortune(this.state, this.ctx, artifactId);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   hermitLeave(): void {
     hermitLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
-    return collapsedFloorAttempt(this.state, this.ctx, characterId);
+    const err = collapsedFloorAttempt(this.state, this.ctx, characterId);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   collapsedFloorLeave(): void {
     collapsedFloorLeave(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
   }
 
   enterGuardianFight(): PartyActionError | null {
@@ -270,7 +297,17 @@ export class Game {
   }
 
   skipGuardianFight(): PartyActionError | null {
-    return guardianFightSkip(this.state);
+    const err = guardianFightSkip(this.state);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
+  }
+
+  /** §10.5 — resolves `state.pendingReflection`, no reward/mechanical effect. */
+  pickReflectionStance(stance: "curious" | "wary" | "dismissive"): void {
+    const pending = this.state.pendingReflection;
+    if (!pending) return;
+    this.state.eventReflectionStances[pending.eventId] = stance;
+    this.state.pendingReflection = null;
   }
 
   resolve(): void {
@@ -326,6 +363,10 @@ export class Game {
           droppedArtifactIds.push(artifactId);
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;
+        // §10.5 — guardian-fight/desecrated-altar's win path never calls closeEvent() (only Skip
+        // does), so this is the only trigger point for their reflection. No-ops for every other
+        // combat room (not "event" type, or not a reflection-eligible event).
+        maybeTriggerReflection(this.state, this.ctx);
       } else if (this.state.combat.outcome === "defeat") {
         this.state.gameOver = "defeat";
       }
