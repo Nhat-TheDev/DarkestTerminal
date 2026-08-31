@@ -303,6 +303,7 @@ export interface CombatState {
 }
 
 export interface GameState {
+  runId: string;
   party: Character[];
   floor: Floor;
   currentRoomId: Id;

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
@@ -56,6 +57,7 @@ export class Game {
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, rng, inventory };
     this.state = {
+      runId: randomUUID(),
       party,
       floor,
       currentRoomId: floor.entryRoomId,

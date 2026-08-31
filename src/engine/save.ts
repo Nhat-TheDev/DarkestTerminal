@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { GameState, Id, Monster } from "../types";
@@ -50,6 +50,8 @@ export interface SaveMeta {
   partyClassIds: Id[];
   /** Absent on saves written before this versioning feature existed. */
   saveVersion?: string;
+  /** Absent on saves written before runId existed. Same runId across every save (quick/auto/manual) of one playthrough. */
+  runId?: string;
 }
 
 export interface SaveFile {
@@ -76,6 +78,7 @@ function buildSaveFile(game: Game, id: Id): SaveFile {
       partyLevel: game.state.party[0]?.level ?? 1,
       partyClassIds: game.state.party.map((c) => c.classId),
       saveVersion: APP_VERSION,
+      runId: game.state.runId,
     },
     state: JSON.parse(JSON.stringify(game.state)),
     monsters: JSON.parse(JSON.stringify(game.ctx.monsters)),
@@ -100,6 +103,20 @@ export function quickSave(game: Game): SaveMeta {
 
 export function autoSave(game: Game): SaveMeta {
   return writeSave(game, AUTOSAVE_ID);
+}
+
+/** Deletes every save (quicksave/autosave/manual) belonging to the given run. Used to invalidate them on permadeath. */
+export function deleteSavesForRun(runId: string): void {
+  if (!existsSync(SAVE_DIR)) return;
+  for (const file of readdirSync(SAVE_DIR)) {
+    if (!file.endsWith(".json")) continue;
+    const path = join(SAVE_DIR, file);
+    try {
+      const save = JSON.parse(readFileSync(path, "utf8")) as SaveFile;
+      if (save.meta.runId === runId) unlinkSync(path);
+    } catch {
+    }
+  }
 }
 
 export function listSaves(): SaveMeta[] {
