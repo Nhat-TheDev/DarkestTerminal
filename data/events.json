@@ -2,7 +2,7 @@
   {
     "id": "open-chest",
     "name": "Open Chest",
-    "description": "A cracked oak chest sits crooked amid a pile of rubble, its lid ajar as if waiting for someone curious enough to come closer.",
+    "description": "A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further.",
     "kind": "instantReward",
     "tier": "common"
   },
@@ -16,7 +16,7 @@
   {
     "id": "merchant",
     "name": "Merchant Encounter",
-    "description": "A trembling oil lamp casts light on a cloth spread with strange wares. A hooded figure bows in greeting, waving you closer.",
+    "description": "A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
     "kind": "merchant",
     "tier": "common"
   },
@@ -52,21 +52,21 @@
   {
     "id": "sacrificial-circle",
     "name": "Ritual Circle",
-    "description": "Old dried blood stains the stone. The circle doesn't accept ordinary offerings — only something already enchanted.",
+    "description": "Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted.",
     "kind": "artifactExchange",
     "tier": "rare"
   },
   {
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
-    "description": "A stranger shuffles 3 overturned cups, sneering in the dark. 'Give me what you have. I'll double it, or keep it for good.'",
+    "description": "A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'",
     "kind": "coinGamble",
     "tier": "rare"
   },
   {
     "id": "wandering-hermit",
     "name": "Wandering Hermit",
-    "description": "An old man sits meditating amid the rubble, eyes closed. 'I don't sell. I trade.'",
+    "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'",
     "kind": "artifactExchange",
     "tier": "rare"
   },

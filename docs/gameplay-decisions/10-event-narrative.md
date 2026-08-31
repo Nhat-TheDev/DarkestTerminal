@@ -85,10 +85,13 @@ Its presence is only ever felt through:
 - Never confirm whether the Sleeper is real, a delusion of the Covenant, or already dead. The game
   never resolves this — matches the terminal/ASCII aesthetic and the "personal side project, not a
   serious product" framing in `design-doc.md` (no cutscene budget, no lore dump screens).
-- No event ever *names* the Sleeper or the Covenant to the player in dialogue — the player is
-  meant to infer the connection across a run/multiple runs, the same way the 3-eyed statue already
-  reads as *something* without saying what. Adding an explicit "The Covenant of the Sleeper" line
-  of dialogue would over-explain and undercut this.
+- No event ever *names* the Sleeper or the Covenant to the player — not in dialogue, not in narrator
+  prose either. The player only ever sees a **trace**: an unexplained mark, brand, or pattern that
+  recurs across otherwise-unrelated events, and is meant to notice the repetition and get curious
+  without being told what it means. Any name for the faction resolves later, at deeper floors — this
+  section only earns the player the *feeling* that something out there is watching, never the name.
+  Adding an explicit "The Covenant of the Sleeper" line (dialogue *or* narration) would over-explain
+  and undercut this — an earlier draft of the table below did exactly that and was corrected.
 
 ### Proposed rewritten `description` text (drafts, not final)
 
@@ -98,10 +101,10 @@ quoted in the table above already work as-is and are left unchanged.
 | Event id | Current | Proposed |
 |---|---|---|
 | `open-chest` | *"A cracked oak chest sits crooked amid a pile of rubble, its lid ajar as if waiting for someone curious enough to come closer."* | *"A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further."* (ties to "mundane remnant" without changing length/tone) |
-| `merchant` | *"A trembling oil lamp casts light on a cloth spread with strange wares. A hooded figure bows in greeting, waving you closer."* | *"A trembling oil lamp casts light on a cloth spread with strange wares — relics too old to be anyone's but the Covenant's. A hooded figure bows in greeting, waving you closer."* |
+| `merchant` | *"A trembling oil lamp casts light on a cloth spread with strange wares. A hooded figure bows in greeting, waving you closer."* | *"A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer."* |
 | `sacrificial-circle` | *"Old dried blood stains the stone. The circle doesn't accept ordinary offerings — only something already enchanted."* | *"Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted."* |
-| `wandering-hermit` | *"An old man sits meditating amid the rubble, eyes closed. 'I don't sell. I trade.'"* | *"An old man sits meditating amid the rubble, a Covenant brand scarred through on his forearm. 'I don't sell. I trade.'"* |
-| `gambling-den` | *"A stranger shuffles 3 overturned cups, sneering in the dark. 'Give me what you have. I'll double it, or keep it for good.'"* | *"A stranger shuffles 3 overturned cups, sneering in the dark — no Covenant mark on them, no altar nearby. 'Give me what you have. I'll double it, or keep it for good.'"* |
+| `wandering-hermit` | *"An old man sits meditating amid the rubble, eyes closed. 'I don't sell. I trade.'"* | *"An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'"* |
+| `gambling-den` | *"A stranger shuffles 3 overturned cups, sneering in the dark. 'Give me what you have. I'll double it, or keep it for good.'"* | *"A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'"* |
 
 **Effort/risk**: lowest of the 3 directions. Pure content edit to `data/events.json`'s
 `description` field, 5 rows. No code, no new state, no test changes. Could ship on its own.
