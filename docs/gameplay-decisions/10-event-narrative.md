@@ -245,7 +245,11 @@ otherwise-normal description, easy to miss on a skim, meant for a player who's p
 catch a hint of what's coming — a player who doesn't notice is accepted as a fine outcome, not a
 bug to fix later.
 
-- Increment `narrativeCounters.guardianFightsSkipped` inside `guardianFightSkip()`.
+- Increment `narrativeCounters.guardianFightsSkipped` inside `guardianFightSkip()`. **This counter is
+  shared across both event ids**, not tracked per-event — `guardianFightSkip()` is the same function
+  for both `guardian-fight` and `desecrated-altar` (both `kind: "combatReward"`, see
+  `guardianFightRoomOrError`), so skipping 1 of each counts as 2 toward the same total, not 1 toward
+  2 separate counters. Worth stating explicitly since the field name alone reads as guardian-fight-only.
 - **At 2**: the *next* room that rolls `guardian-fight` or `desecrated-altar` shows a subtle variant
   of its description — Skip is still offered, nothing mechanical changes, just 1 quiet detail added.
   - `guardian-fight` at 2: *"The scrape of claws on stone echoes from a dark corner — something is
@@ -257,7 +261,12 @@ bug to fix later.
     past the last one."* (adds a 6-word clause referencing a prior skip, otherwise unchanged)
 - **At 3** (threshold unchanged): the *next* room that rolls `guardian-fight` or `desecrated-altar`
   uses the already-drafted escalated description and **does not offer Skip** — mechanically identical
-  fight, `enterGuardianFight()` is the only option shown.
+  fight, `enterGuardianFight()` is the only option shown. "Does not offer Skip" is a UI-layer change,
+  not just an engine one: the `eventGuardianFight` render/key-handling case in `src/ui/screens/events.ts`
+  needs to check `state.narrativeCounters.guardianFightsSkipped >= 3` (or `room.chainVariant ===
+  "forced"`, see below) and not render the Skip option at all — calling `guardianFightSkip()` itself
+  could also just start returning an error past the threshold as a 2nd line of defense, but the UI
+  needs to not offer it either way. Not counted in the original effort estimate below; added there now.
   - Proposed text: *"There's nowhere left to walk past this — the thing you kept avoiding has
     stopped waiting to be noticed."*
 - Resets the counter back to 0 after that forced encounter (so it can trigger again later in a
@@ -268,6 +277,21 @@ This needs a 3rd optional `EventDefinition` field beyond `returnDescription` —
 `chainBuildupDescription?: string` (shown at count 2) and reuse of the existing escalated-text idea
 above as `chainForcedDescription?: string` (shown at count 3, Skip hidden). Only `guardian-fight` and
 `desecrated-altar` set these 2 fields.
+
+Also needs a new field on `Room` (`src/types.ts`), not `GameState` — it's per-room, not per-run:
+```ts
+// src/types.ts — Room, new field
+export interface Room {
+  // ...unchanged...
+  /** Which text variant this room's event resolved to (§10.3 Chain 1) — set by `resolveEventEntry`
+      when it picks `chainBuildupDescription`/`chainForcedDescription` over `description`, left
+      `undefined` otherwise. Consumed by §10.5's reflection trigger (see there) to know whether to
+      show `reflection.escalatedPrompt` — needed because `guardianFightsSkipped` resets to 0 right
+      after the forced encounter fires, so by the time reflection shows, the counter alone can no
+      longer tell "was this room the forced one." */
+  chainVariant?: "buildup" | "forced";
+}
+```
 
 **Mechanical exception #1** (opt-in, can be dropped and keep this a pure-flavor chain): the forced
 encounter could also apply `eventGuardianStatMultiplier` a second time (stacking to a harder
@@ -281,7 +305,9 @@ as pure narrative without it.
 - Once it reaches a threshold (proposed: **5**, since Ritual Circle allows repeat sacrifices in one
   visit per §8.9 — this counts across the whole run/`GameState` lifetime, i.e. every sacrifice from
   every visit added together, not reset per room visit or per floor), every *subsequent*
-  `sacrificial-circle` room uses an escalated description.
+  `sacrificial-circle` room uses an escalated description, via a new optional `EventDefinition`
+  field — proposed `chainEscalatedDescription?: string`, reused by Chain 3 below rather than
+  naming a separate field per chain, since only `sacrificial-circle` and `blood-altar` ever set it.
   - Proposed text: *"The circle recognizes your hand before you kneel. It doesn't ask anymore."*
 - No mechanical change — `rollArtifactWithMinRarity` behaves exactly as in §8.9.
 
@@ -302,15 +328,71 @@ this entirely and needs no HP-curve math, so the "60% of typical maxHP" open que
   `null` (the character had enough HP to pay).
 - Once it reaches a threshold (proposed: **4** — same order of magnitude as Chain 1's 3 and Chain
   2's 5, no stronger justification than that; revisit once playtesting shows how often these 2
-  event types actually come up), the next `blood-altar` room uses an escalated description.
+  event types actually come up), the next `blood-altar` room uses an escalated description, in the
+  same `chainEscalatedDescription` field Chain 2 defines above.
   - Proposed text: *"The stone recognizes the taste. It doesn't need to ask this time — it already
     knows you'll pay."*
 - No mechanical change.
 
+### Where this plugs into existing code
+
+§10.2 already patches `resolveEventEntry` for the 3 personified events. §10.3 adds 2 more branches
+to the *same* function, ahead of §10.2's — every event here needs at most 1 of the 3 mechanisms
+(chain-1 / chain-2-or-3 / return-description), so the branches are mutually exclusive per event id,
+but the full function needs to show all 3 together since a real implementation lives in 1 place:
+
+```ts
+function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
+  if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
+  const event = getEvent(room.rolledEventId);
+
+  // §10.3 Chain 1 — guardian-fight / desecrated-altar only
+  if (event.kind === "combatReward") {
+    const skips = state.narrativeCounters.guardianFightsSkipped;
+    if (skips >= 3) {
+      state.message = event.chainForcedDescription ?? event.description;
+      room.chainVariant = "forced";
+    } else if (skips === 2) {
+      state.message = event.chainBuildupDescription ?? event.description;
+      room.chainVariant = "buildup";
+    } else {
+      state.message = event.description;
+    }
+    return;
+  }
+
+  // §10.3 Chain 2/3 — sacrificial-circle / blood-altar only
+  if (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= 5) {
+    state.message = event.chainEscalatedDescription ?? event.description;
+    return;
+  }
+  if (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= 4) {
+    state.message = event.chainEscalatedDescription ?? event.description;
+    return;
+  }
+
+  // §10.2 — merchant / wandering-hermit / gambling-den only (everything else falls through
+  // to `event.description` unchanged, same as before either section existed)
+  const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
+  const returnText = typeof event.returnDescription === "string"
+    ? event.returnDescription
+    : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
+  state.message = alreadyMet && returnText ? returnText : event.description;
+  if (event.returnDescription && !alreadyMet) state.metNarrativeNpcIds.push(event.id);
+}
+```
+
+Verified against the real `resolveEventEntry` (`src/engine/dungeon.ts:67-70`) that this doesn't
+change what happens for the other 4 events (`open-chest`, `cursed-shrine`, `twin-altars`,
+`collapsed-floor`) — none of them set `returnDescription`/`chainBuildupDescription`/
+`chainForcedDescription`/`chainEscalatedDescription`, so they all still just fall through to
+`event.description`, unchanged from `08-events.md`.
+
 **Effort/risk**: medium. 1 new `GameState` field (3 sub-counters, same migration-default pattern as
-§10.2), a 1-line increment inside 3 existing functions, and a description-selection branch similar
-to §10.2's but keyed by counter threshold instead of "met before." Chain 1's optional mechanical
-exception is the only place this section touches balance, and it's explicitly optional.
+§10.2), 1 new `Room` field (`chainVariant`), a 1-line increment inside 3 existing functions, the
+merged branch above in `resolveEventEntry`, and a UI-side check in `events.ts` to hide Skip past
+Chain 1's threshold (see Chain 1 above — not part of the original estimate). Chain 1's optional
+mechanical exception is the only place this section touches balance, and it's explicitly optional.
 
 **Open direction, not yet specified**: once a chain fires (Chain 2/3 especially, since they don't
 reset), the escalated text becomes the permanent state for the rest of a long run — given floor
@@ -365,7 +447,14 @@ EventDefinition {
   // ...unchanged...
   reflection?: {
     prompt: string;                                    // the reflective line shown after resolution
-    options: { curious: string; wary: string; dismissive: string };  // 1 short reaction line each
+    escalatedPrompt?: string;  // shown instead of `prompt` when this resolution was a §10.3
+                                // chain-escalated one (guardian-fight/desecrated-altar's forced
+                                // encounter, or sacrificial-circle/blood-altar past their chain
+                                // threshold) — only the 4 events with a chain set this
+    options: { curious: string; wary: string; dismissive: string };  // 1 short reaction line each,
+                                // shared by both `prompt` and `escalatedPrompt` — only the lead-in
+                                // line changes, not the 3 responses (see "Where this plugs in" below
+                                // for why not escalating the options too)
   };
 }
 ```
@@ -375,6 +464,16 @@ bespoke per-event choice sets keeps this a **1 UI template, 1 enum** feature rat
 choice shapes — matches how §10.2 reused 1 boolean-ish check (`alreadyMet`) across 3 NPCs instead of
 per-NPC state shapes. Only the *flavor text* is bespoke per event; the *meaning* of picking each
 stance is shared.
+
+**Why `escalatedPrompt` exists**: an earlier version of this section had exactly 1 fixed prompt per
+event regardless of what actually just happened — so a player who just lived through Chain 1's forced
+encounter ("the thing you kept avoiding has stopped waiting to be noticed," §10.3) got the same
+generic "ashes still carry a trace of incense" reflection as any routine guardian-fight. Same problem
+for `sacrificial-circle`/`blood-altar` once their chain had escalated. `escalatedPrompt` fixes the
+specific gap (the lead-in line matches what actually just happened) without also re-writing all 3
+response options for the escalated case — the *player's* attitude (curious/wary/dismissive) doesn't
+need to change just because the *scene* got heavier, and re-drafting 4 events × 3 options for a
+one-line variant wasn't worth the content cost.
 
 ### Where this plugs into existing code — the part that isn't free
 
@@ -412,6 +511,24 @@ A new UI screen state is also needed (shown after either hook runs, before retur
 view) — the exact routing hook wasn't traced here since it depends on how `src/ui/app.ts`'s screen
 state machine is structured; that's Phase-1-of-implementation work, not spec work.
 
+**Picking `prompt` vs `escalatedPrompt`** — whichever hook fires calls this, using state that's
+already sitting there from §10.3, no new counters needed:
+
+```ts
+function pickReflectionPrompt(state: GameState, room: Room, event: EventDefinition): string | undefined {
+  const escalated =
+    room.chainVariant === "forced" ||                                                  // Chain 1
+    (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= 5) || // Chain 2
+    (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= 4);            // Chain 3
+  return (escalated && event.reflection?.escalatedPrompt) || event.reflection?.prompt;
+}
+```
+
+`room.chainVariant` (§10.3, set on `Room`) is why Chain 1 doesn't need its own lookup here — it's
+already computed once in `resolveEventEntry` and just gets read again. Chain 2/3 re-check the
+counters directly since their escalation is permanent (no reset), so the threshold check is valid
+at any later point, not just the room where it first crossed.
+
 ### Content — all 9 (drafts, not final)
 
 Writing quality here matters the same way it did for §10.1 (`design-doc.md` §1.1 — text is the whole
@@ -426,6 +543,8 @@ same trap is easy to fall back into if this list ever gets extended past 9 event
 **`guardian-fight`**
 - Prompt: *"The guardian's ashes still carry a trace of incense, not decay. Something tended this
   room, once."*
+- Escalated prompt (Chain 1 forced encounter): *"You didn't decide to fight this one. It decided
+  you'd stalled long enough."*
 - curious: *"Worth remembering — someone built this on purpose."*
 - wary: *"Better not to think about who."*
 - dismissive: *"Just a monster. Move on."*
@@ -438,6 +557,8 @@ same trap is easy to fall back into if this list ever gets extended past 9 event
 
 **`desecrated-altar`**
 - Prompt: *"The glow hasn't fully died down, even now. It's like the stone remembers being touched."*
+- Escalated prompt (Chain 1 forced encounter): *"This time you just ran out of room to keep
+  avoiding it."*
 - curious: *"Worth coming back for, once you know what you're looking for."*
 - wary: *"Whatever's under there, you'd rather it stayed asleep."*
 - dismissive: *"The glow's already fading. You've still got a floor left to clear."*
@@ -445,6 +566,8 @@ same trap is easy to fall back into if this list ever gets extended past 9 event
 **`blood-altar`**
 - Prompt: *"The wound closes faster than it should. The stone took exactly what it asked for, no
   more."*
+- Escalated prompt (Chain 3, 4+ payments): *"The stone barely had to ask this time. That's the part
+  that stays with you."*
 - curious: *"That's precise, for a slab of rock — someone built it that way on purpose."*
 - wary: *"Next time it might ask for more than skin."*
 - dismissive: *"A fair price. You've paid worse for less."*
@@ -465,6 +588,7 @@ same trap is easy to fall back into if this list ever gets extended past 9 event
 **`sacrificial-circle`**
 - Prompt: *"The circle goes quiet again, the pattern in the blood no less deliberate than before. It
   didn't thank you. It didn't have to."*
+- Escalated prompt (Chain 2, 5+ sacrifices): *"You knelt before you'd even finished deciding to."*
 - curious: *"That pattern wasn't drawn by accident, and you'd like to know by what."*
 - wary: *"Not a place you'd want to visit more than you have to."*
 - dismissive: *"A fair trade, and a better artifact for it. That's all it needs to be."*
@@ -482,10 +606,13 @@ same trap is easy to fall back into if this list ever gets extended past 9 event
 - dismissive: *"A hustler's a hustler — nothing more mysterious than that."*
 
 **Effort/risk**: medium — content volume is the largest of any section here (9 prompts × 3 options =
-27 short lines, plus 9 setup lines), the `ctx`-threading fix above touches ~11 function signatures +
-their call sites in `game.ts`, and the trigger needs 2 separate hooks (`closeEvent()` plus
-`Game.resolve()`'s victory branch) instead of 1, though each individual change is mechanical, not
-risky. No mechanical/reward effect anywhere in this section, by design.
+27 short lines, plus 9 setup lines and 4 `escalatedPrompt` lines for the events §10.3 can escalate),
+the `ctx`-threading fix above touches ~11 function signatures + their call sites in `game.ts`, the
+trigger needs 2 separate hooks (`closeEvent()` plus `Game.resolve()`'s victory branch) instead of 1,
+and picking `prompt` vs `escalatedPrompt` depends on `Room.chainVariant` from §10.3 — meaning §10.5
+can't be built fully independently of §10.3 the way the phasing below otherwise implies; the escalated
+variant just won't fire until §10.3 ships too — each individual change is still mechanical, not
+risky, on its own. No mechanical/reward effect anywhere in this section, by design.
 
 ---
 
@@ -511,14 +638,21 @@ All are additive or defaulted for old saves via `migrateGameState` (`src/engine/
 `eventReflectionStances: {}` when absent, following the exact pattern already used there for
 `coins`/`satiety`.
 
+Not listed above: §10.3 also adds `Room.chainVariant?: "buildup" | "forced"` — that one's on `Room`,
+not `GameState`, and needs no `migrateGameState` entry, since every read of it (`room.chainVariant
+=== "forced"`) is already `undefined`-safe on an old room that never had the key.
+
 ---
 
 ## Suggested phasing (if approved)
 
-Each phase is independently shippable and doesn't block on the next one — but they are **not**
-equal priority (see "Why this matters" above). §10.1 should land first and get the most editorial
-attention, since on a TUI it's carrying weight that would otherwise be split across art/audio/UI
-in a non-terminal game:
+§10.1-§10.3 are each independently shippable and don't block on one another — but they are **not**
+equal priority (see "Why this matters" above). §10.5 is the 1 exception: its `pickReflectionPrompt`
+(above) reads `Room.chainVariant` and `narrativeCounters`, both defined by §10.3 — so §10.5 has a
+real, not just tone-preference, dependency on §10.3 shipping first (or at least its data-model fields
+existing), not only on §10.1's voice being settled. §10.1 should land first regardless and get the
+most editorial attention, since on a TUI it's carrying weight that would otherwise be split across
+art/audio/UI in a non-terminal game:
 
 1. **§10.1 — priority.** Content-only, `data/events.json` text edits, zero code risk. Worth a
    dedicated writing/review pass on its own, not just "good first PR" — this is the deliverable
@@ -530,11 +664,12 @@ in a non-terminal game:
 3. **§10.3** — adds `narrativeCounters`, touches 3 event handler functions + migration. Chain 1's
    mechanical exception (stat-multiplier stacking) should be a separate decision/PR from the rest
    of §10.3, since it's the only part that isn't pure flavor.
-4. **§10.5** — adds `eventReflectionStances`, hooks both `closeEvent()` and `Game.resolve()`'s victory
-   branch, threads `ctx` through ~11 function signatures, plus a new UI screen state and 9 events'
-   worth of reflection content. Same dependency as §10.2: the reflection lines need §10.1's voice
-   already locked in. Largest content
-   volume of the 4 sections — worth planning as its own dedicated writing pass, same as §10.1.
+4. **§10.5 — ships after §10.3, not just alongside it.** Adds `eventReflectionStances`, hooks both
+   `closeEvent()` and `Game.resolve()`'s victory branch, threads `ctx` through ~11 function
+   signatures, plus a new UI screen state and 9 events' worth of reflection content. Needs §10.1's
+   voice locked in (same as §10.2) *and* needs §10.3's `Room.chainVariant`/`narrativeCounters` to
+   exist for `pickReflectionPrompt` to compile at all. Largest content volume of the 4 sections —
+   worth planning as its own dedicated writing pass, same as §10.1.
 
 ## Out of scope (5th direction, not chosen)
 
