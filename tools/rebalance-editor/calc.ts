@@ -1,10 +1,6 @@
-// Balance-calculation core for the rebalance editor (bun run rebalance-editor).
-//
-// Every formula here is imported straight from the real engine/data modules —
-// nothing is hand-copied — so results never drift from what the game
-// actually does. This file only adds *read-only* derived views on top
-// (growth breakdowns, %maxHp, hits-to-kill, EV per round, ...); it never
-// mutates game state.
+// Balance-calculation core for the rebalance editor. Formulas are imported straight from the
+// real engine/data modules, so results never drift; this file only adds read-only derived views
+// (growth breakdowns, %maxHp, hits-to-kill, EV per round, ...) and never mutates game state.
 
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { MONSTER_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS } from "../../src/data/monsters";
@@ -36,14 +32,12 @@ export function badInput(message: string): { error: string } {
 }
 
 // ---------------------------------------------------------------------------
-// Balance Points — docs/gameplay-decisions/01-class-skill.md "Base stats
-// balancing formula (Balance Points)" (char) and docs/gameplay-decisions/
-// 02-monster.md "Monster Balance Points" (monster) share the same shape,
-// including the speed term. tier1 rates are read via growthBonus() rather
-// than hand-copied, so this never drifts from level-growth.json.
+// Balance Points — character and monster formulas share the same shape,
+// including the speed term. Rates are read via growthBonus() rather than
+// hand-copied, so this never drifts from level-growth.json.
 // ---------------------------------------------------------------------------
 
-/** Hand-picked constant (not derived from any growth table — speed never scales for char or monster) — see "Monster Balance Points" in 02-monster.md. */
+/** Hand-picked constant, not derived from any growth table — speed never scales for char or monster. */
 const BALANCE_POINTS_SPEED_RATE = 12;
 
 function balancePointsRate(stat: GrowthStat): number {
@@ -125,7 +119,7 @@ export interface CharacterComputation {
   growthBonusUnweighted: Record<GrowthStat, number>;
   growthBonusWeighted: Record<GrowthStat, number>;
   final: { maxHp: number; maxMp: number; attack: number; defense: number; magicPower: number; aggro: number; speed: number };
-  /** Base-stat Balance Points (docs/gameplay-decisions/01-class-skill.md) — computed off `base`, not `final`/leveled stats. */
+  /** Base-stat Balance Points — computed off `base`, not `final`/leveled stats. */
   balancePoints: number;
   unlockedSkillIds: string[];
   skills: (SkillDefinition & { unlocked: boolean; rankInfo: { current: number; total: number; nextUnlockLevel: number | null } | null })[];
@@ -191,7 +185,7 @@ export interface MonsterComputation {
   depth: number;
   tier: MonsterTier;
   base: { hp: number; attack: number; defense: number; speed: number };
-  /** Base-stat Balance Points (docs/gameplay-decisions/02-monster.md "Monster Balance Points") — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
+  /** Base-stat Balance Points — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
   balancePoints: number;
   growthBonus: { maxHp: number; attack: number; defense: number };
   multiplier: { maxHp: number; attack: number; defense: number; exp: number } | null;
@@ -359,7 +353,7 @@ export function previewSkillDamage(
 
 const BASIC_ATTACK_SKILL: SkillDefinition = { id: "basic-attack", name: "Basic Attack", description: "The free, unassigned slot-0 attack every character/monster has.", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 0 }], slot: 0, unlockLevel: 1 };
 
-/** Looks up a skill by id across every catalog (class skills, monster skills, or the synthetic "basic-attack" placeholder) — lets the UI preview any skill without needing to know which catalog it came from. */
+/** Looks up a skill by id across every catalog, so the UI can preview any skill without knowing its source. */
 export function findSkillById(skillId: string): SkillDefinition | undefined {
   if (skillId === "basic-attack") return BASIC_ATTACK_SKILL;
   try {
@@ -465,7 +459,7 @@ export interface LevelByDepthRow {
   maxLevel: number;
 }
 
-/** Reproduces docs/gameplay-decisions/06-level-system.md §6.7's own stated methodology: replay createFloor(rng, depth) continuously from floor 1, summing every monster's expReward (combat rooms + the guard room; branch stages only spawn combat monsters on their "" side, event rooms spawn none — so this already matches "1 path through", no extra bookkeeping needed), across `seeds` different seeds, averaged. */
+/** Replays createFloor from floor 1, summing every monster's expReward per depth, averaged across `seeds` seeds. */
 export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDepthRow[] {
   if (!Number.isFinite(seeds) || seeds < 1 || seeds > 500) throw new Error("seeds must be an integer in [1, 500].");
   if (!Number.isFinite(maxDepth) || maxDepth < 1 || maxDepth > 500) throw new Error("maxDepth must be an integer in [1, 500].");

@@ -7,8 +7,8 @@ import { migrateGameState } from "../src/engine/migration";
 import { BALANCE } from "../src/data/balanceConfig";
 import { makeCtx } from "./helpers";
 
-describe("Camp (C.5)", () => {
-  test("camp() consumes 1 Exploration Kit and restores +30 satiety only, never HP/MP", () => {
+describe("Camp", () => {
+  test("camp() consumes 1 Exploration Kit and restores satiety only, never HP/MP", () => {
     const game = new Game(1);
     game.state.satiety = 40;
     game.state.inventory["exploration-kit"] = 2;
@@ -32,10 +32,10 @@ describe("Camp (C.5)", () => {
   });
 });
 
-describe("Cursed Coins (B.2)", () => {
+describe("coins", () => {
   test("rollCoinDrop stays within the configured [min,max] range per tier", () => {
     const rng = new Rng(1);
-    const weak = spawnMonster("dungeon-rat", 1); // powerTier: weak
+    const weak = spawnMonster("dungeon-rat", 1);
     for (let i = 0; i < 200; i++) {
       const amount = rollCoinDrop(weak, rng);
       expect(amount).toBeGreaterThanOrEqual(BALANCE.currency.coinDropByTier.weak[0]);
@@ -49,7 +49,7 @@ describe("Cursed Coins (B.2)", () => {
     }
   });
 
-  test("coins are 100% drop chance and party-wide (not gated like items)", () => {
+  test("coins are 100% drop chance and party-wide", () => {
     const { ctx } = makeCtx();
     const rat = spawnMonster("dungeon-rat", 1);
     const rng = new Rng(2);
@@ -58,7 +58,7 @@ describe("Cursed Coins (B.2)", () => {
   });
 });
 
-describe("save-file migration (Phase 7)", () => {
+describe("save-file migration", () => {
   test("migrateGameState fills in coins/satiety/pendingArtifactDecision defaults on a pre-rework save", () => {
     const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
@@ -68,7 +68,7 @@ describe("save-file migration (Phase 7)", () => {
     expect(migrated.secondJackpotArtifactId).toBeNull();
   });
 
-  test("migrateGameState auto-equips a legacy unequippedArtifactIds pool onto characters with room, drops the rest", () => {
+  test("migrateGameState auto-equips a legacy artifact pool onto characters with room", () => {
     const game = new Game(4);
     const legacyRaw = {
       ...game.state,
@@ -81,7 +81,7 @@ describe("save-file migration (Phase 7)", () => {
     expect(totalEquipped).toBeLessThanOrEqual(migrated.party.length * 3);
   });
 
-  test("migrateGameState strips inventory entries for items no longer in the catalog (e.g. old Ration/Water Flask saves)", () => {
+  test("migrateGameState strips inventory entries for items no longer in the catalog", () => {
     const game = new Game(5);
     const legacyRaw = { ...game.state, inventory: { ...game.state.inventory, ration: 3, "water-flask": 2 } };
     const migrated = migrateGameState(legacyRaw);

@@ -8,7 +8,7 @@ import { closeEvent, findArtifactOwner } from "./shared";
 
 const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
 
-/** "Remove curse" no longer exists — Exchange fortune is the room's only service (confirmed decision). It's also the sole remaining way a Cursed artifact can leave a character. */
+/** The room's only service; also the sole way a Cursed artifact can leave a character. */
 export function hermitExchangeFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
   const owner = findArtifactOwner(state, artifactId);
   if (!owner) return { reason: t("errors.artifactNotOwned") };

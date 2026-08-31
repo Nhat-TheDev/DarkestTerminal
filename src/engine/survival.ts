@@ -32,12 +32,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** C.3 — live-computed, not a stored status effect (mirrors getFearTier). */
+/** Live-computed, not a stored status effect. */
 export function isPartyExhausted(satiety: number): boolean {
   return satiety <= EXHAUSTED_THRESHOLD;
 }
 
-/** C.4 — live-computed; stacks with Exhausted below the Dying threshold. */
+/** Live-computed; stacks with Exhausted below the Dying threshold. */
 export function isPartyDying(satiety: number): boolean {
   return satiety <= DYING_THRESHOLD;
 }
@@ -47,18 +47,14 @@ export function applyExhaustedMultiplier(baseStat: number, satiety: number): num
   return isPartyExhausted(satiety) ? Math.round(baseStat * EXHAUSTED_STAT_MULTIPLIER) : baseStat;
 }
 
-/**
- * C.2 (amended) — satiety drains by room type: combat rooms and combat-triggering events cost
- * SATIETY_DRAIN_COMBAT (10), non-combat events cost SATIETY_DRAIN_EVENT (5), the Rest room costs
- * nothing (0 — call sites simply don't call this for a Rest room at all).
- */
+/** Rest rooms never call this — call sites pass 0 satiety drain for them instead. */
 export function drainSatiety(state: GameState, amount: number, log: LogEntry[]): void {
   if (amount <= 0) return;
   state.satiety = clamp(state.satiety - amount, 0, 100);
   log.push({ text: t("survival.satietyDrained", { satiety: state.satiety }), kind: "debuff" });
 }
 
-/** C.4 DOT — mirrors Poisoned II's tick, applied once per combat round while Dying. */
+/** Mirrors Poisoned II's tick, applied once per combat round while Dying. */
 export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   for (const c of party) {
     if (!c.isAlive) continue;
@@ -85,7 +81,7 @@ export function applyRoundFear(character: Character, floorDepth: number): void {
   character.survival.fear = clamp(character.survival.fear + fearGainForRound(character, floorDepth), 0, 100);
 }
 
-/** D — relief also depends on how fast the fight was won (`roundNumber` at the moment of victory). Quick-win and normal relief are not additive with each other, same as Elite/Boss relief vs. regular. */
+/** Relief depends on how fast the fight was won; quick-win and normal relief aren't additive. */
 export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: boolean, roundNumber: number): void {
   const relief = isEliteOrBossFight
     ? roundNumber < FEAR_ELITE_OR_BOSS_QUICK_VICTORY_ROUND_THRESHOLD
@@ -107,12 +103,12 @@ export function restEatDrink(character: Character): void {
   character.mp = clamp(character.mp + Math.round(character.maxMp * EAT_DRINK_RESTORE_PERCENT), 0, character.maxMp);
 }
 
-/** Rest room "Eat & Drink" — party-wide satiety restore (C.6), called once per rest action, not per character. */
+/** Party-wide satiety restore for "Eat & Drink" — called once per rest action, not per character. */
 export function restEatDrinkSatiety(state: GameState): void {
   state.satiety = clamp(state.satiety + EAT_DRINK_SATIETY_RESTORE, 0, 100);
 }
 
-/** Rest room "Chat" — unchanged: only hp/mp/fear, no satiety (C.6). */
+/** Rest room "Chat": only hp/mp/fear, no satiety. */
 export function restChat(character: Character): void {
   if (!character.isAlive) return;
   character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_PERCENT), 0, character.maxHp);
@@ -120,7 +116,7 @@ export function restChat(character: Character): void {
   character.survival.fear = clamp(character.survival.fear - CHAT_FEAR_RELIEF, 0, 100);
 }
 
-/** Camp (C.5) — post-victory option, distinct from the Rest room: costs 1 Exploration Kit, +30 satiety only, no HP/MP restore. */
+/** Post-victory option distinct from the Rest room: costs 1 Exploration Kit, restores satiety only. */
 export function campAction(state: GameState): { reason: string } | null {
   const kits = state.inventory["exploration-kit"] ?? 0;
   if (kits <= 0) return { reason: t("errors.noExplorationKits") };

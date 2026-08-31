@@ -21,7 +21,7 @@ export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 export interface SkillEffect {
   kind: SkillEffectKind;
   amount?: number;
-  /** "satiety" is party-wide (GameState.satiety, not per-character) — resolveSkillEffect needs a GameState reference in its context to apply it. */
+  /** "satiety" is party-wide (GameState.satiety), so resolveSkillEffect needs a GameState reference to apply it. */
   stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
@@ -125,7 +125,7 @@ export interface StatusEffectDefinition {
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
-  /** If set, this status is a higher-rank variant of the status with id `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match a skill's `conditionalBonus.requiresStatusId` across ranks, and to compose the displayed name as `${name} II`/`${name} III`. */
+  /** If set, this status is a higher-rank variant of `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match ranks and compose the displayed name. */
   rankOf?: Id;
   rankLevel?: 2 | 3;
 }
@@ -189,7 +189,7 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
-  /** Debuffs only: true for the round it was applied/refreshed on — that round's end-of-round tick skips the duration countdown, so it starts counting down from the following round instead. Buffs always count down starting the round they're cast in, so this stays false/unset for them. */
+  /** Debuffs only: true for the round applied/refreshed, so that round's tick skips the countdown. */
   justApplied?: boolean;
 }
 
@@ -314,7 +314,7 @@ export interface GameState {
   coins: number;
   satiety: number;
   pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null;
-  /** Gambling Den's round-4 jackpot grants 2 Epic artifacts at once; decisions resolve sequentially (A.3), so the 2nd one waits here until the 1st is resolved. */
+  /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;

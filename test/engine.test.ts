@@ -5,8 +5,8 @@ import { createCharacter } from "../src/engine/party";
 import { Rng } from "../src/engine/rng";
 import { connectedRooms } from "../src/engine/dungeon";
 
-describe("floor layout (random pattern pick — see test/floorPatterns.test.ts for per-pattern structural rules)", () => {
-  test("every room is reachable from the entry room, across many random seeds", () => {
+describe("floor layout", () => {
+  test("every room is reachable from the entry room", () => {
     for (let seed = 0; seed < 20; seed++) {
       const { floor } = createFloor(new Rng(seed));
       const visited = new Set<string>([floor.entryRoomId]);
@@ -24,7 +24,7 @@ describe("floor layout (random pattern pick — see test/floorPatterns.test.ts f
     }
   });
 
-  test("exactly 1 boss room, and its monster is flagged elite/boss (guard tier)", () => {
+  test("has exactly 1 boss room with an elite/boss monster", () => {
     for (let seed = 0; seed < 20; seed++) {
       const { floor, monsters } = createFloor(new Rng(seed));
       const bossRooms = floor.rooms.filter((r) => r.type === "boss");
@@ -34,7 +34,7 @@ describe("floor layout (random pattern pick — see test/floorPatterns.test.ts f
     }
   });
 
-  test("every combat room has at least 1 monster, rest/boss rooms don't double up", () => {
+  test("combat rooms have monsters, rest rooms don't", () => {
     const { floor, monsters } = createFloor(new Rng(3));
     for (const room of floor.rooms) {
       if (room.type === "combat") expect(room.monsterIds.length).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ describe("floor layout (random pattern pick — see test/floorPatterns.test.ts f
 
 
 describe("character creation", () => {
-  test("level-1 character only has slot 0-2 skills unlocked (basic attack + 2 own skills)", () => {
+  test("level-1 character has only starting skills unlocked", () => {
     const cls = getClass("vanguard");
     const c = createCharacter("c1", "Test", cls);
     expect(c.unlockedSkillIds).toEqual(["vanguard-slash", "vanguard-shield-guard", "vanguard-shield-throw"]);

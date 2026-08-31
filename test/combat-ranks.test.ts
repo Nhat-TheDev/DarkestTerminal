@@ -23,7 +23,7 @@ describe("combat round structure", () => {
     expect(rogueLine).toBeLessThan(vanguardLine);
   });
 
-  test("isBuff skills get +20 speed for this round's turn order only, not a persistent stat change (§4.7)", () => {
+  test("isBuff skills get +20 speed for this round's turn order only", () => {
     const { ctx } = makeCtx();
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);

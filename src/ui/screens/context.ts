@@ -25,13 +25,9 @@ export function advanceFloorWithAutoSave(ctx: ScreenContext): void {
 }
 
 /**
- * After a floor-advance check (roomReward/campPrompt already resolved), return to the normal
- * game-state-derived screen. A still-pending artifact decision (e.g. from the boss kill that just
- * ended the fight) must be resolved BEFORE the floor advances — otherwise the new floor's entry-room
- * ambush can start a fresh combat that buries the decision until that fight is over too. So: if one
- * is pending, show it now and leave `pendingFloorAdvance` set for next time — the artifact-decision
- * screen calls this same function again once the player resolves it, which is when the floor actually
- * advances.
+ * A still-pending artifact decision must resolve before the floor advances — otherwise the new
+ * floor's entry-room ambush could bury it under a fresh fight. If one is pending, show it and leave
+ * `pendingFloorAdvance` set; the artifact-decision screen calls this again once resolved.
  */
 export function finishVictorySequence(ctx: ScreenContext): void {
   if (ctx.game.state.pendingArtifactDecision) {
@@ -46,11 +42,9 @@ export function finishVictorySequence(ctx: ScreenContext): void {
 }
 
 /**
- * Post-victory sequence: Artifact decision (if any) is shown first, then the Camp offer (C.5),
- * then the floor-advance check. A pending Artifact decision takes priority over the Camp prompt so
- * the player judges the new Artifact before being asked to spend an Exploration Kit; the camp-offer
- * flag is left untouched here so it still fires once the decision is resolved (this function is
- * called again from artifactDecision.ts).
+ * Post-victory order: artifact decision, then camp offer, then floor advance. A pending artifact
+ * decision takes priority so the player judges it before being asked to spend an Exploration Kit;
+ * the camp-offer flag is left untouched so it still fires once resolved.
  */
 export function proceedAfterVictory(ctx: ScreenContext): void {
   if (ctx.game.state.pendingArtifactDecision) {

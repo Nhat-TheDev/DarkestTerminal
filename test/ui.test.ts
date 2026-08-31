@@ -10,7 +10,7 @@ import { getRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 
 describe("headless UI smoke test", () => {
-  test("boots and plays a scripted run via real keypresses across multiple floors without crashing", async () => {
+  test("plays a scripted run via keypresses without crashing", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
     const app = new App(renderer, new Game(7));
     await renderOnce();
@@ -64,7 +64,7 @@ describe("headless UI smoke test", () => {
     expect(finalFrame.length).toBeGreaterThan(0);
   }, 20000);
 
-  test("a boss kill's pending artifact decision surfaces before the floor advances, even if the new floor's entry room ambushes the party", async () => {
+  test("a boss kill's pending artifact decision surfaces before the floor advances", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
     const game = new Game(7);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -103,7 +103,7 @@ describe("headless UI smoke test", () => {
     expect(game.state.floor.depth).toBe(2); // now it advances
   }, 20000);
 
-  test("merchant offer detail: viewing then cancelling returns to the list, viewing then buying purchases and closes the event", async () => {
+  test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
     const game = new Game(7);
     game.state.combat = null;

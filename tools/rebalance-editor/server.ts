@@ -22,9 +22,7 @@ function toFearTier(value: unknown): FearTier {
 }
 
 // ---------------------------------------------------------------------------
-// Parameter editor — writes straight to the same JSON files the real game
-// reads (data/classes.json, data/monsters.json, data/balance-config.json,
-// data/level-growth.json), same pattern as tools/sprite-editor/server.ts.
+// Parameter editor — writes straight to the same JSON files the real game reads.
 // Only whitelisted numeric fields can be written; everything else is rejected.
 // ---------------------------------------------------------------------------
 

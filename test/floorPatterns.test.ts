@@ -33,7 +33,7 @@ function bfsReachable(floor: ReturnType<typeof buildFloorFromStages>["floor"]): 
   return visited;
 }
 
-describe("generateFloorLayout — every generated layout obeys the design rules", () => {
+describe("generateFloorLayout", () => {
   for (const seed of SEEDS) {
     describe(`seed ${seed}`, () => {
       const stages = generateFloorLayout(new Rng(seed));
@@ -71,7 +71,7 @@ describe("generateFloorLayout — every generated layout obeys the design rules"
         }
       });
 
-      test("2 event rooms are never adjacent (branch spacing guarantees this structurally)", () => {
+      test("2 event rooms are never adjacent", () => {
         const eventStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.some((r) => r.tag === "event")).map(({ i }) => i);
         for (let k = 1; k < eventStages.length; k++) {
           expect(eventStages[k]! - eventStages[k - 1]!).toBeGreaterThan(1);

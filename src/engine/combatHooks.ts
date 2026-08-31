@@ -81,5 +81,5 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-// Order matters and is now declared, not implied by call-site position.
+// Execution order matters.
 export const combatHooks: SkillEffectHooks[] = [onHitStatusRiderHook, reflectDamageHook, lifestealHook, poisonOnHitHook, healOnKillHook];
