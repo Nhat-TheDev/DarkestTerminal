@@ -62,6 +62,13 @@ interface BalanceConfig {
     /** §10.3 Chain 1 ("The Guardian's Grudge") — skips of guardian-fight/desecrated-altar needed to
         force the next encounter (no Skip offered). The buildup variant shows 1 skip before this. */
     guardianGrudgeForcedThreshold: number;
+    /** §10.3 Chain 2 ("The Circle Remembers") — cumulative artifactsSacrificed needed to escalate
+        every subsequent sacrificial-circle room. Permanent once crossed, no reset. */
+    circleRemembersThreshold: number;
+    /** §10.3 Chain 3 ("Blood Debt") — cumulative altarPaymentsCount (bloodAltarPay +
+        collapsedFloorAttempt) needed to escalate every subsequent blood-altar room. Permanent once
+        crossed, no reset. */
+    bloodDebtThreshold: number;
     gamblingDenRounds: {
       stake: number;
       winChance: number;

@@ -76,6 +76,15 @@ export function pickEventText(state: GameState, room: Room, event: EventDefiniti
     return event.description;
   }
 
+  // §10.3 Chain 2/3 — permanent once crossed, no room-level flag needed (unlike Chain 1's
+  // chainVariant), since the counter itself never resets for these 2.
+  if (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= BALANCE.events.circleRemembersThreshold) {
+    return event.chainEscalatedDescription ?? event.description;
+  }
+  if (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold) {
+    return event.chainEscalatedDescription ?? event.description;
+  }
+
   const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
   const returnText =
     typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];

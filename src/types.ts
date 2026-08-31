@@ -196,6 +196,10 @@ export interface EventDefinition {
       forced threshold (§10.3 Chain 1) — Skip is hidden/rejected on this room. Only guardian-fight
       and desecrated-altar set this. */
   chainForcedDescription?: string;
+  /** Shown instead of `description` once the relevant `narrativeCounters` threshold is crossed
+      (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Only sacrificial-circle
+      (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`) set this. */
+  chainEscalatedDescription?: string;
 }
 
 export interface ActiveStatusEffect {

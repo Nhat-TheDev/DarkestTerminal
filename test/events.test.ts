@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
-import { getRoom, moveToRoom } from "../src/engine/dungeon";
+import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
 import { rollEvent, EVENTS } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
@@ -542,5 +542,93 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narra
     moveToRoom(game.state, target.id, game.ctx);
     expect(room.chainVariant).toBeUndefined();
     expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
+  });
+});
+
+describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+  test("sacrificial-circle shows the plain description below the threshold, the escalated one at/past it — and it stays escalated on a later visit", () => {
+    const game = new Game(40);
+    const c = game.state.party[0]!;
+
+    for (let i = 0; i < 4; i++) {
+      c.equippedArtifactIds = ["scholars-insight"];
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.state.pendingArtifactDecision = null;
+    }
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(4);
+
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.description); // still below 5
+
+    c.equippedArtifactIds = ["scholars-insight"];
+    expect(game.sacrifice("scholars-insight")).toBeNull();
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(5);
+
+    const escalated = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalatedDescription;
+    expect(typeof escalated).toBe("string");
+
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target2.id, game.ctx);
+    expect(game.state.message).toBe(escalated as string);
+
+    // stays escalated — the counter never resets for Chain 2/3 (unlike Chain 1)
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(5);
+    expect(pickEventText(game.state, room2, EVENTS.find((e) => e.id === "sacrificial-circle")!)).toBe(escalated as string);
+  });
+
+  test("blood-altar escalates once altarPaymentsCount (bloodAltarPay + collapsedFloorAttempt combined) reaches the threshold", () => {
+    const game = new Game(41);
+    const c = game.state.party[0]!;
+
+    c.hp = c.maxHp;
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    c.hp = c.maxHp;
+    expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+    c.hp = c.maxHp;
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(3);
+
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.description); // still below 4
+
+    c.hp = c.maxHp;
+    expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(4);
+
+    const escalated = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalatedDescription;
+    expect(typeof escalated).toBe("string");
+
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target2.id, game.ctx);
+    expect(game.state.message).toBe(escalated as string);
+  });
+
+  test("collapsedFloorAttempt counts toward Chain 3 even when the 60% success roll fails — only the HP payment matters", () => {
+    let sawFailure = false;
+    for (let seed = 1; seed < 60 && !sawFailure; seed++) {
+      const game = new Game(seed);
+      const c = game.state.party[0]!;
+      c.hp = c.maxHp;
+      expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+      if (!game.state.pendingArtifactDecision) {
+        expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
+        sawFailure = true;
+      }
+    }
+    expect(sawFailure).toBe(true);
   });
 });

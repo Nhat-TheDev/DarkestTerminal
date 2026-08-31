@@ -36,6 +36,7 @@
     "id": "blood-altar",
     "name": "Trade HP for an Artifact",
     "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid. It demands a price paid in blood, nothing more, nothing less.",
+    "chainEscalatedDescription": "The stone recognizes the taste. It doesn't need to ask this time — it already knows you'll pay.",
     "kind": "hpGamble",
     "tier": "rare"
   },
@@ -58,6 +59,7 @@
     "id": "sacrificial-circle",
     "name": "Ritual Circle",
     "description": "Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted.",
+    "chainEscalatedDescription": "The circle recognizes your hand before you kneel. It doesn't ask anymore.",
     "kind": "artifactExchange",
     "tier": "rare"
   },
