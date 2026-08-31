@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { GameState } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { getItem } from "../data/items";
@@ -7,6 +8,7 @@ import { BALANCE } from "../data/balanceConfig";
 export function migrateGameState(raw: unknown): GameState {
   const state = raw as GameState & { unequippedArtifactIds?: string[] };
 
+  if (typeof state.runId !== "string") state.runId = randomUUID();
   if (typeof state.coins !== "number") state.coins = 0;
   if (typeof state.satiety !== "number") state.satiety = BALANCE.survival.initialSatiety;
   if (state.pendingArtifactDecision === undefined) state.pendingArtifactDecision = null;

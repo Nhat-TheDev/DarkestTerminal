@@ -8,7 +8,7 @@ import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { t } from "../data/strings";
-import { quickSave } from "../engine/save";
+import { quickSave, deleteSavesForRun } from "../engine/save";
 import {
   PALETTE,
   CLASS_STYLE,
@@ -210,6 +210,9 @@ export class App implements ScreenContext {
 
   syncUiToGameState(): void {
     if (this.game.state.gameOver) {
+      if (this.ui.kind !== "gameover" && this.game.state.gameOver === "defeat") {
+        deleteSavesForRun(this.game.state.runId);
+      }
       this.ui = { kind: "gameover" };
       return;
     }

@@ -2,8 +2,9 @@ import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "
 import type { CharacterClass, Id } from "../types";
 import { PALETTE, colorChunk, joinLines } from "./theme";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 
-const PARTY_SIZE = 4;
+const PARTY_SIZE = BALANCE.party.size;
 
 export function showCharacterSelect(renderer: CliRenderer, classes: CharacterClass[]): Promise<Id[]> {
   return new Promise((resolve) => {

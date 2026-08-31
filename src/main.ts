@@ -21,7 +21,7 @@ async function main() {
     }
     const saveMeta = await showSaveSelect(renderer);
     if (!saveMeta) continue;
-    new App(renderer, gameFromSave(loadSave(saveMeta.id)));
+    new App(renderer, gameFromSave(loadSave(saveMeta.id), saveMeta.id));
     return;
   }
 }

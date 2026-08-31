@@ -36,6 +36,7 @@ interface BalanceConfig {
     fearEliteOrBossQuickVictoryRoundThreshold: number;
   };
   party: {
+    size: number;
     maxEquippedArtifacts: number;
     startingExplorationKits: number;
   };
