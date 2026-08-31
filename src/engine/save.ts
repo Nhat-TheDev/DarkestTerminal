@@ -4,7 +4,11 @@ import { join } from "node:path";
 import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
 import { migrateGameState } from "./migration";
-import { recomputeAllPartyStats } from "./party";
+import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
+import { getClass } from "../data/classes";
+import { getArtifact } from "../data/artifacts";
+import { MAX_LEVEL } from "../data/levelGrowth";
+import { BALANCE } from "../data/balanceConfig";
 import pkg from "../../package.json";
 
 const APP_DIR_NAME = "darkest-terminal";
@@ -119,6 +123,46 @@ export function deleteSavesForRun(runId: string): void {
   }
 }
 
+/**
+ * Structural/range sanity check on a loaded GameState, independent of saveVersion. Catches both
+ * corrupted files and hand-edited saves with nonsensical values (e.g. negative coins, HP above max).
+ * Deliberately does NOT check that inventory item ids still exist in the catalog — migrateGameState
+ * already strips unknown item ids on load, so flagging that here would hide old-but-valid saves
+ * that migration would have fixed cleanly.
+ */
+export function isSaveStateValid(state: GameState): boolean {
+  if (state.party.length !== BALANCE.party.size) return false;
+  for (const c of state.party) {
+    try {
+      getClass(c.classId);
+    } catch {
+      return false;
+    }
+    if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_LEVEL) return false;
+    if (!Number.isFinite(c.hp) || c.hp < 0 || c.hp > c.maxHp) return false;
+    if (!Number.isFinite(c.maxHp) || c.maxHp <= 0) return false;
+    if (!Number.isFinite(c.mp) || c.mp < 0 || c.mp > c.maxMp) return false;
+    if (!Number.isFinite(c.maxMp) || c.maxMp < 0) return false;
+    if (c.attack < 0 || c.defense < 0 || c.magicPower < 0 || c.aggro < 0 || c.speed < 0) return false;
+    if (c.equippedArtifactIds.length > MAX_EQUIPPED_ARTIFACTS) return false;
+    for (const artifactId of c.equippedArtifactIds) {
+      try {
+        getArtifact(artifactId);
+      } catch {
+        return false;
+      }
+    }
+  }
+  if (state.gameOver !== "victory" && state.gameOver !== "defeat" && state.gameOver !== null) return false;
+  if (!Number.isInteger(state.floor.depth) || state.floor.depth < 1) return false;
+  if (!Number.isInteger(state.coins) || state.coins < 0) return false;
+  if (!Number.isFinite(state.satiety) || state.satiety < 0 || state.satiety > 100) return false;
+  for (const count of Object.values(state.inventory)) {
+    if (!Number.isInteger(count) || count < 0) return false;
+  }
+  return true;
+}
+
 export function listSaves(): SaveMeta[] {
   if (!existsSync(SAVE_DIR)) return [];
   const metas: SaveMeta[] = [];
@@ -126,7 +170,7 @@ export function listSaves(): SaveMeta[] {
     if (!file.endsWith(".json")) continue;
     try {
       const save = JSON.parse(readFileSync(join(SAVE_DIR, file), "utf8")) as SaveFile;
-      if (isSaveVersionAllowed(save.meta.saveVersion)) metas.push(save.meta);
+      if (isSaveVersionAllowed(save.meta.saveVersion) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
     } catch {
     }
   }

@@ -33,6 +33,7 @@
     "fearEliteOrBossQuickVictoryRoundThreshold": 5
   },
   "party": {
+    "size": 4,
     "maxEquippedArtifacts": 3,
     "startingExplorationKits": 4
   },
