@@ -32,6 +32,7 @@ export function isSaveVersionAllowed(version: string | undefined): boolean {
 }
 
 function resolveSaveDir(): string {
+  if (process.env.DARKEST_TERMINAL_SAVE_DIR) return process.env.DARKEST_TERMINAL_SAVE_DIR;
   if (process.platform === "darwin") {
     return join(homedir(), "Library", "Application Support", APP_DIR_NAME);
   }
