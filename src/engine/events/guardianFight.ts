@@ -19,6 +19,9 @@ function guardianFightRoomOrError(state: GameState): Room | PartyActionError {
 export function guardianFightEnter(state: GameState, ctx: EngineContext): PartyActionError | null {
   const room = guardianFightRoomOrError(state);
   if ("reason" in room) return room;
+  // §10.3 Chain 1: this is the "forced" encounter the player kept skipping — reset the counter now
+  // that they're finally taking it, so the chain can fire again later rather than exactly once.
+  if (room.chainVariant === "forced") state.narrativeCounters.guardianFightsSkipped = 0;
   const monsters = spawnEventGuardianMonsters(ctx.rng, state.floor.depth);
   ctx.monsters.push(...monsters);
   room.monsterIds = monsters.map((m) => m.id);
@@ -30,6 +33,10 @@ export function guardianFightEnter(state: GameState, ctx: EngineContext): PartyA
 export function guardianFightSkip(state: GameState): PartyActionError | null {
   const room = guardianFightRoomOrError(state);
   if ("reason" in room) return room;
+  // §10.3 Chain 1: past the forced threshold, Skip isn't offered — this is a 2nd line of defense
+  // behind the UI hiding the option, not the primary gate.
+  if (room.chainVariant === "forced") return { reason: t("errors.nothingToDecide") };
+  state.narrativeCounters.guardianFightsSkipped += 1;
   state.message = t("dungeon.skippedGuardianFight", { room: room.name });
   closeEvent(state);
   return null;

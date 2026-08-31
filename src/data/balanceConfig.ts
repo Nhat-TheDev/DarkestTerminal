@@ -59,6 +59,9 @@ interface BalanceConfig {
     collapsedFloorHpPercent: number;
     collapsedFloorSuccessChance: number;
     eventGuardianStatMultiplier: { maxHp: number; attack: number; defense: number };
+    /** §10.3 Chain 1 ("The Guardian's Grudge") — skips of guardian-fight/desecrated-altar needed to
+        force the next encounter (no Skip offered). The buildup variant shows 1 skip before this. */
+    guardianGrudgeForcedThreshold: number;
     gamblingDenRounds: {
       stake: number;
       winChance: number;

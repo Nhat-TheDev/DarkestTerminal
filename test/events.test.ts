@@ -474,3 +474,73 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/10-event-narrative.m
     }
   });
 });
+
+describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+  test("counter is shared across guardian-fight and desecrated-altar — skipping 1 of each reaches the threshold", () => {
+    const game = new Game(30);
+    forceEventRoom(game, "guardian-fight");
+    expect(game.skipGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(1);
+
+    forceEventRoom(game, "desecrated-altar");
+    expect(game.skipGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(2);
+  });
+
+  test("at 2 skips: the next guardian-fight/desecrated-altar shows the buildup description, Skip is still offered", () => {
+    const game = new Game(31);
+    game.state.narrativeCounters.guardianFightsSkipped = 2;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    const buildupDescription = EVENTS.find((e) => e.id === "guardian-fight")!.chainBuildupDescription;
+    expect(room.chainVariant).toBe("buildup");
+    expect(typeof buildupDescription).toBe("string");
+    expect(game.state.message).toBe(buildupDescription as string);
+    expect(game.skipGuardianFight()).toBeNull(); // still allowed at 2
+  });
+
+  test("at 3 skips: the next guardian-fight/desecrated-altar shows the forced description, Skip is rejected", () => {
+    const game = new Game(32);
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "desecrated-altar";
+    moveToRoom(game.state, target.id, game.ctx);
+    const forcedDescription = EVENTS.find((e) => e.id === "desecrated-altar")!.chainForcedDescription;
+    expect(room.chainVariant).toBe("forced");
+    expect(typeof forcedDescription).toBe("string");
+    expect(game.state.message).toBe(forcedDescription as string);
+    expect(game.skipGuardianFight()).not.toBeNull(); // rejected past the threshold
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(3); // unchanged by the rejected attempt
+  });
+
+  test("entering the forced encounter resets the counter back to 0", () => {
+    const game = new Game(33);
+    game.state.combat = null;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.monsterIds = [];
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced");
+    expect(game.enterGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(0);
+  });
+
+  test("below the threshold, guardian-fight/desecrated-altar show the plain description as before", () => {
+    const game = new Game(34);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBeUndefined();
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
+  });
+});

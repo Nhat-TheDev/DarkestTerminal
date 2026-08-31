@@ -71,6 +71,7 @@ export class Game {
       activeEvent: null,
       lastRoomDrops: null,
       metNarrativeNpcIds: [],
+      narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0 },
     };
     this.checkEntryRoomAmbush();
   }

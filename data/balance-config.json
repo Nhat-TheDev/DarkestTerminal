@@ -80,6 +80,7 @@
       "attack": 1.2,
       "defense": 1.2
     },
+    "guardianGrudgeForcedThreshold": 3,
     "gamblingDenRounds": [
       {
         "stake": 20,

@@ -1,4 +1,4 @@
-import type { Floor, GameState, Room } from "../types";
+import type { EventDefinition, Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
 import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
@@ -63,17 +63,41 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   state.message = t("dungeon.arrived", { room: room.name });
 }
 
-function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
-  if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
-  const event = getEvent(room.rolledEventId);
+/**
+ * Picks the flavor text an event should show right now — pure, no side effects. Shared by
+ * `resolveEventEntry` (sets `state.message` on room entry) and `currentEventDescription()`
+ * (`src/ui/screens/events.ts`, re-derives the same text on every re-render within a visit) so the 2
+ * never drift out of sync with each other.
+ */
+export function pickEventText(state: GameState, room: Room, event: EventDefinition): string {
+  if (event.kind === "combatReward") {
+    if (room.chainVariant === "forced") return event.chainForcedDescription ?? event.description;
+    if (room.chainVariant === "buildup") return event.chainBuildupDescription ?? event.description;
+    return event.description;
+  }
 
   const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
   const returnText =
     typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
-  state.message = alreadyMet && returnText ? returnText : event.description;
-  // `metNarrativeNpcIds` is marked in `closeEvent()` (shared.ts) instead of here, once the visit
-  // fully ends — not on room entry — so `alreadyMet` stays accurate across every re-render of the
-  // player's 1st ever visit to a personified event, not just at the moment they walk in.
+  return alreadyMet && returnText ? returnText : event.description;
+}
+
+function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
+  if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
+  const event = getEvent(room.rolledEventId);
+
+  if (event.kind === "combatReward") {
+    // §10.3 Chain 1 — decided once, here, at room entry; consumed later by guardianFightSkip()
+    // (rejects Skip when "forced") and by pickEventText() (both here and in events.ts).
+    const forcedThreshold = BALANCE.events.guardianGrudgeForcedThreshold;
+    const skips = state.narrativeCounters.guardianFightsSkipped;
+    room.chainVariant = skips >= forcedThreshold ? "forced" : skips === forcedThreshold - 1 ? "buildup" : undefined;
+  }
+
+  state.message = pickEventText(state, room, event);
+  // `metNarrativeNpcIds` (§10.2) is marked in `closeEvent()` (shared.ts) instead of here, once the
+  // visit fully ends — not on room entry — so `alreadyMet` stays accurate across every re-render of
+  // the player's 1st ever visit to a personified event, not just at the moment they walk in.
 
   if (event.kind === "instantReward") {
     const artifactId = rollArtifact("treasureOrEvent", ctx.rng);

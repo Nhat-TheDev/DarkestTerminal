@@ -188,6 +188,14 @@ export interface EventDefinition {
       Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
       outcome of the player's last visit, so it uses the object form instead of a plain string. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
+  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches 2
+      (10-event-narrative.md §10.3 Chain 1) — a subtle, non-warning variant. Only guardian-fight and
+      desecrated-altar set this. */
+  chainBuildupDescription?: string;
+  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches the
+      forced threshold (§10.3 Chain 1) — Skip is hidden/rejected on this room. Only guardian-fight
+      and desecrated-altar set this. */
+  chainForcedDescription?: string;
 }
 
 export interface ActiveStatusEffect {
@@ -207,6 +215,9 @@ export interface Room {
   monsterIds: Id[];
   cleared: boolean;
   rolledEventId?: Id;
+  /** Which text variant this room's event resolved to (10-event-narrative.md §10.3 Chain 1) — set
+      by `resolveEventEntry`, left undefined otherwise. */
+  chainVariant?: "buildup" | "forced";
 }
 
 export interface Floor {
@@ -329,4 +340,12 @@ export interface GameState {
       Drives which `returnDescription` variant gambling-den shows on the next visit. "declined"
       covers leaving before any round was played. */
   lastGamblingDenOutcome?: "won" | "lost" | "declined";
+  /** Running counters that unlock the escalated event variants in 10-event-narrative.md §10.3.
+      Never decrease, except `guardianFightsSkipped` which resets to 0 once its forced encounter
+      is entered. */
+  narrativeCounters: {
+    guardianFightsSkipped: number;
+    artifactsSacrificed: number;
+    altarPaymentsCount: number;
+  };
 }

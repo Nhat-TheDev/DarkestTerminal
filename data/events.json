@@ -10,6 +10,8 @@
     "id": "guardian-fight",
     "name": "Guardian Fight",
     "description": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and it just caught your scent.",
+    "chainBuildupDescription": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and this time it doesn't look away.",
+    "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
     "kind": "combatReward",
     "tier": "common"
   },
@@ -25,6 +27,8 @@
     "id": "desecrated-altar",
     "name": "Desecrate the Altar",
     "description": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath.",
+    "chainBuildupDescription": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath, and it's been stirring since you walked past the last one.",
+    "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
     "kind": "combatReward",
     "tier": "common"
   },

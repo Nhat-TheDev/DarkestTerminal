@@ -4,7 +4,7 @@ import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact } from "../../data/artifacts";
 import { getEvent } from "../../data/events";
-import { getRoom } from "../../engine/dungeon";
+import { getRoom, pickEventText } from "../../engine/dungeon";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
@@ -43,11 +43,7 @@ function partyHpPickerLines(party: Character[]): string[] {
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.rolledEventId) return "";
-  const event = getEvent(room.rolledEventId);
-  const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
-  const returnText =
-    typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
-  return alreadyMet && returnText ? returnText : event.description;
+  return pickEventText(state, room, getEvent(room.rolledEventId));
 }
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
@@ -344,14 +340,11 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
 
     case "eventGuardianFight": {
       const room = getRoom(s.floor, s.currentRoomId);
-      return [
-        t("ui.guardianFightIntro", { room: room.name }),
-        "",
-        currentEventDescription(s),
-        "",
-        t("ui.guardianFightEnterOption"),
-        t("ui.guardianFightSkipOption"),
-      ].join("\n");
+      const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
+      // §10.3 Chain 1: past the forced threshold, Skip isn't offered at all — cosmetic half of the
+      // guard, the engine side (guardianFightSkip rejecting it) is the 2nd line of defense.
+      if (room.chainVariant !== "forced") lines.push(t("ui.guardianFightSkipOption"));
+      return lines.join("\n");
     }
   }
 }
