@@ -412,11 +412,16 @@ A new UI screen state is also needed (shown after either hook runs, before retur
 view) — the exact routing hook wasn't traced here since it depends on how `src/ui/app.ts`'s screen
 state machine is structured; that's Phase-1-of-implementation work, not spec work.
 
-### Content — 2 worked examples (template for the remaining 7)
+### Content — all 9 (drafts, not final)
 
 Writing quality here matters the same way it did for §10.1 (`design-doc.md` §1.1 — text is the whole
-game) — proposing all 9 in 1 pass risks the same generic-first-draft problem §10.1 hit. These 2 are a
-template to validate tone before writing the rest as a dedicated pass:
+game). The 1st 2 (`guardian-fight`, `merchant`) were written as a template to validate tone; the
+remaining 7 below followed once that tone held up. 1 thing that surfaced while writing all 9 back to
+back and worth flagging: reusing a shared 3-way stance axis creates real pull toward every "wary"
+option starting with "You don't..." or every "curious" option starting with "You wonder..." — an
+early pass of these 7 had exactly that problem (6 of 9 "curious" lines opened with "you wonder",
+7 of 9 "wary" lines opened with "you don't"). Rewritten below for variety; flagging it here since the
+same trap is easy to fall back into if this list ever gets extended past 9 events.
 
 **`guardian-fight`**
 - Prompt: *"The guardian's ashes still carry a trace of incense, not decay. Something tended this
@@ -431,8 +436,50 @@ template to validate tone before writing the rest as a dedicated pass:
 - wary: *"You don't ask. Some things are better left covered."*
 - dismissive: *"Not your business. You got what you came for."*
 
-Remaining 7 (`desecrated-altar`, `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`,
-`wandering-hermit`, `gambling-den`) follow the same shape — deferred to the writing pass.
+**`desecrated-altar`**
+- Prompt: *"The glow hasn't fully died down, even now. It's like the stone remembers being touched."*
+- curious: *"Worth coming back for, once you know what you're looking for."*
+- wary: *"Whatever's under there, you'd rather it stayed asleep."*
+- dismissive: *"The glow's already fading. You've still got a floor left to clear."*
+
+**`blood-altar`**
+- Prompt: *"The wound closes faster than it should. The stone took exactly what it asked for, no
+  more."*
+- curious: *"That's precise, for a slab of rock — someone built it that way on purpose."*
+- wary: *"Next time it might ask for more than skin."*
+- dismissive: *"A fair price. You've paid worse for less."*
+
+**`cursed-shrine`**
+- Prompt: *"The open eye hasn't blinked once. You'd swear it's still watching, even from here."*
+- curious: *"Three eyes, one open — you find yourself counting the shut ones on your way out."*
+- wary: *"One open eye is already 1 too many for your taste."*
+- dismissive: *"It's carved stone. Nothing's actually watching you."*
+
+**`twin-altars`**
+- Prompt: *"The shattered pedestal's dust hasn't settled. You didn't choose it, but it still feels
+  like you broke something."*
+- curious: *"What was on that one, you'll never know now."*
+- wary: *"Some choices aren't worth revisiting."*
+- dismissive: *"Rigged either way — not like you had a real choice."*
+
+**`sacrificial-circle`**
+- Prompt: *"The circle goes quiet again, the pattern in the blood no less deliberate than before. It
+  didn't thank you. It didn't have to."*
+- curious: *"That pattern wasn't drawn by accident, and you'd like to know by what."*
+- wary: *"Not a place you'd want to visit more than you have to."*
+- dismissive: *"A fair trade, and a better artifact for it. That's all it needs to be."*
+
+**`wandering-hermit`**
+- Prompt: *"His eyes never opened again after the trade closed. You're not sure he needed them to."*
+- curious: *"Whoever he used to be, before this — he's not telling, and you find yourself wanting to know."*
+- wary: *"Some pasts are better left buried, not traded for."*
+- dismissive: *"Strange old man, but he held up his end of it."*
+
+**`gambling-den`**
+- Prompt: *"The stranger's already shuffling for the next mark before you've finished walking away."*
+- curious: *"You'd bet he's been doing this longer than the dungeon's been here."*
+- wary: *"Not worth sticking around to find out what a 2nd losing streak costs you."*
+- dismissive: *"A hustler's a hustler — nothing more mysterious than that."*
 
 **Effort/risk**: medium — content volume is the largest of any section here (9 prompts × 3 options =
 27 short lines, plus 9 setup lines), the `ctx`-threading fix above touches ~11 function signatures +
