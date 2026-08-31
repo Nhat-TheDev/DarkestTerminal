@@ -3,7 +3,7 @@ import { startCombat, queueAction, resolveRound, livingCharacterRefs, type Engin
 import { spawnMonster, getMonsterSkill, getArchetype } from "../src/data/monsters";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
-describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
+describe("elite/boss skill kit", () => {
   function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
     for (const ref of livingCharacterRefs(combat, ctx)) {
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -11,7 +11,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
     }
   }
 
-  test("elite and boss pick from a weighted action pool (data/monsters.json actionWeights): both their named skill kit and a plain basic attack are reachable outcomes", () => {
+  test("elite/boss pick from a weighted action pool; skill kit and basic attack are both reachable", () => {
 
     let sawNamedKit = false;
     let sawBasicAttack = false;
@@ -34,7 +34,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
     expect(sawBasicAttack).toBe(true);
   });
 
-  test("normal-tier skeleton-guard is unaffected — still uses the old flat attack (regression)", () => {
+  test("normal-tier skeleton-guard still uses a flat attack", () => {
     const { ctx } = makeCtx(1);
     const monster = spawnMonster("skeleton-guard", 1);
     monster.maxHp = 500;
@@ -48,7 +48,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
     expect(monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
   });
 
-  test("boss telegraphs its Finishing Blow 1 turn ahead, locking in a target, then releases a huge flat hit on release (not HP%-based)", () => {
+  test("boss telegraphs Finishing Blow 1 turn ahead, then releases a flat hit", () => {
     const { ctx } = makeCtx();
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
 
@@ -80,7 +80,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
     expect(boss.executeCooldownTurns).toBeGreaterThan(0);
   });
 
-  test("elite cleave (Sweeping Cleave), when it fires, damages every living character in the same round", () => {
+  test("elite cleave damages every living character when it fires", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
@@ -120,7 +120,7 @@ describe("elite/boss skill kit (docs/gameplay-decisions.md §6.12)", () => {
 });
 
 
-describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.2)", () => {
+describe("regular monster skills", () => {
   test("Black Bat's Blood Drain has lifestealPercent 50", () => {
     expect(getMonsterSkill("blood-drain").effects).toEqual([{ kind: "damage", amount: 2, lifestealPercent: 50 }]);
   });
@@ -148,7 +148,7 @@ describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-mon
     expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard" }]);
   });
 
-  test("actionWeights.normal is 70/30 for the 8 randomly-triggered archetypes, 100/0 for Zombie/Skeleton Warrior", () => {
+  test("actionWeights.normal is 70/30 for random archetypes, 100/0 for Zombie/Skeleton Warrior", () => {
     for (const id of ["dungeon-rat", "black-bat", "slime", "skeleton", "snake", "lizard", "spider", "skeleton-archer"]) {
       const a = getArchetype(id);
       expect(a.skillIds.length).toBe(1);
@@ -170,8 +170,8 @@ describe("regular monster skills (docs/gameplay-decisions/10-skill-ranks-and-mon
 });
 
 
-describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.3)", () => {
-  test("a Zombie below 40% HP is biased toward self-casting Regeneration, but not deterministically (weighted, not 'always')", () => {
+describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
+  test("a Zombie below 40% HP is biased toward self-casting Regeneration, not deterministic", () => {
     let castCount = 0;
     let notCastCount = 0;
     for (let seed = 0; seed < 60; seed++) {
@@ -187,7 +187,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decision
     expect(notCastCount).toBeGreaterThan(0);
   });
 
-  test("a Zombie at/above 40% HP never self-casts (falls through to actionWeights, which never rolls skill for it)", () => {
+  test("a Zombie at/above 40% HP never self-casts", () => {
     const { ctx } = makeCtx();
     const zombie = spawnInto(ctx, "zombie");
     zombie.hp = Math.ceil(zombie.maxHp * 0.4);
@@ -196,7 +196,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decision
     expect(combat.log.some((l) => l.text.includes("Regeneration"))).toBe(false);
   });
 
-  test("a Skeleton Warrior below 40% HP is biased toward Guard Stance but can still attack (fixes the permanently-passive bug)", () => {
+  test("a Skeleton Warrior below 40% HP is biased toward Guard Stance but can still attack", () => {
     let guardCount = 0;
     let attackCount = 0;
     for (let seed = 0; seed < 60; seed++) {
@@ -212,7 +212,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decision
     expect(attackCount).toBeGreaterThan(0);
   });
 
-  test("other defensive archetypes with empty skillIds are unaffected even below 40% HP (regression)", () => {
+  test("other defensive archetypes with empty skillIds are unaffected below 40% HP", () => {
     const { ctx } = makeCtx();
     const knight = spawnInto(ctx, "zombie-knight");
     knight.hp = Math.floor(knight.maxHp * 0.1);
@@ -223,7 +223,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decision
     expect(knight.hp).toBe(hpBefore);
   });
 
-  test("the low-HP self-skill branch only applies at normal tier, even if the archetype has skillIds (regression guard)", () => {
+  test("the low-HP self-skill branch only applies at normal tier", () => {
     const { ctx } = makeCtx();
     const zombieAsBoss = spawnMonster("zombie", 1, { tier: "boss" });
     zombieAsBoss.hp = Math.floor(zombieAsBoss.maxHp * 0.1);
@@ -237,7 +237,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill fix (docs/gameplay-decision
 });
 
 
-describe("regular monster skills end-to-end (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.2)", () => {
+describe("regular monster skills end-to-end", () => {
   function queueTrivialPartyActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
     for (const ref of livingCharacterRefs(combat, ctx)) {
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -245,7 +245,7 @@ describe("regular monster skills end-to-end (docs/gameplay-decisions/10-skill-ra
     }
   }
 
-  test("Slime's Acid Spit, when it fires and procs, applies corroded (damage + defense debuff per turn)", () => {
+  test("Slime's Acid Spit applies corroded when it procs", () => {
     let found = false;
     for (let seed = 0; seed < 100 && !found; seed++) {
       const { ctx } = makeCtx(seed);
@@ -264,7 +264,7 @@ describe("regular monster skills end-to-end (docs/gameplay-decisions/10-skill-ra
     expect(found).toBe(true);
   });
 
-  test("Spider's Web Spit, when it fires and procs, applies webbed (speed -20 per turn)", () => {
+  test("Spider's Web Spit applies webbed when it procs", () => {
     let found = false;
     for (let seed = 0; seed < 100 && !found; seed++) {
       const { ctx } = makeCtx(seed);
@@ -283,7 +283,7 @@ describe("regular monster skills end-to-end (docs/gameplay-decisions/10-skill-ra
     expect(found).toBe(true);
   });
 
-  test("Black Bat's Blood Drain, when it fires, damages the target and heals the bat via lifesteal", () => {
+  test("Black Bat's Blood Drain damages the target and heals via lifesteal", () => {
     let found = false;
     for (let seed = 0; seed < 100 && !found; seed++) {
       const { ctx } = makeCtx(seed);

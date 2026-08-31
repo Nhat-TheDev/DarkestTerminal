@@ -19,8 +19,8 @@ function forceEventRoom(game: Game, eventId: string) {
   return room;
 }
 
-describe("events (docs/gameplay-decisions/08-events.md)", () => {
-  test("rollEvent: only picks ids from the 2 tiers, roughly 65% Common / 35% Rare", () => {
+describe("events", () => {
+  test("rollEvent picks only Common/Rare ids, roughly 65/35", () => {
     const rng = new Rng(3);
     const commonIds = new Set(EVENTS.filter((e) => e.tier === "common").map((e) => e.id));
     const rareIds = new Set(EVENTS.filter((e) => e.tier === "rare").map((e) => e.id));
@@ -35,7 +35,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(commonCount / total).toBeLessThan(0.7);
   });
 
-  test("rollArtifactWithMinRarity('rare', ...) never rolls Common, matches §8.9's 60/30/10 Rare/Unique/Epic split", () => {
+  test("rollArtifactWithMinRarity('rare') never rolls Common", () => {
     const rng = new Rng(4);
     const counts: Record<string, number> = {};
     const total = 6000;
@@ -50,12 +50,12 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect((counts["epic"] ?? 0) / total).toBeLessThan(0.14);
   });
 
-  test("rollArtifactWithMinRarity('epic', ...) always returns an Epic", () => {
+  test("rollArtifactWithMinRarity('epic') always returns an Epic", () => {
     const rng = new Rng(6);
     for (let i = 0; i < 20; i++) expect(getArtifact(rollArtifactWithMinRarity("epic", rng)).rarity).toBe("epic");
   });
 
-  test("rollArtifactOrCursed fires the Cursed pool close to 30% of the time", () => {
+  test("rollArtifactOrCursed rolls Cursed roughly 30% of the time", () => {
     const rng = new Rng(7);
     let cursedCount = 0;
     const total = 4000;
@@ -66,7 +66,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(cursedCount / total).toBeLessThan(0.36);
   });
 
-  test("moveToRoom auto-resolves open-chest: grants 1 Artifact as a pending decision and clears the room (A.2)", () => {
+  test("moveToRoom auto-resolves open-chest into a pending decision and clears the room", () => {
     const game = new Game(1);
     const target = game.connectedRoomChoices()[0]!;
     const room = getRoom(game.state.floor, target.id);
@@ -78,7 +78,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(room.cleared).toBe(true);
   });
 
-  test("moveToRoom does not start combat for a guardian-fight room — it waits for the player to confirm", () => {
+  test("moveToRoom doesn't start combat for a guardian-fight room", () => {
     const game = new Game(2);
     game.state.combat = null;
     const target = game.connectedRoomChoices()[0]!;
@@ -94,7 +94,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(room.cleared).toBe(false);
   });
 
-  test("enterGuardianFight spawns 1-2 scaled monsters and starts combat; skipGuardianFight closes the room with no fight", () => {
+  test("enterGuardianFight starts combat, skipGuardianFight closes with no fight", () => {
     const game = new Game(2);
     game.state.combat = null;
     const target = game.connectedRoomChoices()[0]!;
@@ -124,13 +124,13 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(room2.monsterIds.length).toBe(0);
   });
 
-  test("enterGuardianFight/skipGuardianFight reject when there is no pending guardian fight", () => {
+  test("enterGuardianFight/skipGuardianFight reject without a pending fight", () => {
     const game = new Game(2);
     expect(game.enterGuardianFight()).not.toBeNull();
     expect(game.skipGuardianFight()).not.toBeNull();
   });
 
-  test("spawnEventGuardianMonsters scales maxHp/attack/defense by the guardian multiplier, not exp", () => {
+  test("spawnEventGuardianMonsters scales stats by the guardian multiplier, not exp", () => {
     const rng = new Rng(1);
     const depth = 5;
     const monsters = spawnEventGuardianMonsters(rng, depth);
@@ -146,7 +146,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     }
   });
 
-  test("moveToRoom pre-rolls a fixed 4 merchant offers into activeEvent, refreshCount starts at 0", () => {
+  test("moveToRoom pre-rolls 4 merchant offers", () => {
     const game = new Game(3);
     const target = game.connectedRoomChoices()[0]!;
     const room = getRoom(game.state.floor, target.id);
@@ -158,7 +158,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game.state.activeEvent?.refreshCount).toBe(0);
   });
 
-  test("merchantPurchase deducts coins by rarity and grants the artifact as a pending decision; rejects when short on coins", () => {
+  test("merchantPurchase deducts coins and grants the artifact, rejects when short", () => {
     const game = new Game(4);
     forceEventRoom(game, "merchant");
     game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"], refreshCount: 0 };
@@ -176,7 +176,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game2.merchantPurchase(0)).not.toBeNull();
   });
 
-  test("merchantRefresh re-rolls all 4 offers, costs 10 coins, capped at 3 uses per visit", () => {
+  test("merchantRefresh re-rolls offers, capped at 3 uses per visit", () => {
     const game = new Game(6);
     forceEventRoom(game, "merchant");
     game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet", "sharp-claw", "ancient-sword", "heart-of-stone"], refreshCount: 0 };
@@ -190,7 +190,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game.merchantRefresh()).not.toBeNull(); // exhausted
   });
 
-  test("bloodAltarPay pays a fixed 25% maxHP for 1 fully random artifact, granted as a pending decision", () => {
+  test("bloodAltarPay costs 25% maxHP for a random artifact", () => {
     const game = new Game(7);
     forceEventRoom(game, "blood-altar");
     const c = game.state.party[0]!;
@@ -201,7 +201,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game.state.pendingArtifactDecision).not.toBeNull();
   });
 
-  test("cursedShrineDecide: accept grants the pre-rolled offer as a pending decision, decline grants nothing", () => {
+  test("cursedShrineDecide: accept grants the offer, decline grants nothing", () => {
     const game = new Game(8);
     forceEventRoom(game, "cursed-shrine");
     game.state.activeEvent = { eventId: "cursed-shrine", offerArtifactIds: ["blackened-locket"] };
@@ -216,7 +216,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game2.state.pendingArtifactDecision).toBeNull();
   });
 
-  test("twinAltarsChoose reveals+picks 1 of 2 as a forced pending decision; resolveArtifactEquip then requires a replacement when full", () => {
+  test("twinAltarsChoose forces equip, requiring a replacement when full", () => {
     const game = new Game(10);
     forceEventRoom(game, "twin-altars");
     game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
@@ -241,7 +241,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(c2.equippedArtifactIds).not.toContain("ancient-sword");
   });
 
-  test("sacrifice removes a currently-equipped artifact and rolls at/above its rarity as a pending decision", () => {
+  test("sacrifice removes an artifact and rolls at/above its rarity", () => {
     const game = new Game(12);
     forceEventRoom(game, "sacrificial-circle");
     const c = game.state.party[0]!;
@@ -259,7 +259,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(true);
   });
 
-  test("gambling den: Enter rolls round 1, Continue restakes the whole pot, Stop banks it, a loss ends the event empty-handed", () => {
+  test("gambling den: enter, continue, stop, and loss flows", () => {
     let sawWin = false;
     let sawLoss = false;
     for (let seed = 1; seed < 100 && !(sawWin && sawLoss); seed++) {
@@ -283,7 +283,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(sawLoss).toBe(true);
   });
 
-  test("gambling den round 4 win awards 2 Epic artifacts, resolved sequentially (A.3)", () => {
+  test("gambling den round 4 win awards 2 Epic artifacts sequentially", () => {
     let seed = 1;
     let jackpotHit = false;
     for (; seed < 400 && !jackpotHit; seed++) {
@@ -310,7 +310,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(jackpotHit).toBe(true);
   });
 
-  test("hermitExchangeFortune costs 50 coins, works on any equipped artifact incl. Cursed, rolls a replacement ≥ its rarity", () => {
+  test("hermitExchangeFortune costs coins and rolls a replacement ≥ its rarity", () => {
     const game = new Game(13);
     forceEventRoom(game, "wandering-hermit");
     const c = game.state.party[0]!;
@@ -329,7 +329,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(game2.hermitExchangeFortune("iron-gauntlet")).not.toBeNull(); // not enough coins
   });
 
-  test("collapsedFloorAttempt pays a fixed HP cost, then grants a Unique/Epic artifact as a pending decision on the 60% success roll", () => {
+  test("collapsedFloorAttempt costs HP, grants Unique/Epic on success", () => {
     let sawSuccess = false;
     let sawFailure = false;
     for (let seed = 1; seed < 60 && !(sawSuccess && sawFailure); seed++) {
@@ -350,7 +350,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     expect(sawFailure).toBe(true);
   });
 
-  test("curseAggroBoost adds flat aggro; Shackle of Hunger now trades defense for attack (no more curseDrainBoost)", () => {
+  test("curseAggroBoost adds flat aggro; Shackle of Hunger trades defense for attack", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.equippedArtifactIds.push("unstable-core");
@@ -363,7 +363,7 @@ describe("events (docs/gameplay-decisions/08-events.md)", () => {
     ]);
   });
 
-  test("recomputeCharacterStats folds curseAggroBoost into character.aggro on equip and back out on removal", () => {
+  test("recomputeCharacterStats applies curseAggroBoost on equip, removes it on unequip", () => {
     const game = new Game(15);
     const c = game.state.party[0]!;
     const baseAggro = c.aggro;

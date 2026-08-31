@@ -36,8 +36,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
     return;
   }
   const newPot = pot * 2;
-  // gambleState.round stores the human round number just won (1-indexed) — that number IS the
-  // 0-based array index of the next round to play (round index i corresponds to human round i+1).
+  // gambleState.round (1-indexed, round just won) doubles as the 0-based index of the next round.
   if (state.activeEvent) state.activeEvent.gambleState = { round: roundIndex + 1, pot: newPot, maxRounds: ROUNDS.length };
   state.message = t("game.gamblingDenPotDoubled", { pot: newPot });
 }
@@ -57,7 +56,7 @@ export function gamblingDenContinue(state: GameState, ctx: EngineContext): Party
   if ("reason" in active) return active;
   const gamble = active.gambleState;
   if (!gamble) return { reason: t("errors.noActiveChoice") };
-  const nextRoundIndex = gamble.round; // round just won (1-indexed) == the 0-based array index of the next round
+  const nextRoundIndex = gamble.round;
   rollRound(state, ctx, nextRoundIndex, gamble.pot);
   return null;
 }

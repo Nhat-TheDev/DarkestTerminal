@@ -46,7 +46,7 @@ describe("sprite dimensions and palette consistency", () => {
     }
   });
 
-  test("every archetype that can actually spawn as elite/boss (has both skill kits — see GUARD_ROOM_ARCHETYPES in src/data/floor.ts) has its own distinct elite AND boss sprite", () => {
+  test("every archetype that can spawn as elite/boss has its own distinct elite and boss sprite", () => {
     const guardCapable = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds);
     expect(guardCapable.length).toBeGreaterThan(0);
     for (const archetype of guardCapable) {

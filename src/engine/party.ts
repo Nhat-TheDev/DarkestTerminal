@@ -10,7 +10,7 @@ import { BALANCE } from "../data/balanceConfig";
 
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
-/** Net modifyCombatStat delta from the character's currently active status effects (Guard, Weakened, etc.) — recomputeCharacterStats rebuilds `stat` from scratch, so this keeps that rebuild consistent with whatever's still active instead of silently dropping it. */
+/** Net modifyCombatStat delta from the character's active status effects, so recomputeCharacterStats can rebuild `stat` from scratch without dropping them. */
 function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
   let sum = 0;
   for (const active of character.activeStatusEffects) {
@@ -75,7 +75,7 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
   };
 }
 
-/** `satiety` drives C.3 Exhausted: applied to the character's own base stat, before artifact `statBoost`/curse bonuses are added on top — maxHp/maxMp are never reduced by it. */
+/** `satiety`'s Exhausted penalty applies to base stats before artifact/curse bonuses are added; maxHp/maxMp are unaffected. */
 export function recomputeCharacterStats(character: Character, satiety: number): void {
   const cls = getClass(character.classId);
   const base = statsForLevel(cls, character.level);
@@ -91,12 +91,12 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   character.mp = Math.min(character.mp, character.maxMp);
 }
 
-/** Call whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest Eat & Drink) — Exhausted is party-wide, so every character's stats need refreshing, not just whoever triggered the change. */
+/** Call whenever `GameState.satiety` changes — Exhausted is party-wide, so every character needs refreshing. */
 export function recomputeAllPartyStats(state: GameState): void {
   for (const c of state.party) recomputeCharacterStats(c, state.satiety);
 }
 
-/** Removes an artifact from wherever it's equipped, permanently — no pool to return it to. Used only by the 2 A.5 exceptions (Wandering Hermit exchange, Sacrificial Circle) and by the forced-replacement step of the pending-artifact-decision flow. Never exposed as a free-standing player action. */
+/** Removes an artifact from wherever it's equipped, permanently — no pool to return it to. Used only by Wandering Hermit exchange, Sacrificial Circle, and the forced-replacement step of the pending-artifact-decision flow; never a free-standing player action. */
 export function removeArtifactFromCharacter(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
   const character = state.party.find((c) => c.id === characterId);
   if (!character) return { reason: t("errors.characterNotFound") };
@@ -108,12 +108,12 @@ export function removeArtifactFromCharacter(state: GameState, characterId: Id, a
   return null;
 }
 
-/** A.2 step 1: an artifact was just rolled/revealed. Sets it awaiting the player's equip/discard decision — never enters a shared pool. `forceEquip` covers events (Twin Altars) that force the flow regardless of the artifact's own `isCursed` flag. */
+/** An artifact was just rolled/revealed; sets it awaiting the player's equip/discard decision. `forceEquip` covers events (Twin Altars) that force the flow regardless of the artifact's own `isCursed` flag. */
 export function grantArtifact(state: GameState, artifactId: Id, source: "elite" | "boss" | "treasureOrEvent" | "event", forceEquip = false): void {
   state.pendingArtifactDecision = { artifactId, forceEquip: forceEquip || getArtifact(artifactId).isCursed === true, source };
 }
 
-/** Called after a pending decision resolves — chains in Gambling Den's 2nd jackpot artifact (A.3: decisions resolve sequentially, never simultaneously). */
+/** Called after a pending decision resolves — chains in Gambling Den's 2nd jackpot artifact, since decisions resolve sequentially, never simultaneously. */
 function chainNextGrantIfAny(state: GameState): void {
   if (!state.secondJackpotArtifactId) return;
   const nextId = state.secondJackpotArtifactId;
@@ -121,7 +121,7 @@ function chainNextGrantIfAny(state: GameState): void {
   grantArtifact(state, nextId, "event");
 }
 
-/** A.2 step 2 (Discard branch). Only valid for an ordinary (non-Cursed, non-forceEquip) pending artifact. */
+/** Discard branch. Only valid for an ordinary (non-Cursed, non-forceEquip) pending artifact. */
 export function discardPendingArtifact(state: GameState): PartyActionError | null {
   const pending = state.pendingArtifactDecision;
   if (!pending) return { reason: t("errors.noPendingArtifactDecision") };
@@ -133,10 +133,9 @@ export function discardPendingArtifact(state: GameState): PartyActionError | nul
 }
 
 /**
- * A.2 step 2/3 (Equip branch, both the voluntary and forced-equip paths).
- * If the target character is already at 3/3, `replaceArtifactId` must name 1 of THAT
- * character's own currently-equipped *ordinary* (non-Cursed) artifacts — it is discarded
- * to make room. A Cursed artifact already worn by them can never be the thing discarded here.
+ * Equip branch (voluntary and forced-equip paths). If the target character is already at
+ * 3/3, `replaceArtifactId` must name 1 of their own equipped *ordinary* (non-Cursed) artifacts
+ * to discard and make room — a Cursed artifact they wear can never be discarded this way.
  */
 export function resolveArtifactEquip(state: GameState, characterId: Id, replaceArtifactId?: Id): PartyActionError | null {
   const pending = state.pendingArtifactDecision;

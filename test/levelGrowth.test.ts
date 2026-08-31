@@ -13,7 +13,7 @@ const MILESTONES: Record<number, { attack: number; defense: number; maxHp: numbe
   100: { attack: 102, defense: 60, maxHp: 651, maxMp: 264 },
 };
 
-describe("growthBonus matches the docs/gameplay-decisions.md §6.4 milestone table", () => {
+describe("growthBonus matches the milestone table", () => {
   for (const [levelStr, expected] of Object.entries(MILESTONES)) {
     const level = Number(levelStr);
     test(`level ${level}`, () => {
@@ -48,7 +48,7 @@ describe("growthBonus general properties", () => {
   });
 });
 
-describe("createCharacter applies growth for its level (regression: used to ignore the level param entirely)", () => {
+describe("createCharacter applies growth for its level", () => {
   test("a level-50 character has higher stats than a level-1 character of the same class", () => {
     const cls = getClass("vanguard");
     const lvl1 = createCharacter("a", "A", cls, 1);
@@ -60,7 +60,7 @@ describe("createCharacter applies growth for its level (regression: used to igno
     expect(lvl50.hp).toBe(lvl50.maxHp);
   });
 
-  test("aggro/speed never scale with level (§5: fixed role/tempo identifiers)", () => {
+  test("aggro/speed never scale with level", () => {
     const cls = getClass("rogue");
     const lvl1 = createCharacter("a", "A", cls, 1);
     const lvl100 = createCharacter("b", "B", cls, 100);
@@ -69,8 +69,8 @@ describe("createCharacter applies growth for its level (regression: used to igno
   });
 });
 
-describe("growth is class-dependent (§6.8): weights reinforce each class's identity instead of converging", () => {
-  test("growthWeights sum to the 5.0 budget for every class (no class gets strictly more total growth)", () => {
+describe("growth is class-dependent", () => {
+  test("growthWeights sum to the 5.0 budget for every class", () => {
     for (const cls of CLASSES) {
       const sum =
         cls.growthWeights.attack +
@@ -96,8 +96,8 @@ describe("growth is class-dependent (§6.8): weights reinforce each class's iden
   });
 });
 
-describe("spawnMonster: elite guard stays killable at deep floors (regression for the uniform x2 defense-stacking bug)", () => {
-  test("every class with a damage skill in its kit clears the skill's own amount at floor depth 50 (attack > elite defense, not just barely floored at 1)", () => {
+describe("spawnMonster: elite guard stays killable at deep floors", () => {
+  test("every damage skill clears its own amount at floor depth 50", () => {
     const elite = spawnMonster("skeleton-guard", 50, { tier: "elite" });
     const basicSkillAmount = 10;
     const damageDealers = CLASSES.filter((c) => c.id !== "acolyte");
@@ -124,7 +124,7 @@ describe("spawnMonster: elite guard stays killable at deep floors (regression fo
     }
   });
 
-  test("a boss (§6.11) is always tankier and hits harder than an elite of the same archetype and depth", () => {
+  test("a boss is always tankier and hits harder than an elite of the same archetype and depth", () => {
     for (const depth of [5, 25, 50, 100]) {
       const elite = spawnMonster("skeleton-guard", depth, { tier: "elite" });
       const boss = spawnMonster("skeleton-guard", depth, { tier: "boss" });

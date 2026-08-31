@@ -8,7 +8,7 @@ import { Game } from "../src/engine/game";
 import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 
-describe("items (docs/gameplay-decisions/07-items-artifacts.md §7.1)", () => {
+describe("items", () => {
   test("rollItemDrop fires close to the spec'd 60% of the time", () => {
     const rng = new Rng(42);
     let drops = 0;

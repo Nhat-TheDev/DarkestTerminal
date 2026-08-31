@@ -36,8 +36,7 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   state.currentRoomId = targetRoomId;
   const room = getRoom(state.floor, targetRoomId);
 
-  // Satiety drains once per room — but for a room that starts a fight, the drain happens on
-  // victory (game.ts's resolve()) instead of here, not on the ambush itself.
+  // A room that starts a fight drains satiety on victory, not on the ambush itself.
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");
     state.message = t("dungeon.ambush", { room: room.name });

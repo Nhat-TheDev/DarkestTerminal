@@ -43,7 +43,7 @@ describe("resolver", () => {
     expect(target.survival.fear).toBe(100);
   });
 
-  test("modifyCombatStat buff installs immediately and undoes on expiry — buffs count down starting the round they're cast in (guard is a 1-turn buff)", () => {
+  test("modifyCombatStat buff installs immediately and undoes on expiry", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const baseDef = vanguard.defense;
@@ -56,7 +56,7 @@ describe("resolver", () => {
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
-  test("modifyCombatStat debuff delays its duration countdown by 1 round — the round it's cast in is free (weakened is a 2-turn debuff)", () => {
+  test("modifyCombatStat debuff delays its countdown by 1 free round", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const baseDef = vanguard.defense;
@@ -78,7 +78,7 @@ describe("resolver", () => {
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
-  test("a status effect's own recurring damage tick (DoT, e.g. Poisoned) is flat, not attack-minus-defense (regression: source===target self-tick was going through the full damage formula)", () => {
+  test("a status effect's own damage tick (DoT) is flat, not attack-minus-defense", () => {
     const { ctx } = makeCtx();
     const victim = ctx.monsters[0]!;
     const log: LogEntry[] = [];
@@ -88,7 +88,7 @@ describe("resolver", () => {
     expect(before - victim.hp).toBe(4);
   });
 
-  test("re-applying an active status effect refreshes duration instead of stacking (bong: 2-turn debuff)", () => {
+  test("re-applying an active status effect refreshes duration instead of stacking", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const log: LogEntry[] = [];
@@ -99,7 +99,7 @@ describe("resolver", () => {
     expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);
   });
 
-  test("fear tiers match docs/gameplay-decisions.md §3", () => {
+  test("fear tiers", () => {
     expect(getFearTier(0)).toBe(1);
     expect(getFearTier(39)).toBe(1);
     expect(getFearTier(40)).toBe(2);
@@ -118,7 +118,7 @@ describe("resolver", () => {
   });
 });
 
-describe("room-clear status effect cleanup (Game integration)", () => {
+describe("room-clear status effect cleanup", () => {
   function setUpOneHpFight(seed: number) {
     const game = new Game(seed, ["vanguard", "rogue", "viking"]);
     const rat = spawnMonster("dungeon-rat", 1);
@@ -132,7 +132,7 @@ describe("room-clear status effect cleanup (Game integration)", () => {
     return { game, vanguard: vanguard!, rogue: rogue!, viking: viking!, rat };
   }
 
-  test("Rogue's Poison Coat and Viking's Storm-Empowered (self-buffs with a multi-turn duration) are force-expired the instant the room is won", () => {
+  test("multi-turn self-buffs are force-expired the instant the room is won", () => {
     const { game, vanguard, rogue, viking, rat } = setUpOneHpFight(10);
     const rogueRef: CombatantRef = { kind: "character", id: rogue.id };
     const vikingRef: CombatantRef = { kind: "character", id: viking.id };
@@ -149,7 +149,7 @@ describe("room-clear status effect cleanup (Game integration)", () => {
     expect(viking.activeStatusEffects.some((a) => a.statusEffectId.startsWith("storm-empowered"))).toBe(false);
   });
 
-  test("a debuff (Weakened) survives that same room win instead of being wiped, keeping its remaining duration and its stat penalty", () => {
+  test("a debuff survives a room win, keeping its duration and penalty", () => {
     const { game, vanguard, rat } = setUpOneHpFight(11);
     const baseDef = vanguard.defense;
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened" }, vanguard, vanguard, { log: game.state.combat!.log });

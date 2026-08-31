@@ -3,7 +3,7 @@ import { grantArtifact, type PartyActionError } from "../party";
 import { t } from "../../data/strings";
 import { closeEvent } from "./shared";
 
-/** Reveal-and-pick step only. The actual forced equip (character + possible replacement) happens through the same shared pending-artifact-decision flow every other source uses (A.2/A.4) — `forceEquip: true` skips the Discard option there. */
+/** Reveal-and-pick step only. The forced equip happens through the shared pending-artifact-decision flow, which skips the Discard option. */
 export function twinAltarsChoose(state: GameState, offerIndex: 0 | 1): PartyActionError | null {
   const active = state.activeEvent;
   if (!active || active.eventId !== "twin-altars") return { reason: t("errors.noActiveChoice") };

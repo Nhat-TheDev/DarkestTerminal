@@ -22,7 +22,7 @@ import { Game } from "../src/engine/game";
 import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
-describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () => {
+describe("artifacts", () => {
   test("rollArtifactRarity: Elite never Epic, Boss never Common/Rare, Treasure/Event spans all 4", () => {
     const rng = new Rng(5);
     const seen = { elite: new Set<string>(), boss: new Set<string>(), treasureOrEvent: new Set<string>() };
@@ -36,7 +36,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect([...seen.treasureOrEvent].sort()).toEqual(["common", "epic", "rare", "unique"]);
   });
 
-  test("A.2 pending-artifact-decision flow: equip fills slots up to MAX_EQUIPPED_ARTIFACTS, then requires a replacement to go further", () => {
+  test("equip fills slots up to MAX_EQUIPPED_ARTIFACTS, then requires a replacement", () => {
     const game = new Game(1);
     const c = game.state.party[0]!;
     for (const artifactId of ["iron-gauntlet", "sharp-claw", "ancient-sword"]) {
@@ -158,7 +158,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(c.survival.fear).toBe(11);
   });
 
-  test("applyVictoryFearRelief (D): regular -5 (or -10 quick, round<3), elite/boss -8 (or -12 quick, round<5), never stacked", () => {
+  test("applyVictoryFearRelief: regular vs elite/boss, quick-win vs normal, never stacked", () => {
     const { ctx } = makeCtx();
     for (const c of ctx.party) c.survival.fear = 50;
     applyVictoryFearRelief(ctx.party, false, 5); // not a quick win
@@ -177,7 +177,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(ctx.party.every((c) => c.survival.fear === 38)).toBe(true);
   });
 
-  test("beating an Elite in round 1 gets the quick elite/boss relief (-12), even outside the boss room (combat.ts integration)", () => {
+  test("beating an Elite in round 1 gets the quick elite/boss relief", () => {
     const { ctx } = makeCtx();
     const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
     elite.hp = 1;
@@ -194,7 +194,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(ctx.party.every((c) => c.survival.fear === 38)).toBe(true);
   });
 
-  test("satiety: drain by room type (combat 10 / non-combat event 5 / rest 0), Exhausted (≤30) and Dying (≤10) thresholds", () => {
+  test("satiety: drain by room type, Exhausted and Dying thresholds", () => {
     const state = { satiety: 100 } as unknown as import("../src/types").GameState;
     drainSatiety(state, SATIETY_DRAIN_COMBAT, []);
     expect(state.satiety).toBe(90);
@@ -228,7 +228,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp); // never reduced
   });
 
-  test("reflectDamage: a monster's attack on the bearer reflects a percent back (combat.ts integration)", () => {
+  test("reflectDamage: a monster's attack on the bearer reflects a percent back", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.equippedArtifactIds.push("thorned-armor");
@@ -247,7 +247,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(rat.hp).toBeLessThan(ratHpBefore);
   });
 
-  test("lifesteal and healOnKill heal the equipped character on their own damage (combat.ts integration)", () => {
+  test("lifesteal and healOnKill heal the equipped character on their own damage", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.equippedArtifactIds.push("reapers-covenant");
@@ -263,7 +263,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
   });
 
-  test("autoDamage fires at the start of the round, independent of turn order (combat.ts integration)", () => {
+  test("autoDamage fires at the start of the round, independent of turn order", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.equippedArtifactIds.push("thunder-totem");
@@ -275,7 +275,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(combat.log.some((l) => l.text.includes(`${vanguard.name}'s artifact deals 6 damage`))).toBe(true);
   });
 
-  test("cooldownReduction shortens a skill's cooldown at queue time (combat.ts integration)", () => {
+  test("cooldownReduction shortens a skill's cooldown at queue time", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     rogue.equippedArtifactIds.push("quickcharge-rune");
@@ -286,7 +286,7 @@ describe("artifacts (docs/gameplay-decisions/07-items-artifacts.md §7.2)", () =
     expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(3);
   });
 
-  test("expBoost artifacts increase EXP gained on victory (Game integration)", () => {
+  test("expBoost artifacts increase EXP gained on victory", () => {
     const game = new Game(3);
     const vanguard = game.state.party[0]!;
     game.state.pendingArtifactDecision = { artifactId: "scholars-insight", forceEquip: false, source: "event" };

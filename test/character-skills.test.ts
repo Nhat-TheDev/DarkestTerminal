@@ -17,7 +17,7 @@ afterAll(() => {
   CLASSES[0]!.skills.length = initialVanguardSkillsCount;
 });
 
-describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
+describe("new skill mechanics", () => {
   test("Shield Guard applies both guard and taunt in a single cast", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
@@ -31,7 +31,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
   });
 
-  test("stuns status makes the bearer skip their turn entirely (§4.3)", () => {
+  test("stuns status makes the bearer skip their turn entirely", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     rogue.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
@@ -49,7 +49,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     expect(combat.log.some((l) => l.text.includes("Rogue") && l.text.includes("uses"))).toBe(false);
   });
 
-  test("Poison Coat buff makes a landed damage hit auto-apply Poisoned (on-hit rider, §4.2)", () => {
+  test("Poison Coat buff makes a landed hit auto-apply Poisoned", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     const tanky = spawnInto(ctx, "skeleton-guard");
@@ -148,7 +148,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
     expect(log.some((l) => new RegExp(`^${rogue.name} takes \\d+ damage from Dungeon Rat\\.$`).test(l.text))).toBe(true);
   });
 
-  test("Storm-Empowered's on-hit lightning splash names its source in the damage log too, with the hyphen dropped for readability", () => {
+  test("Storm-Empowered's on-hit splash names its source in the damage log, hyphen dropped", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.mp = 999;
@@ -169,7 +169,7 @@ describe("new skill mechanics (docs/technical-decisions.md §4)", () => {
   });
 });
 
-describe("queued action refund when it never executes (bugfix: mp/uses/cooldown/item were lost on fizzle)", () => {
+describe("queued action refund when it never executes", () => {
   test("skill mp is refunded when the last monster dies to a faster ally before the caster's own turn comes up", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
@@ -193,7 +193,7 @@ describe("queued action refund when it never executes (bugfix: mp/uses/cooldown/
     expect(rogue.mp).toBe(rogueMpBefore);
   });
 
-  test("skill mp is refunded when a singleAlly heal's target is already dead, even though combat continues (in-loop fizzle, not the mid-round-end case above)", () => {
+  test("skill mp is refunded when a singleAlly heal's target is already dead", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("acolyte1", "Acolyte", getClass("acolyte"));
     ctx.party.push(acolyte);
@@ -236,7 +236,7 @@ describe("queued action refund when it never executes (bugfix: mp/uses/cooldown/
   });
 });
 
-describe("skill rank resolution (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+describe("skill rank resolution", () => {
   const mockSkill: SkillDefinition = {
     id: "mock-skill",
     name: "Mock Skill",
@@ -300,7 +300,7 @@ describe("skill rank resolution (docs/gameplay-decisions/10-skill-ranks-and-mons
 });
 
 
-describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPercent)", () => {
+describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPercent", () => {
   test("onHitAoeDamage: a landed hit splashes AoE damage to every living enemy", () => {
     STATUS_EFFECTS.push({
       id: "test-storm-empowered",
@@ -328,7 +328,7 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
     }
   });
 
-  test("onHitAoeDamage: an AoE skill hitting multiple enemies splashes only once per cast, not once per target (no quadratic blowup)", () => {
+  test("onHitAoeDamage: an AoE skill splashes once per cast, not once per target", () => {
     STATUS_EFFECTS.push({
       id: "test-storm-empowered-aoe",
       name: "Test Storm-Empowered AoE",
@@ -516,7 +516,7 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
     expect(bat.hp).toBe(bat.maxHp);
   });
 
-  test("rollHits: a monster with no accuracyPenaltyPercent status always hits (no regression)", () => {
+  test("rollHits: a monster with no accuracyPenaltyPercent status always hits", () => {
     const { ctx } = makeCtx();
     const rat = spawnInto(ctx, "dungeon-rat");
     expect(rollHits(rat, () => 0)).toBe(true);
@@ -556,7 +556,7 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
     expect(isHelpfulStatusEffect(getStatusEffect("test-blinded"))).toBe(false);
   });
 
-  test("a monster's basicAttack now rolls rollHits: never misses without accuracyPenaltyPercent, can miss when Blinded", () => {
+  test("a monster's basicAttack rolls rollHits: never misses without accuracyPenaltyPercent, can miss when Blinded", () => {
     let missWithoutBlinded = 0;
     let missWithBlinded = 0;
     for (let seed = 0; seed < 40; seed++) {
@@ -579,7 +579,7 @@ describe("new engine mechanics for §9 (onHitAoeDamage, conditionalBonus, lifest
 });
 
 
-describe("Vanguard skill ranks (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+describe("Vanguard skill ranks", () => {
   test("Shield Guard ranks resolve to guard-ii/guard-iii at lv7/lv15", () => {
     const skill = getSkill("vanguard-shield-guard");
     expect(getEffectiveSkill(skill, 1).mpCost).toBe(8);
@@ -608,7 +608,7 @@ describe("Vanguard skill ranks (docs/gameplay-decisions/10-skill-ranks-and-monst
 });
 
 
-describe("Mage skill ranks (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+describe("Mage skill ranks", () => {
   test("Fireball ranks resolve dmg/mp/burn-chance at lv1/7/15", () => {
     const skill = getSkill("mage-fireball");
     expect(getEffectiveSkill(skill, 1)).toMatchObject({
@@ -659,7 +659,7 @@ function expectValidCharacterBase(cls: ReturnType<typeof getClass>) {
   }
 }
 
-describe("Rogue rebalance + Plague Doctor class base (docs/gameplay-decisions/09-new-classes-viking-plaguedoctor.md §9.2/§9.4)", () => {
+describe("Rogue rebalance + Plague Doctor class base", () => {
   test("Rogue has valid base stats and growth weights", () => {
     expectValidCharacterBase(getClass("rogue"));
   });
@@ -740,7 +740,7 @@ describe("Rogue rebalance + Plague Doctor class base (docs/gameplay-decisions/09
     expect(found).toBe(true);
   });
 
-  test("blinded's accuracyPenaltyPercent makes the bearer miss more via rollHits (real status, not a mock)", () => {
+  test("blinded's accuracyPenaltyPercent makes the bearer miss more via rollHits", () => {
     const { ctx } = makeCtx();
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
@@ -777,7 +777,7 @@ describe("Rogue rebalance + Plague Doctor class base (docs/gameplay-decisions/09
 });
 
 
-describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoctor.md §9.3)", () => {
+describe("Viking class", () => {
   test("Viking has valid base stats, growth weights, and 6 skills", () => {
     const viking = getClass("viking");
     expectValidCharacterBase(viking);
@@ -815,7 +815,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50 }]);
   });
 
-  test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed% per §10.4", () => {
+  test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed%", () => {
     const slash = getSkill("viking-frenzied-slash");
     expect(getEffectiveSkill(slash, 7).effects).toEqual([
       { kind: "damage", amount: 12 },
@@ -847,7 +847,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 5 }]);
   });
 
-  test("full combat sequence: Lightning Axe -> Frenzied Slash (bonus + AoE splash) -> Thunder God's Fury (bonus + consumes)", () => {
+  test("full combat sequence: Lightning Axe -> Frenzied Slash -> Thunder God's Fury", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.mp = 999;
@@ -884,7 +884,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     expect(getEffectiveSkill(skill, character.level).effects).toEqual([{ kind: "damage", amount: 20 }]);
   });
 
-  test("conditionalBonus still triggers once Lightning Axe's buff is the rank-2 variant (storm-empowered-ii)", () => {
+  test("conditionalBonus still triggers on the rank-2 buff variant", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.level = 10;
@@ -917,7 +917,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
     expect(directDamage).toBe(withBonusDamage);
   });
 
-  test("consumesStatus still removes the buff once it's the rank-3 variant (storm-empowered-iii)", () => {
+  test("consumesStatus still removes the rank-3 buff variant", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.level = 40;
@@ -941,7 +941,7 @@ describe("Viking class (docs/gameplay-decisions/09-new-classes-viking-plaguedoct
 });
 
 
-describe("Rogue skill ranks + poison exclusivity (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+describe("Rogue skill ranks + poison exclusivity", () => {
   test("Poison Bomb ranks apply poisoned-ii/iii, exclusive to this skill", () => {
     const bomb = getSkill("rogue-poison-bomb");
     expect(getEffectiveSkill(bomb, 20).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "poisoned" }]);
@@ -975,7 +975,7 @@ describe("Rogue skill ranks + poison exclusivity (docs/gameplay-decisions/10-ski
 });
 
 
-describe("Acolyte skill ranks incl. effectsByRelation (docs/gameplay-decisions/10-skill-ranks-and-monster-skills.md §10.1)", () => {
+describe("Acolyte skill ranks incl. effectsByRelation", () => {
   test("Heal ranks resolve heal 16/22/30 at lv1/7/15", () => {
     const skill = getSkill("acolyte-heal");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16 }]);

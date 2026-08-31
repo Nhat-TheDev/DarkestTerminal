@@ -277,9 +277,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   }
 
   if (isCombatOver(combat, ctx)) {
-    // Combat ended mid-round (e.g. the last monster died on an earlier turn) before some
-    // characters further down the turn order got to act — refund what queueAction/queueItemAction
-    // pre-committed for them instead of leaving mp/uses/cooldown/inventory permanently spent.
+    // Combat ended before some queued characters got to act — refund what was pre-committed for them.
     for (const queued of combat.queuedActions) {
       if (queued.actor.kind !== "character") continue;
       if (actedRefs.some((ref) => refEquals(ref, queued.actor))) continue;

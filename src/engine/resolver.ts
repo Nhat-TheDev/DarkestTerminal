@@ -215,9 +215,7 @@ function nameOf(actor: Actor): string {
 
 function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: ResolveContext): void {
   const def = getStatusEffect(statusEffectId);
-  // Buffs count down starting the same round they're cast in (tick right after that round's action
-  // phase). Debuffs delay their countdown by 1 round — the round they're cast in is "free," and the
-  // duration is only consumed starting from the action phase after the one that cast it.
+  // Buffs count down starting the round they're cast in; debuffs get a free round first.
   const deferFirstTick = !isHelpfulStatusEffect(def);
   const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
   if (existing) {
