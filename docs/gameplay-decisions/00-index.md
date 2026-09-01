@@ -16,6 +16,6 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | [`07-items-artifacts.md`](./07-items-artifacts.md) | §7 | Consumable items + Artifacts (permanent relics within a run, one-shot equip/discard decision), rarity, drop sources |
 | [`08-events.md`](./08-events.md) | §8 | Event rooms: event types split by rarity tier |
 | [`09-currency.md`](./09-currency.md) | §9 | Cursed Coins — drop rule, spend across Merchant/Gambling Den/Wandering Hermit |
-| [`10-event-narrative.md`](./10-event-narrative.md) | §10 | **Proposed, not yet implemented.** Narrative layer on top of §8: a shared Covenant/Sleeper worldview across event flavor text, recurring NPCs (Merchant/Hermit/Gambling Den) that remember prior visits, event chains from repeated player choices, and a post-event reflection choice on 9 of 11 events so players don't skip past the lore |
+| [`10-event-narrative.md`](./10-event-narrative.md) | §10 | **Merged into §8.** The narrative layer on top of Event rooms — shared Covenant/Sleeper worldview, recurring NPCs, event chains, post-event reflection — is implemented and documented at `08-events.md` §8.13-§8.16. This file now only keeps the design questions left undecided along the way |
 
 Other files in `docs/` (`technical-decisions.md`, `minigame-decisions.md`) reference this document via the path `gameplay-decisions/<file>.md §N`.

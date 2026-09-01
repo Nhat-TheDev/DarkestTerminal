@@ -149,8 +149,7 @@ New status effect `storm-empowered` (shape — actual `durationTurns`/`amount`/`
   "id": "storm-empowered",
   "name": "Storm-Empowered",
   "durationTurns": "<see data/status-effects.json>",
-  "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" },
-  "curableByMiniGame": []
+  "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" }
 }
 ```
 
@@ -173,8 +172,7 @@ New status `bleeding` (physical DoT, structured like `poisoned`) — shape only,
   "id": "bleeding",
   "name": "Bleeding",
   "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }],
-  "durationTurns": "<see data/status-effects.json>",
-  "curableByMiniGame": []
+  "durationTurns": "<see data/status-effects.json>"
 }
 ```
 
@@ -208,8 +206,7 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (s
   "name": "Blinded",
   "durationTurns": "<see data/status-effects.json>",
   "accuracyPenaltyPercent": "<see data/status-effects.json>",
-  "perTurnEffects": [],
-  "curableByMiniGame": []
+  "perTurnEffects": []
 }
 ```
 
@@ -227,21 +224,23 @@ This also required a fix to `isHelpfulStatusEffect()` (`src/engine/resolver.ts`,
 
 The statuses used by the character skill kits in sections 1.1-1.6 (English id/name, matching `data/status-effects.json`):
 
-| id | Name | Type | Effect (`perTurnEffects` / special field) | Curable via mini-game | Used by |
-|---|---|---|---|---|---|
-| `guard` | Guard | Buff | `modifyCombatStat defense` | — (buffs don't need "curing") | Shield Guard (Vanguard) |
-| `taunt` | Taunt | Buff | `modifyCombatStat aggro` | — | Shield Guard (Vanguard) |
-| `rally` | Rally | Buff | `modifyCombatStat attack` | — | Rally (Vanguard) |
-| `poison-coat` | Poison Coat | Buff (rider, not a stat-buff) | no `perTurnEffects`; field `onHitStatusEffectId: "poisoned"` — see `docs/technical-decisions.md` §4.2 | — | Poison Coat (Rogue) |
-| `poisoned` | Poisoned | Debuff | `damage`/turn | Snake mini-game | on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor) |
-| `burning` | Burning | Debuff | `damage`/turn | Not curable via mini-game (intentional — distinguishes it from Poisoned) | Fireball, Fire Pillar (Mage); Fire Vial, Total Plague (Plague Doctor) |
-| `stunned` | Stunned | Control (debuff) | no ordinary `perTurnEffects`; field `stuns: true` — see `docs/technical-decisions.md` §4.3 | Not curable via mini-game | Lightning Bolt, Lightning Storm (Mage) |
-| `weakened` | Weakened | Debuff | `modifyCombatStat defense` | Not curable via mini-game | Toxic Fog (Plague Doctor); also used by Elite/Boss-exclusive skills (`06-level-system.md` §6.12) |
-| `bleeding` | Bleeding | Debuff (physical DoT) | `damage`/turn | — (`curableByMiniGame: []`) | Frenzied Slash, Spinning Axe (Viking) |
-| `storm-empowered` | Storm-Empowered | Buff (rider, AoE-on-hit) | no ordinary `perTurnEffects`; field `onHitAoeDamage` — see section 1.5.2 | — | Lightning Axe (Viking) |
-| `blinded` | Blinded | Debuff | no `perTurnEffects`; field `accuracyPenaltyPercent` — see section 1.6 | — | Blinding Vial (Plague Doctor) |
+| id | Name | Type | Effect (`perTurnEffects` / special field) | Used by |
+|---|---|---|---|---|
+| `guard` | Guard | Buff | `modifyCombatStat defense` | Shield Guard (Vanguard) |
+| `taunt` | Taunt | Buff | `modifyCombatStat aggro` | Shield Guard (Vanguard) |
+| `rally` | Rally | Buff | `modifyCombatStat attack` | Rally (Vanguard) |
+| `poison-coat` | Poison Coat | Buff (rider, not a stat-buff) | no `perTurnEffects`; field `onHitStatusEffectId: "poisoned"` — see `docs/technical-decisions.md` §4.2 | Poison Coat (Rogue) |
+| `poisoned` | Poisoned | Debuff | `damage`/turn | on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor) |
+| `burning` | Burning | Debuff | `damage`/turn | Fireball, Fire Pillar (Mage); Fire Vial, Total Plague (Plague Doctor) |
+| `stunned` | Stunned | Control (debuff) | no ordinary `perTurnEffects`; field `stuns: true` — see `docs/technical-decisions.md` §4.3 | Lightning Bolt, Lightning Storm (Mage) |
+| `weakened` | Weakened | Debuff | `modifyCombatStat defense` | Toxic Fog (Plague Doctor); also used by Elite/Boss-exclusive skills (`06-level-system.md` §6.12) |
+| `bleeding` | Bleeding | Debuff (physical DoT) | `damage`/turn | Frenzied Slash, Spinning Axe (Viking) |
+| `storm-empowered` | Storm-Empowered | Buff (rider, AoE-on-hit) | no ordinary `perTurnEffects`; field `onHitAoeDamage` — see section 1.5.2 | Lightning Axe (Viking) |
+| `blinded` | Blinded | Debuff | no `perTurnEffects`; field `accuracyPenaltyPercent` — see section 1.6 | Blinding Vial (Plague Doctor) |
 
 Exact magnitudes/durations/proc chances for every row above: `data/status-effects.json`.
+
+**Design idea, not implemented**: Poisoned (and its stronger Poison Bomb variants below) was conceived as being cure-able early by playing a mini-game — a concept only, no field or mechanic for it exists in the current code. See `minigame-decisions.md` if this direction is ever picked up.
 
 **Default `durationTurns` convention**: `applyStatusEffectToActor` (`resolver.ts`) falls back to a default of 1 turn when a status doesn't declare `durationTurns` in `data/status-effects.json`.
 - **Buffs (carrying `modifyCombatStat`, applied by the actor to itself/allies)**: default to that 1-turn fallback, matching the "buffs are always 1 turn" rule — no need to explicitly set `durationTurns` in JSON if it's 1, though it's still good practice to write it for clarity.
@@ -287,10 +286,10 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 ```json
 [
-  { "id": "guard-ii", "name": "Guard II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] },
-  { "id": "guard-iii", "name": "Guard III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] },
-  { "id": "rally-ii", "name": "Rally II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] },
-  { "id": "rally-iii", "name": "Rally III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] }
+  { "id": "guard-ii", "name": "Guard II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
+  { "id": "guard-iii", "name": "Guard III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
+  { "id": "rally-ii", "name": "Rally II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "rally-iii", "name": "Rally III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
@@ -302,8 +301,8 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 ```json
 [
-  { "id": "poison-coat-ii", "name": "Poison Coat II", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] },
-  { "id": "poison-coat-iii", "name": "Poison Coat III", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": [] }
+  { "id": "poison-coat-ii", "name": "Poison Coat II", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "poison-coat-iii", "name": "Poison Coat III", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
@@ -315,12 +314,10 @@ Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is 
 
 ```json
 [
-  { "id": "poisoned-ii", "name": "Poisoned II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": ["snake"] },
-  { "id": "poisoned-iii", "name": "Poisoned III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }], "curableByMiniGame": ["snake"] }
+  { "id": "poisoned-ii", "name": "Poisoned II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] },
+  { "id": "poisoned-iii", "name": "Poisoned III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
-
-(Same `curableByMiniGame` mechanic as base `poisoned` — Snake minigame — just carried over to the stronger variants.)
 
 **This scaling is exclusive to Poison Bomb.** Every other source of poison in the game — Poison Coat's on-hit rider, Snake's regular-monster skill (`02-monster.md`), and any future item/skill — keeps applying the plain, un-leveled `poisoned` ("poison level 1") regardless of the caster's rank in anything. There is no shared "global poison level"; `poisoned-ii`/`poisoned-iii` only ever come from Poison Bomb ranks 2/3.
 
@@ -330,8 +327,8 @@ Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is 
 
 ```json
 [
-  { "id": "storm-empowered-ii", "name": "Storm-Empowered II", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" }, "curableByMiniGame": [] },
-  { "id": "storm-empowered-iii", "name": "Storm-Empowered III", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" }, "curableByMiniGame": [] }
+  { "id": "storm-empowered-ii", "name": "Storm-Empowered II", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" } },
+  { "id": "storm-empowered-iii", "name": "Storm-Empowered III", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" } }
 ]
 ```
 
@@ -355,7 +352,7 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 6)
 ### Design notes
 - Each class has exactly 1 "ultimate" skill in slot 5 — it **always hits, with no accuracy roll**, but its effectiveness (damage/heal) scales down by fear tier via a dedicated formula, replacing the usual hit/miss roll + flat damage-reduction combo used by ordinary skills (`04-fear-combat.md` section 4). Ultimates use `isUltimate: true` and share a fixed `cooldownTurns` across every class (`data/classes.json`) — they do not use `usesPerCombat` (see the last bullet below).
 - `modifyCombatStat` (attack/defense/aggro/speed buffs/debuffs) is always routed through `applyStatusEffect` — there is no effect that adjusts a combat stat instantly or permanently; all of them carry `durationTurns` on `StatusEffectDefinition`.
-- `StatusEffectDefinition` is shared by both buffs (e.g. "guard") and debuffs (e.g. "poisoned"): buffs set `curableByMiniGame: []` and expire via `durationTurns`; true debuffs have a non-empty `curableByMiniGame`. Full table + default-duration convention: section 1.7.
+- `StatusEffectDefinition` is shared by both buffs (e.g. "guard") and debuffs (e.g. "poisoned") — both expire via `durationTurns`. Full table + default-duration convention: section 1.7.
 - **Skills with a `chance` on 1 effect** (e.g. Fireball's burn proc) only roll for that specific effect, separate from the skill's overall accuracy roll — the main `damage` effect still always applies if the skill hits; only the secondary (proc) effect is probabilistic.
 - **AoE skills** (`allEnemies`, or the "enemy" half of a two-sided skill): accuracy is rolled **separately for each target**, not once for the whole skill — one enemy dodging doesn't mean the whole group dodges.
 - **Two-sided skills** (Purify, Divine Descent, Total Plague): the effect applied depends on whether the target is an ally or an enemy, rather than sharing one effect list — see `effectsByRelation` in `docs/technical-decisions.md` §4.

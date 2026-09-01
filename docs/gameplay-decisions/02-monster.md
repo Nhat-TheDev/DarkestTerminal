@@ -79,8 +79,7 @@ Current damage/heal amounts and proc chances: `data/monster-skills.json`. *Snake
   "perTurnEffects": [
     { "kind": "damage", "amount": "<see data/status-effects.json>" },
     { "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }
-  ],
-  "curableByMiniGame": []
+  ]
 }
 ```
 
@@ -95,8 +94,7 @@ Distinct from both `weakened` (`01-class-skill.md` §1.7 — pure defense reduct
   "durationTurns": "<see data/status-effects.json>",
   "perTurnEffects": [
     { "kind": "modifyCombatStat", "combatStat": "speed", "amount": "<see data/status-effects.json>" }
-  ],
-  "curableByMiniGame": []
+  ]
 }
 ```
 
