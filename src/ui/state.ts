@@ -30,6 +30,7 @@ export type UiState =
   | { kind: "saveMenu"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
+  | { kind: "eventOpenChest" }
   | { kind: "eventMerchant"; viewingOfferIndex: number | null }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
@@ -70,6 +71,8 @@ export function skillEntries(actor: Character): SkillDefinition[] {
 export function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
+    case "instantReward":
+      return { kind: "eventOpenChest" };
     case "merchant":
       return { kind: "eventMerchant", viewingOfferIndex: null };
     case "choiceReveal":

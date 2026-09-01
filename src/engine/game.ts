@@ -26,6 +26,7 @@ import { getStatusEffect } from "../data/statusEffects";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
+import { openChest } from "./events/openChest";
 import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
@@ -198,6 +199,12 @@ export class Game {
 
   discardPendingArtifact(): PartyActionError | null {
     return discardPendingArtifact(this.state);
+  }
+
+  openChest(): PartyActionError | null {
+    const err = openChest(this.state, this.ctx);
+    maybeTriggerReflection(this.state, this.ctx);
+    return err;
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {

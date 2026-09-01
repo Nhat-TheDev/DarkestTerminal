@@ -4,7 +4,7 @@ import { startCombat } from "./combat";
 import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
 import { getEvent, rollEvent } from "../data/events";
 import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
-import { grantArtifact, recomputeAllPartyStats } from "./party";
+import { recomputeAllPartyStats } from "./party";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -108,16 +108,10 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
   // visit fully ends — not on room entry — so `alreadyMet` stays accurate across every re-render of
   // the player's 1st ever visit to a personified event, not just at the moment they walk in.
 
-  if (event.kind === "instantReward") {
-    const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
-    grantArtifact(state, artifactId, "event");
-    room.cleared = true;
-    return;
-  }
-
-  if (event.kind === "combatReward") {
-    // Deferred: player confirms via Game.enterGuardianFight()/skipGuardianFight() from the
-    // "eventGuardianFight" UI screen, instead of the fight starting immediately on room entry.
+  if (event.kind === "instantReward" || event.kind === "combatReward") {
+    // Deferred: instantReward confirms via Game.openChest() from the "eventOpenChest" UI screen;
+    // combatReward confirms via Game.enterGuardianFight()/skipGuardianFight() from
+    // "eventGuardianFight". Neither triggers its outcome on room entry — only the flavor text above does.
     return;
   }
 

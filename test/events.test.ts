@@ -67,16 +67,34 @@ describe("events", () => {
     expect(cursedCount / total).toBeLessThan(0.36);
   });
 
-  test("moveToRoom auto-resolves open-chest into a pending decision and clears the room", () => {
+  test("moveToRoom doesn't auto-resolve open-chest — it stays pending until opened", () => {
     const game = new Game(1);
     const target = game.connectedRoomChoices()[0]!;
     const room = getRoom(game.state.floor, target.id);
     room.type = "event";
     room.rolledEventId = "open-chest";
     moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(room.cleared).toBe(false);
+  });
+
+  test("openChest grants a pending decision and clears the room", () => {
+    const game = new Game(1);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "open-chest";
+    moveToRoom(game.state, target.id, game.ctx);
+
+    expect(game.openChest()).toBeNull();
     expect(game.state.pendingArtifactDecision).not.toBeNull();
     expect(game.state.pendingArtifactDecision!.forceEquip).toBe(false);
     expect(room.cleared).toBe(true);
+  });
+
+  test("openChest rejects without a chest room to open", () => {
+    const game = new Game(1);
+    expect(game.openChest()).not.toBeNull();
   });
 
   test("moveToRoom doesn't start combat for a guardian-fight room", () => {

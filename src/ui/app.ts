@@ -329,6 +329,7 @@ export class App implements ScreenContext {
       case "saveMenu":
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":
@@ -712,6 +713,7 @@ export class App implements ScreenContext {
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":
@@ -760,6 +762,7 @@ export class App implements ScreenContext {
         return rewardsScreen.renderFooter(this.ui);
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":

@@ -208,6 +208,7 @@
   "ui.noSuitableArtifacts": "  (No suitable artifacts left.)",
   "ui.hermitNoArtifactSuffix": " (no artifacts)",
   "ui.hermitLeaveOption": "  [2] Leave",
+  "ui.openChestOption": "  [1] Open the chest",
   "ui.guardianFightIntro": "You've entered {{room}}.",
   "ui.guardianFightEnterOption": "  [1] Enter and fight",
   "ui.guardianFightSkipOption": "  [2] Leave without fighting",

@@ -24,6 +24,7 @@ const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoi
 
 export type EventUiState = Extract<
   UiState,
+  | { kind: "eventOpenChest" }
   | { kind: "eventMerchant" }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
@@ -50,6 +51,14 @@ function currentEventDescription(state: GameState): string {
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
+    case "eventOpenChest": {
+      if (digit === 1) {
+        const err = ctx.game.openChest();
+        if (err) ctx.reportUnusable(err.reason);
+        ctx.syncUiToGameState();
+      }
+      break;
+    }
     case "eventMerchant": {
       const offers = ctx.game.state.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
@@ -226,6 +235,10 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
 export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
+    case "eventOpenChest": {
+      return [currentEventDescription(s), "", t("ui.openChestOption")].join("\n");
+    }
+
     case "eventMerchant": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
@@ -375,6 +388,7 @@ export function renderFooter(ui: EventUiState): string {
   switch (ui.kind) {
     case "eventHpGamblePickPayer":
       return t("ui.footerChooseCharacter");
+    case "eventOpenChest":
     case "eventMerchant":
     case "eventArtifactPick":
       return t("ui.footerChoose");
