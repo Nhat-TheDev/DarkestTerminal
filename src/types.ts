@@ -4,8 +4,6 @@ export interface SurvivalStats {
   fear: number;
 }
 
-export type MiniGameId = "snake" | "tetris" | "brickBreaker" | "magicTiles";
-
 export type SkillEffectKind =
   | "damage"
   | "heal"
@@ -13,8 +11,7 @@ export type SkillEffectKind =
   | "applyStatusEffect"
   | "removeStatusEffect"
   | "modifyStat"
-  | "modifyCombatStat"
-  | "triggerMiniGame";
+  | "modifyCombatStat";
 
 export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
@@ -25,7 +22,6 @@ export interface SkillEffect {
   stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
-  miniGameId?: MiniGameId;
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
@@ -118,7 +114,6 @@ export interface StatusEffectDefinition {
   name: string;
   description: string;
   perTurnEffects: SkillEffect[];
-  curableByMiniGame: { miniGameId: MiniGameId; clearScore: number }[];
   durationTurns?: number;
   onHitStatusEffectId?: Id;
   onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
@@ -184,6 +179,30 @@ export interface EventDefinition {
   kind: EventKind;
   tier: EventTier;
   forceEquip?: boolean;
+  /** Shown instead of `description` from the 2nd encounter onward (10-event-narrative.md §10.2).
+      Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
+      outcome of the player's last visit, so it uses the object form instead of a plain string. */
+  returnDescription?: string | Record<"won" | "lost" | "declined", string>;
+  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches 2
+      (10-event-narrative.md §10.3 Chain 1) — a subtle, non-warning variant. Only guardian-fight and
+      desecrated-altar set this. */
+  chainBuildupDescription?: string;
+  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches the
+      forced threshold (§10.3 Chain 1) — Skip is hidden/rejected on this room. Only guardian-fight
+      and desecrated-altar set this. */
+  chainForcedDescription?: string;
+  /** Shown instead of `description` once the relevant `narrativeCounters` threshold is crossed
+      (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Only sacrificial-circle
+      (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`) set this. */
+  chainEscalatedDescription?: string;
+  /** Post-event reflection content (10-event-narrative.md §10.5) — set on the 9 in-scope events
+      (all but open-chest and collapsed-floor). `escalatedPrompt` is only set on the 4 events §10.3
+      can escalate (guardian-fight, desecrated-altar, sacrificial-circle, blood-altar). */
+  reflection?: {
+    prompt: string;
+    escalatedPrompt?: string;
+    options: { curious: string; wary: string; dismissive: string };
+  };
 }
 
 export interface ActiveStatusEffect {
@@ -193,7 +212,7 @@ export interface ActiveStatusEffect {
   justApplied?: boolean;
 }
 
-export type RoomType = "combat" | "rest" | "boss" | "treasure" | "empty" | "event";
+export type RoomType = "combat" | "rest" | "boss" | "event";
 
 export interface Room {
   id: Id;
@@ -203,6 +222,9 @@ export interface Room {
   monsterIds: Id[];
   cleared: boolean;
   rolledEventId?: Id;
+  /** Which text variant this room's event resolved to (10-event-narrative.md §10.3 Chain 1) — set
+      by `resolveEventEntry`, left undefined otherwise. */
+  chainVariant?: "buildup" | "forced";
 }
 
 export interface Floor {
@@ -314,9 +336,30 @@ export interface GameState {
   inventory: Record<Id, number>;
   coins: number;
   satiety: number;
-  pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null;
+  pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
   /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;
+  /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
+      drives the "return" flavor text in 10-event-narrative.md §10.2. */
+  metNarrativeNpcIds: Id[];
+  /** Outcome of the player's most recent Gambling Den visit — undefined until the 1st visit closes.
+      Drives which `returnDescription` variant gambling-den shows on the next visit. "declined"
+      covers leaving before any round was played. */
+  lastGamblingDenOutcome?: "won" | "lost" | "declined";
+  /** Running counters that unlock the escalated event variants in 10-event-narrative.md §10.3.
+      Never decrease, except `guardianFightsSkipped` which resets to 0 once its forced encounter
+      is entered. */
+  narrativeCounters: {
+    guardianFightsSkipped: number;
+    artifactsSacrificed: number;
+    altarPaymentsCount: number;
+  };
+  /** A post-event reflection is waiting to be shown (10-event-narrative.md §10.5) — set by
+      `maybeTriggerReflection()`, cleared by `Game.pickReflectionStance()`. */
+  pendingReflection?: { eventId: Id } | null;
+  /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
+      re-trigger, not a history log. Purely flavor today. */
+  eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
 }

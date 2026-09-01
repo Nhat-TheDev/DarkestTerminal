@@ -114,4 +114,4 @@ current state.
 - **4 mini-games** (Snake, Tetris, Brick Breaker, Magic Tiles) used to cure debuffs and as boss phases — specific numbers + Magic Tiles mechanics (hit/miss, combo, score/time): **[`minigame-decisions.md`](./minigame-decisions.md)**
 - **FOV** (shadowcasting) and **pathfinding** (A* for monsters)
 - **Diff-based rendering**
-- **Treasure room** — a room type that always drops an Artifact, with a type (`RoomType: "treasure"`) and spec (`gameplay-decisions/07-items-artifacts.md` §7.2) already defined, but the current floor-generation algorithm doesn't produce this room type yet
+- **Treasure room** — a room type that always drops an Artifact, spec'd in `gameplay-decisions/07-items-artifacts.md` §7.2, but never wired into the floor generator — its placeholder `RoomType` value has since been removed from the codebase as dead code, so no such room type exists in code at all right now. `open-chest` (`gameplay-decisions/08-events.md` §8.2) fills the same role in practice as one of several Event room outcomes

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
-import { getRoom, moveToRoom } from "../src/engine/dungeon";
+import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
 import { rollEvent, EVENTS } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
@@ -9,6 +9,7 @@ import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
 import { spawnEventGuardianMonsters } from "../src/data/floor";
 import { spawnMonster } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
+import { maybeTriggerReflection, pickReflectionPrompt } from "../src/engine/events/shared";
 import { makeCtx } from "./helpers";
 
 function forceEventRoom(game: Game, eventId: string) {
@@ -66,16 +67,34 @@ describe("events", () => {
     expect(cursedCount / total).toBeLessThan(0.36);
   });
 
-  test("moveToRoom auto-resolves open-chest into a pending decision and clears the room", () => {
+  test("moveToRoom doesn't auto-resolve open-chest — it stays pending until opened", () => {
     const game = new Game(1);
     const target = game.connectedRoomChoices()[0]!;
     const room = getRoom(game.state.floor, target.id);
     room.type = "event";
     room.rolledEventId = "open-chest";
     moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(room.cleared).toBe(false);
+  });
+
+  test("openChest grants a pending decision and clears the room", () => {
+    const game = new Game(1);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "open-chest";
+    moveToRoom(game.state, target.id, game.ctx);
+
+    expect(game.openChest()).toBeNull();
     expect(game.state.pendingArtifactDecision).not.toBeNull();
     expect(game.state.pendingArtifactDecision!.forceEquip).toBe(false);
     expect(room.cleared).toBe(true);
+  });
+
+  test("openChest rejects without a chest room to open", () => {
+    const game = new Game(1);
+    expect(game.openChest()).not.toBeNull();
   });
 
   test("moveToRoom doesn't start combat for a guardian-fight room", () => {
@@ -222,14 +241,14 @@ describe("events", () => {
     game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
     const c = game.state.party[0]!;
     expect(game.twinAltarsChoose(0)).toBeNull();
-    expect(game.state.pendingArtifactDecision).toEqual({ artifactId: "iron-gauntlet", forceEquip: true, source: "event" });
+    expect(game.state.pendingArtifactDecision).toEqual({ artifactId: "iron-gauntlet", forceEquip: true });
     expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.equippedArtifactIds).toContain("iron-gauntlet");
 
     const game2 = new Game(11);
     const c2 = game2.state.party[0]!;
     for (const id of ["ancient-sword", "heart-of-stone", "eternal-vial"]) {
-      game2.state.pendingArtifactDecision = { artifactId: id, forceEquip: false, source: "event" };
+      game2.state.pendingArtifactDecision = { artifactId: id, forceEquip: false };
       expect(game2.resolveArtifactEquip(c2.id)).toBeNull();
     }
     forceEventRoom(game2, "twin-altars");
@@ -367,10 +386,361 @@ describe("events", () => {
     const game = new Game(15);
     const c = game.state.party[0]!;
     const baseAggro = c.aggro;
-    game.state.pendingArtifactDecision = { artifactId: "unstable-core", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "unstable-core", forceEquip: false };
     expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.aggro).toBe(baseAggro + 25);
     expect(removeArtifactFromCharacter(game.state, c.id, "unstable-core")).toBeNull();
     expect(c.aggro).toBe(baseAggro);
+  });
+});
+
+describe("recurring narrative NPCs (docs/gameplay-decisions/10-event-narrative.md §10.2)", () => {
+  test("resolveEventEntry shows the original description on the 1st visit; metNarrativeNpcIds is only marked once the event closes, not on room entry", () => {
+    const game = new Game(20);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "merchant";
+    moveToRoom(game.state, target.id, game.ctx);
+    const merchantEvent = EVENTS.find((e) => e.id === "merchant")!;
+    expect(game.state.message).toBe(merchantEvent.description);
+    expect(game.state.metNarrativeNpcIds).not.toContain("merchant"); // still the 1st visit
+    game.merchantLeave();
+    expect(game.state.metNarrativeNpcIds).toContain("merchant"); // marked only once the visit closes
+  });
+
+  test("resolveEventEntry shows returnDescription once the event id is already in metNarrativeNpcIds", () => {
+    const game = new Game(21);
+    game.state.metNarrativeNpcIds = ["wandering-hermit"];
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "wandering-hermit";
+    moveToRoom(game.state, target.id, game.ctx);
+    const hermitReturnDescription = EVENTS.find((e) => e.id === "wandering-hermit")!.returnDescription;
+    expect(typeof hermitReturnDescription).toBe("string");
+    expect(game.state.message).toBe(hermitReturnDescription as string);
+  });
+
+  test("resolveEventEntry leaves events without a returnDescription unaffected by metNarrativeNpcIds (e.g. cursed-shrine)", () => {
+    const game = new Game(22);
+    game.state.metNarrativeNpcIds = ["cursed-shrine"];
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "cursed-shrine";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "cursed-shrine")!.description);
+  });
+
+  test("gambling den closing paths set lastGamblingDenOutcome to lost/won/declined", () => {
+    let sawLoss = false;
+    let sawBankedWin = false;
+    for (let seed = 1; seed < 100 && !(sawLoss && sawBankedWin); seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      if (game.state.activeEvent?.gambleState) {
+        game.gamblingDenStop();
+        expect(game.state.lastGamblingDenOutcome).toBe("won");
+        sawBankedWin = true;
+      } else {
+        expect(game.state.lastGamblingDenOutcome).toBe("lost");
+        sawLoss = true;
+      }
+    }
+    expect(sawLoss).toBe(true);
+    expect(sawBankedWin).toBe(true);
+
+    let jackpotHit = false;
+    for (let seed = 1; seed < 400 && !jackpotHit; seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      for (let round = 1; round <= 3 && game.state.activeEvent?.gambleState; round++) game.gamblingDenContinue();
+      if (game.state.pendingArtifactDecision && !game.state.activeEvent?.gambleState) {
+        expect(game.state.lastGamblingDenOutcome).toBe("won");
+        jackpotHit = true;
+      }
+    }
+    expect(jackpotHit).toBe(true);
+
+    const declinedGame = new Game(50);
+    forceEventRoom(declinedGame, "gambling-den");
+    declinedGame.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+    declinedGame.gamblingDenLeave();
+    expect(declinedGame.state.lastGamblingDenOutcome).toBe("declined");
+  });
+
+  test("resolveEventEntry picks gambling-den's returnDescription branch off lastGamblingDenOutcome", () => {
+    const gamblingEvent = EVENTS.find((e) => e.id === "gambling-den")!;
+    const returnVariants = gamblingEvent.returnDescription as Record<"won" | "lost" | "declined", string>;
+
+    for (const outcome of ["won", "lost", "declined"] as const) {
+      const game = new Game(23);
+      game.state.metNarrativeNpcIds = ["gambling-den"];
+      game.state.lastGamblingDenOutcome = outcome;
+      const target = game.connectedRoomChoices()[0]!;
+      const room = getRoom(game.state.floor, target.id);
+      room.type = "event";
+      room.rolledEventId = "gambling-den";
+      moveToRoom(game.state, target.id, game.ctx);
+      expect(game.state.message).toBe(returnVariants[outcome]);
+    }
+  });
+});
+
+describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+  test("counter is shared across guardian-fight and desecrated-altar — skipping 1 of each reaches the threshold", () => {
+    const game = new Game(30);
+    forceEventRoom(game, "guardian-fight");
+    expect(game.skipGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(1);
+
+    forceEventRoom(game, "desecrated-altar");
+    expect(game.skipGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(2);
+  });
+
+  test("at 2 skips: the next guardian-fight/desecrated-altar shows the buildup description, Skip is still offered", () => {
+    const game = new Game(31);
+    game.state.narrativeCounters.guardianFightsSkipped = 2;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    const buildupDescription = EVENTS.find((e) => e.id === "guardian-fight")!.chainBuildupDescription;
+    expect(room.chainVariant).toBe("buildup");
+    expect(typeof buildupDescription).toBe("string");
+    expect(game.state.message).toBe(buildupDescription as string);
+    expect(game.skipGuardianFight()).toBeNull(); // still allowed at 2
+  });
+
+  test("at 3 skips: the next guardian-fight/desecrated-altar shows the forced description, Skip is rejected", () => {
+    const game = new Game(32);
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "desecrated-altar";
+    moveToRoom(game.state, target.id, game.ctx);
+    const forcedDescription = EVENTS.find((e) => e.id === "desecrated-altar")!.chainForcedDescription;
+    expect(room.chainVariant).toBe("forced");
+    expect(typeof forcedDescription).toBe("string");
+    expect(game.state.message).toBe(forcedDescription as string);
+    expect(game.skipGuardianFight()).not.toBeNull(); // rejected past the threshold
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(3); // unchanged by the rejected attempt
+  });
+
+  test("entering the forced encounter resets the counter back to 0", () => {
+    const game = new Game(33);
+    game.state.combat = null;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.monsterIds = [];
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced");
+    expect(game.enterGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(0);
+  });
+
+  test("below the threshold, guardian-fight/desecrated-altar show the plain description as before", () => {
+    const game = new Game(34);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBeUndefined();
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
+  });
+});
+
+describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+  test("sacrificial-circle shows the plain description below the threshold, the escalated one at/past it — and it stays escalated on a later visit", () => {
+    const game = new Game(40);
+    const c = game.state.party[0]!;
+
+    for (let i = 0; i < 4; i++) {
+      c.equippedArtifactIds = ["scholars-insight"];
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.state.pendingArtifactDecision = null;
+    }
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(4);
+
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.description); // still below 5
+
+    c.equippedArtifactIds = ["scholars-insight"];
+    expect(game.sacrifice("scholars-insight")).toBeNull();
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(5);
+
+    const escalated = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalatedDescription;
+    expect(typeof escalated).toBe("string");
+
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target2.id, game.ctx);
+    expect(game.state.message).toBe(escalated as string);
+
+    // stays escalated — the counter never resets for Chain 2/3 (unlike Chain 1)
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(5);
+    expect(pickEventText(game.state, room2, EVENTS.find((e) => e.id === "sacrificial-circle")!)).toBe(escalated as string);
+  });
+
+  test("blood-altar escalates once altarPaymentsCount (bloodAltarPay + collapsedFloorAttempt combined) reaches the threshold", () => {
+    const game = new Game(41);
+    const c = game.state.party[0]!;
+
+    c.hp = c.maxHp;
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    c.hp = c.maxHp;
+    expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+    c.hp = c.maxHp;
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(3);
+
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.description); // still below 4
+
+    c.hp = c.maxHp;
+    expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(4);
+
+    const escalated = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalatedDescription;
+    expect(typeof escalated).toBe("string");
+
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target2.id, game.ctx);
+    expect(game.state.message).toBe(escalated as string);
+  });
+
+  test("collapsedFloorAttempt counts toward Chain 3 even when the 60% success roll fails — only the HP payment matters", () => {
+    let sawFailure = false;
+    for (let seed = 1; seed < 60 && !sawFailure; seed++) {
+      const game = new Game(seed);
+      const c = game.state.party[0]!;
+      c.hp = c.maxHp;
+      expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+      if (!game.state.pendingArtifactDecision) {
+        expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
+        sawFailure = true;
+      }
+    }
+    expect(sawFailure).toBe(true);
+  });
+});
+
+describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event-narrative.md)", () => {
+  test("maybeTriggerReflection is a no-op until the room is actually cleared", () => {
+    const game = new Game(60);
+    forceEventRoom(game, "wandering-hermit"); // forceEventRoom leaves cleared: false
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toBeFalsy();
+  });
+
+  test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
+    const game = new Game(61);
+    forceEventRoom(game, "wandering-hermit");
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+
+    let sawTriggered = false;
+    let sawSkipped = false;
+    for (let seed = 1; seed < 200 && !(sawTriggered && sawSkipped); seed++) {
+      const g = new Game(seed);
+      g.state.eventReflectionStances["wandering-hermit"] = "curious"; // already reflected once before
+      forceEventRoom(g, "wandering-hermit");
+      getRoom(g.state.floor, g.state.currentRoomId).cleared = true;
+      maybeTriggerReflection(g.state, g.ctx);
+      if (g.state.pendingReflection) sawTriggered = true;
+      else sawSkipped = true;
+    }
+    expect(sawTriggered).toBe(true);
+    expect(sawSkipped).toBe(true);
+  });
+
+  test("open-chest and collapsed-floor never trigger a reflection — deliberately out of scope", () => {
+    for (const eventId of ["open-chest", "collapsed-floor"]) {
+      const game = new Game(62);
+      forceEventRoom(game, eventId);
+      getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+      maybeTriggerReflection(game.state, game.ctx);
+      expect(game.state.pendingReflection).toBeFalsy();
+    }
+  });
+
+  test("pickReflectionPrompt returns the escalated prompt once the matching §10.3 chain has fired", () => {
+    const game = new Game(63);
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced");
+
+    const event = EVENTS.find((e) => e.id === "guardian-fight")!;
+    const prompt = pickReflectionPrompt(game.state, room, event);
+    expect(prompt).toBe(event.reflection!.escalatedPrompt);
+    expect(prompt).not.toBe(event.reflection!.prompt);
+  });
+
+  test("pickReflectionStance records the chosen stance and clears pendingReflection", () => {
+    const game = new Game(64);
+    forceEventRoom(game, "merchant");
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toEqual({ eventId: "merchant" });
+
+    game.pickReflectionStance("wary");
+    expect(game.state.pendingReflection).toBeNull();
+    expect(game.state.eventReflectionStances["merchant"]).toBe("wary");
+  });
+
+  test("closing a personified event's visit (hermitLeave) triggers a reflection end-to-end", () => {
+    const game = new Game(65);
+    forceEventRoom(game, "wandering-hermit");
+    game.hermitLeave();
+    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+  });
+
+  test("an action that doesn't close the event (gamblingDenContinue mid-round) never triggers a reflection", () => {
+    let seed = 1;
+    let sawContinue = false;
+    for (; seed < 100 && !sawContinue; seed++) {
+      const game = new Game(seed);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = 20;
+      game.gamblingDenEnter();
+      if (game.state.activeEvent?.gambleState) {
+        sawContinue = true;
+        expect(game.state.pendingReflection).toBeFalsy(); // pot doubled, visit still open
+      }
+    }
+    expect(sawContinue).toBe(true);
   });
 });

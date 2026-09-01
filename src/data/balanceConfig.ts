@@ -60,6 +60,19 @@ interface BalanceConfig {
     collapsedFloorHpPercent: number;
     collapsedFloorSuccessChance: number;
     eventGuardianStatMultiplier: { maxHp: number; attack: number; defense: number };
+    /** §10.3 Chain 1 ("The Guardian's Grudge") — skips of guardian-fight/desecrated-altar needed to
+        force the next encounter (no Skip offered). The buildup variant shows 1 skip before this. */
+    guardianGrudgeForcedThreshold: number;
+    /** §10.3 Chain 2 ("The Circle Remembers") — cumulative artifactsSacrificed needed to escalate
+        every subsequent sacrificial-circle room. Permanent once crossed, no reset. */
+    circleRemembersThreshold: number;
+    /** §10.3 Chain 3 ("Blood Debt") — cumulative altarPaymentsCount (bloodAltarPay +
+        collapsedFloorAttempt) needed to escalate every subsequent blood-altar room. Permanent once
+        crossed, no reset. */
+    bloodDebtThreshold: number;
+    /** §10.5 — chance a post-event reflection shows again after the 1st (always 100%) encounter
+        with a given event id. */
+    reflectionRepeatChance: number;
     gamblingDenRounds: {
       stake: number;
       winChance: number;

@@ -130,8 +130,6 @@ describe("roomTypeForTag", () => {
     expect(roomTypeForTag("free")).toBe("rest");
     expect(roomTypeForTag("boss")).toBe("boss");
     expect(roomTypeForTag("event")).toBe("event");
-    expect(roomTypeForTag("treasure")).toBe("treasure");
-    expect(roomTypeForTag("empty")).toBe("empty");
   });
 
   test("throws on an unknown tag", () => {

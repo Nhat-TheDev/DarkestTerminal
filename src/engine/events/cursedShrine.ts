@@ -9,7 +9,7 @@ export function cursedShrineDecide(state: GameState, accept: boolean): PartyActi
   if (!active || active.eventId !== "cursed-shrine") return { reason: t("errors.nothingToDecide") };
   const artifactId = active.offerArtifactIds[0]!;
   if (accept) {
-    grantArtifact(state, artifactId, "event");
+    grantArtifact(state, artifactId);
   } else {
     state.message = t("game.declinedLeft");
   }

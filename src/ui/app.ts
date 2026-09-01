@@ -222,6 +222,10 @@ export class App implements ScreenContext {
         this.ui = { kind: "artifactDecision" };
         return;
       }
+      if (this.game.state.pendingReflection) {
+        this.ui = { kind: "eventReflection" };
+        return;
+      }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       if (room.type === "rest" && !room.cleared) {
         this.ui = { kind: "rest" };
@@ -328,6 +332,7 @@ export class App implements ScreenContext {
       case "saveMenu":
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":
@@ -338,6 +343,7 @@ export class App implements ScreenContext {
       case "eventHermit":
       case "eventHermitPickArtifact":
       case "eventGuardianFight":
+      case "eventReflection":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
@@ -710,6 +716,7 @@ export class App implements ScreenContext {
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":
@@ -720,6 +727,7 @@ export class App implements ScreenContext {
       case "eventHermit":
       case "eventHermitPickArtifact":
       case "eventGuardianFight":
+      case "eventReflection":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
       default: {
@@ -757,6 +765,7 @@ export class App implements ScreenContext {
         return rewardsScreen.renderFooter(this.ui);
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
+      case "eventOpenChest":
       case "eventMerchant":
       case "eventCursedShrine":
       case "eventTwinAltars":
@@ -767,6 +776,7 @@ export class App implements ScreenContext {
       case "eventHermit":
       case "eventHermitPickArtifact":
       case "eventGuardianFight":
+      case "eventReflection":
         return eventsScreen.renderFooter(this.ui);
       case "gameover":
         return gameoverScreen.renderFooter();

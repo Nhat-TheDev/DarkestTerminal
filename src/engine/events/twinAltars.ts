@@ -9,7 +9,7 @@ export function twinAltarsChoose(state: GameState, offerIndex: 0 | 1): PartyActi
   if (!active || active.eventId !== "twin-altars") return { reason: t("errors.noActiveChoice") };
   const artifactId = active.offerArtifactIds[offerIndex];
   if (!artifactId) return { reason: t("errors.noSuchOffer") };
-  grantArtifact(state, artifactId, "event", true);
+  grantArtifact(state, artifactId, true);
   closeEvent(state);
   return null;
 }

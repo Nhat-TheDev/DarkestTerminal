@@ -4,7 +4,8 @@ import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact } from "../../data/artifacts";
 import { getEvent } from "../../data/events";
-import { getRoom } from "../../engine/dungeon";
+import { getRoom, pickEventText } from "../../engine/dungeon";
+import { pickReflectionPrompt } from "../../engine/events/shared";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
@@ -23,6 +24,7 @@ const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoi
 
 export type EventUiState = Extract<
   UiState,
+  | { kind: "eventOpenChest" }
   | { kind: "eventMerchant" }
   | { kind: "eventCursedShrine" }
   | { kind: "eventTwinAltars" }
@@ -33,6 +35,7 @@ export type EventUiState = Extract<
   | { kind: "eventHermit" }
   | { kind: "eventHermitPickArtifact" }
   | { kind: "eventGuardianFight" }
+  | { kind: "eventReflection" }
 >;
 
 function partyHpPickerLines(party: Character[]): string[] {
@@ -42,11 +45,20 @@ function partyHpPickerLines(party: Character[]): string[] {
 /** The flavor text authored for the current room's rolled event, shown as an intro line above the mechanical prompt. */
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
-  return room.rolledEventId ? getEvent(room.rolledEventId).description : "";
+  if (!room.rolledEventId) return "";
+  return pickEventText(state, room, getEvent(room.rolledEventId));
 }
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
+    case "eventOpenChest": {
+      if (digit === 1) {
+        const err = ctx.game.openChest();
+        if (err) ctx.reportUnusable(err.reason);
+        ctx.syncUiToGameState();
+      }
+      break;
+    }
     case "eventMerchant": {
       const offers = ctx.game.state.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
@@ -208,12 +220,25 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
+    case "eventReflection": {
+      const stances = ["curious", "wary", "dismissive"] as const;
+      const stance = digit !== null ? stances[digit - 1] : undefined;
+      if (stance) {
+        ctx.game.pickReflectionStance(stance);
+        ctx.syncUiToGameState();
+      }
+      break;
+    }
   }
 }
 
 export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
+    case "eventOpenChest": {
+      return [currentEventDescription(s), "", t("ui.openChestOption")].join("\n");
+    }
+
     case "eventMerchant": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
@@ -339,14 +364,22 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
 
     case "eventGuardianFight": {
       const room = getRoom(s.floor, s.currentRoomId);
-      return [
-        t("ui.guardianFightIntro", { room: room.name }),
-        "",
-        currentEventDescription(s),
-        "",
-        t("ui.guardianFightEnterOption"),
-        t("ui.guardianFightSkipOption"),
-      ].join("\n");
+      const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
+      // §10.3 Chain 1: past the forced threshold, Skip isn't offered at all — cosmetic half of the
+      // guard, the engine side (guardianFightSkip rejecting it) is the 2nd line of defense.
+      if (room.chainVariant !== "forced") lines.push(t("ui.guardianFightSkipOption"));
+      return lines.join("\n");
+    }
+
+    case "eventReflection": {
+      const pending = s.pendingReflection;
+      if (!pending) return "";
+      const event = getEvent(pending.eventId);
+      if (!event.reflection) return "";
+      const room = getRoom(s.floor, s.currentRoomId);
+      const prompt = pickReflectionPrompt(s, room, event) ?? "";
+      const { curious, wary, dismissive } = event.reflection.options;
+      return [prompt, "", `  [1] ${curious}`, `  [2] ${wary}`, `  [3] ${dismissive}`].join("\n");
     }
   }
 }
@@ -355,6 +388,7 @@ export function renderFooter(ui: EventUiState): string {
   switch (ui.kind) {
     case "eventHpGamblePickPayer":
       return t("ui.footerChooseCharacter");
+    case "eventOpenChest":
     case "eventMerchant":
     case "eventArtifactPick":
       return t("ui.footerChoose");
@@ -364,6 +398,7 @@ export function renderFooter(ui: EventUiState): string {
     case "eventGamblingDen":
     case "eventHermit":
     case "eventGuardianFight":
+    case "eventReflection":
       return t("ui.footerChoose");
     case "eventHermitPickArtifact":
       return t("ui.footerChooseArtifact");

@@ -13,7 +13,8 @@ export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifac
   if (err) return err;
   const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
   state.message = t("game.sacrificeResult", { old: getArtifact(sacrificeArtifactId).name, new: getArtifact(newArtifactId).name });
-  grantArtifact(state, newArtifactId, "event");
+  grantArtifact(state, newArtifactId);
+  state.narrativeCounters.artifactsSacrificed += 1; // §10.3 Chain 2 — "The Circle Remembers"
   return null;
 }
 

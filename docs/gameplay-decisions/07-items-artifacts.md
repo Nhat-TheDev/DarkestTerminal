@@ -70,7 +70,7 @@ An Artifact is **equipment**, attached to 1 specific character (not the whole pa
 
 ```
 Character.equippedArtifactIds: Id[]   // capped per data/balance-config.json field party.maxEquippedArtifacts
-GameState.pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null
+GameState.pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null
 ```
 
 There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` is the only transient state: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.10, 2 Epics), decisions resolve **sequentially**: the 2nd artifact isn't even rolled/revealed until the 1st is fully resolved.
@@ -147,10 +147,10 @@ ArtifactDefinition {
 |---|---|---|
 | Killing an **Elite** (floor's final room, not Boss) | Guaranteed | Rarity rolled from the `elite` weights in `RARITY_WEIGHTS` (`src/data/artifacts.ts`) — never Epic |
 | Killing a **real Boss** (every `bossFloorInterval` floors, `06-level-system.md` §6.11) | Guaranteed | Rarity rolled from the `boss` weights in `RARITY_WEIGHTS` — never Common/Rare |
-| **Treasure room** | Guaranteed, when visited | `RoomType "treasure"` exists in the code but the floor generator currently doesn't spawn this room type (only spawns Event rooms at the branch stage) — in practice, never encountered in-game |
-| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`). Rarity uses the `treasureOrEvent` weights in `RARITY_WEIGHTS` |
+| **Treasure room** | — | Was spec'd as its own guaranteed-Artifact room type, but never wired into the floor generator; the placeholder `RoomType` value has since been removed from the codebase as dead code, so there's no such room type in code at all |
+| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.2) fills the "guaranteed artifact, no combat" role Treasure room was meant to have. Rarity uses the `treasureOrEvent` weights in `RARITY_WEIGHTS` |
 
-**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (see below). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the 2 room types drop Artifacts.
+**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (see below). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the Event room drop Artifacts.
 
 ### Rarity & drop rate per tier
 

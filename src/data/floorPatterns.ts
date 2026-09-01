@@ -16,10 +16,6 @@ export function roomTypeForTag(tag: string): RoomType {
       return "rest";
     case "boss":
       return "boss";
-    case "treasure":
-      return "treasure";
-    case "empty":
-      return "empty";
     case "event":
       return "event";
     default:

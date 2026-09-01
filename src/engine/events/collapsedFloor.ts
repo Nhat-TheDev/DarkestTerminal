@@ -14,10 +14,11 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   if ("reason" in character) return character;
   const cost = payHpPercent(character, COLLAPSED_FLOOR_HP_PERCENT);
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
+  state.narrativeCounters.altarPaymentsCount += 1; // §10.3 Chain 3 — counts the HP payment itself, not the 60% roll outcome
   if (ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE)) {
     const artifactId = rollArtifact("boss", ctx.rng);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
-    grantArtifact(state, artifactId, "event");
+    grantArtifact(state, artifactId);
   } else {
     state.message = t("game.collapsedFloorFail", { character: character.name, cost });
   }

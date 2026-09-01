@@ -81,6 +81,10 @@
       "attack": 1.2,
       "defense": 1.2
     },
+    "guardianGrudgeForcedThreshold": 3,
+    "circleRemembersThreshold": 5,
+    "bloodDebtThreshold": 4,
+    "reflectionRepeatChance": 0.5,
     "gamblingDenRounds": [
       {
         "stake": 20,

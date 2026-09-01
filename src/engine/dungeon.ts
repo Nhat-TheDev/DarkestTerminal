@@ -1,10 +1,10 @@
-import type { Floor, GameState, Room } from "../types";
+import type { EventDefinition, Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
 import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
 import { getEvent, rollEvent } from "../data/events";
 import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
-import { grantArtifact, recomputeAllPartyStats } from "./party";
+import { recomputeAllPartyStats } from "./party";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -63,21 +63,55 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   state.message = t("dungeon.arrived", { room: room.name });
 }
 
+/**
+ * Picks the flavor text an event should show right now — pure, no side effects. Shared by
+ * `resolveEventEntry` (sets `state.message` on room entry) and `currentEventDescription()`
+ * (`src/ui/screens/events.ts`, re-derives the same text on every re-render within a visit) so the 2
+ * never drift out of sync with each other.
+ */
+export function pickEventText(state: GameState, room: Room, event: EventDefinition): string {
+  if (event.kind === "combatReward") {
+    if (room.chainVariant === "forced") return event.chainForcedDescription ?? event.description;
+    if (room.chainVariant === "buildup") return event.chainBuildupDescription ?? event.description;
+    return event.description;
+  }
+
+  // §10.3 Chain 2/3 — permanent once crossed, no room-level flag needed (unlike Chain 1's
+  // chainVariant), since the counter itself never resets for these 2.
+  if (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= BALANCE.events.circleRemembersThreshold) {
+    return event.chainEscalatedDescription ?? event.description;
+  }
+  if (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold) {
+    return event.chainEscalatedDescription ?? event.description;
+  }
+
+  const alreadyMet = state.metNarrativeNpcIds.includes(event.id);
+  const returnText =
+    typeof event.returnDescription === "string" ? event.returnDescription : event.returnDescription?.[state.lastGamblingDenOutcome ?? "declined"];
+  return alreadyMet && returnText ? returnText : event.description;
+}
+
 function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
   if (!room.rolledEventId) room.rolledEventId = rollEvent(ctx.rng);
   const event = getEvent(room.rolledEventId);
-  state.message = event.description;
-
-  if (event.kind === "instantReward") {
-    const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
-    grantArtifact(state, artifactId, "event");
-    room.cleared = true;
-    return;
-  }
 
   if (event.kind === "combatReward") {
-    // Deferred: player confirms via Game.enterGuardianFight()/skipGuardianFight() from the
-    // "eventGuardianFight" UI screen, instead of the fight starting immediately on room entry.
+    // §10.3 Chain 1 — decided once, here, at room entry; consumed later by guardianFightSkip()
+    // (rejects Skip when "forced") and by pickEventText() (both here and in events.ts).
+    const forcedThreshold = BALANCE.events.guardianGrudgeForcedThreshold;
+    const skips = state.narrativeCounters.guardianFightsSkipped;
+    room.chainVariant = skips >= forcedThreshold ? "forced" : skips === forcedThreshold - 1 ? "buildup" : undefined;
+  }
+
+  state.message = pickEventText(state, room, event);
+  // `metNarrativeNpcIds` (§10.2) is marked in `closeEvent()` (shared.ts) instead of here, once the
+  // visit fully ends — not on room entry — so `alreadyMet` stays accurate across every re-render of
+  // the player's 1st ever visit to a personified event, not just at the moment they walk in.
+
+  if (event.kind === "instantReward" || event.kind === "combatReward") {
+    // Deferred: instantReward confirms via Game.openChest() from the "eventOpenChest" UI screen;
+    // combatReward confirms via Game.enterGuardianFight()/skipGuardianFight() from
+    // "eventGuardianFight". Neither triggers its outcome on room entry — only the flavor text above does.
     return;
   }
 
@@ -93,8 +127,4 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
       state.activeEvent = { eventId: event.id, offerArtifactIds: [] };
     }
   }
-}
-
-export function checkPartyWipe(state: GameState): boolean {
-  return state.party.every((c) => !c.isAlive);
 }

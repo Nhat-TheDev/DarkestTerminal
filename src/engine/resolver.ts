@@ -198,10 +198,6 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       return 0;
     }
-    case "triggerMiniGame": {
-      ctx.log.push({ text: t("resolver.miniGameSkipped"), kind: "info" });
-      return 0;
-    }
   }
 }
 

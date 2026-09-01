@@ -43,7 +43,7 @@ While `satiety ≤ survival.exhaustedThreshold` (30), the **whole party** is Exh
 - Every character's **own** `attack`, `defense`, `magicPower`, `aggro`, `speed` is multiplied by `survival.exhaustedStatMultiplier` (≈ 2/3) — `maxHp`/`maxMp` are never touched.
 - **Artifact `statBoost` bonuses are not reduced** — only the character's own base/leveled stat shrinks. Example: a character with 30 `attack` + 6 `attack` from an equipped artifact, while Exhausted: `round(30 × 2/3) = 20`, plus the untouched `+6` from the artifact → effective `attack = 26`.
 
-Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat & Drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses 30 in either direction — no `StatusEffectDefinition` entry, no `curableByMiniGame`.
+Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat & Drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses 30 in either direction — no `StatusEffectDefinition` entry at all.
 
 ### Dying — satiety ≤ 10
 
@@ -51,7 +51,7 @@ While `satiety ≤ survival.dyingThreshold` (10), the **whole party** additional
 
 Per-round damage equals **Poisoned II**'s tick amount (`poisoned-ii`, `data/status-effects.json`) — `survival.dyingDamagePerRound` is sourced from that same value, so retuning Poisoned II automatically retunes Dying too. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — 10 ≤ 30, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
 
-Not curable by mini-game (same reasoning as Exhausted — it's not a normal status-effect instance) — the only cure is raising satiety back above 10 (Rest room, Camp, Exploration Kit).
+Same reasoning as Exhausted — it's not a normal status-effect instance, so it has no cure mechanic of its own — the only way out is raising satiety back above 10 (Rest room, Camp, Exploration Kit).
 
 ### Camp — a post-victory option, distinct from the Rest room
 
