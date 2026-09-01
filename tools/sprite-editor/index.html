@@ -163,6 +163,9 @@
         <option value="monsters">Quái vật thường (monsters)</option>
         <option value="elites">Elite (elites)</option>
         <option value="bosses">Trùm (bosses)</option>
+        <option value="events">Phòng sự kiện (events)</option>
+        <option value="rest">Phòng nghỉ (rest)</option>
+        <option value="treasure">Phòng kho báu (treasure)</option>
       </select>
 
       <div id="idPickerWrap">
@@ -183,7 +186,7 @@
       <legend>Kích thước</legend>
       <div class="row">
         <div>
-          <label>Rộng</label>
+          <label>Rộng (tối đa <span id="maxWidthLabel">20</span>)</label>
           <input type="number" id="widthInput" min="1" max="20" value="9" />
         </div>
         <div>
@@ -256,7 +259,20 @@
   // Archetypes that ever spawn as elite/boss (GUARD_ROOM_ARCHETYPES in src/data/floor.ts) —
   // for elites/bosses categories, the ID must match one of these to actually take effect in-game.
   const GUARD_ARCHETYPE_IDS = ["skeleton-guard", "giant-spider", "dragon", "zombie-knight", "dark-knight"];
-  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 13 };
+  // Event ids from data/events.json — for the "events" category, the ID must match one of these
+  // to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
+  const EVENT_IDS = [
+    "open-chest", "guardian-fight", "merchant", "desecrated-altar", "blood-altar",
+    "cursed-shrine", "twin-altars", "sacrificial-circle", "gambling-den", "wandering-hermit", "collapsed-floor",
+  ];
+  // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
+  // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
+  const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
+  // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+  // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
+  // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
 
   const el = (id) => document.getElementById(id);
   const statusEl = el("status");
@@ -267,6 +283,7 @@
   const widthInput = el("widthInput");
   const heightInput = el("heightInput");
   const maxHeightLabel = el("maxHeightLabel");
+  const maxWidthLabel = el("maxWidthLabel");
   const gridEl = el("grid");
   const paletteEl = el("palette");
   const previewCanvas = el("previewCanvas");
@@ -280,9 +297,19 @@
     return MAX_HEIGHT[category];
   }
 
+  function maxWidth() {
+    return MAX_WIDTH[category];
+  }
+
   function updateIdHint() {
     if (category === "elites" || category === "bosses") {
       idHintEl.textContent = `ID phải trùng 1 archetype quái trong "monsters" để game dùng đúng: ${GUARD_ARCHETYPE_IDS.join(", ")}.`;
+    } else if (category === "events") {
+      idHintEl.textContent = `ID phải trùng 1 event trong data/events.json để game dùng đúng: ${EVENT_IDS.join(", ")}.`;
+    } else if (category === "treasure") {
+      idHintEl.textContent = `Phòng "treasure" chỉ có 1 sprite duy nhất — ID phải là "${ROOM_SPRITE_ID.treasure}". Lưu ý: loại phòng này chưa được tạo ra trong lối đi ngẫu nhiên hiện tại, nên sprite sẽ chưa xuất hiện khi chơi cho tới khi được bật.`;
+    } else if (category === "rest") {
+      idHintEl.textContent = `Phòng "rest" chỉ có 1 sprite duy nhất trong game — ID phải là "${ROOM_SPRITE_ID.rest}" để game dùng đúng.`;
     } else {
       idHintEl.textContent = "";
     }
@@ -353,7 +380,7 @@
   }
 
   function newBtnHandler() {
-    width = Number(widthInput.value) || 9;
+    width = Math.min(Number(widthInput.value) || 9, maxWidth());
     height = Math.min(Number(heightInput.value) || 9, maxHeight());
     grid = blankGrid(width, height);
     palette = { A: "#8a5a2a" };
@@ -363,6 +390,11 @@
     if (category === "elites" || category === "bosses") {
       const missing = GUARD_ARCHETYPE_IDS.find((id) => !currentSection()[id]);
       if (missing) idInputEl.value = missing;
+    } else if (category === "events") {
+      const missing = EVENT_IDS.find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    } else if (category === "rest" || category === "treasure") {
+      idInputEl.value = ROOM_SPRITE_ID[category];
     }
     renderPalette();
     renderGrid();
@@ -371,7 +403,7 @@
   }
 
   function resizeBtnHandler() {
-    const newWidth = Math.max(1, Math.min(20, Number(widthInput.value) || width));
+    const newWidth = Math.max(1, Math.min(maxWidth(), Number(widthInput.value) || width));
     const newHeight = Math.max(1, Math.min(maxHeight(), Number(heightInput.value) || height));
     const next = blankGrid(newWidth, newHeight);
     for (let r = 0; r < Math.min(height, newHeight); r++) {
@@ -400,7 +432,7 @@
       return;
     }
     const newHeight = Math.min(maxHeight(), clipboardGrid.length);
-    const newWidth = clipboardGrid[0].length;
+    const newWidth = Math.min(maxWidth(), clipboardGrid[0].length);
     grid = blankGrid(newWidth, newHeight);
     for (let r = 0; r < newHeight; r++) {
       for (let c = 0; c < newWidth; c++) {
@@ -593,7 +625,11 @@
     const unusedIdWarning =
       (category === "elites" || category === "bosses") && !GUARD_ARCHETYPE_IDS.includes(id)
         ? ` (Cảnh báo: "${id}" không nằm trong danh sách archetype có thể làm elite/boss — game sẽ không dùng sprite này.)`
-        : "";
+        : category === "events" && !EVENT_IDS.includes(id)
+          ? ` (Cảnh báo: "${id}" không phải id event nào trong data/events.json — game sẽ không dùng sprite này.)`
+          : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
+            ? ` (Cảnh báo: game chỉ đọc id "${ROOM_SPRITE_ID[category]}" cho phòng ${category} — "${id}" sẽ không được dùng.)`
+            : "";
 
     try {
       const res = await fetch("/api/sprites", {
@@ -619,6 +655,9 @@
   categoryEl.addEventListener("change", () => {
     category = categoryEl.value;
     maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
     populateExistingIds();
     if (existingIdEl.value) {
       loadSpriteIntoEditor(currentSection()[existingIdEl.value]);
@@ -644,6 +683,10 @@
   el("saveBtn").addEventListener("click", saveHandler);
 
   (async function init() {
+    maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
     await loadSpritesData();
     populateExistingIds();
     // Load whatever populateExistingIds actually left selected in the dropdown — hardcoding

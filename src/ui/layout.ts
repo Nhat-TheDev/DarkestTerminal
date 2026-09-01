@@ -6,7 +6,7 @@ import { MAX_BOSS_HEIGHT } from "./sprites";
 export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
 export const DIVIDER_WIDTH = 3;
-export const EMPTY_ENEMY_WIDTH = 24;
+export const EMPTY_ENEMY_WIDTH = 30;
 export const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
 
 export function centerText(text: string, width: number): string {
