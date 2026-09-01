@@ -15,16 +15,25 @@ interface SpritesFile {
   monsters: Record<string, SpriteData>;
   elites: Record<string, SpriteData>;
   bosses: Record<string, SpriteData>;
+  events: Record<string, SpriteData>;
+  rest: Record<string, SpriteData>;
+  treasure: Record<string, SpriteData>;
 }
 
-type Category = "classes" | "monsters" | "elites" | "bosses";
-const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses"];
+type Category = "classes" | "monsters" | "elites" | "bosses" | "events" | "rest" | "treasure";
+const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses", "events", "rest", "treasure"];
 
 function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as string[]).includes(value);
 }
 
-const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 13 };
+// Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
+const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+// Event/rest/treasure sprites all render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
+// src/ui/layout.ts) alongside the party sprites; anything wider silently overflows the
+// battlefield panel on a ~100-col terminal, so this is enforced here rather than left to be
+// discovered at play time.
+const MAX_WIDTH: Partial<Record<Category, number>> = { events: 30, rest: 30, treasure: 30 };
 
 function validateSprite(sprite: unknown, category: Category): string | null {
   if (typeof sprite !== "object" || sprite === null) return "Missing sprite data.";
@@ -33,6 +42,8 @@ function validateSprite(sprite: unknown, category: Category): string | null {
   if (rows.length > MAX_HEIGHT[category]) return `Sprite height must be at most ${MAX_HEIGHT[category]} rows for this category.`;
   const width = typeof rows[0] === "string" ? rows[0].length : 0;
   if (width === 0) return "Sprite width must be greater than 0.";
+  const maxWidth = MAX_WIDTH[category];
+  if (maxWidth !== undefined && width > maxWidth) return `Sprite width must be at most ${maxWidth} columns for this category.`;
   for (const row of rows) {
     if (typeof row !== "string" || row.length !== width) return "All rows must have the same width.";
   }

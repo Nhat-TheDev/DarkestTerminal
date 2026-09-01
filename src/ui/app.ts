@@ -3,6 +3,7 @@ import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSna
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
+import { getEvent } from "../data/events";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
@@ -27,11 +28,13 @@ import {
 import {
   spriteForClass,
   spriteForMonster,
+  spriteForEvent,
   renderSpriteInSlot,
   compositeSpriteRow,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
+  TREASURE_CHEST_SPRITE,
   type Sprite,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
@@ -672,6 +675,25 @@ export class App implements ScreenContext {
     return lines;
   }
 
+  private buildTreasureBlock(): TextChunk[][] {
+    const lines = renderSpriteInSlot(TREASURE_CHEST_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    lines.push([colorChunk(centerText(t("ui.treasureChestLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    return lines;
+  }
+
+  private buildEventBlock(eventId: Id): TextChunk[][] {
+    const sprite = spriteForEvent(eventId);
+    const label = getEvent(eventId).name;
+    const blank = () => [plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))];
+    const lines: TextChunk[][] = sprite ? renderSpriteInSlot(sprite, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH) : Array.from({ length: MAX_BOSS_HEIGHT }, blank);
+    lines.push(blank());
+    lines.push([colorChunk(centerText(label, EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
+    lines.push(blank());
+    return lines;
+  }
+
   private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
     const s = this.game.state;
 
@@ -689,6 +711,8 @@ export class App implements ScreenContext {
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !s.combat && room.type === "rest";
+    const isEventRoom = !s.combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
     if (s.combat) {
@@ -709,6 +733,10 @@ export class App implements ScreenContext {
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
+    } else if (isTreasureRoom) {
+      enemyBlock = this.buildTreasureBlock();
+    } else if (isEventRoom) {
+      enemyBlock = this.buildEventBlock(room.rolledEventId!);
     } else {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
@@ -717,7 +745,7 @@ export class App implements ScreenContext {
     const divider: TextChunk[][] = [];
     for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
       divider.push(
-        i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom
+        i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
           ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
           : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
       );

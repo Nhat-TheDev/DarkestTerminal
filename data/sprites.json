@@ -714,5 +714,289 @@
         "D": "#110a24"
       }
     }
+  },
+  "events": {
+    "merchant": {
+      "rows": [
+        ".............................",
+        ".............................",
+        ".............................",
+        ".................IIIIIIIII...",
+        ".................IIHHHHHII...",
+        ".........BBBBBB..IIHHHHHII...",
+        "....ED..BBBBBBBB.IIHHHHHII...",
+        "...GGDD..CFCCCC..IIIIIIIII...",
+        "..GGGGDDDDCCCCDDDIIIIIIIIII..",
+        ".......DDDDDDDEEDDIIHHHHHII..",
+        "....AAAAAAAAAAAAAAAAHHHHHII..",
+        ".....AAAAAAAAAAAAAAIHHHHHII..",
+        "......AAADDIIDDAAAIIIIIIIII..",
+        "......AA.DD..DD.AA..........."
+      ],
+      "palette": {
+        "A": "#4f4e4a",
+        "B": "#3c3c16",
+        "C": "#5f4545",
+        "D": "#31373f",
+        "E": "#448348",
+        "F": "#980101",
+        "G": "#857f6b",
+        "H": "#0f590d",
+        "I": "#0b2f04"
+      }
+    },
+    "guardian-fight": {
+      "rows": [
+        "...........................",
+        "..K.....................K..",
+        "...K......E.....E......K...",
+        "....K....EE.....EE....K....",
+        ".....KKKKKKK...KKKKKKK.....",
+        "....KKKKKKKKK.KKKKKKKKK....",
+        "...KKKKKKKKKK.KKKKKKKKKK...",
+        "..KK.KKKKKK.KKK.KKKKKK.KK.."
+      ],
+      "palette": {
+        "K": "#150e12",
+        "E": "#d21f1f"
+      }
+    },
+    "desecrated-altar": {
+      "rows": [
+        "....M...................M....",
+        "...MM...MM.........MM...MM...",
+        "...MM..MM....AAA....MM..MM...",
+        "...MM..MM...AARAA...MM..MM...",
+        "....MM..MM..ARARA..MM..MM....",
+        ".....MM..MMMMAAAMMMM..MM.....",
+        "......MMM...MMMMM...MMM......",
+        "........MMMM.MMM.MMMM........",
+        "...........MMMMMMM...........",
+        ".......SSSSSSSRSSSSSSS.......",
+        ".......CCCCCCCSCCCCCCC.......",
+        "........CCCCCCCCCCCCC........",
+        "..MMMMMMMMMMMMMMMMMMMMMMMMM..",
+        "MMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+      ],
+      "palette": {
+        "R": "#7e0c0c",
+        "S": "#4a2121",
+        "C": "#282525",
+        "M": "#292423",
+        "A": "#392f0e"
+      }
+    },
+    "blood-altar": {
+      "rows": [
+        "..............GA..............",
+        ".............GAAG.............",
+        "..........GGAG..GGGG..........",
+        "...D......G........A......D...",
+        "...DD....GAGGG..GGGAG....DD...",
+        "...DD....A...G..G...G....DD...",
+        "...DD....A...GGGG...A....DD...",
+        "...DDD........GA........DDD...",
+        "....DD....AAAAAAAAAA....DD....",
+        "....DDD....DDDDDDDD....DDD....",
+        "....DDD.....BBBBBB.....DDD....",
+        ".....DDBBBBBBBBBBBBBBBBDD.....",
+        "....BABBBABBBABBABBABBABBB....",
+        "..BABBABBBBABABBBBBABBBBABBB.."
+      ],
+      "palette": {
+        "G": "#5a5248",
+        "B": "#7a1a1a",
+        "D": "#8c0f0f",
+        "A": "#741201"
+      }
+    },
+    "cursed-shrine": {
+      "rows": [
+        "...SESSSFSESSSSESSSSSFESSES...",
+        "...SSSSSEFSSSESSSSESFSSSSSS...",
+        ".....SSSSFSCCCCCCCCSFSESS.....",
+        "......SS.FFCCCOOCCCFF.SS......",
+        "......SE..CCAACCAACC..SE......",
+        ".....BBS...CCCCCCCC...SBB.....",
+        "......BB....AABBAA....BB......",
+        "......SBBBBBBBBBBBBBBBBS......",
+        ".D.D.DSD.CCCBBBBBBCCC.DSD.D.D.",
+        "..D...DS.CCCCCBBCCCCC.SD...D..",
+        "..D...CCCCBBBBBBBBBBCCCC...D..",
+        "..D.CCCCCCCCCCBBCCCCCCCCCC.D..",
+        ".SSSSSSSSSSSSSSSSSSSSSSSSSSSS."
+      ],
+      "palette": {
+        "S": "#555049",
+        "O": "#c9182c",
+        "C": "#272420",
+        "A": "#352727",
+        "B": "#2f2e2d",
+        "D": "#332e2e",
+        "E": "#4c4b48",
+        "F": "#3a372c"
+      }
+    },
+    "twin-altars": {
+      "rows": [
+        "..............B..............",
+        ".....A.......BBB.......A.....",
+        "...AA.AA.....BAB.....AA.AA...",
+        ".....A.......BAB.......A.....",
+        "............BBABB............",
+        "MMMMMPPP....BBABB.MMMMPPMMMMP",
+        ".PPMPPPPPP..BACAB..PPPPPPMPP.",
+        "..PMPMPPP...BACAB...PMPMPMP..",
+        "..PMPMPMP..BBACABB..PMPMPMP..",
+        ".PPMPMPMPP.BABCBAB.PPMPMPMPP.",
+        ".PPMPMPMPP.BABCBAB.PPMPMPMPP.",
+        "PMPMPMPMPMP.......PMPMPMPMPMP",
+        "PMPMPMPMPMP.......PMPMPMPMPMP"
+      ],
+      "palette": {
+        "P": "#8a7a5a",
+        "M": "#4a4038",
+        "A": "#aa2008",
+        "B": "#08351c",
+        "C": "#800000"
+      }
+    },
+    "sacrificial-circle": {
+      "rows": [
+        "..CAC.......CAAAC.......CAC..",
+        ".CCAC.......CAAAC.......CACC.",
+        ".CAAC.....EECAAACEE.....CAAC.",
+        ".CAAC.EEEEE.CAAAC.EEEEE.CAAC.",
+        ".CAACEE.....CCCCC.....EECAAC.",
+        ".CAAC...................CAAC.",
+        "ECACC.......DDDDD.......CCACE",
+        ".CCC...DDDDDD.A.DDDDDD...CCC.",
+        ".C..DDDD..I..AIA..I..DDDD..C.",
+        "..DDD..IIIIIIA.AIIIIII..DDD..",
+        "DDIIIII.......B.......IIIIIDD",
+        "..DDD..IIIIIIA.AIIIIII..DDD..",
+        "....DDDD..I..AIA..I..DDDD....",
+        ".......DDDDDD.A.DDDDDD.......",
+        "............DDDDD............"
+      ],
+      "palette": {
+        "D": "#5c0d0d",
+        "I": "#8c1414",
+        "A": "#400707",
+        "B": "#2e0896",
+        "C": "#483d3d",
+        "E": "#3c3520"
+      }
+    },
+    "gambling-den": {
+      "rows": [
+        ".............................",
+        "........................CC...",
+        ".....GGG...............CCC...",
+        "....EAEAE..............CACC..",
+        "..GGGGGGGGG..........CCCCAC..",
+        "....BBBHHAH.........CCCACCCC.",
+        "....BDBBH..H........CACCACCCC",
+        ".A..EEEEEE..H......CCCACCCACC",
+        ".B..FEEEEEE.......CCACCACACCC",
+        "..FFFFEEEEE.......CACCCCACCAC",
+        "...FFFEEEEE......CACCAACCCACC",
+        "....FFFFEEE....CCCCACCACCACCA",
+        ".....FFFFEE...CCAACCACCACCACC",
+        ".....FFFFE..CCCACCACACACCACAC"
+      ],
+      "palette": {
+        "H": "#2e2438",
+        "C": "#d8e619",
+        "A": "#c5d11a",
+        "B": "#d1bd7b",
+        "D": "#41403e",
+        "E": "#372e11",
+        "F": "#161a1d",
+        "G": "#403f3a"
+      }
+    },
+    "wandering-hermit": {
+      "rows": [
+        "...........................",
+        "......AAA.........AAA......",
+        ".....AHHHA.......AHHHA.....",
+        "......HSH.........HSH......",
+        ".....RRRRR.......RRRRR.....",
+        "....RRRRRRR.....RRRRRRR....",
+        "....RR...RR.....RR...RR....",
+        "...RRRRRRRRR...RRRRRRRRR...",
+        "...RR.RRRR.RR.RR.RRRR.RR..."
+      ],
+      "palette": {
+        "A": "#8a6fd8",
+        "H": "#c9b89a",
+        "S": "#8a7458",
+        "R": "#5a4a34"
+      }
+    },
+    "collapsed-floor": {
+      "rows": [
+        "..............MMM.............",
+        ".......MMMMMMMKKKMMM..........",
+        "..MMMMMMKKKKKK...KKMMM........",
+        "..MKKKKK...........KKKMMMM....",
+        ".MK...................KKKKM...",
+        ".M...................AA.A.MM..",
+        ".MM..............AAAAAAAAMMM..",
+        "..MMM............AAAAAAAMM....",
+        "....MMMMMMMMM...MMMMMMMMM.....",
+        "............MMMMM............."
+      ],
+      "palette": {
+        "M": "#1d1a16",
+        "K": "#2f2d2d",
+        "A": "#253c29"
+      }
+    }
+  },
+  "rest": {
+    "campfire": {
+      "rows": [
+        ".............Y...............",
+        "..........Y.YOY.Y..Y.........",
+        ".........YO..OOYOYY..........",
+        ".........ROOOROOROOY.........",
+        "..........YOYOROYOR..........",
+        "..........ROOORRORR..........",
+        "...........RRRRORR...........",
+        "..........BBBBBBBBB..........",
+        "AAAAAA...B.B..B..B.B...AAAAAA"
+      ],
+      "palette": {
+        "Y": "#f2c14e",
+        "O": "#e2711d",
+        "R": "#b23a1f",
+        "B": "#5a3a22",
+        "A": "#4f4e4a"
+      }
+    }
+  },
+  "treasure": {
+    "chest": {
+      "rows": [
+        ".............",
+        "....GGGGG....",
+        "...GYYYYYG...",
+        "..GGGGGGGGG..",
+        ".WWWWWWWWWWW.",
+        ".WMMMMMMMMMW.",
+        ".WMM.....MMW.",
+        ".WWWWWWWWWWW.",
+        "..BBBBBBBBB.."
+      ],
+      "palette": {
+        "G": "#c9a227",
+        "Y": "#f2d34e",
+        "W": "#7a5230",
+        "M": "#4a3018",
+        "B": "#241c14"
+      }
+    }
   }
 }
