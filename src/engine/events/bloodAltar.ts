@@ -16,7 +16,7 @@ export function bloodAltarPay(state: GameState, ctx: EngineContext, characterId:
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
   const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
   state.message = t("game.paidHpForArtifact", { payer: character.name, cost, artifact: getArtifact(artifactId).name });
-  grantArtifact(state, artifactId, "event");
+  grantArtifact(state, artifactId);
   state.narrativeCounters.altarPaymentsCount += 1; // §10.3 Chain 3 — "Blood Debt"
   closeEvent(state);
   return null;

@@ -307,7 +307,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       name: "Test Storm-Empowered",
       description: "",
       perTurnEffects: [],
-      curableByMiniGame: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
     });
@@ -334,7 +333,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       name: "Test Storm-Empowered AoE",
       description: "",
       perTurnEffects: [],
-      curableByMiniGame: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
     });
@@ -372,7 +370,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       name: "Test Storm-Empowered Scope",
       description: "",
       perTurnEffects: [],
-      curableByMiniGame: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
     });
@@ -399,7 +396,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       name: "Test Conditional Buff",
       description: "",
       perTurnEffects: [],
-      curableByMiniGame: [],
       durationTurns: 3,
     });
     CLASSES[0]!.skills.push({
@@ -528,7 +524,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       name: "Test Blinded",
       description: "",
       perTurnEffects: [],
-      curableByMiniGame: [],
       durationTurns: 2,
       accuracyPenaltyPercent: 60,
     });

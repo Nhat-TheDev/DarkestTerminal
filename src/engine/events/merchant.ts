@@ -20,7 +20,7 @@ export function merchantPurchase(state: GameState, offerIndex: number): PartyAct
   if (state.coins < cost) return { reason: t("errors.notEnoughCoins") };
   state.coins -= cost;
   state.message = t("game.merchantPurchaseCoins", { cost, artifact: getArtifact(artifactId).name });
-  grantArtifact(state, artifactId, "event");
+  grantArtifact(state, artifactId);
   closeEvent(state);
   return null;
 }

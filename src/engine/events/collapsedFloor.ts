@@ -18,7 +18,7 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   if (ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE)) {
     const artifactId = rollArtifact("boss", ctx.rng);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
-    grantArtifact(state, artifactId, "event");
+    grantArtifact(state, artifactId);
   } else {
     state.message = t("game.collapsedFloorFail", { character: character.name, cost });
   }

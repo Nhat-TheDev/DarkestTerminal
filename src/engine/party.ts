@@ -109,8 +109,8 @@ export function removeArtifactFromCharacter(state: GameState, characterId: Id, a
 }
 
 /** An artifact was just rolled/revealed; sets it awaiting the player's equip/discard decision. `forceEquip` covers events (Twin Altars) that force the flow regardless of the artifact's own `isCursed` flag. */
-export function grantArtifact(state: GameState, artifactId: Id, source: "elite" | "boss" | "treasureOrEvent" | "event", forceEquip = false): void {
-  state.pendingArtifactDecision = { artifactId, forceEquip: forceEquip || getArtifact(artifactId).isCursed === true, source };
+export function grantArtifact(state: GameState, artifactId: Id, forceEquip = false): void {
+  state.pendingArtifactDecision = { artifactId, forceEquip: forceEquip || getArtifact(artifactId).isCursed === true };
 }
 
 /** Called after a pending decision resolves — chains in Gambling Den's 2nd jackpot artifact, since decisions resolve sequentially, never simultaneously. */
@@ -118,7 +118,7 @@ function chainNextGrantIfAny(state: GameState): void {
   if (!state.secondJackpotArtifactId) return;
   const nextId = state.secondJackpotArtifactId;
   state.secondJackpotArtifactId = null;
-  grantArtifact(state, nextId, "event");
+  grantArtifact(state, nextId);
 }
 
 /** Discard branch. Only valid for an ordinary (non-Cursed, non-forceEquip) pending artifact. */

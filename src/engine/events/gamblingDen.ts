@@ -33,7 +33,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
     const rarity = cfg.jackpotRarity ?? "epic";
     const [first, second] = [pickArtifactOfRarity(rarity, ctx.rng), pickArtifactOfRarity(rarity, ctx.rng)];
     state.secondJackpotArtifactId = second;
-    grantArtifact(state, first, "event");
+    grantArtifact(state, first);
     closeEvent(state);
     return;
   }

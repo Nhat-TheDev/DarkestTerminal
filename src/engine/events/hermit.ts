@@ -19,7 +19,7 @@ export function hermitExchangeFortune(state: GameState, ctx: EngineContext, arti
   if (err) return err;
   const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
   state.message = t("game.hermitExchanged", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name, cost: HERMIT_EXCHANGE_COST_COINS });
-  grantArtifact(state, newArtifactId, "event");
+  grantArtifact(state, newArtifactId);
   closeEvent(state);
   return null;
 }

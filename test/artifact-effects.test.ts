@@ -40,13 +40,13 @@ describe("artifacts", () => {
     const game = new Game(1);
     const c = game.state.party[0]!;
     for (const artifactId of ["iron-gauntlet", "sharp-claw", "ancient-sword"]) {
-      game.state.pendingArtifactDecision = { artifactId, forceEquip: false, source: "event" };
+      game.state.pendingArtifactDecision = { artifactId, forceEquip: false };
       expect(game.resolveArtifactEquip(c.id)).toBeNull();
     }
     expect(c.equippedArtifactIds).toHaveLength(MAX_EQUIPPED_ARTIFACTS);
     expect(game.state.pendingArtifactDecision).toBeNull();
 
-    game.state.pendingArtifactDecision = { artifactId: "heart-of-stone", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "heart-of-stone", forceEquip: false };
     expect(game.resolveArtifactEquip(c.id)).not.toBeNull(); // full — needs a replaceArtifactId
     expect(game.resolveArtifactEquip(c.id, "sharp-claw")).toBeNull();
     expect(c.equippedArtifactIds).toEqual(["iron-gauntlet", "ancient-sword", "heart-of-stone"]);
@@ -54,12 +54,12 @@ describe("artifacts", () => {
 
   test("discarding a pending ordinary artifact leaves no trace; a forceEquip one can't be discarded", () => {
     const game = new Game(1);
-    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false };
     expect(game.discardPendingArtifact()).toBeNull();
     expect(game.state.pendingArtifactDecision).toBeNull();
     expect(game.state.party.some((c) => c.equippedArtifactIds.includes("iron-gauntlet"))).toBe(false);
 
-    game.state.pendingArtifactDecision = { artifactId: "shackle-of-hunger", forceEquip: true, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "shackle-of-hunger", forceEquip: true };
     expect(game.discardPendingArtifact()).not.toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe("artifacts", () => {
     const game = new Game(2);
     const c = game.state.party[0]!;
     const baseAttack = c.attack;
-    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false };
     expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.attack).toBe(baseAttack + 3);
 
@@ -289,7 +289,7 @@ describe("artifacts", () => {
   test("expBoost artifacts increase EXP gained on victory", () => {
     const game = new Game(3);
     const vanguard = game.state.party[0]!;
-    game.state.pendingArtifactDecision = { artifactId: "scholars-insight", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "scholars-insight", forceEquip: false };
     expect(game.resolveArtifactEquip(vanguard.id)).toBeNull();
 
     const rat = spawnMonster("dungeon-rat", 1);

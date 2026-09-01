@@ -356,7 +356,7 @@ export class Game {
           }
           if (monster.tier === "elite" || monster.tier === "boss") {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
-            grantArtifact(this.state, artifactId, monster.tier);
+            grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
           }
         }
@@ -366,7 +366,7 @@ export class Game {
         }
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
-          grantArtifact(this.state, artifactId, "event");
+          grantArtifact(this.state, artifactId);
           droppedArtifactIds.push(artifactId);
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;

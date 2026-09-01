@@ -128,7 +128,3 @@ function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): vo
     }
   }
 }
-
-export function checkPartyWipe(state: GameState): boolean {
-  return state.party.every((c) => !c.isAlive);
-}

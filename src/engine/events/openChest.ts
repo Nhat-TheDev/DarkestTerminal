@@ -13,7 +13,7 @@ export function openChest(state: GameState, ctx: EngineContext): PartyActionErro
     return { reason: t("errors.nothingToDecide") };
   }
   const artifactId = rollArtifact("treasureOrEvent", ctx.rng);
-  grantArtifact(state, artifactId, "event");
+  grantArtifact(state, artifactId);
   closeEvent(state);
   return null;
 }

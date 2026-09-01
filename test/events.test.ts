@@ -241,14 +241,14 @@ describe("events", () => {
     game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] };
     const c = game.state.party[0]!;
     expect(game.twinAltarsChoose(0)).toBeNull();
-    expect(game.state.pendingArtifactDecision).toEqual({ artifactId: "iron-gauntlet", forceEquip: true, source: "event" });
+    expect(game.state.pendingArtifactDecision).toEqual({ artifactId: "iron-gauntlet", forceEquip: true });
     expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.equippedArtifactIds).toContain("iron-gauntlet");
 
     const game2 = new Game(11);
     const c2 = game2.state.party[0]!;
     for (const id of ["ancient-sword", "heart-of-stone", "eternal-vial"]) {
-      game2.state.pendingArtifactDecision = { artifactId: id, forceEquip: false, source: "event" };
+      game2.state.pendingArtifactDecision = { artifactId: id, forceEquip: false };
       expect(game2.resolveArtifactEquip(c2.id)).toBeNull();
     }
     forceEventRoom(game2, "twin-altars");
@@ -386,7 +386,7 @@ describe("events", () => {
     const game = new Game(15);
     const c = game.state.party[0]!;
     const baseAggro = c.aggro;
-    game.state.pendingArtifactDecision = { artifactId: "unstable-core", forceEquip: false, source: "event" };
+    game.state.pendingArtifactDecision = { artifactId: "unstable-core", forceEquip: false };
     expect(game.resolveArtifactEquip(c.id)).toBeNull();
     expect(c.aggro).toBe(baseAggro + 25);
     expect(removeArtifactFromCharacter(game.state, c.id, "unstable-core")).toBeNull();

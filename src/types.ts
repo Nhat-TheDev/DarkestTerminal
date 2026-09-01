@@ -4,8 +4,6 @@ export interface SurvivalStats {
   fear: number;
 }
 
-export type MiniGameId = "snake" | "tetris" | "brickBreaker" | "magicTiles";
-
 export type SkillEffectKind =
   | "damage"
   | "heal"
@@ -13,8 +11,7 @@ export type SkillEffectKind =
   | "applyStatusEffect"
   | "removeStatusEffect"
   | "modifyStat"
-  | "modifyCombatStat"
-  | "triggerMiniGame";
+  | "modifyCombatStat";
 
 export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
@@ -25,7 +22,6 @@ export interface SkillEffect {
   stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
-  miniGameId?: MiniGameId;
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
@@ -118,7 +114,6 @@ export interface StatusEffectDefinition {
   name: string;
   description: string;
   perTurnEffects: SkillEffect[];
-  curableByMiniGame: { miniGameId: MiniGameId; clearScore: number }[];
   durationTurns?: number;
   onHitStatusEffectId?: Id;
   onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
@@ -217,7 +212,7 @@ export interface ActiveStatusEffect {
   justApplied?: boolean;
 }
 
-export type RoomType = "combat" | "rest" | "boss" | "treasure" | "empty" | "event";
+export type RoomType = "combat" | "rest" | "boss" | "event";
 
 export interface Room {
   id: Id;
@@ -340,7 +335,7 @@ export interface GameState {
   inventory: Record<Id, number>;
   coins: number;
   satiety: number;
-  pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean; source: "elite" | "boss" | "treasureOrEvent" | "event" } | null;
+  pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
   /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
