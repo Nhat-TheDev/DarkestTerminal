@@ -18,6 +18,7 @@ export type UiState =
   | { kind: "pickSkill"; actorRef: CombatantRef }
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }
   | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
+  | { kind: "skillDetail"; actorRef: CombatantRef; skill: SkillDefinition }
   | { kind: "roundResolved" }
   | { kind: "combatOver" }
   | { kind: "pickItemOutOfCombat" }
@@ -43,6 +44,15 @@ export type UiState =
   | { kind: "eventGuardianFight" }
   | { kind: "eventReflection" }
   | { kind: "gameover" };
+
+export const ARTIFACT_ICON = "✦";
+
+/** "⚔" for items used against an opponent, "✚" for recovery (heal/MP), "↑" for buffs/utility. */
+export function itemIcon(item: ItemDefinition): string {
+  if (item.target === "singleEnemy" || item.target === "allEnemies") return "⚔";
+  if (item.effects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "✚";
+  return "↑";
+}
 
 export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
   return Object.entries(inventory)

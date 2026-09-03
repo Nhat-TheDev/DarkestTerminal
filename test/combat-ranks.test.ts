@@ -44,28 +44,16 @@ describe("combat round structure", () => {
     expect(vanguard.speed).toBe(8);
   });
 
-  test("MP is deducted at queue time, not at resolution", () => {
+  test("MP is deducted at resolution, not at queue time", () => {
     const { ctx } = makeCtx();
     const combat = startCombat("r1", [ctx.monsters[0]!.id], ctx, false);
     const mage = ctx.party.find((p) => p.classId === "mage")!;
     const mpBefore = mage.mp;
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, { kind: "character", id: mage.id }, "mage-fireball", [enemy], ctx);
+    expect(mage.mp).toBe(mpBefore);
+    resolveRound(combat, ctx);
     expect(mage.mp).toBe(mpBefore - 5);
-  });
-
-  test("cooldownTurns is set at queue time and blocks re-queueing the same skill until it expires", () => {
-    const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.mp = 999;
-    const combat = startCombat("r1", [ctx.monsters[0]!.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
-    const err1 = queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
-    expect(err1).toBeNull();
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(2);
-    combat.queuedActions = [];
-    const err2 = queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
-    expect(err2).not.toBeNull();
   });
 
   test("cooldown decrements each round and re-allows the skill once it hits 0", () => {

@@ -1471,14 +1471,8 @@
             "statusEffectId": "storm-empowered"
           },
           {
-            "kind": "modifyCombatStat",
-            "combatStat": "defense",
-            "amount": -4
-          },
-          {
-            "kind": "modifyCombatStat",
-            "combatStat": "aggro",
-            "amount": 8
+            "kind": "applyStatusEffect",
+            "statusEffectId": "storm-recoil"
           }
         ],
         "slot": 1,
@@ -1496,14 +1490,8 @@
                 "statusEffectId": "storm-empowered"
               },
               {
-                "kind": "modifyCombatStat",
-                "combatStat": "defense",
-                "amount": -4
-              },
-              {
-                "kind": "modifyCombatStat",
-                "combatStat": "aggro",
-                "amount": 8
+                "kind": "applyStatusEffect",
+                "statusEffectId": "storm-recoil"
               }
             ]
           },
@@ -1517,14 +1505,8 @@
                 "statusEffectId": "storm-empowered-ii"
               },
               {
-                "kind": "modifyCombatStat",
-                "combatStat": "defense",
-                "amount": -4
-              },
-              {
-                "kind": "modifyCombatStat",
-                "combatStat": "aggro",
-                "amount": 8
+                "kind": "applyStatusEffect",
+                "statusEffectId": "storm-recoil"
               }
             ]
           },
@@ -1538,14 +1520,8 @@
                 "statusEffectId": "storm-empowered-iii"
               },
               {
-                "kind": "modifyCombatStat",
-                "combatStat": "defense",
-                "amount": -4
-              },
-              {
-                "kind": "modifyCombatStat",
-                "combatStat": "aggro",
-                "amount": 8
+                "kind": "applyStatusEffect",
+                "statusEffectId": "storm-recoil"
               }
             ]
           }

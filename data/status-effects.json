@@ -197,6 +197,16 @@
     "rankLevel": 3
   },
   {
+    "id": "storm-recoil",
+    "name": "Storm Recoil",
+    "description": "Lightning Axe (Viking): -4 defense, +8 aggro per turn while channeling storm energy.",
+    "perTurnEffects": [
+      { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
+      { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
+    ],
+    "durationTurns": 1
+  },
+  {
     "id": "bleeding",
     "name": "Bleeding",
     "description": "Frenzied Slash/Spinning Axe (Viking): lose 5 HP per turn.",

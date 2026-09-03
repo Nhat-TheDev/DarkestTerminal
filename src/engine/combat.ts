@@ -150,17 +150,10 @@ export function queueAction(
   const skill = isCharacter(actor) ? getEffectiveSkill(getSkill(skillId), actor.level) : getSkill(skillId);
   const err = checkSkillUsable(actor, skill);
   if (err) return err;
-  const character = actor as Character;
 
-  character.mp -= skill.mpCost;
-  if (skill.usesPerCombat !== undefined) {
-    const used = character.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
-    character.usesRemainingThisCombat[skillId] = used - 1;
-  }
-  if (skill.cooldownTurns !== undefined) {
-    character.cooldownsRemaining[skillId] = Math.max(0, skill.cooldownTurns - totalCooldownReduction(character));
-  }
-
+  // mp/usesPerCombat/cooldown are committed when the skill actually executes in turn order
+  // (runCharacterTurn), not here — otherwise a character's resources would look spent before
+  // their turn has even come up during the round's reveal.
   combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId }, targets: chosenTargets });
   return null;
 }
@@ -225,6 +218,7 @@ function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantS
       level: isCharacter ? (actor as Character).level : undefined,
       mp: isCharacter ? (actor as Character).mp : undefined,
       maxMp: isCharacter ? (actor as Character).maxMp : undefined,
+      activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
     };
   });
 }
@@ -283,7 +277,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
       if (actedRefs.some((ref) => refEquals(ref, queued.actor))) continue;
       const actor = getActorByRef(queued.actor, ctx) as Character;
       if (!isActorAlive(actor)) continue;
-      refundQueuedAction(queued, actor, ctx);
+      refundQueuedAction(queued, ctx);
     }
   }
 
@@ -313,22 +307,10 @@ export function hasStunningStatus(actor: Actor): boolean {
   return actor.activeStatusEffects.some((a) => getStatusEffect(a.statusEffectId).stuns === true);
 }
 
-/** Refunds whatever queueAction/queueItemAction pre-committed (mp, uses, cooldown, inventory) for an action that ends up never executing — stunned, feared, or its target(s) died before its turn came up. */
-function refundQueuedAction(queued: QueuedAction, actor: Character, ctx: EngineContext): void {
-  if (queued.source.kind === "item") {
-    ctx.inventory[queued.source.itemId] = (ctx.inventory[queued.source.itemId] ?? 0) + 1;
-    return;
-  }
-  const skillId = queued.source.skillId;
-  const skill = getEffectiveSkill(getSkill(skillId), actor.level);
-  actor.mp = Math.min(actor.maxMp, actor.mp + skill.mpCost);
-  if (skill.usesPerCombat !== undefined) {
-    const used = actor.usesRemainingThisCombat[skillId] ?? skill.usesPerCombat;
-    actor.usesRemainingThisCombat[skillId] = Math.min(skill.usesPerCombat, used + 1);
-  }
-  if (skill.cooldownTurns !== undefined) {
-    delete actor.cooldownsRemaining[skillId];
-  }
+/** Refunds the inventory item queueItemAction pre-committed for an action that ends up never executing — stunned, feared, or its target(s) died before its turn came up. Skills commit nothing until they actually execute (see runCharacterTurn), so there's nothing to refund for them. */
+function refundQueuedAction(queued: QueuedAction, ctx: EngineContext): void {
+  if (queued.source.kind !== "item") return;
+  ctx.inventory[queued.source.itemId] = (ctx.inventory[queued.source.itemId] ?? 0) + 1;
 }
 
 function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
@@ -337,13 +319,13 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   if (!queued) return;
 
   if (hasStunningStatus(actor)) {
-    refundQueuedAction(queued, actor, ctx);
+    refundQueuedAction(queued, ctx);
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
     return;
   }
 
   if (rollLosesControl(actor.survival.fear, () => ctx.rng.next())) {
-    refundQueuedAction(queued, actor, ctx);
+    refundQueuedAction(queued, ctx);
     combat.log.push({ text: t("combat.fearLoseControl", { actor: actor.name }), kind: "info" });
     return;
   }
@@ -351,9 +333,22 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   const skill = actionDefinition(queued.source, actor);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
-    refundQueuedAction(queued, actor, ctx);
+    refundQueuedAction(queued, ctx);
     combat.log.push({ text: t("combat.wastedAction", { actor: actor.name, skill: skill.name }), kind: "info" });
     return;
+  }
+
+  // Committed only now that the skill is confirmed to execute — mpCost is always 0 for the item
+  // pseudo-skill (see actionDefinition), so this is a safe no-op for item actions.
+  if (queued.source.kind === "skill") {
+    actor.mp -= skill.mpCost;
+    if (skill.usesPerCombat !== undefined) {
+      const used = actor.usesRemainingThisCombat[queued.source.skillId] ?? skill.usesPerCombat;
+      actor.usesRemainingThisCombat[queued.source.skillId] = used - 1;
+    }
+    if (skill.cooldownTurns !== undefined) {
+      actor.cooldownsRemaining[queued.source.skillId] = Math.max(0, skill.cooldownTurns - totalCooldownReduction(actor));
+    }
   }
 
   const soloTarget = targets.length === 1 && targets[0] !== actor ? targets[0] : null;

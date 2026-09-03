@@ -3,7 +3,7 @@ import type { Game } from "../../engine/game";
 import { formatItemEffect } from "../../data/items";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
-import { inventoryEntries } from "../state";
+import { inventoryEntries, itemIcon } from "../state";
 import { paginate } from "../pagination";
 import type { ScreenContext } from "./context";
 import { trySelectItem } from "./combat";
@@ -40,7 +40,7 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
       const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
       const lines = [t("ui.chooseItemToUse")];
       pageItems.forEach(({ item, qty }, i) => {
-        lines.push(t("ui.inventoryLine", { i: i + 1, name: item.name, qty }));
+        lines.push(t("ui.inventoryLine", { i: i + 1, name: `${itemIcon(item)} ${item.name}`, qty }));
       });
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
@@ -48,7 +48,7 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
 
     case "itemDetail": {
       const { item, origin } = ui;
-      const lines = [item.name, "", t("ui.effectLabel"), formatItemEffect(item), "", t("ui.descriptionLabel"), item.description, ""];
+      const lines = [`${itemIcon(item)} ${item.name}`, "", t("ui.effectLabel"), formatItemEffect(item), "", t("ui.descriptionLabel"), item.description, ""];
       if (origin.kind === "outOfCombat") {
         lines.push(t("ui.itemOutOfCombatViewOnlyHint"), "", t("ui.itemDetailBackOnlyOption"));
       } else {

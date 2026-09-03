@@ -302,6 +302,7 @@ export interface CombatantSnapshot {
   level?: number;
   mp?: number;
   maxMp?: number;
+  activeStatusEffects?: ActiveStatusEffect[];
 }
 
 export interface LogEntry {

@@ -75,6 +75,16 @@ export function hpColorFor(hp: number, maxHp: number): string {
   return PALETTE.hpLow;
 }
 
+export function progressBar(current: number, max: number, width: number, filledColor: string, emptyColor: string = PALETTE.disabled): TextChunk[] {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
+  const filledLen = Math.round(ratio * width);
+  const emptyLen = width - filledLen;
+  const chunks: TextChunk[] = [];
+  if (filledLen > 0) chunks.push(colorChunk("█".repeat(filledLen), filledColor));
+  if (emptyLen > 0) chunks.push(colorChunk("░".repeat(emptyLen), emptyColor));
+  return chunks;
+}
+
 export function fearColorFor(tier: number): string {
   switch (tier) {
     case 1:
