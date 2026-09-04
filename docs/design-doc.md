@@ -73,7 +73,7 @@ existing gameplay.
 
 ## 4. Data model
 
-The main types live in `src/types.ts`, cross-referenced against the original sketch **[`dungeon-crawler-data-model.ts`](../dungeon-crawler-data-model.ts)** at the repo root.
+The main types live in `src/types.ts`.
 
 Main type groups:
 - `Character`, `CharacterClass`, `SkillDefinition`, `SkillEffect` (data-driven)

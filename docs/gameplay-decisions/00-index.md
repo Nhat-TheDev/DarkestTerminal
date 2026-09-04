@@ -1,6 +1,6 @@
 # Gameplay / Content — Decisions (index)
 
-**Related**: `../design-doc.md` section 1, `../../dungeon-crawler-data-model.ts`
+**Related**: `../design-doc.md` section 1
 
 Each major topic gets its own file for easier reading/editing. Section numbers (§1, §6.9,
 ...) are used so files can cross-reference each other — e.g. "see `06-level-system.md` §6.9".

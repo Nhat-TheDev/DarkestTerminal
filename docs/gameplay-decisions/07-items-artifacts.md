@@ -24,7 +24,7 @@ The 2 concepts are kept clearly separate, not sharing 1 system:
 
 ### Data structure
 
-Reuses the existing `ItemDefinition` sketch already present in `../../dungeon-crawler-data-model.ts` section 1.6, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` section 1.5 "Design notes" last bullet, where `usesPerCombat` is reserved for items):
+The `ItemDefinition` shape lives in `src/types.ts`, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` section 1.5 "Design notes" last bullet, where `usesPerCombat` is reserved for items):
 
 ```
 ItemDefinition {
