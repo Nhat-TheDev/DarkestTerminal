@@ -2,7 +2,7 @@ import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "
 import { PALETTE, boldColorChunk, colorChunk, joinLines } from "./theme";
 import { renderBigTextStacked } from "./bigText";
 import { t } from "../data/strings";
-import { listSaves } from "../engine/save";
+import { listSaves, APP_VERSION } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
 
@@ -18,6 +18,15 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       backgroundColor: PALETTE.bg,
     });
     renderer.root.add(root);
+
+    const version = new TextRenderable(renderer, {
+      id: "menu-version",
+      content: joinLines([[colorChunk(t("mainMenu.version", { version: APP_VERSION }), PALETTE.dim)]]),
+      position: "absolute",
+      right: 1,
+      bottom: 0,
+    });
+    root.add(version);
 
     const title = new TextRenderable(renderer, {
       id: "menu-title",

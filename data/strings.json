@@ -265,6 +265,7 @@
   "mainMenu.newGameOption": "  [1] Start",
   "mainMenu.continueOption": "  [2] Continue",
   "mainMenu.chooseHint": "Press a number to choose.",
+  "mainMenu.version": "v{{version}}",
   "charSelect.title": "Choose 4 characters for your expedition party ({{count}}/4):",
   "charSelect.classLine": "  [{{i}}] {{name}}{{picked}} — {{desc}}",
   "charSelect.pickedTag": " ✓ picked",
