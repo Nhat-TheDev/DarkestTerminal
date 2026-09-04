@@ -13,6 +13,7 @@ import type {
   LogEntry,
   LogEntryKind,
   CombatantSnapshot,
+  PartyStateSnapshot,
 } from "../types";
 import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getItem } from "../data/items";
@@ -209,7 +210,7 @@ function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[]
   return sorted.map((c) => c.ref);
 }
 
-function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantSnapshot[] {
+export function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantSnapshot[] {
   return combat.combatants.map((c) => {
     const actor = getActorByRef(c.ref, ctx);
     const isCharacter = c.ref.kind === "character";
@@ -226,10 +227,18 @@ function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantS
   });
 }
 
-function tagLogRange(combat: CombatState, fromIndex: number, snapshot: CombatantSnapshot[]): void {
+export function tagLogRange(combat: CombatState, fromIndex: number, snapshot: CombatantSnapshot[]): void {
   for (let i = fromIndex; i < combat.log.length; i++) {
     const entry = combat.log[i];
     if (entry) entry.snapshot = snapshot;
+  }
+}
+
+/** Same idea as tagLogRange, for the party-wide (coins/EXP/satiety) snapshot instead of the per-combatant one. */
+export function tagPartySnapshotRange(combat: CombatState, fromIndex: number, partySnapshot: PartyStateSnapshot): void {
+  for (let i = fromIndex; i < combat.log.length; i++) {
+    const entry = combat.log[i];
+    if (entry) entry.partySnapshot = partySnapshot;
   }
 }
 

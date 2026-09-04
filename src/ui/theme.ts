@@ -68,6 +68,21 @@ export function chip(label: string, color: string): TextChunk {
   return bg(color)(fg(PALETTE.chipFg)(bold(` ${label} `))) as TextChunk;
 }
 
+/** Splits `text` on `[...]` segments (e.g. "[Esc]", "[i]"), rendering each bracketed key hint bold in the accent color and everything else dim — used for footer/hint lines that call out specific keys. */
+export function highlightKeyHints(text: string): TextChunk[] {
+  const chunks: TextChunk[] = [];
+  const pattern = /\[[^\]]+\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text))) {
+    if (match.index > lastIndex) chunks.push(colorChunk(text.slice(lastIndex, match.index), PALETTE.dim));
+    chunks.push(boldColorChunk(match[0], PALETTE.title));
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) chunks.push(colorChunk(text.slice(lastIndex), PALETTE.dim));
+  return chunks;
+}
+
 export function hpColorFor(hp: number, maxHp: number): string {
   const ratio = maxHp > 0 ? hp / maxHp : 0;
   if (ratio > 0.6) return PALETTE.hpHigh;

@@ -1,5 +1,5 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, Monster, Id, LogEntry, CombatantSnapshot, RoomType, Floor } from "../types";
+import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSnapshot, RoomType, Floor } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
@@ -22,6 +22,7 @@ import {
   joinLines,
   progressBar,
   LOG_KIND_STYLE,
+  highlightKeyHints,
 } from "./theme";
 import {
   spriteForClass,
@@ -88,6 +89,7 @@ export class App implements ScreenContext {
   private pendingReveal: LogEntry[] = [];
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private displaySnapshot: CombatantSnapshot[] | null = null;
+  private displayPartySnapshot: PartyStateSnapshot | null = null;
   private pendingFloorAdvance = false;
   private pendingCampOffer = false;
   private listPage = 0;
@@ -449,14 +451,41 @@ export class App implements ScreenContext {
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
-    const level = s.party[0]?.level ?? 1;
+
+    // Reveal-state bookkeeping runs before the header/party/monster panels below so all of them can
+    // read the same "as of the last revealed log line" snapshot, instead of the header alone jumping
+    // straight to the live post-combat totals while HP/MP/status are still catching up to the log.
+    const combatLog = s.combat?.log ?? null;
+    if (combatLog !== this.observedCombatLog) {
+      this.observedCombatLog = combatLog;
+      this.lastLogLength = 0;
+      this.displaySnapshot = null;
+      this.displayPartySnapshot = null;
+    }
+    if (combatLog && combatLog.length > this.lastLogLength) {
+      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
+      this.displayPartySnapshot = s.combat!.roundStartPartySnapshot ?? null;
+      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
+      this.lastLogLength = combatLog.length;
+      this.scheduleReveal();
+    }
+    const revealing = this.pendingReveal.length > 0;
+    const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
+    const partyOverride = revealing ? this.displayPartySnapshot : null;
+
+    const coins = partyOverride?.coins ?? s.coins;
+    const partyExp = partyOverride?.partyExp ?? s.partyExp;
+    const satiety = partyOverride?.satiety ?? s.satiety;
+    const p0 = s.party[0];
+    const level = (p0 && hpOverride?.get(p0.id)?.level) ?? p0?.level ?? 1;
+
     const expLine: TextChunk[] =
       level >= MAX_LEVEL
         ? [...progressBar(1, 1, EXP_BAR_WIDTH, PALETTE.title), plainChunk(" "), colorChunk(t("ui.expMaxStat"), PALETTE.title)]
         : [
-            ...progressBar(s.partyExp - expCostForLevel(level), expCostForLevel(level + 1) - expCostForLevel(level), EXP_BAR_WIDTH, PALETTE.title),
+            ...progressBar(partyExp - expCostForLevel(level), expCostForLevel(level + 1) - expCostForLevel(level), EXP_BAR_WIDTH, PALETTE.title),
             plainChunk(" "),
-            colorChunk(t("ui.expStat", { cur: s.partyExp - expCostForLevel(level), need: expCostForLevel(level + 1) - expCostForLevel(level) }), PALETTE.title),
+            colorChunk(t("ui.expStat", { cur: partyExp - expCostForLevel(level), need: expCostForLevel(level + 1) - expCostForLevel(level) }), PALETTE.title),
           ];
     this.header.content = joinLines([
       [
@@ -464,9 +493,9 @@ export class App implements ScreenContext {
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
         colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
-        colorChunk(t("ui.coinsStat", { coins: s.coins }), PALETTE.title),
+        colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
-        colorChunk(t("ui.satietyStat", { satiety: s.satiety }), PALETTE.title),
+        colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
       ],
       expLine,
     ]);
@@ -487,21 +516,6 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const combatLog = s.combat?.log ?? null;
-    if (combatLog !== this.observedCombatLog) {
-      this.observedCombatLog = combatLog;
-      this.lastLogLength = 0;
-      this.displaySnapshot = null;
-    }
-    if (combatLog && combatLog.length > this.lastLogLength) {
-      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
-      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
-      this.lastLogLength = combatLog.length;
-      this.scheduleReveal();
-    }
-
-    const hpOverride = this.pendingReveal.length > 0 && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
-
     this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
 
     const partyLines: TextChunk[][] = [];
@@ -513,18 +527,18 @@ export class App implements ScreenContext {
           view
             ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp, activeStatusEffects: view.activeStatusEffects ?? c.activeStatusEffects }
             : c,
-          s.satiety
+          satiety
         )
       );
     });
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
-    if (this.pendingReveal.length > 0) {
+    if (revealing) {
       this.main.content = t("ui.revealingCombat");
-      this.footer.content = t("ui.footerSkipReveal");
+      this.footer.content = joinLines([highlightKeyHints(t("ui.footerSkipReveal"))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = this.renderFooter();
+      this.footer.content = joinLines([highlightKeyHints(this.renderFooter())]);
     }
     this.renderLogContent();
   }
@@ -551,6 +565,7 @@ export class App implements ScreenContext {
       if (next) {
         this.logHistory.push(next);
         if (next.snapshot) this.displaySnapshot = next.snapshot;
+        if (next.partySnapshot) this.displayPartySnapshot = next.partySnapshot;
       }
       if (this.pendingReveal.length > 0) this.scheduleReveal();
       this.render();
@@ -566,6 +581,7 @@ export class App implements ScreenContext {
     const last = this.pendingReveal[this.pendingReveal.length - 1];
     this.logHistory.push(...this.pendingReveal);
     if (last?.snapshot) this.displaySnapshot = last.snapshot;
+    if (last?.partySnapshot) this.displayPartySnapshot = last.partySnapshot;
     this.pendingReveal = [];
     this.render();
   }

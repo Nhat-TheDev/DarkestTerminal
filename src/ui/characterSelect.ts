@@ -1,6 +1,6 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import type { CharacterClass, Id } from "../types";
-import { PALETTE, colorChunk, joinLines } from "./theme";
+import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -37,8 +37,11 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
         ]);
       });
       lines.push([]);
-      const hintText = showFullWarning ? t("charSelect.fullWarning") : picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : t("charSelect.hint");
-      lines.push([colorChunk(hintText, showFullWarning ? PALETTE.dead : PALETTE.dim)]);
+      lines.push(
+        showFullWarning
+          ? [colorChunk(t("charSelect.fullWarning"), PALETTE.dead)]
+          : highlightKeyHints(picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : t("charSelect.hint"))
+      );
       body.content = joinLines(lines);
     };
     render();

@@ -307,10 +307,18 @@ export interface CombatantSnapshot {
   activeStatusEffects?: ActiveStatusEffect[];
 }
 
+/** Party-wide stats (not per-combatant) captured alongside a log entry, so the reveal can freeze coins/EXP/satiety in sync with the log the same way CombatantSnapshot freezes HP/MP/level/status. */
+export interface PartyStateSnapshot {
+  coins: number;
+  partyExp: number;
+  satiety: number;
+}
+
 export interface LogEntry {
   text: string;
   kind: LogEntryKind;
   snapshot?: CombatantSnapshot[];
+  partySnapshot?: PartyStateSnapshot;
 }
 
 export interface CombatState {
@@ -324,6 +332,7 @@ export interface CombatState {
   isBossFight: boolean;
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
+  roundStartPartySnapshot?: PartyStateSnapshot;
   outcome?: "victory" | "defeat";
 }
 

@@ -1,5 +1,5 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
-import { PALETTE, colorChunk, joinLines } from "./theme";
+import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
 import { t } from "../data/strings";
 import { listSaves, QUICKSAVE_ID, AUTOSAVE_ID, type SaveMeta } from "../engine/save";
 import { paginate, pageCount, clampPage } from "./pagination";
@@ -50,7 +50,7 @@ export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> 
         if (pages > 1) lines.push([colorChunk(t("ui.pageIndicator", { page: p + 1, pages }), PALETTE.dim)]);
       }
       lines.push([]);
-      lines.push([colorChunk(t("saveSelect.hint"), PALETTE.dim)]);
+      lines.push(highlightKeyHints(t("saveSelect.hint")));
       body.content = joinLines(lines);
     }
     draw();

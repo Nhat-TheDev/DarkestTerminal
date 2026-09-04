@@ -4,6 +4,7 @@ import { Game } from "../src/engine/game";
 import { spawnMonster } from "../src/data/monsters";
 import { rollCoinDrop } from "../src/data/currency";
 import { migrateGameState } from "../src/engine/migration";
+import { startCombat } from "../src/engine/combat";
 import { BALANCE } from "../src/data/balanceConfig";
 import { makeCtx } from "./helpers";
 
@@ -106,5 +107,59 @@ describe("save-file migration", () => {
     const migrated = migrateGameState({ ...game.state });
     const migratedBearer = migrated.party.find((c) => c.id === bearer.id)!;
     expect(migratedBearer.activeStatusEffects).toEqual([{ statusEffectId: "guard", turnsRemaining: 1 }]);
+  });
+});
+
+describe("combat reward reveal sync", () => {
+  function setUpOneHitVictory(seed: number) {
+    const game = new Game(seed);
+    const monster = spawnMonster("dungeon-rat", 1);
+    monster.hp = 1;
+    monster.maxHp = 1;
+    monster.attack = 0;
+    const room = game.state.floor.rooms.find((r) => r.id === game.state.currentRoomId)!;
+    room.monsterIds = [monster.id];
+    game.ctx.monsters.push(monster);
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, false);
+    return { game, monster };
+  }
+
+  test("roundStartPartySnapshot captures coins/EXP/satiety as they stood before this round", () => {
+    const { game, monster } = setUpOneHitVictory(101);
+    const coinsBefore = game.state.coins;
+    const partyExpBefore = game.state.partyExp;
+    const satietyBefore = game.state.satiety;
+
+    const attacker = game.state.party[0]!;
+    game.queue({ kind: "character", id: attacker.id }, attacker.unlockedSkillIds[0]!, [{ kind: "monster", id: monster.id }]);
+    game.resolve();
+
+    expect(game.state.combat?.roundStartPartySnapshot).toEqual({ coins: coinsBefore, partyExp: partyExpBefore, satiety: satietyBefore });
+  });
+
+  test("post-victory reward log lines carry a partySnapshot matching the final coins/EXP/satiety, not the pre-battle values", () => {
+    const { game, monster } = setUpOneHitVictory(102);
+    const attacker = game.state.party[0]!;
+    game.queue({ kind: "character", id: attacker.id }, attacker.unlockedSkillIds[0]!, [{ kind: "monster", id: monster.id }]);
+    game.resolve();
+
+    const log = game.state.combat!.log;
+    const expLine = log.find((l) => l.text.includes("EXP"))!;
+    expect(expLine.partySnapshot).toEqual({ coins: game.state.coins, partyExp: game.state.partyExp, satiety: game.state.satiety });
+    expect(expLine.snapshot).toBeDefined();
+  });
+
+  test("combat-action log lines (before the reward block) carry no partySnapshot — coins/EXP/satiety don't change mid-round", () => {
+    const { game, monster } = setUpOneHitVictory(103);
+    const attacker = game.state.party[0]!;
+    game.queue({ kind: "character", id: attacker.id }, attacker.unlockedSkillIds[0]!, [{ kind: "monster", id: monster.id }]);
+    game.resolve();
+
+    const log = game.state.combat!.log;
+    const firstRewardIndex = log.findIndex((l) => l.partySnapshot !== undefined);
+    expect(firstRewardIndex).toBeGreaterThan(0);
+    for (let i = 0; i < firstRewardIndex; i++) {
+      expect(log[i]!.partySnapshot).toBeUndefined();
+    }
   });
 });
