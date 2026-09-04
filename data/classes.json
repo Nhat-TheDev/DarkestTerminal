@@ -772,7 +772,11 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat-ii"
+                "statusEffectId": "poison-coat"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "venom-edge"
               }
             ]
           },
@@ -783,7 +787,11 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat-iii"
+                "statusEffectId": "poison-coat"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "venom-edge-ii"
               }
             ]
           }

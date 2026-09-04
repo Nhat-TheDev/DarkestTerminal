@@ -943,8 +943,9 @@ describe("Rogue skill ranks + poison exclusivity", () => {
 
   test("Poison Coat's on-hit rider always applies plain poisoned, even at rank 2/3", () => {
     const coat = getSkill("rogue-poison-coat");
-    expect(getStatusEffect("poison-coat-ii").onHitStatusEffectId).toBe("poisoned");
-    expect(getStatusEffect("poison-coat-iii").onHitStatusEffectId).toBe("poisoned");
+    // Ranks 2/3 apply the same base "poison-coat" rider status alongside a separate attack-buff
+    // status (venom-edge/-ii) — the on-hit rider itself never changes rank.
+    expect(getStatusEffect("poison-coat").onHitStatusEffectId).toBe("poisoned");
 
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
@@ -955,7 +956,8 @@ describe("Rogue skill ranks + poison exclusivity", () => {
     const self: CombatantRef = { kind: "character", id: rogue.id };
     queueAction(combat, self, "rogue-poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat-iii")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "venom-edge-ii")).toBe(true);
 
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, self, "rogue-knife-throw", [enemyRef], ctx);

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { GameState } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { getItem } from "../data/items";
+import { getStatusEffect } from "../data/statusEffects";
 import { BALANCE } from "../data/balanceConfig";
 
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
@@ -35,6 +36,19 @@ export function migrateGameState(raw: unknown): GameState {
     } catch {
       delete state.inventory[id];
     }
+  }
+
+  // Drop active status effects whose id no longer exists (e.g. a rank id removed in a data split) —
+  // otherwise the very next getStatusEffect() lookup on load (categorizing or ticking it) throws.
+  for (const character of state.party) {
+    character.activeStatusEffects = character.activeStatusEffects.filter((s) => {
+      try {
+        getStatusEffect(s.statusEffectId);
+        return true;
+      } catch {
+        return false;
+      }
+    });
   }
 
   return state;

@@ -95,4 +95,16 @@ describe("save-file migration", () => {
     expect(migrated.inventory["ration"]).toBeUndefined();
     expect(migrated.inventory["water-flask"]).toBeUndefined();
   });
+
+  test("migrateGameState strips active status effects for ids no longer in the catalog", () => {
+    const game = new Game(6);
+    const bearer = game.state.party[0]!;
+    bearer.activeStatusEffects = [
+      { statusEffectId: "poison-coat-ii", turnsRemaining: 2 }, // rank id removed by the poison-coat/venom-edge split
+      { statusEffectId: "guard", turnsRemaining: 1 },
+    ];
+    const migrated = migrateGameState({ ...game.state });
+    const migratedBearer = migrated.party.find((c) => c.id === bearer.id)!;
+    expect(migratedBearer.activeStatusEffects).toEqual([{ statusEffectId: "guard", turnsRemaining: 1 }]);
+  });
 });

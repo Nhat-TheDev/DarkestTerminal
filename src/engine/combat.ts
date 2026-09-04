@@ -28,7 +28,10 @@ import {
   isCharacter,
   isActorAlive,
   resolveSkillEffect,
-  tickStatusEffects,
+  tickDotEffects,
+  tickStatModEffects,
+  tickSpecialEffects,
+  specialStatusSnapshot,
   rollHits,
   rollLosesControl,
   getFearTier,
@@ -250,6 +253,13 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   combat.roundStartSnapshot = snapshotCombatants(combat, ctx);
 
   let blockStart = combat.log.length;
+  for (const c of combat.combatants) {
+    const actor = getActorByRef(c.ref, ctx);
+    if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log });
+  }
+  tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
+
+  blockStart = combat.log.length;
   runArtifactAutoDamage(combat, ctx);
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
@@ -258,6 +268,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     const actor = getActorByRef(ref, ctx);
     if (!isActorAlive(actor)) continue;
 
+    const eligibleSpecial = specialStatusSnapshot(actor);
     blockStart = combat.log.length;
     if (ref.kind === "character") {
       runCharacterTurn(ref, combat, ctx);
@@ -265,6 +276,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     } else {
       runMonsterTurn(ref, combat, ctx);
     }
+    if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
     tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
     if (isCombatOver(combat, ctx)) break;
@@ -285,7 +297,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     blockStart = combat.log.length;
     for (const c of combat.combatants) {
       const actor = getActorByRef(c.ref, ctx);
-      if (isActorAlive(actor)) tickStatusEffects(actor, { log: combat.log });
+      if (isActorAlive(actor)) tickStatModEffects(actor, { log: combat.log });
     }
     for (const c of ctx.party) {
       if (!c.isAlive) continue;

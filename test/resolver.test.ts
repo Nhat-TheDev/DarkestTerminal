@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { resolveSkillEffect, getFearTier, rollLosesControl, tickStatusEffects, mitigatedOffense } from "../src/engine/resolver";
-import type { LogEntry, CombatantRef } from "../src/types";
+import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory } from "../src/engine/resolver";
+import type { LogEntry, CombatantRef, StatusEffectDefinition } from "../src/types";
 import { makeCtx } from "./helpers";
 import { Game } from "../src/engine/game";
 import { startCombat } from "../src/engine/combat";
@@ -51,12 +51,12 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(baseDef + 6);
 
-    tickStatusEffects(vanguard, { log });
+    tickStatModEffects(vanguard, { log });
     expect(vanguard.defense).toBe(baseDef);
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
-  test("modifyCombatStat debuff delays its countdown by 1 free round", () => {
+  test("modifyCombatStat debuff ticks down immediately, with no free round", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const baseDef = vanguard.defense;
@@ -64,16 +64,12 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(baseDef - 6);
 
-    // The tick at the end of the round it was applied in is a no-op for duration purposes.
-    tickStatusEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef - 6);
-    expect(vanguard.activeStatusEffects[0]?.turnsRemaining).toBe(2);
-
-    tickStatusEffects(vanguard, { log });
+    // Stat-mod ticks (unlike DoT/HoT and "special" statuses) decrement the very round they're cast in.
+    tickStatModEffects(vanguard, { log });
     expect(vanguard.defense).toBe(baseDef - 6);
     expect(vanguard.activeStatusEffects[0]?.turnsRemaining).toBe(1);
 
-    tickStatusEffects(vanguard, { log });
+    tickStatModEffects(vanguard, { log });
     expect(vanguard.defense).toBe(baseDef);
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
@@ -84,8 +80,24 @@ describe("resolver", () => {
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
     const before = victim.hp;
-    tickStatusEffects(victim, { log });
+    tickDotEffects(victim, { log });
     expect(before - victim.hp).toBe(4);
+  });
+
+  test("statusCategory classifies a restoreMp per-turn effect as dot (MP-over-time), same schedule as damage/heal", () => {
+    const def: StatusEffectDefinition = { id: "test-mp-regen", name: "x", description: "x", perTurnEffects: [{ kind: "restoreMp", amount: 5 }] };
+    expect(statusCategory(def)).toBe("dot");
+  });
+
+  test("statusCategory's tickCategory field overrides shape inference", () => {
+    const def: StatusEffectDefinition = {
+      id: "test-forced-special",
+      name: "x",
+      description: "x",
+      perTurnEffects: [{ kind: "modifyCombatStat", combatStat: "attack", amount: 4 }],
+      tickCategory: "special",
+    };
+    expect(statusCategory(def)).toBe("special");
   });
 
   test("re-applying an active status effect refreshes duration instead of stacking", () => {
@@ -93,7 +105,7 @@ describe("resolver", () => {
     const vanguard = ctx.party[0]!;
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
-    tickStatusEffects(vanguard, { log });
+    tickDotEffects(vanguard, { log });
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
     expect(vanguard.activeStatusEffects).toHaveLength(1);
     expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);

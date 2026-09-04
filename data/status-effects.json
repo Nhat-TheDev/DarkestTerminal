@@ -57,20 +57,20 @@
     "onHitStatusEffectId": "poisoned"
   },
   {
-    "id": "poison-coat-ii",
-    "name": "Poison Coat II",
-    "description": "Poison Coat rank 2 (Rogue): +4 attack per turn, on top of the same on-hit Poisoned rider.",
+    "id": "venom-edge",
+    "name": "Venom Edge",
+    "description": "Poison Coat rank 2 (Rogue): +4 attack per turn.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
     "durationTurns": 3,
-    "onHitStatusEffectId": "poisoned"
+    "tickCategory": "special"
   },
   {
-    "id": "poison-coat-iii",
-    "name": "Poison Coat III",
-    "description": "Poison Coat rank 3 (Rogue): +6 attack per turn, on top of the same on-hit Poisoned rider.",
+    "id": "venom-edge-ii",
+    "name": "Venom Edge II",
+    "description": "Poison Coat rank 3 (Rogue): +6 attack per turn.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
     "durationTurns": 3,
-    "onHitStatusEffectId": "poisoned"
+    "tickCategory": "special"
   },
   {
     "id": "poisoned",
@@ -152,13 +152,17 @@
     "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
   },
   {
+    "id": "acid-burn",
+    "name": "Acid Burn",
+    "description": "Acid Spit (Slime): lose 3 HP per turn.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 3 }],
+    "durationTurns": 2
+  },
+  {
     "id": "corroded",
     "name": "Corroded",
-    "description": "Acid Spit (Slime): lose 3 HP and 4 defense per turn.",
-    "perTurnEffects": [
-      { "kind": "damage", "amount": 3 },
-      { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 }
-    ],
+    "description": "Acid Spit (Slime): lowers the target's defense for a few turns.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 }],
     "durationTurns": 2
   },
   {

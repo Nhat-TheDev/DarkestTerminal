@@ -131,10 +131,10 @@ describe("regular monster skills", () => {
     expect(skill.effects).toEqual([{ kind: "heal", amount: 15 }]);
   });
 
-  test("Slime's Acid Spit procs corroded, Spider's Web Spit procs webbed", () => {
+  test("Slime's Acid Spit procs acid-burn and corroded together, Spider's Web Spit procs webbed", () => {
     expect(getMonsterSkill("acid-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
-      { kind: "applyStatusEffect", statusEffectId: "corroded", chance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5 },
     ]);
     expect(getMonsterSkill("web-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
@@ -245,9 +245,9 @@ describe("regular monster skills end-to-end", () => {
     }
   }
 
-  test("Slime's Acid Spit applies corroded when it procs", () => {
+  test("Slime's Acid Spit applies acid-burn and corroded together when it procs, never just one", () => {
     let found = false;
-    for (let seed = 0; seed < 100 && !found; seed++) {
+    for (let seed = 0; seed < 100; seed++) {
       const { ctx } = makeCtx(seed);
       const slime = spawnMonster("slime", 1);
       slime.maxHp = 500;
@@ -257,9 +257,12 @@ describe("regular monster skills end-to-end", () => {
       queueTrivialPartyActions(ctx, combat);
       resolveRound(combat, ctx);
       if (!combat.log.some((l) => l.text.includes("Acid Spit"))) continue;
-      const target = ctx.party.find((p) => p.activeStatusEffects.some((s) => s.statusEffectId === "corroded"));
-      if (!target) continue;
-      found = true;
+      for (const p of ctx.party) {
+        const hasAcidBurn = p.activeStatusEffects.some((s) => s.statusEffectId === "acid-burn");
+        const hasCorroded = p.activeStatusEffects.some((s) => s.statusEffectId === "corroded");
+        expect(hasAcidBurn).toBe(hasCorroded);
+        if (hasAcidBurn) found = true;
+      }
     }
     expect(found).toBe(true);
   });

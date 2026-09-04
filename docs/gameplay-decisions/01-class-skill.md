@@ -295,18 +295,19 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 `taunt` and `poison-coat` are **not** given rank variants: `taunt`'s aggro bonus already dominates target selection at rank 1 (diminishing returns from going higher), and `poison-coat` is a binary on-hit rider, not a magnitude stat.
 
-#### Poison Coat — rank-up adds an attack buff (Rogue)
+#### Poison Coat — rank-up adds a separate attack-buff status (Rogue)
 
-**Poison Coat** (Rogue, slot 1) scales by adding a `modifyCombatStat attack` bonus to the buff at rank 2/3, on top of the existing on-hit poison rider (unchanged at every rank — it's still a binary toggle, not something that scales). `durationTurns` stays identical across every rank (only the status *id* changes, not its duration), so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
+**Poison Coat** (Rogue, slot 1) scales by applying a *second*, independent status alongside the base `poison-coat` at rank 2/3, rather than by growing `poison-coat` itself: `poison-coat` (the on-hit poison rider, `onHitStatusEffectId: "poisoned"`, no `perTurnEffects` of its own) is cast unchanged at every rank, and `rogue-poison-coat`'s rank 2/3 `effects` additionally apply `venom-edge`/`venom-edge-ii` — a pure `modifyCombatStat attack` status with no on-hit rider. They're two distinct status ids (not one combined `poison-coat-ii`/`poison-coat-iii` status) so each can be categorized cleanly by the turn-countdown system (`src/engine/resolver.ts`'s `statusCategory`): `poison-coat` has no per-turn effect and is "special" by shape, while `venom-edge` is a stat modifier and would be "statMod" by shape — but a stat-mod status ticks down unconditionally at round-end with no free round, while a "special" status doesn't tick until the bearer's own next turn, so left to shape-inference alone the two would drift out of sync despite always being cast together. `venom-edge`/`venom-edge-ii` instead set `"tickCategory": "special"` (a StatusEffectDefinition field that overrides the shape-inferred category) so both statuses always tick — and expire — on the same turn. `durationTurns` stays identical across every rank of both statuses, so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
-  { "id": "poison-coat-ii", "name": "Poison Coat II", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
-  { "id": "poison-coat-iii", "name": "Poison Coat III", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
+  { "id": "poison-coat", "name": "Poison Coat", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [] },
+  { "id": "venom-edge", "name": "Venom Edge", "durationTurns": "<see data/status-effects.json>", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "venom-edge-ii", "name": "Venom Edge II", "durationTurns": "<see data/status-effects.json>", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
-The attack-bonus progression matches the step size used for `rally-ii`/`rally-iii` above, for consistency across all attack-buff statuses in this system. The on-hit poison rider itself (`onHitStatusEffectId: "poisoned"`) is carried over unchanged on every rank — rank-up only adds the attack buff, it does not touch the "poison level" applied on hit (that stays base `poisoned`, level 1, same as every other non-Poison-Bomb source per the note below).
+`rogue-poison-coat`'s rank 2 `effects` apply `["poison-coat", "venom-edge"]`; rank 3 applies `["poison-coat", "venom-edge-ii"]`. The attack-bonus progression matches the step size used for `rally-ii`/`rally-iii` above, for consistency across all attack-buff statuses in this system. The on-hit poison rider itself (`poison-coat`'s `onHitStatusEffectId: "poisoned"`) is carried over unchanged on every rank — rank-up only adds the attack buff, it does not touch the "poison level" applied on hit (that stays base `poisoned`, level 1, same as every other non-Poison-Bomb source per the note below).
 
 #### Poison Bomb — poison potency scales via leveled `poisoned` variants (exclusive to this skill)
 
@@ -346,7 +347,7 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 6)
 
 #### Engine/data summary
 
-- **Data**: `data/classes.json` — `ranks` on all 30 class-specific skills; `data/status-effects.json` — the 12 rank-variant statuses (`guard-ii/iii`, `rally-ii/iii`, `poison-coat-ii/iii`, `poisoned-ii/iii`, `storm-empowered-ii/iii`).
+- **Data**: `data/classes.json` — `ranks` on all 30 class-specific skills; `data/status-effects.json` — the 12 rank-variant statuses (`guard-ii/iii`, `rally-ii/iii`, `venom-edge/venom-edge-ii`, `poisoned-ii/iii`, `storm-empowered-ii/iii`).
 - **Code**: `SkillDefinition.ranks` + the `getEffectiveSkill` lookup helper, used wherever a character skill is cast/displayed.
 
 ### Design notes

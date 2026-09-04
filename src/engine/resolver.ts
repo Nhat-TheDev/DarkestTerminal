@@ -10,6 +10,22 @@ export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   return true;
 }
 
+export type StatusCategory = "dot" | "statMod" | "special";
+
+/**
+ * Which of the 3 turn-countdown schedules a status follows. Normally inferred from its own
+ * perTurnEffects shape (a status is either a HP/MP-over-time effect, a stat modifier, or a
+ * "special" effect with no per-turn tick of its own, e.g. stuns/on-hit riders) — `tickCategory`
+ * overrides that inference for a status whose shape doesn't match its intended timing, e.g. a
+ * pure stat-mod rider that must stay in lockstep with a "special" status it's always co-applied with.
+ */
+export function statusCategory(def: StatusEffectDefinition): StatusCategory {
+  if (def.tickCategory) return def.tickCategory;
+  if (def.perTurnEffects.some((e) => e.kind === "damage" || e.kind === "heal" || e.kind === "restoreMp")) return "dot";
+  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat")) return "statMod";
+  return "special";
+}
+
 const SURVIVAL_STAT_LABEL: Record<keyof SurvivalStats, string> = {
   fear: t("resolver.statLabelFear"),
 };
@@ -150,6 +166,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     case "applyStatusEffect": {
       if (!effect.statusEffectId) return 0;
       applyStatusEffectToActor(target, effect.statusEffectId, ctx);
+      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, ctx);
       return 0;
     }
     case "removeStatusEffect": {
@@ -211,16 +228,17 @@ function nameOf(actor: Actor): string {
 
 function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: ResolveContext): void {
   const def = getStatusEffect(statusEffectId);
-  // Buffs count down starting the round they're cast in; debuffs get a free round first.
-  const deferFirstTick = !isHelpfulStatusEffect(def);
-  const existing = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
-  if (existing) {
-    existing.turnsRemaining = def.durationTurns ?? existing.turnsRemaining;
-    existing.justApplied = deferFirstTick;
+  const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
+  if (existingIndex !== -1) {
+    // Replaced, not mutated in place: a fresh object identity keeps a refreshed "special" status out of
+    // the eligibility snapshot tickSpecialEffects checks (see specialStatusSnapshot), so re-casting an
+    // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
+    const existing = actor.activeStatusEffects[existingIndex]!;
+    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: def.durationTurns ?? existing.turnsRemaining };
     ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
-  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1, justApplied: deferFirstTick };
+  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
   actor.activeStatusEffects.push(entry);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
@@ -258,25 +276,78 @@ function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   return multiplier;
 }
 
-export function tickStatusEffects(actor: Actor, ctx: ResolveContext): void {
+/**
+ * Every active-status-effect entry currently on `actor` whose category is "special" — used to
+ * snapshot which ones existed *before* this actor's own turn runs, so tickSpecialEffects can tell
+ * "already active" from "just applied (or refreshed) by this very turn" without a per-status flag.
+ * Tracked by object identity, not statusEffectId: a refresh replaces the entry's identity (see
+ * applyStatusEffectToActor), so a status re-cast on its own actor's turn falls out of this snapshot
+ * exactly like a first cast would.
+ */
+export function specialStatusSnapshot(actor: Actor): ReadonlySet<ActiveStatusEffect> {
+  return new Set(actor.activeStatusEffects.filter((s) => statusCategory(getStatusEffect(s.statusEffectId)) === "special"));
+}
+
+/** Shared tail for every tick path: decrement, then expire once it runs out. */
+function decrementAndMaybeExpire(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
+  active.turnsRemaining -= 1;
+  if (active.turnsRemaining <= 0) {
+    expireStatusEffect(actor, active, ctx);
+  }
+}
+
+/** Shared by tickDotEffects/tickStatModEffects — both always tick everything of their category. */
+function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", ctx: ResolveContext): void {
   for (const active of [...actor.activeStatusEffects]) {
     const def = getStatusEffect(active.statusEffectId);
-    for (const e of def.perTurnEffects) {
-      if (e.kind !== "modifyCombatStat") {
+    if (statusCategory(def) !== category) continue;
+    if (category === "dot") {
+      for (const e of def.perTurnEffects) {
+        if (e.kind !== "damage" && e.kind !== "heal" && e.kind !== "restoreMp") continue;
         const multiplier = e.kind === "damage" ? vulnerabilityMultiplier(actor, active.statusEffectId) : 1;
         const effectToApply = multiplier !== 1 ? { ...e, amount: (e.amount ?? 0) * multiplier } : e;
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
+      if (!isActorAlive(actor)) continue;
     }
-    if (!isActorAlive(actor)) continue;
-    if (active.justApplied) {
-      // Debuff applied/refreshed this same round — its countdown starts next round instead.
-      active.justApplied = false;
-      continue;
-    }
-    active.turnsRemaining -= 1;
-    if (active.turnsRemaining <= 0) {
-      expireStatusEffect(actor, active, ctx);
-    }
+    decrementAndMaybeExpire(actor, active, ctx);
+  }
+}
+
+/**
+ * Called once at the very start of resolveRound, before any actions this round. A DoT/HoT applied
+ * *during* this round can't have existed yet when this round's start-tick ran, so it's naturally
+ * untouched until the following round's start-tick — a free round with no bookkeeping needed.
+ */
+export function tickDotEffects(actor: Actor, ctx: ResolveContext): void {
+  tickCategoryUnconditionally(actor, "dot", ctx);
+}
+
+/**
+ * Called once at the end of resolveRound, for every combatant, unconditionally. A fresh stat
+ * modifier ticks down the instant the round it was cast in ends — no free round.
+ */
+export function tickStatModEffects(actor: Actor, ctx: ResolveContext): void {
+  tickCategoryUnconditionally(actor, "statMod", ctx);
+}
+
+/**
+ * Called once per combatant, immediately after resolveRound processes that combatant's own turn
+ * (whether they acted, fizzled, or were skipped for being stunned) — only for statuses present in
+ * `eligible` (a snapshot taken *before* that turn ran, via specialStatusSnapshot). Skipping anything
+ * not in that snapshot is what stops a status from ticking on the very turn that applied (or
+ * refreshed) it — e.g. a self-cast buff's own casting action must not count as its first "turn used".
+ * Because each combatant gets exactly one turn per round, this alone reproduces the full range of
+ * expected timing: a self-cast status (the casting action IS this round's turn) starts ticking next
+ * round; a status inflicted on a slower target who hasn't acted yet this round — already present
+ * before their own turn runs — ticks as soon as that still-pending turn resolves, later in this same
+ * round.
+ */
+export function tickSpecialEffects(actor: Actor, eligible: ReadonlySet<ActiveStatusEffect>, ctx: ResolveContext): void {
+  for (const active of [...actor.activeStatusEffects]) {
+    const def = getStatusEffect(active.statusEffectId);
+    if (statusCategory(def) !== "special") continue;
+    if (!eligible.has(active)) continue;
+    decrementAndMaybeExpire(actor, active, ctx);
   }
 }
