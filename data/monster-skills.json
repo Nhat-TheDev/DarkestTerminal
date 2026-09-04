@@ -352,7 +352,7 @@
     "target": "singleEnemy",
     "effects": [
       { "kind": "damage", "amount": 2 },
-      { "kind": "applyStatusEffect", "statusEffectId": "corroded", "chance": 0.5 }
+      { "kind": "applyStatusEffect", "statusEffectId": "acid-burn", "alsoApplyStatusEffectIds": ["corroded"], "chance": 0.5 }
     ],
     "slot": 0,
     "unlockLevel": 1

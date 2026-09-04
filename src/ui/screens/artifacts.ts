@@ -3,7 +3,7 @@ import type { Game } from "../../engine/game";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
-import { ownedArtifactEntries } from "../state";
+import { ownedArtifactEntries, ARTIFACT_ICON } from "../state";
 import { paginate } from "../pagination";
 import type { ScreenContext } from "./context";
 
@@ -36,7 +36,7 @@ export function renderMain(game: Game, ui: ArtifactsUiState, page = 0): string {
       const lines = [t("ui.artifactsListTitle")];
       pageItems.forEach((entry, i) => {
         const a = getArtifact(entry.artifactId);
-        lines.push(`  [${i + 1}] ${a.name} (${a.rarity})${a.isCursed ? t("ui.cursedTag") : ""} — ${entry.character.name} — ${formatArtifactEffect(a)}`);
+        lines.push(`  [${i + 1}] ${ARTIFACT_ICON} ${a.name} (${a.rarity})${a.isCursed ? t("ui.cursedTag") : ""} — ${entry.character.name} — ${formatArtifactEffect(a)}`);
       });
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
@@ -45,7 +45,7 @@ export function renderMain(game: Game, ui: ArtifactsUiState, page = 0): string {
     case "artifactDetail": {
       const artifact = getArtifact(ui.artifactId);
       const lines = [
-        `${artifact.name} (${artifact.rarity})${artifact.isCursed ? t("ui.cursedTag") : ""}`,
+        `${ARTIFACT_ICON} ${artifact.name} (${artifact.rarity})${artifact.isCursed ? t("ui.cursedTag") : ""}`,
         "",
         t("ui.effectLabel"),
         formatArtifactEffect(artifact),

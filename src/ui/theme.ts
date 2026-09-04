@@ -68,11 +68,36 @@ export function chip(label: string, color: string): TextChunk {
   return bg(color)(fg(PALETTE.chipFg)(bold(` ${label} `))) as TextChunk;
 }
 
+/** Splits `text` on `[...]` segments (e.g. "[Esc]", "[i]"), rendering each bracketed key hint bold in the accent color and everything else dim — used for footer/hint lines that call out specific keys. */
+export function highlightKeyHints(text: string): TextChunk[] {
+  const chunks: TextChunk[] = [];
+  const pattern = /\[[^\]]+\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text))) {
+    if (match.index > lastIndex) chunks.push(colorChunk(text.slice(lastIndex, match.index), PALETTE.dim));
+    chunks.push(boldColorChunk(match[0], PALETTE.title));
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) chunks.push(colorChunk(text.slice(lastIndex), PALETTE.dim));
+  return chunks;
+}
+
 export function hpColorFor(hp: number, maxHp: number): string {
   const ratio = maxHp > 0 ? hp / maxHp : 0;
   if (ratio > 0.6) return PALETTE.hpHigh;
   if (ratio > 0.3) return PALETTE.hpMid;
   return PALETTE.hpLow;
+}
+
+export function progressBar(current: number, max: number, width: number, filledColor: string, emptyColor: string = PALETTE.disabled): TextChunk[] {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
+  const filledLen = Math.round(ratio * width);
+  const emptyLen = width - filledLen;
+  const chunks: TextChunk[] = [];
+  if (filledLen > 0) chunks.push(colorChunk("█".repeat(filledLen), filledColor));
+  if (emptyLen > 0) chunks.push(colorChunk("░".repeat(emptyLen), emptyColor));
+  return chunks;
 }
 
 export function fearColorFor(tier: number): string {

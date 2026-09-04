@@ -275,7 +275,7 @@ describe("artifacts", () => {
     expect(combat.log.some((l) => l.text.includes(`${vanguard.name}'s artifact deals 6 damage`))).toBe(true);
   });
 
-  test("cooldownReduction shortens a skill's cooldown at queue time", () => {
+  test("cooldownReduction shortens a skill's cooldown at resolution", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     rogue.equippedArtifactIds.push("quickcharge-rune");
@@ -283,7 +283,10 @@ describe("artifacts", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
     expect(queueAction(combat, self, "rogue-poison-coat", [self], ctx)).toBeNull();
-    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(3);
+    resolveRound(combat, ctx);
+    // cooldownTurns 4 - cooldownReduction 1 = 3, set when the skill executes mid-round, then ticked
+    // down by 1 more at this same round's end-of-round cooldown tick.
+    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(2);
   });
 
   test("expBoost artifacts increase EXP gained on victory", () => {

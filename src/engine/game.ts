@@ -16,6 +16,9 @@ import {
   type QueueActionError,
   livingMonsterRefs,
   livingCharacterRefs,
+  snapshotCombatants,
+  tagLogRange,
+  tagPartySnapshotRange,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
@@ -322,11 +325,15 @@ export class Game {
 
   resolve(): void {
     if (!this.state.combat) return;
+    // Coins/EXP/satiety never change mid-round (only in the reward block below, once combat ends), so
+    // this baseline is what the reveal should show for every log line this round produces up front.
+    this.state.combat.roundStartPartySnapshot = { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety };
     resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
     if (this.state.combat.phase === "over") {
       if (this.state.combat.outcome === "victory") {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
         room.cleared = true;
+        const rewardBlockStart = this.state.combat.log.length;
         // Buffs don't carry past a cleared room — debuffs do, and keep ticking down into the next fight.
         for (const c of this.state.party) {
           if (!c.isAlive) continue;
@@ -373,6 +380,11 @@ export class Game {
           droppedArtifactIds.push(artifactId);
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;
+        // The reward block above (buff expiry, satiety drain, EXP/level, coins) is the only place these
+        // values change outside resolveRound()'s own per-action tagging — tag it the same way, so the
+        // reveal shows coins/EXP/satiety/status exactly when it reaches these lines, not upfront.
+        tagLogRange(this.state.combat, rewardBlockStart, snapshotCombatants(this.state.combat, this.ctx));
+        tagPartySnapshotRange(this.state.combat, rewardBlockStart, { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety });
         // §10.5 — guardian-fight/desecrated-altar's win path never calls closeEvent() (only Skip
         // does), so this is the only trigger point for their reflection. No-ops for every other
         // combat room (not "event" type, or not a reflection-eligible event).

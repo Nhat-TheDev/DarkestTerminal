@@ -1,6 +1,6 @@
 # Technical — Decisions
 
-**Related**: `./design-doc.md` §3; `../dungeon-crawler-data-model.ts`
+**Related**: `./design-doc.md` §3
 
 **Note on numbers**: this document describes mechanics and formulas, not
 specific tuning values — every constant/threshold is named after the field

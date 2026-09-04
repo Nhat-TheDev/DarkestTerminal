@@ -22,6 +22,8 @@ export interface SkillEffect {
   stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
+  /** For `applyStatusEffect`: extra status ids applied alongside `statusEffectId` under the same roll/target, so a multi-status proc lands or misses atomically. */
+  alsoApplyStatusEffectIds?: Id[];
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
@@ -123,6 +125,8 @@ export interface StatusEffectDefinition {
   /** If set, this status is a higher-rank variant of `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match ranks and compose the displayed name. */
   rankOf?: Id;
   rankLevel?: 2 | 3;
+  /** Overrides the turn-countdown schedule inferred from `perTurnEffects`' shape — for a status whose shape alone doesn't capture its intended timing, e.g. a pure stat-mod rider that must tick in lockstep with a "special" status it's always co-applied with. */
+  tickCategory?: "dot" | "statMod" | "special";
 }
 
 export interface ItemDefinition {
@@ -208,8 +212,6 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
-  /** Debuffs only: true for the round applied/refreshed, so that round's tick skips the countdown. */
-  justApplied?: boolean;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";
@@ -302,12 +304,21 @@ export interface CombatantSnapshot {
   level?: number;
   mp?: number;
   maxMp?: number;
+  activeStatusEffects?: ActiveStatusEffect[];
+}
+
+/** Party-wide stats (not per-combatant) captured alongside a log entry, so the reveal can freeze coins/EXP/satiety in sync with the log the same way CombatantSnapshot freezes HP/MP/level/status. */
+export interface PartyStateSnapshot {
+  coins: number;
+  partyExp: number;
+  satiety: number;
 }
 
 export interface LogEntry {
   text: string;
   kind: LogEntryKind;
   snapshot?: CombatantSnapshot[];
+  partySnapshot?: PartyStateSnapshot;
 }
 
 export interface CombatState {
@@ -321,6 +332,7 @@ export interface CombatState {
   isBossFight: boolean;
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
+  roundStartPartySnapshot?: PartyStateSnapshot;
   outcome?: "victory" | "defeat";
 }
 

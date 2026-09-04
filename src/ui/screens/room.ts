@@ -1,10 +1,11 @@
-import type { KeyEvent } from "@opentui/core";
+import { StyledText, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { getRoom } from "../../engine/dungeon";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries } from "../state";
 import type { ScreenContext } from "./context";
+import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "../theme";
 
 export type RoomUiState = Extract<UiState, { kind: "room" } | { kind: "rest" }>;
 
@@ -39,17 +40,24 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
   }
 }
 
-export function renderMain(game: Game, ui: RoomUiState): string {
+export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
     case "room": {
       const room = getRoom(s.floor, s.currentRoomId);
       const choices = game.connectedRoomChoices();
-      const lines = [t("ui.roomTypeLine", { type: room.type, clearedTag: room.cleared ? t("ui.clearedTag") : "" }), "", t("ui.pathsLabel")];
-      choices.forEach((r, i) => lines.push(`  [${i + 1}] ${r.name} (${r.type})`));
-      if (inventoryEntries(s.inventory).length > 0) lines.push("", t("ui.pressItemHint"));
-      lines.push(t("ui.pressArtifactHint"));
-      return lines.join("\n");
+      const lines: TextChunk[][] = [
+        [colorChunk(t("ui.roomTypeLine", { type: room.type, clearedTag: room.cleared ? t("ui.clearedTag") : "" }), PALETTE.text)],
+        [],
+        [colorChunk(t("ui.pathsLabel"), PALETTE.text)],
+      ];
+      choices.forEach((r, i) => lines.push([colorChunk(`  [${i + 1}] ${r.name} (${r.type})`, PALETTE.text)]));
+      if (inventoryEntries(s.inventory).length > 0) {
+        lines.push([]);
+        lines.push(highlightKeyHints(t("ui.pressItemHint")));
+      }
+      lines.push(highlightKeyHints(t("ui.pressArtifactHint")));
+      return joinLines(lines);
     }
 
     case "rest": {

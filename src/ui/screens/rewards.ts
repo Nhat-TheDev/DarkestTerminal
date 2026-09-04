@@ -4,6 +4,7 @@ import { getItem, formatItemEffect } from "../../data/items";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
+import { itemIcon, ARTIFACT_ICON } from "../state";
 import { paginate } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
@@ -29,9 +30,17 @@ export function renderMain(_game: Game, ui: RewardsUiState, page = 0): string {
     const entry = ui.viewing;
     const lines =
       entry.kind === "item"
-        ? [`${getItem(entry.id).name} x${entry.qty}`, "", t("ui.effectLabel"), formatItemEffect(getItem(entry.id)), "", t("ui.descriptionLabel"), getItem(entry.id).description]
+        ? [
+            `${itemIcon(getItem(entry.id))} ${getItem(entry.id).name} x${entry.qty}`,
+            "",
+            t("ui.effectLabel"),
+            formatItemEffect(getItem(entry.id)),
+            "",
+            t("ui.descriptionLabel"),
+            getItem(entry.id).description,
+          ]
         : [
-            `${getArtifact(entry.id).name} (${getArtifact(entry.id).rarity})`,
+            `${ARTIFACT_ICON} ${getArtifact(entry.id).name} (${getArtifact(entry.id).rarity})`,
             "",
             t("ui.effectLabel"),
             formatArtifactEffect(getArtifact(entry.id)),
@@ -45,7 +54,11 @@ export function renderMain(_game: Game, ui: RewardsUiState, page = 0): string {
   const { pageItems, page: p, pages } = paginate(ui.entries, page);
   const lines = [t("ui.roomRewardTitle")];
   pageItems.forEach((entry, i) => {
-    lines.push(entry.kind === "item" ? t("ui.roomRewardItemLine", { i: i + 1, name: getItem(entry.id).name, qty: entry.qty }) : t("ui.roomRewardArtifactLine", { i: i + 1, name: getArtifact(entry.id).name, rarity: getArtifact(entry.id).rarity }));
+    lines.push(
+      entry.kind === "item"
+        ? t("ui.roomRewardItemLine", { i: i + 1, name: `${itemIcon(getItem(entry.id))} ${getItem(entry.id).name}`, qty: entry.qty })
+        : t("ui.roomRewardArtifactLine", { i: i + 1, name: `${ARTIFACT_ICON} ${getArtifact(entry.id).name}`, rarity: getArtifact(entry.id).rarity })
+    );
   });
   if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
   lines.push(t("ui.roomRewardContinueOption"));

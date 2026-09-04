@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { getClass } from "../src/data/classes";
 import { Rng } from "../src/engine/rng";
 import { startCombat, queueItemAction, checkItemUsable, resolveRound } from "../src/engine/combat";
-import { resolveSkillEffect, tickStatusEffects } from "../src/engine/resolver";
+import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
 import { rollItemDrop, getItem } from "../src/data/items";
 import { Game } from "../src/engine/game";
 import type { CombatantRef } from "../src/types";
@@ -94,7 +94,7 @@ describe("items", () => {
     target.hp = 1;
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "regeneration" }, target, target, { log: [] });
     expect(target.activeStatusEffects.filter((s) => s.statusEffectId === "regeneration")).toHaveLength(1);
-    tickStatusEffects(target, { log: [] });
+    tickDotEffects(target, { log: [] });
     expect(target.hp).toBe(11);
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "regeneration" }, target, target, { log: [] });
     expect(target.activeStatusEffects.filter((s) => s.statusEffectId === "regeneration")).toHaveLength(1);
@@ -106,7 +106,7 @@ describe("items", () => {
     target.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
     target.activeStatusEffects.push({ statusEffectId: "poison-vulnerable", turnsRemaining: 2 });
     const before = target.hp;
-    tickStatusEffects(target, { log: [] });
+    tickDotEffects(target, { log: [] });
     expect(before - target.hp).toBe(8);
   });
 

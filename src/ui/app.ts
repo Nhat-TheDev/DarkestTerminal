@@ -1,5 +1,5 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, Monster, Id, LogEntry, CombatantSnapshot } from "../types";
+import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSnapshot, RoomType, Floor } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
@@ -7,6 +7,7 @@ import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
+import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
 import { quickSave, deleteSavesForRun } from "../engine/save";
 import {
@@ -19,7 +20,9 @@ import {
   hpColorFor,
   fearColorFor,
   joinLines,
+  progressBar,
   LOG_KIND_STYLE,
+  highlightKeyHints,
 } from "./theme";
 import {
   spriteForClass,
@@ -32,7 +35,7 @@ import {
   type Sprite,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
-import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState } from "./state";
+import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import type { ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
@@ -47,7 +50,7 @@ import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 
 const LOG_HISTORY_SIZE = 20;
-const LOG_REVEAL_INTERVAL_MS = 500;
+const LOG_REVEAL_INTERVAL_MS = 800;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
@@ -60,6 +63,13 @@ const FEAR_TIER_LABEL: Record<number, string> = {
   3: t("ui.fearTier3"),
   4: t("ui.fearTier4"),
 };
+
+const STAT_BAR_WIDTH = 14;
+const EXP_BAR_WIDTH = 24;
+
+/** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
+const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
+const CURRENT_ROOM_ICON = "■";
 
 export class App implements ScreenContext {
   game: Game;
@@ -79,9 +89,13 @@ export class App implements ScreenContext {
   private pendingReveal: LogEntry[] = [];
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private displaySnapshot: CombatantSnapshot[] | null = null;
+  private displayPartySnapshot: PartyStateSnapshot | null = null;
   private pendingFloorAdvance = false;
   private pendingCampOffer = false;
   private listPage = 0;
+  private progress: TextRenderable;
+  private roomHistory: { roomId: Id; type: RoomType }[] = [];
+  private historyFloorRef: Floor | null = null;
 
   constructor(private renderer: CliRenderer, game?: Game) {
     this.game = game ?? new Game();
@@ -107,11 +121,16 @@ export class App implements ScreenContext {
       id: "header-box",
       ...panel,
       borderColor: PALETTE.borderAccent,
-      height: 3,
+      height: 4,
       title: "DARKEST-TERMINAL",
     });
     headerBox.add(this.header);
     this.root.add(headerBox);
+
+    const progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
+    this.progress = new TextRenderable(renderer, { id: "progress", content: "", fg: PALETTE.text });
+    progressBox.add(this.progress);
+    this.root.add(progressBox);
 
     const battlefieldBox = new BoxRenderable(renderer, {
       id: "battlefield-box",
@@ -304,6 +323,7 @@ export class App implements ScreenContext {
         break;
       case "pickAction":
       case "pickSkill":
+      case "skillDetail":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":
@@ -357,6 +377,9 @@ export class App implements ScreenContext {
       case "pickSkill":
       case "pickItemInCombat":
         this.ui = { kind: "pickAction", actorRef: this.ui.actorRef };
+        return true;
+      case "skillDetail":
+        this.ui = { kind: "pickSkill", actorRef: this.ui.actorRef };
         return true;
       case "pickTarget":
         this.ui = this.ui.source.kind === "skill" ? { kind: "pickSkill", actorRef: this.ui.actorRef } : { kind: "pickItemInCombat", actorRef: this.ui.actorRef };
@@ -428,32 +451,70 @@ export class App implements ScreenContext {
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
+
+    // Reveal-state bookkeeping runs before the header/party/monster panels below so all of them can
+    // read the same "as of the last revealed log line" snapshot, instead of the header alone jumping
+    // straight to the live post-combat totals while HP/MP/status are still catching up to the log.
+    const combatLog = s.combat?.log ?? null;
+    if (combatLog !== this.observedCombatLog) {
+      this.observedCombatLog = combatLog;
+      this.lastLogLength = 0;
+      this.displaySnapshot = null;
+      this.displayPartySnapshot = null;
+    }
+    if (combatLog && combatLog.length > this.lastLogLength) {
+      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
+      this.displayPartySnapshot = s.combat!.roundStartPartySnapshot ?? null;
+      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
+      this.lastLogLength = combatLog.length;
+      this.scheduleReveal();
+    }
+    const revealing = this.pendingReveal.length > 0;
+    const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
+    const partyOverride = revealing ? this.displayPartySnapshot : null;
+
+    const coins = partyOverride?.coins ?? s.coins;
+    const partyExp = partyOverride?.partyExp ?? s.partyExp;
+    const satiety = partyOverride?.satiety ?? s.satiety;
+    const p0 = s.party[0];
+    const level = (p0 && hpOverride?.get(p0.id)?.level) ?? p0?.level ?? 1;
+
+    const expLine: TextChunk[] =
+      level >= MAX_LEVEL
+        ? [...progressBar(1, 1, EXP_BAR_WIDTH, PALETTE.title), plainChunk(" "), colorChunk(t("ui.expMaxStat"), PALETTE.title)]
+        : [
+            ...progressBar(partyExp - expCostForLevel(level), expCostForLevel(level + 1) - expCostForLevel(level), EXP_BAR_WIDTH, PALETTE.title),
+            plainChunk(" "),
+            colorChunk(t("ui.expStat", { cur: partyExp - expCostForLevel(level), need: expCostForLevel(level + 1) - expCostForLevel(level) }), PALETTE.title),
+          ];
     this.header.content = joinLines([
       [
         boldColorChunk(room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
         colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
-        colorChunk(t("ui.coinsStat", { coins: s.coins }), PALETTE.title),
+        colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
-        colorChunk(t("ui.satietyStat", { satiety: s.satiety }), PALETTE.title),
+        colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
       ],
+      expLine,
     ]);
 
-    const combatLog = s.combat?.log ?? null;
-    if (combatLog !== this.observedCombatLog) {
-      this.observedCombatLog = combatLog;
-      this.lastLogLength = 0;
-      this.displaySnapshot = null;
+    if (s.floor !== this.historyFloorRef) {
+      this.historyFloorRef = s.floor;
+      this.roomHistory = [{ roomId: s.currentRoomId, type: room.type }];
+    } else if (this.roomHistory[this.roomHistory.length - 1]?.roomId !== s.currentRoomId) {
+      this.roomHistory.push({ roomId: s.currentRoomId, type: room.type });
     }
-    if (combatLog && combatLog.length > this.lastLogLength) {
-      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
-      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
-      this.lastLogLength = combatLog.length;
-      this.scheduleReveal();
-    }
-
-    const hpOverride = this.pendingReveal.length > 0 && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
+    const progressChunks: TextChunk[] = [];
+    this.roomHistory.forEach((entry, i) => {
+      if (i > 0) progressChunks.push(plainChunk("-"));
+      const isCurrent = i === this.roomHistory.length - 1;
+      const icon = isCurrent ? CURRENT_ROOM_ICON : ROOM_TYPE_ICON[entry.type];
+      const color = isCurrent ? PALETTE.title : PALETTE.dim;
+      progressChunks.push(plainChunk("["), colorChunk(icon, color), plainChunk("]"));
+    });
+    this.progress.content = joinLines([progressChunks]);
 
     this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
 
@@ -461,16 +522,23 @@ export class App implements ScreenContext {
     s.party.forEach((c, i) => {
       if (i > 0) partyLines.push([]);
       const view = hpOverride?.get(c.id);
-      partyLines.push(...this.renderCharacterLines(view ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp } : c, s.satiety));
+      partyLines.push(
+        ...this.renderCharacterLines(
+          view
+            ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp, activeStatusEffects: view.activeStatusEffects ?? c.activeStatusEffects }
+            : c,
+          satiety
+        )
+      );
     });
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
-    if (this.pendingReveal.length > 0) {
+    if (revealing) {
       this.main.content = t("ui.revealingCombat");
-      this.footer.content = t("ui.footerSkipReveal");
+      this.footer.content = joinLines([highlightKeyHints(t("ui.footerSkipReveal"))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = this.renderFooter();
+      this.footer.content = joinLines([highlightKeyHints(this.renderFooter())]);
     }
     this.renderLogContent();
   }
@@ -497,6 +565,7 @@ export class App implements ScreenContext {
       if (next) {
         this.logHistory.push(next);
         if (next.snapshot) this.displaySnapshot = next.snapshot;
+        if (next.partySnapshot) this.displayPartySnapshot = next.partySnapshot;
       }
       if (this.pendingReveal.length > 0) this.scheduleReveal();
       this.render();
@@ -512,6 +581,7 @@ export class App implements ScreenContext {
     const last = this.pendingReveal[this.pendingReveal.length - 1];
     this.logHistory.push(...this.pendingReveal);
     if (last?.snapshot) this.displaySnapshot = last.snapshot;
+    if (last?.partySnapshot) this.displayPartySnapshot = last.partySnapshot;
     this.pendingReveal = [];
     this.render();
   }
@@ -526,20 +596,29 @@ export class App implements ScreenContext {
     if (isPartyDying(satiety)) line1.push(colorChunk(t("ui.dyingTag"), PALETTE.hpLow));
     else if (isPartyExhausted(satiety)) line1.push(colorChunk(t("ui.exhaustedTag"), PALETTE.hpLow));
     const tier = getFearTier(c.survival.fear);
-    const line2: TextChunk[] = [
+    const hpLine: TextChunk[] = [
       plainChunk("  "),
-      colorChunk(t("ui.hpStat", { hp: c.hp, maxHp: c.maxHp }), hpColorFor(c.hp, c.maxHp)),
+      colorChunk(t("ui.hpLabel"), hpColorFor(c.hp, c.maxHp)),
       plainChunk(" "),
-      colorChunk(t("ui.mpStat", { mp: c.mp, maxMp: c.maxMp }), PALETTE.mp),
+      ...progressBar(c.hp, c.maxHp, STAT_BAR_WIDTH, hpColorFor(c.hp, c.maxHp)),
       plainChunk(" "),
-      colorChunk(t("ui.fearStat", { fear: c.survival.fear }), fearColorFor(tier)),
+      colorChunk(t("ui.statValueSuffix", { cur: c.hp, max: c.maxHp }), hpColorFor(c.hp, c.maxHp)),
     ];
+    const mpLine: TextChunk[] = [
+      plainChunk("  "),
+      colorChunk(t("ui.mpLabel"), PALETTE.mp),
+      plainChunk(" "),
+      ...progressBar(c.mp, c.maxMp, STAT_BAR_WIDTH, PALETTE.mp),
+      plainChunk(" "),
+      colorChunk(t("ui.statValueSuffix", { cur: c.mp, max: c.maxMp }), PALETTE.mp),
+    ];
+    const fearLine: TextChunk[] = [plainChunk("  "), colorChunk(t("ui.fearStat", { fear: c.survival.fear }), fearColorFor(tier))];
     if (tier >= 2) {
-      line2.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
+      fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
 
     // Artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
-    const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(getArtifact(artifactId).name, PALETTE.title)]);
+    const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
     const buffLines: TextChunk[][] = [];
     const debuffLines: TextChunk[][] = [];
     for (const eff of c.activeStatusEffects) {
@@ -550,8 +629,7 @@ export class App implements ScreenContext {
     }
     const noteLines = [...artifactLines, ...buffLines, ...debuffLines];
 
-    if (noteLines.length === 0) return [line1, line2];
-    return [line1, line2, ...noteLines];
+    return [line1, hpLine, mpLine, fearLine, ...noteLines];
   }
 
   private buildUnitMeta(label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {
@@ -667,12 +745,21 @@ export class App implements ScreenContext {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(t("ui.monsterDefeatedSuffix", { name: m.name }))]);
         continue;
       }
+      lines.push([chip(style.abbr, style.color), plainChunk(` ${m.name}`)]);
       lines.push([
-        chip(style.abbr, style.color),
-        plainChunk(` ${m.name}`),
-        plainChunk("\n   "),
-        colorChunk(t("ui.hpStat", { hp, maxHp: m.maxHp }), hpColorFor(hp, m.maxHp)),
+        plainChunk("  "),
+        colorChunk(t("ui.hpLabel"), hpColorFor(hp, m.maxHp)),
+        plainChunk(" "),
+        ...progressBar(hp, m.maxHp, STAT_BAR_WIDTH, hpColorFor(hp, m.maxHp)),
+        plainChunk(" "),
+        colorChunk(t("ui.statValueSuffix", { cur: hp, max: m.maxHp }), hpColorFor(hp, m.maxHp)),
       ]);
+      const activeStatusEffects = hpOverride?.get(m.id)?.activeStatusEffects ?? m.activeStatusEffects;
+      for (const eff of activeStatusEffects) {
+        const def = getStatusEffect(eff.statusEffectId);
+        const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
+        lines.push([plainChunk("  "), colorChunk(statusDisplayName(def), color), colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color)]);
+      }
     }
     return lines.length > 0 ? lines : [[colorChunk(t("ui.noMoreMonsters"), PALETTE.dim)]];
   }
@@ -712,6 +799,7 @@ export class App implements ScreenContext {
       case "roundResolved":
       case "pickAction":
       case "pickSkill":
+      case "skillDetail":
       case "pickItemInCombat":
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
@@ -744,6 +832,7 @@ export class App implements ScreenContext {
         return roomScreen.renderFooter(this.ui);
       case "pickAction":
       case "pickSkill":
+      case "skillDetail":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":

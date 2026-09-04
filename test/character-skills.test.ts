@@ -170,7 +170,7 @@ describe("new skill mechanics", () => {
 });
 
 describe("queued action refund when it never executes", () => {
-  test("skill mp is refunded when the last monster dies to a faster ally before the caster's own turn comes up", () => {
+  test("skill mp is never spent when the last monster dies to a faster ally before the caster's own turn comes up", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
@@ -184,7 +184,7 @@ describe("queued action refund when it never executes", () => {
     const rogueMpBefore = rogue.mp;
     queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [ratRef], ctx);
     expect(queueAction(combat, { kind: "character", id: rogue.id }, "rogue-knife-throw", [ratRef], ctx)).toBeNull();
-    expect(rogue.mp).toBe(rogueMpBefore - 4);
+    expect(rogue.mp).toBe(rogueMpBefore);
 
     resolveRound(combat, ctx);
 
@@ -193,7 +193,7 @@ describe("queued action refund when it never executes", () => {
     expect(rogue.mp).toBe(rogueMpBefore);
   });
 
-  test("skill mp is refunded when a singleAlly heal's target is already dead", () => {
+  test("skill mp is never spent when a singleAlly heal's target is already dead", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("acolyte1", "Acolyte", getClass("acolyte"));
     ctx.party.push(acolyte);
@@ -204,7 +204,7 @@ describe("queued action refund when it never executes", () => {
 
     const acolyteMpBefore = acolyte.mp;
     expect(queueAction(combat, { kind: "character", id: acolyte.id }, "acolyte-heal", [vanguardRef], ctx)).toBeNull();
-    expect(acolyte.mp).toBeLessThan(acolyteMpBefore);
+    expect(acolyte.mp).toBe(acolyteMpBefore);
 
     vanguard.hp = 0;
     vanguard.isAlive = false;
@@ -215,7 +215,7 @@ describe("queued action refund when it never executes", () => {
     expect(acolyte.mp).toBe(acolyteMpBefore);
   });
 
-  test("skill mp and cooldown are refunded when the caster is stunned before acting", () => {
+  test("skill mp and cooldown are never spent when the caster is stunned before acting", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
@@ -225,8 +225,8 @@ describe("queued action refund when it never executes", () => {
 
     const mpBefore = vanguard.mp;
     expect(queueAction(combat, selfRef, "vanguard-shield-guard", [selfRef], ctx)).toBeNull();
-    expect(vanguard.mp).toBe(mpBefore - 8);
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(2);
+    expect(vanguard.mp).toBe(mpBefore);
+    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBeUndefined();
 
     resolveRound(combat, ctx);
 
@@ -779,26 +779,23 @@ describe("Viking class", () => {
     expect(viking.skills.length).toBe(6);
   });
 
-  test("Lightning Axe applies storm-empowered + self def-4/aggro+8 at rank 1", () => {
+  test("Lightning Axe applies storm-empowered + storm-recoil at rank 1", () => {
     const skill = getSkill("viking-lightning-axe");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered" },
-      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
-      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+      { kind: "applyStatusEffect", statusEffectId: "storm-recoil" },
     ]);
   });
 
-  test("Lightning Axe ranks reference storm-empowered-ii/iii, self-debuff unchanged", () => {
+  test("Lightning Axe ranks reference storm-empowered-ii/iii, storm-recoil unchanged", () => {
     const skill = getSkill("viking-lightning-axe");
     expect(getEffectiveSkill(skill, 7).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered-ii" },
-      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
-      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+      { kind: "applyStatusEffect", statusEffectId: "storm-recoil" },
     ]);
     expect(getEffectiveSkill(skill, 15).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered-iii" },
-      { kind: "modifyCombatStat", combatStat: "defense", amount: -4 },
-      { kind: "modifyCombatStat", combatStat: "aggro", amount: 8 },
+      { kind: "applyStatusEffect", statusEffectId: "storm-recoil" },
     ]);
   });
 
@@ -946,8 +943,9 @@ describe("Rogue skill ranks + poison exclusivity", () => {
 
   test("Poison Coat's on-hit rider always applies plain poisoned, even at rank 2/3", () => {
     const coat = getSkill("rogue-poison-coat");
-    expect(getStatusEffect("poison-coat-ii").onHitStatusEffectId).toBe("poisoned");
-    expect(getStatusEffect("poison-coat-iii").onHitStatusEffectId).toBe("poisoned");
+    // Ranks 2/3 apply the same base "poison-coat" rider status alongside a separate attack-buff
+    // status (venom-edge/-ii) — the on-hit rider itself never changes rank.
+    expect(getStatusEffect("poison-coat").onHitStatusEffectId).toBe("poisoned");
 
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
@@ -958,7 +956,8 @@ describe("Rogue skill ranks + poison exclusivity", () => {
     const self: CombatantRef = { kind: "character", id: rogue.id };
     queueAction(combat, self, "rogue-poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat-iii")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "venom-edge-ii")).toBe(true);
 
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, self, "rogue-knife-throw", [enemyRef], ctx);
