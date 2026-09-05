@@ -206,3 +206,87 @@ conventions:
 - No changes to the Artifact system itself beyond generalizing the passive-
   effect scan (D-independent, Source of Truth point 3).
 - No mid-run ability swapping/respec.
+
+## Revision — gaps found on a deeper spec review (post-finalization)
+
+A second, deeper pass over the finalized spec (requested explicitly: "review
+chi tiết hơn") surfaced real internal contradictions the first pass missed.
+Fixed directly in `docs/gameplay-decisions/11-abilities.md`; logged here for
+the decision trail.
+
+- **Loss-roll granularity was wrong.** The original spec said "for every
+  *character* whose equipped ability is non-common, roll a loss chance."
+  But `unlockedAbilityIds` is a single list shared by the whole profile —
+  if 2 characters both have the same ability equipped, "lost for character
+  A, kept for character B" is not a representable state. **Fixed**: the
+  loss roll (and the reconfirm exemption) is now per **distinct equipped
+  ability id** across the party, rolled once regardless of how many
+  characters share it.
+- **Common abilities shouldn't enter `runAbilityPool` at all.** The
+  original spec let a `common` roll get appended to the pool and then
+  treated confirming it as a harmless no-op at death. Simpler and
+  equivalent: never append a `common` result to the pool in the first
+  place (rejected alternative: filtering it out at confirm-time instead —
+  works but adds pointless entries to the death-time candidate list for no
+  benefit).
+- **The candidate-list / no-op interaction needed disambiguating.** An
+  already-unlocked non-common id must **stay pickable** in the death-time
+  confirm picker even though picking it doesn't change the profile — its
+  entire purpose there is triggering the reconfirm/insurance exemption,
+  not the (redundant) unlock. The original wording risked being read as
+  "filter out no-ops," which would have silently broken the insurance
+  mechanic.
+- **Single global `profile.json` wasn't stated outright.** Confirmed
+  against `src/engine/save.ts`: `resolveSaveDir()` is one directory per
+  install, already shared by every quicksave/autosave/manual save — so
+  `profile.json` sitting there is naturally global, not per-slot. Stated
+  explicitly now to close the ambiguity rather than leaving it implied.
+- **Save-scumming named as an accepted, pre-existing risk.** Elite/Boss
+  drop rolls (Artifacts today, Abilities once implemented) both read from
+  the live RNG stream, so reloading a save before the kill and refighting
+  can reroll the result. Abilities raise the stakes (a permanent profile
+  change vs. a single-run Artifact), so the incentive to abuse this is
+  stronger — explicitly flagged as a known, unsolved follow-up rather than
+  silently inherited.
+- **Save-integrity implementation note added**, not a design change:
+  `isSaveStateValid`/`migrateGameState` will need new validation/migration
+  branches for the 3 new state fields, mirroring the existing
+  `equippedArtifactIds` handling — flagged now so it isn't missed once
+  coding starts.
+
+## D7. Insurance-laundering exploit found on a 3rd review pass — capped
+
+A follow-up review of the fixes above (specifically checking whether the
+confirm-picker-then-loss-roll ordering combined with an uncapped
+reconfirm exemption could be abused) surfaced a real, previously
+undocumented gap: nothing stopped a player from insuring **every**
+distinct non-common ability the party has equipped in the same death, as
+long as they'd re-rolled each one from an Elite/Boss kill that run and had
+enough confirm slots (up to 6 at depth ≥ 30) to spend on all of them. A
+4-character party rarely equips more than 3-4 distinct non-common ids, so
+a sufficiently deep/long run could realistically launder its *entire*
+loadout past the loss roll, every death — silently defeating the "high,
+steep loss risk" the user explicitly chose (over the flatter/lower-risk
+alternatives) precisely on the runs where the most was at stake.
+
+Rejected alternatives:
+- **Leave it uncapped, document as an accepted "reward for skilled/deep
+  play"** — rejected: this isn't a skill reward, it's a mechanical bypass
+  of the death mechanic's core risk, and it disproportionately favors
+  exactly the deepest/most-invested runs, the opposite of where risk
+  should bite hardest.
+- **Replace the exemption with a %-reduction instead of a full skip**
+  (e.g. insuring a reconfirmed id halves its loss chance instead of
+  zeroing it) — rejected as unnecessary complexity for the same practical
+  outcome as a hard cap, and it still doesn't bound how many ids can be
+  discounted at once in a single death.
+
+**Decided**: `abilities.maxInsurancePerDeath = 1` — a hard cap, independent
+of `confirmSlots`, on how many of the picks made in the death-time confirm
+step may actually trigger the loss-roll exemption. The player can still
+confirm up to `confirmSlots` *new* (not-currently-equipped) abilities into
+the profile as before; only the insurance side-effect is capped. This
+preserves the intended flavor (protect the 1 talent you care about most)
+while guaranteeing every other equipped non-common ability still faces its
+full, uncapped `lossChance` every death — keeping the mechanic's stakes
+real at exactly the depth where the user wanted them to matter most.

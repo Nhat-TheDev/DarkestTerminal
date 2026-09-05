@@ -118,6 +118,12 @@ just the Artifact, never neither's roll being skipped.
   `GameState.runAbilityPool: Id[]` for this run. Duplicates are allowed:
   rolling an ability a character already has equipped is meaningful (see
   "Reconfirm / insurance" below).
+- **A roll that resolves to `common` appends nothing to the pool.** A
+  common ability is always selectable already (§11.1 "The persistent
+  profile") — there is nothing for the pool to track, and letting commons
+  into `runAbilityPool` would only clutter the death-time confirm picker
+  with choices that do nothing. This is enforced at roll time, not by
+  filtering later.
 - **Rarity depends on both source (Elite vs. Boss) and current floor
   depth** — "the deeper you are, the better the ability," implemented as
   a linear interpolation between a depth-1 table and a depth-cap table
@@ -141,6 +147,7 @@ just the Artifact, never neither's roll being skipped.
   },
   "depthPerConfirmSlot": 5,
   "maxConfirmSlots": 6,
+  "maxInsurancePerDeath": 1,
   "lossChance": { "rare": 0.25, "unique": 0.45, "epic": 0.65 }
 }
 ```
@@ -158,45 +165,128 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
 (`Game.postMoveCheck()`, `src/engine/game.ts`), before
 `App.syncUiToGameState()` triggers `deleteSavesForRun`:
 
-1. **Score** = `state.floor.depth` reached at death (not kills, not time —
-   matches the game's existing "depth is your record" framing).
+1. **Score** = `state.floor.depth` at the moment `gameOver` becomes
+   `"defeat"` (not kills, not time — matches the game's existing "depth is
+   your record" framing). The dungeon only ever descends — no room or
+   event ever returns the party to a shallower floor — so this is
+   unambiguously also "the deepest floor reached this run."
 2. **Confirm slots**:
-   `confirmSlots = min(maxConfirmSlots, floor(depthReached /
-   depthPerConfirmSlot), dedupedRunAbilityPool.length)`.
+   `confirmSlots = min(maxConfirmSlots, floor(score / depthPerConfirmSlot),
+   dedupedRunAbilityPool.length)`. Since commons are never appended to the
+   pool (previous section), `runAbilityPool` only ever contains
+   rare/unique/epic ids.
 3. **Confirm picker** (skipped entirely if `confirmSlots === 0` or the
    pool is empty) — player picks up to `confirmSlots` distinct ability
-   ids out of `runAbilityPool` (deduplicated). Every id picked is merged
-   into `AbilityProfile.unlockedAbilityIds` (no-op if already present —
-   e.g. picking a `common` id does nothing, it was already always
-   available).
-4. **Loss roll** — for every character whose `equippedAbilityId` resolves
-   to a non-`common` ability: roll `lossChance[rarity]` (Rare 25% / Unique
-   45% / Epic 65%). On a hit, remove that ability id from
-   `unlockedAbilityIds` — it can no longer be picked at character select
-   in any future run until re-earned from scratch via mid-run acquisition.
+   ids out of `runAbilityPool` (deduplicated; picking fewer than
+   `confirmSlots` is allowed, there's no minimum). Every id picked is
+   merged into `AbilityProfile.unlockedAbilityIds` (a no-op if the id is
+   already present — but it must **still appear as a pickable
+   candidate** even when already unlocked, because picking an
+   already-unlocked id is exactly how step 5's reconfirm/insurance
+   exception is triggered; its point isn't the (no-op) unlock, it's the
+   loss-roll exemption). **Of the picks made this way, at most
+   `maxInsurancePerDeath` (default `1`) may actually grant the step 5
+   exemption** — see "Reconfirm / insurance" below for why this cap
+   exists; it doesn't limit how many *new* (not-currently-equipped)
+   abilities can be confirmed, only how many *already-equipped* ones can
+   be insured against the loss roll in the same death.
+4. **Loss roll — rolled once per distinct equipped ability id, not once
+   per character.** Collect the set of distinct non-`common` ability ids
+   currently equipped across the whole party (e.g. if 2 characters both
+   have `bloodletting` equipped, that's 1 id, not 2 rolls). For each id in
+   that set, roll `lossChance[rarity]` once (Rare 25% / Unique 45% / Epic
+   65%). On a hit, remove that id from `unlockedAbilityIds` — it can no
+   longer be picked at character select in any future run until re-earned
+   from scratch via mid-run acquisition. Rolling per-character-slot
+   instead would be incoherent: `unlockedAbilityIds` is one shared list,
+   so "lost for character A but kept for character B" isn't a state that
+   can exist when both had the same id equipped.
 5. **Reconfirm / insurance exception** (below) — skip step 4's roll
-   entirely for a character if their equipped ability's id is among the
-   ids the player just picked in step 3 this same death.
+   entirely for an ability id if that same id is among the ids the player
+   just picked in step 3 this same death, **and** that id hasn't already
+   used up the death's `maxInsurancePerDeath` budget. The exemption is per
+   **ability id**, matching step 4's per-id rolling — not per character.
 6. **Persist** — write the updated `AbilityProfile` to `profile.json`
    *before or independently of* `deleteSavesForRun`, so the per-run wipe
-   never touches it.
+   never touches it. Any `runAbilityPool` ids the player didn't spend a
+   confirm slot on (beyond `confirmSlots`, or simply left unpicked) are
+   discarded with the rest of the run's state — nothing carries over to
+   the next run except what was explicitly confirmed.
 7. **Results screen** — always shown after the confirm picker (or
    immediately, if there was no picker): "N abilities added to your pool"
-   + one line per loss, e.g. "Vanguard's *Bloodletting* was lost."
+   + one line per loss, e.g. "Vanguard's *Bloodletting* was lost." If the
+   same id was equipped by more than 1 character, name all of them on
+   that one line (it's a single loss event, not one per character).
 
 ### Reconfirm / insurance
 
-If a character's currently-equipped ability (chosen at the *start* of
-this run, from the persistent pool) gets rolled again this same run from
-an Elite/Boss kill (duplicates in `runAbilityPool` are allowed on purpose
-for this reason), the player can spend one of their death-time confirm
-slots on that same id. Doing so exempts that character from the loss roll
-entirely for this death — narratively, the character "relearned/
-reaffirmed" the talent deep in the dungeon, so it's secure even if the
-run ends badly. This is the only way to fully remove the death-time risk
-from an equipped non-common ability; simply surviving with it equipped
+If an ability id currently equipped by 1 or more party members (chosen at
+the *start* of this run, from the persistent pool) gets rolled again this
+same run from an Elite/Boss kill (duplicates in `runAbilityPool` are
+allowed on purpose for this reason), the player can spend one of their
+death-time confirm slots on that same id. Doing so exempts **that id**
+from the loss roll entirely for this death — narratively, the party
+"relearned/reaffirmed" the talent deep in the dungeon, so it's secure even
+if the run ends badly. The exemption covers every character who has that
+id equipped, since the roll and the underlying `unlockedAbilityIds` entry
+are both per-id, not per-character (see death flow step 4).
+
+**Capped at `maxInsurancePerDeath` (default `1`) per death.** Without this
+cap, a long/deep run naturally earns enough confirm slots (up to 6) and
+enough Elite/Boss kills to have a real chance of re-rolling *every*
+distinct non-common ability the party has equipped (a 4-person party
+rarely has more than 3-4 distinct ids to protect) — spending a confirm
+slot on each would immunize the **entire party's loadout** from the loss
+roll, every single death, turning the "high, steep loss risk" the whole
+mechanic is built around into a non-event for exactly the runs where the
+most is at stake (the deepest, most-invested ones). Capping insurance to
+1 id per death keeps the mechanic's flavor (you can protect the 1 talent
+you care about most) while guaranteeing every other equipped non-common
+ability still faces its full, uncapped loss roll. This is the only way to
+fully remove the death-time risk from an equipped non-common ability, and
+only for 1 of them at a time; simply surviving with an ability equipped
 and never re-rolling it leaves the loss roll live every time the party
 wipes.
+
+### Edge cases & clarifications
+
+- **Exactly one `profile.json`, shared globally.** `resolveSaveDir()`
+  (`src/engine/save.ts`) resolves to a single directory per install/OS
+  user — every quicksave, autosave, and manual save already lives there
+  side by side. `profile.json` is one more file in that same directory,
+  **not** per save-slot and **not** per-run. A character's
+  `equippedAbilityId` is locked in once, at that run's creation
+  (§11.1 "Character-select flow"), and is never retroactively changed by
+  `unlockedAbilityIds` gaining or losing entries from a *different* run
+  finishing later — only the *next* character-select screen sees the
+  updated pool.
+- **Individual character deaths before the final wipe don't matter.**
+  `postMoveCheck()`'s wipe condition is `party.every(c => !c.isAlive)` —
+  by definition, every character is dead by the time the death flow runs,
+  regardless of the order they fell in. There's no special case for "a
+  character died 10 floors before the wipe" vs. "died on the final round"
+  — every equipped non-common ability in the party is evaluated the same
+  way.
+- **Save-scumming is a pre-existing risk class, not a new one — but the
+  stakes are higher here.** A player can already quicksave before an
+  Elite/Boss fight and reload if the Artifact roll disappoints; Abilities
+  inherit the exact same exposure through the same drop hook. What's
+  different is the incentive: an Artifact reroll only affects the current
+  run, while an Ability reroll can permanently inflate the persistent
+  profile, so the temptation to reload-farm a specific rare/unique/epic
+  ability is materially stronger. Not solved by this spec — flagged as a
+  known follow-up (e.g. a future move to seed the roll off the room's own
+  seed rather than the live RNG stream would close it, but that's an RNG-
+  architecture change out of scope here).
+- **Save-file integrity checks need new branches when this is
+  implemented.** `isSaveStateValid` and `migrateGameState`
+  (`src/engine/save.ts`) already validate/backfill `equippedArtifactIds`
+  against the Artifact catalog for old or malformed saves — the same
+  pattern will need equivalent branches for `Character.equippedAbilityId`,
+  `GameState.runAbilityPool`, and `GameState.pendingAbilityConfirm`
+  against `data/abilities.json` once that catalog exists, plus a
+  migration default (`null`/`[]`/absent) for saves written before this
+  feature existed. Noted now so it isn't missed when coding starts.
 
 ---
 
