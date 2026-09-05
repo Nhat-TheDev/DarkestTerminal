@@ -21,7 +21,7 @@ What an Ability is, vs. an Item, vs. an Artifact:
 | Slots | Inventory count | Up to 3 per character | **Exactly 1 per character, no more** |
 | When chosen | On pickup, used freely | On pickup, immediate equip/discard | **Before the run starts**, at character select |
 | Where it "lives" | `GameState.inventory` | `Character.equippedArtifactIds` | **A persistent profile file, outside any single run's save** |
-| Lost when | Used up | Party wipe (with the run) | **Never during a run** — only has a *chance* to be struck from the persistent profile *after* a wipe, and only if non-common |
+| Lost when | Used up | Party wipe (with the run) | **Guaranteed on party wipe** if non-common — every non-common equipped ability is struck from the persistent profile the moment the run ends, no roll involved (recoverable only by spending that run's Stardust, §11.1 "Death flow") |
 | Rarity | None | Common/Rare/Unique/Epic | **Common/Rare/Unique/Epic** (reuses `ArtifactRarity`) |
 
 Abilities are the game's first mechanic with state that outlives a single
@@ -94,36 +94,66 @@ order:
    `unlockedAbilityIds` — tagged with its rarity.
 2. Player picks exactly 1 (number key), or explicitly skips (dedicated
    key, `0`) — a character can enter the run with no ability equipped.
-3. The same ability id **can** be picked by more than 1 character in the
-   party at once — no exclusivity lock between party members.
+3. **No 2 characters in the party may end the screen with the same
+   ability id equipped** (commons included — a party can't stack 4 copies
+   of `steady-hands` either). Once a character locks in an id, it drops
+   out of every later character's list for this screen. This applies only
+   to *this run's* equip choices — it has no effect on `unlockedAbilityIds`
+   itself, which stays a plain set with no notion of "who owns what."
 
 Result stored on each `Character.equippedAbilityId` before the floor
 generator runs.
 
-### Mid-run acquisition (Elite/Boss only)
+### Mid-run acquisition — Elite and Boss now play 2 different roles
 
-Exactly the same trigger point as the guaranteed Artifact drop
-(`07-items-artifacts.md` §7.2 "Drop source" — `src/engine/game.ts`, the
-per-monster loop on room-clear, `monster.tier === "elite" || "boss"`), but
-as a **separate, independent, non-guaranteed** roll — killing an
-Elite/Boss can grant an Artifact *and* an Ability on the same kill, or
-just the Artifact, never neither's roll being skipped.
+Both still hook into the exact same trigger point as the guaranteed
+Artifact drop (`07-items-artifacts.md` §7.2 "Drop source" —
+`src/engine/game.ts`, the per-monster loop on room-clear,
+`monster.tier === "elite" || "boss"`), and both still roll independently
+of the Artifact drop on the same kill — but they no longer resolve the
+same way:
+
+- **Elite: instant, permanent, free.** On a successful roll, the ability
+  id is added straight to `AbilityProfile.unlockedAbilityIds` — no pool,
+  no decision screen, no Stardust cost. It's simply available at the next
+  character-select from then on (mid-run, it does nothing for the
+  *current* run — equipped abilities are still locked in for the run,
+  §11.1 "Character-select flow"). Logged as a flavor line, the same way a
+  passive Item pickup is (no interrupt to the dungeon loop).
+- **Boss: pooled, gated behind Stardust and the death flow.** On a
+  successful roll, the id is appended to a new **per-run, Boss-only**
+  pool, `GameState.runBossAbilityPool: Id[]` — not unlocked yet. It only
+  ever becomes real (added to `unlockedAbilityIds`) if the player spends
+  Stardust on it at this run's death flow (below). If never spent, it's
+  discarded with the rest of the run's state.
+- **Every Boss kill also grants exactly 1 Stardust**, `GameState.
+  runStardust: number += 1`, regardless of whether the ability roll above
+  hit or missed. Since a real Boss only appears every `bossFloorInterval`
+  floors (5, `data/level-growth.json`), this is also "1 Stardust every 5
+  floors" — the cadence the feature was originally requested with. Unlike
+  the ability roll, this part is unconditional, not a probability.
+
+Both rolls share the same drop-chance/rarity mechanics as before:
 
 - **Drop chance**: `abilities.dropChance = 0.35` (35%) per eligible kill —
   deliberately below `items.itemDropChance` (0.6) since an Ability
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
-- **Not an immediate decision** (unlike Artifacts' reveal→equip/discard
-  flow) — the rolled ability id is silently appended to
-  `GameState.runAbilityPool: Id[]` for this run. Duplicates are allowed:
-  rolling an ability a character already has equipped is meaningful (see
-  "Reconfirm / insurance" below).
-- **A roll that resolves to `common` appends nothing to the pool.** A
-  common ability is always selectable already (§11.1 "The persistent
-  profile") — there is nothing for the pool to track, and letting commons
-  into `runAbilityPool` would only clutter the death-time confirm picker
-  with choices that do nothing. This is enforced at roll time, not by
-  filtering later.
+- **The roll excludes any ability id already in `unlockedAbilityIds`**,
+  and — for the Boss roll specifically — also excludes ids already sitting
+  in this run's own `runBossAbilityPool` (no point queuing the exact same
+  unspent candidate twice). This directly implements "tỉ lệ rơi chỉ rơi
+  những abilities chưa có trong pool chung": both sources only ever
+  surface something the player doesn't already have.
+  - **Catalog-exhaustion fallback**: if every ability in the rolled
+    rarity tier is already unlocked (or, for Boss, already pending in
+    `runBossAbilityPool`), re-roll the rarity excluding that tier and
+    redistribute its weight across the rest. If literally every
+    non-`common` ability in the whole catalog is already unlocked, the
+    roll simply yields nothing that kill — there's nothing left to find.
+- **A roll that resolves to `common` grants nothing** (Elite: nothing to
+  add, it's already always available; Boss: nothing appended to the
+  pool) — enforced at roll time.
 - **Rarity depends on both source (Elite vs. Boss) and current floor
   depth** — "the deeper you are, the better the ability," implemented as
   a linear interpolation between a depth-1 table and a depth-cap table
@@ -145,10 +175,7 @@ just the Artifact, never neither's roll being skipped.
       "atDepthCap": { "common": 0, "rare": 5,  "unique": 45, "epic": 50 }
     }
   },
-  "depthPerConfirmSlot": 5,
-  "maxConfirmSlots": 6,
-  "maxInsurancePerDeath": 1,
-  "lossChance": { "rare": 0.25, "unique": 0.45, "epic": 0.65 }
+  "stardustCostByRarity": { "rare": 2, "unique": 3, "epic": 4 }
 }
 ```
 
@@ -157,7 +184,10 @@ For a rarity `r` at depth `d` (clamped to `[1, depthCap]`):
 then fed into the same `rng.weightedPick` pattern `rollArtifactRarity`
 already uses (`src/data/artifacts.ts`), filtering zero-weight entries
 first. Identical shape to the existing Artifact `RARITY_WEIGHTS` table:
-Elite skews common/rare, Boss never rolls common and skews unique/epic.
+Elite skews common/rare, Boss never rolls common and skews unique/epic —
+which now doubles as the game's own way of saying "Elite finds are the
+steady trickle, Boss finds are the rare, better-odds ones worth actually
+spending Stardust on."
 
 ### Death flow (the only end-state — no "victory" exists in the game today)
 
@@ -165,88 +195,79 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
 (`Game.postMoveCheck()`, `src/engine/game.ts`), before
 `App.syncUiToGameState()` triggers `deleteSavesForRun`:
 
-1. **Score** = `state.floor.depth` at the moment `gameOver` becomes
-   `"defeat"` (not kills, not time — matches the game's existing "depth is
-   your record" framing). The dungeon only ever descends — no room or
-   event ever returns the party to a shallower floor — so this is
-   unambiguously also "the deepest floor reached this run."
-2. **Confirm slots**:
-   `confirmSlots = min(maxConfirmSlots, floor(score / depthPerConfirmSlot),
-   dedupedRunAbilityPool.length)`. Since commons are never appended to the
-   pool (previous section), `runAbilityPool` only ever contains
-   rare/unique/epic ids.
-3. **Confirm picker** (skipped entirely if `confirmSlots === 0` or the
-   pool is empty) — player picks up to `confirmSlots` distinct ability
-   ids out of `runAbilityPool` (deduplicated; picking fewer than
-   `confirmSlots` is allowed, there's no minimum). Every id picked is
-   merged into `AbilityProfile.unlockedAbilityIds` (a no-op if the id is
-   already present — but it must **still appear as a pickable
-   candidate** even when already unlocked, because picking an
-   already-unlocked id is exactly how step 5's reconfirm/insurance
-   exception is triggered; its point isn't the (no-op) unlock, it's the
-   loss-roll exemption). **Of the picks made this way, at most
-   `maxInsurancePerDeath` (default `1`) may actually grant the step 5
-   exemption** — see "Reconfirm / insurance" below for why this cap
-   exists; it doesn't limit how many *new* (not-currently-equipped)
-   abilities can be confirmed, only how many *already-equipped* ones can
-   be insured against the loss roll in the same death.
-4. **Loss roll — rolled once per distinct equipped ability id, not once
-   per character.** Collect the set of distinct non-`common` ability ids
-   currently equipped across the whole party (e.g. if 2 characters both
-   have `bloodletting` equipped, that's 1 id, not 2 rolls). For each id in
-   that set, roll `lossChance[rarity]` once (Rare 25% / Unique 45% / Epic
-   65%). On a hit, remove that id from `unlockedAbilityIds` — it can no
-   longer be picked at character select in any future run until re-earned
-   from scratch via mid-run acquisition. Rolling per-character-slot
-   instead would be incoherent: `unlockedAbilityIds` is one shared list,
-   so "lost for character A but kept for character B" isn't a state that
-   can exist when both had the same id equipped.
-5. **Reconfirm / insurance exception** (below) — skip step 4's roll
-   entirely for an ability id if that same id is among the ids the player
-   just picked in step 3 this same death, **and** that id hasn't already
-   used up the death's `maxInsurancePerDeath` budget. The exemption is per
-   **ability id**, matching step 4's per-id rolling — not per character.
-6. **Persist** — write the updated `AbilityProfile` to `profile.json`
+1. **Guaranteed loss, no roll.** For every character whose
+   `equippedAbilityId` resolves to a non-`common` ability, immediately
+   remove that id from `unlockedAbilityIds`. This is unconditional — the
+   old probability-by-rarity roll is gone. Since §11.1 "Character-select
+   flow" now forbids 2 characters sharing an id, every character with a
+   non-common ability equipped is necessarily losing a *distinct* one —
+   there's no "shared id, split outcome" case left to reconcile.
+2. **Collect the lost set** — 1 entry per character who just lost an
+   ability: `{ characterId, lostAbilityId, rarity }`. A character who
+   entered the run with `common` or no ability equipped contributes
+   nothing here and gets no buyback opportunity (nothing was lost for
+   them to buy back).
+3. **Stardust buyback** (skipped entirely if the lost set is empty) — the
+   player addresses lost-set entries **one at a time, in whatever order
+   they pick**, and each decision **commits immediately** before the next
+   entry is presented (no batch/simultaneous selection — see the
+   implementation note below for exactly why this matters). For the
+   entry currently being addressed:
+   - **Skip** — spend nothing, that ability stays lost.
+   - **Reclaim** — pay `stardustCostByRarity[rarity of the lost ability]`
+     (Rare 2 / Unique 3 / Epic 4) for the *exact* id that was just lost,
+     re-adding it to `unlockedAbilityIds`.
+   - **Swap** — pick a *different* id instead from this run's
+     `runBossAbilityPool` (shared across every lost-set entry, not tied to
+     which character's kill found it — see
+     `.hermes/features/abilities/BRAINSTORM.md` for why a shared pool was
+     chosen over a per-finder-character one), and pay
+     `stardustCostByRarity[rarity of the chosen candidate]` — **the
+     candidate's own rarity, not the lost ability's**. A Rare loss swapped
+     for an Epic find costs the Epic's 4, not the Rare's 2; a lost Epic
+     swapped for a Rare find only costs 2. Getting this backwards (charging
+     the lost ability's rarity regardless of what's bought) would let an
+     Epic candidate be bought at Rare prices — the cost is what you're
+     acquiring, never what you're replacing.
+   - **Immediately upon committing a Reclaim or Swap**, the chosen id is
+     added to `unlockedAbilityIds` and removed from `runBossAbilityPool`
+     (if it came from there) so it can never be claimed by a later
+     lost-set entry this same death — this is what makes "an id can only
+     be unlocked once per death" an actual sequencing guarantee rather
+     than just a stated intent: because entries are resolved one at a
+     time with each choice committed before the next begins, there is no
+     window where 2 entries could both be mid-selection on the same
+     candidate. Spending stops once `runStardust` can no longer afford
+     anything left to buy.
+   - There is no notion of "this Boss ability belongs to that character" —
+     the pool and the currency are both party-wide; any lost-set entry may
+     spend on any still-available candidate regardless of which character
+     killed which Boss.
+4. **Persist** — write the updated `AbilityProfile` to `profile.json`
    *before or independently of* `deleteSavesForRun`, so the per-run wipe
-   never touches it. Any `runAbilityPool` ids the player didn't spend a
-   confirm slot on (beyond `confirmSlots`, or simply left unpicked) are
-   discarded with the rest of the run's state — nothing carries over to
-   the next run except what was explicitly confirmed.
-7. **Results screen** — always shown after the confirm picker (or
-   immediately, if there was no picker): "N abilities added to your pool"
-   + one line per loss, e.g. "Vanguard's *Bloodletting* was lost." If the
-   same id was equipped by more than 1 character, name all of them on
-   that one line (it's a single loss event, not one per character).
+   never touches it. Any `runStardust` left unspent, and any
+   `runBossAbilityPool` ids nobody bought, are discarded with the rest of
+   the run's state — Stardust does not carry over to the next run (a
+   fresh run always starts at `runStardust = 0`).
+5. **Results screen** — shown after the buyback (or immediately, if the
+   lost set was empty): 1 line per lost-set entry, stating what was lost
+   and what happened to it — reclaimed, swapped for something else, or
+   left lost — e.g. "Vanguard's *Bloodletting* was lost — reclaimed for 2
+   Stardust" / "Mage's *Thunderous Aura* was lost — replaced with
+   *Battle Scholar*" / "Rogue's *Phantom Reflexes* was lost for good."
 
-### Reconfirm / insurance
-
-If an ability id currently equipped by 1 or more party members (chosen at
-the *start* of this run, from the persistent pool) gets rolled again this
-same run from an Elite/Boss kill (duplicates in `runAbilityPool` are
-allowed on purpose for this reason), the player can spend one of their
-death-time confirm slots on that same id. Doing so exempts **that id**
-from the loss roll entirely for this death — narratively, the party
-"relearned/reaffirmed" the talent deep in the dungeon, so it's secure even
-if the run ends badly. The exemption covers every character who has that
-id equipped, since the roll and the underlying `unlockedAbilityIds` entry
-are both per-id, not per-character (see death flow step 4).
-
-**Capped at `maxInsurancePerDeath` (default `1`) per death.** Without this
-cap, a long/deep run naturally earns enough confirm slots (up to 6) and
-enough Elite/Boss kills to have a real chance of re-rolling *every*
-distinct non-common ability the party has equipped (a 4-person party
-rarely has more than 3-4 distinct ids to protect) — spending a confirm
-slot on each would immunize the **entire party's loadout** from the loss
-roll, every single death, turning the "high, steep loss risk" the whole
-mechanic is built around into a non-event for exactly the runs where the
-most is at stake (the deepest, most-invested ones). Capping insurance to
-1 id per death keeps the mechanic's flavor (you can protect the 1 talent
-you care about most) while guaranteeing every other equipped non-common
-ability still faces its full, uncapped loss roll. This is the only way to
-fully remove the death-time risk from an equipped non-common ability, and
-only for 1 of them at a time; simply surviving with an ability equipped
-and never re-rolling it leaves the loss roll live every time the party
-wipes.
+Why this replaces the old probabilistic system entirely: guaranteed loss
+is a harsher baseline than the old 25/45/65% roll, but the player is now
+given real agency and a resource (Stardust) to fight back with instead of
+hoping a die roll goes their way — and the resource is self-limiting in
+exactly the way the old system needed an artificial
+`maxInsurancePerDeath` cap to fake. A typical death at depth 15-25 yields
+2-5 Stardust (1 per Boss every 5 floors) — enough to reclaim 1, maybe 2,
+of a full loadout's losses, not all of them; only a genuinely deep run
+(each Epic reclaim alone costs 4 Stardust, i.e. 4 Boss kills / 20 floors)
+can afford to recover most or all of a 4-ability loadout. The risk still
+scales down exactly where it should — shallow, lower-investment runs —
+without needing a hand-picked cap bolted on top.
 
 ### Edge cases & clarifications
 
@@ -283,10 +304,28 @@ wipes.
   (`src/engine/save.ts`) already validate/backfill `equippedArtifactIds`
   against the Artifact catalog for old or malformed saves — the same
   pattern will need equivalent branches for `Character.equippedAbilityId`,
-  `GameState.runAbilityPool`, and `GameState.pendingAbilityConfirm`
-  against `data/abilities.json` once that catalog exists, plus a
-  migration default (`null`/`[]`/absent) for saves written before this
-  feature existed. Noted now so it isn't missed when coding starts.
+  `GameState.runBossAbilityPool`, `GameState.runStardust`, and whatever
+  pending-buyback state the death-flow UI needs, against
+  `data/abilities.json` once that catalog exists, plus a migration
+  default (`null`/`[]`/`0`/absent) for saves written before this feature
+  existed. Noted now so it isn't missed when coding starts.
+- **No-duplicate enforcement only ever needs to check the party's current
+  4 `equippedAbilityId`s**, both at character select and right after the
+  Stardust buyback resolves (the buyback can't actually violate it in
+  practice — see "Stardust buyback" step 3 — but validating the invariant
+  once buyback finishes is cheap insurance against a future bug). It never
+  needs to consult `unlockedAbilityIds`, which is intentionally allowed to
+  contain the same id "available" to more than one future pick — the
+  exclusivity is only about what's simultaneously *equipped*, never about
+  what's unlocked.
+- **Catalog exhaustion is a real, reachable end state**, not a
+  theoretical one — 15 non-common abilities total (§11.2) is a small
+  enough catalog that a dedicated player could plausibly unlock all of
+  them across enough runs. From that point on, Elite/Boss ability rolls
+  permanently yield nothing (the roll's exclusion rule has nothing left to
+  offer), which is an acceptable "collection complete" end state for now,
+  flagged under Open follow-ups as a likely spot to expand the catalog
+  later.
 
 ---
 
@@ -370,9 +409,15 @@ magnitude.
 
 - All numeric constants above live in `data/balance-config.json`/this
   catalog — expect rebalancing once the feature is actually played
-  (drop rate, loss chances, and the depth-1/depth-cap weight tables are
-  the most likely candidates to need adjustment).
+  (drop rate, the Stardust cost table, and the depth-1/depth-cap weight
+  tables are the most likely candidates to need adjustment).
 - No Ability currently uses `expBoost`'s party-wide exception behavior
   differently from how Artifacts already handle it (§7.2) — same rule
   applies: even though it's a single character's equipped ability, its
   `expBoost` still boosts the shared `partyExp`.
+- **Catalog size vs. Elite's free instant-unlock rate**: since Elite kills
+  now hand out permanent unlocks for free (no Stardust, no death gate),
+  the 15-ability non-common catalog could get exhausted faster than
+  originally modeled when this doc still gated *all* acquisition behind
+  the death flow. Worth simulating once implemented — either drop rate or
+  catalog size may need adjusting sooner than the Stardust-side numbers.

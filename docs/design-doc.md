@@ -47,8 +47,8 @@ existing gameplay.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.6b Abilities (meta-progression, design spec — not yet implemented)
-- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts), chosen before the run starts from a pool that **persists across runs** in a new `profile.json` save, earned mid-run from Elite/Boss kills and confirmed (or lost) only at death
-- Full spec (mechanics, rarity/drop tables, full ability catalog, death-time confirm/loss flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
+- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a new `profile.json` save. Elite kills grant an unlocked ability instantly and for free; Boss kills (every 5 floors) grant a Stardust currency plus a candidate held in a per-run pool. On party wipe every non-common equipped ability is lost **for sure** — the player then spends that run's Stardust to reclaim what was lost or swap in a Boss-found candidate instead.
+- Full spec (mechanics, rarity/drop tables, full ability catalog, Stardust-buyback death flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
 
 ### 1.7 Event room
 - Event room: stepping in rolls randomly for one of several event types, split by rarity tier
@@ -100,7 +100,7 @@ Main type groups:
 - Elite (found on most floors) is separate from a true Boss (found at a fixed floor interval, `data/level-growth.json` field `bossFloorInterval`) — both have their own skill sets
 - Consumable items + equippable Artifacts (permanent, one-shot equip/discard decision), rarity, drop sources
 - Event room: event types, split by rarity tier
-- Abilities (**design spec, not yet implemented**): persistent cross-run meta-progression, 1 per character, earned from Elite/Boss kills, confirmed/lost at death — full catalog and mechanics in §11
+- Abilities (**design spec, not yet implemented**): persistent cross-run meta-progression, 1 per character (no duplicates in a party), Elite = instant free unlock, Boss = Stardust + pooled candidate, guaranteed loss on death recoverable via Stardust buyback — full catalog and mechanics in §11
 - Cursed Coins: a party-wide currency from combat kills, spent in 3 of the event rooms
 
 ### Technical — [`technical-decisions.md`](./technical-decisions.md)

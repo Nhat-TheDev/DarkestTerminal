@@ -290,3 +290,97 @@ preserves the intended flavor (protect the 1 talent you care about most)
 while guaranteeing every other equipped non-common ability still faces its
 full, uncapped `lossChance` every death — keeping the mechanic's stakes
 real at exactly the depth where the user wanted them to matter most.
+
+## D8. User-directed redesign — Stardust replaces the probabilistic loss/reconfirm system entirely
+
+The user requested 4 changes in one turn, which together superseded D3-D7
+above rather than layering on top of them. Logged individually:
+
+**D8.1 — No 2 party members may equip the same ability id.** Directly
+requested ("mỗi char sẽ mang abilities khác nhau không trùng lặp").
+Reverses the earlier "no exclusivity lock" call from the first pass. Side
+benefit discovered while integrating it: this makes the old "roll per
+distinct id vs. per character" ambiguity (D-fix from the 2nd review round)
+moot going forward — with no duplicates possible, "per id" and "per
+character" are now the same thing by construction.
+
+**D8.2 — Elite/Boss ability rolls exclude ids already in
+`unlockedAbilityIds`.** Directly requested ("tỉ lệ rơi chỉ rơi những
+abilities chưa có trong pool chung"). Implemented as an exclusion filter
+at roll time, with a re-roll-the-tier fallback for the case where an
+entire rarity tier is already exhausted, and a "yields nothing" fallback
+for the case where the whole catalog is exhausted (see 11-abilities.md
+"Edge cases").
+
+**D8.3 — New Stardust currency, earned only from Boss kills (every 5
+floors), spent only at that run's own death.** Directly requested: amount
+(1 per Boss kill), cost table (Rare 2 / Unique 3 / Epic 4), and "used only
+in the run it dies in, not persistent" (user's answer to the dedicated
+clarifying question — rejected alternative: banking Stardust across runs
+in `profile.json`, which the user didn't choose).
+
+Follow-up clarifying question resolved **Elite's role**: the user chose to
+keep Elite's existing probabilistic ability-drop mechanic rather than
+retire it in favor of Boss-only acquisition. Reconciling this with D8.3
+("pool lựa chọn sẽ là các abilities nhận từ boss") required a 2-tier
+acquisition split not explicit in the user's original message, decided
+here: **Elite drops unlock instantly and for free** (no pool, no Stardust,
+mirrors nothing else in the game exactly but is the simplest way to keep
+Elite relevant without it colliding with the boss-only buyback pool);
+**Boss drops go into a new `runBossAbilityPool`**, spent only through the
+Stardust buyback. Rejected alternative: keep Elite drops in the same
+per-run pool as Boss drops but exclude them from buyback eligibility —
+rejected because that leaves Elite-found abilities with no resolution
+path at all (never unlocked, never usable), which is strictly worse than
+either "unlock it" or "don't roll it."
+
+Also resolved via clarifying question: the Boss-found candidate pool at
+buyback time is **shared across the whole party**, not bound to whichever
+character was in the fight that dropped it — the user picked this over
+per-finder-character ownership, and it's also what makes "swap to a new
+ability" a real choice for every lost-set entry regardless of who
+personally defeated which Boss.
+
+**D8.4 — Death now guarantees the loss of every equipped non-common
+ability (no roll), recoverable only through the Stardust buyback.**
+Directly requested ("khi chết sẽ mất toàn bộ abilities [không phải]
+common trên người — điểm thay đổi" — the user's own words flagging this as
+the one deliberately changed point from the earlier design). This retires
+`lossChance` (Rare/Unique/Epic %) and `maxInsurancePerDeath` entirely —
+both existed only to manage risk around a probabilistic system that no
+longer exists. The old D7 problem (uncapped insurance could launder an
+entire loadout) doesn't need re-solving under the new system: Stardust
+itself is the natural, self-scaling budget constraint (a typical
+depth-15-25 death affords 1-2 reclaims out of a possible 4, and fully
+recovering a mixed-rarity 4-ability loadout costs roughly 4 Boss kills'
+worth of Stardust at minimum) — no artificial cap needed on top.
+
+`confirmSlots`/`depthPerConfirmSlot`/`maxConfirmSlots` are also retired:
+they existed to gate *new* unlocks by depth-as-score, but under the new
+design "how much you can recover" is governed entirely by how much
+Stardust you earned (itself already depth-correlated via the Boss
+cadence), so a separate score-derived slot count would be redundant.
+
+## D9. Review found the Stardust redesign had its own new bug — fixed
+
+A review pass over D8's redesign caught a real exploit introduced by it:
+the original wording had **Swap** cost "the same" Stardust as **Reclaim**
+— i.e., priced by the *lost* ability's rarity rather than the *candidate's*
+rarity. That would let a lost Rare ability (cost 2) buy an Epic candidate
+out of `runBossAbilityPool` for 2 Stardust instead of its own listed cost
+of 4, silently breaking the "why this replaces the old system" paragraph's
+own claim that Stardust scarcity is what keeps recovery bounded.
+
+**Fixed**: Swap costs `stardustCostByRarity[candidate's rarity]`, always —
+what you're *acquiring* sets the price, never what you're *replacing*.
+
+The same review also flagged that "a candidate becomes unavailable to
+every other pending entry the moment one entry claims it" was an outcome
+claim without an implementation contract — if the buyback UI let multiple
+lost-set entries be tentatively set to the same candidate before a single
+batch "confirm," 2 entries could both land on it with nothing in the spec
+saying how that resolves. **Fixed**: the doc now specifies lost-set
+entries are resolved strictly one at a time, each choice committing
+immediately (added to `unlockedAbilityIds` and removed from
+`runBossAbilityPool` before the next entry is even presented) — closing
+the race by construction rather than by an after-the-fact rule.
