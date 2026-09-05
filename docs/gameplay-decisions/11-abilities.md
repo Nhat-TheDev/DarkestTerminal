@@ -38,10 +38,15 @@ profile is deliberately the one exception.
 Reuses `ArtifactRarity` (`src/types.ts`) as-is, no forked rarity type.
 Reuses the exact `ArtifactEffect` union (`src/types.ts`) minus
 `curseAggroBoost`, which stays exclusive to cursed Artifacts — Abilities
-are never cursed.
+are never cursed. On top of that, Abilities get exactly 1 effect kind
+Artifacts don't have — `alwaysHit` (§11.1.1 below) — since nothing in the
+Artifact catalog needed it and there's no reason to retrofit Artifacts
+just because one Ability does.
 
 ```
-AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }>
+AbilityOnlyEffect = { kind: "alwaysHit"; chance: number }
+
+AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect
 
 AbilityDefinition {
   id: Id
@@ -53,12 +58,62 @@ AbilityDefinition {
 ```
 
 `Character.equippedAbilityId?: Id | null` — set once at character select,
-fixed for the entire run (no mid-run swapping, no respec). Effects apply
-through the exact same engine hooks Artifacts already use
-(`07-items-artifacts.md` §7.2 "Engine hooks for the Group 2-4 effects") —
-those hooks generalize from "scan `equippedArtifactIds`" to "scan
-`equippedArtifactIds` + the 1 `equippedAbilityId`," nothing about the
-hooks' actual logic changes.
+fixed for the entire run (no mid-run swapping, no respec). The
+`ArtifactEffect`-derived part of `AbilityEffect` applies through the exact
+same engine hooks Artifacts already use (`07-items-artifacts.md` §7.2
+"Engine hooks for the Group 2-4 effects") — those hooks generalize from
+"scan `equippedArtifactIds`" to "scan `equippedArtifactIds` + the 1
+`equippedAbilityId`," nothing about the hooks' actual logic changes.
+`alwaysHit` needs its own, new hook — see §11.1.1.
+
+#### 11.1.1 `alwaysHit` — pre-empts the game's own hit/proc rolls
+
+A new mechanic, not a reused one: before either of the 2 places the
+combat engine already rolls dice to decide whether something lands,
+**re-roll the wearer's `alwaysHit` chance first.** On a hit, skip the
+roll that was about to happen and treat it as an automatic success. On a
+miss, fall through to that roll exactly as if `alwaysHit` didn't exist —
+it can only ever help, never hurt.
+
+The 2 existing roll points it intercepts, both in
+`applySkillEffects` (`src/engine/combat.ts`):
+
+1. **The fear-accuracy roll** (`rollHits`, `src/engine/resolver.ts`) —
+   rolled once per enemy the wearer targets (skipped entirely for
+   ultimates, which already always hit — `04-fear-combat.md` §4.1 — so
+   `alwaysHit` has nothing to add there). A single-target skill only ever
+   has 1 enemy in its target list, so this looks like "once per skill
+   use" for those, but it's the identical per-target mechanism an AoE
+   skill uses to roll separately for each enemy it hits (`04-fear-combat.md`
+   §4.1) — not a coarser, once-per-activation check. This is the roll fear
+   tiers Uneasy/Panicked/Broken already impose a miss chance on
+   (`getFearAccuracyPenalty`, capped at 20% — `04-fear-combat.md` §4); at
+   Calm, this roll never misses to begin with, so `alwaysHit` adds nothing
+   there either. Its real value against this roll only shows up once the
+   wearer is already at least Uneasy.
+2. **The per-effect chance roll** (`effect.chance` on a `SkillEffect`,
+   checked once per effect per target inside `applySkillEffects`) — this
+   is what gates most class skills' debuff/status-application effects
+   (`data/classes.json`, e.g. a Rogue's stun/weaken chance), rolled
+   **independently for every qualifying effect on every target**, at the
+   exact same per-target granularity as point 1 above — so a
+   multi-target or multi-effect skill re-rolls `alwaysHit` fresh each
+   time, exactly like the underlying roll it's guarding already does.
+
+**Explicitly out of scope** (not intercepted, to keep the mechanic's
+footprint to the 2 rolls actually named "hit" and "debuff chance" in the
+game's own vocabulary, not every % roll anywhere in the engine):
+the *target's* own `dodgeChance` roll against the wearer's attack (that's
+the target's evasion, not the wearer's accuracy); any Artifact/Ability
+`poisonOnHit`-style on-hit rider, which resolves through its own
+dedicated engine hook (`07-items-artifacts.md` §7.2), not through
+`SkillEffect.chance`; and monster accuracy (this only ever applies to a
+Character wearer's own actions, mirroring how every other Group 2 effect
+in this system is scoped to "the exact character wearing it").
+
+Only ever relevant on the wearer's own turn, and only for skills that
+target an enemy — never rolled for heal/buff effects aimed at allies
+(`applySkillEffects` doesn't roll accuracy for those to begin with).
 
 ### The persistent profile
 
@@ -96,7 +151,7 @@ order:
    key, `0`) — a character can enter the run with no ability equipped.
 3. **No 2 characters in the party may end the screen with the same
    ability id equipped** (commons included — a party can't stack 4 copies
-   of `steady-hands` either). Once a character locks in an id, it drops
+   of `battle-instinct` either). Once a character locks in an id, it drops
    out of every later character's list for this screen. This applies only
    to *this run's* equip choices — it has no effect on `unlockedAbilityIds`
    itself, which stays a plain set with no notion of "who owns what."
@@ -303,7 +358,7 @@ without needing a hand-picked cap bolted on top.
   id "available" to more than one future pick — the exclusivity is only
   about what's simultaneously equipped, never about what's unlocked.
 - **Catalog exhaustion is a real, reachable end state**, not a
-  theoretical one — 15 non-common abilities total (§11.2) is a small
+  theoretical one — 16 non-common abilities total (§11.2) is a small
   enough catalog that a dedicated player could plausibly unlock all of
   them across enough runs. From that point on, Elite/Boss ability rolls
   permanently yield nothing (the roll's exclusion rule has nothing left to
@@ -315,7 +370,7 @@ without needing a hand-picked cap bolted on top.
 
 ## 11.2 Catalog (design content — becomes `data/abilities.json`)
 
-23 abilities: 8 Common (always available), 6 Rare, 5 Unique, 4 Epic.
+24 abilities: 8 Common (always available), 6 Rare, 5 Unique, 5 Epic.
 Magnitudes are calibrated against `data/artifacts.json`'s values at the
 same rarity (§7.2) wherever a same-rarity artifact with the same effect
 kind exists — Abilities don't need a separate balance philosophy from
@@ -346,9 +401,9 @@ was fixed.
 | `hardy-constitution` | Hardy Constitution | A body built to endure — sheer physical resilience, nothing magical about it. | `statBoost maxHp +30` |
 | `deep-reserves` | Deep Reserves | A trained ability to hold more magic in reserve than most ever learn to. | `statBoost maxMp +10` |
 | `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
-| `steady-hands` | Steady Hands | A talent for moving only when it counts — no wasted motion, no unnecessary hits taken. | `dodgeChance 3%` |
-| `vital-spark` | Vital Spark | An unusually stubborn will that pulls a little life back from every wound dealt. | `lifesteal 4%` |
-| `focused-mind` | Focused Mind | A mind trained to find the one precise, lingering weak point in any guard. | `poisonOnHit chance 4%` |
+| `evasive-instinct` | Evasive Instinct | An instinct honed to slip aside the instant before a blow lands. | `dodgeChance 3%` |
+| `leeching-will` | Leeching Will | A stubborn will that leeches a little life back from every wound it deals. | `lifesteal 4%` |
+| `venomous-precision` | Venomous Precision | A mind so focused it always finds the one lingering weak point — and leaves something behind when it does. | `poisonOnHit chance 4%` |
 
 8 abilities, 8 distinct axes (attack / defense / maxHp / maxMp /
 fearResist / dodgeChance / lifesteal / poisonOnHit) — no 2 abilities
@@ -441,14 +496,34 @@ above what a Rare-tier effect would carry, below the Epic reference.
 | `reapers-instinct` | Reaper's Instinct | An instinct honed on death itself — every kill feeds the next. | `healOnKill 25` + `lifesteal 8%` |
 | `storm-within` | Storm Within | A storm that never fully settles, lashing out with damage and poison alike. | `autoDamage 12` + `poisonOnHit 8%` |
 | `grandmasters-focus` | Grandmaster's Focus | Mastery sharp enough to recover skills faster and absorb every lesson battle offers. | `cooldownReduction 1` + `expBoost 25%` |
+| `unerring-will` | Unerring Will | A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied. | `alwaysHit 20%` + `fearResist 12%` |
 
-All 4 mirror their Epic-tier artifact counterparts exactly
+The first 4 mirror their Epic-tier artifact counterparts exactly
 (`immortal-heart`'s `reflectDamage`/`maxHp` pair, `reapers-covenant`,
 `crown-of-destruction`, `eternal-scholars-tome`) — `undying-will`
 deliberately drops `immortal-heart`'s 3rd effect (`defense +10`) to stay a
 2-effect ability, since Abilities only ever occupy 1 slot and don't need
 to match an Artifact's full effect count to match its per-effect
 magnitude.
+
+`unerring-will` is the exception — it has no Artifact counterpart at all,
+since `alwaysHit` doesn't exist as an Artifact effect (§11.1.1). Placed at
+Epic rather than invented at a lower tier because of *breadth*, not raw
+magnitude: it's the only effect in the whole catalog that touches 2
+different combat rolls at once, on every enemy-targeting skill the wearer
+ever uses, for the entire run — a kind of universal, always-relevant
+utility no single-target stat or proc-chance effect can match, which is
+the same reason the other 4 Epics justify their slot by combining 2
+effects instead of maxing out 1. `alwaysHit 20%` was set from the user's
+own example value directly (`.hermes/features/abilities/BRAINSTORM.md`
+D13 has the full reasoning for why 20% and paired `fearResist 12%` were
+kept rather than tuned against the other Epics' numbers, which don't
+share a comparable unit to calibrate against). `fearResist` reappearing
+here (Common's `unshaken-resolve` is the only other user of this axis, at
+10%) is a deliberate thematic pairing, not filler: both halves of this
+ability are about fear specifically failing to cost the wearer anything —
+resisting it building up, and shrugging off the one combat penalty it
+already causes.
 
 ---
 
@@ -465,7 +540,7 @@ magnitude.
 - **Catalog size vs. the free instant-unlock rate**: since both Elite and
   Boss kills hand out permanent unlocks for free the moment they roll (no
   Stardust, no death gate — Stardust only ever buys back losses), the
-  15-ability non-common catalog could get exhausted faster than originally
+  16-ability non-common catalog could get exhausted faster than originally
   modeled when this doc still gated *all* acquisition behind the death
   flow. Worth simulating once implemented — either drop rate or catalog
   size may need adjusting sooner than the Stardust-side numbers.

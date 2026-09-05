@@ -563,3 +563,108 @@ themselves verified to be internally consistent (checking Rare's own
 pre-existing property of the base Artifact catalog this doc inherited,
 out of scope to fix here since Rare has no dominance problem, only a
 softer value gap between viable, non-dead choices).
+
+## D13. Renamed 3 abilities to match their new function, added a new `alwaysHit` effect kind + ability
+
+Two separate requests in one turn:
+
+**Renaming.** D11 changed `steady-hands`/`vital-spark`/`focused-mind`'s
+*effects* (attack/maxHp/maxMp → dodgeChance/lifesteal/poisonOnHit) and
+updated their *descriptions* to match, but left their *names* untouched —
+"Steady Hands," "Vital Spark," and "Focused Mind" all still read as
+precision/vitality/mana flavor, not evasion/lifedrain/poison. User caught
+this as an inconsistency worth fixing on its own, separate from the
+mechanical rebalance. Renamed (id and display name both, since nothing is
+implemented in code yet and id/name should stay in sync per the catalog's
+own convention):
+- `steady-hands` → `evasive-instinct` ("Evasive Instinct")
+- `vital-spark` → `leeching-will` ("Leeching Will")
+- `focused-mind` → `venomous-precision` ("Venomous Precision")
+
+All other 20 (now 21) abilities were audited too — none of them had this
+problem, since none had their effect changed after their name/description
+were written.
+
+**New ability + new effect kind — "always hit."** User's own description
+of the mechanic ("luôn trúng... roll trước trong các lần roll gây sát
+thương hay debuff") was given in Vietnamese as a *description of the
+mechanic*, not a literal name to use — the user separately clarified this
+mid-turn ("'luôn trúng' là tên của trạng thái (tôi miêu tả bằng TV) nhưng
+tên phải là tiếng anh, abilities sẽ có tên khác phù hợp"): the internal
+effect-kind identifier must be English (as every other kind already is),
+and the ability's own display name must be a proper fantasy name, not a
+literal translation of the mechanic. Resolved as: effect kind `alwaysHit`
+(English, matches existing camelCase convention), ability name "Unerring
+Will" (`unerring-will`) — thematic, not literal.
+
+Mechanically, this is genuinely new — no existing `ArtifactEffect` does
+anything like it, so `AbilityEffect` gained its first Ability-exclusive
+variant (`{ kind: "alwaysHit"; chance: number }`), documented in
+§11.1.1. It intercepts exactly the 2 places the engine already rolls dice
+to decide whether something lands (traced to real code, not assumed):
+`rollHits` in `src/engine/resolver.ts` (the fear-accuracy roll,
+`applySkillEffects` in `src/engine/combat.ts`) and the per-effect
+`effect.chance` check in that same function (what gates most class
+skills' debuff effects, `data/classes.json`). Re-rolls independently at
+every instance of either roll (every target, every effect), matching how
+the underlying rolls it guards already work per-instance.
+
+Rejected scope-widenings, kept deliberately out:
+- **Also overriding the target's own `dodgeChance`** — rejected: that's
+  the target's evasion stat, not the wearer's accuracy; the user's own
+  wording named 2 specific rolls ("hit" and "debuff"), not "every % roll
+  in the game."
+- **Also overriding Artifact/Ability `poisonOnHit`-style on-hit riders** —
+  rejected: those resolve through their own dedicated engine hook (§7.2),
+  a structurally different mechanism from `SkillEffect.chance`; folding
+  them in would require touching that hook's logic too, well beyond what
+  was asked.
+
+**Tier and magnitude — Epic, `alwaysHit 20%` + `fearResist 12%`.**
+Checked the fear-accuracy roll's actual ceiling (`getFearAccuracyPenalty`,
+`src/engine/resolver.ts`) — capped at 20% miss chance even at the worst
+fear tier — so `alwaysHit`'s value against *that* specific roll is modest
+by construction (the base game already caps how bad it can get). Checked
+real skill debuff-chance values (`data/classes.json`, `"chance"` fields):
+they range roughly 20%-90% across a skill's 3 ranks, so `alwaysHit`'s
+value there is real but highly variable — large at low ranks, marginal
+once a skill is already at 80-90%. Given this spread, no single tier
+placement can be justified with the same EV-precision as D12's dodge/
+lifesteal/poison fix (there's no 1 stable "per-hit value" to solve for
+when the thing being improved already ranges 4x). Decided on Epic anyway,
+on a different justification than raw magnitude: `alwaysHit` is the only
+effect in the catalog that touches 2 different roll types across every
+enemy-targeting action for the whole run — breadth of applicability
+standing in for the "2 combined effects" pattern the other 4 Epics use to
+justify their slot. Kept the user's own example value (20%) rather than
+re-deriving it, and paired it with `fearResist 12%` (a 2nd copy of
+Common's `unshaken-resolve` axis, thematically consistent — both halves
+of this ability are about fear failing to cost the wearer anything)
+instead of leaving it a lone 1-effect Epic, matching every other Epic
+entry's 2-effect shape.
+
+Rejected alternatives:
+- **Unique tier, standalone** — considered first since Unique already
+  hosts several single-effect, moderate-utility abilities (dodgeChance,
+  lifesteal, expBoost). Rejected because `alwaysHit`'s breadth (2 roll
+  types, every relevant skill, all run) reads as stronger than any single
+  Unique effect, even if its raw EV against the fear-roll specifically is
+  capped low — breadth of impact, not just peak EV, is what pushed this
+  to Epic.
+- **Deriving the % from scratch like D12 did** — rejected as not
+  meaningfully possible here: D12's fix worked because dodge/lifesteal/
+  poison each resolve against 1 well-defined number (damage per hit).
+  `alwaysHit` resolves against whichever debuff chance a skill happens to
+  carry (20%-90%), so there's no single "correct" percentage to solve
+  for — the user's own example value is as defensible as anything else
+  derivable without picking one arbitrary skill/rank to anchor to.
+
+**Correction from review**: §11.1.1 point 1 originally said `rollHits`
+is "rolled once per skill use," contrasted against point 2's "rolled
+independently for every target." Checking `applySkillEffects`
+(`src/engine/combat.ts`) directly shows both checks sit inside the exact
+same `for (const target of targets)` loop — `rollHits` is rolled once per
+*targeted enemy*, identical granularity to the `effect.chance` check; a
+single-target skill only looks like "once per skill" because it has
+exactly 1 target. Fixed to state both rolls share the same per-target
+mechanism, rather than implying point 1 is coarser than point 2.
