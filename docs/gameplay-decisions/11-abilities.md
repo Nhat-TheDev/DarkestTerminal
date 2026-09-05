@@ -347,20 +347,58 @@ was fixed.
 | `deep-reserves` | Deep Reserves | A trained ability to hold more magic in reserve than most ever learn to. | `statBoost maxMp +10` |
 | `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
 | `steady-hands` | Steady Hands | A talent for moving only when it counts — no wasted motion, no unnecessary hits taken. | `dodgeChance 3%` |
-| `vital-spark` | Vital Spark | An unusually stubborn will that pulls a little life back from every wound dealt. | `lifesteal 3%` |
-| `focused-mind` | Focused Mind | A mind trained to find the one precise, lingering weak point in any guard. | `poisonOnHit chance 3%` |
+| `vital-spark` | Vital Spark | An unusually stubborn will that pulls a little life back from every wound dealt. | `lifesteal 4%` |
+| `focused-mind` | Focused Mind | A mind trained to find the one precise, lingering weak point in any guard. | `poisonOnHit chance 4%` |
 
 8 abilities, 8 distinct axes (attack / defense / maxHp / maxMp /
 fearResist / dodgeChance / lifesteal / poisonOnHit) — no 2 abilities
-compete for the same pick. `steady-hands`/`vital-spark`/`focused-mind`
-have no Common-tier Artifact to mirror (dodgeChance/lifesteal/poisonOnHit
-only start appearing on Rare Artifacts) — each is set to roughly half its
-Rare-tier counterpart, rounded to a clean number: `dodgeChance` 3% (half
-of `featherstep-training`'s 6%), `lifesteal` 3% (≈half of
-`bloodletting`'s 5%), `poisonOnHit` 3% (half of `toxic-touch`'s 6%) — the
-same interpolate-from-the-nearest-tier approach already used to set
-`executioners-instinct`'s Unique-tier value, applied here because it's
-the *lower* neighboring tier (Rare) being halved instead.
+compete for the same pick.
+
+**Why `dodgeChance`/`lifesteal`/`poisonOnHit` are 3%/4%/4%, not a flat 3%
+across all three**: these 3 effect kinds have no Common-tier Artifact to
+mirror (they only start appearing on Rare Artifacts), so an earlier draft
+of this doc just halved each one's Rare-tier % uniformly. That's a
+category error — halving the *percentage* only produces equal *value* if
+a % point means the same thing for all 3 effects, and it doesn't, because
+`dodgeChance` avoids what a monster would have dealt to the wearer (the
+*bigger* number in this game — monsters hit harder than a level-1
+character does) while `lifesteal`/`poisonOnHit` are a cut of what the
+wearer deals out (the *smaller* number). Computed directly from the
+game's own damage formula (`mitigatedOffense`, `src/engine/resolver.ts`,
+`combat.defenseMitigationX/Y = 60/30`) against a representative early
+fight — a depth-2 Dungeon Rat (atk 19, def 3) vs. the level-1 party-average
+character (atk 10, def 7, from `data/classes.json`), over a ~4-round fight
+(the game's own "quick victory" benchmark is 3 rounds, `03-survival-
+stats.md`, so 4 is a typical, non-quick regular fight) with roughly 1
+attack thrown and taken per round:
+
+- damage taken per hit ≈ 16.8, damage dealt per hit ≈ 9.4, a poison proc
+  totals 12 (4/turn × 3 turns, `data/status-effects.json`)
+- at a flat 3%, expected value per fight was **2.01** for dodge, but only
+  **1.44** for poison and **1.13** for lifesteal — lifesteal was quietly
+  worth barely half of dodge for the "same" number, exactly the kind of
+  imbalance this catalog is supposed to rule out
+- solving each effect's % for a shared ~2.0-per-fight target instead:
+  dodge ≈2.98% (rounds to the same 3%, so that one was fine by
+  coincidence), lifesteal ≈5.3%, poison ≈4.2%
+
+Lifesteal's solved value (≈5.3%) would tie or pass Rare's own
+`bloodletting` (5%), breaking the one pattern every other shared axis in
+this catalog follows (Rare is strictly higher than Common on the same
+axis: attack 4<8, defense 3<8, maxHp 30<50, dodge 3<6, poison would be
+4<6). Rounded down to **4%** instead — still a real correction from the
+original 3% (EV 1.51 vs. 1.13, ≈33% higher) and closer to dodge's 2.01,
+while keeping Common strictly below Rare on every shared axis. Poison
+rounds to **4%** cleanly (EV 1.92, within 5% of the 2.0 target). None of
+this is exact — it rests on one assumed fight length and hit-rate, and
+the poison EV additionally treats every proc as a full independent
+12-damage payout, which slightly overstates it in the rare case where a
+2nd proc lands before the first one's 3 turns are up (status effects
+don't stack in this game, §1.8 — a re-application only refreshes the
+duration, per `data/status-effects.json`) — but it's now grounded in the
+game's real numbers and internally consistent with itself, not a borrowed
+ratio from a different tier that was never checked against what these
+specific abilities are actually worth to the character holding them.
 
 ### Rare — must be unlocked
 

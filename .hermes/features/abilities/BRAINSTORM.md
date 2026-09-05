@@ -498,3 +498,68 @@ Net result: all 4 tiers now have exactly 1 ability per effect axis within
 that tier — no same-tier pick is ever strictly better than another,
 by construction rather than by careful number-tuning that could drift out
 of balance on the next edit.
+
+## D12. D11's own magnitudes were called out as unverified — recomputed from real combat numbers
+
+The user pushed back directly on D11's justification for the 3 new
+Common values (dodgeChance/lifesteal/poisonOnHit, all set to 3%): "tránh
+để việc thay đổi này chỉ là thay đổi cho có lệ" (don't let this be a
+change made just for appearances) — specifically calling out the
+reasoning "these effect kinds never appeared at Common before, so [we]
+added them" as a justification for the *number chosen* (a uniform half of
+each one's Rare-tier %), not just for *why a new axis was needed*. Fair
+call: halving a percentage uniformly across 3 different effect kinds only
+produces equal *value* if a percentage point is worth the same thing for
+all 3, and it isn't in this combat system.
+
+Redone from the game's actual damage formula rather than a borrowed
+ratio: `mitigatedOffense(off, def) = off − off·def/(60+def) − def/30`
+(`src/engine/resolver.ts`, `combat.defenseMitigationX/Y` in
+`data/balance-config.json`), evaluated for a representative early fight —
+a depth-2 Dungeon Rat (atk 19, def 3, `data/monsters.json`) against the
+level-1 party-average character (atk 10, def 7, from `data/classes.json`
+across all 6 classes), over an assumed ~4-round fight (the game's own
+"quick victory" benchmark is 3 rounds — `03-survival-stats.md` — so 4
+represents a typical, non-quick regular fight) with roughly 1 attack
+thrown and 1 taken by the wearer per round.
+
+This gives: damage taken/hit ≈16.8, damage dealt/hit ≈9.4, a poison proc's
+full payout = 12 (`data/status-effects.json`, 4/turn × 3 turns). At the
+original flat 3%, per-fight expected value was **2.01 (dodge) / 1.44
+(poison) / 1.13 (lifesteal)** — lifesteal was quietly worth barely half of
+dodge despite an identical-looking number, because the wearer's outgoing
+damage (9.4) is much smaller than the incoming damage a dodge prevents
+(16.8), so the same % delivers proportionally less value when it's a cut
+of the smaller number. This asymmetry was invisible in D11's reasoning
+because D11 never checked value, only that the axes were distinct.
+
+Solving each effect's % for a shared ~2.0-per-fight EV target instead:
+dodge ≈2.98% (rounds to the same 3% D11 already had — confirmed correct
+by calculation this time, not by assumption), lifesteal ≈5.3%, poison
+≈4.2%.
+
+**Decided**: dodge stays **3%**, poison becomes **4%** (EV 1.92, within
+5% of target), lifesteal becomes **4%** (EV 1.51, a real ~33% correction
+from 1.13 — not the full ≈5.3% solved value, because that would tie or
+exceed Rare's own `bloodletting` at 5%, breaking the one pattern every
+other shared axis in the catalog follows: Rare strictly exceeds Common on
+the same axis, e.g. attack 4<8, defense 3<8, maxHp 30<50, dodge 3<6).
+Rejected alternatives:
+- **Keep the uniform 3%** — rejected outright per the above: demonstrably
+  not equal-value, the exact "cho có lệ" failure mode being corrected.
+- **Use the fully solved 5.3% for lifesteal** — rejected because it
+  breaks Common-strictly-under-Rare on a shared axis, the one convention
+  every other pair in the catalog upholds; 4% is the highest value that
+  both improves meaningfully on 3% and still respects that convention.
+
+Explicitly logged as an approximation, not a claim of precision: it
+depends on 1 chosen fight length and a simplified 1-hit-per-round
+exposure rate, and the doc says so. What changed isn't that the numbers
+are now "exactly right" — it's that they're now *falsifiable against the
+game's real formula* and checked against each other, instead of being a
+ratio inherited from a different tier's numbers that were never
+themselves verified to be internally consistent (checking Rare's own
+6%/5%/6% trio the same way shows it isn't perfectly EV-equal either — a
+pre-existing property of the base Artifact catalog this doc inherited,
+out of scope to fix here since Rare has no dominance problem, only a
+softer value gap between viable, non-dead choices).
