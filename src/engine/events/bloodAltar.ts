@@ -18,11 +18,13 @@ export function bloodAltarPay(state: GameState, ctx: EngineContext, characterId:
   state.message = t("game.paidHpForArtifact", { payer: character.name, cost, artifact: getArtifact(artifactId).name });
   grantArtifact(state, artifactId);
   state.narrativeCounters.altarPaymentsCount += 1; // §10.3 Chain 3 — "Blood Debt"
+  state.eventOutcomes["blood-altar"] = "paid"; // Part C.1 pairs 3/6/14/17
   closeEvent(state);
   return null;
 }
 
 export function bloodAltarLeave(state: GameState): void {
   state.message = t("game.leftWithoutPaying");
+  state.eventOutcomes["blood-altar"] = "declined"; // Part C.1 pair 2
   closeEvent(state);
 }

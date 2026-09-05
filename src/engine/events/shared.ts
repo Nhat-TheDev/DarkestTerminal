@@ -18,6 +18,14 @@ const REFLECTION_EVENT_IDS: ReadonlySet<Id> = new Set([
   "sacrificial-circle",
   "gambling-den",
   "wandering-hermit",
+  "old-count",
+  "doubled-back",
+  "the-delay",
+  "waiting-supplies",
+  "vigil-candle",
+  "broken-seal",
+  "half-a-warning",
+  "still-breathing",
 ]);
 
 export function payHpPercent(character: Character, percent: number): number | null {
@@ -40,6 +48,15 @@ export function closeEvent(state: GameState): void {
     if (event.returnDescription && !state.metNarrativeNpcIds.includes(event.id)) {
       state.metNarrativeNpcIds.push(event.id);
     }
+    // Part C.4/C.5 — spent once-lifetime events never roll again this run.
+    if (event.onceLifetime && !state.firedOnceEventIds.includes(event.id)) {
+      state.firedOnceEventIds.push(event.id);
+    }
+    // Part C.1 — generic fallback outcome tag; a handler that already wrote a specific tag
+    // (bloodAltarPay/Leave, collapsedFloorAttempt/Leave, sacrifice) is never overwritten.
+    if (state.eventOutcomes[event.id] === undefined) {
+      state.eventOutcomes[event.id] = "resolved";
+    }
   }
 }
 
@@ -60,12 +77,39 @@ export function maybeTriggerReflection(state: GameState, ctx: EngineContext): vo
   if (ctx.rng.chance(chance)) state.pendingReflection = { eventId: event.id };
 }
 
-/** Picks the reflection prompt for the event pending in `state.pendingReflection` — the escalated
-    variant if this resolution was a §10.3 chain-escalated one, otherwise the base prompt. */
+function isTier2Escalated(state: GameState, counter: number, threshold2: number): boolean {
+  return counter >= threshold2 && state.floor.depth >= BALANCE.events.chainTier2MinFloorDepth;
+}
+
+/** 10-event-narrative.md Part C.3 — same shape as `isTier2Escalated`, one gate deeper. */
+function isTier3Escalated(state: GameState, counter: number, threshold3: number): boolean {
+  return counter >= threshold3 && state.floor.depth >= BALANCE.events.chainTier3MinFloorDepth;
+}
+
+/** Picks the reflection prompt for the event pending in `state.pendingReflection` — the tier-3
+    escalated variant (Part C.3) if that's what just resolved, else tier-2 (11-world-bible.md
+    §11.13), else the tier-1 escalated variant if this resolution was a §10.3 chain-escalated one,
+    otherwise the base prompt. */
 export function pickReflectionPrompt(state: GameState, room: Room, event: EventDefinition): string | undefined {
   if (!event.reflection) return undefined;
+
+  const escalated3 =
+    room.chainVariant === "forced3" ||
+    (event.id === "sacrificial-circle" && isTier3Escalated(state, state.narrativeCounters.artifactsSacrificed, BALANCE.events.circleRemembersThreshold3)) ||
+    (event.id === "blood-altar" && isTier3Escalated(state, state.narrativeCounters.altarPaymentsCount, BALANCE.events.bloodDebtThreshold3));
+  if (escalated3 && event.reflection.escalated3Prompt) return event.reflection.escalated3Prompt;
+
+  const escalated2 =
+    room.chainVariant === "forced2" ||
+    room.chainVariant === "forced3" ||
+    (event.id === "sacrificial-circle" && isTier2Escalated(state, state.narrativeCounters.artifactsSacrificed, BALANCE.events.circleRemembersThreshold2)) ||
+    (event.id === "blood-altar" && isTier2Escalated(state, state.narrativeCounters.altarPaymentsCount, BALANCE.events.bloodDebtThreshold2));
+  if (escalated2 && event.reflection.escalated2Prompt) return event.reflection.escalated2Prompt;
+
   const escalated =
     room.chainVariant === "forced" ||
+    room.chainVariant === "forced2" ||
+    room.chainVariant === "forced3" ||
     (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= BALANCE.events.circleRemembersThreshold) ||
     (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold);
   return (escalated && event.reflection.escalatedPrompt) || event.reflection.prompt;

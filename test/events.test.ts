@@ -11,6 +11,7 @@ import { spawnMonster } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
 import { maybeTriggerReflection, pickReflectionPrompt } from "../src/engine/events/shared";
 import { makeCtx } from "./helpers";
+import { BALANCE } from "../src/data/balanceConfig";
 
 function forceEventRoom(game: Game, eventId: string) {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -28,7 +29,7 @@ describe("events", () => {
     let commonCount = 0;
     const total = 4000;
     for (let i = 0; i < total; i++) {
-      const id = rollEvent(rng);
+      const id = rollEvent(rng, 999, []);
       expect(commonIds.has(id) || rareIds.has(id)).toBe(true);
       if (commonIds.has(id)) commonCount++;
     }
@@ -562,6 +563,52 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narra
     expect(room.chainVariant).toBeUndefined();
     expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
   });
+
+  test("11-world-bible.md §11.13 tier 2: the 2nd+ forced encounter past chainTier2MinFloorDepth shows chainForced2Description, Skip still rejected", () => {
+    const game = new Game(35);
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    game.state.narrativeCounters.guardianGrudgeFiredCount = 1; // already fired once before
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    const forced2Description = EVENTS.find((e) => e.id === "guardian-fight")!.chainForced2Description;
+    expect(room.chainVariant).toBe("forced2");
+    expect(typeof forced2Description).toBe("string");
+    expect(game.state.message).toBe(forced2Description as string);
+    expect(game.skipGuardianFight()).not.toBeNull(); // still rejected at tier 2
+  });
+
+  test("tier 2 stays tier 1 below chainTier2MinFloorDepth, even after the chain has already fired once", () => {
+    const game = new Game(36);
+    game.state.floor.depth = 1;
+    game.state.narrativeCounters.guardianGrudgeFiredCount = 1;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced");
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.chainForcedDescription as string);
+  });
+
+  test("guardianGrudgeFiredCount increments on every forced entry and never resets", () => {
+    const game = new Game(37);
+    game.state.combat = null;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.monsterIds = [];
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.enterGuardianFight()).toBeNull();
+    expect(game.state.narrativeCounters.guardianGrudgeFiredCount).toBe(1);
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(0); // resets, unlike firedCount
+  });
 });
 
 describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
@@ -619,7 +666,10 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.type = "event";
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.description); // still below 4
+    // Still below the chain-4 escalation threshold, but Part C.1 pair 3 now fires — the earlier
+    // collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] = "attempted", which this event's
+    // crossEventVariants match on.
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description);
 
     c.hp = c.maxHp;
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
@@ -649,6 +699,63 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       }
     }
     expect(sawFailure).toBe(true);
+  });
+
+  test("11-world-bible.md §11.13 tier 2: sacrificial-circle needs both threshold2 and chainTier2MinFloorDepth, not the counter alone", () => {
+    const game = new Game(42);
+    const c = game.state.party[0]!;
+    for (let i = 0; i < BALANCE.events.circleRemembersThreshold2; i++) {
+      c.equippedArtifactIds = ["scholars-insight"];
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.state.pendingArtifactDecision = null;
+    }
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(BALANCE.events.circleRemembersThreshold2);
+
+    // still shallow — counter alone isn't enough, falls back to tier 1's escalated text
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalatedDescription as string);
+
+    // deep enough now — tier 2 text takes over
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target2.id, game.ctx);
+    const escalated2 = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated2Description;
+    expect(typeof escalated2).toBe("string");
+    expect(game.state.message).toBe(escalated2 as string);
+  });
+
+  test("11-world-bible.md §11.13 tier 2: blood-altar needs both threshold2 and chainTier2MinFloorDepth", () => {
+    const game = new Game(43);
+    const c = game.state.party[0]!;
+    for (let i = 0; i < BALANCE.events.bloodDebtThreshold2; i++) {
+      c.hp = c.maxHp;
+      expect(game.bloodAltarPay(c.id)).toBeNull();
+    }
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(BALANCE.events.bloodDebtThreshold2);
+
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalatedDescription as string);
+
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target2.id, game.ctx);
+    const escalated2 = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated2Description;
+    expect(typeof escalated2).toBe("string");
+    expect(game.state.message).toBe(escalated2 as string);
   });
 });
 
@@ -708,6 +815,25 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
     expect(prompt).not.toBe(event.reflection!.prompt);
   });
 
+  test("pickReflectionPrompt returns the tier-2 escalated2 prompt once the chain has fired a 2nd time past chainTier2MinFloorDepth (11-world-bible.md §11.13)", () => {
+    const game = new Game(66);
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    game.state.narrativeCounters.guardianGrudgeFiredCount = 1;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced2");
+
+    const event = EVENTS.find((e) => e.id === "guardian-fight")!;
+    const prompt = pickReflectionPrompt(game.state, room, event);
+    expect(prompt).toBe(event.reflection!.escalated2Prompt);
+    expect(prompt).not.toBe(event.reflection!.escalatedPrompt);
+    expect(prompt).not.toBe(event.reflection!.prompt);
+  });
+
   test("pickReflectionStance records the chosen stance and clears pendingReflection", () => {
     const game = new Game(64);
     forceEventRoom(game, "merchant");
@@ -742,5 +868,256 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
       }
     }
     expect(sawContinue).toBe(true);
+  });
+});
+
+describe("Part C.3: chain tier 3 (10-event-narrative.md)", () => {
+  test("Chain 2 tier 3: sacrificial-circle needs both threshold3 and chainTier3MinFloorDepth, not tier 2's bar alone", () => {
+    const game = new Game(70);
+    const c = game.state.party[0]!;
+    for (let i = 0; i < BALANCE.events.circleRemembersThreshold3; i++) {
+      c.equippedArtifactIds = ["scholars-insight"];
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.state.pendingArtifactDecision = null;
+    }
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(BALANCE.events.circleRemembersThreshold3);
+
+    // deep enough for tier 2 only — tier 2 text still shows, not tier 3
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated2Description as string);
+
+    // deep enough now — tier 3 text takes over
+    game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "sacrificial-circle";
+    moveToRoom(game.state, target2.id, game.ctx);
+    const escalated3 = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated3Description;
+    expect(typeof escalated3).toBe("string");
+    expect(game.state.message).toBe(escalated3 as string);
+  });
+
+  test("Chain 3 tier 3: blood-altar needs both threshold3 and chainTier3MinFloorDepth", () => {
+    const game = new Game(71);
+    const c = game.state.party[0]!;
+    for (let i = 0; i < BALANCE.events.bloodDebtThreshold3; i++) {
+      c.hp = c.maxHp;
+      expect(game.bloodAltarPay(c.id)).toBeNull();
+    }
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(BALANCE.events.bloodDebtThreshold3);
+
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
+    const target1 = game.connectedRoomChoices()[0]!;
+    const room1 = getRoom(game.state.floor, target1.id);
+    room1.type = "event";
+    room1.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target1.id, game.ctx);
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated2Description as string);
+
+    game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
+    const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
+    const room2 = getRoom(game.state.floor, target2.id);
+    room2.type = "event";
+    room2.rolledEventId = "blood-altar";
+    moveToRoom(game.state, target2.id, game.ctx);
+    const escalated3 = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated3Description;
+    expect(typeof escalated3).toBe("string");
+    expect(game.state.message).toBe(escalated3 as string);
+  });
+
+  test("Chain 1 tier 3: forced3 requires guardianGrudgeFiredCount>=2 AND chainTier3MinFloorDepth — count alone falls back to forced2", () => {
+    const game = new Game(72);
+    game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth; // deep enough for tier 2 only
+    game.state.narrativeCounters.guardianGrudgeFiredCount = 2;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced2");
+  });
+
+  test("Chain 1 tier 3: forced3 fires once both the count and the depth gate are met; escalated3Prompt follows", () => {
+    const game = new Game(73);
+    game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
+    game.state.narrativeCounters.guardianGrudgeFiredCount = 2;
+    game.state.narrativeCounters.guardianFightsSkipped = 3;
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(room.chainVariant).toBe("forced3");
+    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.chainForced3Description as string);
+
+    const event = EVENTS.find((e) => e.id === "guardian-fight")!;
+    const prompt = pickReflectionPrompt(game.state, room, event);
+    expect(prompt).toBe(event.reflection!.escalated3Prompt);
+    expect(prompt).not.toBe(event.reflection!.escalated2Prompt);
+
+    const err = game.skipGuardianFight();
+    expect(err).not.toBeNull(); // still non-skippable at tier 3
+  });
+});
+
+describe("Part C.1: cross-event continuity (10-event-narrative.md)", () => {
+  test("a matching crossEventVariant replaces the base description", () => {
+    const game = new Game(90);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    game.state.eventOutcomes["blood-altar"] = "paid";
+    const event = EVENTS.find((e) => e.id === "sacrificial-circle")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(event.crossEventVariants![0]!.description);
+    expect(text).not.toBe(event.description);
+  });
+
+  test("match: 'any' resolves true if any single listed condition matches, across different source events", () => {
+    const game = new Game(91);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    game.state.eventOutcomes["open-chest"] = "resolved";
+    const event = EVENTS.find((e) => e.id === "doubled-back")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(event.crossEventVariants![0]!.description);
+  });
+
+  test("no condition matching falls back to the base description", () => {
+    const game = new Game(92);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "doubled-back")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(event.description);
+  });
+
+  test("first matching crossEventVariant wins when 2 independent entries both match (wandering-hermit pairs 7/8)", () => {
+    const game = new Game(93);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    game.state.eventOutcomes["blood-altar"] = "paid";
+    game.state.eventOutcomes["guardian-fight"] = "resolved";
+    const event = EVENTS.find((e) => e.id === "wandering-hermit")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(event.crossEventVariants![0]!.description);
+    expect(text).not.toBe(event.crossEventVariants![1]!.description);
+  });
+
+  test("returnDescription still takes priority over crossEventVariants after the 1st encounter", () => {
+    const game = new Game(94);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    game.state.eventOutcomes["still-breathing"] = "resolved";
+    game.state.metNarrativeNpcIds.push("merchant");
+    const event = EVENTS.find((e) => e.id === "merchant")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(event.returnDescription as string);
+  });
+
+  test("bloodAltarPay/bloodAltarLeave write the 'paid'/'declined' outcome tags", () => {
+    const game1 = new Game(95);
+    game1.bloodAltarPay(game1.state.party[0]!.id);
+    expect(game1.state.eventOutcomes["blood-altar"]).toBe("paid");
+
+    const game2 = new Game(96);
+    game2.bloodAltarLeave();
+    expect(game2.state.eventOutcomes["blood-altar"]).toBe("declined");
+  });
+
+  test("collapsedFloorAttempt writes 'attempted' regardless of the success roll; collapsedFloorLeave writes 'declined'", () => {
+    const game1 = new Game(97);
+    game1.collapsedFloorAttempt(game1.state.party[0]!.id);
+    expect(game1.state.eventOutcomes["collapsed-floor"]).toBe("attempted");
+
+    const game2 = new Game(98);
+    game2.collapsedFloorLeave();
+    expect(game2.state.eventOutcomes["collapsed-floor"]).toBe("declined");
+  });
+
+  test("sacrifice() writes the 'sacrificed' tag immediately, and a later sacrificeLeave() doesn't overwrite it with the generic fallback", () => {
+    const game = new Game(99);
+    const c = game.state.party[0]!;
+    c.equippedArtifactIds = ["scholars-insight"];
+    expect(game.sacrifice("scholars-insight")).toBeNull();
+    expect(game.state.eventOutcomes["sacrificial-circle"]).toBe("sacrificed");
+    game.sacrificeLeave();
+    expect(game.state.eventOutcomes["sacrificial-circle"]).toBe("sacrificed");
+  });
+
+  test("closeEvent() writes the generic 'resolved' fallback for an event with no specific handler write", () => {
+    const game = new Game(100);
+    forceEventRoom(game, "wandering-hermit");
+    game.hermitLeave();
+    expect(game.state.eventOutcomes["wandering-hermit"]).toBe("resolved");
+  });
+});
+
+describe("Part C.2: description variant pool (10-event-narrative.md)", () => {
+  test("a variant is picked once at roll time and stays pinned across re-renders of the same room", () => {
+    const seenIndexes = new Set<number>();
+    let sawMultipleVariants = false;
+    for (let seed = 1; seed < 400 && !sawMultipleVariants; seed++) {
+      const game = new Game(seed);
+      const target = game.connectedRoomChoices()[0]!;
+      const room = getRoom(game.state.floor, target.id);
+      room.type = "event";
+      room.cleared = false;
+      room.rolledEventId = undefined;
+      moveToRoom(game.state, target.id, game.ctx);
+      if (room.rolledEventId !== "open-chest") continue;
+      const event = EVENTS.find((e) => e.id === "open-chest")!;
+      const possibleTexts = [event.description, ...(event.descriptionVariants ?? [])];
+      const text1 = pickEventText(game.state, room, event);
+      const text2 = pickEventText(game.state, room, event);
+      expect(text1).toBe(text2); // pinned
+      expect(possibleTexts).toContain(text1);
+      seenIndexes.add(room.descriptionVariantIndex ?? 0);
+      if (seenIndexes.size >= 2) sawMultipleVariants = true;
+    }
+    expect(sawMultipleVariants).toBe(true);
+  });
+});
+
+describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative.md)", () => {
+  test("rollEvent never returns a depth-gated event before its minFloorDepth", () => {
+    const rng = new Rng(10);
+    const gatedIds = new Set(["vigil-candle", "broken-seal", "half-a-warning", "still-breathing"]);
+    for (let i = 0; i < 2000; i++) {
+      expect(gatedIds.has(rollEvent(rng, 5, []))).toBe(false);
+    }
+  });
+
+  test("rollEvent can return a depth-gated event once its floor is reached", () => {
+    const rng = new Rng(11);
+    let sawIt = false;
+    for (let i = 0; i < 5000 && !sawIt; i++) {
+      if (rollEvent(rng, 15, []) === "vigil-candle") sawIt = true;
+    }
+    expect(sawIt).toBe(true);
+  });
+
+  test("rollEvent excludes a onceLifetime event once it's already fired, even past its depth gate", () => {
+    const rng = new Rng(12);
+    for (let i = 0; i < 3000; i++) {
+      expect(rollEvent(rng, 70, ["vigil-candle"])).not.toBe("vigil-candle");
+    }
+  });
+
+  test("closeEvent marks a resolved onceLifetime event into firedOnceEventIds", () => {
+    const game = new Game(101);
+    forceEventRoom(game, "vigil-candle");
+    expect(game.state.firedOnceEventIds).not.toContain("vigil-candle");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.firedOnceEventIds).toContain("vigil-candle");
+    expect(game.state.eventOutcomes["vigil-candle"]).toBe("resolved");
+  });
+
+  test("still-breathing grants no artifact (noArtifactReward)", () => {
+    const game = new Game(102);
+    forceEventRoom(game, "still-breathing");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingArtifactDecision).toBeNull();
   });
 });

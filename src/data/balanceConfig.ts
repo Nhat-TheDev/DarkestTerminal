@@ -66,10 +66,30 @@ interface BalanceConfig {
     /** §10.3 Chain 2 ("The Circle Remembers") — cumulative artifactsSacrificed needed to escalate
         every subsequent sacrificial-circle room. Permanent once crossed, no reset. */
     circleRemembersThreshold: number;
+    /** 11-world-bible.md §11.13 tier 2 — higher threshold past `circleRemembersThreshold`, gated
+        together with `chainTier2MinFloorDepth`. Permanent once crossed, no reset. */
+    circleRemembersThreshold2: number;
     /** §10.3 Chain 3 ("Blood Debt") — cumulative altarPaymentsCount (bloodAltarPay +
         collapsedFloorAttempt) needed to escalate every subsequent blood-altar room. Permanent once
         crossed, no reset. */
     bloodDebtThreshold: number;
+    /** 11-world-bible.md §11.13 tier 2 — higher threshold past `bloodDebtThreshold`, gated together
+        with `chainTier2MinFloorDepth`. Permanent once crossed, no reset. */
+    bloodDebtThreshold2: number;
+    /** 11-world-bible.md §11.13 tier 2 — floor depth all 3 chains' tier-2 escalations additionally
+        require, alongside their counter threshold, so an early lucky/rich run can't reach tier-2
+        content by counter alone (see docs/gameplay-decisions/10-event-narrative.md, "Proposal —
+        pacing narrative delivery across a randomized run"). */
+    chainTier2MinFloorDepth: number;
+    /** 10-event-narrative.md Part C.3 — higher threshold past `circleRemembersThreshold2`, gated
+        together with `chainTier3MinFloorDepth`. Permanent once crossed, no reset. */
+    circleRemembersThreshold3: number;
+    /** Part C.3 — higher threshold past `bloodDebtThreshold2`, gated together with
+        `chainTier3MinFloorDepth`. Permanent once crossed, no reset. */
+    bloodDebtThreshold3: number;
+    /** Part C.3 — floor depth all 3 chains' tier-3 escalations additionally require, alongside
+        their counter threshold (same reasoning as `chainTier2MinFloorDepth`, one tier deeper). */
+    chainTier3MinFloorDepth: number;
     /** §10.5 — chance a post-event reflection shows again after the 1st (always 100%) encounter
         with a given event id. */
     reflectionRepeatChance: number;

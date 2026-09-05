@@ -3,18 +3,40 @@
     "id": "open-chest",
     "name": "Open Chest",
     "description": "A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further.",
+    "descriptionVariants": [
+      "A rusted lockbox is wedged under a collapsed beam, the key still in it, snapped off at the shaft.",
+      "Someone stacked their gear in a neat pile before they stopped needing it: boots, belt, an unopened pack."
+    ],
     "kind": "instantReward",
     "tier": "common"
   },
   {
     "id": "guardian-fight",
     "name": "Guardian Fight",
-    "description": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and it just caught your scent.",
+    "description": "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and closed, is scratched into the wall beside it. Something is guarding the treasure in this room, and it just caught your scent.",
+    "descriptionVariants": [
+      "Something breathes evenly in the dark ahead. It's been holding still since before you walked in.",
+      "Loose stone shifts under something heavy, back where the light doesn't reach. It's already turned toward you."
+    ],
     "chainBuildupDescription": "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and this time it doesn't look away.",
-    "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
+    "chainForcedDescription": "There's nowhere left to walk past this. The claws have stopped scraping — it's already found you.",
+    "chainForced2Description": "There's no story left in this anymore. It finds you. You fight. That's the whole of it, now.",
+    "chainForced3Description": "You knew it was over before you'd worked out how it started.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "The scrape of claws on stone echoes from a dark corner. You've stopped waiting for it to be nothing."
+      }
+    ],
     "reflection": {
       "prompt": "The guardian's ashes still carry a trace of incense, not decay. Something tended this room, once.",
       "escalatedPrompt": "You didn't decide to fight this one. It decided you'd stalled long enough.",
+      "escalated2Prompt": "There wasn't a decision this time. Just the fight, and then it was over.",
+      "escalated3Prompt": "The swing already happened by the time you noticed you'd thrown it.",
       "options": { "curious": "Worth remembering — someone built this on purpose.", "wary": "Better not to think about who.", "dismissive": "Just a monster. Move on." }
     },
     "kind": "combatReward",
@@ -23,7 +45,18 @@
   {
     "id": "merchant",
     "name": "Merchant Encounter",
-    "description": "A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
+    "description": "A trembling oil lamp casts light on a cloth spread with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
+    "descriptionVariants": [
+      "Firelight catches on a row of small objects laid out with care, each one marked the same way. A hooded shape straightens as you approach, already reaching for the first item.",
+      "A cloth is spread flat across the stone, weighted at the corners against a draft that isn't there. The hooded figure doesn't look up until you're close enough to see the mark on every piece."
+    ],
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "still-breathing", "outcome": "resolved" }],
+        "match": "any",
+        "description": "A trembling oil lamp casts light on a cloth spread with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer. You don't look at the cloth the way you used to."
+      }
+    ],
     "returnDescription": "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before.",
     "reflection": {
       "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
@@ -35,12 +68,30 @@
   {
     "id": "desecrated-altar",
     "name": "Desecrate the Altar",
-    "description": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath.",
+    "description": "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot. Touching it will surely wake whatever sleeps beneath.",
+    "descriptionVariants": [
+      "A pulse of red light rises and falls along the altar's edge, patient as a held breath. Whatever it's under hasn't needed to be quiet until now.",
+      "The altar's glow catches in a carved spiral at its base, sealed shut, older than the stone around it. Touching it will surely wake whatever sleeps beneath."
+    ],
     "chainBuildupDescription": "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath, and it's been stirring since you walked past the last one.",
-    "chainForcedDescription": "There's nowhere left to walk past this — the thing you kept avoiding has stopped waiting to be noticed.",
+    "chainForcedDescription": "There's nowhere left to walk past this. The glow doesn't dim anymore — it's already found you.",
+    "chainForced2Description": "There's no story left in this anymore. It finds you. You fight. That's the whole of it, now.",
+    "chainForced3Description": "You knew it was over before you'd worked out how it started.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "The stone altar glows with a pale red light, pulsing as if breathing. You've stopped waiting for it to be nothing."
+      }
+    ],
     "reflection": {
       "prompt": "The glow hasn't fully died down, even now. It's like the stone remembers being touched.",
       "escalatedPrompt": "This time you just ran out of room to keep avoiding it.",
+      "escalated2Prompt": "There wasn't a decision this time. Just the fight, and then it was over.",
+      "escalated3Prompt": "The swing already happened by the time you noticed you'd thrown it.",
       "options": { "curious": "Worth coming back for, once you know what you're looking for.", "wary": "Whatever's under there, you'd rather it stayed asleep.", "dismissive": "The glow's already fading. You've still got a floor left to clear." }
     },
     "kind": "combatReward",
@@ -49,11 +100,30 @@
   {
     "id": "blood-altar",
     "name": "Trade HP for an Artifact",
-    "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid. It demands a price paid in blood, nothing more, nothing less.",
+    "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. It demands a price paid in blood, nothing more, nothing less.",
     "chainEscalatedDescription": "The stone recognizes the taste. It doesn't need to ask this time — it already knows you'll pay.",
+    "chainEscalated2Description": "The cut doesn't ache anymore. Whoever's paying this time isn't flinching, and hasn't in a while.",
+    "chainEscalated3Description": "None of you can say who volunteered this time — only that someone always does.",
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "half-a-warning", "outcome": "resolved" }],
+        "match": "any",
+        "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. You hesitate half a step longer than you used to, before your hand decides for you."
+      },
+      {
+        "when": [
+          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. Your hand is already open before you've chosen who pays."
+      }
+    ],
     "reflection": {
       "prompt": "The wound closes faster than it should. The stone took exactly what it asked for, no more.",
       "escalatedPrompt": "The stone barely had to ask this time. That's the part that stays with you.",
+      "escalated2Prompt": "You checked for the wound out of habit. It took a moment to remember where it was supposed to be.",
+      "escalated3Prompt": "You checked for the wound out of habit. You knew it was there before you found it.",
       "options": { "curious": "That's precise, for a slab of rock — someone built it that way on purpose.", "wary": "Next time it might ask for more than skin.", "dismissive": "A fair price. You've paid worse for less." }
     },
     "kind": "hpGamble",
@@ -62,7 +132,17 @@
   {
     "id": "cursed-shrine",
     "name": "Cursed Shrine",
-    "description": "A statue with 3 eyes. One of them is open.",
+    "description": "A statue with 3 eyes. One of them is open. It wasn't the same one a moment ago.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "A statue with 3 eyes. One of them is open. You've stopped counting how many times that's true."
+      }
+    ],
     "reflection": {
       "prompt": "The open eye hasn't blinked once. You'd swear it's still watching, even from here.",
       "options": { "curious": "Three eyes, one open — you find yourself counting the shut ones on your way out.", "wary": "One open eye is already 1 too many for your taste.", "dismissive": "It's carved stone. Nothing's actually watching you." }
@@ -73,7 +153,17 @@
   {
     "id": "twin-altars",
     "name": "Twin Altars",
-    "description": "Two stone pedestals facing each other. Choose 1 — the other shatters the instant you touch its twin.",
+    "description": "Two stone pedestals face each other, each carved with a spiral, open at the center. Choose 1: the other shatters the instant you touch its twin.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "Two stone pedestals face each other, each carved with a spiral, open at the center. You already know which one you'll choose, the way you know a room's cold before you feel it. Choose 1: the other shatters the instant you touch its twin."
+      }
+    ],
     "reflection": {
       "prompt": "The shattered pedestal's dust hasn't settled. You didn't choose it, but it still feels like you broke something.",
       "options": { "curious": "What was on that one, you'll never know now.", "wary": "Some choices aren't worth revisiting.", "dismissive": "Rigged either way — not like you had a real choice." }
@@ -85,11 +175,22 @@
   {
     "id": "sacrificial-circle",
     "name": "Ritual Circle",
-    "description": "Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted.",
+    "description": "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted.",
     "chainEscalatedDescription": "The circle recognizes your hand before you kneel. It doesn't ask anymore.",
+    "chainEscalated2Description": "Your knees find the stone before you've finished deciding to. The circle stopped needing you to decide a while ago.",
+    "chainEscalated3Description": "You remember kneeling. You don't remember choosing to come back.",
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
+        "match": "any",
+        "description": "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. You've felt this exact ask before."
+      }
+    ],
     "reflection": {
       "prompt": "The circle goes quiet again, the pattern in the blood no less deliberate than before. It didn't thank you. It didn't have to.",
       "escalatedPrompt": "You knelt before you'd even finished deciding to.",
+      "escalated2Prompt": "Your hand was already closing around the offering before you noticed you'd reached for it.",
+      "escalated3Prompt": "None of you can say, right now, whose idea it was — only that nobody argued.",
       "options": { "curious": "That pattern wasn't drawn by accident, and you'd like to know by what.", "wary": "Not a place you'd want to visit more than you have to.", "dismissive": "A fair trade, and a better artifact for it. That's all it needs to be." }
     },
     "kind": "artifactExchange",
@@ -99,6 +200,16 @@
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
     "description": "A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "A stranger shuffles 3 overturned cups, sneering in the dark, no brand on his skin, no altar in sight. You're already doing the math on what you can afford to lose before he's finished explaining the rules."
+      }
+    ],
     "returnDescription": {
       "won": "The stranger deals a fresh hand without looking up. \"Didn't expect a winner to come back for more.\"",
       "lost": "The stranger deals a fresh hand without looking up. \"Back for more? I like watching the same face lose twice.\"",
@@ -115,6 +226,24 @@
     "id": "wandering-hermit",
     "name": "Wandering Hermit",
     "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. His eyes are already open when you arrive, like he'd already felt something uneven walk in."
+      },
+      {
+        "when": [
+          { "eventId": "guardian-fight", "outcome": "resolved" },
+          { "eventId": "desecrated-altar", "outcome": "resolved" }
+        ],
+        "match": "any",
+        "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. Something about you carries the same mark the guardians carry. He doesn't ask what you did to it."
+      }
+    ],
     "returnDescription": "The old man's eyes are already open, like he knew you'd be back. 'Trade again? I don't forget a fair deal.'",
     "reflection": {
       "prompt": "His eyes never opened again after the trade closed. You're not sure he needed them to.",
@@ -127,7 +256,171 @@
     "id": "collapsed-floor",
     "name": "Collapsed Floor",
     "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack — someone else is still trapped down there.",
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
+        "match": "any",
+        "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack. It sounds like the last one did. You don't say so out loud."
+      },
+      {
+        "when": [{ "eventId": "blood-altar", "outcome": "declined" }],
+        "match": "any",
+        "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack. You hesitate. You know exactly how easy it would be to just keep walking."
+      }
+    ],
     "kind": "rescueGamble",
+    "tier": "rare"
+  },
+  {
+    "id": "old-count",
+    "name": "Old Count",
+    "description": "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops in the middle, mid-stroke.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "open-chest", "outcome": "resolved" },
+          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "collapsed-floor", "outcome": "declined" }
+        ],
+        "match": "any",
+        "description": "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops in the middle, mid-stroke. You've started noticing these more, the deeper you go."
+      }
+    ],
+    "instantRewardActionLabel": "  [1] Move on",
+    "reflection": {
+      "prompt": "Something interrupted the last mark. You didn't stay to find out if it came back.",
+      "options": { "curious": "Whatever they were counting toward, you keep wondering if they ever reached it.", "wary": "Counting like that isn't really about the number anymore.", "dismissive": "Somebody's nervous habit. Not yours to worry about." }
+    },
+    "kind": "instantReward",
+    "tier": "common"
+  },
+  {
+    "id": "doubled-back",
+    "name": "Doubled Back",
+    "description": "Footprints lead into this room and stop. None lead back out. The room is empty, and there's nowhere else they could have gone.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "open-chest", "outcome": "resolved" },
+          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "collapsed-floor", "outcome": "declined" }
+        ],
+        "match": "any",
+        "description": "Footprints lead into this room and stop. None lead back out. You've seen traces like this before, this run. You're starting to lose count of how many."
+      }
+    ],
+    "instantRewardActionLabel": "  [1] Move on",
+    "reflection": {
+      "prompt": "You checked the walls anyway. You're not sure what you expected to find.",
+      "options": { "curious": "Rooms don't just eat people. You'd like to understand this one's trick.", "wary": "You don't linger long enough to test whether it does it twice.", "dismissive": "Feet backtrack all the time. You just missed the tracks." }
+    },
+    "kind": "instantReward",
+    "tier": "common"
+  },
+  {
+    "id": "the-delay",
+    "name": "The Delay",
+    "description": "Still water pools at the edge of the room, dark enough to mirror the torchlight. Your reflection catches up to you a half-second late, every time you move.",
+    "instantRewardActionLabel": "  [1] Move on",
+    "reflection": {
+      "prompt": "You didn't stay long enough to see if it eventually stopped catching up.",
+      "options": { "curious": "Half a second doesn't sound like much. You're still not sure where it goes.", "wary": "You keep your eyes forward the rest of the way down.", "dismissive": "Tired eyes playing tricks. Nothing more." }
+    },
+    "kind": "instantReward",
+    "tier": "common"
+  },
+  {
+    "id": "waiting-supplies",
+    "name": "Waiting Supplies",
+    "description": "A bundle sits wrapped and tied at the base of the wall, exactly where someone would leave it to come back for later. The rope is knotted tight, in a careful, deliberate pattern. Nobody's coming back for this.",
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "merchant", "outcome": "resolved" }],
+        "match": "any",
+        "description": "A bundle sits wrapped and tied at the base of the wall, exactly where someone would leave it to come back for later. The rope is knotted in a spiral, pulled tight, in the same careful knot you've started to recognize. Nobody's coming back for this."
+      }
+    ],
+    "instantRewardActionLabel": "  [1] Move on",
+    "reflection": {
+      "prompt": "You didn't take the whole bundle. Something about leaving part of it felt right.",
+      "options": { "curious": "You wonder how long it's been sitting there, waiting for someone who isn't coming.", "wary": "Taking a dead stranger's supplies doesn't sit easy, whatever the reason they're still here.", "dismissive": "Supplies are supplies. Nobody's using them now." }
+    },
+    "kind": "instantReward",
+    "tier": "common"
+  },
+  {
+    "id": "vigil-candle",
+    "name": "Vigil",
+    "description": "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it: folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left it there isn't coming back for it.",
+    "instantRewardActionLabel": "  [1] Move on",
+    "minFloorDepth": 15,
+    "onceLifetime": true,
+    "reflection": {
+      "prompt": "You didn't blow it out. You didn't want to be the one who did.",
+      "options": { "curious": "Wax doesn't last that long on its own. You noticed, and kept walking anyway.", "wary": "Some things burn for a reason. You'd rather not be part of it.", "dismissive": "A trick of the wax, probably. Nothing worth thinking about twice." }
+    },
+    "kind": "instantReward",
+    "tier": "rare"
+  },
+  {
+    "id": "broken-seal",
+    "name": "Broken Seal",
+    "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
+    "crossEventVariants": [
+      {
+        "when": [
+          { "eventId": "blood-altar", "outcome": "paid" },
+          { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
+        ],
+        "match": "any",
+        "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. The chain wasn't unlocked. It was torn from the outside, by something that wanted in."
+      },
+      {
+        "when": [
+          { "eventId": "guardian-fight", "outcome": "resolved" },
+          { "eventId": "desecrated-altar", "outcome": "resolved" }
+        ],
+        "match": "any",
+        "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. The chain wasn't unlocked. It was torn from the inside, by something that wanted out."
+      }
+    ],
+    "instantRewardActionLabel": "  [1] Move on",
+    "minFloorDepth": 15,
+    "onceLifetime": true,
+    "reflection": {
+      "prompt": "Whatever did this wasn't being careful. You didn't wait around to see if it was still close.",
+      "options": { "curious": "Somebody won that fight. You just can't tell which side stayed inside.", "wary": "Something strong enough to tear a chain like that isn't something to go looking for.", "dismissive": "Old damage. Whatever happened here is long over." }
+    },
+    "kind": "instantReward",
+    "tier": "rare"
+  },
+  {
+    "id": "half-a-warning",
+    "name": "Half a Warning",
+    "description": "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'",
+    "instantRewardActionLabel": "  [1] Move on",
+    "minFloorDepth": 35,
+    "onceLifetime": true,
+    "reflection": {
+      "prompt": "Whoever wrote that stopped mid-word. You don't know if they ran out of time, or ran out of nerve.",
+      "options": { "curious": "Something made them stop mid-word. You can't stop turning it over.", "wary": "A warning like that doesn't need the rest of the sentence.", "dismissive": "Old graffiti. Everyone thinks their scratch marks matter." }
+    },
+    "kind": "instantReward",
+    "tier": "rare"
+  },
+  {
+    "id": "still-breathing",
+    "name": "Still Breathing",
+    "description": "The walls breathe here. Not walls. Ribs. Threads of old cloth are grown into the bone, not over it, and one of them still carries a mark burned the exact same way as every mark you've traded for this whole run.",
+    "instantRewardActionLabel": "  [1] Move on",
+    "minFloorDepth": 70,
+    "onceLifetime": true,
+    "noArtifactReward": true,
+    "reflection": {
+      "prompt": "Something you've traded for is already part of this room. You don't know how long it's been growing there.",
+      "options": { "curious": "You keep doing the math on how much of this used to be someone's.", "wary": "You're not sure you want anything you're carrying to end up matching.", "dismissive": "Cloth rots into strange shapes. Doesn't mean anything." }
+    },
+    "kind": "instantReward",
     "tier": "rare"
   }
 ]

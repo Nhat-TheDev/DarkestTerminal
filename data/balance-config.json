@@ -83,7 +83,13 @@
     },
     "guardianGrudgeForcedThreshold": 3,
     "circleRemembersThreshold": 5,
+    "circleRemembersThreshold2": 10,
     "bloodDebtThreshold": 4,
+    "bloodDebtThreshold2": 8,
+    "chainTier2MinFloorDepth": 15,
+    "circleRemembersThreshold3": 20,
+    "bloodDebtThreshold3": 16,
+    "chainTier3MinFloorDepth": 35,
     "reflectionRepeatChance": 0.5,
     "gamblingDenRounds": [
       {

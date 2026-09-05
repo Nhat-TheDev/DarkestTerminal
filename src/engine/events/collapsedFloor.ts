@@ -15,6 +15,7 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   const cost = payHpPercent(character, COLLAPSED_FLOOR_HP_PERCENT);
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
   state.narrativeCounters.altarPaymentsCount += 1; // §10.3 Chain 3 — counts the HP payment itself, not the 60% roll outcome
+  state.eventOutcomes["collapsed-floor"] = "attempted"; // Part C.1 pairs 1/12/13 — payment is what matters, not the roll
   if (ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE)) {
     const artifactId = rollArtifact("boss", ctx.rng);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
@@ -28,5 +29,6 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
 
 export function collapsedFloorLeave(state: GameState): void {
   state.message = t("game.skippedAttempt");
+  state.eventOutcomes["collapsed-floor"] = "declined"; // Part C.1 pair 2
   closeEvent(state);
 }

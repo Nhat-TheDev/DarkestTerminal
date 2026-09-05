@@ -78,9 +78,11 @@ export class Game {
       activeEvent: null,
       lastRoomDrops: null,
       metNarrativeNpcIds: [],
-      narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0 },
+      narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0 },
       pendingReflection: null,
       eventReflectionStances: {},
+      eventOutcomes: {},
+      firedOnceEventIds: [],
     };
     this.checkEntryRoomAmbush();
   }
@@ -378,6 +380,10 @@ export class Game {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
           grantArtifact(this.state, artifactId);
           droppedArtifactIds.push(artifactId);
+          // Part C.1 pair 8 — guardian-fight/desecrated-altar's win path never calls closeEvent()
+          // (see the reflection-trigger comment below), so the generic outcome tag is written here
+          // instead, at the same point their reflection already gets triggered from.
+          this.state.eventOutcomes[room.rolledEventId] = "resolved";
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;
         // The reward block above (buff expiry, satiety drain, EXP/level, coins) is the only place these

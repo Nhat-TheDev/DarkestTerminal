@@ -180,6 +180,22 @@ export type EventKind =
   | "rescueGamble"
   | "coinGamble";
 
+/** A single condition an event's outcome tag must match, for `CrossEventVariant.when`
+    (10-event-narrative.md Part C.1). `outcome` is compared against `GameState.eventOutcomes[eventId]`. */
+export interface EventOutcomeCondition {
+  eventId: Id;
+  outcome: string;
+}
+
+/** One conditional description an event can show instead of its base `description`, keyed off other
+    events' outcome tags (Part C.1). Array order matters: `pickEventText()` uses first-match-wins, so
+    a more specific condition must be listed before a more general one targeting the same event. */
+export interface CrossEventVariant {
+  when: EventOutcomeCondition[];
+  match: "all" | "any";
+  description: string;
+}
+
 export interface EventDefinition {
   id: Id;
   name: string;
@@ -187,6 +203,18 @@ export interface EventDefinition {
   kind: EventKind;
   tier: EventTier;
   forceEquip?: boolean;
+  /** Minimum `floor.depth` at which this event can be rolled at all (Part C.4/C.5) — checked by
+      `rollEvent()`, not by `pickEventText()`. Absent means no depth gate. */
+  minFloorDepth?: number;
+  /** This event can fire at most once per run — `rollEvent()` excludes it once its id is in
+      `GameState.firedOnceEventIds`, set by `closeEvent()` (Part C.4/C.5). */
+  onceLifetime?: boolean;
+  /** `instantReward` only: skip the usual rollArtifact/grantArtifact — still-breathing is
+      deliberately "no artifact, no stat effect of any kind" (Part C.4). */
+  noArtifactReward?: boolean;
+  /** Overrides the generic "Open the chest" confirm-option text in the `eventOpenChest` UI screen
+      for `instantReward` events whose scene isn't a chest. */
+  instantRewardActionLabel?: string;
   /** Shown instead of `description` from the 2nd encounter onward (10-event-narrative.md §10.2).
       Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
       outcome of the player's last visit, so it uses the object form instead of a plain string. */
@@ -199,16 +227,48 @@ export interface EventDefinition {
       forced threshold (§10.3 Chain 1) — Skip is hidden/rejected on this room. Only guardian-fight
       and desecrated-altar set this. */
   chainForcedDescription?: string;
+  /** Shown instead of `chainForcedDescription` from the 2nd forced encounter onward this run
+      (`narrativeCounters.guardianGrudgeFiredCount >= 1`) and only past `events.chainTier2MinFloorDepth`
+      (11-world-bible.md §11.13) — Skip stays rejected, same as tier 1. Deliberately shared verbatim
+      between guardian-fight/desecrated-altar (unlike the tier-1 fields, which are per-id) — tier 2 is
+      about losing that specificity, not keeping it. */
+  chainForced2Description?: string;
+  /** Shown instead of `chainForced2Description` once `guardianGrudgeFiredCount >= 2` AND floor depth
+      is past `events.chainTier3MinFloorDepth` (10-event-narrative.md Part C.3) — Skip stays rejected,
+      same as tier 1/2. Shared verbatim between guardian-fight/desecrated-altar, same reasoning as
+      tier 2. */
+  chainForced3Description?: string;
   /** Shown instead of `description` once the relevant `narrativeCounters` threshold is crossed
       (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Only sacrificial-circle
       (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`) set this. */
   chainEscalatedDescription?: string;
+  /** Shown instead of `chainEscalatedDescription` once the higher tier-2 threshold
+      (`circleRemembersThreshold2`/`bloodDebtThreshold2`) is crossed AND floor depth is past
+      `events.chainTier2MinFloorDepth` (11-world-bible.md §11.13) — permanent, no reset, same as tier 1.
+      Only sacrificial-circle and blood-altar set this. */
+  chainEscalated2Description?: string;
+  /** Shown instead of `chainEscalated2Description` once the tier-3 threshold
+      (`circleRemembersThreshold3`/`bloodDebtThreshold3`) is crossed AND floor depth is past
+      `events.chainTier3MinFloorDepth` (Part C.3) — permanent, no reset. Only sacrificial-circle and
+      blood-altar set this. */
+  chainEscalated3Description?: string;
+  /** Conditional variants keyed off other events' outcome tags (Part C.1) — checked after all chain
+      states, before `descriptionVariants`. First array entry whose condition matches wins. */
+  crossEventVariants?: CrossEventVariant[];
+  /** Alternate base-scene descriptions (Part C.2) — `pickEventText()`'s lowest-priority fallback
+      picks uniformly among `[description, ...descriptionVariants]`, `description` always being
+      option 0. Picked once per room at roll time and pinned via `Room.descriptionVariantIndex`. */
+  descriptionVariants?: string[];
   /** Post-event reflection content (10-event-narrative.md §10.5) — set on the 9 in-scope events
       (all but open-chest and collapsed-floor). `escalatedPrompt` is only set on the 4 events §10.3
-      can escalate (guardian-fight, desecrated-altar, sacrificial-circle, blood-altar). */
+      can escalate (guardian-fight, desecrated-altar, sacrificial-circle, blood-altar).
+      `escalated2Prompt`/`escalated3Prompt` are only set on those same 4, shown once the tier-2/3
+      escalation is what just resolved (see the `chain*Description` fields above). */
   reflection?: {
     prompt: string;
     escalatedPrompt?: string;
+    escalated2Prompt?: string;
+    escalated3Prompt?: string;
     options: { curious: string; wary: string; dismissive: string };
   };
 }
@@ -230,7 +290,11 @@ export interface Room {
   rolledEventId?: Id;
   /** Which text variant this room's event resolved to (10-event-narrative.md §10.3 Chain 1) — set
       by `resolveEventEntry`, left undefined otherwise. */
-  chainVariant?: "buildup" | "forced";
+  chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
+  /** Index into `[event.description, ...event.descriptionVariants]` for this room's rolled event
+      (Part C.2) — picked once by `resolveEventEntry` when the event is freshly rolled, so re-renders
+      within the same visit stay consistent. Undefined if the event has no `descriptionVariants`. */
+  descriptionVariantIndex?: number;
 }
 
 export interface Floor {
@@ -376,6 +440,10 @@ export interface GameState {
     guardianFightsSkipped: number;
     artifactsSacrificed: number;
     altarPaymentsCount: number;
+    /** How many times Chain 1's forced encounter has been entered this run (11-world-bible.md
+        §11.13 tier 2) — unlike `guardianFightsSkipped`, this never resets, so it can tell "is this
+        the 1st time the chain has fired, or the 2nd+" even after the skip counter resets to 0. */
+    guardianGrudgeFiredCount: number;
   };
   /** A post-event reflection is waiting to be shown (10-event-narrative.md §10.5) — set by
       `maybeTriggerReflection()`, cleared by `Game.pickReflectionStance()`. */
@@ -383,4 +451,12 @@ export interface GameState {
   /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
       re-trigger, not a history log. Purely flavor today. */
   eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
+  /** Outcome tag per event id, set once that event's defining choice resolves (10-event-narrative.md
+      Part C.1) — read by `crossEventVariants`. Never reset mid-run. Most events only ever get the
+      generic `"resolved"` fallback, written by `closeEvent()`; a handful of handlers
+      (bloodAltarPay/Leave, collapsedFloorAttempt/Leave, sacrifice) write a more specific tag first. */
+  eventOutcomes: Partial<Record<Id, string>>;
+  /** Ids of events with `onceLifetime: true` that have already fired this run (Part C.4/C.5) —
+      `rollEvent()` excludes them from future rolls. Marked by `closeEvent()`. */
+  firedOnceEventIds: Id[];
 }
