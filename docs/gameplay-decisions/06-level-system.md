@@ -14,7 +14,7 @@ Shape resolver: `damage = amount + mitigatedOffense(offense, defense)` (full mit
 
 ### 6.3 Tier growth table
 
-**Shared by both characters and monsters**: characters use the `level` variable, further multiplied by `growthWeights` per class (§6.8); monsters use `floorDepth` in place of `level`, with no weighting applied (§6.6).
+**Shared by both characters and monsters**: characters use the `level` variable, further multiplied by `growthWeights` per class (§6.8); monsters use `floorDepth` in place of `level` — the curve itself (`growthBonusForDepth`) applies no per-stat weighting, but the resulting scaled stat is then multiplied by the archetype's `monsterType` weighting in `spawnMonster()`, analogous in spirit but not in mechanism to `growthWeights` (§6.6, `02-monster.md` "Monster type").
 
 Each tier in `data/level-growth.json` → `tiers[]` declares its own upper `maxLevel` bound and a per-level growth rate for `attack`/`defense`/`maxHp`/`maxMp`/`magicPower` — later tiers taper off (each is never a faster rate than the one before it). `magicPower` uses the exact same rate as `attack` on this same tier table.
 
@@ -26,9 +26,9 @@ EXP cost to level up is a separate table from the tier-growth table above — a 
 
 ### 6.4 Milestone bonus (additive, applies the same to every class before weighting)
 
-**Shared by both characters and monsters**: characters use this curve then multiply by `growthWeights` per class (§6.8); monsters use it directly, with no weighting (§6.6).
+**Shared by both characters and monsters**: characters use this curve then multiply by `growthWeights` per class (§6.8); monsters use it directly, unweighted at the curve level (§6.6) — the `monsterType` weighting is applied afterward, to the scaled stat, not to this curve.
 
-This is exactly the cumulative-sum curve from §6.3, sampled at any level — **not a separately maintained table**. The real bonus per class = `round(growthBonus(stat, level) × growthWeights[class][stat])` (§6.8). Monster stats (§6.6) still use `growthBonus()` directly, unweighted. Read current values by calling `growthBonus(stat, level)` (`src/data/levelGrowth.ts`) rather than a hand-copied table, since it drifts the moment `tiers[]` is retuned.
+This is exactly the cumulative-sum curve from §6.3, sampled at any level — **not a separately maintained table**. The real bonus per class = `round(growthBonus(stat, level) × growthWeights[class][stat])` (§6.8). Monster stats (§6.6) still use `growthBonus()` directly, unweighted, before the `monsterType` multiplier is layered on. Read current values by calling `growthBonus(stat, level)` (`src/data/levelGrowth.ts`) rather than a hand-copied table, since it drifts the moment `tiers[]` is retuned.
 
 ### 6.5 Elite/boss multipliers are split per-stat, not applied uniformly
 
@@ -37,6 +37,8 @@ Elite/boss multipliers are split per individual stat, skewed toward HP — see `
 ### 6.6 Monsters share the same formula (using `floorDepth` instead of `level`)
 
 Monsters have no separate `level` concept — monster stats scale with `floorDepth` using the exact same tier table as §6.3 (`growthBonusForDepth`, `src/data/monsters.ts`), preserving character/monster symmetry: both sides grow at the same rate, so the deeper the floor, the stronger the monster, proportionally.
+
+On top of this, every archetype has a fixed `monsterType` (`"balanced" | "tanky" | "armored" | "damage"`) whose per-stat multiplier (`data/balance-config.json` → `monsterTypes`) is applied to the fully-scaled `attack`/`defense`/`maxHp` in `spawnMonster()`, the same way `eliteMultiplier`/`bossMultiplier` are (§6.5) — and it stacks with them. This reshapes an archetype's stat *spread* without changing its base-stat Balance Points (`02-monster.md` "Monster type" / "Monster Balance Points"). Full details: `02-monster.md`.
 
 ### 6.7 Balance verification (time-to-kill, TTK)
 
@@ -59,7 +61,7 @@ classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weigh
 
 `magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` section 1.6) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills (including the basic attacks of Mage/Acolyte). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
 
-`growthWeights` applies only to characters (`party.ts`); monsters still use the unweighted `growthBonus()` (§6.6).
+`growthWeights` applies only to characters (`party.ts`); monsters still use the unweighted `growthBonus()` for the floor-depth curve itself, weighted separately afterward by `monsterType` (§6.6).
 
 ### 6.9 Decoupling character level from dungeon-floor level — the EXP system
 

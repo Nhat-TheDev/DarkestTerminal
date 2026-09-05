@@ -138,8 +138,12 @@ async function handleEditClass(req: Request): Promise<Response> {
   }
   if (body.growthWeights !== undefined) {
     if (typeof body.growthWeights !== "object" || body.growthWeights === null) return badRequest("growthWeights must be an object.");
-    const err = applyNumericPatch(cls.growthWeights as Record<string, unknown>, body.growthWeights as Record<string, unknown>, CLASS_GROWTH_FIELDS);
+    const gwData = (await readJsonFile("growth-weights.json")) as Record<string, unknown>;
+    const classGws = gwData.classGrowthWeights as Record<string, unknown>;
+    const clsGw = classGws[body.classId as string] as Record<string, unknown>;
+    const err = applyNumericPatch(clsGw, body.growthWeights as Record<string, unknown>, CLASS_GROWTH_FIELDS);
     if (err) return badRequest(err);
+    await writeJsonFile("growth-weights.json", gwData);
   }
 
   await writeJsonFile("classes.json", classes);

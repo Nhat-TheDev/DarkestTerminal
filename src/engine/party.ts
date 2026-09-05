@@ -7,6 +7,7 @@ import { artifactStatBoostSum, curseAggroBoostSum } from "./artifacts";
 import { applyExhaustedMultiplier } from "./survival";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
+import { GROWTH_WEIGHTS } from "../data/growthWeights";
 
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
@@ -39,12 +40,13 @@ interface LevelStats {
 }
 
 export function statsForLevel(cls: CharacterClass, level: number): LevelStats {
+  const gw = GROWTH_WEIGHTS.classGrowthWeights[cls.id]!;
   return {
-    maxHp: cls.baseMaxHp + classGrowthBonus("maxHp", level, cls.growthWeights),
-    maxMp: cls.baseMaxMp + classGrowthBonus("maxMp", level, cls.growthWeights),
-    attack: cls.baseAttack + classGrowthBonus("attack", level, cls.growthWeights),
-    defense: cls.baseDefense + classGrowthBonus("defense", level, cls.growthWeights),
-    magicPower: cls.baseMagicPower + classGrowthBonus("magicPower", level, cls.growthWeights),
+    maxHp: cls.baseMaxHp + classGrowthBonus("maxHp", level, gw),
+    maxMp: cls.baseMaxMp + classGrowthBonus("maxMp", level, gw),
+    attack: cls.baseAttack + classGrowthBonus("attack", level, gw),
+    defense: cls.baseDefense + classGrowthBonus("defense", level, gw),
+    magicPower: cls.baseMagicPower + classGrowthBonus("magicPower", level, gw),
     unlockedSkillIds: cls.skills.filter((s) => s.unlockLevel <= level).map((s) => s.id),
   };
 }
