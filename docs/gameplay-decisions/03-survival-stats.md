@@ -102,6 +102,140 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
 
+### Camp Reflection
+
+A 4th piece of content at Rest rooms, independent of which of the 3 options above is picked and
+independent of `08-events.md` §8.16's post-event reflection — no shared data, no shared trigger
+logic, deliberately, since the register is different: §8.16 is a short in-the-moment dialogue beat
+reacting to 1 room; Camp Reflection is the party looking back at its own *accumulated* pattern of
+exchanges across the whole run so far, fires at most 4 times ever, and is meant to land each time
+rather than repeat.
+
+**Tracking** — entirely new `GameState` fields, none of them touching `narrativeCounters`,
+`eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:
+
+```ts
+/** Increments by 1 each time the party resolves an event in LORE_EXPOSURE_EVENT_IDS — every event
+    id except open-chest, the 1 event explicitly "Outside the Balance" (11-world-bible.md §11.12).
+    Never resets, never decreases. Written in closeEvent() (src/engine/events/shared.ts), alongside
+    but independent of that function's existing eventOutcomes/firedOnceEventIds writes. */
+loreExposureCount: number;
+
+/** Set at rest-room entry (moveToRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
+    computed fresh from loreExposureCount each time, not stored — is higher than the highest tier
+    already present in campReflectionChoices. Skipped if state.pendingReflection is currently set
+    (narrow defensive check only, not a dependency). Cleared once the player picks a response. */
+pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
+
+/** Which option (0/1/2) was picked at each tier — a genuine per-tier record, unlike
+    eventReflectionStances (overwritten on repeat), since each tier fires exactly once per run. */
+campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
+```
+
+Tier thresholds against `loreExposureCount` (proposed, a balance decision pending playtesting real
+run lengths, not a lore one): **tier 1 at 3, tier 2 at 8, tier 3 at 15, tier 4 at 25.**
+
+**Skip-to-highest, not sequential**: if the party jumps straight from tier 0 to tier 3 between 2
+rest visits (event rooms aren't evenly spaced with rest rooms), only tier 3's content shows — tiers
+1-2 are silently skipped, never shown later. Same design language `08-events.md` §8.15's chain-tier
+escalation already uses (a jump straight to tier 2 never backfills tier 1's text), independently
+implemented here, not shared code. Fires deterministically the first time a new tier is reached, no
+chance roll — unlike §8.16's reflection, which needs `reflectionRepeatChance` because it can
+trigger many times per event id; Camp Reflection fires at most 4 times, ever.
+
+**UI**: a new screen (e.g. `"campReflection"` in `UiState`, `src/ui/state.ts`, rendered from a new
+`src/ui/screens/campReflection.ts`), not a variant of the existing `eventReflection` screen,
+triggered from the rest-room entry flow rather than from event-room `closeEvent()`.
+
+**Content — all 4 tiers, final text.** Tier 0 (Untouched) has no content — nothing has happened
+yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having no §8.16 reflection.
+
+**Tier 1 — Use**
+
+> "Someone's checking their supplies again before sleep, same as every night. Tonight it takes
+> slightly less time than it used to. It's just faster now, knowing which pouch to reach for
+> first."
+
+- "It's not worth thinking about. Whatever gets it done fastest is fine."
+- "Someone should be keeping count. Just in case it starts to matter later."
+- "Somewhere back there, reaching for it stopped feeling like deciding to."
+
+**Tier 2 — Optimization**
+
+> "The whole day's route got picked around which rooms were worth the detour — not for the
+> treasure, for the trade. Three floors ago that would have sounded insane. Whoever suggested it
+> first, none of you can quite say."
+
+- "It's efficient. That's all that needs to be true about it."
+- "Getting good at something like this isn't the same as it being safe."
+- "You almost admire how naturally it's become part of the plan."
+
+**Tier 3 — Dependence**
+
+> "Nobody argued about it this time. Whoever was closest just did it, the way you'd catch a
+> falling cup without thinking, and the rest of you kept eating like nothing happened. Someone
+> almost said something. Didn't."
+
+- "Someone should have said something. Nobody wanted to be the first."
+- "There wasn't anything to say. It's just what the party does now."
+- "You keep waiting for it to feel like a choice again. It hasn't, in a while."
+
+**Tier 4 — Unawareness**
+
+> "Nobody mentions it anymore, at camp or anywhere else. It isn't that it stopped mattering — it
+> stopped being a separate thing from everything else you do to get through a day. Someone asks
+> what's for dinner. Someone else answers with their mouth full. The rest of it just happened
+> somewhere in between, the way breathing happens."
+
+- "It doesn't need explaining anymore."
+- "Explaining it wouldn't change anything now."
+- "Nobody's asked in a long time. Nobody will."
+
+**Craft notes**: none of the 4 tiers reuse imagery already established elsewhere in the game (hand,
+wound, stone, circle, spiral) — deliberately, since Camp Reflection is the party looking at itself,
+not at any altar/ritual object, and needed its own sensory palette (supplies, a route, a dropped
+cup, a meal). "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
+deliberate doubled echo in tier 4's last option — an escalating motif specific to this content,
+never reused from tier 1-2's different framing or from any existing event text. The 3 options per
+tier are bespoke self-narratives, not a `curious`/`wary`/`dismissive` relabeling — a plausible
+self-narrative at tier 1 ("just efficient") isn't plausible at tier 4 (nothing there is still
+efficient-vs-unsafe framed), so reusing 1 fixed label set across all 4 tiers would have forced a
+fit the content no longer supports.
+
+**Downstream effect on 1 other event**: does not touch `eventOutcomes` as part of its own tracking
+— but the moment tier 4 resolves, 1 line writes a synthetic tag into the *existing* `eventOutcomes`
+map: `state.eventOutcomes["camp-reflection"] = "unaware"`. A narrow, deliberate bridge: Camp
+Reflection's own tracking stays fully independent as specified above; this single key exists only
+so the already-built `crossEventVariants` pipeline (`10-event-narrative.md` Part C.1) can reference
+it with zero changes to that pipeline's own code. `wandering-hermit` gains a `crossEventVariants`
+entry keyed on `{"eventId": "camp-reflection", "outcome": "unaware"}` — of the 3 recurring figures,
+he's the 1 who learned this exact drift the hard way (`11-world-bible.md` §11.8), so he's the most
+plausible to notice it in someone else before they notice it in themselves:
+
+> "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. He doesn't
+> look up right away this time. When he finally does, it isn't your face he's checking first."
+
+(Exact wording not yet craft-reviewed — flagging the connection point here, text to be finalized
+alongside implementation.)
+
+**Compliance check against `11-world-bible.md`**: no mechanic here implies the dream is tracking
+the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
+outside this mechanism except the 1 synthetic bridge tag above. Agency stays real at every tier
+(§11.5) — tier 3's "whoever was closest just did it" and tier 4's "the rest of it just happened
+somewhere in between" both describe the party's own hands acting, never the dream choosing for
+them. Resolves nothing on §11.9's open list — entirely about the party's own psychology, never
+about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
+"Sleeper," "Covenant," or "the Balance."
+
+**Build order and files touched**: `src/types.ts` (4 new `GameState` fields), `src/data/loreExposure.ts`
+(new — `LORE_EXPOSURE_EVENT_IDS`, thresholds, `campReflectionTier()`), `src/engine/events/shared.ts`
+(`closeEvent()`'s new increment), `src/engine/dungeon.ts` (`moveToRoom`'s rest-room branch — tier
+check, `pendingCampReflectionTier` set), `src/engine/game.ts` (new field init, a
+`pickCampReflectionChoice()` method), `src/engine/migration.ts` (migration guards for the 4 new
+fields), `src/ui/state.ts` (new `UiState` kind), `src/ui/screens/campReflection.ts` (new),
+`data/events.json` (the `wandering-hermit` cross-event addition once its text is finalized),
+`test/` (new test file for the counting/tiering/trigger/skip-to-highest logic).
+
 ### Fear tiers (shared with `04-fear-combat.md` section 4 below)
 
 4 tiers, computed by `getFearTier(fear)` (`src/engine/resolver.ts`) — the tier boundaries are hardcoded there (not in `data/balance-config.json`), since they're read alongside the combat-effect functions in the same module:

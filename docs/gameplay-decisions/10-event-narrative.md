@@ -33,12 +33,35 @@ tier-3 field and the 8 new event entries; `src/types.ts`, `src/data/events.ts`,
 sacrifice,openChest}.ts`, `src/engine/game.ts`, `src/engine/migration.ts`, and
 `src/ui/screens/events.ts` carry the engine side. Tested in `test/events.test.ts`.
 
-## Part A2 — Design resolved, implementation pending
+**Reflection stance payoff**: `11-world-bible.md` §11.13's resolved direction (flavor only, never
+mechanical, never a strict classifier, each stance readable more than one way) is built as
+`EventDefinition.stanceEcho?: { curious, wary, dismissive }` — `dominantReflectionStance()`
+(`src/engine/dungeon.ts`) reads the party's most-picked stance across
+`GameState.eventReflectionStances` (undefined if none recorded yet or tied) and appends the
+matching line to a `returnDescription` visit. Wired for `wandering-hermit` only so far — he's the 1
+of the 3 recurring figures whose own backstory (§11.8) makes him plausible to notice a pattern in
+someone else. `merchant`/`gambling-den` could get their own `stanceEcho` later the same way.
 
-**Reflection stance payoff**: `11-world-bible.md` §11.13 resolved that a consistent
-`curious`/`wary`/`dismissive` stance should eventually nudge later text — as flavor only, never
-mechanically, and never as a strict classifier. Reading `GameState.eventReflectionStances` back and
-applying it anywhere is still unimplemented — no code, no data, not started.
+**`collapsed-floor`'s own crossEventVariant + a specific `eventOutcomes` value**: outcome tag split
+from a single generic `"attempted"` into `"rescued"`/`"failed"` (`collapsedFloorAttempt()`,
+`src/engine/events/collapsedFloor.ts`) so a later `collapsed-floor` visit — and `blood-altar`'s pair
+3 — can read whether the trapped person was actually reached in time, not just that a payment was
+made. `old-count`/`doubled-back`'s existing "any resolution of collapsed-floor" conditions were
+widened from `attempted`/`declined` to `rescued`/`failed`/`declined` to match.
+
+**Item lore's `guaranteedArtifactId`** (`07-items-artifacts.md`): built —
+`EventDefinition.guaranteedArtifactId?: Id`, checked in `openChest()`
+(`src/engine/events/openChest.ts`) ahead of the standard roll. Wired for `waiting-supplies` only so
+far, pointing at the already-existing `travelers-ration` (not the not-yet-added
+`bundle-of-undelivered-letters`, since the 47-item catalog rewrite in `07-items-artifacts.md` is
+still spec-only — using an id that doesn't exist in `data/artifacts.json` yet would throw at
+runtime). `vigil-candle`/`broken-seal`/`half-a-warning` still roll the standard table until their
+own dedicated items are actually added to the catalog.
+
+**`the-delay` now `noArtifactReward: true`**: previously granted a free artifact like every other
+common `instantReward` event, contributing to commons reading as an unbroken loot piñata. Converted
+to the purest "no cost, no reward, information only" case — consistent with its own established
+role as the template for events that need no lore/institution baggage at all (Part C.5).
 
 ---
 
@@ -265,11 +288,13 @@ rule.
 7. `wandering-hermit` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"An old man
    sits meditating amid the rubble, a spiral mark scarred into his forearm. His eyes are already
    open when you arrive, like he'd already felt something uneven walk in."*
-8. `wandering-hermit` ← (`guardian-fight`=`entered` OR `desecrated-altar`=`entered`) — a 2nd,
+8. `wandering-hermit` ← (`guardian-fight`=`resolved` OR `desecrated-altar`=`resolved`) — a 2nd,
    independent entry on the same field; if both this and #7 match, #7 wins (array order, "first
    match wins," no new rule): *"An old man sits meditating amid the rubble, a spiral mark scarred
    into his forearm. Something about you carries the same mark the guardians carry. He doesn't ask
-   what you did to it."*
+   what you did to it."* (Implementation note: `"resolved"` — the win path's outcome tag,
+   `game.ts`'s combat-victory block — not `"entered"`, which is never a value written anywhere;
+   this doc previously said `entered` in error.)
 9. `gambling-den` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A stranger
    shuffles 3 overturned cups, sneering in the dark, no brand on his skin, no altar in sight. You're
    already doing the math on what you can afford to lose before he's finished explaining the
@@ -378,9 +403,9 @@ tell):
   around it. Touching it will surely wake whatever sleeps beneath."
 
 Remaining events (`blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`,
-`wandering-hermit`, `gambling-den`, `collapsed-floor`, and the 8 not-yet-built events below): same
-mechanism, text not yet authored — not a blocker for locking this mechanism, can be added
-incrementally.
+`wandering-hermit`, `gambling-den`, `collapsed-floor`, and the 8 events in C.5 below): same
+mechanism, text not yet authored — not a blocker, `descriptionVariants` is optional per event and
+can be added incrementally.
 
 ### C.3 — Chain tier 3
 
@@ -460,13 +485,13 @@ its bundle, tied "in a spiral, pulled tight" — never switched — reads differ
 found testimony that switching gets people killed.
 
 `id: "half-a-warning"`, `kind: "instantReward"`, `tier: "rare"`, `minFloorDepth: 35`,
-`onceLifetime: true`. Standard artifact table.
+`onceLifetime: true`, `guaranteedArtifactId: "worn-chalk-stub"` (`07-items-artifacts.md`'s
+"Event-tied artifacts") — the carving tool implied by the scene, not a random roll.
 
 **Floor 70 — "Still Breathing"**
 
-> "The walls breathe here. Not walls. Ribs. Threads of old cloth are grown into the bone, not over
-> it, and one of them still carries a mark burned the exact same way as every mark you've traded
-> for this whole run."
+> "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth,
+> with a mark burned into it the exact same way as every mark you've traded for this whole run."
 
 ```
 reflection.prompt: "Something you've traded for is already part of this room. You don't know how
@@ -483,7 +508,11 @@ caught the last of those: the draft that stopped at 4 facts still stated the "co
 conclusion outright instead of showing the one piece of evidence (a trade-mark grown into bone,
 identical to the party's own) and trusting the player to draw it themselves — the exact thing
 §11.11's show-don't-tell rule warns against for the game's single deepest lore moment. The
-conclusion is now left entirely to inference. Cut from the stated text and pushed into the
+conclusion is now left entirely to inference. A later pass caught that even this version still read
+as 2 stacked beats (walls-are-ribs as its own reveal, then the mark, as a separate 2nd one) — the
+"walls are ribs" observation is now folded into a subordinate clause ("Ribs, not walls —") rather
+than its own 2-sentence beat, so the entire line builds toward the 1 real reveal (the matching mark)
+instead of delivering 2 in sequence. Cut from the stated text and pushed into the
 reflection prompt as an open question instead of an asserted fact: whether the growth is ongoing or
 long finished. Never "consuming" or "hunting" (§11.4 — passive and
 involuntary, like the whirlpool-finds-the-drain framing, never implying Dream has intent). Doesn't
@@ -509,7 +538,7 @@ the same reflex wins anyway (more honest to §11.5 than a version where knowledg
 behavior). Not wired into every event after every milestone — that would violate the same
 one-observable-change discipline holding the rest of this file together.
 
-### C.5 — New events, full specs (not yet in `data/events.json`)
+### C.5 — New events, full specs (implemented, live in `data/events.json`)
 
 **`vigil-candle`** ("Vigil") — Thread 5, floor 15:
 
@@ -525,11 +554,14 @@ wary: "Some things burn for a reason. You'd rather not be part of it."
 dismissive: "A trick of the wax, probably. Nothing worth thinking about twice."
 ```
 
-`kind: "instantReward"`, `tier: "rare"`, `minFloorDepth: 15`, `onceLifetime: true`. Artifact sits
-*in* the scene (beside the candle, like an abandoned offering) rather than a separate loot beat.
+`kind: "instantReward"`, `tier: "rare"`, `minFloorDepth: 15`, `onceLifetime: true`,
+`guaranteedArtifactId: "vigil-cloth"` — a specific item (`07-items-artifacts.md`'s "Event-tied
+artifacts") rather than a roll off the standard table, since the scene already describes exactly
+what's sitting there (beside the candle, like an abandoned offering).
 
 **`broken-seal`** ("Broken Seal") — Thread 2, floor 15. Base text and both `crossEventVariants`
-readings are in C.1, entries 14-15. Same mechanics as `vigil-candle`.
+readings are in C.1, entries 14-15. Same mechanics as `vigil-candle`, `guaranteedArtifactId:
+"torn-lock-plate"`.
 
 **`old-count`** — Thread 4, common tier:
 
@@ -606,3 +638,431 @@ branch), `src/engine/events/shared.ts` (`isTier3Escalated`, `pickReflectionPromp
 since their combat-victory path never calls `closeEvent()`), `src/engine/migration.ts` (save
 migration guards), `src/ui/screens/events.ts` (Skip-visibility for `forced3`, action-label
 override), `test/events.test.ts`, `docs/gameplay-decisions/08-events.md` §8.1/§8.13/§8.15 (sync).
+
+---
+
+## Part E — The Wanderer
+
+A rare, no-reward encounter — 1 of 3 lore-delivery channels outside the event system proper (the
+other 2: Item/Artifact lore-bearing descriptions, `07-items-artifacts.md`; Camp Reflection, a party
+self-analysis mechanism at rest, `03-survival-stats.md`).
+
+**Not** 1 of the 3 established recurring figures (§11.7-11.8) and **not** a fixed identity — no
+`returnDescription`, a different individual every encounter. This is why it doesn't need the same
+"decide first whether they belong on §11.7's line of contact" gate §11.8 requires for a new
+*recurring* figure — there's no single character here to place on that line at all, only a
+recurring *situation* (Thread 4, "Traces of Those Before," Part B.2) finally given a voice.
+Deliberately compatible with §11.9's open questions: no variant of this event ever confirms whether
+a given wanderer is really still alive down there, made it out, or is something else entirely.
+
+**Mechanics**: `id: "the-wanderer"`, `kind: "instantReward"`, `tier: "rare"`, `noArtifactReward:
+true` (reuses the exact pattern `still-breathing` established, Part C.5 — no new `EventKind`),
+`minFloorDepth: 10` (a light gate — encountering a fellow lost soul reads better once the party's
+been down a while; low enough to still be common relative to the floor-70-deep events). **Not**
+`onceLifetime` — can recur any number of times in a run, each time picked from the same
+`descriptionVariants` pool below, so "always someone different" is enforced by the pool being
+randomized per room (Part C.2's existing mechanism), not by any new once-per-identity tracking.
+
+### Content — 3 base variants + 1 conditional
+
+**Variant 1** — temporal confusion:
+
+> "A figure sits with their back against the wall, turning something small over in their hands,
+> too dark to see what. 'How long's it been?' they ask, not really to you. 'Feels shorter every
+> time I ask.'"
+
+**Variant 2** — a repeated, broken action:
+
+> "A figure leans against the far wall, methodically restringing a bow that has no string left to
+> restring. 'Don't trust the quiet floors,' they say. 'The loud ones already told you what they
+> want.'"
+
+**Variant 3** — mistaken recognition:
+
+> "A figure looks up as you approach, then straightens like they expected someone else. 'Not you,
+> then,' they mutter, and go back to what they were doing before you got here — which, from here,
+> is nothing at all."
+
+**Variant 4 — conditional, via `crossEventVariants`**, `{"eventId": "camp-reflection", "outcome":
+"unaware"}` (reuses the exact synthetic bridge tag Camp Reflection already writes for
+`wandering-hermit`, `03-survival-stats.md` — no new tracking, a 2nd reader of the same 1 tag):
+
+> "A figure sits exactly where you'd expect one to be by now. They don't ask how long it's been.
+> Neither do you."
+
+Only reachable once the party's own Camp Reflection has reached Unawareness — the payoff is
+specifically that the party no longer thinks to ask Variant 1's question themselves anymore. Craft
+note: written to require Variant 1 having been *possible* (thematically, not mechanically — no
+data dependency), so the absence lands only for a reader who's seen the shape of the question
+before.
+
+**Reflection** (shared across all 4 variants — same reasoning `merchant` shares 1 reflection across
+its several variants):
+
+```
+prompt: "Whoever that was, they didn't ask your names, and you didn't offer them."
+curious: "Whoever's still down here talking to themselves — you'd guess there's more than 1."
+wary: "You don't look back to check if they're still where you left them."
+dismissive: "Another lost soul talking to itself. Not your problem."
+```
+
+### Compliance check against `11-world-bible.md`
+
+No variant states whether the figure is alive, a remnant, or something else (§11.9). No variant
+names "Sleeper," "Covenant," or "the Balance." Agency stays fully with the party throughout — the
+figure never controls or compels anything, only talks; Variant 4's absence-of-a-question is the
+*party's* drift being shown, not anything done to them. Doesn't touch any of the 3 established
+figures' own storylines (§11.7-11.8) — a wanderer's dialogue never references the Hermit, the
+hooded figure, or the Stranger, staying a wholly separate thread.
+
+### Build order and files touched
+
+`data/events.json` (new event entry: `descriptionVariants` for variants 1-3, `crossEventVariants`
+for variant 4, `reflection`, `noArtifactReward: true`, `minFloorDepth: 10`), `test/events.test.ts`
+(coverage: variant pool distribution, the Unaware-tier crossEventVariant only firing once that tag
+is set, no artifact granted). No engine changes needed — every mechanism this event uses
+(`descriptionVariants`, `crossEventVariants`, `noArtifactReward`, reflection) already exists.
+
+---
+
+## Part F — The Ending System (floor 100 / floor 120)
+
+**Scope, confirmed**: a fully **optional content layer** — it does not change the existing
+infinite-descent/permadeath loop. The overwhelming majority of runs still end in ordinary
+permadeath well before floor 100, exactly as today. This is a branch for the rare run that survives
+that far, not a new default destination. Lore-authoring for the whole game ends at floor 120 — the
+dungeon keeps generating past that depth for anyone who wants to keep playing, but no new story
+content is designed to appear there.
+
+### F.1 The floor-100 checkpoint
+
+On reaching floor 100 (still alive), the run pauses on a **guaranteed story beat**, not a normal
+event roll — mechanically distinct from `rollEvent()`'s probabilistic system, since this must fire
+every single time a run reaches this depth, unconditionally.
+
+**2 independent gates**, checked in this order the moment floor 100 is reached — never all 4 endings
+competing on 1 menu:
+
+| Condition | What the checkpoint offers |
+|---|---|
+| **Either Leave trigger fires** (below) — checked first, overrides everything else | **Leave only** (§F.4) — no Stay, no Let Go, nothing else. |
+| Camp Reflection Tier 4, Unawareness (`03-survival-stats.md`) | **Stay**, **Let Go**, or **Continue** (§F.5, the path to the true ending). |
+| Anything else | **Stay** (§F.2) or **Let Go** (§F.3). |
+
+**Leave has 2 independent triggers, either one sufficient on its own:**
+
+**1. "The blood debt breaks"**: Chain 3, "Blood Debt" (§8.15), reaching its tier-3 escalation at some
+point this run — `narrativeCounters.altarPaymentsCount >= events.bloodDebtThreshold3` (16 payments,
+the same counter and threshold already tracked for `blood-altar`'s `chainEscalated3Description`) —
+**and** the most recently recorded `blood-altar` outcome (`GameState.eventOutcomes["blood-altar"]`,
+already written per Part C.1's table) reads `"declined"`. Nothing new to track: both pieces of state
+already exist for other reasons — this condition is a pure read of the 2 of them together.
+
+**2. "The ledger never opens"**: Chain 4, "Taken, Never Given" (`freeRewardsTakenCount`, §8.15),
+reaching its 1 escalation — the party has taken from 12+ of the 7 zero-cost reward events combined
+(`open-chest`, `old-count`, `doubled-back`, `waiting-supplies`, `vigil-candle`, `broken-seal`,
+`half-a-warning`) **and** never once paid at `blood-altar` or fed `sacrificial-circle`
+(`altarPaymentsCount === 0 && artifactsSacrificed === 0`). Also nothing new to track beyond Chain 4's
+own counter, which §8.15 specifies in full.
+
+**Why 2 triggers instead of 1**: they're deliberately 2 different roads to the same absence, not 2
+unrelated mechanics bolted together. An earlier draft of this gate used Camp Reflection's Untouched
+tier alone — a party that barely engaged with anything. Dropped because it's nearly unreachable by
+floor 100 (resolving almost any event increments `loreExposureCount`) and because it collapsed 2
+genuinely different stories into 1 vague "didn't do enough" reading. Trigger 1 is a party that engaged
+*the most* with 1 specific reciprocal exchange — enough to live through the stone's most corroded
+text — and then, on some later visit, didn't pay. Trigger 2 is a party that was never in a reciprocal
+exchange with anything down here to begin with, only ever on the receiving end. Nothing here decides
+to punish either one. Both are the same shape as everything else in this bible (§11.4): there's simply
+no longer (trigger 1) or never was (trigger 2) a standing exchange that recognizes this party as
+someone worth keeping. For trigger 1, whether the decline was chosen (enough HP to pay, paid anyway
+16+ times, then refused) or forced (nobody had HP to spare that visit) is never distinguished in the
+text — deliberately; the significant fact is only that the pattern broke, not why. §F.4's actual
+wording never specifies which trigger fired, on purpose — the ending reads identically either way.
+
+**Why Continue's condition, specifically** (flagging for confirmation — the 1 open design parameter
+in this spec): reusing `loreExposureCount`/`campReflectionTier` needs no new tracking at all, and
+it's thematically exact — the true ending is "keep going despite total terror," and the 1 existing
+mechanism that measures a party's *capacity to stop registering fear as a reason to stop* is Camp
+Reflection's Unawareness tier. A party able to take this choice isn't brave in the ordinary sense;
+they've drifted far enough that the normal reasons to turn back have stopped landing on them the
+way they used to (§11.5) — the same erosion treated as a quiet tragedy through the rest of the game
+becomes, here, the literal precondition for the deepest content. That reframing is the point.
+
+None of these conditions are ever stated to the player. A party whose blood debt never breaks and
+never reaches Unawareness never sees any hint that Leave or Continue exist as options; nothing should
+read as "you failed to unlock" anything, since no condition anywhere in this system is ever surfaced.
+
+### F.2 Ending 1 — Stay
+
+> "To stay — to let whatever's still holding this floor together keep holding, and be part of what
+> holds it."
+
+Resolution, once chosen:
+
+> "None of you climb back out. The floor doesn't collapse, doesn't call, doesn't ask for anything
+> further — you simply don't leave, the way a room doesn't leave the house it's part of. Somewhere,
+> much later, another party will walk this same corridor. They won't know your names. But something
+> about how they move through it will be, just slightly, easier than it should be."
+
+Deliberately doesn't explain the mechanism (how staying "helps" — left open, matching §11.9's own
+discipline about not over-explaining what the dungeon's structure actually is). The run ends here —
+a distinct resolution screen, not `GameState.gameOver: "defeat"` (this isn't a loss).
+
+**The payoff, on a later run**: a new, rare, per-profile-once event — not a variant of `the-wanderer`
+(Part E), a deliberately different, more personal shape: it names the specific character who stayed.
+
+> "A figure crouches at the edge of the torchlight, and for a moment none of you can place why they
+> look familiar — until someone does. It's {{name}}, the {{class}} who never came back up. They
+> don't seem surprised to see you. 'Took you long enough,' they say, and for just a moment, sound
+> like they used to."
+
+No combat, no cost — matches the established "just talk, no transaction" shape (Part E). What it
+grants, if anything, is left as an open design question (a small, unexplained blessing implied by
+"easier than it should be" above would fit; a pure dialogue-only beat would also fit — a call to
+make once the persistence layer below actually exists).
+
+**This needs new architecture, not just new content**: `GameState` resets every run, so nothing
+about who stayed and as what character survives past the current save. This needs a persistent
+record **outside** the current per-run save file — something like a small profile-level store (e.g.
+`{ retiredCharacters: { name, class }[] }`) written once at the moment Ending 1 is chosen, read by
+a later run's event-roll to decide whether "the one who stayed" event is even eligible. **This spec
+does not attempt to design that persistence layer** — it requires understanding how saves are
+currently stored and versioned (`docs/technical-decisions.md`, the save-version-guard work already
+in this repo's history) before proposing a shape for it. Flagging this explicitly rather than
+guessing.
+
+### F.3 Ending 2 — Let Go
+
+> "To let go, together, all at once — however far down that actually leads."
+
+Resolution:
+
+> "None of you feel yourselves stop. There isn't a moment where it happens — only, gradually, the
+> awareness that whatever's dreaming doesn't distinguish between you and everything else it's
+> already holding. The last clear thought any of you has, before the distinction stops mattering:
+> the sky above the entrance, the town you set out from, the years before any of this — none of it
+> was ever outside this. It was never a separate place you were returning to. It was just a
+> farther room in the same dream, dreamed calmly enough that nobody standing in it ever needed to
+> notice."
+
+**The plot twist, precisely**: the party's home world — everything before the descent — was never
+outside Sleeper's dream either; the dungeon and the surface are the same dream at different
+distances from whatever's actually happened. This is a **different axis of revelation** from the
+true ending's (§F.5), not a duplicate — it's cosmic scope, not institutional history, and it
+resolves nothing on §11.9's list (doesn't say whether Sleeper wakes, doesn't touch the Covenant,
+doesn't touch any of the 3 recurring figures). What it deliberately leaves open: whether this means
+nothing was ever "real," whether every person who never descended is dreamed the same way, whether
+waking (for Sleeper, or for anyone) was ever a coherent idea to begin with. A distinct resolution
+screen, same as Ending 1 — not `defeat`.
+
+### F.4 Ending — Leave (a dead end, and 1 way through it)
+
+Reached only when 1 of §F.1's 2 Leave triggers fires — there was never a Stay or Let Go offered here,
+only this:
+
+> "There isn't a stay, and there isn't a further — only the way back up. Nothing else is offered.
+> Nothing about that turns out to mean it'll be easy."
+
+What every such party finds, regardless of anything else about the run:
+
+> "The corridor you climbed through isn't here anymore. Where it should be, there's only wall —
+> smooth, seamless, older than anything else on this floor. However you got down here, that's not
+> how you're getting back up."
+
+> "There has to be another way. There's always been another way. You start looking — and that's
+> when you hear how many of them have been standing behind you the whole time you were looking at
+> the wall instead."
+
+**Default outcome — bad ending, unknown fate**: unless the condition below is met, this is where it
+ends.
+
+> "None of you get a clean look at how many there are. There wasn't a plan, and there wasn't time
+> to make one. What happened to the party after that isn't something anyone will ever get to tell."
+
+Deliberately not a confirmed death and not a confirmed survival — "unknown fate" is the actual
+content of this ending, not a placeholder for one. Framed as a genuine bad ending (the only path this
+floor offered a party with no standing exchange left to draw on — whether because it broke, or never
+opened — turned out to be a trap, not a mercy), distinct from ordinary `defeat` (no HP hits 0 on
+screen, no fight plays out — the game never shows what happens, on purpose).
+
+**The way through — conditional, and rare**: if any character in the party has a specific artifact
+(`waystone-shard`, below) currently equipped, the ambush above never lands. Instead:
+
+> "Something else answers, from further along the same dead-end wall — not the wall giving way, but
+> a seam in it, sealed shut, humming at a pitch none of you would have caught if you weren't already
+> listening for anything. It isn't stone. It's failing, and it's been failing for longer than any
+> of you have been alive."
+
+> "The shard fits like it always meant to. The seam doesn't so much open as remember how to. What's
+> on the other side isn't the corridor you came down. It's air. Actual, ordinary, undeserved air."
+
+**This is the actual good ending** — the only fully confirmed, unambiguous escape in the whole
+system. Gated by inventory (a specific rare artifact), not by any drift/reflection state — a
+genuinely different *kind* of gate from Continue's, on purpose. Deliberately **not** found the way
+any other artifact is, though — see below.
+
+**New artifact — `waystone-shard`** (Unique, `07-items-artifacts.md`'s Category D, "Older Than the
+Mark" — this predates the Covenant too, a 3rd item for that category):
+
+> "A shard of something that was never carved, only grown that way — smooth on every broken edge
+> except where it snapped. This was already broken long before anyone started marking these walls
+> with a spiral."
+
+Confirms only that whatever this came from predates and is unrelated to the Covenant — never
+confirms who or what actually built it, never confirms this exit exists reliably for any other
+party, never confirms the dungeon "allows" this or simply failed to notice. All genuinely open.
+
+**Drop source, restricted — deliberately excluded from the free-take pool**: unlike every other
+artifact in the catalog, `waystone-shard` never appears via the standard `treasureOrEvent` roll used
+by `open-chest` and the rest of Chain 4's 7 zero-cost events (§8.15) — it would undercut the whole
+point of Chain 4 if the item that guarantees the good ending could turn up in the exact pool that
+also feeds the *bad* one. It's also excluded from Elite kills, `merchant`, `cursed-shrine`,
+`twin-altars`, and `sacrificial-circle`. It appears from exactly **2** sources instead:
+
+- **A Boss kill** (`02-monster.md` §2, every `bossFloorInterval` floors) — part of the normal `boss`
+  rarity-weight roll (Unique/Epic only, `07-items-artifacts.md` §7.2), no special logic needed beyond
+  the exclusion above.
+- **`blood-altar`** (§8.5) — but only once `narrativeCounters.altarPaymentsCount >=
+  events.bloodDebtThreshold2` (8 payments, the same counter Chain 3 already tracks). Below that
+  count, a `blood-altar` payment rolls exactly as it does today, `waystone-shard` excluded like
+  everywhere else. This is deliberate: the escape key only becomes reachable once a party has already
+  paid the stone enough times to be approaching the depth where Chain 3's own tier-2 escalation kicks
+  in — "an event that requires paying a lot," not a lucky first visit.
+
+**The intended irony, spelled out once**: the same behavior that can eventually *cause* Leave's bad
+branch (paying the stone again and again, deep enough to reach tier 3, §F.1) is the same behavior
+that opens the only door to Leave's good branch. Paying a lot doesn't guarantee finding the shard —
+it's still a roll, same as any other artifact — but paying nothing at `blood-altar` guarantees never
+finding it there at all. A party's own relationship with 1 specific exchange decides which version of
+Leave it's even possible to reach, long before floor 100 ever arrives.
+
+**Mechanism needed, not yet built**: `ArtifactDefinition.restrictedDropSources?: Array<"boss" |
+"blood-altar">` (new, `src/types.ts`) — when present, an id is filtered out of every roll except the
+ones named. `rollArtifact()` (`src/data/artifacts.ts`) needs an opt-in override so `bloodAltarPay()`
+can request `waystone-shard` be included once the threshold above is met; every other caller
+(`openChest.ts` and the rest of Chain 4's events, `sacrifice.ts`, the Elite/Boss kill paths that
+don't pass the override) continues to exclude it automatically.
+
+Compliance: neither branch names "Sleeper," "Covenant," or "the Balance"; neither resolves anything
+on §11.9's list. The bad branch doesn't contradict §11.9's "no evidence anyone comes back" item —
+that item is specifically about *death*; this is a live party facing an ambush whose *outcome* is
+what stays unconfirmed, a different thing entirely. Both branches are distinct resolution screens,
+neither the same as Stay/Let Go/Continue nor as each other — the good branch should read as
+unambiguously survived, the bad branch as unresolved, never as a confirmed death.
+
+### F.5 Ending 3 — Continue (the path to the true ending)
+
+Available only under §F.1's condition.
+
+> "To keep going, past the point where any of you can say this is still a choice you'd recommend."
+
+Choosing it does not end the run — floor 100 continues normally, monster/floor generation unchanged,
+until floor 120.
+
+**Floor 120 — the final encounter.** On arrival, before any combat:
+
+> "What's left of him doesn't have a face to speak from anymore, but something in the room still
+> remembers how his voice sounded — a vast, wrong shape drifting in the dark, more brain than body,
+> ropes of nerve-thick tissue trailing beneath it where legs should be, reaching without ever quite
+> touching the ground."
+
+Dialogue, before the fight (6 short lines, deliberately restrained — no long-winded villain
+monologue, §anti-cringe-slop's own standing rule):
+
+> "You made it further than any of them."
+> "I didn't come down here to build anything. I came down because everyone I was supposed to save
+> was already gone, and I couldn't stop asking the ground to give them back."
+> "It never gave anyone back. It just... kept listening. So I kept asking. Eventually I stopped
+> noticing I was still asking."
+> "The others who followed me down, over the years — I taught them how to ask properly. That's all
+> any of it ever was."
+> "I don't remember the last time I was only a person. I'm not sure there's a difference anymore,
+> between what's still me and what's still just... dreaming."
+> "You can still turn back. Or you can keep asking, the way I did, until there's nothing left to
+> tell you apart from what you asked for."
+
+**The rhyme, deliberate**: this is what Ending 1 (§F.2) looks like carried far enough, for far too
+long. "Staying" is framed there as quiet and almost gentle; this is what it becomes given enough
+time — a direct, load-bearing warning rather than 2 unrelated endings coexisting by coincidence.
+
+**What this resolves (the "partial" the user asked for) vs. what it doesn't:**
+
+| Resolved | Stays open |
+|---|---|
+| A specific human founded the Covenant, driven by grief over a loss he couldn't undo (§11.5's "the Call" finding purchase on a mind already cracked open) | Whether Sleeper as a *whole* ever wakes, or only ever continues dying — this is 1 person fused with a *fragment*, never proof of the entire entity's trajectory |
+| The Covenant's rituals, taught and repeated across generations, had *some* real effect on which locations held their shape (§11.6) | Whether that effect is what the Covenant themselves believed it was, or something else their ritual only approximated |
+| Something answers, or at least "keeps listening" — a fragment of awareness persists and can be locally reached | Whether the containment or communion reading was ever the correct one — the founder's own account is his, not confirmed as authoritative |
+| The founder is real, was once an ordinary person, and is still (in some sense) there | What the Guardians are, whether the hooded figure is a continuous person, what happened to the Hermit's companion — all untouched |
+
+The founder's own account is framed as **his own**, not an authorial confirmation — a party that
+picks `wary` or `dismissive` reflection stances earlier in the run is fully entitled to read every
+line above as a dying, corroded mind's self-serving myth rather than history. Nothing in the
+delivery ever confirms which reading is correct. This is the mechanism that keeps the user's
+explicit requirement — "don't rob the player's own judgment" — intact even while giving real,
+citable answers to some of it.
+
+**The fight**: a new Boss-tier `MonsterArchetype` (`02-monster.md`), stronger than any existing boss
+— full kit design (skills, stat scaling at floor 120) is a separate task from this spec, flagged
+here as needed, not designed here.
+
+**After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — no new
+mechanic needed for this framing; it's flavor over the existing infinite-descent loop continuing as
+normal.
+
+**Events that permanently disappear**, from this point in the run onward: every event tied to the
+Covenant as an institution — `guardian-fight`, `desecrated-altar`, `merchant`, `blood-altar`,
+`cursed-shrine`, `twin-altars`, `sacrificial-circle`, `wandering-hermit`, `broken-seal`,
+`half-a-warning` — plus `still-breathing`, made narratively redundant once the bigger reveal above
+has already landed. **No new mechanism needed**: `closeEvent()` already excludes any id present in
+`GameState.firedOnceEventIds` from future rolls (`src/data/events.ts`'s `rollEvent()`) — the true
+ending's resolution simply bulk-inserts all 11 of the ids above into that array in 1 pass. Staying
+in the pool, unaffected: `open-chest`, `collapsed-floor`, `old-count`, `doubled-back`, `the-delay`,
+`waiting-supplies`, `vigil-candle` (mundane/pure-dream-logic, no institutional tie), `gambling-den`
+(the Stranger, explicitly not Covenant, §11.8), `the-wanderer` (Part E), and Ending 1's new
+retired-character event (§F.2).
+
+### F.6 Normal endings — the existing permadeath conclusion, given a little texture
+
+Everything above is the rare branch. The overwhelming majority of runs still end the way they
+already do — `GameState.gameOver: "defeat"`, well before floor 100 — and that stays completely
+unchanged as the default outcome. The only addition here is small: 1-2 short epilogue lines, varied
+by *how* the run ended, instead of a single flat conclusion regardless of cause.
+
+- **Died in combat** (HP reached 0 mid-fight): the existing conclusion, unchanged — this is the
+  game's actual default ending and doesn't need new text to justify itself.
+- **Died to exhaustion** (the Dying DOT, `03-survival-stats.md`, killed the party without a monster
+  landing the last hit): 1 new line acknowledging the difference — something failed to keep the
+  party fed and rested long enough, not a fight lost. Exact wording not drafted here; a 1-sentence
+  addition, not a scene.
+
+No new mechanism needed beyond checking which system dealt the finishing blow (already
+distinguishable — `applyDyingDamage` vs. ordinary combat resolution, both in `src/engine/`) at the
+moment `gameOver` is set. Deliberately minimal: this is texture on the existing, overwhelmingly most
+common outcome, not a 5th designed ending competing for the same weight as §F.2-F.5 above.
+
+### F.7 What this spec does not attempt
+
+This is a design spec, not an implementation plan — several pieces here are flagged rather than
+built out, because they're genuinely separate-sized problems:
+
+- The floor-100 checkpoint's trigger mechanism (a guaranteed, non-rolled story beat at an exact
+  depth) doesn't exist anywhere in the current event/room system and needs its own design pass.
+- New `GameState.gameOver` outcomes (or an entirely separate resolution-screen concept) alongside
+  the existing `"victory" | "defeat"` — up to 5 distinct ones now (Stay / Let Go / Leave-ambushed /
+  Leave-escaped / Continue's outcome), needs a look at every place that field is currently read.
+- The cross-run persistence layer for Ending 1 (§F.2) — explicitly not designed here; needs
+  investigation into the existing save/version-guard system first.
+- Floor 120's boss `MonsterArchetype` — kit, stats, skills all undesigned; this spec only fixes the
+  visual and the pre-fight dialogue.
+- `waystone-shard` (§F.4) needs to actually be added to `data/artifacts.json` before its check can
+  do anything — same caveat as the 3 event-tied items in `07-items-artifacts.md`: referencing an id
+  that doesn't exist in the real catalog yet would throw at runtime. Its `restrictedDropSources`
+  mechanism (§F.4) is a separate, larger piece on top of that: a new `ArtifactDefinition` field, a
+  `rollArtifact()` override path, and the `bloodAltarPay()` threshold check all need to be built
+  before the Boss/blood-altar-only sourcing does anything — until then, treat the item as spec-only.
+- Whether/how any of the floor-100 gating conditions (§F.1) — the blood debt breaking, the free-take
+  ledger never opening, or Camp Reflection reaching Unawareness — should be visible to a curious
+  player in any form (a hint, an achievement-style unlock notice) or stay entirely silent — leaning
+  toward entirely silent, consistent with how no other mechanic's exact thresholds are ever shown, but
+  not locked here.

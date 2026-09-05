@@ -9,14 +9,14 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 |---|---|---|
 | [`01-class-skill.md`](./01-class-skill.md) | §1 | Class roster (6 classes, incl. Viking & Plague Doctor), skills per class, the 3-rank skill power-scaling system, status effects used by skills — `data/classes.json` |
 | [`02-monster.md`](./02-monster.md) | §2 | Monster scaling formula by floor, aggro-based targeting, AI patterns (incl. the `aiPattern: "defensive"` low-HP logic), regular-monster skill kits, monster tiers (normal/Elite/Boss) — `data/monsters.json` |
-| [`03-survival-stats.md`](./03-survival-stats.md) | §3 | Fear + Satiety thresholds, Exhausted/Dying, Camp, Rest room — `data/balance-config.json` |
+| [`03-survival-stats.md`](./03-survival-stats.md) | §3 | Fear + Satiety thresholds, Exhausted/Dying, Camp, Rest room (incl. Camp Reflection, a party self-analysis mechanism) — `data/balance-config.json` |
 | [`04-fear-combat.md`](./04-fear-combat.md) | §4 | How fear feeds back into combat, per-target AoE accuracy rolls, ultimates |
 | [`05-character-stats.md`](./05-character-stats.md) | §5 | How HP/MP work, growth by level |
 | [`06-level-system.md`](./06-level-system.md) | §6 | Level system, EXP, infinite dungeon-floor level, Elite/Boss, Elite/Boss-exclusive skills — `data/level-growth.json` |
-| [`07-items-artifacts.md`](./07-items-artifacts.md) | §7 | Consumable items + Artifacts (permanent relics within a run, one-shot equip/discard decision), rarity, drop sources |
+| [`07-items-artifacts.md`](./07-items-artifacts.md) | §7 | Consumable items + Artifacts (permanent relics within a run, one-shot equip/discard decision), rarity, drop sources, lore-bearing descriptions |
 | [`08-events.md`](./08-events.md) | §8 | Event rooms: event types split by rarity tier |
 | [`09-currency.md`](./09-currency.md) | §9 | Cursed Coins — drop rule, spend across Merchant/Gambling Den/Wandering Hermit |
-| [`10-event-narrative.md`](./10-event-narrative.md) | §10 | **Merged into §8.** The narrative layer on top of Event rooms — shared Covenant/Sleeper worldview, recurring NPCs, event chains, post-event reflection — is implemented and documented at `08-events.md` §8.13-§8.16. This file now only keeps the design questions left undecided along the way |
+| [`10-event-narrative.md`](./10-event-narrative.md) | §10 | The narrative layer on top of Event rooms — relationship graph across all events, cross-event continuity, description variants, chain tier 3 (implemented; see also `08-events.md` §8.13-§8.16, §8.17-8.24); The Wanderer (a rare no-reward encounter); and the Ending System (floor 100/120 — Stay / Let Go / conditional Leave (bad-default, rare escape) / conditional Continue (true), plus normal-death texture, all spec'd, not yet implemented) |
 | [`11-world-bible.md`](./11-world-bible.md) | §11 | **Hidden lore, never shown to the player.** What the Sleeper and the Covenant actually are, why the party descends, and what the 3 recurring NPCs (merchant/wandering-hermit/gambling-den) represent — ground truth for writing future flavor text consistent with §8.13's player-facing ambiguity |
 
 Other files in `docs/` (`technical-decisions.md`, `minigame-decisions.md`) reference this document via the path `gameplay-decisions/<file>.md §N`.

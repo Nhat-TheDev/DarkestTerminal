@@ -302,6 +302,14 @@ has looked like on two people who aren't the party, and never will be.
 These aren't gaps to fill later. Leaving them open is the point — see §8.13's existing principle.
 This bible resolves *tendencies*, not verified facts.
 
+**The 1 confirmed exception**: the true ending (`10-event-narrative.md` Part F.5, floor 120)
+confirms a few specific facts — a founder existed, was human, was grief-driven, and something real
+answers when reached. It still leaves untouched whether Sleeper as a whole wakes or only continues
+dying, whether either side of the containment/communion split was correct, and everything else on
+this list — and the founder's own account is framed as his, not as this document's authorial voice,
+so a player is never told which parts of what he says to trust. Reaching the deepest point in the
+game earns some real answers; it does not unlock permission to resolve the rest of this section.
+
 ## 11.10 A note on motive
 
 One idea underneath all of §11 is worth stating outright, because it's easy to lose track of while
@@ -370,10 +378,12 @@ reason it was, the setting has quietly drifted.
 - Depth = proximity to Sleeper's dreaming core. A floor-depth-gated reveal should read as "getting
   closer," not as "unlocking a new area."
 
-## 11.12 Where each of the 11 events sits in the Balance
+## 11.12 Where each event sits in the Balance
 
-Not eleven mechanics — eleven different relationships to the same underlying tendency (§11.4).
-Check this before touching an event's flavor text.
+Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§11.4).
+Check this before touching an event's flavor text. The original 11 are transactions of some kind;
+8 more were added later (`10-event-narrative.md` Part C) — most of those carry no transaction at
+all, which is its own facet, not an oversight.
 
 | Event | Facet |
 |---|---|
@@ -387,6 +397,14 @@ Check this before touching an event's flavor text.
 | `sacrificial-circle` | Escalating dependence — like-for-like trade that, repeated, stops requiring consent (Chain 2) — the clearest small-scale preview of §11.5's unawareness |
 | `wandering-hermit` | Correction — the one place damage already done can be reversed, run by the one person with a hard-won, unexplainable feel for how |
 | `gambling-den` | Imitation — a human-made copy of the shape (stakes, odds, doubling) that never actually touches Sleeper; Balance-shaped, not Balance-real |
+| `old-count` | Outside the Balance — a stranger's compulsion, not an exchange; nothing offered, nothing taken |
+| `doubled-back` | Outside the Balance — mortality without ritual, same facet as `open-chest` |
+| `the-delay` | Outside the Balance — the dream's own physics slipping, with no transaction attached either way |
+| `waiting-supplies` | Outside the Balance — abandoned supplies, no toll paid to find them |
+| `vigil-candle` | Outside the Balance — deliberately atmosphere only; no toll, no Covenant claim on it |
+| `broken-seal` | Evidence, not a transaction — the schism's own wreckage; nothing offered or taken at the scene itself |
+| `half-a-warning` | Evidence, not a transaction — a testimony, not a toll |
+| `still-breathing` | Evidence, not a transaction — the deepest evidence in the game, and still no cost attached to finding it |
 
 **A detail worth protecting in any future HP-cost writing**: `blood-altar` and `collapsed-floor`
 share Chain 3's counter (§8.15), and now share a category above, despite one being ritual/Covenant
