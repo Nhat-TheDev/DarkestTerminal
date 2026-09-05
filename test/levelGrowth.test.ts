@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { growthBonus, ELITE_MULTIPLIER, MAX_LEVEL } from "../src/data/levelGrowth";
 import { spawnMonster } from "../src/data/monsters";
 import { getClass, CLASSES } from "../src/data/classes";
+import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { createCharacter } from "../src/engine/party";
 
 const MILESTONES: Record<number, { attack: number; defense: number; maxHp: number; maxMp: number }> = {
@@ -72,12 +73,13 @@ describe("createCharacter applies growth for its level", () => {
 describe("growth is class-dependent", () => {
   test("growthWeights sum to the 5.0 budget for every class", () => {
     for (const cls of CLASSES) {
+      const gw = GROWTH_WEIGHTS.classGrowthWeights[cls.id]!;
       const sum =
-        cls.growthWeights.attack +
-        cls.growthWeights.defense +
-        cls.growthWeights.maxHp +
-        cls.growthWeights.maxMp +
-        cls.growthWeights.magicPower;
+        gw.attack +
+        gw.defense +
+        gw.maxHp +
+        gw.maxMp +
+        gw.magicPower;
       expect(sum).toBeCloseTo(5.0, 5);
     }
   });

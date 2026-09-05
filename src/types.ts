@@ -73,6 +73,11 @@ export interface GrowthWeights {
   magicPower: number;
 }
 
+export interface GrowthWeightsData {
+  classGrowthWeights: Record<Id, GrowthWeights>;
+  monsterGrowthWeights: Record<MonsterType, { attack: number; defense: number; maxHp: number }>;
+}
+
 export interface CharacterClass {
   id: Id;
   name: string;
@@ -84,7 +89,6 @@ export interface CharacterClass {
   baseAggro: number;
   baseSpeed: number;
   baseMagicPower: number;
-  growthWeights: GrowthWeights;
   skills: SkillDefinition[];
 }
 
@@ -237,6 +241,9 @@ export interface Floor {
 
 export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
 
+/** Stat-budget archetype, mirroring how `classGrowthWeights` splits a character class's budget across stats — see `monsterGrowthWeights` (`data/growth-weights.json`). Multipliers sum to 3 (1 per stat) the same way `classGrowthWeights` sums to 5. */
+export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
+
 export interface MonsterArchetype {
   id: Id;
   name: string;
@@ -244,6 +251,7 @@ export interface MonsterArchetype {
   baseAttack: number;
   baseDefense: number;
   baseSpeed: number;
+  monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
   skillIds: Id[];
   expReward: number;
@@ -271,6 +279,7 @@ export interface Monster {
   speed: number;
   skillIds: Id[];
   tier: MonsterTier;
+  monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;

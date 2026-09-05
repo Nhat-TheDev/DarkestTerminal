@@ -1,5 +1,6 @@
 import { describe, test, expect, afterAll } from "bun:test";
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../src/data/classes";
+import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
 import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTargets, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
@@ -647,8 +648,9 @@ function expectValidCharacterBase(cls: ReturnType<typeof getClass>) {
     expect(Number.isFinite(cls[key])).toBe(true);
     expect(cls[key]).toBeGreaterThanOrEqual(0);
   }
-  expect(Object.keys(cls.growthWeights).sort()).toEqual(["attack", "defense", "magicPower", "maxHp", "maxMp"]);
-  for (const value of Object.values(cls.growthWeights)) {
+  const gw = GROWTH_WEIGHTS.classGrowthWeights[cls.id]!;
+  expect(Object.keys(gw).sort()).toEqual(["attack", "defense", "magicPower", "maxHp", "maxMp"]);
+  for (const value of Object.values(gw)) {
     expect(Number.isFinite(value)).toBe(true);
     expect(value).toBeGreaterThanOrEqual(0);
   }
