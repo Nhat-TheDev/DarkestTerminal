@@ -109,6 +109,8 @@ export interface Character {
   usesRemainingThisCombat: Record<Id, number>;
   cooldownsRemaining: Record<Id, number>;
   equippedArtifactIds: Id[];
+  /** Set once at character select, fixed for the whole run — `11-abilities.md` §11.1 "Character-select flow". `null`/absent = no ability equipped. */
+  equippedAbilityId?: Id | null;
 }
 
 export interface StatusEffectDefinition {
@@ -162,6 +164,28 @@ export interface ArtifactDefinition {
   rarity: ArtifactRarity;
   effects: ArtifactEffect[];
   isCursed?: boolean;
+}
+
+/** Effect kinds only Abilities can use — either genuinely new (`alwaysHit`) or a `statBoost` targeting a stat `ArtifactEffect`'s own `statBoost` can't (`aggro`/`speed`/`magicPower`). See `docs/gameplay-decisions/11-abilities.md` §11.1. */
+export type AbilityOnlyEffect =
+  | { kind: "alwaysHit"; chance: number }
+  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number };
+
+/** Reuses every `ArtifactEffect` kind except `curseAggroBoost` (cursed-Artifact-only) — Abilities are never cursed — plus `AbilityOnlyEffect`. */
+export type AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect;
+
+export interface AbilityDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  rarity: ArtifactRarity;
+  effects: AbilityEffect[];
+}
+
+/** Persisted separately from any run's `SaveFile` — `docs/gameplay-decisions/11-abilities.md` §11.1 "The persistent profile". Survives permadeath's save-wipe (`deleteSavesForRun`). */
+export interface AbilityProfile {
+  version: number;
+  unlockedAbilityIds: Id[];
 }
 
 export type EventTier = "common" | "rare";
@@ -374,4 +398,13 @@ export interface GameState {
   /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
       re-trigger, not a history log. Purely flavor today. */
   eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
+  /** Stardust earned this run (1 per Boss kill, unconditional) — spent only at this run's own death
+      flow, never carried to the next run. `11-abilities.md` §11.1 "Mid-run acquisition". */
+  runStardust: number;
+  /** Set once at death (party wipe) when at least 1 character lost a non-common ability — walks the
+      player through reclaiming lost-set entries one at a time. `11-abilities.md` §11.1 "Death flow". */
+  pendingAbilityBuyback?: { entries: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[]; resolvedIndex: number } | null;
+  /** Final outcome per lost-set entry, set once the buyback (if any) finishes — drives the death
+      results screen. `null` until the death flow completes. */
+  abilityDeathResults?: { characterId: Id; lostAbilityId: Id; outcome: "reclaimed" | "lost" }[] | null;
 }

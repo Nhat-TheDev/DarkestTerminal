@@ -2,13 +2,14 @@
 
 *(section 11 of `00-index.md`)*
 
-**Status**: design spec, not yet implemented. Written the way
-`07-items-artifacts.md` documents Items/Artifacts, but since the catalog
-doesn't exist in code yet, this document is itself the source of truth for
-the catalog content (unlike `07`, which defers straight to
-`data/artifacts.json`) — once `data/abilities.json` exists, that file
-becomes authoritative and this document should stop being copied from,
-same as `07` already does for Items/Artifacts.
+**Status**: implemented. `data/abilities.json` is now the authoritative
+catalog — this document should stop being copied from for catalog content,
+same as `07-items-artifacts.md` already does for Items/Artifacts. Engine
+logic lives in `src/engine/profile.ts` (persistent pool), `src/data/abilities.ts`
+(catalog + roll), `src/engine/artifacts.ts` (shared effect hooks),
+`src/engine/combat.ts` (`alwaysHit`), and `src/engine/game.ts` (drop/grant on
+Elite/Boss kill, death-flow guaranteed loss + Stardust buyback). UI lives in
+`src/ui/abilitySelect.ts` and `src/ui/screens/abilityBuyback.ts`.
 
 Full mechanic decision trail (rejected alternatives, rationale for every
 number below): `.hermes/features/abilities/BRAINSTORM.md`.

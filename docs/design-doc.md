@@ -46,7 +46,7 @@ existing gameplay.
 - **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, **permanent for the run once equipped — no manual unequip** beyond 3 narrow exceptions, with multiple rarity tiers, dropped by Elites/Bosses/event rooms. Every pickup is a single immediate decision: equip now (on a chosen character, replacing 1 of their own artifacts if full) or discard for good.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
-### 1.6b Abilities (meta-progression, design spec — not yet implemented)
+### 1.6b Abilities (meta-progression)
 - A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a new `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's character select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
 - Full spec (mechanics, rarity/drop tables, full ability catalog, Stardust-buyback death flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
 
@@ -100,7 +100,7 @@ Main type groups:
 - Elite (found on most floors) is separate from a true Boss (found at a fixed floor interval, `data/level-growth.json` field `bossFloorInterval`) — both have their own skill sets
 - Consumable items + equippable Artifacts (permanent, one-shot equip/discard decision), rarity, drop sources
 - Event room: event types, split by rarity tier
-- Abilities (**design spec, not yet implemented**): persistent cross-run meta-progression, 1 per character (no duplicates in a party), Elite/Boss both grant instant free unlocks, Boss additionally grants Stardust, guaranteed loss on death recoverable only by reclaiming (no swap) via Stardust — full catalog and mechanics in §11
+- Abilities: persistent cross-run meta-progression, 1 per character (no duplicates in a party), Elite/Boss both grant instant free unlocks, Boss additionally grants Stardust, guaranteed loss on death recoverable only by reclaiming (no swap) via Stardust — full catalog and mechanics in §11
 - Cursed Coins: a party-wide currency from combat kills, spent in 3 of the event rooms
 
 ### Technical — [`technical-decisions.md`](./technical-decisions.md)

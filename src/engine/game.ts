@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster } from "../types";
+import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster, ArtifactRarity } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
@@ -23,8 +23,10 @@ import {
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
+import { rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
+import { loadProfile, saveProfile, unlockAbility, lockAbility } from "./profile";
 import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
 import { getStatusEffect } from "../data/statusEffects";
 import { getEvent } from "../data/events";
@@ -48,7 +50,12 @@ export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
 
-  constructor(seed = Date.now(), classIds?: Id[], restore?: { state: GameState; monsters: Monster[]; rngState: number }) {
+  constructor(
+    seed = Date.now(),
+    classIds?: Id[],
+    restore?: { state: GameState; monsters: Monster[]; rngState: number },
+    abilityIds?: (Id | null)[]
+  ) {
     const rng = new Rng(seed);
     if (restore) {
       rng.setState(restore.rngState);
@@ -58,7 +65,11 @@ export class Game {
     }
     const { floor, monsters } = createFloor(rng);
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
-    const party = classes.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
+    const party = classes.map((cls, i) => {
+      const character = createCharacter(`p${i + 1}`, cls.name, cls);
+      character.equippedAbilityId = abilityIds?.[i] ?? null;
+      return character;
+    });
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, rng, inventory };
     this.state = {
@@ -81,6 +92,9 @@ export class Game {
       narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0 },
       pendingReflection: null,
       eventReflectionStances: {},
+      runStardust: 0,
+      pendingAbilityBuyback: null,
+      abilityDeathResults: null,
     };
     this.checkEntryRoomAmbush();
   }
@@ -107,11 +121,77 @@ export class Game {
     this.postMoveCheck();
   }
 
-  // Sole place gameOver becomes "defeat" — App reacts here to invalidate this run's saves (permadeath).
   private postMoveCheck(): void {
     if (this.state.party.every((c) => !c.isAlive)) {
-      this.state.gameOver = "defeat";
+      this.triggerDefeat();
     }
+  }
+
+  /**
+   * The only place `gameOver` becomes "defeat" — both `postMoveCheck` and `resolve()`'s defeat
+   * branch funnel through here, and the `gameOver !== null` guard makes it safe to call from both
+   * without running the ability death flow twice. App reacts to `gameOver` becoming non-null to
+   * invalidate this run's saves (permadeath) — `11-abilities.md` §11.1 "Death flow" runs first, since
+   * it needs the party's still-current `equippedAbilityId`s before anything else changes.
+   */
+  private triggerDefeat(): void {
+    if (this.state.gameOver !== null) return;
+    this.state.gameOver = "defeat";
+    this.runAbilityDeathFlow();
+  }
+
+  /**
+   * Guaranteed loss (no roll) for every equipped non-`common` Ability, persisted to `profile.json`
+   * immediately. If anything was lost, sets up `pendingAbilityBuyback` for the UI to walk through one
+   * entry at a time via `resolveAbilityBuyback`; otherwise leaves `abilityDeathResults` as an empty
+   * array so the results screen has something to render right away. `11-abilities.md` §11.1
+   * "Death flow" steps 1-2.
+   */
+  private runAbilityDeathFlow(): void {
+    const profile = loadProfile();
+    const lostSet: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[] = [];
+    for (const character of this.state.party) {
+      const abilityId = character.equippedAbilityId;
+      if (!abilityId) continue;
+      const ability = getAbility(abilityId);
+      if (ability.rarity === "common") continue;
+      lockAbility(profile, abilityId);
+      lostSet.push({ characterId: character.id, lostAbilityId: abilityId, rarity: ability.rarity });
+    }
+    saveProfile(profile);
+    this.state.pendingAbilityBuyback = lostSet.length > 0 ? { entries: lostSet, resolvedIndex: 0 } : null;
+    this.state.abilityDeathResults = lostSet.length > 0 ? null : [];
+  }
+
+  /** One decision for the lost-set entry currently at `resolvedIndex` — "reclaim" pays
+   * `stardustCostByRarity[rarity]` from `runStardust` to re-add the exact lost id back to the
+   * persistent profile; "skip" leaves it lost. Advances to the next entry (or clears
+   * `pendingAbilityBuyback` once the last one resolves). `11-abilities.md` §11.1 "Death flow" step 3. */
+  resolveAbilityBuyback(action: "reclaim" | "skip"): PartyActionError | null {
+    const pending = this.state.pendingAbilityBuyback;
+    const entry = pending?.entries[pending.resolvedIndex];
+    if (!pending || !entry) return { reason: t("errors.noPendingAbilityBuyback") };
+
+    if (action === "reclaim") {
+      const cost = BALANCE.abilities.stardustCostByRarity[entry.rarity];
+      if (this.state.runStardust < cost) return { reason: t("errors.notEnoughStardust") };
+      this.state.runStardust -= cost;
+      const profile = loadProfile();
+      unlockAbility(profile, entry.lostAbilityId);
+      saveProfile(profile);
+      this.pushAbilityDeathResult(entry.characterId, entry.lostAbilityId, "reclaimed");
+    } else {
+      this.pushAbilityDeathResult(entry.characterId, entry.lostAbilityId, "lost");
+    }
+
+    pending.resolvedIndex += 1;
+    if (pending.resolvedIndex >= pending.entries.length) this.state.pendingAbilityBuyback = null;
+    return null;
+  }
+
+  private pushAbilityDeathResult(characterId: Id, lostAbilityId: Id, outcome: "reclaimed" | "lost"): void {
+    if (!this.state.abilityDeathResults) this.state.abilityDeathResults = [];
+    this.state.abilityDeathResults.push({ characterId, lostAbilityId, outcome });
   }
 
   restAction(choice: "eat" | "chat" | "skip"): void {
@@ -368,6 +448,22 @@ export class Game {
             const artifactId = rollArtifact(monster.tier, this.ctx.rng);
             grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
+
+            // Ability roll: instant, free, permanent unlock — no pool, no gate. `11-abilities.md`
+            // §11.1 "Mid-run acquisition".
+            const profile = loadProfile();
+            const abilityId = rollAbility(monster.tier, this.state.floor.depth, this.ctx.rng, profile.unlockedAbilityIds);
+            if (abilityId) {
+              unlockAbility(profile, abilityId);
+              saveProfile(profile);
+              this.state.combat.log.push({ text: t("game.abilityUnlocked", { ability: getAbility(abilityId).name }), kind: "info" });
+            }
+            // Boss kills additionally, unconditionally grant 1 Stardust — unrelated to whether the
+            // ability roll above hit. Its only use is the death-flow buyback.
+            if (monster.tier === "boss") {
+              this.state.runStardust += 1;
+              this.state.combat.log.push({ text: t("game.stardustGained"), kind: "info" });
+            }
           }
         }
         if (coinsGained > 0) {
@@ -390,7 +486,7 @@ export class Game {
         // combat room (not "event" type, or not a reflection-eligible event).
         maybeTriggerReflection(this.state, this.ctx);
       } else if (this.state.combat.outcome === "defeat") {
-        this.state.gameOver = "defeat";
+        this.triggerDefeat();
       }
     }
     this.postMoveCheck();

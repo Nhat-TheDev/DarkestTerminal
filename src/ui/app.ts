@@ -3,6 +3,7 @@ import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSna
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
+import { getAbility } from "../data/abilities";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
@@ -35,7 +36,7 @@ import {
   type Sprite,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
-import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON } from "./state";
+import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import type { ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
@@ -48,6 +49,7 @@ import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
+import * as abilityBuybackScreen from "./screens/abilityBuyback";
 
 const LOG_HISTORY_SIZE = 20;
 const LOG_REVEAL_INTERVAL_MS = 800;
@@ -229,8 +231,15 @@ export class App implements ScreenContext {
 
   syncUiToGameState(): void {
     if (this.game.state.gameOver) {
-      if (this.ui.kind !== "gameover" && this.game.state.gameOver === "defeat") {
+      // "abilityBuyback" is also part of the post-death flow — this run's saves must still be
+      // deleted exactly once on the first transition into either screen, not re-fired every time
+      // syncUiToGameState is called while the buyback is still in progress.
+      if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver === "defeat") {
         deleteSavesForRun(this.game.state.runId);
+      }
+      if (this.game.state.pendingAbilityBuyback) {
+        this.ui = { kind: "abilityBuyback" };
+        return;
       }
       this.ui = { kind: "gameover" };
       return;
@@ -280,12 +289,12 @@ export class App implements ScreenContext {
       this.quit();
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "saveMenu" && key.name === "q") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
       return;
     }
-    if (this.ui.kind !== "gameover" && key.name === "s") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && key.name === "s") {
       quickSave(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
@@ -365,6 +374,9 @@ export class App implements ScreenContext {
       case "eventGuardianFight":
       case "eventReflection":
         eventsScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "abilityBuyback":
+        abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
         break;
@@ -496,6 +508,7 @@ export class App implements ScreenContext {
         colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
         colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
+        ...(s.runStardust > 0 ? [plainChunk("  "), colorChunk(t("ui.stardustStat", { stardust: s.runStardust }), PALETTE.title)] : []),
       ],
       expLine,
     ]);
@@ -617,7 +630,8 @@ export class App implements ScreenContext {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
 
-    // Artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
+    // Ability, then artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
+    const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
     const buffLines: TextChunk[][] = [];
     const debuffLines: TextChunk[][] = [];
@@ -627,7 +641,7 @@ export class App implements ScreenContext {
       const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
       target.push([plainChunk("  "), colorChunk(statusDisplayName(def), color), colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color)]);
     }
-    const noteLines = [...artifactLines, ...buffLines, ...debuffLines];
+    const noteLines = [...abilityLines, ...artifactLines, ...buffLines, ...debuffLines];
 
     return [line1, hpLine, mpLine, fearLine, ...noteLines];
   }
@@ -769,6 +783,9 @@ export class App implements ScreenContext {
       case "gameover":
         return gameoverScreen.renderMain(this.game);
 
+      case "abilityBuyback":
+        return abilityBuybackScreen.renderMain(this.game);
+
       case "room":
       case "rest":
         return roomScreen.renderMain(this.game, this.ui);
@@ -867,6 +884,8 @@ export class App implements ScreenContext {
       case "eventGuardianFight":
       case "eventReflection":
         return eventsScreen.renderFooter(this.ui);
+      case "abilityBuyback":
+        return abilityBuybackScreen.renderFooter();
       case "gameover":
         return gameoverScreen.renderFooter();
     }

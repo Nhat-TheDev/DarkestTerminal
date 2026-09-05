@@ -7,6 +7,7 @@ import { migrateGameState } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
+import { ABILITIES } from "../data/abilities";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import pkg from "../../package.json";
@@ -42,7 +43,8 @@ function resolveSaveDir(): string {
   return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), APP_DIR_NAME);
 }
 
-const SAVE_DIR = resolveSaveDir();
+/** Exported so `profile.ts` can put `profile.json` alongside per-run saves — it's a sibling file in the same directory, not part of any `SaveFile`. */
+export const SAVE_DIR = resolveSaveDir();
 
 export const QUICKSAVE_ID = "quicksave";
 export const AUTOSAVE_ID = "autosave";
@@ -161,10 +163,12 @@ export function isSaveStateValid(state: GameState): boolean {
     for (const artifactId of c.equippedArtifactIds) {
       if (!existsInCatalog(ARTIFACTS, artifactId)) return false;
     }
+    if (c.equippedAbilityId != null && !existsInCatalog(ABILITIES, c.equippedAbilityId)) return false;
   }
   if (state.gameOver !== "victory" && state.gameOver !== "defeat" && state.gameOver !== null) return false;
   if (!Number.isInteger(state.floor.depth) || state.floor.depth < 1) return false;
   if (!Number.isInteger(state.coins) || state.coins < 0) return false;
+  if (!Number.isInteger(state.runStardust) || state.runStardust < 0) return false;
   if (!Number.isFinite(state.satiety) || state.satiety < 0 || state.satiety > 100) return false;
   for (const count of Object.values(state.inventory)) {
     if (!Number.isInteger(count) || count < 0) return false;

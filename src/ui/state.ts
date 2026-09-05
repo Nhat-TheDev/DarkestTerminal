@@ -43,9 +43,11 @@ export type UiState =
   | { kind: "eventHermitPickArtifact" }
   | { kind: "eventGuardianFight" }
   | { kind: "eventReflection" }
+  | { kind: "abilityBuyback" }
   | { kind: "gameover" };
 
 export const ARTIFACT_ICON = "✦";
+export const ABILITY_ICON = "◆";
 
 /** "⚔" for items used against an opponent, "✚" for recovery (heal/MP), "↑" for buffs/utility. */
 export function itemIcon(item: ItemDefinition): string {

@@ -85,6 +85,12 @@ interface BalanceConfig {
     itemDropChance: number;
     itemWeightDepthGrowth: number;
   };
+  abilities: {
+    dropChance: number;
+    depthCap: number;
+    rarityWeightsByDepth: Record<"elite" | "boss", { atDepth1: Record<ArtifactRarity, number>; atDepthCap: Record<ArtifactRarity, number> }>;
+    stardustCostByRarity: Record<Exclude<ArtifactRarity, "common">, number>;
+  };
   floorGeneration: {
     minPathRooms: number;
     maxPathRooms: number;
