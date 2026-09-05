@@ -401,6 +401,16 @@ not in raw power-per-tier. A few effect kinds have no same-rarity artifact
 to copy directly; those are called out inline below rather than silently
 invented.
 
+**Writing rule for descriptions, not inherited from Artifacts: every
+multi-effect (Epic) description gestures at each effect it grants — no
+effect left silently unaddressed by the flavor text.** Caught by an
+independent craft review (`.claude/skills/narrative-craft-panel`) finding
+`undying-will`'s original description named only its `reflectDamage` half
+and said nothing about its `statBoost maxHp` half, while every other Epic
+already covered both of its effects. Stated explicitly here so the next
+multi-effect Ability added doesn't quietly repeat the gap — a quick check
+against the other 4 Epic rows below is enough, no rigid template needed.
+
 **Balance rule specific to Abilities, not inherited from Artifacts: no 2
 abilities in the same rarity tier may buff the same stat/effect axis.**
 Artifacts can double up safely (`iron-gauntlet` +3 attack and
@@ -418,12 +428,12 @@ was fixed.
 
 | id | name | description | effect |
 |---|---|---|---|
-| `battle-instinct` | Battle Instinct | Raw aggression channeled into every swing, honed through repetition. | `statBoost attack +4` |
-| `iron-skin` | Iron Skin | Years of taking hits without flinching have toughened the skin itself. | `statBoost defense +3` |
-| `hardy-constitution` | Hardy Constitution | A body built to endure — sheer physical resilience, nothing magical about it. | `statBoost maxHp +30` |
-| `deep-reserves` | Deep Reserves | A trained ability to hold more magic in reserve than most ever learn to. | `statBoost maxMp +10` |
+| `battle-instinct` | Battle Instinct | Aggression with nowhere left to go but into the next swing. | `statBoost attack +4` |
+| `iron-skin` | Iron Skin | Enough hits taken that the flinch stopped coming. | `statBoost defense +3` |
+| `hardy-constitution` | Hardy Constitution | A body built to endure — nothing magical about it, just resilience that doesn't quit. | `statBoost maxHp +30` |
+| `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | `statBoost maxMp +10` |
 | `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
-| `evasive-instinct` | Evasive Instinct | An instinct honed to slip aside the instant before a blow lands. | `dodgeChance 3%` |
+| `evasive-instinct` | Evasive Instinct | A half-step sideways that's already happened by the time the blow arrives. | `dodgeChance 3%` |
 | `leeching-will` | Leeching Will | A stubborn will that leeches a little life back from every wound it deals. | `lifesteal 4%` |
 | `arcane-aptitude` | Arcane Aptitude | A natural aptitude for channeling magic, drawn on with every spell cast. | `statBoost magicPower +4` |
 
@@ -487,11 +497,11 @@ specific abilities are actually worth to the character holding them.
 
 | id | name | description | effect |
 |---|---|---|---|
-| `predators-edge` | Predator's Edge | An instinct for finding the gap in an enemy's guard. | `statBoost attack +8` |
+| `predators-edge` | Predator's Edge | Finds the gap in a guard before the enemy knows it's open. | `statBoost attack +8` |
 | `bulwark-stance` | Bulwark Stance | A stance drilled until it's second nature — nothing gets through easily. | `statBoost defense +8` |
 | `second-wind` | Second Wind | The talent for finding one more reserve of strength when it matters most. | `statBoost maxHp +50` |
 | `bloodletting` | Bloodletting | A brutal technique that turns every wound dealt into strength regained. | `lifesteal 5%` |
-| `featherstep-training` | Featherstep Training | Years of drilling footwork most fighters never bother to learn. | `dodgeChance 6%` |
+| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | `dodgeChance 6%` |
 | `restless-vigor` | Restless Vigor | An energy that never settles, always pushing the body to move first. | `statBoost speed +3` |
 
 The first 5 mirror their Rare-tier artifact counterparts
@@ -559,8 +569,8 @@ relevant nudge without redefining the turn order on its own.
 |---|---|---|---|
 | `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | `healOnKill 20` |
 | `thunderous-aura` | Thunderous Aura | An aura that occasionally lashes out on its own, independent of any weapon. | `autoDamage 6` |
-| `vampiric-discipline` | Vampiric Discipline | A discipline that turns combat itself into sustenance. | `lifesteal 10%` |
-| `phantom-reflexes` | Phantom Reflexes | Reflexes trained past the point of conscious thought — the body moves before the mind decides. | `dodgeChance 12%` |
+| `vampiric-discipline` | Vampiric Discipline | A discipline where the fight itself has started feeding it back. | `lifesteal 10%` |
+| `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | `dodgeChance 12%` |
 | `battle-scholar` | Battle Scholar | Draws a lesson from every fight, learning faster than the rest of the party. | `expBoost 15%` |
 
 `thunderous-aura`/`vampiric-discipline`/`phantom-reflexes`/`battle-scholar`
@@ -575,10 +585,10 @@ above what a Rare-tier effect would carry, below the Epic reference.
 
 | id | name | description | effects |
 |---|---|---|---|
-| `undying-will` | Undying Will | A will strong enough to turn punishment right back at whoever dealt it. | `reflectDamage 15%` + `statBoost maxHp +60` |
-| `reapers-instinct` | Reaper's Instinct | An instinct honed on death itself — every kill feeds the next. | `healOnKill 25` + `lifesteal 8%` |
+| `undying-will` | Undying Will | Sends every blow back on whoever dealt it, and has more left in reserve to survive what follows. | `reflectDamage 15%` + `statBoost maxHp +60` |
+| `reapers-instinct` | Reaper's Instinct | Every kill closes the wounds already taken — and leaves this fighter feeding on whatever's left of the fight. | `healOnKill 25` + `lifesteal 8%` |
 | `eye-of-the-storm` | Eye of the Storm | The stillness at the center of the storm — impossible to look away from, while the chaos around it strikes on its own. | `autoDamage 12` + `statBoost aggro +15` |
-| `grandmasters-focus` | Grandmaster's Focus | Mastery sharp enough to recover skills faster and absorb every lesson battle offers. | `cooldownReduction 1` + `expBoost 25%` |
+| `grandmasters-focus` | Grandmaster's Focus | Nothing in a fight goes to waste anymore — not the cooldown between strikes, not the lesson buried in losing one. | `cooldownReduction 1` + `expBoost 25%` |
 | `unerring-will` | Unerring Will | A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied. | `alwaysHit 20%` + `fearResist 12%` |
 
 `undying-will`/`reapers-instinct`/`grandmasters-focus` mirror their

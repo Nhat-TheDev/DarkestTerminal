@@ -1,30 +1,30 @@
 [
-  { "id": "battle-instinct", "name": "Battle Instinct", "description": "Raw aggression channeled into every swing, honed through repetition.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
-  { "id": "iron-skin", "name": "Iron Skin", "description": "Years of taking hits without flinching have toughened the skin itself.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
-  { "id": "hardy-constitution", "name": "Hardy Constitution", "description": "A body built to endure — sheer physical resilience, nothing magical about it.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
-  { "id": "deep-reserves", "name": "Deep Reserves", "description": "A trained ability to hold more magic in reserve than most ever learn to.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
+  { "id": "battle-instinct", "name": "Battle Instinct", "description": "Aggression with nowhere left to go but into the next swing.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
+  { "id": "iron-skin", "name": "Iron Skin", "description": "Enough hits taken that the flinch stopped coming.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
+  { "id": "hardy-constitution", "name": "Hardy Constitution", "description": "A body built to endure — nothing magical about it, just resilience that doesn't quit.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
+  { "id": "deep-reserves", "name": "Deep Reserves", "description": "Holds more magic in reserve than most ever learn how to reach for.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
   { "id": "unshaken-resolve", "name": "Unshaken Resolve", "description": "A mind trained not to let the dark get the better of it.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
-  { "id": "evasive-instinct", "name": "Evasive Instinct", "description": "An instinct honed to slip aside the instant before a blow lands.", "rarity": "common", "effects": [{ "kind": "dodgeChance", "chance": 3 }] },
+  { "id": "evasive-instinct", "name": "Evasive Instinct", "description": "A half-step sideways that's already happened by the time the blow arrives.", "rarity": "common", "effects": [{ "kind": "dodgeChance", "chance": 3 }] },
   { "id": "leeching-will", "name": "Leeching Will", "description": "A stubborn will that leeches a little life back from every wound it deals.", "rarity": "common", "effects": [{ "kind": "lifesteal", "percent": 4 }] },
   { "id": "arcane-aptitude", "name": "Arcane Aptitude", "description": "A natural aptitude for channeling magic, drawn on with every spell cast.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "magicPower", "amount": 4 }] },
 
-  { "id": "predators-edge", "name": "Predator's Edge", "description": "An instinct for finding the gap in an enemy's guard.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
+  { "id": "predators-edge", "name": "Predator's Edge", "description": "Finds the gap in a guard before the enemy knows it's open.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
   { "id": "bulwark-stance", "name": "Bulwark Stance", "description": "A stance drilled until it's second nature — nothing gets through easily.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
   { "id": "second-wind", "name": "Second Wind", "description": "The talent for finding one more reserve of strength when it matters most.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
   { "id": "bloodletting", "name": "Bloodletting", "description": "A brutal technique that turns every wound dealt into strength regained.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
-  { "id": "featherstep-training", "name": "Featherstep Training", "description": "Years of drilling footwork most fighters never bother to learn.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
+  { "id": "featherstep-training", "name": "Featherstep Training", "description": "Footwork most fighters never bother to learn, until it's the only reason they're still standing.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
   { "id": "restless-vigor", "name": "Restless Vigor", "description": "An energy that never settles, always pushing the body to move first.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "speed", "amount": 3 }] },
 
   { "id": "executioners-instinct", "name": "Executioner's Instinct", "description": "Knows exactly where the killing blow lands, and how to recover from delivering it.", "rarity": "unique", "effects": [{ "kind": "healOnKill", "amount": 20 }] },
   { "id": "thunderous-aura", "name": "Thunderous Aura", "description": "An aura that occasionally lashes out on its own, independent of any weapon.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
-  { "id": "vampiric-discipline", "name": "Vampiric Discipline", "description": "A discipline that turns combat itself into sustenance.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
-  { "id": "phantom-reflexes", "name": "Phantom Reflexes", "description": "Reflexes trained past the point of conscious thought — the body moves before the mind decides.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
+  { "id": "vampiric-discipline", "name": "Vampiric Discipline", "description": "A discipline where the fight itself has started feeding it back.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
+  { "id": "phantom-reflexes", "name": "Phantom Reflexes", "description": "The body moves before the mind's finished deciding to.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
   { "id": "battle-scholar", "name": "Battle Scholar", "description": "Draws a lesson from every fight, learning faster than the rest of the party.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
 
   {
     "id": "undying-will",
     "name": "Undying Will",
-    "description": "A will strong enough to turn punishment right back at whoever dealt it.",
+    "description": "Sends every blow back on whoever dealt it, and has more left in reserve to survive what follows.",
     "rarity": "epic",
     "effects": [
       { "kind": "reflectDamage", "percent": 15 },
@@ -34,7 +34,7 @@
   {
     "id": "reapers-instinct",
     "name": "Reaper's Instinct",
-    "description": "An instinct honed on death itself — every kill feeds the next.",
+    "description": "Every kill closes the wounds already taken — and leaves this fighter feeding on whatever's left of the fight.",
     "rarity": "epic",
     "effects": [
       { "kind": "healOnKill", "amount": 25 },
@@ -54,7 +54,7 @@
   {
     "id": "grandmasters-focus",
     "name": "Grandmaster's Focus",
-    "description": "Mastery sharp enough to recover skills faster and absorb every lesson battle offers.",
+    "description": "Nothing in a fight goes to waste anymore — not the cooldown between strikes, not the lesson buried in losing one.",
     "rarity": "epic",
     "effects": [
       { "kind": "cooldownReduction", "turns": 1 },
