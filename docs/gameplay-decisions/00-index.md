@@ -17,5 +17,6 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | [`08-events.md`](./08-events.md) | §8 | Event rooms: event types split by rarity tier |
 | [`09-currency.md`](./09-currency.md) | §9 | Cursed Coins — drop rule, spend across Merchant/Gambling Den/Wandering Hermit |
 | [`10-event-narrative.md`](./10-event-narrative.md) | §10 | **Merged into §8.** The narrative layer on top of Event rooms — shared Covenant/Sleeper worldview, recurring NPCs, event chains, post-event reflection — is implemented and documented at `08-events.md` §8.13-§8.16. This file now only keeps the design questions left undecided along the way |
+| [`11-abilities.md`](./11-abilities.md) | §11 | **Design spec, not yet implemented.** Abilities — a persistent, cross-run meta-progression system: 1 talent per character chosen from a permanently-unlocked pool, earned mid-run from Elite/Boss kills, at risk of being struck from the pool on party wipe — `data/abilities.json` (planned), new `profile.json` save |
 
 Other files in `docs/` (`technical-decisions.md`, `minigame-decisions.md`) reference this document via the path `gameplay-decisions/<file>.md §N`.
