@@ -429,3 +429,72 @@ candidate-sharing rules, no source-vs-target rarity ambiguity, no
 sequencing contract to get right at implementation time — the reclaim
 cost is unambiguous by construction (there's only ever 1 possible rarity
 in play per lost-set entry: the lost ability's own).
+
+## D11. User caught intra-tier power imbalance in the Common catalog — fixed by axis separation
+
+User flagged, after reviewing the full catalog list: "Cùng tier nhưng có 1
+số abilities có sức mạnh khác nhau. Hãy đảm bảo cân bằng" (same tier, but
+some abilities have different power — make sure it's balanced). Auditing
+all 4 tiers for same-axis collisions found the problem was entirely
+confined to Common:
+
+- `steady-hands` (`statBoost attack +3`) vs. `battle-instinct`
+  (`statBoost attack +4`) — same axis, `battle-instinct` strictly better.
+- `vital-spark` (`statBoost maxHp +20`) vs. `hardy-constitution`
+  (`statBoost maxHp +30`) — same axis, `hardy-constitution` strictly
+  better.
+- `deep-reserves` (`statBoost maxMp +10`) vs. `focused-mind`
+  (`statBoost maxMp +15`) — same axis, `focused-mind` strictly better.
+
+Rare/Unique/Epic were already clean — each ability in those 3 tiers
+already owns a distinct effect axis (verified by listing every tier's
+effect kinds and confirming no repeats), so no changes were needed there.
+
+**Why this is a real bug for Abilities specifically, not just a stylistic
+nitpick**: the base game's own Artifact catalog has the exact same
+same-axis-different-magnitude pattern within Common (`iron-gauntlet`
++3 attack alongside `sharp-claw` +4 attack, `charm-of-life` +20 maxHp
+alongside `stone-of-endurance` +30 maxHp, etc.) and it's fine there,
+because a run can eventually equip both across its 12 Artifact slots — the
+"weaker" one still adds value on top of the stronger one. Abilities don't
+have that: exactly 1 slot per character, permanently. A strictly-dominated
+option in a single-pick catalog isn't a weaker choice, it's a choice that
+never gets made — 3 of Common's 8 entries were effectively dead.
+
+Rejected alternatives:
+- **Equalize magnitudes within each pair** (e.g. make `steady-hands` also
+  `attack +4`) — rejected: removes the dominance but leaves 2 abilities
+  that do the literally identical thing under different names, which
+  wastes catalog space in a different way (a "choice" between 2 identical
+  options isn't a choice) and does nothing for the run's actual
+  build diversity.
+- **Bump the weaker one's magnitude above the stronger one** — rejected:
+  just relocates the dominance to the other ability instead of removing
+  it.
+
+**Decided**: give each of the 3 dominated abilities a genuinely different
+effect axis instead of a different number on the same axis, chosen to fit
+their existing flavor text as closely as possible:
+- `steady-hands` → `dodgeChance 3%` ("no wasted motion, no unnecessary
+  hits taken" — precision reframed as evasion).
+- `vital-spark` → `lifesteal 3%` ("pulls a little life back from every
+  wound dealt" — a stubborn will to keep going, reframed as sustain
+  through combat instead of a flat HP pool).
+- `focused-mind` → `poisonOnHit chance 3%` ("finds the one precise,
+  lingering weak point in any guard" — a mind sharp enough to place a
+  hit that keeps hurting, rather than one that casts more spells).
+
+None of these 3 effect kinds previously appeared at Common rarity in
+either catalog (dodgeChance/lifesteal/poisonOnHit start at Rare on
+Artifacts) — each was set to roughly half its Rare-tier Ability
+counterpart, rounded to a clean number (3% against `featherstep-
+training`'s 6%, `bloodletting`'s 5%, and `toxic-touch`'s 6%
+respectively), the same "no same-tier reference exists, interpolate from
+the nearest tier" approach already used for `executioners-instinct`'s
+Unique-tier value — just applied downward (halving the tier above)
+instead of upward (splitting the gap to the tier above).
+
+Net result: all 4 tiers now have exactly 1 ability per effect axis within
+that tier — no same-tier pick is ever strictly better than another,
+by construction rather than by careful number-tuning that could drift out
+of balance on the next edit.

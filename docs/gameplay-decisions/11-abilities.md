@@ -324,18 +324,43 @@ not in raw power-per-tier. A few effect kinds have no same-rarity artifact
 to copy directly; those are called out inline below rather than silently
 invented.
 
+**Balance rule specific to Abilities, not inherited from Artifacts: no 2
+abilities in the same rarity tier may buff the same stat/effect axis.**
+Artifacts can double up safely (`iron-gauntlet` +3 attack and
+`sharp-claw` +4 attack both being findable just means you can eventually
+own both of 12 slots) — but a character equips exactly 1 Ability, ever,
+for the whole run. If 2 same-tier Abilities buffed the same axis at
+different magnitudes, the smaller one would be strictly worse with no
+compensating upside, and no rational player would ever pick it — dead
+catalog space, not a real choice. Every tier below is built so each
+ability owns a distinct axis; see `.hermes/features/abilities/
+BRAINSTORM.md` D11 for the pairs an earlier draft got wrong and how each
+was fixed.
+
 ### Common — always selectable
 
 | id | name | description | effect |
 |---|---|---|---|
-| `steady-hands` | Steady Hands | A talent for keeping every strike controlled, never wasted. | `statBoost attack +3` |
-| `iron-skin` | Iron Skin | Years of taking hits without flinching have toughened the skin itself. | `statBoost defense +3` |
-| `vital-spark` | Vital Spark | An unusually stubborn will to keep the body going past its limits. | `statBoost maxHp +20` |
-| `deep-reserves` | Deep Reserves | A trained ability to hold more magic in reserve than most ever learn to. | `statBoost maxMp +10` |
 | `battle-instinct` | Battle Instinct | Raw aggression channeled into every swing, honed through repetition. | `statBoost attack +4` |
-| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
+| `iron-skin` | Iron Skin | Years of taking hits without flinching have toughened the skin itself. | `statBoost defense +3` |
 | `hardy-constitution` | Hardy Constitution | A body built to endure — sheer physical resilience, nothing magical about it. | `statBoost maxHp +30` |
-| `focused-mind` | Focused Mind | A disciplined mind draws more from the same well of magic. | `statBoost maxMp +15` |
+| `deep-reserves` | Deep Reserves | A trained ability to hold more magic in reserve than most ever learn to. | `statBoost maxMp +10` |
+| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
+| `steady-hands` | Steady Hands | A talent for moving only when it counts — no wasted motion, no unnecessary hits taken. | `dodgeChance 3%` |
+| `vital-spark` | Vital Spark | An unusually stubborn will that pulls a little life back from every wound dealt. | `lifesteal 3%` |
+| `focused-mind` | Focused Mind | A mind trained to find the one precise, lingering weak point in any guard. | `poisonOnHit chance 3%` |
+
+8 abilities, 8 distinct axes (attack / defense / maxHp / maxMp /
+fearResist / dodgeChance / lifesteal / poisonOnHit) — no 2 abilities
+compete for the same pick. `steady-hands`/`vital-spark`/`focused-mind`
+have no Common-tier Artifact to mirror (dodgeChance/lifesteal/poisonOnHit
+only start appearing on Rare Artifacts) — each is set to roughly half its
+Rare-tier counterpart, rounded to a clean number: `dodgeChance` 3% (half
+of `featherstep-training`'s 6%), `lifesteal` 3% (≈half of
+`bloodletting`'s 5%), `poisonOnHit` 3% (half of `toxic-touch`'s 6%) — the
+same interpolate-from-the-nearest-tier approach already used to set
+`executioners-instinct`'s Unique-tier value, applied here because it's
+the *lower* neighboring tier (Rare) being halved instead.
 
 ### Rare — must be unlocked
 
