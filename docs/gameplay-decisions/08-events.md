@@ -397,8 +397,8 @@ closing line, verbatim — the same shared-across-ids approach Chain 1/2/3's tie
 uses, just at a single tier instead of 3 (a party this one-sided doesn't need 3 separate gradations to
 land the point):
 
-> "By now, none of you wonder why any of this was just left here, waiting for someone. It stopped
-> feeling like luck somewhere back there."
+> "By now, none of you wonder why walking away from something like this always seems to leave you
+> holding more than you walked in with. It stopped feeling like luck somewhere back there."
 
 No mechanical change — same artifact roll, same grant, same everything; flavor only, exactly like
 Chains 1-3.

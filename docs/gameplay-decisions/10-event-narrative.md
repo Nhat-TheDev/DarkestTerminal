@@ -937,6 +937,15 @@ it's still a roll, same as any other artifact — but paying nothing at `blood-a
 finding it there at all. A party's own relationship with 1 specific exchange decides which version of
 Leave it's even possible to reach, long before floor 100 ever arrives.
 
+**A consequence worth stating explicitly**: trigger 2, "the ledger never opens" (§F.1), *requires*
+`altarPaymentsCount === 0` — a party reaching Leave that way has, by definition, never once visited
+`blood-altar` with a payment landing, so a Boss kill is its *only* possible source for the shard.
+Trigger 1's party, by contrast, has had 8+ separate payment-roll chances at it by the time their debt
+even can break. The 2 triggers aren't just narratively different roads to the same absence (above) —
+they're also statistically very different odds of already holding the way out by the time they arrive.
+Not a bug to fix: a party that gave nothing back anywhere earns a harder shot at the good branch than
+a party whose one long exchange simply broke.
+
 **Mechanism needed, not yet built**: `ArtifactDefinition.restrictedDropSources?: Array<"boss" |
 "blood-altar">` (new, `src/types.ts`) — when present, an id is filtered out of every roll except the
 ones named. `rollArtifact()` (`src/data/artifacts.ts`) needs an opt-in override so `bloodAltarPay()`

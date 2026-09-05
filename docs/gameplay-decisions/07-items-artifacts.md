@@ -200,15 +200,15 @@ never the object choosing anything.
 | id | Story |
 |---|---|
 | `iron-gauntlet` | "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest." |
-| `worn-wooden-shield` | "Every scar on it came from a blow meant for someone standing behind the one holding it. Nobody's kept count of how many times that worked." |
+| `worn-wooden-shield` | "Every scar on it came from a blow meant for someone standing behind the one holding it — nobody's kept count of how many times that worked." |
 | `charm-of-life` | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled. Nobody who's held it since has cared about the difference." |
 | `small-mana-gem` | "'Guard it with your life,' a spellcaster told their apprentice. The apprentice took the instruction more literally than anyone expected." |
-| `sharp-claw` | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Whoever mounted it clearly wasn't the one who brought it down." |
+| `sharp-claw` | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Mounting it was somebody else's job entirely — bringing it down was somebody else's again." |
 | `stone-of-endurance` | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
 | `ring-of-focus` | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
 | `warriors-necklace` | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
 | `pendant-of-calm` | "'I won't need calm where I'm headed,' they said, handing it back before they left. Nobody who was there wanted to ask what they meant." |
-| `travelers-ration` | "There's always 1 more portion in here than the party actually needs. Nobody's asked who packed it that way, or who the extra was for." |
+| `travelers-ration` | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
 
 #### Rare, non-Cursed (9 of 9)
 
@@ -221,17 +221,17 @@ never the object choosing anything.
 | `thorned-armor` | "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain." |
 | `venomous-dagger-relic` | "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling." |
 | `vampiric-fang` | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. Everyone who heard it agreed, mostly just to end the conversation." |
-| `featherweight-boots` | "These were made for leaving a room without anyone realizing you'd been in it. Whoever wears them now still can't decide if that was a skill or a habit they couldn't put down." |
+| `featherweight-boots` | "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down." |
 | `quickcharge-rune` | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
 
 #### Rare, Cursed (4 of 4)
 
 | id | Story |
 |---|---|
-| `blackened-locket` | "It used to hold a portrait. Whoever wore it burned the photo rather than lose whoever was in it to something worse — then kept wearing the locket anyway, as if that made the trade fair." |
-| `shackle-of-hunger` | "Forged to hold something back, never meant to be worn. Whoever put it on first must have been desperate enough to trade the difference for anger they could actually use." |
-| `unstable-core` | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That's not the same as it not being able to." |
-| `heavy-guilt` | "Wear this long enough and the shoulders start curving in on their own. Whoever had it before you said that was easier than explaining why they deserved worse." |
+| `blackened-locket` | "It used to hold a portrait. The photo got burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
+| `shackle-of-hunger` | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
+| `unstable-core` | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
+| `heavy-guilt` | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
 
 #### Unique (7 of 7)
 
@@ -239,17 +239,17 @@ never the object choosing anything.
 |---|---|
 | `spiked-cloak` | "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders." |
 | `serpent-ring` | "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect." |
-| `thunder-totem` | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. Whoever finished it swore it started crackling before the last line was even cut." |
+| `thunder-totem` | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut." |
 | `armor-of-wholeness` | "Made for someone who never got the chance to wear it into anything worth calling a battle. It still fits like it's waiting for them to come back and finish that first one." |
 | `bloodthirsty-blade` | "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it." |
 | `phantom-step` | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. They got exactly what they asked for. Nobody's sure they were glad they did." |
-| `scholars-insight` | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds. Whoever kept it going wanted badly for nobody to notice the difference." |
+| `scholars-insight` | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
 
 #### Epic (4 of 4)
 
 | id | Story |
 |---|---|
-| `crown-of-destruction` | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was. Nobody knows anymore, and nobody left to care would ask." |
+| `crown-of-destruction` | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask." |
 | `immortal-heart` | "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor." |
 | `reapers-covenant` | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." *(kept deliberately free of any spiral/ritual imagery — its name already contains the word "covenant," coincidentally, `11-world-bible.md` §11.6; the story stays a generic pact-with-death, not compounding the coincidence)* |
 | `eternal-scholars-tome` | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
@@ -287,8 +287,8 @@ collection mechanic, no tracked set, no special drop source.
 **C — Guardian Remnant** (Thread 2):
 
 - **Guardian's Unburnt Ember** (Rare, `statBoost defense +8`): "Pulled from something that had
-  stopped moving but hadn't quite finished burning. Whoever pulled it free swore it was still warm
-  on the way up. It's been cold in every hand since."
+  stopped moving but hadn't quite finished burning — still warm on the way up, by whoever pulled it
+  free. It's been cold in every hand since."
 - **Guardian's Scale** (Unique, `reflectDamage 12%`): "Pried loose from something nobody who was
   there could agree on the shape of, afterward. It's warm on 1 side no matter how it's turned, and
   hasn't matched a single thing anyone's fought since."

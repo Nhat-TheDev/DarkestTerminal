@@ -213,10 +213,20 @@ he's the 1 who learned this exact drift the hard way (`11-world-bible.md` §11.8
 plausible to notice it in someone else before they notice it in themselves:
 
 > "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. He doesn't
-> look up right away this time. When he finally does, it isn't your face he's checking first."
+> look up right away this time. When he finally does, it isn't your face he's checking first — it's
+> your hands, like he's counting something you've stopped counting yourself."
 
-(Exact wording not yet craft-reviewed — flagging the connection point here, text to be finalized
-alongside implementation.)
+**Caught during implementation, not before**: `pickEventText()`'s existing priority order makes
+`returnDescription` win over `crossEventVariants` on any visit after the party's 1st meeting with a
+recurring NPC (confirmed by an already-passing test asserting exactly that, for a different pairing).
+Since Unawareness is a late-run state almost always reached *after* a party's first hermit visit,
+the `crossEventVariants` entry above would in practice almost never be seen. Fixed with a 2nd,
+narrower field, `EventDefinition.campReflectionUnawareEcho?: string`, appended to `returnDescription`
+the same way `stanceEcho` already is — covering every visit after the first, while the
+`crossEventVariants` entry above still covers the rarer case of reaching Unawareness before ever
+having met the hermit:
+
+> "This time, he doesn't check your face at all — just your hands, the whole trade through."
 
 **Compliance check against `11-world-bible.md`**: no mechanic here implies the dream is tracking
 the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
@@ -227,14 +237,20 @@ them. Resolves nothing on §11.9's open list — entirely about the party's own 
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
 "Sleeper," "Covenant," or "the Balance."
 
-**Build order and files touched**: `src/types.ts` (4 new `GameState` fields), `src/data/loreExposure.ts`
-(new — `LORE_EXPOSURE_EVENT_IDS`, thresholds, `campReflectionTier()`), `src/engine/events/shared.ts`
-(`closeEvent()`'s new increment), `src/engine/dungeon.ts` (`moveToRoom`'s rest-room branch — tier
-check, `pendingCampReflectionTier` set), `src/engine/game.ts` (new field init, a
-`pickCampReflectionChoice()` method), `src/engine/migration.ts` (migration guards for the 4 new
-fields), `src/ui/state.ts` (new `UiState` kind), `src/ui/screens/campReflection.ts` (new),
-`data/events.json` (the `wandering-hermit` cross-event addition once its text is finalized),
-`test/` (new test file for the counting/tiering/trigger/skip-to-highest logic).
+**Implemented.** `src/types.ts` (3 new `GameState` fields, plus `EventDefinition.campReflectionUnawareEcho`),
+`src/data/loreExposure.ts` (new — `LORE_EXPOSURE_EVENT_IDS`, `campReflectionTier()`,
+`highestAnsweredCampReflectionTier()`, and the 4 tiers' finalized content), `src/data/balanceConfig.ts`
++ `data/balance-config.json` (the 4 thresholds, under `survival`), `src/engine/events/shared.ts`
+(`closeEvent()`'s new increment), `src/engine/game.ts` (`Game.resolve()`'s combat-victory block also
+increments it — that path never reaches `closeEvent()`, same reason it has its own `eventOutcomes`
+write; new field init; `pickCampReflectionChoice()`), `src/engine/dungeon.ts` (`moveToRoom`'s
+rest-room branch — tier check, `pendingCampReflectionTier` set; `pickEventText()`'s
+`campReflectionUnawareEcho` append), `src/engine/migration.ts` (migration guards for the 3 fields),
+`src/ui/state.ts` (new `"campReflection"` `UiState` kind), `src/ui/screens/campReflection.ts` (new),
+`src/ui/app.ts` (wired into `syncUiToGameState`/`handleKey`/`renderMain`/`renderFooter`),
+`data/events.json` (`wandering-hermit`'s `crossEventVariants` entry + `campReflectionUnawareEcho`),
+`test/campReflection.test.ts` (new — 19 tests: tiering, skip-to-highest, rest-entry gating, choice
+recording, the hermit bridge's both forms, migration defaults).
 
 ### Fear tiers (shared with `04-fear-combat.md` section 4 below)
 
