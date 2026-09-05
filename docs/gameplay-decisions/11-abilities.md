@@ -104,56 +104,51 @@ order:
 Result stored on each `Character.equippedAbilityId` before the floor
 generator runs.
 
-### Mid-run acquisition — Elite and Boss now play 2 different roles
+### Mid-run acquisition — both Elite and Boss unlock instantly; only Boss also grants Stardust
 
 Both still hook into the exact same trigger point as the guaranteed
 Artifact drop (`07-items-artifacts.md` §7.2 "Drop source" —
 `src/engine/game.ts`, the per-monster loop on room-clear,
 `monster.tier === "elite" || "boss"`), and both still roll independently
-of the Artifact drop on the same kill — but they no longer resolve the
-same way:
+of the Artifact drop on the same kill.
 
-- **Elite: instant, permanent, free.** On a successful roll, the ability
-  id is added straight to `AbilityProfile.unlockedAbilityIds` — no pool,
-  no decision screen, no Stardust cost. It's simply available at the next
+- **Ability roll (Elite and Boss alike): instant, permanent, free.** On a
+  successful roll, the ability id is added straight to
+  `AbilityProfile.unlockedAbilityIds` — no pool, no decision screen, no
+  Stardust cost, no waiting for death. It's simply available at the next
   character-select from then on (mid-run, it does nothing for the
   *current* run — equipped abilities are still locked in for the run,
   §11.1 "Character-select flow"). Logged as a flavor line, the same way a
-  passive Item pickup is (no interrupt to the dungeon loop).
-- **Boss: pooled, gated behind Stardust and the death flow.** On a
-  successful roll, the id is appended to a new **per-run, Boss-only**
-  pool, `GameState.runBossAbilityPool: Id[]` — not unlocked yet. It only
-  ever becomes real (added to `unlockedAbilityIds`) if the player spends
-  Stardust on it at this run's death flow (below). If never spent, it's
-  discarded with the rest of the run's state.
-- **Every Boss kill also grants exactly 1 Stardust**, `GameState.
-  runStardust: number += 1`, regardless of whether the ability roll above
-  hit or missed. Since a real Boss only appears every `bossFloorInterval`
-  floors (5, `data/level-growth.json`), this is also "1 Stardust every 5
-  floors" — the cadence the feature was originally requested with. Unlike
-  the ability roll, this part is unconditional, not a probability.
+  passive Item pickup is (no interrupt to the dungeon loop). There is no
+  per-run ability pool at all — an ability found mid-run either becomes
+  real immediately, or the roll simply missed.
+- **Boss kills additionally, unconditionally, grant exactly 1 Stardust**,
+  `GameState.runStardust: number += 1`, regardless of whether the ability
+  roll above hit or missed. Since a real Boss only appears every
+  `bossFloorInterval` floors (5, `data/level-growth.json`), this is also
+  "1 Stardust every 5 floors" — the cadence the feature was originally
+  requested with. Stardust has exactly one use: buying back a lost
+  ability at this run's death flow (below) — it plays no role in mid-run
+  acquisition itself.
 
-Both rolls share the same drop-chance/rarity mechanics as before:
+The ability roll shares the same drop-chance/rarity mechanics for both
+sources:
 
 - **Drop chance**: `abilities.dropChance = 0.35` (35%) per eligible kill —
   deliberately below `items.itemDropChance` (0.6) since an Ability
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
-- **The roll excludes any ability id already in `unlockedAbilityIds`**,
-  and — for the Boss roll specifically — also excludes ids already sitting
-  in this run's own `runBossAbilityPool` (no point queuing the exact same
-  unspent candidate twice). This directly implements "tỉ lệ rơi chỉ rơi
-  những abilities chưa có trong pool chung": both sources only ever
-  surface something the player doesn't already have.
+- **The roll excludes any ability id already in `unlockedAbilityIds`.**
+  This directly implements "tỉ lệ rơi chỉ rơi những abilities chưa có
+  trong pool chung": a hit always surfaces something the player doesn't
+  already have.
   - **Catalog-exhaustion fallback**: if every ability in the rolled
-    rarity tier is already unlocked (or, for Boss, already pending in
-    `runBossAbilityPool`), re-roll the rarity excluding that tier and
-    redistribute its weight across the rest. If literally every
+    rarity tier is already unlocked, re-roll the rarity excluding that
+    tier and redistribute its weight across the rest. If literally every
     non-`common` ability in the whole catalog is already unlocked, the
     roll simply yields nothing that kill — there's nothing left to find.
-- **A roll that resolves to `common` grants nothing** (Elite: nothing to
-  add, it's already always available; Boss: nothing appended to the
-  pool) — enforced at roll time.
+- **A roll that resolves to `common` grants nothing** — it's already
+  always available, so there's nothing to unlock.
 - **Rarity depends on both source (Elite vs. Boss) and current floor
   depth** — "the deeper you are, the better the ability," implemented as
   a linear interpolation between a depth-1 table and a depth-cap table
@@ -185,9 +180,9 @@ then fed into the same `rng.weightedPick` pattern `rollArtifactRarity`
 already uses (`src/data/artifacts.ts`), filtering zero-weight entries
 first. Identical shape to the existing Artifact `RARITY_WEIGHTS` table:
 Elite skews common/rare, Boss never rolls common and skews unique/epic —
-which now doubles as the game's own way of saying "Elite finds are the
-steady trickle, Boss finds are the rare, better-odds ones worth actually
-spending Stardust on."
+Boss kills stay the better free-unlock roll *and* the only Stardust
+source, which is what makes reaching Bosses worth the detour on top of
+whatever Elites a floor happens to offer.
 
 ### Death flow (the only end-state — no "victory" exists in the game today)
 
@@ -207,54 +202,44 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
    entered the run with `common` or no ability equipped contributes
    nothing here and gets no buyback opportunity (nothing was lost for
    them to buy back).
-3. **Stardust buyback** (skipped entirely if the lost set is empty) — the
-   player addresses lost-set entries **one at a time, in whatever order
-   they pick**, and each decision **commits immediately** before the next
-   entry is presented (no batch/simultaneous selection — see the
-   implementation note below for exactly why this matters). For the
-   entry currently being addressed:
-   - **Skip** — spend nothing, that ability stays lost.
+3. **Stardust buyback — reclaim only, no swapping for something else.**
+   (Skipped entirely if the lost set is empty.) There is no "pick a
+   different ability instead" option and no shared candidate pool to draw
+   from — the only thing Stardust ever buys back is the *exact* ability a
+   character just lost. The player addresses lost-set entries in whatever
+   order they like:
+   - **Skip** — spend nothing, that ability stays lost (removed from
+     `unlockedAbilityIds`, same as if it were never reclaimed).
    - **Reclaim** — pay `stardustCostByRarity[rarity of the lost ability]`
-     (Rare 2 / Unique 3 / Epic 4) for the *exact* id that was just lost,
-     re-adding it to `unlockedAbilityIds`.
-   - **Swap** — pick a *different* id instead from this run's
-     `runBossAbilityPool` (shared across every lost-set entry, not tied to
-     which character's kill found it — see
-     `.hermes/features/abilities/BRAINSTORM.md` for why a shared pool was
-     chosen over a per-finder-character one), and pay
-     `stardustCostByRarity[rarity of the chosen candidate]` — **the
-     candidate's own rarity, not the lost ability's**. A Rare loss swapped
-     for an Epic find costs the Epic's 4, not the Rare's 2; a lost Epic
-     swapped for a Rare find only costs 2. Getting this backwards (charging
-     the lost ability's rarity regardless of what's bought) would let an
-     Epic candidate be bought at Rare prices — the cost is what you're
-     acquiring, never what you're replacing.
-   - **Immediately upon committing a Reclaim or Swap**, the chosen id is
-     added to `unlockedAbilityIds` and removed from `runBossAbilityPool`
-     (if it came from there) so it can never be claimed by a later
-     lost-set entry this same death — this is what makes "an id can only
-     be unlocked once per death" an actual sequencing guarantee rather
-     than just a stated intent: because entries are resolved one at a
-     time with each choice committed before the next begins, there is no
-     window where 2 entries could both be mid-selection on the same
-     candidate. Spending stops once `runStardust` can no longer afford
-     anything left to buy.
-   - There is no notion of "this Boss ability belongs to that character" —
-     the pool and the currency are both party-wide; any lost-set entry may
-     spend on any still-available candidate regardless of which character
-     killed which Boss.
+     (Rare 2 / Unique 3 / Epic 4) to re-add that exact id to
+     `unlockedAbilityIds`. Since every lost-set entry is for a distinct id
+     (no-duplicate-in-party, §11.1 "Character-select flow"), reclaiming
+     one entry can never collide with another — there's no shared-resource
+     contention to sequence or resolve, unlike an earlier draft of this
+     spec that included a swap-to-something-new option.
+   - Spending stops once `runStardust` can no longer afford anything left
+     to reclaim.
 4. **Persist** — write the updated `AbilityProfile` to `profile.json`
    *before or independently of* `deleteSavesForRun`, so the per-run wipe
-   never touches it. Any `runStardust` left unspent, and any
-   `runBossAbilityPool` ids nobody bought, are discarded with the rest of
-   the run's state — Stardust does not carry over to the next run (a
+   never touches it. Any `runStardust` left unspent is discarded with the
+   rest of the run's state — it does not carry over to the next run (a
    fresh run always starts at `runStardust = 0`).
 5. **Results screen** — shown after the buyback (or immediately, if the
-   lost set was empty): 1 line per lost-set entry, stating what was lost
-   and what happened to it — reclaimed, swapped for something else, or
-   left lost — e.g. "Vanguard's *Bloodletting* was lost — reclaimed for 2
-   Stardust" / "Mage's *Thunderous Aura* was lost — replaced with
-   *Battle Scholar*" / "Rogue's *Phantom Reflexes* was lost for good."
+   lost set was empty): 1 line per lost-set entry, e.g. "Vanguard's
+   *Bloodletting* was lost — reclaimed for 2 Stardust" / "Rogue's
+   *Phantom Reflexes* was lost for good."
+6. **Next run starts with more (or the same) choices, never fewer than
+   what survived.** There is no dedicated "pick your ability again"
+   moment tied to this death — the very next time the player starts a new
+   run, §11.1 "Character-select flow" runs exactly as it always does,
+   simply against whatever `unlockedAbilityIds` looks like *now*: any
+   reclaimed-this-death ids are back in it, any Elite/Boss finds from this
+   run that were never equipped (so never at risk) are still in it
+   untouched, and anything left unreclaimed is gone until re-earned from
+   scratch via a future Elite/Boss roll. This is the entire mechanism
+   behind "sau khi chơi lại người chơi sẽ có thêm quyền được lựa chọn
+   abilities" — more choices next time is simply a byproduct of the pool
+   having grown, not a separate reward screen.
 
 Why this replaces the old probabilistic system entirely: guaranteed loss
 is a harsher baseline than the old 25/45/65% roll, but the player is now
@@ -303,21 +288,20 @@ without needing a hand-picked cap bolted on top.
   implemented.** `isSaveStateValid` and `migrateGameState`
   (`src/engine/save.ts`) already validate/backfill `equippedArtifactIds`
   against the Artifact catalog for old or malformed saves — the same
-  pattern will need equivalent branches for `Character.equippedAbilityId`,
-  `GameState.runBossAbilityPool`, `GameState.runStardust`, and whatever
-  pending-buyback state the death-flow UI needs, against
-  `data/abilities.json` once that catalog exists, plus a migration
-  default (`null`/`[]`/`0`/absent) for saves written before this feature
-  existed. Noted now so it isn't missed when coding starts.
+  pattern will need equivalent branches for `Character.equippedAbilityId`
+  and `GameState.runStardust` against `data/abilities.json` once that
+  catalog exists, plus a migration default (`null`/`0`/absent) for saves
+  written before this feature existed. Noted now so it isn't missed when
+  coding starts.
 - **No-duplicate enforcement only ever needs to check the party's current
-  4 `equippedAbilityId`s**, both at character select and right after the
-  Stardust buyback resolves (the buyback can't actually violate it in
-  practice — see "Stardust buyback" step 3 — but validating the invariant
-  once buyback finishes is cheap insurance against a future bug). It never
-  needs to consult `unlockedAbilityIds`, which is intentionally allowed to
-  contain the same id "available" to more than one future pick — the
-  exclusivity is only about what's simultaneously *equipped*, never about
-  what's unlocked.
+  4 `equippedAbilityId`s**, at character select only — the Stardust
+  buyback can't create a duplicate in the first place, since every
+  lost-set entry reclaims a distinct id that's already guaranteed unique
+  (see "Stardust buyback" step 3) and buyback never touches what's
+  *equipped* anyway, only what's *unlocked*. It never needs to consult
+  `unlockedAbilityIds`, which is intentionally allowed to contain the same
+  id "available" to more than one future pick — the exclusivity is only
+  about what's simultaneously equipped, never about what's unlocked.
 - **Catalog exhaustion is a real, reachable end state**, not a
   theoretical one — 15 non-common abilities total (§11.2) is a small
   enough catalog that a dedicated player could plausibly unlock all of
@@ -415,9 +399,10 @@ magnitude.
   differently from how Artifacts already handle it (§7.2) — same rule
   applies: even though it's a single character's equipped ability, its
   `expBoost` still boosts the shared `partyExp`.
-- **Catalog size vs. Elite's free instant-unlock rate**: since Elite kills
-  now hand out permanent unlocks for free (no Stardust, no death gate),
-  the 15-ability non-common catalog could get exhausted faster than
-  originally modeled when this doc still gated *all* acquisition behind
-  the death flow. Worth simulating once implemented — either drop rate or
-  catalog size may need adjusting sooner than the Stardust-side numbers.
+- **Catalog size vs. the free instant-unlock rate**: since both Elite and
+  Boss kills hand out permanent unlocks for free the moment they roll (no
+  Stardust, no death gate — Stardust only ever buys back losses), the
+  15-ability non-common catalog could get exhausted faster than originally
+  modeled when this doc still gated *all* acquisition behind the death
+  flow. Worth simulating once implemented — either drop rate or catalog
+  size may need adjusting sooner than the Stardust-side numbers.

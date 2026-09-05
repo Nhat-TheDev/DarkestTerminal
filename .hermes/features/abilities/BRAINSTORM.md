@@ -384,3 +384,48 @@ entries are resolved strictly one at a time, each choice committing
 immediately (added to `unlockedAbilityIds` and removed from
 `runBossAbilityPool` before the next entry is even presented) — closing
 the race by construction rather than by an after-the-fact rule.
+
+## D10. User simplification — no "swap for something new" at death, ever
+
+The user corrected D8/D9's design directly: "Không có đổi abilities mới.
+Vì chạy run khác chọn char và chọn abilities lại từ đầu. Nhưng có thêm
+nhiều lựa chọn hơn do đã đổi được abilities từ run trước" — there is no
+swap-for-a-different-ability decision at death at all. Getting more
+choices in a future run isn't a separate reward mechanic; it's just what
+naturally happens because the *next* character-select screen (which
+already always runs from scratch, §11.1) sees whatever `unlockedAbilityIds`
+looks like by then.
+
+This retires the entire `runBossAbilityPool` concept from D8/D9, and with
+it both bugs D9 fixed (the swap-cost-by-wrong-rarity bug and the
+shared-candidate sequencing contract) — there's no candidate pool left to
+have a cost-by-source ambiguity or a claim race over, since the game
+designed them, not this doc, was the actual root cause: they only existed
+to support Swap, and Swap no longer exists.
+
+Rejected alternative (implicit in the correction, not proposed by the
+user but worth logging as the thing this decision rules out): keeping
+Boss-found candidates gated behind Stardust while removing only the
+"swap to something else" framing (i.e., Stardust could still be spent to
+unlock a Boss find directly, just not as a *replacement* for a lost
+ability) — rejected because the user's own reasoning ("chọn char và chọn
+abilities lại từ đầu... có thêm nhiều lựa chọn hơn") frames *all*
+mid-run finds, Elite or Boss, as flowing into the same ordinary unlock
+pool the same way, with Stardust's role narrowed to exactly one thing:
+reclaiming what death took away.
+
+**Decided, replacing D8's Elite/Boss split**: Elite **and** Boss ability
+rolls both resolve identically — instant, free, permanent addition to
+`unlockedAbilityIds` on a hit, no pool, no gate. Boss kills *additionally*
+grant 1 Stardust unconditionally (unrelated to whether its own ability
+roll hit). Stardust's sole purpose is now the death-flow "Reclaim" action
+— pay `stardustCostByRarity[the lost ability's own rarity]` to re-add the
+*exact* id a character just lost back to `unlockedAbilityIds`. No "Skip
+to something else" option exists; the only choices per lost ability are
+Reclaim or leave it lost.
+
+This is a net simplification over D8/D9: no per-run pool field, no
+candidate-sharing rules, no source-vs-target rarity ambiguity, no
+sequencing contract to get right at implementation time — the reclaim
+cost is unambiguous by construction (there's only ever 1 possible rarity
+in play per lost-set entry: the lost ability's own).
