@@ -668,3 +668,110 @@ same `for (const target of targets)` loop — `rollHits` is rolled once per
 single-target skill only looks like "once per skill" because it has
 exactly 1 target. Fixed to state both rolls share the same per-target
 mechanism, rather than implying point 1 is coarser than point 2.
+
+## D14. Removed `poisonOnHit` entirely; added `magicPower`/`speed`/`aggro`
+
+User request, with a stated reason to verify rather than take on faith:
+"loại bỏ poisonOnHit trong abilities nguyên do poison quá yếu đối với
+rank cao nên tác dụng thấp" (remove poisonOnHit from abilities because
+poison is too weak at high rank, so its effect is low) — and separately,
+add abilities for `aggro`/`speed`/`magicPower`, calling them out as stats
+the catalog currently ignores.
+
+**Verified the poison claim before acting on it.** The `poisoned` status
+effect deals a flat `4`/turn for `3` turns = `12` total
+(`data/status-effects.json`) — a number that never changes. Monster HP
+grows with floor depth on the same curve characters use for `maxHp`
+(`tier1` rate `14`/depth, `data/level-growth.json`). Computed against a
+representative weak monster (Slime, base HP `52`): `12` damage is `23%`
+of its HP at depth 1, `11%` at depth 5, `6.7%` at depth 10, `3.8%` at
+depth 20 — confirmed, quantified, and a genuinely bigger problem than
+"feels weak": it's an effect that gets monotonically worse for the entire
+back half of every run, on a system (Abilities) specifically meant to
+matter for the long haul. `dodgeChance`/`lifesteal` don't share this flaw
+(a `%` of a *current* hit scales automatically with whatever that hit
+already is), which is the real, mechanical reason poison was the one
+kind singled out for removal rather than kept and merely re-costed like
+D12 did for lifesteal.
+
+**Scope**: Ability catalog only. Artifacts' `venomous-dagger-relic`/
+`serpent-ring` and Rogue's Poison Coat/Bomb skills keep the identical
+non-scaling mechanic — fixing it there is a base-game code change, not a
+design-doc edit, logged as a new Open follow-up instead of attempted here.
+
+**Removed 3 instances** (1 per tier that had it): Common's old 8th slot
+(`poisonOnHit 4%`), Rare's `toxic-touch` (`poisonOnHit 6%`), and half of
+Epic's `storm-within` (`autoDamage 12 + poisonOnHit 8%` →
+`autoDamage 12 + statBoost aggro +15`). Catalog size is unchanged (still
+24 total, 16 non-common) — these are swaps, not a shrink-then-regrow.
+
+**Added `aggro`/`speed`/`magicPower` as a new `AbilityOnlyEffect`
+capability**: `ArtifactEffect`'s `statBoost` variant is hard-restricted to
+`attack`/`defense`/`maxHp`/`maxMp` (`src/types.ts`) — grep-confirmed no
+Artifact anywhere targets the other 3. Rather than inventing 3 separate
+new effect kinds, widened the existing `statBoost` shape for Abilities
+only (same flat/permanent/additive mechanic, just a bigger `stat` union) —
+`recomputeCharacterStats` (`src/engine/party.ts`) just needs 3 more cases
+in the sum it already computes, not a new mechanism.
+
+**Where each landed, and why**:
+- **`magicPower` → Common** (`arcane-aptitude`, `+4`), filling the freed
+  8th slot. Calibration was the cleanest possible: `magicPower` and
+  `attack` share the *identical* per-level growth rate (`data/level-
+  growth.json` tier 1 = `3` for both; `01-class-skill.md`'s own
+  `BalancePoints` formula treats them as literally interchangeable, 1
+  balance point each). Whatever number is fair for `battle-instinct`'s
+  `attack +4` is fair for `magicPower +4` by the game's own stated
+  conversion rate — no EV estimate or judgment call needed, unlike every
+  other magnitude decision in this catalog so far.
+- **`speed` → Rare** (`restless-vigor`, `+3`), filling `toxic-touch`'s
+  freed slot. **Tried the same `BalancePoints` method first and it broke**:
+  `speedRate = 12` (`01-class-skill.md`), and matching Rare's other 3
+  abilities' ~2.7-4.0 balance points would mean `speed +32` to `+48` —
+  absurd, since `speed` only spans `8`-`17` across all 6 classes
+  (`data/classes.json`); that alone would make the slowest class faster
+  than today's fastest by a wide margin. Root cause: `attack`/`defense`/
+  `maxHp` all grow with level, so a Rare-tier flat bonus is *deliberately*
+  front-loaded — it's known to shrink in relative terms as the character
+  levels, same as every other flat bonus in this catalog. `speed` (and
+  `aggro`) **never grow with level at all**
+  (`docs/gameplay-decisions/05-character-stats.md`), so a flat bonus to
+  either keeps its full absolute weight for the whole run. Applying a
+  decaying stat's day-1-sized bonus to a stat that never decays
+  systematically overpays it. Rejected the formula-matched number; sized
+  `+3` directly against `speed`'s own real spread instead (roughly a
+  third of the full 6-class gap) — permanent and always-relevant without
+  redefining turn order outright.
+- **`aggro` → Epic**, folded into `storm-within` (`+15`, replacing its
+  `poisonOnHit` half). `aggro` is explicitly excluded from `BalancePoints`
+  by the game's own docs (it's a relative targeting *weight*, not an
+  absolute power stat — `P(target=X) = X.aggro / total party aggro`,
+  `02-monster.md`), so there's no shared conversion rate to borrow the way
+  `magicPower` borrowed `attack`'s. Calibrated instead against the game's
+  1 existing aggro-changing effect, the cursed-only `curseAggroBoost`
+  (`unstable-core`, `+25`, `data/artifacts.json`) — deliberately severe
+  since it's an inescapable downside. `+15` (60% of that) is smaller
+  because this is a chosen, positive "protector" pick, not a penalty, but
+  still large enough to matter (e.g. Mage's `8` base aggro → `23`, nearly
+  tripling their draw weight).
+
+Rejected alternatives:
+- **Keep poison and just re-cost it like D12 did for lifesteal/poison at
+  Common** — rejected: D12's fix worked because the underlying problem was
+  a *miscalibrated percentage*; poison's problem is that its *absolute
+  payout never changes* while the thing it's measured against (monster
+  HP) does — no percentage choice fixes a flat number's scaling problem,
+  only removing it or making the payout itself scale (which would be a
+  new mechanic, not a percentage tweak, and not what was asked).
+- **Give `aggro`/`speed`/`magicPower` their own brand-new effect kinds**
+  instead of widening `statBoost` — rejected as unnecessary: they're
+  mechanically identical to the existing `statBoost` effect (flat,
+  permanent, additive), just targeting stats Artifacts happen to never
+  use; a new kind per stat would be 3x the type surface for zero behavior
+  difference.
+- **Grow the catalog instead of swapping** (keep all 24 + add 3 more for
+  27 total) — rejected: nothing about the request asked for a bigger
+  catalog, and the 3 freed poison slots were exactly enough for the 3
+  requested stats — a like-for-like swap keeps the tier/axis accounting
+  simple (still 8/6/5/5, still 1 axis per ability per tier) rather than
+  reopening the whole "how many abilities per tier" question.

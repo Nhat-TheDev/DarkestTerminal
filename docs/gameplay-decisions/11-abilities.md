@@ -38,16 +38,37 @@ profile is deliberately the one exception.
 Reuses `ArtifactRarity` (`src/types.ts`) as-is, no forked rarity type.
 Reuses the exact `ArtifactEffect` union (`src/types.ts`) minus
 `curseAggroBoost`, which stays exclusive to cursed Artifacts — Abilities
-are never cursed. On top of that, Abilities get exactly 1 effect kind
-Artifacts don't have — `alwaysHit` (§11.1.1 below) — since nothing in the
-Artifact catalog needed it and there's no reason to retrofit Artifacts
-just because one Ability does.
+are never cursed. On top of that, Abilities get 2 things Artifacts don't
+have:
+
+- `alwaysHit` (§11.1.1 below) — a genuinely new mechanic, since nothing in
+  the Artifact catalog needed it.
+- `statBoost` widened to 3 more stats — `aggro`/`speed`/`magicPower` —
+  that `ArtifactEffect`'s own `statBoost` variant can't target
+  (`src/types.ts` restricts it to `attack`/`defense`/`maxHp`/`maxMp`; grep
+  confirms no Artifact anywhere uses the other 3). This isn't a new
+  mechanism, just the same flat/additive/permanent modifier `statBoost`
+  already is — `recomputeCharacterStats` (`src/engine/party.ts`) gains 3
+  more cases in the same sum it already computes for the other 4 stats.
 
 ```
-AbilityOnlyEffect = { kind: "alwaysHit"; chance: number }
+AbilityOnlyEffect =
+  | { kind: "alwaysHit"; chance: number }
+  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number }
 
 AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect
+```
 
+Note: this deliberately produces 2 union members both tagged
+`kind: "statBoost"` (the `ArtifactEffect`-derived one, still fixed to its
+original 4 stats, plus this new one) rather than 1 merged variant — valid
+TypeScript, and any code narrowing on `effect.kind === "statBoost"` just
+sees the union of both shapes (`stat` becomes the full 7-literal set in
+practice). Kept this way instead of hand-merging the two into a single
+7-stat `statBoost` type so `ArtifactEffect`'s own definition in
+`src/types.ts` never has to be touched to support an Ability-only need.
+
+```
 AbilityDefinition {
   id: Id
   name: string
@@ -403,54 +424,60 @@ was fixed.
 | `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
 | `evasive-instinct` | Evasive Instinct | An instinct honed to slip aside the instant before a blow lands. | `dodgeChance 3%` |
 | `leeching-will` | Leeching Will | A stubborn will that leeches a little life back from every wound it deals. | `lifesteal 4%` |
-| `venomous-precision` | Venomous Precision | A mind so focused it always finds the one lingering weak point — and leaves something behind when it does. | `poisonOnHit chance 4%` |
+| `arcane-aptitude` | Arcane Aptitude | A natural aptitude for channeling magic, drawn on with every spell cast. | `statBoost magicPower +4` |
 
 8 abilities, 8 distinct axes (attack / defense / maxHp / maxMp /
-fearResist / dodgeChance / lifesteal / poisonOnHit) — no 2 abilities
-compete for the same pick.
+fearResist / dodgeChance / lifesteal / magicPower) — no 2 abilities
+compete for the same pick. `arcane-aptitude` replaces the original
+`poisonOnHit`-based 8th slot — see "Why `poisonOnHit` was removed
+entirely" below the Rare table for the reasoning, which applies to every
+tier at once, not just Common.
 
-**Why `dodgeChance`/`lifesteal`/`poisonOnHit` are 3%/4%/4%, not a flat 3%
-across all three**: these 3 effect kinds have no Common-tier Artifact to
-mirror (they only start appearing on Rare Artifacts), so an earlier draft
-of this doc just halved each one's Rare-tier % uniformly. That's a
-category error — halving the *percentage* only produces equal *value* if
-a % point means the same thing for all 3 effects, and it doesn't, because
-`dodgeChance` avoids what a monster would have dealt to the wearer (the
-*bigger* number in this game — monsters hit harder than a level-1
-character does) while `lifesteal`/`poisonOnHit` are a cut of what the
-wearer deals out (the *smaller* number). Computed directly from the
-game's own damage formula (`mitigatedOffense`, `src/engine/resolver.ts`,
-`combat.defenseMitigationX/Y = 60/30`) against a representative early
-fight — a depth-2 Dungeon Rat (atk 19, def 3) vs. the level-1 party-average
-character (atk 10, def 7, from `data/classes.json`), over a ~4-round fight
-(the game's own "quick victory" benchmark is 3 rounds, `03-survival-
-stats.md`, so 4 is a typical, non-quick regular fight) with roughly 1
-attack thrown and taken per round:
+`arcane-aptitude`'s `+4` isn't copied from `battle-instinct`'s `+4`
+attack by coincidence: `magicPower` and `attack` share the *exact same*
+per-level growth rate (`data/level-growth.json` tier 1 = `3` for both,
+confirmed identical at every tier — `docs/gameplay-decisions/01-class-
+skill.md` §"Base stats balancing formula" treats them as literally
+interchangeable, 1 balance point each). Whatever magnitude is fair for a
+flat `attack` bonus is, by the game's own conversion rate, equally fair
+for the same-numbered `magicPower` bonus — the cleanest calibration
+available for any pair of stats in this catalog, since no EV estimate or
+judgment call is needed at all.
 
-- damage taken per hit ≈ 16.8, damage dealt per hit ≈ 9.4, a poison proc
-  totals 12 (4/turn × 3 turns, `data/status-effects.json`)
-- at a flat 3%, expected value per fight was **2.01** for dodge, but only
-  **1.44** for poison and **1.13** for lifesteal — lifesteal was quietly
-  worth barely half of dodge for the "same" number, exactly the kind of
-  imbalance this catalog is supposed to rule out
+**Why `dodgeChance`/`lifesteal` are 3%/4%, not a flat 3% for both**: these
+2 effect kinds have no Common-tier Artifact to mirror (they only start
+appearing on Rare Artifacts), so an earlier draft of this doc just halved
+each one's Rare-tier % uniformly. That's a category error — halving the
+*percentage* only produces equal *value* if a % point means the same
+thing for both effects, and it doesn't, because `dodgeChance` avoids what
+a monster would have dealt to the wearer (the *bigger* number in this
+game — monsters hit harder than a level-1 character does) while
+`lifesteal` is a cut of what the wearer deals out (the *smaller* number).
+Computed directly from the game's own damage formula (`mitigatedOffense`,
+`src/engine/resolver.ts`, `combat.defenseMitigationX/Y = 60/30`) against a
+representative early fight — a depth-2 Dungeon Rat (atk 19, def 3) vs. the
+level-1 party-average character (atk 10, def 7, from `data/classes.json`),
+over a ~4-round fight (the game's own "quick victory" benchmark is 3
+rounds, `03-survival-stats.md`, so 4 is a typical, non-quick regular
+fight) with roughly 1 attack thrown and taken per round:
+
+- damage taken per hit ≈ 16.8, damage dealt per hit ≈ 9.4
+- at a flat 3%, expected value per fight was **2.01** for dodge but only
+  **1.13** for lifesteal — lifesteal was quietly worth barely half of
+  dodge for the "same" number, exactly the kind of imbalance this catalog
+  is supposed to rule out
 - solving each effect's % for a shared ~2.0-per-fight target instead:
   dodge ≈2.98% (rounds to the same 3%, so that one was fine by
-  coincidence), lifesteal ≈5.3%, poison ≈4.2%
+  coincidence), lifesteal ≈5.3%
 
 Lifesteal's solved value (≈5.3%) would tie or pass Rare's own
 `bloodletting` (5%), breaking the one pattern every other shared axis in
 this catalog follows (Rare is strictly higher than Common on the same
-axis: attack 4<8, defense 3<8, maxHp 30<50, dodge 3<6, poison would be
-4<6). Rounded down to **4%** instead — still a real correction from the
-original 3% (EV 1.51 vs. 1.13, ≈33% higher) and closer to dodge's 2.01,
-while keeping Common strictly below Rare on every shared axis. Poison
-rounds to **4%** cleanly (EV 1.92, within 5% of the 2.0 target). None of
-this is exact — it rests on one assumed fight length and hit-rate, and
-the poison EV additionally treats every proc as a full independent
-12-damage payout, which slightly overstates it in the rare case where a
-2nd proc lands before the first one's 3 turns are up (status effects
-don't stack in this game, §1.8 — a re-application only refreshes the
-duration, per `data/status-effects.json`) — but it's now grounded in the
+axis: attack 4<8, defense 3<8, maxHp 30<50, dodge 3<6). Rounded down to
+**4%** instead — still a real correction from the original 3% (EV 1.51
+vs. 1.13, ≈33% higher) and closer to dodge's 2.01, while keeping Common
+strictly below Rare on every shared axis. None of this is exact — it
+rests on one assumed fight length and hit-rate — but it's grounded in the
 game's real numbers and internally consistent with itself, not a borrowed
 ratio from a different tier that was never checked against what these
 specific abilities are actually worth to the character holding them.
@@ -462,13 +489,67 @@ specific abilities are actually worth to the character holding them.
 | `predators-edge` | Predator's Edge | An instinct for finding the gap in an enemy's guard. | `statBoost attack +8` |
 | `bulwark-stance` | Bulwark Stance | A stance drilled until it's second nature — nothing gets through easily. | `statBoost defense +8` |
 | `second-wind` | Second Wind | The talent for finding one more reserve of strength when it matters most. | `statBoost maxHp +50` |
-| `toxic-touch` | Toxic Touch | A trick learned from the dungeon's own venomous things — every hit carries a little of it now. | `poisonOnHit chance 6%` |
 | `bloodletting` | Bloodletting | A brutal technique that turns every wound dealt into strength regained. | `lifesteal 5%` |
 | `featherstep-training` | Featherstep Training | Years of drilling footwork most fighters never bother to learn. | `dodgeChance 6%` |
+| `restless-vigor` | Restless Vigor | An energy that never settles, always pushing the body to move first. | `statBoost speed +3` |
 
-All 6 exactly mirror their Rare-tier artifact counterparts
-(`ancient-sword`/`heart-of-stone`/`eternal-vial`, `venomous-dagger-relic`,
-`vampiric-fang`, `featherweight-boots`).
+The first 5 mirror their Rare-tier artifact counterparts
+(`ancient-sword`/`heart-of-stone`/`eternal-vial`, `vampiric-fang`,
+`featherweight-boots`) — `restless-vigor` replaces the original
+`poisonOnHit`-based `toxic-touch` and has no Artifact counterpart at all,
+since no Artifact targets `speed` either.
+
+### Why `poisonOnHit` was removed from the Ability catalog entirely
+
+Not a rebalance — a removal, at every tier that had it (`toxic-touch`
+here, the old Common 8th slot, and half of the Epic `storm-within` below).
+The `poisoned` status effect it procs deals a flat `4` damage/turn for `3`
+turns (`data/status-effects.json`) — a fixed `12`-damage payout that never
+scales with anything, while monster HP keeps climbing with floor depth on
+the same growth curve characters use (`tier1.maxHp` rate `14`/depth,
+`data/level-growth.json`). Computed directly against a representative
+weak monster's HP (Slime, base `52`): that flat `12` is **23% of its HP at
+depth 1**, but only **11% at depth 5**, **6.7% at depth 10**, and **3.8%
+at depth 20** — an effect that keeps getting weaker for the entire rest of
+a run, on a mechanic (Abilities) that's explicitly meant to matter for the
+long haul, not just the opening floors. `dodgeChance`/`lifesteal` don't
+have this problem (a `%` of a *current* incoming/outgoing hit scales
+automatically with however big that hit already is), which is exactly why
+they stayed and `poisonOnHit` didn't. This only removes `poisonOnHit` from
+the *Ability* catalog — the Artifact catalog's own `venomous-dagger-relic`/
+`serpent-ring` and Rogue's Poison Coat/Bomb skills keep the exact same
+mechanic; fixing poison's scaling everywhere it appears in the base game
+is a much bigger, already-shipped-code change, out of scope here.
+
+The 3 freed slots (Common, Rare, half of Epic) went to 3 stats no
+Artifact or Ability had ever touched before — `magicPower` (Common,
+above), `speed` (here), and `aggro` (Epic, below) — rather than being
+left empty or refilled with a 4th `dodgeChance`/`lifesteal` copy at a
+different number, which would've just been more of what the catalog
+already had plenty of.
+
+**Why `speed +3`, not a number matched to Rare's other 3 flat-stat
+abilities (attack+8/defense+8/maxHp+50) by the same balance-points method
+used for `magicPower`**: it was tried, and the result was absurd.
+`speed`'s own conversion rate in the game's `BalancePoints` formula is
+`speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
+matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
+would mean `speed +32` to `+48`. `speed` only ranges `8`-`17` across all 6
+classes at level 1 (`data/classes.json`) — a `+32` would make the
+*slowest* class in the game faster than the *fastest* one is today, by a
+wide margin. The reason the formula breaks down here: `attack`/`defense`/
+`maxHp` all **grow with level** (`data/level-growth.json`), so a Rare-tier
+bonus that looks big at level 1 is deliberately front-loaded — it shrinks
+in relative terms as the character levels, the same way Rare's own flat
+bonuses do everywhere else in this catalog. `speed` (and `aggro`) **never
+grow with level at all** (`docs/gameplay-decisions/05-character-stats.md`)
+— a flat bonus to either one keeps exactly the same absolute weight for
+the entire run, never diluted. Matching a decaying stat's day-1 magnitude
+with a never-decaying one's day-1 magnitude systematically overpays the
+one that never decays. `+3` was chosen directly against `speed`'s own
+real spread instead: it closes roughly a third of the entire 6-class gap
+(e.g. lets Acolyte's `9` catch up to Mage's `10`), a permanent, always-
+relevant nudge without redefining the turn order on its own.
 
 ### Unique — must be unlocked
 
@@ -494,17 +575,38 @@ above what a Rare-tier effect would carry, below the Epic reference.
 |---|---|---|---|
 | `undying-will` | Undying Will | A will strong enough to turn punishment right back at whoever dealt it. | `reflectDamage 15%` + `statBoost maxHp +60` |
 | `reapers-instinct` | Reaper's Instinct | An instinct honed on death itself — every kill feeds the next. | `healOnKill 25` + `lifesteal 8%` |
-| `storm-within` | Storm Within | A storm that never fully settles, lashing out with damage and poison alike. | `autoDamage 12` + `poisonOnHit 8%` |
+| `storm-within` | Storm Within | A storm that never fully settles — drawing every eye toward it while lashing out on its own. | `autoDamage 12` + `statBoost aggro +15` |
 | `grandmasters-focus` | Grandmaster's Focus | Mastery sharp enough to recover skills faster and absorb every lesson battle offers. | `cooldownReduction 1` + `expBoost 25%` |
 | `unerring-will` | Unerring Will | A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied. | `alwaysHit 20%` + `fearResist 12%` |
 
-The first 4 mirror their Epic-tier artifact counterparts exactly
-(`immortal-heart`'s `reflectDamage`/`maxHp` pair, `reapers-covenant`,
-`crown-of-destruction`, `eternal-scholars-tome`) — `undying-will`
-deliberately drops `immortal-heart`'s 3rd effect (`defense +10`) to stay a
-2-effect ability, since Abilities only ever occupy 1 slot and don't need
-to match an Artifact's full effect count to match its per-effect
-magnitude.
+`undying-will`/`reapers-instinct`/`grandmasters-focus` mirror their
+Epic-tier artifact counterparts exactly (`immortal-heart`'s
+`reflectDamage`/`maxHp` pair, `reapers-covenant`, `eternal-scholars-tome`)
+— `undying-will` deliberately drops `immortal-heart`'s 3rd effect
+(`defense +10`) to stay a 2-effect ability, since Abilities only ever
+occupy 1 slot and don't need to match an Artifact's full effect count to
+match its per-effect magnitude.
+
+`storm-within` used to mirror `crown-of-destruction` exactly too
+(`autoDamage 12` + `poisonOnHit 8%`) — its `poisonOnHit` half is now
+`statBoost aggro +15` instead ("Why `poisonOnHit` was removed" under the
+Rare table has the full reasoning; it doesn't scale-decay the way poison
+does, and pairs naturally with `autoDamage`'s flavor — a presence violent
+enough to draw every hit *and* strike back on its own). `+15` was
+calibrated against `aggro`'s own targeting-weight formula
+(`P(target = X) = X.aggro / total party aggro)`,
+`docs/gameplay-decisions/02-monster.md`), not `BalancePoints` — the game's
+own docs explicitly exclude `aggro` from that formula, since it's a
+relative weight, not an absolute power stat, so there's no shared
+conversion rate to borrow the way `magicPower` borrowed `attack`'s. The 1
+existing aggro-boosting effect in the game, the cursed-only
+`curseAggroBoost` (`unstable-core`, `data/artifacts.json`), uses `+25` —
+severe by design, since it's a downside with no opt-out. `+15` (60% of
+that) is deliberately smaller: this is a positive, chosen "protector"
+pick, not an imposed penalty, but still large enough to matter against
+real base values (`data/classes.json`) — e.g. a Mage's `8` aggro becomes
+`23`, nearly tripling how often monsters single them out, a real
+tank-support build enabler rather than a token nudge.
 
 `unerring-will` is the exception — it has no Artifact counterpart at all,
 since `alwaysHit` doesn't exist as an Artifact effect (§11.1.1). Placed at
@@ -544,3 +646,10 @@ already causes.
   modeled when this doc still gated *all* acquisition behind the death
   flow. Worth simulating once implemented — either drop rate or catalog
   size may need adjusting sooner than the Stardust-side numbers.
+- **The base game's `poisonOnHit`/Poison Coat/Poison Bomb mechanic has the
+  same non-scaling flaw** that got it removed from this catalog (§"Why
+  `poisonOnHit` was removed") — its flat damage-per-turn doesn't grow with
+  floor depth the way monster HP does, so it likely gets weaker over the
+  same run for Artifacts and Rogue skills too. Out of scope for this doc
+  (that's already-shipped code, not part of the unimplemented Abilities
+  feature), but worth a separate look.
