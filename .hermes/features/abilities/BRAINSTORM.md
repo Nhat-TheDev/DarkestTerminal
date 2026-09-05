@@ -775,3 +775,23 @@ Rejected alternatives:
   requested stats — a like-for-like swap keeps the tier/axis accounting
   simple (still 8/6/5/5, still 1 axis per ability per tier) rather than
   reopening the whole "how many abilities per tier" question.
+
+## D15. Renamed `storm-within` → `eye-of-the-storm` after its D14 effect swap
+
+D14 changed this Epic ability's 2nd effect from `poisonOnHit 8%` to
+`statBoost aggro +15`, but kept the name "Storm Within" and a description
+still built around "lashing out with damage and poison alike" — the same
+stale-name problem D13 already fixed once for 3 Common abilities. User
+flagged it should be fixed here too rather than left as a loose end.
+
+**Decided**: renamed to `eye-of-the-storm` / "Eye of the Storm" —
+description rewritten to "The stillness at the center of the storm —
+impossible to look away from, while the chaos around it strikes on its
+own." Kept the storm motif rather than replacing it outright (rejected
+alternative: a fully unrelated name like "Beacon of Wrath" or "Magnetic
+Fury") because "eye of the storm" is a direct, literal fit for what the
+ability now does — a calm, unmissable center (`aggro`, "impossible to
+look away from") with violence happening around it on its own
+(`autoDamage`, "the chaos... strikes on its own") — and it reuses the
+"drawing every eye" wordplay the description already had, rather than
+discarding continuity with the ability's own history for no reason.

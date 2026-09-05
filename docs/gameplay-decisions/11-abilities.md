@@ -502,7 +502,8 @@ since no Artifact targets `speed` either.
 ### Why `poisonOnHit` was removed from the Ability catalog entirely
 
 Not a rebalance — a removal, at every tier that had it (`toxic-touch`
-here, the old Common 8th slot, and half of the Epic `storm-within` below).
+here, the old Common 8th slot, and half of the Epic `eye-of-the-storm`
+below, at the time still named `storm-within`).
 The `poisoned` status effect it procs deals a flat `4` damage/turn for `3`
 turns (`data/status-effects.json`) — a fixed `12`-damage payout that never
 scales with anything, while monster HP keeps climbing with floor depth on
@@ -575,7 +576,7 @@ above what a Rare-tier effect would carry, below the Epic reference.
 |---|---|---|---|
 | `undying-will` | Undying Will | A will strong enough to turn punishment right back at whoever dealt it. | `reflectDamage 15%` + `statBoost maxHp +60` |
 | `reapers-instinct` | Reaper's Instinct | An instinct honed on death itself — every kill feeds the next. | `healOnKill 25` + `lifesteal 8%` |
-| `storm-within` | Storm Within | A storm that never fully settles — drawing every eye toward it while lashing out on its own. | `autoDamage 12` + `statBoost aggro +15` |
+| `eye-of-the-storm` | Eye of the Storm | The stillness at the center of the storm — impossible to look away from, while the chaos around it strikes on its own. | `autoDamage 12` + `statBoost aggro +15` |
 | `grandmasters-focus` | Grandmaster's Focus | Mastery sharp enough to recover skills faster and absorb every lesson battle offers. | `cooldownReduction 1` + `expBoost 25%` |
 | `unerring-will` | Unerring Will | A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied. | `alwaysHit 20%` + `fearResist 12%` |
 
@@ -587,12 +588,14 @@ Epic-tier artifact counterparts exactly (`immortal-heart`'s
 occupy 1 slot and don't need to match an Artifact's full effect count to
 match its per-effect magnitude.
 
-`storm-within` used to mirror `crown-of-destruction` exactly too
-(`autoDamage 12` + `poisonOnHit 8%`) — its `poisonOnHit` half is now
-`statBoost aggro +15` instead ("Why `poisonOnHit` was removed" under the
-Rare table has the full reasoning; it doesn't scale-decay the way poison
-does, and pairs naturally with `autoDamage`'s flavor — a presence violent
-enough to draw every hit *and* strike back on its own). `+15` was
+`eye-of-the-storm` (originally named `storm-within`, renamed to fit its
+new effect — see `.hermes/features/abilities/BRAINSTORM.md` D15) used to
+mirror `crown-of-destruction` exactly too (`autoDamage 12` +
+`poisonOnHit 8%`) — its `poisonOnHit` half is now `statBoost aggro +15`
+instead ("Why `poisonOnHit` was removed" under the Rare table has the
+full reasoning; it doesn't scale-decay the way poison does, and pairs
+naturally with `autoDamage`'s new flavor — the stillness everyone's eyes
+are drawn to, while the storm around it strikes on its own). `+15` was
 calibrated against `aggro`'s own targeting-weight formula
 (`P(target = X) = X.aggro / total party aggro)`,
 `docs/gameplay-decisions/02-monster.md`), not `BalancePoints` — the game's
