@@ -44,6 +44,11 @@ export function guardianFightSkip(state: GameState): PartyActionError | null {
   if (room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3") return { reason: t("errors.nothingToDecide") };
   state.narrativeCounters.guardianFightsSkipped += 1;
   state.message = t("dungeon.skippedGuardianFight", { room: room.name });
+  // Distinct from the win path's "resolved" tag (set in game.ts's combat-victory block) — gates
+  // reflection (shared.ts's REQUIRES_ENGAGEMENT) so skipping never shows a reflection written for
+  // having actually fought, and keeps broken-seal's containment reading (Part C.1 pair 15) tied to
+  // an actual won fight rather than a mere skip.
+  state.eventOutcomes[room.rolledEventId!] = "skipped";
   closeEvent(state);
   return null;
 }

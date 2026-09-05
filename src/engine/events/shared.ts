@@ -60,6 +60,21 @@ export function closeEvent(state: GameState): void {
   }
 }
 
+/** These 5 events' reflection text (base prompt, and every escalated tier for the 2 that chain)
+    describes the event's core action having happened — a payment taken, a trade struck, a
+    guardian fought and beaten. Showing that text after the party merely left (voluntarily, or
+    because they couldn't meet the cost) would describe something that never occurred. Gate
+    reflection on the specific outcome tag that only gets written when the action actually
+    succeeded, so a decline skips reflection entirely — the same reasoning open-chest/
+    collapsed-floor are excluded for: nothing happened, nothing to reflect on. */
+const REQUIRES_ENGAGEMENT: Partial<Record<Id, string>> = {
+  "blood-altar": "paid",
+  "sacrificial-circle": "sacrificed",
+  "wandering-hermit": "traded",
+  "guardian-fight": "resolved",
+  "desecrated-altar": "resolved",
+};
+
 /**
  * §10.5 — call after any action that might have just closed an event room. Safe to call
  * unconditionally, including after actions that DON'T close the event (e.g. a Gambling Den round
@@ -72,6 +87,8 @@ export function maybeTriggerReflection(state: GameState, ctx: EngineContext): vo
   if (!room.cleared || !room.rolledEventId) return;
   const event = getEvent(room.rolledEventId);
   if (!event.reflection || !REFLECTION_EVENT_IDS.has(event.id)) return;
+  const requiredOutcome = REQUIRES_ENGAGEMENT[event.id];
+  if (requiredOutcome && state.eventOutcomes[event.id] !== requiredOutcome) return;
   const alreadySeen = event.id in state.eventReflectionStances;
   const chance = alreadySeen ? BALANCE.events.reflectionRepeatChance : 1;
   if (ctx.rng.chance(chance)) state.pendingReflection = { eventId: event.id };

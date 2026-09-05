@@ -20,6 +20,7 @@ export function hermitExchangeFortune(state: GameState, ctx: EngineContext, arti
   const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
   state.message = t("game.hermitExchanged", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name, cost: HERMIT_EXCHANGE_COST_COINS });
   grantArtifact(state, newArtifactId);
+  state.eventOutcomes["wandering-hermit"] = "traded"; // gates reflection — see shared.ts's REQUIRES_ENGAGEMENT
   closeEvent(state);
   return null;
 }

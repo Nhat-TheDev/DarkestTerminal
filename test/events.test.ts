@@ -768,18 +768,20 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
   });
 
   test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
+    // merchant, not wandering-hermit — merchant has no engagement gate, so this test stays focused
+    // purely on the trigger-frequency mechanism (see the REQUIRES_ENGAGEMENT tests below for that).
     const game = new Game(61);
-    forceEventRoom(game, "wandering-hermit");
+    forceEventRoom(game, "merchant");
     getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
     maybeTriggerReflection(game.state, game.ctx);
-    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+    expect(game.state.pendingReflection).toEqual({ eventId: "merchant" });
 
     let sawTriggered = false;
     let sawSkipped = false;
     for (let seed = 1; seed < 200 && !(sawTriggered && sawSkipped); seed++) {
       const g = new Game(seed);
-      g.state.eventReflectionStances["wandering-hermit"] = "curious"; // already reflected once before
-      forceEventRoom(g, "wandering-hermit");
+      g.state.eventReflectionStances["merchant"] = "curious"; // already reflected once before
+      forceEventRoom(g, "merchant");
       getRoom(g.state.floor, g.state.currentRoomId).cleared = true;
       maybeTriggerReflection(g.state, g.ctx);
       if (g.state.pendingReflection) sawTriggered = true;
@@ -846,11 +848,57 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
     expect(game.state.eventReflectionStances["merchant"]).toBe("wary");
   });
 
-  test("closing a personified event's visit (hermitLeave) triggers a reflection end-to-end", () => {
+  test("completing a trade (hermitExchangeFortune) triggers a reflection end-to-end", () => {
+    const game = new Game(65);
+    const c = game.state.party[0]!;
+    c.equippedArtifactIds = ["scholars-insight"];
+    game.state.coins = BALANCE.events.wanderingHermitExchangeCostCoins;
+    forceEventRoom(game, "wandering-hermit");
+    expect(game.hermitExchangeFortune("scholars-insight")).toBeNull();
+    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+  });
+
+  test("leaving wandering-hermit without trading doesn't trigger a reflection — nothing happened to reflect on", () => {
     const game = new Game(65);
     forceEventRoom(game, "wandering-hermit");
     game.hermitLeave();
-    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+    expect(game.state.pendingReflection).toBeFalsy();
+  });
+
+  test("declining blood-altar (or failing to afford it) doesn't trigger a reflection", () => {
+    const game = new Game(66);
+    forceEventRoom(game, "blood-altar");
+    game.bloodAltarLeave();
+    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.eventOutcomes["blood-altar"]).toBe("declined");
+  });
+
+  test("paying at blood-altar still triggers a reflection", () => {
+    const game = new Game(66);
+    const c = game.state.party[0]!;
+    c.hp = c.maxHp;
+    forceEventRoom(game, "blood-altar");
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    expect(game.state.pendingReflection).toEqual({ eventId: "blood-altar" });
+  });
+
+  test("leaving sacrificial-circle without ever sacrificing doesn't trigger a reflection", () => {
+    const game = new Game(67);
+    forceEventRoom(game, "sacrificial-circle");
+    game.sacrificeLeave();
+    expect(game.state.pendingReflection).toBeFalsy();
+  });
+
+  test("skipping guardian-fight doesn't trigger a reflection written for having fought", () => {
+    const game = new Game(68);
+    const target = game.connectedRoomChoices()[0]!;
+    const room = getRoom(game.state.floor, target.id);
+    room.type = "event";
+    room.rolledEventId = "guardian-fight";
+    moveToRoom(game.state, target.id, game.ctx);
+    expect(game.skipGuardianFight()).toBeNull();
+    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.eventOutcomes["guardian-fight"]).toBe("skipped");
   });
 
   test("an action that doesn't close the event (gamblingDenContinue mid-round) never triggers a reflection", () => {
