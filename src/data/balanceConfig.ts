@@ -1,7 +1,8 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity } from "../types";
+import type { ArtifactRarity, MonsterType } from "../types";
 
 interface BalanceConfig {
+  monsterTypes: Record<MonsterType, { attack: number; defense: number; maxHp: number }>;
   combat: {
     defenseMitigationX: number;
     defenseMitigationY: number;

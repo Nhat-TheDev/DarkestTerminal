@@ -3,7 +3,7 @@
 // (growth breakdowns, %maxHp, hits-to-kill, EV per round, ...) and never mutates game state.
 
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
-import { MONSTER_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS } from "../../src/data/monsters";
+import { MONSTER_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
 import {
   growthBonus,
   growthBonusForDepth,
@@ -80,6 +80,7 @@ export function getCatalog() {
       guardOnly: m.guardOnly ?? false,
       powerTier: m.powerTier ?? null,
       aiPattern: m.aiPattern,
+      monsterType: m.monsterType,
       base: { hp: m.baseHp, attack: m.baseAttack, defense: m.baseDefense, speed: m.baseSpeed },
       expReward: m.expReward,
       isGuardCapable: Boolean(m.eliteSkillIds && m.bossSkillIds),
@@ -94,6 +95,7 @@ export function getCatalog() {
       expRewardDepthRate: EXP_REWARD_DEPTH_RATE,
       bossFloorInterval: BOSS_FLOOR_INTERVAL,
       executeCooldownTurns: EXECUTE_COOLDOWN_TURNS,
+      monsterTypeMultiplier: MONSTER_TYPE_MULTIPLIER,
     },
     balance: BALANCE,
     fearTiers: ([1, 2, 3, 4] as FearTier[]).map((tier) => ({
@@ -188,6 +190,8 @@ export interface MonsterComputation {
   /** Base-stat Balance Points — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
   balancePoints: number;
   growthBonus: { maxHp: number; attack: number; defense: number };
+  monsterType: MonsterArchetype["monsterType"];
+  typeMultiplier: { maxHp: number; attack: number; defense: number };
   multiplier: { maxHp: number; attack: number; defense: number; exp: number } | null;
   final: { hp: number; maxHp: number; attack: number; defense: number; speed: number; expReward: number };
   isBossFloor: boolean;
@@ -224,6 +228,8 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     base: { hp: archetype.baseHp, attack: archetype.baseAttack, defense: archetype.baseDefense, speed: archetype.baseSpeed },
     balancePoints: monsterBalancePoints({ attack: archetype.baseAttack, defense: archetype.baseDefense, hp: archetype.baseHp, speed: archetype.baseSpeed }),
     growthBonus: { maxHp: growthBonusForDepth("maxHp", depth), attack: growthBonusForDepth("attack", depth), defense: growthBonusForDepth("defense", depth) },
+    monsterType: archetype.monsterType,
+    typeMultiplier: MONSTER_TYPE_MULTIPLIER[archetype.monsterType],
     multiplier,
     final: { hp: monster.hp, maxHp: monster.maxHp, attack: monster.attack, defense: monster.defense, speed: monster.speed, expReward: monster.expReward },
     isBossFloor: depth % BOSS_FLOOR_INTERVAL === 0,

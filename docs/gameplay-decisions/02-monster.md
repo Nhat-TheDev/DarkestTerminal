@@ -12,6 +12,21 @@ Current implementation: `growthBonus(stat, floorDepth)`, using the same tapered 
 
 This is the archetype → instance formula, used when spawning monsters into `Room.monsterIds`; the `attack/defense/hp/maxHp/speed` fields on a `Monster` are always the resolved values — the formula itself is never stored.
 
+### Monster type (`MonsterType`) — stat-budget archetype
+
+Every `MonsterArchetype` carries a fixed `monsterType`, mirroring how a character class's `growthWeights` (§6.8) reshapes its stat budget: `"balanced" | "tanky" | "armored" | "damage"`. Each type has a per-stat multiplier `{ attack, defense, maxHp }` in `data/balance-config.json` → `monsterTypes` (loaded as `MONSTER_TYPE_MULTIPLIER`, `src/data/monsters.ts`), summing to **3** — the 3-stat equivalent of a class's budget summing to 5 across its 5 weighted stats:
+
+| Type | attack | defense | maxHp |
+|---|---|---|---|
+| `balanced` (căn bằng) | 1.0 | 1.0 | 1.0 |
+| `tanky` (thịt dày) | 0.8 | 0.9 | 1.3 |
+| `armored` (giáp dày) | 0.8 | 1.3 | 0.9 |
+| `damage` (sát thương mạnh) | 1.3 | 0.9 | 0.8 |
+
+Unlike `growthWeights` (which only weights the per-level growth increment, leaving `baseX` untouched — §6.8), the type multiplier is applied to the *entire* floor-scaled stat (`base + growthBonusForDepth`) in `spawnMonster()`, the same way `eliteMultiplier`/`bossMultiplier` already work — and it stacks multiplicatively with the elite/boss tier multiplier when both apply. `speed` and `expReward` are unaffected by `monsterType`.
+
+Current per-archetype assignment: `data/monsters.json` field `monsterType` — check the JSON directly rather than trusting an enumeration here.
+
 ### Targeting by `aggro`
 
 Default rule (used by every pattern unless stated otherwise below): **weighted random** over every living character in the party, weighted by the character's current `Character.aggro`. The higher a character's `aggro`, the more likely it is to be picked as the target.
@@ -131,6 +146,8 @@ MonsterBalancePoints = baseAttack/tier1.attack + baseDefense/tier1.defense + bas
 ```
 
 using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`: `attack=3, defense=2, maxHp=14`), plus `speedRate = 12` — a hand-picked constant (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). Starting point was the pooled average `baseSpeed` across every monster archetype and character class (~10.4), nudged up during tuning. `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
+
+This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliberately ignores `monsterType` — the type multiplier only reshapes the *scaled instance* (see "Monster type" above), so it doesn't shift an archetype's base-stat BalancePoints or its tier band.
 
 **Target ranges** (rule-of-thumb bands per tier, checked against `data/monsters.json`'s base stats before any `eliteMultiplier`/`bossMultiplier` or floor-depth scaling is applied):
 

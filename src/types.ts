@@ -237,6 +237,9 @@ export interface Floor {
 
 export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
 
+/** Stat-budget archetype, mirroring how `growthWeights` splits a character class's budget across stats — see `MONSTER_TYPE_MULTIPLIERS` (`data/balance-config.json`). Multipliers sum to 3 (1 per stat) the same way `growthWeights` sums to 5. */
+export type MonsterType = "balanced" | "tanky" | "armored" | "damage";
+
 export interface MonsterArchetype {
   id: Id;
   name: string;
@@ -244,6 +247,7 @@ export interface MonsterArchetype {
   baseAttack: number;
   baseDefense: number;
   baseSpeed: number;
+  monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
   skillIds: Id[];
   expReward: number;
@@ -271,6 +275,7 @@ export interface Monster {
   speed: number;
   skillIds: Id[];
   tier: MonsterTier;
+  monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;

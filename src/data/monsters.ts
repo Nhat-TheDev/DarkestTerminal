@@ -28,18 +28,23 @@ const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
 const TIER_NAME_SUFFIX = { elite: " (Elite)", boss: " (Boss)" };
 
 export const EXECUTE_COOLDOWN_TURNS = BALANCE.combat.executeCooldownTurns;
+export const MONSTER_TYPE_MULTIPLIER = BALANCE.monsterTypes;
 
 export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { tier?: MonsterTier }): Monster {
   const archetype = getArchetype(archetypeId);
   const tier: MonsterTier = opts?.tier ?? "normal";
-  const multiplier = tier === "elite" || tier === "boss" ? TIER_MULTIPLIER[tier] : undefined;
+  const tierMultiplier = tier === "elite" || tier === "boss" ? TIER_MULTIPLIER[tier] : undefined;
+  const typeMultiplier = MONSTER_TYPE_MULTIPLIER[archetype.monsterType];
 
-  const scaledMaxHp = archetype.baseHp + growthBonusForDepth("maxHp", floorDepth);
-  const scaledAttack = archetype.baseAttack + growthBonusForDepth("attack", floorDepth);
-  const scaledDefense = archetype.baseDefense + growthBonusForDepth("defense", floorDepth);
+  const growthMaxHp = archetype.baseHp + growthBonusForDepth("maxHp", floorDepth);
+  const growthAttack = archetype.baseAttack + growthBonusForDepth("attack", floorDepth);
+  const growthDefense = archetype.baseDefense + growthBonusForDepth("defense", floorDepth);
   const scaledExp = archetype.expReward + Math.floor(floorDepth * EXP_REWARD_DEPTH_RATE);
 
-  const maxHp = multiplier ? Math.round(scaledMaxHp * multiplier.maxHp) : scaledMaxHp;
+  const maxHp = Math.round(growthMaxHp * typeMultiplier.maxHp * (tierMultiplier?.maxHp ?? 1));
+  const attack = Math.round(growthAttack * typeMultiplier.attack * (tierMultiplier?.attack ?? 1));
+  const defense = Math.round(growthDefense * typeMultiplier.defense * (tierMultiplier?.defense ?? 1));
+
   monsterCounter += 1;
   return {
     id: `${archetypeId}-${monsterCounter}`,
@@ -47,14 +52,15 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     name: tier === "elite" || tier === "boss" ? `${archetype.name}${TIER_NAME_SUFFIX[tier]}` : archetype.name,
     hp: maxHp,
     maxHp,
-    attack: multiplier ? Math.round(scaledAttack * multiplier.attack) : scaledAttack,
-    defense: multiplier ? Math.round(scaledDefense * multiplier.defense) : scaledDefense,
+    attack,
+    defense,
     speed: archetype.baseSpeed,
     skillIds: archetype.skillIds,
     tier,
+    monsterType: archetype.monsterType,
     aiPattern: archetype.aiPattern,
     activeStatusEffects: [],
-    expReward: multiplier ? Math.round(scaledExp * multiplier.exp) : scaledExp,
+    expReward: tierMultiplier ? Math.round(scaledExp * tierMultiplier.exp) : scaledExp,
     executeCooldownTurns: tier === "boss" ? EXECUTE_COOLDOWN_TURNS : undefined,
     isChargingExecute: false,
   };

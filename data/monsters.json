@@ -6,6 +6,7 @@
     "baseAttack": 16,
     "baseDefense": 1,
     "baseSpeed": 12,
+    "monsterType": "balanced",
     "aiPattern": "erratic",
     "skillIds": [
       "bite"
@@ -26,6 +27,7 @@
     "baseAttack": 15,
     "baseDefense": 1,
     "baseSpeed": 18,
+    "monsterType": "damage",
     "aiPattern": "aggressive",
     "skillIds": [
       "blood-drain"
@@ -46,6 +48,7 @@
     "baseAttack": 16,
     "baseDefense": 1,
     "baseSpeed": 4,
+    "monsterType": "tanky",
     "aiPattern": "erratic",
     "skillIds": [
       "acid-spit"
@@ -66,6 +69,7 @@
     "baseAttack": 16,
     "baseDefense": 4,
     "baseSpeed": 8,
+    "monsterType": "balanced",
     "aiPattern": "aggressive",
     "skillIds": [
       "bone-throw"
@@ -86,6 +90,7 @@
     "baseAttack": 13,
     "baseDefense": 6,
     "baseSpeed": 4,
+    "monsterType": "tanky",
     "aiPattern": "defensive",
     "skillIds": [
       "regeneration"
@@ -106,6 +111,7 @@
     "baseAttack": 21,
     "baseDefense": 1,
     "baseSpeed": 16,
+    "monsterType": "damage",
     "aiPattern": "erratic",
     "skillIds": [
       "poison-bite"
@@ -126,6 +132,7 @@
     "baseAttack": 13,
     "baseDefense": 6,
     "baseSpeed": 12,
+    "monsterType": "armored",
     "aiPattern": "aggressive",
     "skillIds": [
       "quick-bite"
@@ -146,6 +153,7 @@
     "baseAttack": 16,
     "baseDefense": 4,
     "baseSpeed": 15,
+    "monsterType": "damage",
     "aiPattern": "aggressive",
     "skillIds": [
       "web-spit"
@@ -166,6 +174,7 @@
     "baseAttack": 24,
     "baseDefense": 2,
     "baseSpeed": 12,
+    "monsterType": "damage",
     "aiPattern": "erratic",
     "skillIds": [
       "arrow-shot"
@@ -186,6 +195,7 @@
     "baseAttack": 14,
     "baseDefense": 8,
     "baseSpeed": 8,
+    "monsterType": "armored",
     "aiPattern": "defensive",
     "skillIds": [
       "guard-stance"
@@ -206,6 +216,7 @@
     "baseAttack": 20,
     "baseDefense": 10,
     "baseSpeed": 6,
+    "monsterType": "tanky",
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 15,
@@ -244,6 +255,7 @@
     "baseAttack": 29,
     "baseDefense": 5,
     "baseSpeed": 14,
+    "monsterType": "damage",
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 16,
@@ -278,6 +290,7 @@
     "baseAttack": 24,
     "baseDefense": 7,
     "baseSpeed": 10,
+    "monsterType": "tanky",
     "aiPattern": "aggressive",
     "skillIds": [],
     "expReward": 20,
@@ -312,6 +325,7 @@
     "baseAttack": 19,
     "baseDefense": 10,
     "baseSpeed": 5,
+    "monsterType": "armored",
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 17,
@@ -346,6 +360,7 @@
     "baseAttack": 21,
     "baseDefense": 10,
     "baseSpeed": 9,
+    "monsterType": "balanced",
     "aiPattern": "defensive",
     "skillIds": [],
     "expReward": 18,

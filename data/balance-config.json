@@ -107,6 +107,28 @@
     ],
     "wanderingHermitExchangeCostCoins": 50
   },
+  "monsterTypes": {
+    "balanced": {
+      "attack": 1.0,
+      "defense": 1.0,
+      "maxHp": 1.0
+    },
+    "tanky": {
+      "attack": 0.8,
+      "defense": 0.9,
+      "maxHp": 1.3
+    },
+    "armored": {
+      "attack": 0.8,
+      "defense": 1.3,
+      "maxHp": 0.9
+    },
+    "damage": {
+      "attack": 1.3,
+      "defense": 0.9,
+      "maxHp": 0.8
+    }
+  },
   "items": {
     "itemDropChance": 0.6,
     "itemWeightDepthGrowth": 0.1
