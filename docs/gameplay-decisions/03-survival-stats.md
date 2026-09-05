@@ -187,14 +187,15 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 > what's for dinner. Someone else answers with their mouth full. The rest of it just happened
 > somewhere in between, the way breathing happens."
 
-- "It doesn't need explaining anymore."
+- "Nobody outside would follow it anyway."
 - "Explaining it wouldn't change anything now."
 - "Nobody's asked in a long time. Nobody will."
 
-**Craft notes**: none of the 4 tiers reuse imagery already established elsewhere in the game (hand,
-wound, stone, circle, spiral) — deliberately, since Camp Reflection is the party looking at itself,
-not at any altar/ritual object, and needed its own sensory palette (supplies, a route, a dropped
-cup, a meal). "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
+**Craft notes**: none of the 4 tiers reuse the game's established *ritual-object* imagery (wound,
+stone, circle, spiral) — deliberately, since Camp Reflection is the party looking at itself, not at
+any altar, and needed its own sensory palette (supplies, a route, a dropped cup, a meal). Hands do
+appear (tier 3's "catch a falling cup without thinking"), on purpose: the drift being described is
+specifically a body acting ahead of a decision, which is exactly what §11.5's stage 3 is. "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
 deliberate doubled echo in tier 4's last option — an escalating motif specific to this content,
 never reused from tier 1-2's different framing or from any existing event text. The 3 options per
 tier are bespoke self-narratives, not a `curious`/`wary`/`dismissive` relabeling — a plausible

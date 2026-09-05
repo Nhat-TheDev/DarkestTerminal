@@ -453,6 +453,21 @@
         "I": "#6b6284",
         "J": "#524d56"
       }
+    },
+    "the-founder": {
+      "rows": [
+        "...MMMMM...",
+        "..M.....M..",
+        ".M.......M.",
+        "M....M....M",
+        "M...M.M...M",
+        ".M.......M.",
+        "..M..M..M..",
+        "...M...M..."
+      ],
+      "palette": {
+        "M": "#5a4a5e"
+      }
     }
   },
   "elites": {
@@ -712,6 +727,29 @@
         "B": "#ebccff",
         "C": "#9e9d9f",
         "D": "#110a24"
+      }
+    },
+    "the-founder": {
+      "rows": [
+        "...GGGGGGGGG...",
+        "..GggggggggG...",
+        ".GgggggggggggG.",
+        ".GgggGGGGGgggG.",
+        ".CgggGCCCGgggC.",
+        ".CCgggCCCgggCC.",
+        "..CCgggggggCC..",
+        "...TT.TTT.TT...",
+        "...T.T...T.T...",
+        "..T...T.T...T..",
+        ".T.....T.....T.",
+        ".......T.......",
+        ".......T......."
+      ],
+      "palette": {
+        "G": "#8a6570",
+        "g": "#5c3d47",
+        "C": "#c9b8a8",
+        "T": "#3a1520"
       }
     }
   }

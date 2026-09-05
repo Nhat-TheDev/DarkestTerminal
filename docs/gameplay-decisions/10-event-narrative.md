@@ -51,12 +51,10 @@ widened from `attempted`/`declined` to `rescued`/`failed`/`declined` to match.
 
 **Item lore's `guaranteedArtifactId`** (`07-items-artifacts.md`): built —
 `EventDefinition.guaranteedArtifactId?: Id`, checked in `openChest()`
-(`src/engine/events/openChest.ts`) ahead of the standard roll. Wired for `waiting-supplies` only so
-far, pointing at the already-existing `travelers-ration` (not the not-yet-added
-`bundle-of-undelivered-letters`, since the 47-item catalog rewrite in `07-items-artifacts.md` is
-still spec-only — using an id that doesn't exist in `data/artifacts.json` yet would throw at
-runtime). `vigil-candle`/`broken-seal`/`half-a-warning` still roll the standard table until their
-own dedicated items are actually added to the catalog.
+(`src/engine/events/openChest.ts`) ahead of the standard roll. Now fully wired: `waiting-supplies` →
+`travelers-ration`, `vigil-candle` → `vigil-cloth`, `broken-seal` → `torn-lock-plate`,
+`half-a-warning` → `worn-chalk-stub` — all 4 items live in `data/artifacts.json` alongside the rest
+of the 48-item catalog rewrite (34 rewritten + 14 new, including `waystone-shard`, Part F.4).
 
 **`the-delay` now `noArtifactReward: true`**: previously granted a free artifact like every other
 common `instantReward` event, contributing to commons reading as an unbroken loot piñata. Converted
@@ -740,8 +738,8 @@ On reaching floor 100 (still alive), the run pauses on a **guaranteed story beat
 event roll — mechanically distinct from `rollEvent()`'s probabilistic system, since this must fire
 every single time a run reaches this depth, unconditionally.
 
-**2 independent gates**, checked in this order the moment floor 100 is reached — never all 4 endings
-competing on 1 menu:
+**3 mutually exclusive modes**, decided by 2 gates checked in the order below the moment floor 100 is
+reached — never all 4 endings competing on 1 menu:
 
 | Condition | What the checkpoint offers |
 |---|---|
@@ -800,37 +798,65 @@ read as "you failed to unlock" anything, since no condition anywhere in this sys
 
 Resolution, once chosen:
 
-> "None of you climb back out. The floor doesn't collapse, doesn't call, doesn't ask for anything
-> further — you simply don't leave, the way a room doesn't leave the house it's part of. Somewhere,
-> much later, another party will walk this same corridor. They won't know your names. But something
-> about how they move through it will be, just slightly, easier than it should be."
+> "The way back up stays exactly where it is. Nobody walks it. Packs come off, and stay off; the
+> torch burns down to a height it doesn't drop below again. Somewhere, much later, another party
+> will walk this same corridor. They won't know your names. But something about how they move
+> through it will be, just slightly, easier than it should be."
+
+*(Craft-panel revision: the earlier draft opened "None of you climb back out" and ran on a
+negate-then-correct spine — both of which 3 of the 4 endings were independently reaching for, and
+it was the least stageable text in Part F besides. Rebuilt on a plain declarative with 2 physical
+frames before the abstraction. The withheld mechanism is unchanged; only what the eye lands on is.)*
 
 Deliberately doesn't explain the mechanism (how staying "helps" — left open, matching §11.9's own
 discipline about not over-explaining what the dungeon's structure actually is). The run ends here —
 a distinct resolution screen, not `GameState.gameOver: "defeat"` (this isn't a loss).
 
-**The payoff, on a later run**: a new, rare, per-profile-once event — not a variant of `the-wanderer`
-(Part E), a deliberately different, more personal shape: it names the specific character who stayed.
+**The payoff, on a later run — implemented**, id `the-one-who-stayed` (`data/events.json`): a
+new, rare, per-profile-once event — not a variant of `the-wanderer` (Part E), a deliberately
+different, more personal shape: it names the specific class that stayed.
 
 > "A figure crouches at the edge of the torchlight, and for a moment none of you can place why they
-> look familiar — until someone does. It's {{name}}, the {{class}} who never came back up. They
-> don't seem surprised to see you. 'Took you long enough,' they say, and for just a moment, sound
-> like they used to."
+> look familiar — until someone does. A {{class}}, in gear worn the same way yours is, only longer.
+> Not one of you. One from before, who never came back up. They don't seem surprised to see you.
+> 'You got further than we did,' they say, and for just a moment, sound like they used to."
 
-No combat, no cost — matches the established "just talk, no transaction" shape (Part E). What it
-grants, if anything, is left as an open design question (a small, unexplained blessing implied by
-"easier than it should be" above would fit; a pure dialogue-only beat would also fit — a call to
-make once the persistence layer below actually exists).
+*(Craft-panel revision, the panel's #1 priority finding: the party is 4 classes picked from 6
+(`party.size`), so an earlier draft's "It's the {{class}} who never came back up" would frequently
+be read while a living character of that exact class stood in the party — poignant intent, bug-like
+reading. Naming them as explicitly **a different one** fixes it in both cases, and the uncanny
+doubling is stronger than the original line was. "Took you long enough" — a stock returning-ally
+quip — was replaced with a line only this character could say.)*
 
-**This needs new architecture, not just new content**: `GameState` resets every run, so nothing
-about who stayed and as what character survives past the current save. This needs a persistent
-record **outside** the current per-run save file — something like a small profile-level store (e.g.
-`{ retiredCharacters: { name, class }[] }`) written once at the moment Ending 1 is chosen, read by
-a later run's event-roll to decide whether "the one who stayed" event is even eligible. **This spec
-does not attempt to design that persistence layer** — it requires understanding how saves are
-currently stored and versioned (`docs/technical-decisions.md`, the save-version-guard work already
-in this repo's history) before proposing a shape for it. Flagging this explicitly rather than
-guessing.
+**Adapted from the original draft, not guessed at silently**: the draft above named the retired
+character by a personal name *and* class ("It's {{name}}, the {{class}}..."). Built without the name
+— this game has no personal-name system anywhere; `Character.name` is always just the class's own
+display name (`createCharacter(id, cls.name, cls)`, `src/engine/game.ts`). Naming the class only
+isn't a shortcut around the spec's intent, it's the same "nobody down here exchanges names"
+principle (`11-world-bible.md`) the rest of this whole spec already holds to — the draft simply
+hadn't been checked against the game's actual character-naming reality yet.
+
+No combat, no cost — matches the established "just talk, no transaction" shape (Part E).
+`noArtifactReward: true`: a pure dialogue-only beat, resolving the "what it grants" open question in
+favor of the simpler of the 2 options considered.
+
+**The persistence layer — built**, `src/engine/profile.ts` (new): a small `profile.json`, living in
+the same app-data directory `save.ts`'s per-run saves already use, but never imported by (or
+importing) `save.ts`/`game.ts` circularly. Holds `{ retiredCharacters: { classId }[],
+shownRetiredCharacterEvent: boolean }`. `addRetiredCharacter()` is called the moment Ending 1 is
+chosen (`Game.pickEndingChoice`); a fresh `Game` reads the profile once at construction and, if a
+retired character exists and the payoff hasn't already been shown in any previous run, pre-fills
+`GameState.retiredCharacterClassId` and leaves `"the-one-who-stayed"` *out* of the freshly-built
+`firedOnceEventIds` — otherwise the id is pre-inserted there, so it can never roll. No changes needed
+to `rollEvent()` itself; eligibility is entirely encoded by whether that 1 id starts excluded.
+`markRetiredCharacterEventShown()` fires from `closeEvent()` the moment the event actually resolves,
+persisting the "already shown" fact across every future run, not just this one.
+
+Caught while wiring this in: `profile.json` sharing `save.ts`'s directory made `forEachSaveFile`
+(and therefore `deleteSavesForRun`/`listSaves`) crash on it, since it doesn't have the `SaveFile`
+shape every other file there does. Fixed by having `forEachSaveFile` skip `PROFILE_FILENAME` by
+name — found by running the full test suite after this change, not by any test written for this
+feature specifically, which is exactly the kind of integration issue that check exists to catch.
 
 ### F.3 Ending 2 — Let Go
 
@@ -877,8 +903,9 @@ What every such party finds, regardless of anything else about the run:
 **Default outcome — bad ending, unknown fate**: unless the condition below is met, this is where it
 ends.
 
-> "None of you get a clean look at how many there are. There wasn't a plan, and there wasn't time
-> to make one. What happened to the party after that isn't something anyone will ever get to tell."
+> "Someone gets half a word out. Nobody gets a clean look at how many there are, and there was
+> never time to make a plan. What happened to the party after that isn't something anyone will ever
+> get to tell."
 
 Deliberately not a confirmed death and not a confirmed survival — "unknown fate" is the actual
 content of this ending, not a placeholder for one. Framed as a genuine bad ending (the only path this
@@ -946,12 +973,15 @@ they're also statistically very different odds of already holding the way out by
 Not a bug to fix: a party that gave nothing back anywhere earns a harder shot at the good branch than
 a party whose one long exchange simply broke.
 
-**Mechanism needed, not yet built**: `ArtifactDefinition.restrictedDropSources?: Array<"boss" |
-"blood-altar">` (new, `src/types.ts`) — when present, an id is filtered out of every roll except the
-ones named. `rollArtifact()` (`src/data/artifacts.ts`) needs an opt-in override so `bloodAltarPay()`
-can request `waystone-shard` be included once the threshold above is met; every other caller
-(`openChest.ts` and the rest of Chain 4's events, `sacrifice.ts`, the Elite/Boss kill paths that
-don't pass the override) continues to exclude it automatically.
+**Mechanism — built**: `ArtifactDefinition.restrictedDropSources?: ("boss" | "blood-altar")[]`
+(`src/types.ts`) — when present, an id is filtered out of every roll except the ones named.
+`rollArtifact()`/`pickArtifactOfRarity()` (`src/data/artifacts.ts`) take an opt-in
+`allowRestrictedSource` param; `bloodAltarPay()` passes `"blood-altar"` once the threshold above is
+met, `Game.resolve()`'s Boss-kill branch passes `"boss"` only when `monster.tier === "boss"`. Every
+other caller (`openChest.ts` and the rest of Chain 4's events, `sacrifice.ts`, Elite kills, Collapsed
+Floor's own `"boss"`-rarity-table roll) passes nothing and stays excluded automatically — confirmed
+by a dedicated test that Collapsed Floor specifically never rolls it, since it reuses the same
+rarity table without being a Boss kill.
 
 Compliance: neither branch names "Sleeper," "Covenant," or "the Balance"; neither resolves anything
 on §11.9's list. The bad branch doesn't contradict §11.9's "no evidence anyone comes back" item —
@@ -971,25 +1001,45 @@ until floor 120.
 
 **Floor 120 — the final encounter.** On arrival, before any combat:
 
-> "What's left of him doesn't have a face to speak from anymore, but something in the room still
-> remembers how his voice sounded — a vast, wrong shape drifting in the dark, more brain than body,
-> ropes of nerve-thick tissue trailing beneath it where legs should be, reaching without ever quite
-> touching the ground."
+> "A vast, wrong shape drifts in the dark ahead of you — more brain than body, ropes of nerve-thick
+> tissue trailing beneath it where legs should be, reaching without ever quite touching the ground.
+> It has no face left to speak from. Something in the room remembers how his voice sounded anyway."
 
-Dialogue, before the fight (6 short lines, deliberately restrained — no long-winded villain
-monologue, §anti-cringe-slop's own standing rule):
+Dialogue, before the fight — 6 short lines, kept short on purpose (a villain who explains himself at
+length stops being frightening), **staged in 3 movements with a physical beat between each**:
 
 > "You made it further than any of them."
 > "I didn't come down here to build anything. I came down because everyone I was supposed to save
 > was already gone, and I couldn't stop asking the ground to give them back."
 > "It never gave anyone back. It just... kept listening. So I kept asking. Eventually I stopped
 > noticing I was still asking."
+>
+> *He is closer than he was. None of you saw him cross the distance.*
+>
 > "The others who followed me down, over the years — I taught them how to ask properly. That's all
 > any of it ever was."
 > "I don't remember the last time I was only a person. I'm not sure there's a difference anymore,
 > between what's still me and what's still just... dreaming."
+>
+> *Somewhere behind the walls, something takes a breath the room is too small to hold.*
+>
 > "You can still turn back. Or you can keep asking, the way I did, until there's nothing left to
 > tell you apart from what you asked for."
+
+**The 2 interleaved beats are load-bearing, not decoration** (craft-panel revision): without them
+this is 6 uninterrupted lines delivered to a silent room with 1 static image — restrained in
+*length*, but still the monologue shape, and nothing for the player's eye to move to for the whole
+scene. Both beats also follow §11.11's own preferred register: a thing that has moved without
+anyone seeing it move, and a sound the space shouldn't be able to make.
+
+**This scene is the 1 deliberate exemption to §11.11's "one observable change per event" rule** —
+stated here so a future writer inherits the exception knowingly rather than either copying it as
+license or "fixing" the scene. It carries 5 reveals at once (he was a person; grief drove him; he
+taught the others; he is fused with something; he offers a way out). That's exactly what §11.11
+warns reads as exposition, and the warning is correct — it's accepted here because this is the
+single scene in the game whose entire purpose is the account, at the deepest point a run can reach,
+after 120 floors of the opposite discipline. The exemption is that narrow: 1 scene, 1 time, at the
+floor where lore-authoring ends. Nowhere else.
 
 **The rhyme, deliberate**: this is what Ending 1 (§F.2) looks like carried far enough, for far too
 long. "Staying" is framed there as quiet and almost gentle; this is what it becomes given enough
@@ -1011,9 +1061,14 @@ delivery ever confirms which reading is correct. This is the mechanism that keep
 explicit requirement — "don't rob the player's own judgment" — intact even while giving real,
 citable answers to some of it.
 
-**The fight**: a new Boss-tier `MonsterArchetype` (`02-monster.md`), stronger than any existing boss
-— full kit design (skills, stat scaling at floor 120) is a separate task from this spec, flagged
-here as needed, not designed here.
+**The fight — built**: `the-founder` (`data/monsters.json`), a Boss-tier `MonsterArchetype` with
+`guardOnly: true` and only `bossSkillIds` set (no `eliteSkillIds`), so it's excluded from every
+normal Elite/Boss-room roll and only ever spawned by `Game.enterFounderFight()`. "Stronger than any
+existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
+depth-scaling every monster already uses — no bespoke stat multiplier needed. 2 new skills,
+`boss-execute-the-founder` ("Everything You Asked For") and `boss-debuff-the-founder` ("What's Left
+Listening," applying `blinded`), follow the exact same mechanical shape as every other boss's
+execute/debuff pair.
 
 **After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — no new
 mechanic needed for this framing; it's flavor over the existing infinite-descent loop continuing as
@@ -1045,33 +1100,72 @@ by *how* the run ended, instead of a single flat conclusion regardless of cause.
   party fed and rested long enough, not a fight lost. Exact wording not drafted here; a 1-sentence
   addition, not a scene.
 
-No new mechanism needed beyond checking which system dealt the finishing blow (already
-distinguishable — `applyDyingDamage` vs. ordinary combat resolution, both in `src/engine/`) at the
-moment `gameOver` is set. Deliberately minimal: this is texture on the existing, overwhelmingly most
-common outcome, not a 5th designed ending competing for the same weight as §F.2-F.5 above.
+**Not implemented in this pass — status checked, not skipped by default.** The assumption above (that
+which system dealt the finishing blow is already cleanly distinguishable at the moment `gameOver` is
+set) turned out not to hold on inspection: `GameState.gameOver = "defeat"` is written from 2 places
+(`Game.resolve()`'s `combat.outcome === "defeat"` branch, and `postMoveCheck()`'s universal
+every-character-dead safety net), and `postMoveCheck()` runs unconditionally at the end of every
+`resolve()` regardless of which branch already fired — so "which function set it" isn't a reliable
+signal, and `applyDyingDamage` (`src/engine/survival.ts`) can itself fire *inside* an active combat
+round (`combat.ts`), meaning a fight and the Dying DOT can both be live contributors to the same kill.
+Actually telling them apart needs a small dedicated flag (e.g. tagging the round/action that reduced
+the last living character to 0 HP), which is a real, if small, task of its own — not the free
+distinction this section originally assumed. Left unimplemented rather than built on a wrong
+assumption; the existing single `"defeat"` conclusion is unaffected and unchanged. Deliberately low
+priority regardless: this is texture on the existing, overwhelmingly most common outcome, not a 5th
+designed ending competing for the same weight as §F.2-F.5 above.
 
-### F.7 What this spec does not attempt
+### F.7 Implementation status
 
-This is a design spec, not an implementation plan — several pieces here are flagged rather than
-built out, because they're genuinely separate-sized problems:
+**Implemented, all of it**, including the 2 pieces this spec originally flagged as needing their own
+separate design pass (the floor-100/120 trigger mechanism and Ending 1's cross-run persistence
+layer) and the boss kit it flagged as undesigned:
 
-- The floor-100 checkpoint's trigger mechanism (a guaranteed, non-rolled story beat at an exact
-  depth) doesn't exist anywhere in the current event/room system and needs its own design pass.
-- New `GameState.gameOver` outcomes (or an entirely separate resolution-screen concept) alongside
-  the existing `"victory" | "defeat"` — up to 5 distinct ones now (Stay / Let Go / Leave-ambushed /
-  Leave-escaped / Continue's outcome), needs a look at every place that field is currently read.
-- The cross-run persistence layer for Ending 1 (§F.2) — explicitly not designed here; needs
-  investigation into the existing save/version-guard system first.
-- Floor 120's boss `MonsterArchetype` — kit, stats, skills all undesigned; this spec only fixes the
-  visual and the pre-fight dialogue.
-- `waystone-shard` (§F.4) needs to actually be added to `data/artifacts.json` before its check can
-  do anything — same caveat as the 3 event-tied items in `07-items-artifacts.md`: referencing an id
-  that doesn't exist in the real catalog yet would throw at runtime. Its `restrictedDropSources`
-  mechanism (§F.4) is a separate, larger piece on top of that: a new `ArtifactDefinition` field, a
-  `rollArtifact()` override path, and the `bloodAltarPay()` threshold check all need to be built
-  before the Boss/blood-altar-only sourcing does anything — until then, treat the item as spec-only.
-- Whether/how any of the floor-100 gating conditions (§F.1) — the blood debt breaking, the free-take
-  ledger never opening, or Camp Reflection reaching Unawareness — should be visible to a curious
-  player in any form (a hint, an achievement-style unlock notice) or stay entirely silent — leaning
-  toward entirely silent, consistent with how no other mechanic's exact thresholds are ever shown, but
-  not locked here.
+- **Floor-100/120 triggers**: `Game.advanceToNextFloor()` (`src/engine/game.ts`) checks the new
+  depth against `ENDING_CHECKPOINT_FLOOR_DEPTH`/`FOUNDER_FLOOR_DEPTH` (`src/data/endings.ts`) and
+  sets `pendingEndingCheckpoint`/`pendingFounderDialogue` instead of running the entry room's usual
+  ambush check — both block every other screen via `syncUiToGameState()` (`src/ui/app.ts`), same
+  "guaranteed, non-rolled" priority the spec called for.
+- **`GameState.gameOver`**: extended to `"stay" | "letGo" | "leaveAmbushed" | "leaveEscaped"`
+  alongside the existing `"victory" | "defeat"` — reused the existing gameover screen/deletion
+  machinery entirely (`src/ui/screens/gameover.ts`, `deleteSavesForRun`) rather than inventing a
+  parallel resolution-screen concept; Continue sets none of these, matching the spec exactly.
+- **`waystone-shard`'s `restrictedDropSources`**: built as spec'd — `ArtifactDefinition` field,
+  `rollArtifact()`'s opt-in `allowRestrictedSource` param, `bloodAltarPay()`'s threshold check. Caught
+  during implementation: Collapsed Floor rolls the same `"boss"` rarity table without being a Boss
+  kill, so the mechanism had to be an explicit per-call-site opt-in, never inferred from the rarity
+  table name alone — confirmed with a dedicated test.
+- **Floor 120's boss**, `the-founder` (`data/monsters.json`, `data/monster-skills.json`,
+  `data/sprites.json`): `guardOnly: true` with only `bossSkillIds` set (no `eliteSkillIds`), so it's
+  excluded from every normal Elite/Boss-room roll and only ever spawned directly by
+  `Game.enterFounderFight()`. Stats are deliberately plain (baseHp 80/baseAttack 28/baseDefense
+  12/baseSpeed 5, `aiPattern: "aggressive"`) — depth-scaling alone (floor 120, deeper than any other
+  boss in the game) already satisfies "stronger than any existing boss" without a bespoke multiplier.
+  2 new skills, `boss-execute-the-founder`/`boss-debuff-the-founder`, follow the same mechanical
+  shape every other boss's execute/debuff pair already uses (only the flavor differs).
+- **Ending 1's persistence layer** (`src/engine/profile.ts`, new): a small `profile.json` sharing
+  `save.ts`'s app-data directory but never imported by or importing `save.ts`/`game.ts` circularly.
+  Records `{classId}` per retirement and a `shownRetiredCharacterEvent` flag, both independent of any
+  single run's save. A fresh `Game` reads it once at construction and pre-seeds
+  `firedOnceEventIds`/`retiredCharacterClassId` accordingly — `the-one-who-stayed`'s eligibility is
+  entirely encoded that way, with zero changes needed to `rollEvent()` itself.
+  - **Adaptation, not a deviation** — flagged here rather than made silently: the spec's text names
+    "the specific character who stayed" by a personal name, but this game has no personal-name
+    system at all — `Character.name` is always just the class's display name
+    (`createCharacter(id, cls.name, cls)`). The payoff event therefore names the retired *class*
+    only ("It's the {{class}} who never came back up"), substituted at read time from
+    `retiredCharacterClassId`. This isn't a shortcut around the spec's intent — it's the same
+    "nobody down here exchanges names" principle (11-world-bible.md) the rest of this whole session
+    has been holding to, just noticed one implementation step later than it should have been.
+  - Caught a real bug while wiring this in: `profile.json` living in the same directory `save.ts`
+    scans for per-run saves made `deleteSavesForRun`/`listSaves` crash on it (no `.meta` field to
+    read). Fixed by having `forEachSaveFile` skip `PROFILE_FILENAME` by name — caught by running the
+    full test suite, not by the new tests themselves, which is exactly why that step matters.
+- Whether/how any of the floor-100 gating conditions should be hinted to the player: left silent, as
+  the spec leaned toward — no UI anywhere surfaces a threshold or "condition met" notice.
+
+**Test coverage**: `test/endings.test.ts` (all 3 stages — checkpoint triggers, all 4 immediate
+endings, the mode-rejection matrix in both directions, the founder fight and its event-removal
+bulk-insert, the full persistence-layer round trip) and `test/profile.test.ts` (the on-disk store in
+isolation, including a corrupt-file case). Full suite green, run 3 times to rule out order-dependent
+flakiness from the shared test save directory.

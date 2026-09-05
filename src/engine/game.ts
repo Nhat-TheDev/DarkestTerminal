@@ -2,6 +2,15 @@ import { randomUUID } from "node:crypto";
 import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
+import {
+  ENDING_CHECKPOINT_FLOOR_DEPTH,
+  endingCheckpointMode,
+  hasWaystoneShardEquipped,
+  FOUNDER_FLOOR_DEPTH,
+  FOUNDER_VICTORY_REMOVED_EVENT_IDS,
+} from "../data/endings";
+import { spawnMonster } from "../data/monsters";
+import { loadProfile, addRetiredCharacter } from "./profile";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
 import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
 import { Rng } from "./rng";
@@ -61,6 +70,12 @@ export class Game {
     const party = classes.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, rng, inventory };
+    // Part F.2's persistence layer — read once per fresh run. Eligibility (and therefore whether
+    // "the-one-who-stayed" can ever roll this run) is entirely encoded by whether its id starts
+    // pre-inserted into firedOnceEventIds below; no other code needs to know why.
+    const profile = loadProfile();
+    const retiredCharacter = profile.retiredCharacters.at(-1);
+    const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
       runId: randomUUID(),
       party,
@@ -78,11 +93,18 @@ export class Game {
       activeEvent: null,
       lastRoomDrops: null,
       metNarrativeNpcIds: [],
-      narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0 },
+      narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0, freeRewardsTakenCount: 0 },
       pendingReflection: null,
       eventReflectionStances: {},
       eventOutcomes: {},
-      firedOnceEventIds: [],
+      firedOnceEventIds: retiredCharacterEventEligible ? [] : ["the-one-who-stayed"],
+      loreExposureCount: 0,
+      pendingCampReflectionTier: null,
+      campReflectionChoices: {},
+      pendingEndingCheckpoint: false,
+      continuedPastCheckpoint: false,
+      pendingFounderDialogue: false,
+      retiredCharacterClassId: retiredCharacterEventEligible ? retiredCharacter.classId : null,
     };
     this.checkEntryRoomAmbush();
   }
@@ -325,6 +347,17 @@ export class Game {
     this.state.pendingReflection = null;
   }
 
+  /** 03-survival-stats.md's Camp Reflection. Records the choice at the pending tier, clears it, and
+      at tier 4 writes the 1 synthetic bridge tag the-wanderer/wandering-hermit's crossEventVariants
+      read — the only place Camp Reflection ever touches `eventOutcomes`. */
+  pickCampReflectionChoice(choice: 0 | 1 | 2): void {
+    const tier = this.state.pendingCampReflectionTier;
+    if (tier === null) return;
+    this.state.campReflectionChoices[tier] = choice;
+    this.state.pendingCampReflectionTier = null;
+    if (tier === 4) this.state.eventOutcomes["camp-reflection"] = "unaware";
+  }
+
   resolve(): void {
     if (!this.state.combat) return;
     // Coins/EXP/satiety never change mid-round (only in the reward block below, once combat ends), so
@@ -367,7 +400,10 @@ export class Game {
             droppedItemIds.push(itemId);
           }
           if (monster.tier === "elite" || monster.tier === "boss") {
-            const artifactId = rollArtifact(monster.tier, this.ctx.rng);
+            // §F.4 — only a real Boss kill may roll waystone-shard; Collapsed Floor separately
+            // rolls this same "boss" rarity table without qualifying (bloodAltar.ts is the only
+            // other allowed source, gated on its own condition, not this one).
+            const artifactId = rollArtifact(monster.tier, this.ctx.rng, monster.tier === "boss" ? "boss" : undefined);
             grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
           }
@@ -384,6 +420,18 @@ export class Game {
           // (see the reflection-trigger comment below), so the generic outcome tag is written here
           // instead, at the same point their reflection already gets triggered from.
           this.state.eventOutcomes[room.rolledEventId] = "resolved";
+          // Camp Reflection's loreExposureCount (03-survival-stats.md) needs the same stand-in,
+          // for the same reason — this win path never reaches closeEvent()'s own increment.
+          this.state.loreExposureCount += 1;
+        }
+        // Part F.5 — defeating the founder permanently removes every Covenant-institution event
+        // from the roll pool. No new mechanism needed: rollEvent() already excludes any id present
+        // in firedOnceEventIds; this just bulk-inserts all 11 in 1 pass, deduping defensively in
+        // case any were already onceLifetime-fired earlier this run.
+        if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === "the-founder")) {
+          for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
+            if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);
+          }
         }
         this.state.lastRoomDrops = droppedItemIds.length > 0 || droppedArtifactIds.length > 0 ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds } : null;
         // The reward block above (buff expiry, satiety drain, EXP/level, coins) is the only place these
@@ -409,7 +457,69 @@ export class Game {
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
     this.state.message = t("game.nextFloor", { depth: nextDepth });
+    // Part F.1 — a guaranteed, non-rolled story beat the moment floor 100 is reached alive. Blocks
+    // everything else (including this same entry room's own ambush check) until resolved via
+    // pickEndingChoice(); the entry room's monsters, if any, wait exactly where they are.
+    if (nextDepth === ENDING_CHECKPOINT_FLOOR_DEPTH) {
+      this.state.pendingEndingCheckpoint = true;
+      return;
+    }
+    // Part F.5 — the founder encounter, guaranteed the same way, only for a party that chose
+    // Continue. Never rolled, never repeats (advancing further only ever happens once past it).
+    if (nextDepth === FOUNDER_FLOOR_DEPTH && this.state.continuedPastCheckpoint) {
+      this.state.pendingFounderDialogue = true;
+      return;
+    }
     this.checkEntryRoomAmbush();
+  }
+
+  /** Part F.1's floor-100 checkpoint. `choice` must match what `endingCheckpointMode()` actually
+      offers — an out-of-mode choice is a no-op, same defensive shape as every other pending-state
+      picker in this class. */
+  pickEndingChoice(choice: "stay" | "letGo" | "leave" | "continue"): void {
+    if (!this.state.pendingEndingCheckpoint) return;
+    const mode = endingCheckpointMode(this.state);
+    if (choice === "leave" && mode !== "leaveOnly") return;
+    if (choice === "continue" && mode !== "full") return;
+    if ((choice === "stay" || choice === "letGo") && mode === "leaveOnly") return;
+
+    this.state.pendingEndingCheckpoint = false;
+    if (choice === "stay") {
+      this.state.gameOver = "stay";
+      // Part F.2 — which of the party "stays" isn't a choice the spec asks the player to make;
+      // picked the same way any other unattributed detail in this run is (via rng), and persisted
+      // immediately so a later run can find it regardless of whether this save is ever reopened.
+      // Only a living character can stay: the checkpoint fires whenever the party isn't wiped, so
+      // it's reachable with some members already dead, and a corpse greeting a later run is wrong.
+      const living = this.state.party.filter((c) => c.isAlive);
+      addRetiredCharacter(this.ctx.rng.pick(living.length > 0 ? living : this.state.party).classId);
+    } else if (choice === "letGo") {
+      this.state.gameOver = "letGo";
+    } else if (choice === "leave") {
+      this.state.gameOver = hasWaystoneShardEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
+    } else {
+      // Continue: floor generation resumes normally toward floor 120 (§F.5) — marked here so
+      // advanceToNextFloor() knows to fire the founder encounter once that depth is reached.
+      this.state.continuedPastCheckpoint = true;
+      this.checkEntryRoomAmbush();
+    }
+  }
+
+  /** Part F.5 — dismisses the founder's pre-fight dialogue and starts the fight itself: the
+      current room becomes a boss room with exactly 1 monster, "the-founder", scaled the same way
+      any other Boss-tier monster is (`spawnMonster`'s depth scaling already makes floor 120's
+      instance the strongest fight in the game — no bespoke stat multiplier needed). */
+  enterFounderFight(): void {
+    if (!this.state.pendingFounderDialogue) return;
+    this.state.pendingFounderDialogue = false;
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    room.type = "boss";
+    room.cleared = false;
+    const founder = spawnMonster("the-founder", this.state.floor.depth, { tier: "boss" });
+    this.ctx.monsters.push(founder);
+    room.monsterIds = [founder.id];
+    this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, true);
+    this.state.message = t("dungeon.ambush", { room: room.name });
   }
 
   clearFinishedCombat(): boolean {

@@ -19,6 +19,10 @@
     "eatDrinkSatietyRestore": 30,
     "chatRestorePercent": 0.1,
     "chatFearRelief": 20,
+    "campReflectionTier1Threshold": 3,
+    "campReflectionTier2Threshold": 8,
+    "campReflectionTier3Threshold": 15,
+    "campReflectionTier4Threshold": 25,
     "fearPerRoundBase": 1,
     "fearPerRoundLowHp": 3,
     "fearPerRoundBaseCap": 3,
@@ -90,6 +94,7 @@
     "circleRemembersThreshold3": 20,
     "bloodDebtThreshold3": 16,
     "chainTier3MinFloorDepth": 35,
+    "freeTakenThreshold": 12,
     "reflectionRepeatChance": 0.5,
     "gamblingDenRounds": [
       {
@@ -98,11 +103,11 @@
       },
       {
         "stake": 40,
-        "winChance": 0.6
+        "winChance": 0.5
       },
       {
         "stake": 80,
-        "winChance": 0.5
+        "winChance": 0.4
       },
       {
         "stake": 160,

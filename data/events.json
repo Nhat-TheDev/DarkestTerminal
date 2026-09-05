@@ -7,6 +7,7 @@
       "A rusted lockbox is wedged under a collapsed beam, the key still in it, snapped off at the shaft.",
       "Someone stacked their gear in a neat pile before they stopped needing it: boots, belt, an unopened pack."
     ],
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "kind": "instantReward",
     "tier": "common"
   },
@@ -34,10 +35,10 @@
     ],
     "reflection": {
       "prompt": "The guardian's ashes still carry a trace of incense, not decay. Something tended this room, once.",
-      "escalatedPrompt": "You didn't decide to fight this one. It decided you'd stalled long enough.",
+      "escalatedPrompt": "You didn't decide to fight this one. The choice to keep walking past it just wasn't there anymore.",
       "escalated2Prompt": "There wasn't a decision this time. Just the fight, and then it was over.",
       "escalated3Prompt": "The swing already happened by the time you noticed you'd thrown it.",
-      "options": { "curious": "Worth remembering — someone built this on purpose.", "wary": "Better not to think about who.", "dismissive": "Just a monster. Move on." }
+      "options": { "curious": "Worth remembering — someone tended this on purpose.", "wary": "Better not to think about who.", "dismissive": "Just a monster. Move on." }
     },
     "kind": "combatReward",
     "tier": "common"
@@ -101,7 +102,7 @@
     "id": "blood-altar",
     "name": "Trade HP for an Artifact",
     "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. It demands a price paid in blood, nothing more, nothing less.",
-    "chainEscalatedDescription": "The stone recognizes the taste. It doesn't need to ask this time — it already knows you'll pay.",
+    "chainEscalatedDescription": "Nobody hesitates at the stone anymore. The question of whether to pay stopped being asked out loud a while ago.",
     "chainEscalated2Description": "The cut doesn't ache anymore. Whoever's paying this time isn't flinching, and hasn't in a while.",
     "chainEscalated3Description": "None of you can say who volunteered this time — only that someone always does.",
     "crossEventVariants": [
@@ -112,7 +113,8 @@
       },
       {
         "when": [
-          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "collapsed-floor", "outcome": "rescued" },
+          { "eventId": "collapsed-floor", "outcome": "failed" },
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
@@ -120,11 +122,11 @@
       }
     ],
     "reflection": {
-      "prompt": "The wound closes faster than it should. The stone took exactly what it asked for, no more.",
-      "escalatedPrompt": "The stone barely had to ask this time. That's the part that stays with you.",
+      "prompt": "The wound closes faster than it should. Whatever's owed here, it's always exactly the same amount, never more.",
+      "escalatedPrompt": "Barely anyone hesitated this time. That's the part that stays with you.",
       "escalated2Prompt": "You checked for the wound out of habit. It took a moment to remember where it was supposed to be.",
       "escalated3Prompt": "You checked for the wound out of habit. You knew it was there before you found it.",
-      "options": { "curious": "That's precise, for a slab of rock — someone built it that way on purpose.", "wary": "Next time it might ask for more than skin.", "dismissive": "A fair price. You've paid worse for less." }
+      "options": { "curious": "That's precise, for a slab of rock — someone built it that way on purpose.", "wary": "Next time it might cost more than skin.", "dismissive": "A fair price. You've paid worse for less." }
     },
     "kind": "hpGamble",
     "tier": "rare"
@@ -176,7 +178,7 @@
     "id": "sacrificial-circle",
     "name": "Ritual Circle",
     "description": "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted.",
-    "chainEscalatedDescription": "The circle recognizes your hand before you kneel. It doesn't ask anymore.",
+    "chainEscalatedDescription": "Nobody hesitates at the circle anymore. It's just the next step in visiting it, the same as walking in.",
     "chainEscalated2Description": "Your knees find the stone before you've finished deciding to. The circle stopped needing you to decide a while ago.",
     "chainEscalated3Description": "You remember kneeling. You don't remember choosing to come back.",
     "crossEventVariants": [
@@ -187,7 +189,7 @@
       }
     ],
     "reflection": {
-      "prompt": "The circle goes quiet again, the pattern in the blood no less deliberate than before. It didn't thank you. It didn't have to.",
+      "prompt": "The circle goes quiet again, the pattern in the blood no less deliberate than before. Nobody said anything about it, walking away. There wasn't anything that needed saying.",
       "escalatedPrompt": "You knelt before you'd even finished deciding to.",
       "escalated2Prompt": "Your hand was already closing around the offering before you noticed you'd reached for it.",
       "escalated3Prompt": "None of you can say, right now, whose idea it was — only that nobody argued.",
@@ -242,9 +244,20 @@
         ],
         "match": "any",
         "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. Something about you carries the same mark the guardians carry. He doesn't ask what you did to it."
+      },
+      {
+        "when": [{ "eventId": "camp-reflection", "outcome": "unaware" }],
+        "match": "any",
+        "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. He doesn't look up right away this time. When he finally does, it isn't your face he's checking first — it's your hands, like he's counting something you've stopped counting yourself."
       }
     ],
     "returnDescription": "The old man's eyes are already open, like he knew you'd be back. 'Trade again? I don't forget a fair deal.'",
+    "campReflectionUnawareEcho": "This time, he doesn't check your face at all — just your hands, the whole trade through.",
+    "stanceEcho": {
+      "curious": "He watches you a little longer than he needs to before naming his price.",
+      "wary": "He doesn't ask why you're being careful. He already knows the answer costs too much to say out loud.",
+      "dismissive": "He shrugs before you've even finished explaining what you want. Fair's fair, either way."
+    },
     "reflection": {
       "prompt": "His eyes never opened again after the trade closed. You're not sure he needed them to.",
       "options": { "curious": "Whoever he used to be, before this — he's not telling, and you find yourself wanting to know.", "wary": "Some pasts are better left buried, not traded for.", "dismissive": "Strange old man, but he held up his end of it." }
@@ -257,6 +270,16 @@
     "name": "Collapsed Floor",
     "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack — someone else is still trapped down there.",
     "crossEventVariants": [
+      {
+        "when": [{ "eventId": "collapsed-floor", "outcome": "rescued" }],
+        "match": "any",
+        "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack. This time, you remember what it sounded like when someone made it out."
+      },
+      {
+        "when": [{ "eventId": "collapsed-floor", "outcome": "failed" }],
+        "match": "any",
+        "description": "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack. Last time, it just stopped, partway through. You don't let yourself think about which sound this is."
+      },
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
@@ -279,13 +302,15 @@
       {
         "when": [
           { "eventId": "open-chest", "outcome": "resolved" },
-          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "collapsed-floor", "outcome": "rescued" },
+          { "eventId": "collapsed-floor", "outcome": "failed" },
           { "eventId": "collapsed-floor", "outcome": "declined" }
         ],
         "match": "any",
         "description": "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops in the middle, mid-stroke. You've started noticing these more, the deeper you go."
       }
     ],
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "Something interrupted the last mark. You didn't stay to find out if it came back.",
@@ -302,13 +327,15 @@
       {
         "when": [
           { "eventId": "open-chest", "outcome": "resolved" },
-          { "eventId": "collapsed-floor", "outcome": "attempted" },
+          { "eventId": "collapsed-floor", "outcome": "rescued" },
+          { "eventId": "collapsed-floor", "outcome": "failed" },
           { "eventId": "collapsed-floor", "outcome": "declined" }
         ],
         "match": "any",
         "description": "Footprints lead into this room and stop. None lead back out. You've seen traces like this before, this run. You're starting to lose count of how many."
       }
     ],
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "You checked the walls anyway. You're not sure what you expected to find.",
@@ -322,6 +349,7 @@
     "name": "The Delay",
     "description": "Still water pools at the edge of the room, dark enough to mirror the torchlight. Your reflection catches up to you a half-second late, every time you move.",
     "instantRewardActionLabel": "  [1] Move on",
+    "noArtifactReward": true,
     "reflection": {
       "prompt": "You didn't stay long enough to see if it eventually stopped catching up.",
       "options": { "curious": "Half a second doesn't sound like much. You're still not sure where it goes.", "wary": "You keep your eyes forward the rest of the way down.", "dismissive": "Tired eyes playing tricks. Nothing more." }
@@ -340,7 +368,9 @@
         "description": "A bundle sits wrapped and tied at the base of the wall, exactly where someone would leave it to come back for later. The rope is knotted in a spiral, pulled tight, in the same careful knot you've started to recognize. Nobody's coming back for this."
       }
     ],
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "instantRewardActionLabel": "  [1] Move on",
+    "guaranteedArtifactId": "travelers-ration",
     "reflection": {
       "prompt": "You didn't take the whole bundle. Something about leaving part of it felt right.",
       "options": { "curious": "You wonder how long it's been sitting there, waiting for someone who isn't coming.", "wary": "Taking a dead stranger's supplies doesn't sit easy, whatever the reason they're still here.", "dismissive": "Supplies are supplies. Nobody's using them now." }
@@ -353,6 +383,8 @@
     "name": "Vigil",
     "description": "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it: folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left it there isn't coming back for it.",
     "instantRewardActionLabel": "  [1] Move on",
+    "guaranteedArtifactId": "vigil-cloth",
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "minFloorDepth": 15,
     "onceLifetime": true,
     "reflection": {
@@ -366,6 +398,7 @@
     "id": "broken-seal",
     "name": "Broken Seal",
     "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
+    "guaranteedArtifactId": "torn-lock-plate",
     "crossEventVariants": [
       {
         "when": [
@@ -384,6 +417,7 @@
         "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. The chain wasn't unlocked. It was torn from the inside, by something that wanted out."
       }
     ],
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "instantRewardActionLabel": "  [1] Move on",
     "minFloorDepth": 15,
     "onceLifetime": true,
@@ -399,6 +433,8 @@
     "name": "Half a Warning",
     "description": "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'",
     "instantRewardActionLabel": "  [1] Move on",
+    "guaranteedArtifactId": "worn-chalk-stub",
+    "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "minFloorDepth": 35,
     "onceLifetime": true,
     "reflection": {
@@ -411,7 +447,7 @@
   {
     "id": "still-breathing",
     "name": "Still Breathing",
-    "description": "The walls breathe here. Not walls. Ribs. Threads of old cloth are grown into the bone, not over it, and one of them still carries a mark burned the exact same way as every mark you've traded for this whole run.",
+    "description": "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it the exact same way as every mark you've traded for this whole run.",
     "instantRewardActionLabel": "  [1] Move on",
     "minFloorDepth": 70,
     "onceLifetime": true,
@@ -420,6 +456,41 @@
       "prompt": "Something you've traded for is already part of this room. You don't know how long it's been growing there.",
       "options": { "curious": "You keep doing the math on how much of this used to be someone's.", "wary": "You're not sure you want anything you're carrying to end up matching.", "dismissive": "Cloth rots into strange shapes. Doesn't mean anything." }
     },
+    "kind": "instantReward",
+    "tier": "rare"
+  },
+  {
+    "id": "the-wanderer",
+    "name": "The Wanderer",
+    "description": "A figure sits with their back against the wall, turning something small over in their hands, too dark to see what. 'How long's it been?' they ask, not really to you. 'Feels shorter every time I ask.'",
+    "descriptionVariants": [
+      "A figure leans against the far wall, methodically restringing a bow that has no string left to restring. 'Don't trust the quiet floors,' they say. 'The loud ones already told you what they want.'",
+      "A figure looks up as you approach, then straightens like they expected someone else. 'Not you, then,' they mutter, and go back to what they were doing before you got here — which, from here, is nothing at all."
+    ],
+    "crossEventVariants": [
+      {
+        "when": [{ "eventId": "camp-reflection", "outcome": "unaware" }],
+        "match": "any",
+        "description": "A figure sits exactly where you'd expect one to be by now. They don't ask how long it's been. Neither do you."
+      }
+    ],
+    "instantRewardActionLabel": "  [1] Move on",
+    "minFloorDepth": 10,
+    "noArtifactReward": true,
+    "reflection": {
+      "prompt": "Whoever that was, they didn't ask your names, and you didn't offer them.",
+      "options": { "curious": "Whoever's still down here talking to themselves — you'd guess there's more than 1.", "wary": "You don't look back to check if they're still where you left them.", "dismissive": "Another lost soul talking to itself. Not your problem." }
+    },
+    "kind": "instantReward",
+    "tier": "rare"
+  },
+  {
+    "id": "the-one-who-stayed",
+    "name": "The One Who Stayed",
+    "description": "A figure crouches at the edge of the torchlight, and for a moment none of you can place why they look familiar — until someone does. A {{class}}, in gear worn the same way yours is, only longer. Not one of you. One from before, who never came back up. They don't seem surprised to see you. 'You got further than we did,' they say, and for just a moment, sound like they used to.",
+    "instantRewardActionLabel": "  [1] Move on",
+    "onceLifetime": true,
+    "noArtifactReward": true,
     "kind": "instantReward",
     "tier": "rare"
   }

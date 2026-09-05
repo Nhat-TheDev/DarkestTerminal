@@ -432,5 +432,25 @@
     "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "guard" }],
     "slot": 0,
     "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-the-founder",
+    "name": "Everything You Asked For",
+    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 60, "ignoreDefensePercent": 50 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-the-founder",
+    "name": "What's Left Listening",
+    "description": "Moderate damage, also blinds the target — something in the room answers back, and it isn't the target's own eyes anymore.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 10 }, { "kind": "applyStatusEffect", "statusEffectId": "blinded" }],
+    "slot": 0,
+    "unlockLevel": 1
   }
 ]

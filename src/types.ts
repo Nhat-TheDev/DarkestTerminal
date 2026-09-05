@@ -166,6 +166,11 @@ export interface ArtifactDefinition {
   rarity: ArtifactRarity;
   effects: ArtifactEffect[];
   isCursed?: boolean;
+  /** Excluded from every roll (Elite/Boss kills, the Event room's standard table, Merchant,
+      Ritual Circle) except the source(s) listed here — `10-event-narrative.md` §F.4. Callers opt
+      in explicitly via `rollArtifact`'s `allowRestrictedSource` param; nothing infers it from the
+      rarity table alone (Collapsed Floor rolls the same "boss" table without being a Boss kill). */
+  restrictedDropSources?: ("boss" | "blood-altar")[];
 }
 
 export type EventTier = "common" | "rare";
@@ -212,6 +217,10 @@ export interface EventDefinition {
   /** `instantReward` only: skip the usual rollArtifact/grantArtifact — still-breathing is
       deliberately "no artifact, no stat effect of any kind" (Part C.4). */
   noArtifactReward?: boolean;
+  /** `instantReward` only: grants this specific artifact instead of rolling from the standard
+      table — for a scene whose reward is a specific object described in the text itself, not a
+      generic loot beat (e.g. waiting-supplies' bundle). Ignored if `noArtifactReward` is set. */
+  guaranteedArtifactId?: Id;
   /** Overrides the generic "Open the chest" confirm-option text in the `eventOpenChest` UI screen
       for `instantReward` events whose scene isn't a chest. */
   instantRewardActionLabel?: string;
@@ -219,6 +228,17 @@ export interface EventDefinition {
       Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
       outcome of the player's last visit, so it uses the object form instead of a plain string. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
+  /** Appended to `returnDescription` based on the party's dominant recorded reflection stance
+      (`GameState.eventReflectionStances`) — 11-world-bible.md §11.13's payoff: flavor only, never
+      mechanical, and each line must stay readable more than one way (a leaning, not a verdict). */
+  stanceEcho?: { curious: string; wary: string; dismissive: string };
+  /** Appended to a `returnDescription` visit once `GameState.eventOutcomes["camp-reflection"]` is
+      `"unaware"` (03-survival-stats.md's Camp Reflection, tier 4) — the counterpart to this event's
+      own `crossEventVariants` entry for the same tag: that variant only ever shows on a party's
+      *first* meeting with this NPC (crossEventVariants never wins over returnDescription past the
+      1st encounter, `pickEventText`), which is the less common case for a state this late-game.
+      This field covers every visit after the first instead. Wandering Hermit only, so far. */
+  campReflectionUnawareEcho?: string;
   /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches 2
       (10-event-narrative.md §10.3 Chain 1) — a subtle, non-warning variant. Only guardian-fight and
       desecrated-altar set this. */
@@ -239,8 +259,9 @@ export interface EventDefinition {
       tier 2. */
   chainForced3Description?: string;
   /** Shown instead of `description` once the relevant `narrativeCounters` threshold is crossed
-      (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Only sacrificial-circle
-      (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`) set this. */
+      (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Set by sacrificial-circle
+      (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`); also reused verbatim by Chain
+      4's 7 events (§8.15, `freeRewardsTakenCount`) — a single tier, unlike Chain 2/3's 3. */
   chainEscalatedDescription?: string;
   /** Shown instead of `chainEscalatedDescription` once the higher tier-2 threshold
       (`circleRemembersThreshold2`/`bloodDebtThreshold2`) is crossed AND floor depth is past
@@ -416,7 +437,34 @@ export interface GameState {
   currentRoomId: Id;
   combat: CombatState | null;
   message: string;
-  gameOver: "victory" | "defeat" | null;
+  /** `"stay"`/`"letGo"`/`"leaveAmbushed"`/`"leaveEscaped"` are the Ending System's 4 immediate
+      terminal endings (10-event-narrative.md Part F.2-F.4) — narrative conclusions distinct from
+      an ordinary loss, but terminal the same way `"defeat"` is (no further play on this save).
+      `"leaveAmbushed"` is deliberately not folded into `"defeat"`: it's framed as unresolved fate,
+      never a confirmed death. Continuing past floor 100 (Ending 3) sets nothing here — the run
+      keeps playing normally toward floor 120, per §F.5. */
+  gameOver: "victory" | "defeat" | "stay" | "letGo" | "leaveAmbushed" | "leaveEscaped" | null;
+  /** Set when the run advances to floor 100 still alive (Part F.1) — a guaranteed, non-rolled
+      story beat, checked before anything else in `syncUiToGameState()`. Which endings are actually
+      offered is computed live from existing state (`src/data/endings.ts`'s `endingCheckpointMode`),
+      never stored, so nothing here needs to change if that state changes before the player answers
+      (it can't, since normal play is blocked while this is true). Cleared by
+      `Game.pickEndingChoice()`. */
+  pendingEndingCheckpoint: boolean;
+  /** Set true by `pickEndingChoice("continue")` (Part F.5) — never reset. Read only at floor-120
+      entry to decide whether the guaranteed founder encounter fires; otherwise inert. */
+  continuedPastCheckpoint: boolean;
+  /** Set when the run advances to floor 120 with `continuedPastCheckpoint` true — the founder's
+      pre-fight dialogue and boss visual, shown before `Game.enterFounderFight()` starts combat.
+      Same "block everything else" priority as `pendingEndingCheckpoint`. */
+  pendingFounderDialogue: boolean;
+  /** Part F.2's cross-run persistence layer — set once, at fresh-run construction, from
+      `src/engine/profile.ts`'s on-disk profile: the most recently retired class, if any exist and
+      `the-one-who-stayed` hasn't already been shown in a previous run. `null` means either nobody
+      has stayed yet, or the payoff has already been shown — either way the event is pre-excluded
+      from this run's `firedOnceEventIds` at construction, so this field is only ever read to fill
+      in the event's text once it does roll, never to gate anything itself. */
+  retiredCharacterClassId: Id | null;
   partyExp: number;
   inventory: Record<Id, number>;
   coins: number;
@@ -444,6 +492,11 @@ export interface GameState {
         §11.13 tier 2) — unlike `guardianFightsSkipped`, this never resets, so it can tell "is this
         the 1st time the chain has fired, or the 2nd+" even after the skip counter resets to 0. */
     guardianGrudgeFiredCount: number;
+    /** §8.15 Chain 4, "Taken, Never Given" — increments once per resolved event among the 7
+        zero-cost reward ids (open-chest, old-count, doubled-back, waiting-supplies, vigil-candle,
+        broken-seal, half-a-warning). Never decreases. Feeds `10-event-narrative.md` §F.1's 2nd
+        Leave trigger alongside `altarPaymentsCount`/`artifactsSacrificed` staying at 0. */
+    freeRewardsTakenCount: number;
   };
   /** A post-event reflection is waiting to be shown (10-event-narrative.md §10.5) — set by
       `maybeTriggerReflection()`, cleared by `Game.pickReflectionStance()`. */
@@ -451,6 +504,20 @@ export interface GameState {
   /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
       re-trigger, not a history log. Purely flavor today. */
   eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
+  /** 03-survival-stats.md's Camp Reflection — entirely independent of `narrativeCounters`,
+      `eventOutcomes`, `pendingReflection`, and `eventReflectionStances` above; a 4th, unrelated
+      piece of rest-room content. Increments by 1 each time the party resolves an event in
+      `LORE_EXPOSURE_EVENT_IDS` (`src/data/loreExposure.ts`) — every event id except open-chest.
+      Never resets, never decreases. Written in `closeEvent()` (src/engine/events/shared.ts). */
+  loreExposureCount: number;
+  /** Set at rest-room entry (`moveToRoom`'s "rest" branch, src/engine/dungeon.ts) when a newly
+      computed tier is higher than the highest tier already answered in `campReflectionChoices`.
+      Skipped if `pendingReflection` is currently set. Cleared once the player picks a response
+      (`Game.pickCampReflectionChoice`). */
+  pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
+  /** Which option (0/1/2) was picked at each Camp Reflection tier — a genuine per-tier record,
+      unlike `eventReflectionStances`, since each tier fires exactly once per run. */
+  campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
   /** Outcome tag per event id, set once that event's defining choice resolves (10-event-narrative.md
       Part C.1) — read by `crossEventVariants`. Never reset mid-run. Most events only ever get the
       generic `"resolved"` fallback, written by `closeEvent()`; a handful of handlers

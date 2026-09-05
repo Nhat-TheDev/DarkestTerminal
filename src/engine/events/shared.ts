@@ -5,6 +5,8 @@ import { t } from "../../data/strings";
 import { getRoom } from "../dungeon";
 import { getEvent } from "../../data/events";
 import { BALANCE } from "../../data/balanceConfig";
+import { LORE_EXPOSURE_EVENT_IDS } from "../../data/loreExposure";
+import { markRetiredCharacterEventShown } from "../profile";
 
 /** Events in scope for §10.5's post-event reflection choice — every event except the 2 deliberately
     mundane ones (open-chest, collapsed-floor), which stay unreflected on purpose. */
@@ -26,6 +28,21 @@ const REFLECTION_EVENT_IDS: ReadonlySet<Id> = new Set([
   "broken-seal",
   "half-a-warning",
   "still-breathing",
+  "the-wanderer",
+]);
+
+/** §8.15 Chain 4, "Taken, Never Given" — the 7 events that grant an Artifact for literally no cost
+    of any kind. `the-delay`/`still-breathing` are excluded: both `noArtifactReward: true`, so
+    there's nothing taken to count. None of these 7 ever offer a decline option (a single confirm
+    action is the only way to resolve them), so every resolution genuinely took the reward. */
+const FREE_TAKE_EVENT_IDS: ReadonlySet<Id> = new Set([
+  "open-chest",
+  "old-count",
+  "doubled-back",
+  "waiting-supplies",
+  "vigil-candle",
+  "broken-seal",
+  "half-a-warning",
 ]);
 
 export function payHpPercent(character: Character, percent: number): number | null {
@@ -56,6 +73,19 @@ export function closeEvent(state: GameState): void {
     // (bloodAltarPay/Leave, collapsedFloorAttempt/Leave, sacrifice) is never overwritten.
     if (state.eventOutcomes[event.id] === undefined) {
       state.eventOutcomes[event.id] = "resolved";
+    }
+    // §8.15 Chain 4 — counts every resolution of a zero-cost event, regardless of chain state.
+    if (FREE_TAKE_EVENT_IDS.has(event.id)) {
+      state.narrativeCounters.freeRewardsTakenCount += 1;
+    }
+    // 03-survival-stats.md's Camp Reflection — fully independent tracking, incremented alongside
+    // (not instead of) the writes above, for every event except open-chest.
+    if (LORE_EXPOSURE_EVENT_IDS.has(event.id)) {
+      state.loreExposureCount += 1;
+    }
+    // Part F.2 — the payoff persists across runs, not just this one's firedOnceEventIds.
+    if (event.id === "the-one-who-stayed") {
+      markRetiredCharacterEventShown();
     }
   }
 }

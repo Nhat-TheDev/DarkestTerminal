@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
-import { rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
+import { rollArtifact, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
 import { rollEvent, EVENTS } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
 import { removeArtifactFromCharacter } from "../src/engine/party";
@@ -667,8 +667,8 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
     // Still below the chain-4 escalation threshold, but Part C.1 pair 3 now fires — the earlier
-    // collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] = "attempted", which this event's
-    // crossEventVariants match on.
+    // collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] to "rescued" or "failed" (either
+    // one matches), which this event's crossEventVariants match on.
     expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description);
 
     c.hp = c.maxHp;
@@ -1074,10 +1074,10 @@ describe("Part C.1: cross-event continuity (10-event-narrative.md)", () => {
     expect(game2.state.eventOutcomes["blood-altar"]).toBe("declined");
   });
 
-  test("collapsedFloorAttempt writes 'attempted' regardless of the success roll; collapsedFloorLeave writes 'declined'", () => {
+  test("collapsedFloorAttempt writes 'rescued' or 'failed' depending on the roll; collapsedFloorLeave writes 'declined'", () => {
     const game1 = new Game(97);
     game1.collapsedFloorAttempt(game1.state.party[0]!.id);
-    expect(game1.state.eventOutcomes["collapsed-floor"]).toBe("attempted");
+    expect(["rescued", "failed"]).toContain(game1.state.eventOutcomes["collapsed-floor"] as string);
 
     const game2 = new Game(98);
     game2.collapsedFloorLeave();
@@ -1167,5 +1167,272 @@ describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative
     forceEventRoom(game, "still-breathing");
     expect(game.openChest()).toBeNull();
     expect(game.state.pendingArtifactDecision).toBeNull();
+  });
+
+  test("the-delay grants no artifact (noArtifactReward)", () => {
+    const game = new Game(114);
+    forceEventRoom(game, "the-delay");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingArtifactDecision).toBeNull();
+  });
+
+  test("waiting-supplies grants its guaranteedArtifactId, never a random roll", () => {
+    for (const seed of [115, 116, 117]) {
+      const game = new Game(seed);
+      forceEventRoom(game, "waiting-supplies");
+      expect(game.openChest()).toBeNull();
+      expect(game.state.pendingArtifactDecision?.artifactId).toBe("travelers-ration");
+    }
+  });
+});
+
+describe("Part §11.13: reflection-stance payoff (stanceEcho)", () => {
+  test("the party's dominant recorded stance appends the matching stanceEcho line on a return visit", () => {
+    const game = new Game(120);
+    game.state.metNarrativeNpcIds.push("wandering-hermit");
+    game.state.eventReflectionStances = { a: "curious", b: "curious", c: "wary" };
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "wandering-hermit")!;
+    const text = pickEventText(game.state, room, event);
+    expect(text).toBe(`${event.returnDescription as string} ${event.stanceEcho!.curious}`);
+  });
+
+  test("no stanceEcho when stances are tied or none recorded yet", () => {
+    const game = new Game(121);
+    game.state.metNarrativeNpcIds.push("wandering-hermit");
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "wandering-hermit")!;
+    expect(pickEventText(game.state, room, event)).toBe(event.returnDescription as string);
+
+    game.state.eventReflectionStances = { a: "curious", b: "wary" }; // tied 1-1
+    expect(pickEventText(game.state, room, event)).toBe(event.returnDescription as string);
+  });
+
+  test("stanceEcho never applies before the party has met the NPC once", () => {
+    const game = new Game(122);
+    game.state.eventReflectionStances = { a: "curious", b: "curious" };
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "wandering-hermit")!;
+    expect(pickEventText(game.state, room, event)).toBe(event.description);
+  });
+});
+
+describe("collapsed-floor's rescued/failed self-reference and its downstream reads", () => {
+  test("a prior 'rescued' outcome colors the next collapsed-floor visit", () => {
+    const game = new Game(123);
+    game.state.eventOutcomes["collapsed-floor"] = "rescued";
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "collapsed-floor")!;
+    expect(pickEventText(game.state, room, event)).toBe(event.crossEventVariants![0]!.description);
+  });
+
+  test("a prior 'failed' outcome colors the next collapsed-floor visit differently", () => {
+    const game = new Game(124);
+    game.state.eventOutcomes["collapsed-floor"] = "failed";
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "collapsed-floor")!;
+    expect(pickEventText(game.state, room, event)).toBe(event.crossEventVariants![1]!.description);
+  });
+
+  test("blood-altar's pair-3 crossEventVariant fires off either a 'rescued' or 'failed' collapsed-floor outcome", () => {
+    for (const outcome of ["rescued", "failed"] as const) {
+      const game = new Game(125);
+      game.state.eventOutcomes["collapsed-floor"] = outcome;
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      const event = EVENTS.find((e) => e.id === "blood-altar")!;
+      expect(pickEventText(game.state, room, event)).toBe(event.crossEventVariants![1]!.description);
+    }
+  });
+});
+
+describe("Part E: The Wanderer (10-event-narrative.md)", () => {
+  test("all 3 base variants (index 0-2) each resolve to a distinct, listed text", () => {
+    const game = new Game(126);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "the-wanderer")!;
+    const possibleTexts = [event.description, ...(event.descriptionVariants ?? [])];
+    expect(possibleTexts.length).toBe(3);
+    const seen = new Set<string>();
+    for (const index of [0, 1, 2]) {
+      room.descriptionVariantIndex = index;
+      seen.add(pickEventText(game.state, room, event));
+    }
+    expect(seen.size).toBe(3);
+    for (const text of seen) expect(possibleTexts).toContain(text);
+  });
+
+  test("variant 4's crossEventVariant only shows once camp-reflection's synthetic tag is 'unaware'", () => {
+    const game = new Game(127);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "the-wanderer")!;
+    expect(pickEventText(game.state, room, event)).not.toBe(event.crossEventVariants![0]!.description);
+    game.state.eventOutcomes["camp-reflection"] = "unaware";
+    expect(pickEventText(game.state, room, event)).toBe(event.crossEventVariants![0]!.description);
+  });
+
+  test("resolving it grants no artifact", () => {
+    const game = new Game(128);
+    const before = game.state.party[0]!.equippedArtifactIds.length;
+    forceEventRoom(game, "the-wanderer");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.party[0]!.equippedArtifactIds.length).toBe(before);
+    expect(game.state.pendingArtifactDecision).toBeFalsy();
+  });
+
+  test("it never joins metNarrativeNpcIds, having no returnDescription", () => {
+    const game = new Game(129);
+    forceEventRoom(game, "the-wanderer");
+    game.openChest();
+    expect(game.state.metNarrativeNpcIds).not.toContain("the-wanderer");
+  });
+
+  test("reflection fires the 1st time it's resolved", () => {
+    const game = new Game(130);
+    const room = forceEventRoom(game, "the-wanderer");
+    game.openChest();
+    maybeTriggerReflection(game.state, game.ctx);
+    expect(game.state.pendingReflection).toEqual({ eventId: "the-wanderer" });
+    const event = EVENTS.find((e) => e.id === "the-wanderer")!;
+    expect(pickReflectionPrompt(game.state, room, event)).toBe(event.reflection!.prompt);
+  });
+});
+
+describe("waystone-shard's restricted drop source (10-event-narrative.md §F.4)", () => {
+  test("never rolls from the standard treasureOrEvent table", () => {
+    const rng = new Rng(200);
+    for (let i = 0; i < 5000; i++) {
+      expect(rollArtifact("treasureOrEvent", rng)).not.toBe("waystone-shard");
+    }
+  });
+
+  test("never rolls from an Elite kill", () => {
+    const rng = new Rng(201);
+    for (let i = 0; i < 5000; i++) {
+      expect(rollArtifact("elite", rng)).not.toBe("waystone-shard");
+    }
+  });
+
+  test("never rolls from collapsed-floor's own use of the 'boss' rarity table (not a Boss kill)", () => {
+    const rng = new Rng(202);
+    for (let i = 0; i < 5000; i++) {
+      expect(rollArtifact("boss", rng)).not.toBe("waystone-shard");
+    }
+  });
+
+  test("can roll from a real Boss kill (allowRestrictedSource: 'boss')", () => {
+    const rng = new Rng(203);
+    let sawIt = false;
+    for (let i = 0; i < 5000 && !sawIt; i++) {
+      if (rollArtifact("boss", rng, "boss") === "waystone-shard") sawIt = true;
+    }
+    expect(sawIt).toBe(true);
+  });
+
+  test("blood-altar never rolls it below bloodDebtThreshold2 payments", () => {
+    const game = new Game(204);
+    game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold2 - 1;
+    for (let i = 0; i < 2000; i++) {
+      const c = game.state.party[0]!;
+      c.hp = c.maxHp;
+      game.bloodAltarPay(c.id);
+      expect(game.state.pendingArtifactDecision?.artifactId).not.toBe("waystone-shard");
+      game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold2 - 1; // hold below threshold
+    }
+  });
+
+  test("blood-altar can roll it once altarPaymentsCount reaches bloodDebtThreshold2", () => {
+    const game = new Game(205);
+    let sawIt = false;
+    for (let i = 0; i < 3000 && !sawIt; i++) {
+      const c = game.state.party[0]!;
+      c.hp = c.maxHp;
+      game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold2;
+      game.bloodAltarPay(c.id);
+      if (game.state.pendingArtifactDecision?.artifactId === "waystone-shard") sawIt = true;
+    }
+    expect(sawIt).toBe(true);
+  });
+});
+
+describe("Event-tied artifacts now wired (07-items-artifacts.md)", () => {
+  test("vigil-candle grants exactly vigil-cloth", () => {
+    const game = new Game(206);
+    forceEventRoom(game, "vigil-candle");
+    game.openChest();
+    expect(game.state.pendingArtifactDecision?.artifactId).toBe("vigil-cloth");
+  });
+
+  test("broken-seal grants exactly torn-lock-plate", () => {
+    const game = new Game(207);
+    forceEventRoom(game, "broken-seal");
+    game.openChest();
+    expect(game.state.pendingArtifactDecision?.artifactId).toBe("torn-lock-plate");
+  });
+
+  test("half-a-warning grants exactly worn-chalk-stub", () => {
+    const game = new Game(208);
+    forceEventRoom(game, "half-a-warning");
+    game.openChest();
+    expect(game.state.pendingArtifactDecision?.artifactId).toBe("worn-chalk-stub");
+  });
+});
+
+describe("Chain 4: 'Taken, Never Given' (08-events.md §8.15)", () => {
+  const FREE_TAKE_IDS = ["open-chest", "old-count", "doubled-back", "waiting-supplies", "vigil-candle", "broken-seal", "half-a-warning"];
+
+  test("resolving any of the 7 zero-cost events increments freeRewardsTakenCount by 1", () => {
+    for (const id of FREE_TAKE_IDS) {
+      const game = new Game(209);
+      expect(game.state.narrativeCounters.freeRewardsTakenCount).toBe(0);
+      forceEventRoom(game, id);
+      game.openChest();
+      expect(game.state.narrativeCounters.freeRewardsTakenCount).toBe(1);
+    }
+  });
+
+  test("the-delay and still-breathing (noArtifactReward) never increment it", () => {
+    for (const id of ["the-delay", "still-breathing"]) {
+      const game = new Game(210);
+      forceEventRoom(game, id);
+      game.openChest();
+      expect(game.state.narrativeCounters.freeRewardsTakenCount).toBe(0);
+    }
+  });
+
+  test("no escalated text below freeTakenThreshold", () => {
+    const game = new Game(211);
+    game.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold - 1;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const event = EVENTS.find((e) => e.id === "open-chest")!;
+    expect(pickEventText(game.state, room, event)).not.toBe(event.chainEscalatedDescription);
+  });
+
+  test("escalated text shows once freeTakenThreshold is reached and no cost has been paid elsewhere", () => {
+    const game = new Game(212);
+    game.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    for (const id of FREE_TAKE_IDS) {
+      const event = EVENTS.find((e) => e.id === id)!;
+      expect(pickEventText(game.state, room, event)).toBe(event.chainEscalatedDescription as string);
+    }
+  });
+
+  test("paying even once at blood-altar or sacrificial-circle disqualifies the escalation, however high the free-take count is", () => {
+    const event = EVENTS.find((e) => e.id === "open-chest")!;
+
+    const game1 = new Game(213);
+    game1.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold + 5;
+    game1.state.narrativeCounters.altarPaymentsCount = 1;
+    expect(pickEventText(game1.state, getRoom(game1.state.floor, game1.state.currentRoomId), event)).not.toBe(event.chainEscalatedDescription);
+
+    const game2 = new Game(214);
+    game2.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold + 5;
+    game2.state.narrativeCounters.artifactsSacrificed = 1;
+    expect(pickEventText(game2.state, getRoom(game2.state.floor, game2.state.currentRoomId), event)).not.toBe(event.chainEscalatedDescription);
+  });
+
+  test("the escalated text is shared verbatim across all 7 ids", () => {
+    const texts = new Set(FREE_TAKE_IDS.map((id) => EVENTS.find((e) => e.id === id)!.chainEscalatedDescription));
+    expect(texts.size).toBe(1);
   });
 });

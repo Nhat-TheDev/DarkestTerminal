@@ -60,12 +60,10 @@
   "game.gamblingDenLost": "The pot is lost — nothing gained.",
   "game.gamblingDenJackpot": "The final round pays out in artifacts instead of coins!",
   "game.hermitExchanged": "Traded {{old}} for {{new}} — costs {{cost}} coins.",
-
   "dungeon.ambush": "Ambushed at {{room}}!",
   "dungeon.restEnter": "The party stops at {{room}} and gathers around the campfire.",
   "dungeon.arrived": "Arrived at {{room}}.",
   "dungeon.skippedGuardianFight": "You leave {{room}} without a fight.",
-
   "combat.started": "Battle begins in room {{roomId}}.",
   "combat.artifactAutoDamage": "{{character}}'s artifact deals {{amount}} damage to {{target}}.",
   "combat.stunnedSkipTurn": "{{actor}} is stunned, too dazed to act.",
@@ -154,6 +152,18 @@
   "ui.noMoreMonsters": "No monsters left.",
   "ui.victoryScreen": "VICTORY!\n\nYou defeated the dungeon boss and survived the depths.",
   "ui.defeatScreen": "THE ENTIRE PARTY HAS FALLEN.\n\nThe dungeon swallows up another expedition...",
+  "ui.endingCheckpointPrompt": "The floor changes here, in a way none of you could point to directly. Whatever comes next, it isn't the same as any room before it.",
+  "ui.endingLeaveOnlyPrompt": "There isn't a stay, and there isn't a further — only the way back up. Nothing else is offered. Nothing about that turns out to mean it'll be easy.",
+  "ui.endingLeaveOnlyOption": "  [1] Turn back. There's nowhere else to go from here.",
+  "ui.endingStayOption": "  [1] Stay — to let whatever's still holding this floor together keep holding, and be part of what holds it.",
+  "ui.endingLetGoOption": "  [2] Let go, together, all at once — however far down that actually leads.",
+  "ui.endingContinueOption": "  [3] Keep going, past the point where any of you can say this is still a choice you'd recommend.",
+  "ui.endingStayScreen": "THE PARTY STAYS.\n\nThe way back up stays exactly where it is. Nobody walks it. Packs come off, and stay off; the torch burns down to a height it doesn't drop below again. Somewhere, much later, another party will walk this same corridor. They won't know your names. But something about how they move through it will be, just slightly, easier than it should be.",
+  "ui.endingLetGoScreen": "THE PARTY LETS GO.\n\nNone of you feel yourselves stop. There isn't a moment where it happens — only, gradually, the awareness that whatever's dreaming doesn't distinguish between you and everything else it's already holding. The last clear thought any of you has, before the distinction stops mattering: the sky above the entrance, the town you set out from, the years before any of this — none of it was ever outside this. It was never a separate place you were returning to. It was just a farther room in the same dream, dreamed calmly enough that nobody standing in it ever needed to notice.",
+  "ui.endingLeaveAmbushedScreen": "AN UNKNOWN FATE.\n\nThe corridor you climbed through isn't here anymore. Where it should be, there's only wall — smooth, seamless, older than anything else on this floor. However you got down here, that's not how you're getting back up.\n\nThere has to be another way. There's always been another way. You start looking — and that's when you hear how many of them have been standing behind you the whole time you were looking at the wall instead.\n\nSomeone gets half a word out. Nobody gets a clean look at how many there are, and there was never time to make a plan. What happened to the party after that isn't something anyone will ever get to tell.",
+  "ui.founderDialogue": "A vast, wrong shape drifts in the dark ahead of you — more brain than body, ropes of nerve-thick tissue trailing beneath it where legs should be, reaching without ever quite touching the ground. It has no face left to speak from. Something in the room remembers how his voice sounded anyway.\n\n\"You made it further than any of them.\"\n\"I didn't come down here to build anything. I came down because everyone I was supposed to save was already gone, and I couldn't stop asking the ground to give them back.\"\n\"It never gave anyone back. It just... kept listening. So I kept asking. Eventually I stopped noticing I was still asking.\"\n\nHe is closer than he was. None of you saw him cross the distance.\n\n\"The others who followed me down, over the years — I taught them how to ask properly. That's all any of it ever was.\"\n\"I don't remember the last time I was only a person. I'm not sure there's a difference anymore, between what's still me and what's still just... dreaming.\"\n\nSomewhere behind the walls, something takes a breath the room is too small to hold.\n\n\"You can still turn back. Or you can keep asking, the way I did, until there's nothing left to tell you apart from what you asked for.\"",
+  "ui.founderDialogueOption": "  [1] Face what's left of him.",
+  "ui.endingLeaveEscapedScreen": "ESCAPED.\n\nThe corridor you climbed through isn't here anymore. Where it should be, there's only wall — smooth, seamless, older than anything else on this floor. However you got down here, that's not how you're getting back up.\n\nSomething else answers, from further along the same dead-end wall — not the wall giving way, but a seam in it, sealed shut, humming at a pitch none of you would have caught if you weren't already listening for anything. It isn't stone. It's failing, and it's been failing for longer than any of you have been alive.\n\nThe shard fits like it always meant to. The seam doesn't so much open as remember how to. What's on the other side isn't the corridor you came down. It's air. Actual, ordinary, undeserved air.",
   "ui.roomTypeLine": "Room type: {{type}}{{clearedTag}}",
   "ui.clearedTag": " (cleared)",
   "ui.pathsLabel": "Paths:",
@@ -279,10 +289,8 @@
   "saveSelect.kindQuick": "Quicksave",
   "saveSelect.kindAuto": "Autosave",
   "saveSelect.kindManual": "Saved",
-
   "effect.default": "Special effect",
   "effect.signedStat": "{{amount}} {{stat}}",
-
   "item.effectPerTurnDamage": "lose {{amount}} HP/turn",
   "item.effectPerTurnHeal": "restore {{amount}} HP/turn",
   "item.effectPerTurnStat": "{{amount}} {{stat}}/turn",
@@ -300,7 +308,6 @@
   "item.targetNoteSingleAlly": " (choose 1 ally)",
   "item.targetNoteAllAllies": " (whole party)",
   "item.targetNoteSingleEnemy": " (choose 1 enemy — combat only)",
-
   "artifact.statLabelMaxHp": "max HP",
   "artifact.statLabelMaxMp": "max MP",
   "artifact.effectReflectDamage": "Reflects {{percent}}% of damage taken back to the attacker",
@@ -313,7 +320,6 @@
   "artifact.effectFearResist": "-{{percent}}% fear accumulated",
   "artifact.effectCooldownReduction": "-{{turns}} turn skill cooldown",
   "artifact.effectCurseAggroBoost": "+{{amount}} aggro",
-
   "ui.roundHeader": "Round {{round}}",
   "ui.levelTag": "Lv.{{level}}",
   "ui.hpLabel": "HP",

@@ -22,6 +22,12 @@ interface BalanceConfig {
     eatDrinkSatietyRestore: number;
     chatRestorePercent: number;
     chatFearRelief: number;
+    /** 03-survival-stats.md's Camp Reflection — `loreExposureCount` thresholds for tiers 1-4.
+        Balance-tunable, not a lore decision; pending playtesting of real run lengths. */
+    campReflectionTier1Threshold: number;
+    campReflectionTier2Threshold: number;
+    campReflectionTier3Threshold: number;
+    campReflectionTier4Threshold: number;
     fearPerRoundBase: number;
     fearPerRoundLowHp: number;
     fearPerRoundBaseCap: number;
@@ -90,6 +96,11 @@ interface BalanceConfig {
     /** Part C.3 — floor depth all 3 chains' tier-3 escalations additionally require, alongside
         their counter threshold (same reasoning as `chainTier2MinFloorDepth`, one tier deeper). */
     chainTier3MinFloorDepth: number;
+    /** §8.15 Chain 4 ("Taken, Never Given") — cumulative freeRewardsTakenCount needed to escalate
+        every subsequent resolution of its 7 zero-cost events, provided altarPaymentsCount and
+        artifactsSacrificed are both still 0. Single tier, not gated by floor depth, permanent once
+        crossed. */
+    freeTakenThreshold: number;
     /** §10.5 — chance a post-event reflection shows again after the 1st (always 100%) encounter
         with a given event id. */
     reflectionRepeatChance: number;

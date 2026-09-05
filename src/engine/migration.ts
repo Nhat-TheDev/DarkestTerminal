@@ -16,11 +16,26 @@ export function migrateGameState(raw: unknown): GameState {
   if (state.secondJackpotArtifactId === undefined) state.secondJackpotArtifactId = null;
   if (!Array.isArray(state.metNarrativeNpcIds)) state.metNarrativeNpcIds = [];
   if (!state.narrativeCounters)
-    state.narrativeCounters = { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0 };
+    state.narrativeCounters = { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0, freeRewardsTakenCount: 0 };
   if (typeof state.narrativeCounters.guardianGrudgeFiredCount !== "number") state.narrativeCounters.guardianGrudgeFiredCount = 0;
+  if (typeof state.narrativeCounters.freeRewardsTakenCount !== "number") state.narrativeCounters.freeRewardsTakenCount = 0;
   if (!state.eventReflectionStances) state.eventReflectionStances = {};
   if (!state.eventOutcomes) state.eventOutcomes = {};
   if (!Array.isArray(state.firedOnceEventIds)) state.firedOnceEventIds = [];
+  if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;
+  if (state.pendingCampReflectionTier === undefined) state.pendingCampReflectionTier = null;
+  if (!state.campReflectionChoices) state.campReflectionChoices = {};
+  if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
+  if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;
+  if (typeof state.pendingFounderDialogue !== "boolean") state.pendingFounderDialogue = false;
+  if (state.retiredCharacterClassId === undefined) state.retiredCharacterClassId = null;
+  // Part F.2 — a fresh Game encodes "the-one-who-stayed" is ineligible by pre-inserting its id into
+  // firedOnceEventIds; a migrated save never went through that constructor, so restore the same
+  // invariant here. Without this, a pre-Ending-System save rolls the event with no retired class
+  // recorded and renders its raw {{class}} placeholder.
+  if (!state.retiredCharacterClassId && !state.firedOnceEventIds.includes("the-one-who-stayed")) {
+    state.firedOnceEventIds.push("the-one-who-stayed");
+  }
 
   // Old saves kept a shared pool of unequipped artifacts; auto-equip each one to the first
   // character with an open slot, or drop it if the party is already full.

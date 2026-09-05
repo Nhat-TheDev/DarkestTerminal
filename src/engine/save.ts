@@ -9,6 +9,7 @@ import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
+import { PROFILE_FILENAME } from "./profile";
 import pkg from "../../package.json";
 
 const APP_DIR_NAME = "darkest-terminal";
@@ -110,11 +111,12 @@ export function autoSave(game: Game): SaveMeta {
   return writeSave(game, AUTOSAVE_ID);
 }
 
-/** Skips unreadable/invalid files silently. */
+/** Skips unreadable/invalid files silently — including `profile.ts`'s PROFILE_FILENAME, which
+    deliberately shares this same directory but isn't a SaveFile. */
 function forEachSaveFile(fn: (path: string, save: SaveFile) => void): void {
   if (!existsSync(SAVE_DIR)) return;
   for (const file of readdirSync(SAVE_DIR)) {
-    if (!file.endsWith(".json")) continue;
+    if (!file.endsWith(".json") || file === PROFILE_FILENAME) continue;
     const path = join(SAVE_DIR, file);
     let save: SaveFile;
     try {
