@@ -113,6 +113,8 @@ export interface Character {
   usesRemainingThisCombat: Record<Id, number>;
   cooldownsRemaining: Record<Id, number>;
   equippedArtifactIds: Id[];
+  /** Set once at character select, fixed for the whole run — `11-abilities.md` §11.1 "Character-select flow". `null`/absent = no ability equipped. */
+  equippedAbilityId?: Id | null;
 }
 
 export interface StatusEffectDefinition {
@@ -171,6 +173,28 @@ export interface ArtifactDefinition {
       in explicitly via `rollArtifact`'s `allowRestrictedSource` param; nothing infers it from the
       rarity table alone (Collapsed Floor rolls the same "boss" table without being a Boss kill). */
   restrictedDropSources?: ("boss" | "blood-altar")[];
+}
+
+/** Effect kinds only Abilities can use — either genuinely new (`alwaysHit`) or a `statBoost` targeting a stat `ArtifactEffect`'s own `statBoost` can't (`aggro`/`speed`/`magicPower`). See `docs/gameplay-decisions/11-abilities.md` §11.1. */
+export type AbilityOnlyEffect =
+  | { kind: "alwaysHit"; chance: number }
+  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number };
+
+/** Reuses every `ArtifactEffect` kind except `curseAggroBoost` (cursed-Artifact-only) — Abilities are never cursed — plus `AbilityOnlyEffect`. */
+export type AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect;
+
+export interface AbilityDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  rarity: ArtifactRarity;
+  effects: AbilityEffect[];
+}
+
+/** Persisted separately from any run's `SaveFile` — `docs/gameplay-decisions/11-abilities.md` §11.1 "The persistent profile". Survives permadeath's save-wipe (`deleteSavesForRun`). */
+export interface AbilityProfile {
+  version: number;
+  unlockedAbilityIds: Id[];
 }
 
 export type EventTier = "common" | "rare";
@@ -479,7 +503,7 @@ export interface GameState {
   /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
-  lastRoomDrops: { itemIds: Id[]; artifactIds: Id[] } | null;
+  lastRoomDrops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] } | null;
   /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
       drives the "return" flavor text in 10-event-narrative.md §10.2. */
   metNarrativeNpcIds: Id[];
@@ -532,4 +556,13 @@ export interface GameState {
   /** Ids of events with `onceLifetime: true` that have already fired this run (Part C.4/C.5) —
       `rollEvent()` excludes them from future rolls. Marked by `closeEvent()`. */
   firedOnceEventIds: Id[];
+  /** Stardust earned this run (1 per Boss kill, unconditional) — spent only at this run's own death
+      flow, never carried to the next run. `11-abilities.md` §11.1 "Mid-run acquisition". */
+  runStardust: number;
+  /** Set once at death (party wipe) when at least 1 character lost a non-common ability — walks the
+      player through reclaiming lost-set entries one at a time. `11-abilities.md` §11.1 "Death flow". */
+  pendingAbilityBuyback?: { entries: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[]; resolvedIndex: number } | null;
+  /** Final outcome per lost-set entry, set once the buyback (if any) finishes — drives the death
+      results screen. `null` until the death flow completes. */
+  abilityDeathResults?: { characterId: Id; lostAbilityId: Id; outcome: "reclaimed" | "lost" }[] | null;
 }

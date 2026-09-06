@@ -3,10 +3,11 @@ import { createCliRenderer } from "@opentui/core";
 import { App } from "./ui/app";
 import { showMainMenu } from "./ui/mainMenu";
 import { showCharacterSelect } from "./ui/characterSelect";
+import { showAbilitySelect } from "./ui/abilitySelect";
 import { showSaveSelect } from "./ui/saveSelect";
 import { PALETTE } from "./ui/theme";
 import { Game } from "./engine/game";
-import { CLASSES } from "./data/classes";
+import { CLASSES, getClass } from "./data/classes";
 import { loadSave, gameFromSave } from "./engine/save";
 
 async function main() {
@@ -16,7 +17,8 @@ async function main() {
     const choice = await showMainMenu(renderer);
     if (choice === "new") {
       const classIds = await showCharacterSelect(renderer, CLASSES);
-      new App(renderer, new Game(Date.now(), classIds));
+      const abilityIds = await showAbilitySelect(renderer, classIds.map((id) => getClass(id).name));
+      new App(renderer, new Game(Date.now(), classIds, undefined, abilityIds));
       return;
     }
     const saveMeta = await showSaveSelect(renderer);

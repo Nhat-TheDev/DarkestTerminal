@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
@@ -7,12 +6,12 @@ import { migrateGameState } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
+import { ABILITIES } from "../data/abilities";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { PROFILE_FILENAME } from "./profile";
+import { SAVE_DIR } from "./paths";
 import pkg from "../../package.json";
-
-const APP_DIR_NAME = "darkest-terminal";
 
 /** Save-format version, stamped on every save at write time. Tied to the app's own release version (package.json). */
 export const APP_VERSION: string = pkg.version;
@@ -31,19 +30,6 @@ export function isSaveVersionAllowed(version: string | undefined): boolean {
   const normalized = version ?? UNVERSIONED;
   return normalized === APP_VERSION || ALLOWED_LEGACY_SAVE_VERSIONS.includes(normalized);
 }
-
-function resolveSaveDir(): string {
-  if (process.env.DARKEST_TERMINAL_SAVE_DIR) return process.env.DARKEST_TERMINAL_SAVE_DIR;
-  if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", APP_DIR_NAME);
-  }
-  if (process.platform === "win32") {
-    return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), APP_DIR_NAME);
-  }
-  return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), APP_DIR_NAME);
-}
-
-const SAVE_DIR = resolveSaveDir();
 
 export const QUICKSAVE_ID = "quicksave";
 export const AUTOSAVE_ID = "autosave";
@@ -163,10 +149,12 @@ export function isSaveStateValid(state: GameState): boolean {
     for (const artifactId of c.equippedArtifactIds) {
       if (!existsInCatalog(ARTIFACTS, artifactId)) return false;
     }
+    if (c.equippedAbilityId != null && !existsInCatalog(ABILITIES, c.equippedAbilityId)) return false;
   }
   if (state.gameOver !== "victory" && state.gameOver !== "defeat" && state.gameOver !== null) return false;
   if (!Number.isInteger(state.floor.depth) || state.floor.depth < 1) return false;
   if (!Number.isInteger(state.coins) || state.coins < 0) return false;
+  if (!Number.isInteger(state.runStardust) || state.runStardust < 0) return false;
   if (!Number.isFinite(state.satiety) || state.satiety < 0 || state.satiety > 100) return false;
   for (const count of Object.values(state.inventory)) {
     if (!Number.isInteger(count) || count < 0) return false;

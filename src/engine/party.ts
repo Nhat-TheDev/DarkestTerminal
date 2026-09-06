@@ -3,7 +3,7 @@ import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
 import { getClass } from "../data/classes";
 import { getArtifact } from "../data/artifacts";
 import { getStatusEffect } from "../data/statusEffects";
-import { artifactStatBoostSum, curseAggroBoostSum } from "./artifacts";
+import { artifactStatBoostSum, curseAggroBoostSum, abilityWidenedStatBoost } from "./artifacts";
 import { applyExhaustedMultiplier } from "./survival";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -12,7 +12,7 @@ import { GROWTH_WEIGHTS } from "../data/growthWeights";
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
 /** Net modifyCombatStat delta from the character's active status effects, so recomputeCharacterStats can rebuild `stat` from scratch without dropping them. */
-function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
+export function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
   let sum = 0;
   for (const active of character.activeStatusEffects) {
     for (const e of getStatusEffect(active.statusEffectId).perTurnEffects) {
@@ -74,6 +74,7 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
     usesRemainingThisCombat: {},
     cooldownsRemaining: {},
     equippedArtifactIds: [],
+    equippedAbilityId: null,
   };
 }
 
@@ -84,11 +85,12 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   const boost = artifactStatBoostSum(character);
   character.attack = applyExhaustedMultiplier(base.attack, satiety) + boost.attack + activeStatusCombatStatSum(character, "attack");
   character.defense = applyExhaustedMultiplier(base.defense, satiety) + boost.defense + activeStatusCombatStatSum(character, "defense");
-  character.magicPower = applyExhaustedMultiplier(base.magicPower, satiety);
+  character.magicPower = applyExhaustedMultiplier(base.magicPower, satiety) + abilityWidenedStatBoost(character, "magicPower");
   character.maxHp = base.maxHp + boost.maxHp;
   character.maxMp = base.maxMp + boost.maxMp;
-  character.aggro = applyExhaustedMultiplier(cls.baseAggro, satiety) + curseAggroBoostSum(character) + activeStatusCombatStatSum(character, "aggro");
-  character.speed = applyExhaustedMultiplier(cls.baseSpeed, satiety) + activeStatusCombatStatSum(character, "speed");
+  character.aggro =
+    applyExhaustedMultiplier(cls.baseAggro, satiety) + curseAggroBoostSum(character) + abilityWidenedStatBoost(character, "aggro") + activeStatusCombatStatSum(character, "aggro");
+  character.speed = applyExhaustedMultiplier(cls.baseSpeed, satiety) + abilityWidenedStatBoost(character, "speed") + activeStatusCombatStatSum(character, "speed");
   character.hp = Math.min(character.hp, character.maxHp);
   character.mp = Math.min(character.mp, character.maxMp);
 }

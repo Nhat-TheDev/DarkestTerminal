@@ -3,6 +3,7 @@ import type { GameState } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
+import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
 
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
@@ -36,6 +37,15 @@ export function migrateGameState(raw: unknown): GameState {
   if (!state.retiredCharacterClassId && !state.firedOnceEventIds.includes("the-one-who-stayed")) {
     state.firedOnceEventIds.push("the-one-who-stayed");
   }
+  if (typeof state.runStardust !== "number") state.runStardust = 0;
+  if (state.pendingAbilityBuyback === undefined) state.pendingAbilityBuyback = null;
+  if (state.abilityDeathResults === undefined) state.abilityDeathResults = null;
+  // A save written before Abilities existed can still carry an unread `lastRoomDrops` (saving is
+  // allowed from `combatOver`, and the reward screen reads `.abilityIds.length` unguarded).
+  if (state.lastRoomDrops && !Array.isArray(state.lastRoomDrops.abilityIds)) state.lastRoomDrops.abilityIds = [];
+  for (const character of state.party) {
+    if (character.equippedAbilityId === undefined) character.equippedAbilityId = null;
+  }
 
   // Old saves kept a shared pool of unequipped artifacts; auto-equip each one to the first
   // character with an open slot, or drop it if the party is already full.
@@ -68,6 +78,13 @@ export function migrateGameState(raw: unknown): GameState {
         return false;
       }
     });
+  }
+
+  // Same defensive pruning for a since-removed ability id (e.g. a future catalog edit).
+  for (const character of state.party) {
+    if (character.equippedAbilityId && !ABILITIES.some((a) => a.id === character.equippedAbilityId)) {
+      character.equippedAbilityId = null;
+    }
   }
 
   return state;

@@ -100,7 +100,14 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       renderer.keyInput.on("keypress", onChoiceKey);
     };
 
-    const onKey = (_key: KeyEvent) => showChoice();
-    renderer.keyInput.once("keypress", onKey);
+    // Never `.once()` here: `InternalKeyHandler.emit` calls the unwrapped listeners directly, so a
+    // `once` wrapper never removes itself — it would keep re-running `showChoice()` on every key
+    // for the rest of the session, stacking a fresh `onChoiceKey` each time. Persistent `on` plus
+    // an explicit `off` is the pattern every other screen in this codebase uses.
+    const onKey = (_key: KeyEvent) => {
+      renderer.keyInput.off("keypress", onKey);
+      showChoice();
+    };
+    renderer.keyInput.on("keypress", onKey);
   });
 }

@@ -18,7 +18,7 @@ import type {
 import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
-import { rollDodge, autoDamageAmounts, totalCooldownReduction } from "./artifacts";
+import { rollDodge, autoDamageAmounts, totalCooldownReduction, alwaysHitChance } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
@@ -478,13 +478,23 @@ function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bo
   source.activeStatusEffects = source.activeStatusEffects.filter((a) => !statusSatisfiesRequirement(a.statusEffectId, requiredId));
 }
 
+/** An Ability's `alwaysHit` chance, re-rolled fresh for the wearer's own enemy-targeting rolls only — a hit here skips whatever roll it's guarding entirely; a miss falls through to that roll exactly as if `alwaysHit` didn't exist. `11-abilities.md` §11.1.1. */
+function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContext): boolean {
+  if (!isEnemyFacing || !isCharacter(source)) return false;
+  // `Rng.chance` advances the stream even at p = 0, so a party with no `alwaysHit` Ability would
+  // otherwise pay a draw on every accuracy and every `effect.chance` roll — and shift the whole
+  // seeded stream along with it.
+  const chance = alwaysHitChance(source);
+  return chance > 0 && ctx.rng.chance(chance / 100);
+}
+
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
   for (const target of targets) {
     const isEnemyFacing = isCharacter(source) !== isCharacter(target);
-    if (isEnemyFacing && !skill.isUltimate && !rollHits(source, () => ctx.rng.next())) {
+    if (isEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
       log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
       continue;
     }
@@ -495,7 +505,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
     for (const effect of effectsFor(skill, target)) {
       if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
-      if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
+      if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
       const wasAliveBefore = isActorAlive(target);

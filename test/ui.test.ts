@@ -8,6 +8,8 @@ import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
+import { showMainMenu } from "../src/ui/mainMenu";
+import { CLASSES } from "../src/data/classes";
 
 describe("headless UI smoke test", () => {
   test("plays a scripted run via keypresses without crashing", async () => {
@@ -182,5 +184,56 @@ describe("headless UI smoke test", () => {
     } finally {
       process.exit = originalExit;
     }
+  });
+});
+
+describe("key handler lifecycle", () => {
+  test("the main menu leaves no keypress listener behind once the game is running", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 130, height: 45 });
+    const press = async (key: string) => {
+      mockInput.pressKey(key);
+      await renderOnce();
+    };
+    const listeners = () => renderer.keyInput.listenerCount("keypress");
+
+    const menu = showMainMenu(renderer);
+    await renderOnce();
+    await press("x"); // title screen -> the New/Continue choice
+    await press("1"); // choose New
+    expect(await menu).toBe("new");
+
+    const classIds = CLASSES.slice(0, 4).map((c) => c.id);
+    new App(renderer, new Game(7, classIds));
+    await renderOnce();
+
+    // `.once("keypress", ...)` looks right here but never removes itself under
+    // InternalKeyHandler.emit, which left the menu re-registering a handler on every single
+    // keypress for the rest of the run.
+    const settled = listeners();
+    for (const key of ["b", "b", "1", "2", "b"]) await press(key);
+
+    expect(listeners()).toBe(settled);
+  });
+});
+
+describe("character info screen", () => {
+  test("shows which digit switches to which party member, and switches on that digit", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const classIds = CLASSES.slice(0, 4).map((c) => c.id);
+    const app = new App(renderer, new Game(7, classIds));
+    await renderOnce();
+    mockInput.pressKey("RETURN"); // skip the ambush reveal
+    await renderOnce();
+    mockInput.pressKey("b");
+    await renderOnce();
+
+    const opened = captureCharFrame();
+    expect(opened).toContain("[2] Mage");
+    expect(opened).toContain("Vanguard (Level 1 Vanguard)");
+    expect(opened).toContain("[1-4] Switch Character");
+
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(captureCharFrame()).toContain("Rogue (Level 1 Rogue)");
   });
 });

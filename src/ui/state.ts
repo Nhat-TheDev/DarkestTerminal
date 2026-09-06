@@ -9,7 +9,7 @@ export type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { ki
 
 export type ArtifactDetailOrigin = { kind: "owned"; characterId: Id };
 
-export type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id };
+export type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id } | { kind: "ability"; id: Id };
 
 export type UiState =
   | { kind: "room" }
@@ -46,9 +46,12 @@ export type UiState =
   | { kind: "campReflection" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
+  | { kind: "abilityBuyback" }
+  | { kind: "characterInfo"; characterIndex: number; previousUi: UiState }
   | { kind: "gameover" };
 
 export const ARTIFACT_ICON = "✦";
+export const ABILITY_ICON = "◆";
 
 /** "⚔" for items used against an opponent, "✚" for recovery (heal/MP), "↑" for buffs/utility. */
 export function itemIcon(item: ItemDefinition): string {
@@ -63,12 +66,13 @@ export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDef
     .map(([id, qty]) => ({ item: getItem(id), qty }));
 }
 
-export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[] }): RewardEntry[] {
+export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] }): RewardEntry[] {
   const itemQty = new Map<Id, number>();
   for (const id of drops.itemIds) itemQty.set(id, (itemQty.get(id) ?? 0) + 1);
   const entries: RewardEntry[] = [];
   for (const [id, qty] of itemQty) entries.push({ kind: "item", id, qty });
   for (const id of drops.artifactIds) entries.push({ kind: "artifact", id });
+  for (const id of drops.abilityIds) entries.push({ kind: "ability", id });
   return entries;
 }
 
