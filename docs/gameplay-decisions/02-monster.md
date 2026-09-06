@@ -131,6 +131,26 @@ This required a resolver change (`resolver.ts`): after computing final mitigated
 - **Data**: `data/monsters.json` — `skillIds` populated for 10 archetypes, `actionWeights.normal` updated for 8 of them (Zombie/Skeleton Warrior unchanged, per "Usage rate" above); `data/monster-skills.json` — the 10 new monster skill entries (same file/shape already used for Elite/Boss skills); `data/status-effects.json` — `corroded`, `webbed`.
 - **Code** (`src/types.ts` + `src/engine/resolver.ts`/`combat.ts`): `SkillEffect.lifestealPercent` + resolver handling; the `aiPattern: "defensive"` branch in `runMonsterTurn` (see "AI patterns" above).
 
+### Writing `description` text (monster archetypes, monster skills, class skills)
+
+The `description` field on any monster archetype (`data/monsters.json`), monster skill
+(`data/monster-skills.json`), or class skill (`data/classes.json`) is player-facing flavor text
+only — what the thing looks or feels like. It must never contain:
+
+- **Mechanical/system notes** — e.g. "replaces the basic attack," "not based on the target's
+  current HP%." A player reading this shouldn't need dev knowledge of the action-selection system
+  to parse it.
+- **A cross-reference to another skill by name** — e.g. "lighter per target than Cleaving Strike."
+  Every description must stand alone; the reader shouldn't need another skill's card in front of
+  them to understand this one.
+- **Numbers, percentages, or a reference to another class/archetype's stat field** — e.g. "roughly
+  60% of the Vanguard's maxHp." Those belong in `effects`, in this document's prose, or in a code
+  comment — never inside the JSON `description` string.
+
+If a balance fact needs to be written down somewhere (e.g. "this execute hits for ~60% of a
+Vanguard's maxHp"), put it in this doc or a code comment next to the JSON, not in the string a
+player will actually read.
+
 ### Guard-room archetypes (elite/boss)
 
 Skeleton Guard (shared with regular combat) plus the archetypes marked `guardOnly: true` — as of writing this includes Giant Spider, Dragon, Zombie Knight, and Dark Knight, each with its own elite/boss skill kit (`eliteSkillIds`/`bossSkillIds`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.

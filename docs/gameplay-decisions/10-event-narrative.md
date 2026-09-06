@@ -1062,13 +1062,19 @@ explicit requirement — "don't rob the player's own judgment" — intact even w
 citable answers to some of it.
 
 **The fight — built**: `the-founder` (`data/monsters.json`), a Boss-tier `MonsterArchetype` with
-`guardOnly: true` and only `bossSkillIds` set (no `eliteSkillIds`), so it's excluded from every
-normal Elite/Boss-room roll and only ever spawned by `Game.enterFounderFight()`. "Stronger than any
-existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
-depth-scaling every monster already uses — no bespoke stat multiplier needed. 2 new skills,
-`boss-execute-the-founder` ("Everything You Asked For") and `boss-debuff-the-founder` ("What's Left
-Listening," applying `blinded`), follow the exact same mechanical shape as every other boss's
-execute/debuff pair.
+`guardOnly: true` and `scriptedOnly: true`, so it's excluded from every normal Elite/Boss-room roll
+and only ever spawned by `Game.enterFounderFight()`. `scriptedOnly` is what carries that exclusion:
+`GUARD_ROOM_ARCHETYPES` (`src/data/floor.ts`) otherwise treats "has both `eliteSkillIds` and
+`bossSkillIds`" as the definition of guard-room material, and the founder has both. "Stronger than
+any existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
+depth-scaling every monster already uses — no bespoke stat multiplier needed. 4 new skills, all
+following the exact mechanical shape of every other Elite/Boss archetype's kit: `elite-strike-the-founder`
+("Paid In Full," 20 single-target) and `elite-cleave-the-founder` ("The Same Price," 10 party-wide)
+alongside `boss-execute-the-founder` ("Everything You Asked For") and `boss-debuff-the-founder`
+("What's Left Listening," applying `blinded`). Its boss action weights lean harder on the debuff than
+a standard boss does — 30/20/15/35 against the usual 40/20/15/25 — so the fight still reads as its
+own thing rather than a reskinned Dark Knight. It carries no `elite` action weights and no elite
+sprite, because it can never spawn at Elite tier.
 
 **After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — no new
 mechanic needed for this framing; it's flavor over the existing infinite-descent loop continuing as
@@ -1136,13 +1142,16 @@ layer) and the boss kit it flagged as undesigned:
   kill, so the mechanism had to be an explicit per-call-site opt-in, never inferred from the rarity
   table name alone — confirmed with a dedicated test.
 - **Floor 120's boss**, `the-founder` (`data/monsters.json`, `data/monster-skills.json`,
-  `data/sprites.json`): `guardOnly: true` with only `bossSkillIds` set (no `eliteSkillIds`), so it's
-  excluded from every normal Elite/Boss-room roll and only ever spawned directly by
-  `Game.enterFounderFight()`. Stats are deliberately plain (baseHp 80/baseAttack 28/baseDefense
-  12/baseSpeed 5, `aiPattern: "aggressive"`) — depth-scaling alone (floor 120, deeper than any other
-  boss in the game) already satisfies "stronger than any existing boss" without a bespoke multiplier.
-  2 new skills, `boss-execute-the-founder`/`boss-debuff-the-founder`, follow the same mechanical
-  shape every other boss's execute/debuff pair already uses (only the flavor differs).
+  `data/sprites.json`): `guardOnly: true` plus `scriptedOnly: true`, so it's excluded from every
+  normal Elite/Boss-room roll and only ever spawned directly by `Game.enterFounderFight()`. The
+  second flag is load-bearing: it has a full elite kit like every other Boss archetype, and
+  `GUARD_ROOM_ARCHETYPES` would otherwise read that kit as guard-room eligibility. Stats are
+  deliberately plain (baseHp 80/baseAttack 28/baseDefense 12/baseSpeed 5, `aiPattern: "aggressive"`)
+  — depth-scaling alone (floor 120, deeper than any other boss in the game) already satisfies
+  "stronger than any existing boss" without a bespoke multiplier. 4 new skills — the
+  `elite-strike-`/`elite-cleave-` pair and the `boss-execute-`/`boss-debuff-` pair — follow the same
+  mechanical shape every other Elite/Boss archetype already uses (only the flavor and the boss-tier
+  action weights differ).
 - **Ending 1's persistence layer** (`src/engine/profile.ts`, new): a small `profile.json` sharing
   `save.ts`'s app-data directory but never imported by or importing `save.ts`/`game.ts` circularly.
   Records `{classId}` per retirement and a `shownRetiredCharacterEvent` flag, both independent of any

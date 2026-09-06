@@ -400,14 +400,21 @@
     "skillIds": [],
     "expReward": 20,
     "guardOnly": true,
+    "scriptedOnly": true,
+    "eliteSkillIds": {
+      "strike": "elite-strike-the-founder",
+      "cleave": "elite-cleave-the-founder"
+    },
     "bossSkillIds": {
       "execute": "boss-execute-the-founder",
       "debuff": "boss-debuff-the-founder"
     },
     "actionWeights": {
       "boss": {
-        "basicAttack": 40,
-        "debuff": 60
+        "basicAttack": 30,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 35
       }
     }
   }

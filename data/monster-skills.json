@@ -2,7 +2,7 @@
   {
     "id": "elite-strike-skeleton-guard",
     "name": "Cleaving Strike",
-    "description": "A heavy weapon strike from an elite/boss Skeleton Guard — replaces the basic attack, noticeably higher damage.",
+    "description": "A heavy weapon strike from an elite/boss Skeleton Guard, hitting far harder than its usual blows.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -17,7 +17,7 @@
   {
     "id": "elite-cleave-skeleton-guard",
     "name": "Sweeping Cleave",
-    "description": "Swings its weapon across the whole party, wide-area damage but lighter per target than Cleaving Strike.",
+    "description": "Swings its weapon across the whole party, spreading the damage thin across every target.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -32,7 +32,7 @@
   {
     "id": "boss-execute-skeleton-guard",
     "name": "Finishing Blow",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -67,7 +67,7 @@
   {
     "id": "elite-strike-giant-spider",
     "name": "Venomous Bite",
-    "description": "A heavy fanged bite from an elite/boss Giant Spider — replaces the basic attack, noticeably higher damage.",
+    "description": "A heavy fanged bite from an elite/boss Giant Spider, hitting far harder than its usual bites.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -82,7 +82,7 @@
   {
     "id": "elite-cleave-giant-spider",
     "name": "Web Barrage",
-    "description": "Sprays webbing across the whole party, wide-area damage but lighter per target than Venomous Bite.",
+    "description": "Sprays webbing across the whole party, spreading the damage thin across every target.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -97,7 +97,7 @@
   {
     "id": "boss-execute-giant-spider",
     "name": "Death Bite",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating bite — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating bite meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -132,7 +132,7 @@
   {
     "id": "elite-strike-dragon",
     "name": "Claw Rake",
-    "description": "A heavy claw strike from an elite/boss Dragon — replaces the basic attack, noticeably higher damage.",
+    "description": "A heavy claw strike from an elite/boss Dragon, hitting far harder than its usual attacks.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -147,7 +147,7 @@
   {
     "id": "elite-cleave-dragon",
     "name": "Fire Breath",
-    "description": "Breathes fire across the whole party, wide-area damage but lighter per target than Claw Rake.",
+    "description": "Breathes fire across the whole party, spreading the damage thin across every target.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -162,7 +162,7 @@
   {
     "id": "boss-execute-dragon",
     "name": "Inferno Bite",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating bite — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating bite meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -197,7 +197,7 @@
   {
     "id": "elite-strike-zombie-knight",
     "name": "Rusted Blade",
-    "description": "A heavy blade strike from an elite/boss Zombie Knight — replaces the basic attack, noticeably higher damage.",
+    "description": "A heavy blade strike from an elite/boss Zombie Knight, hitting far harder than its usual swings.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -212,7 +212,7 @@
   {
     "id": "elite-cleave-zombie-knight",
     "name": "Rotting Swing",
-    "description": "Swings its blade across the whole party, wide-area damage but lighter per target than Rusted Blade.",
+    "description": "Swings its blade across the whole party, spreading the damage thin across every target.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -227,7 +227,7 @@
   {
     "id": "boss-execute-zombie-knight",
     "name": "Grave Judgment",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -262,7 +262,7 @@
   {
     "id": "elite-strike-dark-knight",
     "name": "Shadow Slash",
-    "description": "A heavy blade strike from an elite/boss Dark Knight — replaces the basic attack, noticeably higher damage.",
+    "description": "A heavy blade strike from an elite/boss Dark Knight, hitting far harder than its usual strikes.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -277,7 +277,7 @@
   {
     "id": "elite-cleave-dark-knight",
     "name": "Dark Wave",
-    "description": "Unleashes a wave of dark energy across the whole party, wide-area damage but lighter per target than Shadow Slash.",
+    "description": "Unleashes a wave of dark energy across the whole party, spreading the damage thin across every target.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -292,7 +292,7 @@
   {
     "id": "boss-execute-dark-knight",
     "name": "Abyssal Judgment",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -434,9 +434,29 @@
     "unlockLevel": 1
   },
   {
+    "id": "elite-strike-the-founder",
+    "name": "Paid In Full",
+    "description": "A heavy single-target blow from the boss form of What's Left of Him, hitting far harder than its usual strikes.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [{ "kind": "damage", "amount": 20 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-the-founder",
+    "name": "The Same Price",
+    "description": "Hits the whole party at once, spreading a lighter share of damage to each — whatever it charges, it charges everyone the same.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [{ "kind": "damage", "amount": 10 }],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
     "id": "boss-execute-the-founder",
     "name": "Everything You Asked For",
-    "description": "Charges for 1 turn (telegraphing the target) then delivers a devastating strike — roughly 60% of the Vanguard's maxHp, enough to fell squishier classes. Not based on the target's current HP %.",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [{ "kind": "damage", "amount": 60, "ignoreDefensePercent": 50 }],

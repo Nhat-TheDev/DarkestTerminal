@@ -343,6 +343,12 @@ export interface MonsterArchetype {
   eliteSkillIds?: { strike: Id; cleave: Id };
   bossSkillIds?: { execute: Id; debuff: Id };
   guardOnly?: boolean;
+  /**
+   * Never enters any random roll — spawned only by name from a scripted call site. `guardOnly`
+   * can't express this (Skeleton Guard is guard-room-eligible without it), and having a full
+   * elite+boss kit is otherwise exactly what marks an archetype as guard-room material.
+   */
+  scriptedOnly?: boolean;
   powerTier?: "weak" | "medium" | "strong";
   actionWeights?: {
     normal?: Partial<Record<"basicAttack" | "skill", number>>;
