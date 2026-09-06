@@ -330,7 +330,12 @@
     "description": "A gnawing bite, dealing slightly more damage than a plain scratch.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 2 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -340,7 +345,13 @@
     "description": "Drains blood from the target, dealing damage and healing itself for half of it.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 2, "lifestealPercent": 50 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2,
+        "lifestealPercent": 50
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -351,8 +362,18 @@
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
-      { "kind": "damage", "amount": 2 },
-      { "kind": "applyStatusEffect", "statusEffectId": "acid-burn", "alsoApplyStatusEffectIds": ["corroded"], "chance": 0.5 }
+      {
+        "kind": "damage",
+        "amount": 2
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "acid-burn",
+        "alsoApplyStatusEffectIds": [
+          "corroded"
+        ],
+        "chance": 0.5
+      }
     ],
     "slot": 0,
     "unlockLevel": 1
@@ -363,7 +384,12 @@
     "description": "Throws a sharpened bone at the target, ranged damage.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 3 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -373,7 +399,12 @@
     "description": "Rotting flesh knits back together, restoring HP.",
     "mpCost": 0,
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 15 }],
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 15
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -384,8 +415,15 @@
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
-      { "kind": "damage", "amount": 2 },
-      { "kind": "applyStatusEffect", "statusEffectId": "poisoned", "chance": 0.5 }
+      {
+        "kind": "damage",
+        "amount": 2
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned",
+        "chance": 0.5
+      }
     ],
     "slot": 0,
     "unlockLevel": 1
@@ -396,7 +434,12 @@
     "description": "A fast snapping bite, dealing slightly more damage than a plain scratch.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 3 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -407,8 +450,15 @@
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
-      { "kind": "damage", "amount": 2 },
-      { "kind": "applyStatusEffect", "statusEffectId": "webbed", "chance": 0.5 }
+      {
+        "kind": "damage",
+        "amount": 2
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "webbed",
+        "chance": 0.5
+      }
     ],
     "slot": 0,
     "unlockLevel": 1
@@ -419,7 +469,12 @@
     "description": "Fires an arrow at the target, ranged damage.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 3 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -429,7 +484,12 @@
     "description": "Raises its shield into a defensive stance, boosting its own defense.",
     "mpCost": 0,
     "target": "self",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "guard" }],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "guard"
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -439,7 +499,12 @@
     "description": "A heavy single-target blow from the boss form of What's Left of Him, hitting far harder than its usual strikes.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 20 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -449,7 +514,12 @@
     "description": "Hits the whole party at once, spreading a lighter share of damage to each — whatever it charges, it charges everyone the same.",
     "mpCost": 0,
     "target": "allEnemies",
-    "effects": [{ "kind": "damage", "amount": 10 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -459,7 +529,13 @@
     "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 60, "ignoreDefensePercent": 50 }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   },
@@ -469,7 +545,451 @@
     "description": "Moderate damage, also blinds the target — something in the room answers back, and it isn't the target's own eyes anymore.",
     "mpCost": 0,
     "target": "singleEnemy",
-    "effects": [{ "kind": "damage", "amount": 10 }, { "kind": "applyStatusEffect", "statusEffectId": "blinded" }],
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "blinded"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "whispered-name",
+    "name": "Whispered Name",
+    "description": "Says something under its breath that isn't meant for anyone living, and the air goes wrong where it lands.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "grave-chill",
+    "name": "Grave Chill",
+    "description": "Reaches through cloth and mail alike, and leaves whatever it touched slower to close its guard again.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "chance": 0.5
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "ember-lash",
+    "name": "Ember Lash",
+    "description": "Flicks a whip of live coal across the dark; whatever it catches keeps burning after it has gone.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 2
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning",
+        "chance": 0.5
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "settle-into-stone",
+    "name": "Settle Into Stone",
+    "description": "Stops moving entirely, the way it must have stood for years before anyone came down this far.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "guard"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "bone-breaker",
+    "name": "Bone Breaker",
+    "description": "Brings its whole weight down through the shoulder, aiming for what holds a guard up rather than what it protects.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "chance": 0.5
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "maul",
+    "name": "Maul",
+    "description": "Takes hold with both paws and worries at what it has caught until something opens and stays open.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 3
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bleeding",
+        "chance": 0.5
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-orc-chieftain",
+    "name": "Skullsplitter",
+    "description": "Swings the heavy end of its weapon in a single downward arc, put where a helmet meets a neck.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-orc-chieftain",
+    "name": "Rout",
+    "description": "Turns on the spot with its arms out wide, driving everyone in reach back a pace at once.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-orc-chieftain",
+    "name": "Helm Crusher",
+    "description": "A flat, ringing blow to the head — the target is still upright, but nothing gets through to them for a while.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-orc-chieftain",
+    "name": "The Last Trophy",
+    "description": "Winds up slowly and unmistakably, watching one of them the whole time, then brings it all down.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-vampire-lord",
+    "name": "Crimson Talon",
+    "description": "One long nail opens a line where the armour gaps, unhurried, almost fastidious.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-vampire-lord",
+    "name": "Scarlet Mist",
+    "description": "Bursts apart into a fine red haze that passes over the whole party and gathers again behind them.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-vampire-lord",
+    "name": "Opened Vein",
+    "description": "Finds the vessel it wants on the first try and leaves it running.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bleeding"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-vampire-lord",
+    "name": "Final Draught",
+    "description": "Holds still, choosing, then closes the distance all at once on the one it has been watching.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-void",
+    "name": "Grasping Remnant",
+    "description": "A limb that used to belong to something else reaches out of the mass and takes hold.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-void",
+    "name": "Unravelling Tide",
+    "description": "Spills outward in every direction, and everything it washes over comes back a little less whole.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-void",
+    "name": "Dissolution",
+    "description": "Presses against armour until the armour stops being armour.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "corroded"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-void",
+    "name": "Subsumed",
+    "description": "Goes quiet and turns its whole shapeless attention on one of them, then folds forward over that spot.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-ancient-golem",
+    "name": "Stoneshear",
+    "description": "Brings one slab of an arm down in a single unhurried motion that does not need to be fast.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-ancient-golem",
+    "name": "Tremor",
+    "description": "Strikes the floor once, and the floor carries it to everyone standing on it.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-ancient-golem",
+    "name": "Grinding Weight",
+    "description": "Leans in and bears down, and plate gives way the way soft ground does under a millstone.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-ancient-golem",
+    "name": "Sealing Blow",
+    "description": "Draws back and holds there, weight gathered over one of them, for as long as it takes.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-lich",
+    "name": "Withering Touch",
+    "description": "Lays one dry hand on whatever is nearest and takes the years out of it.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-lich",
+    "name": "Grave Wind",
+    "description": "A cold draught out of somewhere deeper passes through the whole party at once.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-lich",
+    "name": "Hollow Sight",
+    "description": "Meets someone's eyes, and afterwards they cannot be sure where anything in the room is.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "blinded"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-lich",
+    "name": "Name Struck Out",
+    "description": "Regards one of them without moving, the way a clerk regards a line about to be crossed through.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
     "slot": 0,
     "unlockLevel": 1
   }

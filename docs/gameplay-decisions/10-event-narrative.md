@@ -1064,8 +1064,8 @@ citable answers to some of it.
 **The fight — built**: `the-founder` (`data/monsters.json`), a Boss-tier `MonsterArchetype` with
 `guardOnly: true` and `scriptedOnly: true`, so it's excluded from every normal Elite/Boss-room roll
 and only ever spawned by `Game.enterFounderFight()`. `scriptedOnly` is what carries that exclusion:
-`GUARD_ROOM_ARCHETYPES` (`src/data/floor.ts`) otherwise treats "has both `eliteSkillIds` and
-`bossSkillIds`" as the definition of guard-room material, and the founder has both. "Stronger than
+`GUARD_ROOM_ARCHETYPES` (`src/data/floor.ts`) otherwise treats "can act at both elite and boss tier"
+as the definition of guard-room material, and the founder can. "Stronger than
 any existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
 depth-scaling every monster already uses — no bespoke stat multiplier needed. 4 new skills, all
 following the exact mechanical shape of every other Elite/Boss archetype's kit: `elite-strike-the-founder`
@@ -1144,8 +1144,8 @@ layer) and the boss kit it flagged as undesigned:
 - **Floor 120's boss**, `the-founder` (`data/monsters.json`, `data/monster-skills.json`,
   `data/sprites.json`): `guardOnly: true` plus `scriptedOnly: true`, so it's excluded from every
   normal Elite/Boss-room roll and only ever spawned directly by `Game.enterFounderFight()`. The
-  second flag is load-bearing: it has a full elite kit like every other Boss archetype, and
-  `GUARD_ROOM_ARCHETYPES` would otherwise read that kit as guard-room eligibility. Stats are
+  second flag is load-bearing: it has a full skill kit like every other Boss archetype, and
+  `GUARD_ROOM_ARCHETYPES` would otherwise read that as guard-room eligibility. Stats are
   deliberately plain (baseHp 80/baseAttack 28/baseDefense 12/baseSpeed 5, `aiPattern: "aggressive"`)
   — depth-scaling alone (floor 120, deeper than any other boss in the game) already satisfies
   "stronger than any existing boss" without a bespoke multiplier. 4 new skills — the

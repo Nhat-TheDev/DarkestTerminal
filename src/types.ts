@@ -348,7 +348,7 @@ export interface Floor {
   entryRoomId: Id;
 }
 
-export type MonsterAiPattern = "aggressive" | "defensive" | "erratic";
+export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
 
 /** Stat-budget archetype, mirroring how `classGrowthWeights` splits a character class's budget across stats — see `monsterGrowthWeights` (`data/growth-weights.json`). Multipliers sum to 3 (1 per stat) the same way `classGrowthWeights` sums to 5. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
@@ -362,23 +362,26 @@ export interface MonsterArchetype {
   baseSpeed: number;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  /** Every skill this archetype can roll, at any tier. Which tier each one is usable at, and how
+   *  often, is `actionWeights` — a skill is available at a tier exactly when that tier's weights
+   *  name it. Does not include `executeSkillId`, which never goes through the weighted roll. */
   skillIds: Id[];
   expReward: number;
-  eliteSkillIds?: { strike: Id; cleave: Id };
-  bossSkillIds?: { execute: Id; debuff: Id };
+  /** The charged finisher: telegraphs for a turn, then always releases, then cools down. Outside
+   *  the weighted roll entirely, which is why it is a field of its own rather than a skillIds entry. */
+  executeSkillId?: Id;
   guardOnly?: boolean;
   /**
    * Never enters any random roll — spawned only by name from a scripted call site. `guardOnly`
-   * can't express this (Skeleton Guard is guard-room-eligible without it), and having a full
-   * elite+boss kit is otherwise exactly what marks an archetype as guard-room material.
+   * can't express this (Skeleton Guard is guard-room-eligible without it), and being able to act
+   * at both elite and boss tier is otherwise exactly what marks an archetype as guard-room material.
    */
   scriptedOnly?: boolean;
   powerTier?: "weak" | "medium" | "strong";
-  actionWeights?: {
-    normal?: Partial<Record<"basicAttack" | "skill", number>>;
-    elite?: Partial<Record<"basicAttack" | "skill" | "strike" | "cleave", number>>;
-    boss?: Partial<Record<"basicAttack" | "strike" | "cleave" | "debuff", number>>;
-  };
+  /** Per tier: `"basicAttack"` plus any id from `skillIds`, mapped to its relative weight. Keys are
+   *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of
+   *  silently leaving the monster with nothing but its basic attack. */
+  actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
 }
 
 export type MonsterTier = "normal" | "elite" | "boss";
@@ -392,7 +395,6 @@ export interface Monster {
   attack: number;
   defense: number;
   speed: number;
-  skillIds: Id[];
   tier: MonsterTier;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;

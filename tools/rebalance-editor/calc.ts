@@ -84,7 +84,7 @@ export function getCatalog() {
       monsterType: m.monsterType,
       base: { hp: m.baseHp, attack: m.baseAttack, defense: m.baseDefense, speed: m.baseSpeed },
       expReward: m.expReward,
-      isGuardCapable: Boolean(m.eliteSkillIds && m.bossSkillIds),
+      isGuardCapable: Boolean(m.actionWeights?.elite && m.actionWeights?.boss),
       actionWeights: m.actionWeights ?? null,
     })),
     monsterSkills: MONSTER_SKILLS,
@@ -199,9 +199,11 @@ export interface MonsterComputation {
   isBossFloor: boolean;
   skillKit: {
     basicAttack: { amount: number };
-    regularSkillIds: string[];
-    elite: { strike: SkillDefinition; cleave: SkillDefinition } | null;
-    boss: { execute: SkillDefinition; debuff: SkillDefinition } | null;
+    /** Every skill the archetype can roll, at any tier. Whether one is reachable at the tier being
+     *  computed is `actionWeights` — it is listed there exactly when it is. */
+    skills: SkillDefinition[];
+    /** Outside the weighted roll: charges a turn, then always releases. Boss tier only. */
+    execute: SkillDefinition | null;
   };
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
 }
@@ -216,8 +218,8 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
   if (!Number.isFinite(depth) || depth < 1) return badInput("depth must be an integer >= 1.");
   depth = Math.round(depth);
   if (tier !== "normal" && tier !== "elite" && tier !== "boss") return badInput('tier must be "normal", "elite", or "boss".');
-  if ((tier === "elite" || tier === "boss") && !(archetype.eliteSkillIds && archetype.bossSkillIds)) {
-    return badInput(`"${archetypeId}" has no elite/boss skill kit — it can only be spawned at tier "normal".`);
+  if (!archetype.actionWeights?.[tier]) {
+    return badInput(`"${archetypeId}" has no actionWeights for tier "${tier}" — it never acts at that tier.`);
   }
 
   const monster = spawnMonster(archetypeId, depth, tier === "normal" ? undefined : { tier });
@@ -237,9 +239,8 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     isBossFloor: depth % BOSS_FLOOR_INTERVAL === 0,
     skillKit: {
       basicAttack: { amount: 0 },
-      regularSkillIds: archetype.skillIds,
-      elite: archetype.eliteSkillIds ? { strike: getMonsterSkill(archetype.eliteSkillIds.strike), cleave: getMonsterSkill(archetype.eliteSkillIds.cleave) } : null,
-      boss: archetype.bossSkillIds ? { execute: getMonsterSkill(archetype.bossSkillIds.execute), debuff: getMonsterSkill(archetype.bossSkillIds.debuff) } : null,
+      skills: archetype.skillIds.map(getMonsterSkill),
+      execute: archetype.executeSkillId ? getMonsterSkill(archetype.executeSkillId) : null,
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
   };
@@ -427,16 +428,15 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
   const weightTotal = weights ? Object.values(weights).reduce((a: number, b) => a + (b ?? 0), 0) : 0;
   const weightPercent = (key: string) => (weights && weightTotal > 0 ? ((weights[key] ?? 0) / weightTotal) * 100 : null);
 
-  // Gate by the monster's *current* tier, not just whether the archetype is capable of elite/boss —
-  // an elite-tier instance never rolls Execute/Debuff even though its archetype has a bossSkillIds kit.
+  // Gated by the weights of the tier being computed, not by what the archetype owns overall — a
+  // skill the archetype has but this tier never names is simply absent from the table.
   incoming.push({ ...previewSkillDamage(BASIC_ATTACK_SKILL, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent("basicAttack") });
-  if ((opts.tier === "elite" || opts.tier === "boss") && monster.skillKit.elite) {
-    incoming.push({ ...previewSkillDamage(monster.skillKit.elite.strike, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent("strike") });
-    incoming.push({ ...previewSkillDamage(monster.skillKit.elite.cleave, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent("cleave") });
+  for (const skill of monster.skillKit.skills) {
+    if (!weights || weights[skill.id] === undefined) continue;
+    incoming.push({ ...previewSkillDamage(skill, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent(skill.id) });
   }
-  if (opts.tier === "boss" && monster.skillKit.boss) {
-    incoming.push({ ...previewSkillDamage(monster.skillKit.boss.execute, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: null });
-    incoming.push({ ...previewSkillDamage(monster.skillKit.boss.debuff, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent("debuff") });
+  if (opts.tier === "boss" && monster.skillKit.execute) {
+    incoming.push({ ...previewSkillDamage(monster.skillKit.execute, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: null });
   }
 
   const rollingActions = incoming.filter((a) => a.actionWeightPercent !== null && a.actionWeightPercent > 0);
@@ -448,8 +448,8 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     outgoing,
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
-    executeCycleNote: monster.skillKit.boss
-      ? `Finishing Blow isn't part of the weighted roll — it fires once every ~${EXECUTE_COOLDOWN_TURNS + 2} rounds (1 charge turn + 1 release turn + ${EXECUTE_COOLDOWN_TURNS} cooldown turns), always for the "boss.execute" row's damage regardless of the roll above.`
+    executeCycleNote: monster.skillKit.execute
+      ? `${monster.skillKit.execute.name} isn't part of the weighted roll — it fires once every ~${EXECUTE_COOLDOWN_TURNS + 2} rounds (1 charge turn + 1 release turn + ${EXECUTE_COOLDOWN_TURNS} cooldown turns), always for its own row's damage regardless of the roll above.`
       : null,
   };
 }

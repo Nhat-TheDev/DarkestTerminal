@@ -24,6 +24,29 @@ export function getMonsterSkill(id: string): SkillDefinition {
   return found;
 }
 
+/**
+ * An action-weight key names a skill and nothing else, so a typo used to be invisible: nothing
+ * resolved it, and the monster quietly spent the rest of its life on basic attacks. Checked once
+ * for the whole catalog, here, where the error can name the archetype that caused it.
+ */
+export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): void {
+  for (const archetype of archetypes) {
+    const declared = new Set(archetype.skillIds);
+    for (const id of archetype.executeSkillId ? [...archetype.skillIds, archetype.executeSkillId] : archetype.skillIds) {
+      getMonsterSkill(id); // throws on an unknown id
+    }
+    for (const [tier, weights] of Object.entries(archetype.actionWeights ?? {})) {
+      for (const key of Object.keys(weights)) {
+        if (key !== "basicAttack" && !declared.has(key)) {
+          throw new Error(`data/monsters.json: "${archetype.id}" actionWeights.${tier} key "${key}" is not in its skillIds`);
+        }
+      }
+    }
+  }
+}
+
+assertMonsterDataConsistent(MONSTER_ARCHETYPES);
+
 let monsterCounter = 0;
 
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
@@ -57,7 +80,6 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     attack,
     defense,
     speed: archetype.baseSpeed,
-    skillIds: archetype.skillIds,
     tier,
     monsterType: archetype.monsterType,
     aiPattern: archetype.aiPattern,

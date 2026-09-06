@@ -49,7 +49,7 @@ describe("sprite dimensions and palette consistency", () => {
   test("every archetype that can spawn as elite/boss has its own distinct elite and boss sprite", () => {
     // Mirrors GUARD_ROOM_ARCHETYPES in src/data/floor.ts — a scriptedOnly archetype has an
     // elite kit but is never spawned at elite tier, so it owes no elite sprite.
-    const guardCapable = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds && !a.scriptedOnly);
+    const guardCapable = MONSTER_ARCHETYPES.filter((a) => a.actionWeights?.elite && a.actionWeights?.boss && !a.scriptedOnly);
     expect(guardCapable.length).toBeGreaterThan(0);
     for (const archetype of guardCapable) {
       const normal = spriteForMonster(archetype.id, "normal");

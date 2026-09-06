@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
-import { spawnMonster, getMonsterSkill, getArchetype } from "../src/data/monsters";
+import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import type { MonsterArchetype } from "../src/types";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
@@ -146,11 +147,16 @@ describe("elite/boss skill kit", () => {
 
   test("the-founder carries the full strike/cleave/execute/debuff kit, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.eliteSkillIds).toEqual({ strike: "elite-strike-the-founder", cleave: "elite-cleave-the-founder" });
-    expect(founder.bossSkillIds).toEqual({ execute: "boss-execute-the-founder", debuff: "boss-debuff-the-founder" });
+    expect(founder.skillIds).toEqual(["elite-strike-the-founder", "elite-cleave-the-founder", "boss-debuff-the-founder"]);
+    expect(founder.executeSkillId).toBe("boss-execute-the-founder");
     expect(getMonsterSkill("elite-strike-the-founder").target).toBe("singleEnemy");
     expect(getMonsterSkill("elite-cleave-the-founder").target).toBe("allEnemies");
-    expect(founder.actionWeights?.boss).toEqual({ basicAttack: 30, strike: 20, cleave: 15, debuff: 35 });
+    expect(founder.actionWeights?.boss).toEqual({
+      basicAttack: 30,
+      "elite-strike-the-founder": 20,
+      "elite-cleave-the-founder": 15,
+      "boss-debuff-the-founder": 35,
+    });
     // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });
@@ -221,20 +227,33 @@ describe("regular monster skills", () => {
     for (const id of ["dungeon-rat", "black-bat", "slime", "skeleton", "snake", "lizard", "spider", "skeleton-archer"]) {
       const a = getArchetype(id);
       expect(a.skillIds.length).toBe(1);
-      expect(a.actionWeights?.normal).toEqual({ basicAttack: 70, skill: 30 });
+      expect(a.actionWeights?.normal).toEqual({ basicAttack: 70, [a.skillIds[0]!]: 30 });
     }
+    // Zombie and Skeleton Warrior keep their skill at weight 0 — it fires only from the low-HP
+    // branch below, never from the weighted roll. The key stays so the rebalance editor can still
+    // reach it: its PATCH endpoint only accepts keys the archetype already has.
     for (const id of ["zombie", "skeleton-warrior"]) {
       const a = getArchetype(id);
       expect(a.skillIds.length).toBe(1);
-      expect(a.actionWeights?.normal).toEqual({ basicAttack: 100, skill: 0 });
+      expect(a.actionWeights?.normal).toEqual({ basicAttack: 100, [a.skillIds[0]!]: 0 });
     }
   });
 
-  test("Skeleton Guard is untouched — no normal-tier skill, elite/boss kit intact", () => {
+  test("Skeleton Guard does nothing but a basic attack at normal tier, and has its full kit above it", () => {
     const guard = getArchetype("skeleton-guard");
-    expect(guard.skillIds).toEqual([]);
-    expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100, skill: 0 });
-    expect(guard.eliteSkillIds).toEqual({ strike: "elite-strike-skeleton-guard", cleave: "elite-cleave-skeleton-guard" });
+    expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100 });
+    expect(guard.skillIds).toEqual(["elite-strike-skeleton-guard", "elite-cleave-skeleton-guard", "boss-debuff-skeleton-guard"]);
+    expect(guard.executeSkillId).toBe("boss-execute-skeleton-guard");
+  });
+
+  test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
+    assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
+
+    const typo = { id: "typo-test", skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
+
+    const ghost = { id: "ghost-test", skillIds: ["no-such-skill"], actionWeights: {} } as unknown as MonsterArchetype;
+    expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 });
 
@@ -281,24 +300,33 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
     expect(attackCount).toBeGreaterThan(0);
   });
 
-  test("other defensive archetypes with empty skillIds are unaffected below 40% HP", () => {
-    const { ctx } = makeCtx();
-    const knight = spawnInto(ctx, "zombie-knight");
-    knight.hp = Math.floor(knight.maxHp * 0.1);
-    const combat = startCombat("r1", [knight.id], ctx, false);
-    const hpBefore = knight.hp;
-    resolveRound(combat, ctx);
-    expect(getArchetype("zombie-knight").skillIds).toEqual([]);
-    expect(knight.hp).toBe(hpBefore);
+  test("a defensive archetype whose only skills target enemies never turns one on itself below 40% HP", () => {
+    // Skeleton Guard is defensive, spawns at normal tier in ordinary combat rooms, and since
+    // skillIds became "every skill at any tier" its first entry is Cleaving Strike. Picking by
+    // position instead of by target would have it hitting itself.
+    const guard = getArchetype("skeleton-guard");
+    expect(guard.skillIds.length).toBeGreaterThan(0);
+    expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(false);
+
+    for (let seed = 0; seed < 30; seed++) {
+      const { ctx } = makeCtx(seed);
+      const monster = spawnInto(ctx, "skeleton-guard");
+      monster.hp = Math.floor(monster.maxHp * 0.1);
+      const combat = startCombat("r1", [monster.id], ctx, false);
+      const hpBefore = monster.hp;
+      resolveRound(combat, ctx);
+      expect(monster.hp).toBe(hpBefore);
+      expect(combat.log.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
+    }
   });
 
   test("a self-targeted monster skill rolled from the weighted pool heals the monster, never the party", () => {
     // Regeneration sits at weight 0 today, but the rebalance editor exists to change exactly that:
-    // its PATCH endpoint allows any key already present, and "skill" is present at 0. Before this
-    // was fixed, raising it made the Zombie heal a party member instead of itself.
+    // its PATCH endpoint allows any key already present, and "regeneration" is present at 0. Before
+    // this was fixed, raising it made the Zombie heal a party member instead of itself.
     const zombieArchetype = getArchetype("zombie");
     const originalWeights = { ...zombieArchetype.actionWeights!.normal };
-    zombieArchetype.actionWeights!.normal = { basicAttack: 0, skill: 100 };
+    zombieArchetype.actionWeights!.normal = { basicAttack: 0, regeneration: 100 };
     try {
       const { ctx } = makeCtx();
       const zombie = spawnInto(ctx, "zombie");
@@ -401,3 +429,68 @@ describe("regular monster skills end-to-end", () => {
   });
 });
 
+
+
+describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors it", () => {
+  /** Counts which party member a monster's basic attack lands on, across many seeds. */
+  function countTargets(archetypeId: string, seeds = 300): Map<string, number> {
+    const hits = new Map<string, number>();
+    for (let seed = 0; seed < seeds; seed++) {
+      const { ctx } = makeCtx(seed);
+      const monster = spawnInto(ctx, archetypeId);
+      const combat = startCombat("r1", [monster.id], ctx, false);
+      resolveRound(combat, ctx);
+      for (const c of ctx.party) {
+        if (combat.log.some((l) => l.text.includes(`attacks ${c.name}`))) {
+          hits.set(c.classId, (hits.get(c.classId) ?? 0) + 1);
+        }
+      }
+    }
+    return hits;
+  }
+
+  // Vanguard has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
+  test("an aggressive archetype hits the highest-aggro character more than the lowest", () => {
+    const hits = countTargets("skeleton");
+    expect(getArchetype("skeleton").aiPattern).toBe("aggressive");
+    expect(hits.get("vanguard") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
+  });
+
+  test("an opportunistic archetype reverses that — the lowest-aggro character is hit more", () => {
+    const hits = countTargets("skeleton-archer");
+    expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
+    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("vanguard") ?? 0);
+  });
+
+  test("taunting pulls attacks toward the Vanguard for aggressive, and away from it for opportunistic", () => {
+    function hitsOnVanguardWithTaunt(archetypeId: string): number {
+      let n = 0;
+      for (let seed = 0; seed < 300; seed++) {
+        const { ctx } = makeCtx(seed);
+        const monster = spawnInto(ctx, archetypeId);
+        const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
+        vanguard.aggro += 40; // what Shield Guard's taunt status is worth
+        const combat = startCombat("r1", [monster.id], ctx, false);
+        resolveRound(combat, ctx);
+        if (combat.log.some((l) => l.text.includes(`attacks ${vanguard.name}`))) n++;
+      }
+      return n;
+    }
+    // This is the deliberate trade-off of the mirrored rule, not an accident: against an
+    // opportunistic archetype, taunting makes the Vanguard *safer* and the rest of the party
+    // more exposed.
+    expect(hitsOnVanguardWithTaunt("skeleton")).toBeGreaterThan(hitsOnVanguardWithTaunt("skeleton-archer"));
+  });
+
+  test("a single surviving character is still a valid target for both patterns", () => {
+    for (const id of ["skeleton", "skeleton-archer"]) {
+      const { ctx } = makeCtx();
+      const monster = spawnInto(ctx, id);
+      for (const c of ctx.party.slice(1)) c.isAlive = false;
+      const survivor = ctx.party[0]!;
+      const combat = startCombat("r1", [monster.id], ctx, false);
+      resolveRound(combat, ctx);
+      expect(combat.log.some((l) => l.text.includes(survivor.name))).toBe(true);
+    }
+  });
+});

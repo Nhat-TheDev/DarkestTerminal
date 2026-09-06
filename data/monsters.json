@@ -7,7 +7,7 @@
     "baseDefense": 1,
     "baseSpeed": 12,
     "monsterType": "balanced",
-    "aiPattern": "erratic",
+    "aiPattern": "opportunistic",
     "skillIds": [
       "bite"
     ],
@@ -16,7 +16,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "bite": 30
       }
     }
   },
@@ -28,7 +28,7 @@
     "baseDefense": 1,
     "baseSpeed": 18,
     "monsterType": "striker",
-    "aiPattern": "aggressive",
+    "aiPattern": "opportunistic",
     "skillIds": [
       "blood-drain"
     ],
@@ -37,7 +37,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "blood-drain": 30
       }
     }
   },
@@ -49,7 +49,7 @@
     "baseDefense": 1,
     "baseSpeed": 4,
     "monsterType": "tanky",
-    "aiPattern": "erratic",
+    "aiPattern": "aggressive",
     "skillIds": [
       "acid-spit"
     ],
@@ -58,7 +58,112 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "acid-spit": 30
+      }
+    }
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin",
+    "baseHp": 40,
+    "baseAttack": 18,
+    "baseDefense": 1,
+    "baseSpeed": 16,
+    "monsterType": "striker",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "bite"
+    ],
+    "expReward": 6,
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "bite": 30
+      }
+    }
+  },
+  {
+    "id": "cultist-initiate",
+    "name": "Cultist Initiate",
+    "baseHp": 45,
+    "baseAttack": 15,
+    "baseDefense": 2,
+    "baseSpeed": 10,
+    "monsterType": "balanced",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "whispered-name"
+    ],
+    "expReward": 6,
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "whispered-name": 30
+      }
+    }
+  },
+  {
+    "id": "ghoulish-crawler",
+    "name": "Ghoulish Crawler",
+    "baseHp": 42,
+    "baseAttack": 16,
+    "baseDefense": 3,
+    "baseSpeed": 14,
+    "monsterType": "balanced",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "bite"
+    ],
+    "expReward": 6,
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "bite": 30
+      }
+    }
+  },
+  {
+    "id": "vampire-bat",
+    "name": "Vampire Bat",
+    "baseHp": 40,
+    "baseAttack": 17,
+    "baseDefense": 1,
+    "baseSpeed": 20,
+    "monsterType": "striker",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "blood-drain"
+    ],
+    "expReward": 7,
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 60,
+        "blood-drain": 40
+      }
+    }
+  },
+  {
+    "id": "toxic-toad",
+    "name": "Toxic Toad",
+    "baseHp": 48,
+    "baseAttack": 14,
+    "baseDefense": 2,
+    "baseSpeed": 8,
+    "monsterType": "balanced",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "poison-bite"
+    ],
+    "expReward": 7,
+    "powerTier": "weak",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "poison-bite": 30
       }
     }
   },
@@ -79,7 +184,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "bone-throw": 30
       }
     }
   },
@@ -100,7 +205,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 100,
-        "skill": 0
+        "regeneration": 0
       }
     }
   },
@@ -112,7 +217,7 @@
     "baseDefense": 1,
     "baseSpeed": 16,
     "monsterType": "glass",
-    "aiPattern": "erratic",
+    "aiPattern": "opportunistic",
     "skillIds": [
       "poison-bite"
     ],
@@ -121,7 +226,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "poison-bite": 30
       }
     }
   },
@@ -142,7 +247,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "quick-bite": 30
       }
     }
   },
@@ -163,7 +268,196 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "web-spit": 30
+      }
+    }
+  },
+  {
+    "id": "goblin-shaman",
+    "name": "Goblin Shaman",
+    "baseHp": 45,
+    "baseAttack": 22,
+    "baseDefense": 1,
+    "baseSpeed": 12,
+    "monsterType": "glass",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "acid-spit"
+    ],
+    "expReward": 8,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 50,
+        "acid-spit": 50
+      }
+    }
+  },
+  {
+    "id": "cultist-zealot",
+    "name": "Cultist Zealot",
+    "baseHp": 55,
+    "baseAttack": 20,
+    "baseDefense": 2,
+    "baseSpeed": 12,
+    "monsterType": "striker",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "blood-drain"
+    ],
+    "expReward": 9,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "blood-drain": 30
+      }
+    }
+  },
+  {
+    "id": "ghost",
+    "name": "Ghost",
+    "baseHp": 45,
+    "baseAttack": 18,
+    "baseDefense": 1,
+    "baseSpeed": 18,
+    "monsterType": "glass",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "grave-chill"
+    ],
+    "expReward": 8,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "grave-chill": 30
+      }
+    }
+  },
+  {
+    "id": "skeleton-mage",
+    "name": "Skeleton Mage",
+    "baseHp": 50,
+    "baseAttack": 23,
+    "baseDefense": 2,
+    "baseSpeed": 10,
+    "monsterType": "glass",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "bone-throw"
+    ],
+    "expReward": 10,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 60,
+        "bone-throw": 40
+      }
+    }
+  },
+  {
+    "id": "dire-wolf",
+    "name": "Dire Wolf",
+    "baseHp": 55,
+    "baseAttack": 21,
+    "baseDefense": 3,
+    "baseSpeed": 16,
+    "monsterType": "striker",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "quick-bite"
+    ],
+    "expReward": 10,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "quick-bite": 30
+      }
+    }
+  },
+  {
+    "id": "swamp-slime",
+    "name": "Swamp Slime",
+    "baseHp": 60,
+    "baseAttack": 17,
+    "baseDefense": 4,
+    "baseSpeed": 5,
+    "monsterType": "tanky",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "acid-spit"
+    ],
+    "expReward": 9,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "acid-spit": 30
+      }
+    }
+  },
+  {
+    "id": "fire-elemental",
+    "name": "Fire Elemental",
+    "baseHp": 50,
+    "baseAttack": 24,
+    "baseDefense": 2,
+    "baseSpeed": 14,
+    "monsterType": "striker",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "ember-lash"
+    ],
+    "expReward": 10,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "ember-lash": 30
+      }
+    }
+  },
+  {
+    "id": "water-elemental",
+    "name": "Water Elemental",
+    "baseHp": 55,
+    "baseAttack": 19,
+    "baseDefense": 4,
+    "baseSpeed": 12,
+    "monsterType": "balanced",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "regeneration"
+    ],
+    "expReward": 10,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 80,
+        "regeneration": 20
+      }
+    }
+  },
+  {
+    "id": "gargoyle",
+    "name": "Gargoyle",
+    "baseHp": 60,
+    "baseAttack": 17,
+    "baseDefense": 7,
+    "baseSpeed": 10,
+    "monsterType": "armored",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "settle-into-stone"
+    ],
+    "expReward": 11,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "settle-into-stone": 30
       }
     }
   },
@@ -175,7 +469,7 @@
     "baseDefense": 2,
     "baseSpeed": 12,
     "monsterType": "glass",
-    "aiPattern": "erratic",
+    "aiPattern": "opportunistic",
     "skillIds": [
       "arrow-shot"
     ],
@@ -184,7 +478,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 70,
-        "skill": 30
+        "arrow-shot": 30
       }
     }
   },
@@ -205,7 +499,7 @@
     "actionWeights": {
       "normal": {
         "basicAttack": 100,
-        "skill": 0
+        "guard-stance": 0
       }
     }
   },
@@ -218,33 +512,154 @@
     "baseSpeed": 6,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-skeleton-guard",
+      "elite-cleave-skeleton-guard",
+      "boss-debuff-skeleton-guard"
+    ],
     "expReward": 15,
     "powerTier": "strong",
-    "eliteSkillIds": {
-      "strike": "elite-strike-skeleton-guard",
-      "cleave": "elite-cleave-skeleton-guard"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-skeleton-guard",
-      "debuff": "boss-debuff-skeleton-guard"
-    },
     "actionWeights": {
       "normal": {
-        "basicAttack": 100,
-        "skill": 0
+        "basicAttack": 100
       },
       "elite": {
         "basicAttack": 40,
-        "skill": 0,
-        "strike": 35,
-        "cleave": 25
+        "elite-strike-skeleton-guard": 35,
+        "elite-cleave-skeleton-guard": 25
       },
       "boss": {
         "basicAttack": 40,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 25
+        "elite-strike-skeleton-guard": 20,
+        "elite-cleave-skeleton-guard": 15,
+        "boss-debuff-skeleton-guard": 25
+      }
+    },
+    "executeSkillId": "boss-execute-skeleton-guard"
+  },
+  {
+    "id": "orc-brute",
+    "name": "Orc Brute",
+    "baseHp": 65,
+    "baseAttack": 22,
+    "baseDefense": 5,
+    "baseSpeed": 8,
+    "monsterType": "bruiser",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "bone-breaker"
+    ],
+    "expReward": 12,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "bone-breaker": 30
+      }
+    }
+  },
+  {
+    "id": "wraith",
+    "name": "Wraith",
+    "baseHp": 55,
+    "baseAttack": 25,
+    "baseDefense": 2,
+    "baseSpeed": 15,
+    "monsterType": "striker",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "blood-drain"
+    ],
+    "expReward": 13,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "blood-drain": 30
+      }
+    }
+  },
+  {
+    "id": "armored-beetle",
+    "name": "Armored Beetle",
+    "baseHp": 55,
+    "baseAttack": 14,
+    "baseDefense": 10,
+    "baseSpeed": 6,
+    "monsterType": "armored",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "guard-stance"
+    ],
+    "expReward": 11,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 80,
+        "guard-stance": 20
+      }
+    }
+  },
+  {
+    "id": "cave-bear",
+    "name": "Cave Bear",
+    "baseHp": 70,
+    "baseAttack": 23,
+    "baseDefense": 5,
+    "baseSpeed": 8,
+    "monsterType": "bruiser",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "maul"
+    ],
+    "expReward": 14,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "maul": 30
+      }
+    }
+  },
+  {
+    "id": "lesser-golem",
+    "name": "Lesser Golem",
+    "baseHp": 65,
+    "baseAttack": 18,
+    "baseDefense": 8,
+    "baseSpeed": 4,
+    "monsterType": "sentinel",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "guard-stance"
+    ],
+    "expReward": 13,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 80,
+        "guard-stance": 20
+      }
+    }
+  },
+  {
+    "id": "mimic",
+    "name": "Mimic",
+    "baseHp": 65,
+    "baseAttack": 26,
+    "baseDefense": 5,
+    "baseSpeed": 15,
+    "monsterType": "bruiser",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "bite"
+    ],
+    "expReward": 15,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 80,
+        "bite": 20
       }
     }
   },
@@ -257,31 +672,27 @@
     "baseSpeed": 14,
     "monsterType": "glass",
     "aiPattern": "aggressive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-giant-spider",
+      "elite-cleave-giant-spider",
+      "boss-debuff-giant-spider"
+    ],
     "expReward": 16,
     "guardOnly": true,
-    "eliteSkillIds": {
-      "strike": "elite-strike-giant-spider",
-      "cleave": "elite-cleave-giant-spider"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-giant-spider",
-      "debuff": "boss-debuff-giant-spider"
-    },
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "skill": 0,
-        "strike": 35,
-        "cleave": 25
+        "elite-strike-giant-spider": 35,
+        "elite-cleave-giant-spider": 25
       },
       "boss": {
         "basicAttack": 40,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 25
+        "elite-strike-giant-spider": 20,
+        "elite-cleave-giant-spider": 15,
+        "boss-debuff-giant-spider": 25
       }
-    }
+    },
+    "executeSkillId": "boss-execute-giant-spider"
   },
   {
     "id": "dragon",
@@ -292,31 +703,27 @@
     "baseSpeed": 10,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-dragon",
+      "elite-cleave-dragon",
+      "boss-debuff-dragon"
+    ],
     "expReward": 20,
     "guardOnly": true,
-    "eliteSkillIds": {
-      "strike": "elite-strike-dragon",
-      "cleave": "elite-cleave-dragon"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-dragon",
-      "debuff": "boss-debuff-dragon"
-    },
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "skill": 0,
-        "strike": 35,
-        "cleave": 25
+        "elite-strike-dragon": 35,
+        "elite-cleave-dragon": 25
       },
       "boss": {
         "basicAttack": 40,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 25
+        "elite-strike-dragon": 20,
+        "elite-cleave-dragon": 15,
+        "boss-debuff-dragon": 25
       }
-    }
+    },
+    "executeSkillId": "boss-execute-dragon"
   },
   {
     "id": "zombie-knight",
@@ -327,31 +734,27 @@
     "baseSpeed": 5,
     "monsterType": "armored",
     "aiPattern": "defensive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-zombie-knight",
+      "elite-cleave-zombie-knight",
+      "boss-debuff-zombie-knight"
+    ],
     "expReward": 17,
     "guardOnly": true,
-    "eliteSkillIds": {
-      "strike": "elite-strike-zombie-knight",
-      "cleave": "elite-cleave-zombie-knight"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-zombie-knight",
-      "debuff": "boss-debuff-zombie-knight"
-    },
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "skill": 0,
-        "strike": 35,
-        "cleave": 25
+        "elite-strike-zombie-knight": 35,
+        "elite-cleave-zombie-knight": 25
       },
       "boss": {
         "basicAttack": 40,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 25
+        "elite-strike-zombie-knight": 20,
+        "elite-cleave-zombie-knight": 15,
+        "boss-debuff-zombie-knight": 25
       }
-    }
+    },
+    "executeSkillId": "boss-execute-zombie-knight"
   },
   {
     "id": "dark-knight",
@@ -362,31 +765,27 @@
     "baseSpeed": 9,
     "monsterType": "balanced",
     "aiPattern": "defensive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-dark-knight",
+      "elite-cleave-dark-knight",
+      "boss-debuff-dark-knight"
+    ],
     "expReward": 18,
     "guardOnly": true,
-    "eliteSkillIds": {
-      "strike": "elite-strike-dark-knight",
-      "cleave": "elite-cleave-dark-knight"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-dark-knight",
-      "debuff": "boss-debuff-dark-knight"
-    },
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "skill": 0,
-        "strike": 35,
-        "cleave": 25
+        "elite-strike-dark-knight": 35,
+        "elite-cleave-dark-knight": 25
       },
       "boss": {
         "basicAttack": 40,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 25
+        "elite-strike-dark-knight": 20,
+        "elite-cleave-dark-knight": 15,
+        "boss-debuff-dark-knight": 25
       }
-    }
+    },
+    "executeSkillId": "boss-execute-dark-knight"
   },
   {
     "id": "the-founder",
@@ -397,25 +796,177 @@
     "baseSpeed": 5,
     "monsterType": "sentinel",
     "aiPattern": "aggressive",
-    "skillIds": [],
+    "skillIds": [
+      "elite-strike-the-founder",
+      "elite-cleave-the-founder",
+      "boss-debuff-the-founder"
+    ],
     "expReward": 20,
     "guardOnly": true,
     "scriptedOnly": true,
-    "eliteSkillIds": {
-      "strike": "elite-strike-the-founder",
-      "cleave": "elite-cleave-the-founder"
-    },
-    "bossSkillIds": {
-      "execute": "boss-execute-the-founder",
-      "debuff": "boss-debuff-the-founder"
-    },
     "actionWeights": {
       "boss": {
         "basicAttack": 30,
-        "strike": 20,
-        "cleave": 15,
-        "debuff": 35
+        "elite-strike-the-founder": 20,
+        "elite-cleave-the-founder": 15,
+        "boss-debuff-the-founder": 35
       }
-    }
+    },
+    "executeSkillId": "boss-execute-the-founder"
+  },
+  {
+    "id": "orc-chieftain",
+    "name": "Orc Chieftain",
+    "baseHp": 75,
+    "baseAttack": 26,
+    "baseDefense": 8,
+    "baseSpeed": 10,
+    "monsterType": "bruiser",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "elite-strike-orc-chieftain",
+      "elite-cleave-orc-chieftain",
+      "boss-debuff-orc-chieftain"
+    ],
+    "expReward": 20,
+    "guardOnly": true,
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-orc-chieftain": 35,
+        "elite-cleave-orc-chieftain": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-orc-chieftain": 20,
+        "elite-cleave-orc-chieftain": 15,
+        "boss-debuff-orc-chieftain": 25
+      }
+    },
+    "executeSkillId": "boss-execute-orc-chieftain"
+  },
+  {
+    "id": "vampire-lord",
+    "name": "Vampire Lord",
+    "baseHp": 70,
+    "baseAttack": 28,
+    "baseDefense": 6,
+    "baseSpeed": 18,
+    "monsterType": "striker",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "elite-strike-vampire-lord",
+      "elite-cleave-vampire-lord",
+      "boss-debuff-vampire-lord"
+    ],
+    "expReward": 22,
+    "guardOnly": true,
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-vampire-lord": 35,
+        "elite-cleave-vampire-lord": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-vampire-lord": 20,
+        "elite-cleave-vampire-lord": 15,
+        "boss-debuff-vampire-lord": 25
+      }
+    },
+    "executeSkillId": "boss-execute-vampire-lord"
+  },
+  {
+    "id": "void-amalgamation",
+    "name": "Void Amalgamation",
+    "baseHp": 80,
+    "baseAttack": 25,
+    "baseDefense": 9,
+    "baseSpeed": 12,
+    "monsterType": "balanced",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "elite-strike-void",
+      "elite-cleave-void",
+      "boss-debuff-void"
+    ],
+    "expReward": 25,
+    "guardOnly": true,
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-void": 35,
+        "elite-cleave-void": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-void": 20,
+        "elite-cleave-void": 15,
+        "boss-debuff-void": 25
+      }
+    },
+    "executeSkillId": "boss-execute-void"
+  },
+  {
+    "id": "ancient-golem",
+    "name": "Ancient Golem",
+    "baseHp": 85,
+    "baseAttack": 22,
+    "baseDefense": 12,
+    "baseSpeed": 5,
+    "monsterType": "sentinel",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "elite-strike-ancient-golem",
+      "elite-cleave-ancient-golem",
+      "boss-debuff-ancient-golem"
+    ],
+    "expReward": 20,
+    "guardOnly": true,
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-ancient-golem": 35,
+        "elite-cleave-ancient-golem": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-ancient-golem": 20,
+        "elite-cleave-ancient-golem": 15,
+        "boss-debuff-ancient-golem": 25
+      }
+    },
+    "executeSkillId": "boss-execute-ancient-golem"
+  },
+  {
+    "id": "lich",
+    "name": "Lich",
+    "baseHp": 65,
+    "baseAttack": 30,
+    "baseDefense": 5,
+    "baseSpeed": 14,
+    "monsterType": "glass",
+    "aiPattern": "opportunistic",
+    "skillIds": [
+      "elite-strike-lich",
+      "elite-cleave-lich",
+      "boss-debuff-lich"
+    ],
+    "expReward": 24,
+    "guardOnly": true,
+    "actionWeights": {
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-lich": 35,
+        "elite-cleave-lich": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-lich": 20,
+        "elite-cleave-lich": 15,
+        "boss-debuff-lich": 25
+      }
+    },
+    "executeSkillId": "boss-execute-lich"
   }
 ]
