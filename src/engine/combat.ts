@@ -480,7 +480,12 @@ function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bo
 
 /** An Ability's `alwaysHit` chance, re-rolled fresh for the wearer's own enemy-targeting rolls only — a hit here skips whatever roll it's guarding entirely; a miss falls through to that roll exactly as if `alwaysHit` didn't exist. `11-abilities.md` §11.1.1. */
 function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContext): boolean {
-  return isEnemyFacing && isCharacter(source) && ctx.rng.chance(alwaysHitChance(source) / 100);
+  if (!isEnemyFacing || !isCharacter(source)) return false;
+  // `Rng.chance` advances the stream even at p = 0, so a party with no `alwaysHit` Ability would
+  // otherwise pay a draw on every accuracy and every `effect.chance` roll — and shift the whole
+  // seeded stream along with it.
+  const chance = alwaysHitChance(source);
+  return chance > 0 && ctx.rng.chance(chance / 100);
 }
 
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {

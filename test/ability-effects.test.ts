@@ -338,3 +338,26 @@ describe("Abilities: old saves", () => {
   });
 });
 
+describe("Abilities: alwaysHit rng cost", () => {
+  test("a character with no alwaysHit Ability spends no rng draw on the alwaysHit roll", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    attacker.equippedAbilityId = null;
+    const monster = spawnInto(ctx, "black-bat");
+    const combat = startCombat("test-room", [monster.id], ctx, false);
+    const log: LogEntry[] = [];
+
+    let draws = 0;
+    const next = ctx.rng.next.bind(ctx.rng);
+    ctx.rng.next = () => {
+      draws++;
+      return next();
+    };
+
+    applySkillEffects(getSkill("vanguard-slash"), attacker, [monster], combat, ctx, log);
+
+    // Exactly the skill's own accuracy roll. `Rng.chance` advances the stream even at p = 0, so an
+    // unguarded alwaysHit roll would make this 2 and shift every seeded run downstream of it.
+    expect(draws).toBe(1);
+  });
+});
