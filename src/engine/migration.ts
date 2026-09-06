@@ -40,6 +40,9 @@ export function migrateGameState(raw: unknown): GameState {
   if (typeof state.runStardust !== "number") state.runStardust = 0;
   if (state.pendingAbilityBuyback === undefined) state.pendingAbilityBuyback = null;
   if (state.abilityDeathResults === undefined) state.abilityDeathResults = null;
+  // A save written before Abilities existed can still carry an unread `lastRoomDrops` (saving is
+  // allowed from `combatOver`, and the reward screen reads `.abilityIds.length` unguarded).
+  if (state.lastRoomDrops && !Array.isArray(state.lastRoomDrops.abilityIds)) state.lastRoomDrops.abilityIds = [];
   for (const character of state.party) {
     if (character.equippedAbilityId === undefined) character.equippedAbilityId = null;
   }

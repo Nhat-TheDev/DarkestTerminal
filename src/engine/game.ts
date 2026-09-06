@@ -73,9 +73,16 @@ export class Game {
     }
     const { floor, monsters } = createFloor(rng);
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
+    // No 2 characters may carry the same Ability — `11-abilities.md` §11.1 treats this as an
+    // invariant the death flow relies on (each dead character loses a distinct id). The select
+    // screen already narrows its options per pick; this is the engine-side backstop for every other
+    // caller, and a later duplicate simply enters the run with nothing equipped.
+    const takenAbilityIds = new Set<Id>();
     const party = classes.map((cls, i) => {
       const character = createCharacter(`p${i + 1}`, cls.name, cls);
-      character.equippedAbilityId = abilityIds?.[i] ?? null;
+      const requested = abilityIds?.[i] ?? null;
+      character.equippedAbilityId = requested !== null && !takenAbilityIds.has(requested) ? requested : null;
+      if (character.equippedAbilityId) takenAbilityIds.add(character.equippedAbilityId);
       return character;
     });
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
@@ -119,6 +126,17 @@ export class Game {
       pendingAbilityBuyback: null,
       abilityDeathResults: null,
     };
+    // Abilities are equipped after `createCharacter` filled hp/mp from unbuffed base stats, so the
+    // party's stats must be rebuilt before anything reads them — the first combat starts inside
+    // `checkEntryRoomAmbush()` below, and turn order there is keyed off `speed`. The refill matters
+    // as much as the recompute: `recomputeCharacterStats` only ever clamps hp DOWN to maxHp, so a
+    // +maxHp Ability whose bonus lands after this point would leave the character permanently short
+    // of that many HP for the whole run.
+    recomputeAllPartyStats(this.state);
+    for (const character of this.state.party) {
+      character.hp = character.maxHp;
+      character.mp = character.maxMp;
+    }
     this.checkEntryRoomAmbush();
   }
 

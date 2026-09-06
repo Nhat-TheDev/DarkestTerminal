@@ -22,11 +22,19 @@ function equippedEffects(character: Character): ArtifactEffect[] {
   return [...character.equippedArtifactIds.flatMap((id) => getArtifact(id).effects), ...abilitySharedEffects(character)];
 }
 
-/** The equipped Ability's `statBoost` targeting a stat only Abilities can touch (`aggro`/`speed`/`magicPower`) — 0 if no Ability is equipped or it doesn't touch `stat`. */
-export function abilityWidenedStatBoost(character: Character, stat: "aggro" | "speed" | "magicPower"): number {
+/** Every stat an Ability's `statBoost` can name: the Ability-only trio plus the 4 it shares with Artifacts. */
+export type AbilityStatBoostTarget = Extract<AbilityEffect, { kind: "statBoost" }>["stat"];
+
+/**
+ * The equipped Ability's `statBoost` on `stat` — 0 if no Ability is equipped or it doesn't touch
+ * `stat`. `party.ts` calls it for the stats only Abilities can touch (`aggro`/`speed`/`magicPower`);
+ * for the 4 shared with Artifacts it is the only way to tell an Ability's contribution apart from an
+ * Artifact's, since `artifactStatBoostSum` deliberately sums both together.
+ */
+export function abilityWidenedStatBoost(character: Character, stat: AbilityStatBoostTarget): number {
   if (!character.equippedAbilityId) return 0;
   return getAbility(character.equippedAbilityId)
-    .effects.filter((e): e is Extract<AbilityEffect, { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower" }> => e.kind === "statBoost" && e.stat === stat)
+    .effects.filter((e): e is Extract<AbilityEffect, { kind: "statBoost" }> => e.kind === "statBoost" && e.stat === stat)
     .reduce((sum, e) => sum + e.amount, 0);
 }
 

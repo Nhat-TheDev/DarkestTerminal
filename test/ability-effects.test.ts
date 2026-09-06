@@ -9,6 +9,8 @@ import { loadProfile, saveProfile, unlockAbility, lockAbility, isAbilityUnlocked
 import { Game } from "../src/engine/game";
 import { BALANCE } from "../src/data/balanceConfig";
 import { makeCtx, spawnInto } from "./helpers";
+import { migrateGameState } from "../src/engine/migration";
+import { CLASSES } from "../src/data/classes";
 import { buildRewardEntries } from "../src/ui/state";
 import type { LogEntry } from "../src/types";
 
@@ -294,3 +296,45 @@ describe("Elite/Boss ability unlock: revealed on the room-clear reward screen, l
     ]);
   });
 });
+
+describe("Abilities: run entry", () => {
+  test("an equipped Ability's stat boost is live before the first combat, at full hp", () => {
+    const classIds = CLASSES.map((c) => c.id);
+    // undying-will is +60 maxHp, battle-instinct is +4 attack.
+    const game = new Game(11, classIds, undefined, ["undying-will", "battle-instinct"]);
+    const [vanguard, mage] = game.state.party;
+
+    expect(vanguard!.maxHp).toBe(200);
+    expect(vanguard!.hp).toBe(200);
+    expect(mage!.attack).toBe(7);
+
+    // The bonus must survive the first recompute rather than being clamped away into a permanent
+    // hp shortfall — `recomputeCharacterStats` only ever clamps hp down.
+    recomputeCharacterStats(vanguard!, game.state.satiety);
+    expect(vanguard!.hp).toBe(200);
+  });
+
+  test("two characters cannot enter a run carrying the same Ability", () => {
+    const classIds = CLASSES.map((c) => c.id);
+    const game = new Game(11, classIds, undefined, ["battle-instinct", "battle-instinct"]);
+
+    expect(game.state.party[0]!.equippedAbilityId).toBe("battle-instinct");
+    expect(game.state.party[1]!.equippedAbilityId).toBeNull();
+  });
+});
+
+describe("Abilities: old saves", () => {
+  test("a pre-Abilities lastRoomDrops is backfilled with an empty abilityIds", () => {
+    const state = JSON.parse(JSON.stringify(new Game(3).state));
+    state.lastRoomDrops = { itemIds: ["exploration-kit"], artifactIds: [] };
+    delete state.runStardust;
+    delete state.pendingAbilityBuyback;
+    delete state.abilityDeathResults;
+
+    migrateGameState(state);
+
+    expect(state.lastRoomDrops.abilityIds).toEqual([]);
+    expect(buildRewardEntries(state.lastRoomDrops)).toEqual([{ kind: "item", id: "exploration-kit", qty: 1 }]);
+  });
+});
+

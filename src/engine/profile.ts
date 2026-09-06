@@ -2,12 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Id, AbilityProfile } from "../types";
 import { ABILITIES } from "../data/abilities";
-import { SAVE_DIR } from "./save";
+import { SAVE_DIR } from "./paths";
 
 /**
  * `profile.json` — the one piece of state that survives permadeath's save-wipe
  * (`deleteSavesForRun`). A single global file per install, shared by every save slot, never part of
  * any `SaveFile`. `11-abilities.md` §11.1 "The persistent profile".
+ * Never imports from `./save` or `./game` — `save.ts` imports `Game`, which imports this module, so
+ * a dependency in that direction would be circular (`SAVE_DIR` lives in `./paths` for exactly that
+ * reason). Keep it that way.
  * Also stores cross-run narrative state (Ending 1's `RetiredCharacter`).
  */
 export const PROFILE_FILENAME = "profile.json";
