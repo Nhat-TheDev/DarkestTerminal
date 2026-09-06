@@ -941,7 +941,7 @@ export class App implements ScreenContext {
       case "campReflection":
         return campReflectionScreen.renderFooter(this.ui);
       case "characterInfo":
-        return characterInfoScreen.renderFooter(this.ui);
+        return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":
         return endingScreen.renderFooter(this.ui);
       case "founderDialogue":
