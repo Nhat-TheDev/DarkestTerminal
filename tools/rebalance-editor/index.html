@@ -832,32 +832,24 @@ function buildMonActionsCard(monData, charData, tier) {
 
   row("Basic Attack", weights && weightTotal > 0 && weights.basicAttack !== undefined ? (weights.basicAttack / weightTotal) * 100 : null, null);
 
-  // "skill" action rolls uniformly among archetype.skillIds at runtime (src/engine/combat.ts, case "skill": ctx.rng.pick(archetype.skillIds)) —
-  // so each regular skill's individual odds are the "skill" bucket's weight split evenly across however many skillIds the archetype has.
-  const regularIds = monData.skillKit.regularSkillIds;
-  if (regularIds.length > 0) {
-    const perSkillPct = weights && weightTotal > 0 && weights.skill !== undefined ? ((weights.skill / weightTotal) * 100) / regularIds.length : null;
-    for (const id of regularIds) {
-      const skill = META.monsterSkills.find((sk) => sk.id === id);
-      if (skill) row(skill.name, perSkillPct, skill);
-    }
+  // Each skill carries its own action weight now, keyed by skill id — there's no shared "skill"
+  // bucket to split. A skill the archetype owns but this tier never names simply isn't listed.
+  let rolledSkillCount = 0;
+  for (const skill of monData.skillKit.skills) {
+    if (!weights || weights[skill.id] === undefined) continue;
+    rolledSkillCount++;
+    row(skill.name + (skill.target === "allEnemies" ? " (AoE)" : ""), weightTotal > 0 ? (weights[skill.id] / weightTotal) * 100 : null, skill);
   }
-
-  if ((tier === "elite" || tier === "boss") && monData.skillKit.elite) {
-    row("Strike", weights && weightTotal > 0 && weights.strike !== undefined ? (weights.strike / weightTotal) * 100 : null, monData.skillKit.elite.strike);
-    row("Cleave (AoE)", weights && weightTotal > 0 && weights.cleave !== undefined ? (weights.cleave / weightTotal) * 100 : null, monData.skillKit.elite.cleave);
-  }
-  if (tier === "boss" && monData.skillKit.boss) {
-    row("Execute", null, monData.skillKit.boss.execute);
-    row("Debuff", weights && weightTotal > 0 && weights.debuff !== undefined ? (weights.debuff / weightTotal) * 100 : null, monData.skillKit.boss.debuff);
+  if (tier === "boss" && monData.skillKit.execute) {
+    row(monData.skillKit.execute.name + " (charged)", null, monData.skillKit.execute);
   }
 
   card.appendChild(table);
-  if (tier === "normal" && regularIds.length === 0) {
-    card.appendChild(el("p", { class: "hint", text: "This archetype's skillIds is empty, so at normal tier it only ever does the basic attack." }));
+  if (rolledSkillCount === 0) {
+    card.appendChild(el("p", { class: "hint", text: "No skill carries an action weight at this tier, so it only ever does the basic attack here." }));
   }
   if (tier === "boss") {
-    card.appendChild(el("p", { class: "hint", html: `Execute isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, then cools down for <b>${META.levelGrowth.executeCooldownTurns}</b> turns before it can charge again (~1 every ${META.levelGrowth.executeCooldownTurns + 2} rounds). Row shown here uses its own cadence, not the weight column.` }));
+    card.appendChild(el("p", { class: "hint", html: `The charged row isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, then cools down for <b>${META.levelGrowth.executeCooldownTurns}</b> turns before it can charge again (~1 every ${META.levelGrowth.executeCooldownTurns + 2} rounds). It's shown here on its own cadence, not the weight column.` }));
   }
   card.appendChild(el("div", { id: "mon-actions-preview-output" }));
   return card;
