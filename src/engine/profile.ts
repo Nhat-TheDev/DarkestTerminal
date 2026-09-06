@@ -1,87 +1,65 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Id } from "../types";
+import type { Id, AbilityProfile } from "../types";
+import { ABILITIES } from "../data/abilities";
+import { SAVE_DIR } from "./save";
 
 /**
- * 10-event-narrative.md Part F.2 — the cross-run persistence layer for Ending 1 (Stay), explicitly
- * flagged in the spec as needing its own design pass. Deliberately independent of `save.ts`'s
- * per-run save files (and never imports from it, or from `./game` — `save.ts` imports `Game`, so a
- * dependency in that direction would be circular): this is profile-level data that outlives any
- * single run's save.
- *
- * Adaptation from the spec, made here rather than guessed at silently: the spec's text names "the
- * specific character who stayed" by a personal name, but this game's `Character.name` is always
- * just its class's display name (`createCharacter(id, cls.name, cls)`, src/engine/game.ts) — there
- * is no separate personal-name system anywhere in the game to draw from. Recording (and later
- * naming) the retired character by class only is therefore the honest fit for how this game's data
- * actually works, not a departure from it — and it happens to still match the world-bible's own
- * "nobody down here exchanges names" principle (11-world-bible.md), which the original spec text
- * was written without checking against.
+ * `profile.json` — the one piece of state that survives permadeath's save-wipe
+ * (`deleteSavesForRun`). A single global file per install, shared by every save slot, never part of
+ * any `SaveFile`. `11-abilities.md` §11.1 "The persistent profile".
+ * Also stores cross-run narrative state (Ending 1's `RetiredCharacter`).
  */
-
-const APP_DIR_NAME = "darkest-terminal";
-
-function resolveProfileDir(): string {
-  if (process.env.DARKEST_TERMINAL_SAVE_DIR) return process.env.DARKEST_TERMINAL_SAVE_DIR;
-  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", APP_DIR_NAME);
-  if (process.platform === "win32") return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), APP_DIR_NAME);
-  return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), APP_DIR_NAME);
-}
-
-const PROFILE_DIR = resolveProfileDir();
-
-/** Lives in the same directory as `save.ts`'s per-run save files (deliberately — 1 app-data
-    directory, not 2) — `save.ts`'s `forEachSaveFile` must skip this exact filename, since it
-    doesn't have the `SaveFile` shape every other `.json` file in that directory has. */
 export const PROFILE_FILENAME = "profile.json";
-
-function profilePath(): string {
-  return join(PROFILE_DIR, PROFILE_FILENAME);
-}
+const PROFILE_PATH = join(SAVE_DIR, PROFILE_FILENAME);
+const CURRENT_VERSION = 1;
 
 export interface RetiredCharacter {
   classId: Id;
 }
 
-export interface Profile {
+export interface Profile extends AbilityProfile {
   retiredCharacters: RetiredCharacter[];
   /** True once the-one-who-stayed has fired in any run, ever — distinct from any single run's
       `GameState.firedOnceEventIds`, which only tracks the current run. */
   shownRetiredCharacterEvent: boolean;
 }
 
-const EMPTY_PROFILE: Profile = { retiredCharacters: [], shownRetiredCharacterEvent: false };
-
-function ensureProfileDir(): void {
-  if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
+function defaultProfile(): Profile {
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false };
 }
 
-/** Never throws — an unreadable/missing/corrupt profile file is treated the same as "no profile
-    yet," matching how `save.ts`'s own forEachSaveFile silently skips unreadable saves. */
+function isKnownAbility(id: Id): boolean {
+  return ABILITIES.some((a) => a.id === id);
+}
+
+/** A fresh install (no `profile.json` yet), or one that fails to parse, is treated as "only commons available" — never a hard error. Prunes ids no longer in the catalog, the same defensive stance `migrateGameState` takes for inventory items. */
 export function loadProfile(): Profile {
-  if (!existsSync(profilePath())) return { ...EMPTY_PROFILE, retiredCharacters: [] };
+  if (!existsSync(PROFILE_PATH)) return defaultProfile();
   try {
-    const parsed = JSON.parse(readFileSync(profilePath(), "utf8")) as Partial<Profile>;
+    const raw = JSON.parse(readFileSync(PROFILE_PATH, "utf8")) as Partial<Profile>;
+    const unlockedAbilityIds = Array.isArray(raw.unlockedAbilityIds) ? raw.unlockedAbilityIds.filter(isKnownAbility) : [];
     return {
-      retiredCharacters: Array.isArray(parsed.retiredCharacters) ? parsed.retiredCharacters : [],
-      shownRetiredCharacterEvent: parsed.shownRetiredCharacterEvent === true,
+      version: CURRENT_VERSION,
+      unlockedAbilityIds,
+      retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters : [],
+      shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
     };
   } catch {
-    return { ...EMPTY_PROFILE, retiredCharacters: [] };
+    return defaultProfile();
   }
 }
 
-function writeProfile(profile: Profile): void {
-  ensureProfileDir();
-  writeFileSync(profilePath(), JSON.stringify(profile));
+export function saveProfile(profile: Profile): void {
+  if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
+  writeFileSync(PROFILE_PATH, JSON.stringify(profile));
 }
 
 /** Called once, the moment Ending 1 (Stay) is chosen (`Game.pickEndingChoice`). */
 export function addRetiredCharacter(classId: Id): void {
   const profile = loadProfile();
   profile.retiredCharacters.push({ classId });
-  writeProfile(profile);
+  saveProfile(profile);
 }
 
 /** Called once the-one-who-stayed event actually resolves (`closeEvent`), so it never surfaces
@@ -89,5 +67,24 @@ export function addRetiredCharacter(classId: Id): void {
 export function markRetiredCharacterEventShown(): void {
   const profile = loadProfile();
   profile.shownRetiredCharacterEvent = true;
-  writeProfile(profile);
+  saveProfile(profile);
+}
+
+/** Adds `id` if not already unlocked (no-op otherwise, including for `common` ids which never need this). Does not persist — call `saveProfile` after. */
+export function unlockAbility(profile: Profile, id: Id): void {
+  if (!profile.unlockedAbilityIds.includes(id)) profile.unlockedAbilityIds.push(id);
+}
+
+/** Strikes `id` from the unlocked list — the guaranteed-loss half of the death flow. No-op if it wasn't there (e.g. a `common` ability, which was never in this list to begin with). */
+export function lockAbility(profile: Profile, id: Id): void {
+  const idx = profile.unlockedAbilityIds.indexOf(id);
+  if (idx !== -1) profile.unlockedAbilityIds.splice(idx, 1);
+}
+
+export function isAbilityUnlocked(profile: Profile, id: Id): boolean {
+  return getAbilityRarity(id) === "common" || profile.unlockedAbilityIds.includes(id);
+}
+
+function getAbilityRarity(id: Id): string | undefined {
+  return ABILITIES.find((a) => a.id === id)?.rarity;
 }

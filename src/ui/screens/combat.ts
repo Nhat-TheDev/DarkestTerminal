@@ -210,7 +210,7 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
         ctx.setPendingCampOffer(wasVictory);
         const drops = ctx.game.state.lastRoomDrops;
         ctx.game.state.lastRoomDrops = null;
-        if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0)) {
+        if (drops && (drops.itemIds.length > 0 || drops.artifactIds.length > 0 || drops.abilityIds.length > 0)) {
           ctx.setUi({ kind: "roomReward", entries: buildRewardEntries(drops), viewing: null });
           break;
         }
