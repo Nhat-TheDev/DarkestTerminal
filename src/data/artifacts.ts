@@ -66,13 +66,19 @@ export function rollArtifactRarity(source: ArtifactSource, rng: Rng): ArtifactRa
   return rng.weightedPick(entries, ([, w]) => w)[0];
 }
 
-export function pickArtifactOfRarity(rarity: ArtifactRarity, rng: Rng): Id {
-  const pool = ARTIFACTS.filter((a) => a.rarity === rarity);
+/** Restricted-source artifacts (§F.4, `restrictedDropSources`) are excluded from the pool unless
+    `allowRestrictedSource` names the exact source rolling right now — a bare rarity match isn't
+    enough, since more than 1 caller can roll the same rarity table for different reasons (Collapsed
+    Floor rolls the "boss" table without being a Boss kill). */
+export function pickArtifactOfRarity(rarity: ArtifactRarity, rng: Rng, allowRestrictedSource?: "boss" | "blood-altar"): Id {
+  const pool = ARTIFACTS.filter(
+    (a) => a.rarity === rarity && (!a.restrictedDropSources || (!!allowRestrictedSource && a.restrictedDropSources.includes(allowRestrictedSource)))
+  );
   return rng.pick(pool).id;
 }
 
-export function rollArtifact(source: ArtifactSource, rng: Rng): Id {
-  return pickArtifactOfRarity(rollArtifactRarity(source, rng), rng);
+export function rollArtifact(source: ArtifactSource, rng: Rng, allowRestrictedSource?: "boss" | "blood-altar"): Id {
+  return pickArtifactOfRarity(rollArtifactRarity(source, rng), rng, allowRestrictedSource);
 }
 
 const RARITY_ORDER: ArtifactRarity[] = ["common", "rare", "unique", "epic"];

@@ -387,5 +387,35 @@
         "debuff": 25
       }
     }
+  },
+  {
+    "id": "the-founder",
+    "name": "What's Left of Him",
+    "baseHp": 80,
+    "baseAttack": 28,
+    "baseDefense": 12,
+    "baseSpeed": 5,
+    "monsterType": "sentinel",
+    "aiPattern": "aggressive",
+    "skillIds": [],
+    "expReward": 20,
+    "guardOnly": true,
+    "scriptedOnly": true,
+    "eliteSkillIds": {
+      "strike": "elite-strike-the-founder",
+      "cleave": "elite-cleave-the-founder"
+    },
+    "bossSkillIds": {
+      "execute": "boss-execute-the-founder",
+      "debuff": "boss-debuff-the-founder"
+    },
+    "actionWeights": {
+      "boss": {
+        "basicAttack": 30,
+        "strike": 20,
+        "cleave": 15,
+        "debuff": 35
+      }
+    }
   }
 ]

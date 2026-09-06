@@ -45,6 +45,11 @@ BalancePoints = attack/tier1.attack + defense/tier1.defense + maxHp/tier1.maxHp 
 
 This formula was used when Viking/Plague Doctor were added (sections 1.5/1.6) to keep the roster balanced — adding them also called for a small rebalance of Rogue's `maxHp`/`maxMp` (upward, to keep its `BalancePoints` in line with the other 5), while keeping `attack`/`defense`/`aggro`/`speed`/`magicPower` and `growthWeights` unchanged. Current values for all 6 classes: `data/classes.json`.
 
+**Writing `description` text for a skill**: see `02-monster.md`'s "Writing `description` text"
+section — the same rule (flavor only; no mechanical notes, no cross-references to another skill by
+name, no numbers/stat references) applies to every skill's `description` field, in
+`data/classes.json` as much as `data/monster-skills.json`.
+
 ### 1.0 Basic attack (every class, slot 0)
 
 Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `target: singleEnemy`, a flat `damage` effect with `amount: 0` → damage comes entirely from `mitigatedOffense(attack, defense)` (the mitigation formula, `docs/technical-decisions.md`), true "baseline damage" (identical to the monster basic-attack formula). Name/weapon depend on class, with no mechanical purpose beyond being a free fallback when out of MP:

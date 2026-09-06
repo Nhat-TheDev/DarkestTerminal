@@ -43,6 +43,9 @@ export type UiState =
   | { kind: "eventHermitPickArtifact" }
   | { kind: "eventGuardianFight" }
   | { kind: "eventReflection" }
+  | { kind: "campReflection" }
+  | { kind: "endingCheckpoint" }
+  | { kind: "founderDialogue" }
   | { kind: "gameover" };
 
 export const ARTIFACT_ICON = "✦";

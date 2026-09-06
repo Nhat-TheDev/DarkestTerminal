@@ -236,7 +236,9 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
   const s = game.state;
   switch (ui.kind) {
     case "eventOpenChest": {
-      return [currentEventDescription(s), "", t("ui.openChestOption")].join("\n");
+      const room = getRoom(s.floor, s.currentRoomId);
+      const event = room.rolledEventId ? getEvent(room.rolledEventId) : undefined;
+      return [currentEventDescription(s), "", event?.instantRewardActionLabel ?? t("ui.openChestOption")].join("\n");
     }
 
     case "eventMerchant": {
@@ -365,9 +367,10 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventGuardianFight": {
       const room = getRoom(s.floor, s.currentRoomId);
       const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
-      // §10.3 Chain 1: past the forced threshold, Skip isn't offered at all — cosmetic half of the
-      // guard, the engine side (guardianFightSkip rejecting it) is the 2nd line of defense.
-      if (room.chainVariant !== "forced") lines.push(t("ui.guardianFightSkipOption"));
+      // §10.3 Chain 1: past the forced threshold ("forced" or tier-2/3 "forced2"/"forced3"), Skip
+      // isn't offered at all — cosmetic half of the guard, the engine side (guardianFightSkip
+      // rejecting it) is the 2nd line of defense.
+      if (room.chainVariant !== "forced" && room.chainVariant !== "forced2" && room.chainVariant !== "forced3") lines.push(t("ui.guardianFightSkipOption"));
       return lines.join("\n");
     }
 

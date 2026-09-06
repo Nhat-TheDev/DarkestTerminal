@@ -46,6 +46,9 @@ import * as artifactsScreen from "./screens/artifacts";
 import * as artifactDecisionScreen from "./screens/artifactDecision";
 import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
+import * as campReflectionScreen from "./screens/campReflection";
+import * as endingScreen from "./screens/ending";
+import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 
@@ -228,8 +231,22 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    // Part F.1 — a guaranteed, non-rolled story beat, checked before anything else (including a
+    // pending artifact decision): the floor-100 entry room's own ambush waits for this to resolve.
+    if (this.game.state.pendingEndingCheckpoint) {
+      this.ui = { kind: "endingCheckpoint" };
+      return;
+    }
+    // Part F.5 — the founder's dialogue, same "block everything else" priority, checked right
+    // after the floor-100 checkpoint since it's the same kind of guaranteed, non-rolled beat.
+    if (this.game.state.pendingFounderDialogue) {
+      this.ui = { kind: "founderDialogue" };
+      return;
+    }
     if (this.game.state.gameOver) {
-      if (this.ui.kind !== "gameover" && this.game.state.gameOver === "defeat") {
+      // Every terminal ending (not just ordinary defeat) invalidates this run's saves the same way —
+      // Stay/Let Go/Leave are conclusions, not a state a later Continue should ever resume from.
+      if (this.ui.kind !== "gameover" && this.game.state.gameOver !== "victory") {
         deleteSavesForRun(this.game.state.runId);
       }
       this.ui = { kind: "gameover" };
@@ -243,6 +260,10 @@ export class App implements ScreenContext {
       }
       if (this.game.state.pendingReflection) {
         this.ui = { kind: "eventReflection" };
+        return;
+      }
+      if (this.game.state.pendingCampReflectionTier !== null) {
+        this.ui = { kind: "campReflection" };
         return;
       }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
@@ -365,6 +386,15 @@ export class App implements ScreenContext {
       case "eventGuardianFight":
       case "eventReflection":
         eventsScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "campReflection":
+        campReflectionScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "endingCheckpoint":
+        endingScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "founderDialogue":
+        founderDialogueScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
         break;
@@ -818,6 +848,15 @@ export class App implements ScreenContext {
       case "eventReflection":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
+      case "campReflection":
+        return campReflectionScreen.renderMain(this.game, this.ui);
+
+      case "endingCheckpoint":
+        return endingScreen.renderMain(this.game, this.ui);
+
+      case "founderDialogue":
+        return founderDialogueScreen.renderMain(this.game, this.ui);
+
       default: {
         const _exhaustive: never = this.ui;
         return _exhaustive;
@@ -867,6 +906,12 @@ export class App implements ScreenContext {
       case "eventGuardianFight":
       case "eventReflection":
         return eventsScreen.renderFooter(this.ui);
+      case "campReflection":
+        return campReflectionScreen.renderFooter(this.ui);
+      case "endingCheckpoint":
+        return endingScreen.renderFooter(this.ui);
+      case "founderDialogue":
+        return founderDialogueScreen.renderFooter(this.ui);
       case "gameover":
         return gameoverScreen.renderFooter();
     }

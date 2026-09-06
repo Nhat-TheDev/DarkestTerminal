@@ -12,14 +12,14 @@ Event room logic lives in `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/en
 
 ## 8.1 Mechanic Overview
 
-Every time the party steps into a room with `RoomType === "event"`, the system rolls 1 event id via `rollEvent(rng)` (`src/data/events.ts`), split across 2 tiers with an even roll within each tier:
+Every time the party steps into a room with `RoomType === "event"`, the system rolls 1 event id via `rollEvent(rng, depth, firedOnceEventIds)` (`src/data/events.ts`), split across 2 tiers with an even roll within each tier:
 
 | Tier | Total weight | Includes |
 |---|---|---|
-| **Common** (light, familiar, few branches) | `events.commonTierWeight` (`data/balance-config.json`) | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar` |
-| **Rare** (heavier, with deeper risk/trade-offs) | `events.rareTierWeight` | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor` |
+| **Common** (light, familiar, few branches) | `events.commonTierWeight` (`data/balance-config.json`) | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar`, `old-count`, `doubled-back`, `the-delay`, `waiting-supplies` |
+| **Rare** (heavier, with deeper risk/trade-offs) | `events.rareTierWeight` | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor`, `vigil-candle`, `broken-seal`, `half-a-warning`, `still-breathing` |
 
-The roll is independent of floor/party state — there's no special logic for high/low floors.
+The roll is otherwise independent of party state, but 4 rare events carry a `minFloorDepth` gate (`vigil-candle`/`broken-seal` at 15, `half-a-warning` at 35, `still-breathing` at 70) and are also `onceLifetime` — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
 
 All Artifact rewards in §8 share the exact same `treasureOrEvent` rarity weights (`RARITY_WEIGHTS`, `src/data/artifacts.ts`) already defined in `07-items-artifacts.md` §7.2 "Rarity & drop rate per tier", **unless an event states its own table** (e.g. `collapsed-floor` only rolls Unique/Epic, `sacrificial-circle`'s roll has a minimum tier floor).
 
@@ -30,20 +30,36 @@ EventDefinition {
   description: string
   kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "choiceReveal" | "artifactExchange" | "rescueGamble" | "coinGamble"
   forceEquip?: boolean       // true only for twin-altars, see 07-items-artifacts.md §7.2
+  minFloorDepth?: number     // rollEvent() gate — vigil-candle/broken-seal (15), half-a-warning (35), still-breathing (70)
+  onceLifetime?: boolean     // rollEvent() excludes it once fired — the same 4 events above
+  noArtifactReward?: boolean // instantReward only — still-breathing/the-delay skip the usual artifact grant
+  guaranteedArtifactId?: Id  // instantReward only — grants this exact artifact instead of rolling; waiting-supplies only so far
 
   // Narrative layer fields (§8.13-§8.16) — optional, never change an event's underlying mechanic,
   // only what description/prompt text is shown and when.
   returnDescription?: string | Record<"won" | "lost" | "declined", string>   // §8.14 — merchant/wandering-hermit (string) or gambling-den (object, keyed by last outcome)
-  chainBuildupDescription?: string    // §8.15 Chain 1 — guardian-fight/desecrated-altar only, shown at 2 skips
-  chainForcedDescription?: string     // §8.15 Chain 1 — shown at 3 skips, Skip option hidden from then on
-  chainEscalatedDescription?: string  // §8.15 Chain 2/3 — sacrificial-circle/blood-altar only, permanent once threshold crossed
-  reflection?: {                      // §8.16 — every event except open-chest/collapsed-floor
+  stanceEcho?: { curious: string; wary: string; dismissive: string }        // §8.16 — appended to returnDescription per the party's dominant reflection stance; wandering-hermit only so far
+  chainBuildupDescription?: string     // §8.15 Chain 1 — guardian-fight/desecrated-altar only, shown at 2 skips
+  chainForcedDescription?: string      // §8.15 Chain 1 — shown at 3 skips, Skip option hidden from then on
+  chainForced2Description?: string     // §8.15 Chain 1 tier 2 — 2nd+ firing, past chainTier2MinFloorDepth
+  chainForced3Description?: string     // §8.15 Chain 1 tier 3 — 3rd+ firing, past chainTier3MinFloorDepth
+  chainEscalatedDescription?: string   // §8.15 Chain 2/3 — sacrificial-circle/blood-altar only, permanent once threshold crossed
+  chainEscalated2Description?: string  // §8.15 Chain 2/3 tier 2 — higher threshold, past chainTier2MinFloorDepth
+  chainEscalated3Description?: string  // §8.15 Chain 2/3 tier 3 — higher threshold still, past chainTier3MinFloorDepth
+  crossEventVariants?: CrossEventVariant[]  // 10-event-narrative.md Part C.1 — conditional text keyed off other events' outcomes, checked after chain states
+  descriptionVariants?: string[]       // Part C.2 — random alternate base scenes, picked once per room and pinned
+  instantRewardActionLabel?: string    // overrides "Open the chest" for instantReward events whose scene isn't a chest
+  reflection?: {                       // §8.16 — every event except open-chest/collapsed-floor
     prompt: string
-    escalatedPrompt?: string          // shown instead of `prompt`, only for the 4 events with a chain, once escalated
+    escalatedPrompt?: string           // shown instead of `prompt`, only for the 4 events with a chain, once escalated
+    escalated2Prompt?: string          // shown instead of `escalatedPrompt`, once tier-2 escalated
+    escalated3Prompt?: string          // shown instead of `escalated2Prompt`, once tier-3 escalated
     options: { curious: string; wary: string; dismissive: string }
   }
 }
 ```
+
+The 8 events added by 10-event-narrative.md Part C (`old-count`, `doubled-back`, `the-delay`, `waiting-supplies`, `vigil-candle`, `broken-seal`, `half-a-warning`, `still-breathing`) have their own write-ups at §8.17-8.24, after Collapsed Floor.
 
 `guardian-fight` and `desecrated-altar` both use `kind: "combatReward"` — **they share the same handling mechanics in the engine, differing only in `id`/`name`/`description`**. Likewise, `cursed-shrine`/`twin-altars` share `kind: "choiceReveal"` (reveal information before deciding); `sacrificial-circle`/`wandering-hermit` share `kind: "artifactExchange"` (operating on an artifact the party already owns rather than a plain new roll); `gambling-den` has its own `kind: "coinGamble"` (§8.10 — it no longer touches artifacts as its cost, only rarely produces them as a reward).
 
@@ -71,8 +87,8 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 - Lose the fight → no Artifact, the game's existing combat-loss consequences apply as normal (no special rules for the Event room).
 
 **The only difference between the two ids**: flavor text.
-- `guardian-fight`: "The scrape of claws on stone echoes from a dark corner — something is guarding the treasure in this room, and it just caught your scent."
-- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing — touching it will surely wake whatever sleeps beneath."
+- `guardian-fight`: "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and closed, is scratched into the wall beside it. Something is guarding the treasure in this room, and it just caught your scent."
+- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot. Touching it will surely wake whatever sleeps beneath."
 
 **Chain escalation**: repeatedly choosing "Leave without fighting" builds toward a forced encounter — see §8.15 Chain 1, "The Guardian's Grudge." **Reflection**: see §8.16.
 
@@ -80,7 +96,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 ## 8.4 Merchant Encounter (`merchant`) — *Common*
 
-> "A trembling oil lamp casts light on a cloth spread with strange wares — each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer."
+> "A trembling oil lamp casts light on a cloth spread with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer."
 
 No combat. On entering the room:
 
@@ -98,7 +114,7 @@ Implementation: `merchantPurchase`/`merchantRefresh`/`merchantLeave` (`src/engin
 
 ## 8.5 Trade HP for an Artifact (`blood-altar`) — *Rare*
 
-> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid. It demands a price paid in blood, nothing more, nothing less."
+> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. It demands a price paid in blood, nothing more, nothing less."
 
 No combat. On entering the room, the player may:
 
@@ -108,6 +124,8 @@ No combat. On entering the room, the player may:
 **Safety limit**: if the HP cost is ≥ the chosen character's current HP, the "pay the price" option is locked for that character until a different character with enough HP is chosen, or the room is left. Still HP-only — not a coin event (the flavor text frames losing HP as the actual narrative price, not a shop transaction).
 
 **Chain escalation**: repeated payments (combined with Collapsed Floor's, §8.12) build toward an escalated description — see §8.15 Chain 3, "Blood Debt." **Reflection**: see §8.16.
+
+**Restricted-drop exception**: once `narrativeCounters.altarPaymentsCount >= events.bloodDebtThreshold2` (8), a successful payment's artifact roll also includes `waystone-shard` (`07-items-artifacts.md`'s Category D) as a possible result — the only event room where that id can ever appear, alongside a Boss kill. Below that count, the roll is the standard `treasureOrEvent` table exactly as described above, `waystone-shard` excluded like everywhere else. See `10-event-narrative.md` §F.4 for why.
 
 ---
 
@@ -137,7 +155,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.7 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "A statue with 3 eyes. One of them is open."
+> "A statue with 3 eyes. One of them is open. It wasn't the same one a moment ago."
 
 **No combat** (`kind: "choiceReveal"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.6, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
@@ -151,7 +169,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.8 Twin Altars (`twin-altars`) — *Rare*
 
-> "Two stone pedestals facing each other. Choose 1 — the other shatters the instant you touch its twin."
+> "Two stone pedestals face each other, each carved with a spiral, open at the center. Choose 1: the other shatters the instant you touch its twin."
 
 **No combat** (`kind: "choiceReveal"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
 
@@ -166,7 +184,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.9 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "Old dried blood stains the stone in a pattern too deliberate to be an accident. The circle doesn't accept ordinary offerings — only something already enchanted."
+> "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted."
 
 **No combat** (`kind: "artifactExchange"`). Sacrifice 1 **currently-equipped** artifact (nothing sits unequipped anymore — every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes the same `treasureOrEvent` weights used everywhere else (`RARITY_WEIGHTS`) rather than using a separate table, excluding tiers below the threshold.
 
@@ -185,9 +203,17 @@ Choose the artifact to sacrifice from anywhere across the party, confirm → it'
 | Round | Stake (= the pot so far) | Win chance | On win | Reachable only by |
 |---|---|---|---|---|
 | 1 | 20 coins | 70% | pot → 40 coins | Entry (costs 20 coins up front, requires ≥ 20 on hand) |
-| 2 | 40 coins | 60% | pot → 80 coins | Choosing **Continue** after winning round 1 |
-| 3 | 80 coins | 50% | pot → 160 coins | Choosing **Continue** after winning round 2 |
+| 2 | 40 coins | 50% | pot → 80 coins | Choosing **Continue** after winning round 1 |
+| 3 | 80 coins | 40% | pot → 160 coins | Choosing **Continue** after winning round 2 |
 | 4 | 160 coins | 30% | **2 Epic Artifacts** — the pot converts into the jackpot reward instead of doubling again | Choosing **Continue** after winning round 3; the event ends here either way |
+
+**Balance note**: round 1's odds are deliberately favorable (a welcoming entry point — expected value
+of continuing is positive, `0.7 × 40 = 28` against the `20` staked). Rounds 2 (was 60%) and 3 (was
+50%) were tightened so genuine risk starts right after the first double instead of only at round 3 —
+under the old numbers, continuing through round 2 was unconditionally the correct play by expected
+value alone (`0.6 × 80 = 48` against `40`), leaving no real tension until the very end. Round 4 stays
+unchanged — its negative coin EV is the point, since the player isn't gambling for coins there, they're
+gambling for the jackpot.
 
 Config: `events.gamblingDenRounds` (`data/balance-config.json`).
 
@@ -217,7 +243,11 @@ Implementation: `src/engine/events/gamblingDen.ts`.
 
 Implementation: `hermitExchangeFortune` (`src/engine/events/hermit.ts`).
 
-**Recurring**: the same old man returns — see §8.14. **Reflection**: see §8.16.
+**Recurring**: the same old man returns — see §8.14. **Reflection**: see §8.16, including
+`stanceEcho` — the 1 event wired for it so far: `"He watches you a little longer than he needs to
+before naming his price."` (curious) · `"He doesn't ask why you're being careful. He already knows
+the answer costs too much to say out loud."` (wary) · `"He shrugs before you've even finished
+explaining what you want. Fair's fair, either way."` (dismissive).
 
 ---
 
@@ -236,34 +266,51 @@ A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the o
 
 Its successful/attempted payments count toward Chain 3 alongside Blood Altar's (§8.15) even though it has no reflection or recurring NPC of its own.
 
+**Outcome tag**: `GameState.eventOutcomes["collapsed-floor"]` is set to `"rescued"` or `"failed"` (not a generic `"attempted"`) depending on the roll, distinct from `"declined"` (leaving without attempting). This lets a later `collapsed-floor` room's own `crossEventVariants` (and `blood-altar`'s pair 3) acknowledge whether the trapped person actually made it out, not just that a payment happened — e.g. a 2nd `collapsed-floor` visit after a `"rescued"` outcome reads "This time, you remember what it sounded like when someone made it out"; after `"failed"`, "Last time, it just stopped, partway through. You don't let yourself think about which sound this is."
+
 **No recurring NPC, no reflection** — kept deliberately mundane along with Open Chest (§8.2); see §8.13.
 
 ---
 
 ## 8.13 Shared Worldview — the Sleeper & the Covenant
 
-Darkest Terminal runs entirely on a TUI — no cutscene, no character portrait, no illustrated environment. Flavor text is the only tool the game has to convey its world, so every event description above is written as a piece of 1 coherent world rather than 11 unrelated vignettes.
+Darkest Terminal runs entirely on a TUI — no cutscene, no character portrait, no illustrated environment. Flavor text is the only tool the game has to convey its world, so every event description in this section is written as a piece of 1 coherent world rather than 19 unrelated vignettes.
 
 **The Sleeper** — an entity the dungeon was built to contain or worship (deliberately left ambiguous which). It never physically appears in the game; its presence is only ever felt through:
 
-- **The Covenant** — a cult (extinct or still active, also left ambiguous) that built the shrines, altars, and guardians: `guardian-fight`, `desecrated-altar`, `merchant`, `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`.
+- **The Covenant** — a cult (extinct or still active, also left ambiguous) that built the shrines and altars, and marks/wards the ground where a Guardian already seems to be present — never built or summoned by them, `11-world-bible.md` §11.6: `guardian-fight`, `desecrated-altar`, `merchant`, `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`.
 - **The Hermit** (`wandering-hermit`) — a Covenant priest who broke with it. In-fiction, this is why they're the only NPC who can strip a Cursed artifact (§8.6/§8.11): they know the Covenant's own rites and use them against it.
 - **The Stranger** (`gambling-den`) — explicitly **not** Covenant. An outsider who deals only in coin, never blood or artifacts as a *cost* (only as a rare *prize*, the round-4 jackpot).
-- **Ordinary people** — `open-chest` and `collapsed-floor` (§8.2, §8.12) stay mundane on purpose: remnants of past adventuring parties who didn't make it, reflecting the game's own permadeath theme back at the player, with no Covenant/Sleeper connection at all.
+- **Ordinary people** — `open-chest`, `collapsed-floor` (§8.2, §8.12), and 3 of the 8 events at §8.17-8.20 (`old-count`, `doubled-back`, `waiting-supplies`) stay mundane on purpose: remnants of past adventuring parties who didn't make it, reflecting the game's own permadeath theme back at the player, with no Covenant/Sleeper connection at all.
+- **Evidence of the schism, not an actor in it** — `broken-seal` and `half-a-warning` (§8.22-8.23) are the containment/communion split's own wreckage: a torn seal, a witness's testimony. Neither event is Covenant ground itself, and neither is written to confirm which side of the split was right.
+- **Pure dream-logic** — `the-delay` and `vigil-candle` (§8.19, §8.21) carry no institution and no remnant-of-a-person framing at all; they exist to show the dungeon's physical rules breaking on their own, without any Covenant/Sleeper vocabulary attached.
+- **The Covenant's own origin, undercut** — `still-breathing` (§8.24) is the 1 event that reaches past the Covenant to what it copied its central symbol from; still never named, but the deepest single piece of evidence in the game.
 
 | Event id | Faction | Why (1 line) |
 |---|---|---|
 | `open-chest` | — (mundane) | belongings of a dead adventurer |
-| `guardian-fight` | Covenant | a bound construct/ward guarding Covenant ground |
+| `guardian-fight` | Covenant, containment-leaning | present at disturbed, marked ground — not built or summoned by the Covenant, only warded and claimed by them (11-world-bible.md §11.6) — spiral scratched closed, coiled tight |
 | `merchant` | Covenant | a pilgrim trading relics scavenged from deeper floors |
-| `desecrated-altar` | Covenant | a Sleeper shrine, disturbed |
-| `blood-altar` | Covenant | a pact-altar, blood is literally the toll |
+| `desecrated-altar` | Covenant, containment-leaning | a Sleeper shrine, disturbed — spiral cut into the base, closed like a knot (§11.6) |
+| `blood-altar` | Covenant, communion-leaning | a pact-altar, blood is literally the toll — spiral unwound and open at its center (§11.6) |
 | `cursed-shrine` | Covenant | the Covenant's idol — the "3 eyes" watch how deep the party has gone |
-| `twin-altars` | Covenant | a Covenant rite that tests a pilgrim by forcing an irreversible choice |
-| `sacrificial-circle` | Covenant | Covenant ritual ground — trades enchanted-for-enchanted only |
+| `twin-altars` | Covenant, communion-leaning | a Covenant rite that tests a pilgrim by forcing an irreversible choice — spiral carved open at the center (§11.6) |
+| `sacrificial-circle` | Covenant, communion-leaning | Covenant ritual ground — trades enchanted-for-enchanted only; spiral traced in blood, open at one end (§11.6) |
 | `wandering-hermit` | ex-Covenant (apostate) | the only source that can strip a curse |
 | `gambling-den` | outsider | explicitly not Covenant — coin only, never blood/artifacts as cost |
 | `collapsed-floor` | — (mundane) | another trapped adventurer, not a Covenant device |
+| `old-count` | — (mundane) | a stranger's obsessive counting, interrupted mid-mark |
+| `doubled-back` | — (mundane) | footprints with no exit — mortality, not doctrine |
+| `the-delay` | — (pure dream-logic) | a reflection that lags — no institution, no remnant of a person |
+| `waiting-supplies` | — (mundane, edges into Covenant only via §8.15's cross-event text) | a bundle nobody came back for |
+| `vigil-candle` | — (pure dream-logic, deliberately unconnected) | a candle that shouldn't still be burning, kept as atmosphere, not evidence |
+| `broken-seal` | schism evidence, dual-reading | a torn seal read as communion OR containment depending on the party's own recent bias — never both, never neither |
+| `half-a-warning` | schism evidence | a personal testimony, not a Covenant ritual object |
+| `still-breathing` | Covenant's own origin, undercut | reveals the spiral was copied, not invented by the Covenant |
+
+Not every Covenant event picks a containment/communion lean — `merchant` and `cursed-shrine` are left
+ambiguous on purpose, per `11-world-bible.md` §11.6's own caution against forcing every location to
+declare a side.
 
 **Tone, for any future writer touching this content**: the game never confirms whether the Sleeper is real, a delusion of the Covenant, or already dead. No event ever *names* the Sleeper or the Covenant to the player, in dialogue or narration — the player only ever sees a **trace** (an unexplained mark, brand, or pattern recurring across otherwise-unrelated events) and is meant to notice the repetition without being told what it means.
 
@@ -291,45 +338,93 @@ No change to any event's mechanics — Merchant/Hermit/Gambling Den still work e
 
 ## 8.15 Event Chains
 
-3 small, independent chains, each reusing a counter the player's own choices already produce. Every chain changes flavor text only — no mechanic described elsewhere in §8 changes because of a chain. Tracked via `GameState.narrativeCounters` (never decrease, except Chain 1's counter which resets after it fires):
+4 small, independent chains, each reusing a counter the player's own choices already produce. Every chain changes flavor text only — no mechanic described elsewhere in §8 changes because of a chain. Tracked via `GameState.narrativeCounters` (never decrease, except Chain 1's `guardianFightsSkipped`, which resets after it fires):
 
 ```ts
 narrativeCounters: {
-  guardianFightsSkipped: number;   // Chain 1
-  artifactsSacrificed: number;     // Chain 2
-  altarPaymentsCount: number;      // Chain 3
+  guardianFightsSkipped: number;     // Chain 1
+  artifactsSacrificed: number;       // Chain 2
+  altarPaymentsCount: number;        // Chain 3
+  guardianGrudgeFiredCount: number;  // Chain 1 tier 2 — see below, never resets
+  freeRewardsTakenCount: number;     // Chain 4
 }
 ```
 
-### Chain 1 — "The Guardian's Grudge" (`guardianFightsSkipped`)
+Chains 1-3 each also have a **tier-2 escalation** (`11-world-bible.md` §11.13) past its original single threshold, gated by floor depth (`events.chainTier2MinFloorDepth`, 15) in addition to the counter, and a **tier-3 escalation** (`10-event-narrative.md` Part C.3) one gate deeper still (`events.chainTier3MinFloorDepth`, 35), so an early/lucky/rich run can't reach either tier on the counter alone. Chain 4 (below) is deliberately single-tier, not 3 — see its own entry for why.
+
+### Chain 1 — "The Guardian's Grudge" (`guardianFightsSkipped`, `guardianGrudgeFiredCount`)
 
 Reuses the "Leave without fighting" choice from §8.3. **This counter is shared across both event ids** — `guardianFightSkip()` (`src/engine/events/guardianFight.ts`) is the same function for both `guardian-fight` and `desecrated-altar`, so skipping 1 of each counts as 2 toward the same total, not 1 toward 2 separate counters.
 
 - **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail added to the description (e.g. guardian-fight's "just caught your scent" becomes "doesn't look away").
-- **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventGuardianFight` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
-- The counter **resets to 0** after that forced encounter fires, so the whole cycle (quiet buildup → forced fight) can happen again later in a long run rather than exactly once.
+- **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` (per-id — guardian-fight's and desecrated-altar's differ) and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventGuardianFight` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
+- The counter **resets to 0** after that forced encounter fires, so the whole cycle (quiet buildup → forced fight) can happen again later in a long run rather than exactly once. `guardianGrudgeFiredCount` increments alongside the reset and never resets itself — it's how a later firing can tell it isn't the first.
+- **Tier 2**: once `guardianGrudgeFiredCount >= 1` (this chain has fired before) and floor depth is past `events.chainTier2MinFloorDepth`, the next forced encounter shows `chainForced2Description` instead — deliberately **shared verbatim** between guardian-fight and desecrated-altar, unlike tier 1's per-id text (tier 2 is written to read as losing that specificity, not keeping it). Skip is rejected exactly as at tier 1.
+- **Tier 3**: once `guardianGrudgeFiredCount >= 2` and floor depth is past `events.chainTier3MinFloorDepth`, the next forced encounter shows `chainForced3Description` instead — also shared verbatim, same reasoning as tier 2. Skip stays rejected.
 
-`Room.chainVariant?: "buildup" | "forced"` records which text variant a given room resolved to (set by `resolveEventEntry`) — needed because the counter itself resets right after firing, so by the time §8.16's reflection shows, the counter alone can no longer tell "was this room the forced one."
+`Room.chainVariant?: "buildup" | "forced" | "forced2" | "forced3"` records which text variant a given room resolved to (set by `resolveEventEntry`) — needed because `guardianFightsSkipped` resets right after firing, so by the time §8.16's reflection shows, the counter alone can no longer tell which variant a given room actually was.
 
 ### Chain 2 — "The Circle Remembers" (`artifactsSacrificed`)
 
-Increments on every successful `sacrifice()` call (`src/engine/events/sacrifice.ts`), across the whole run (not reset per room visit or per floor — Ritual Circle allows repeat sacrifices in 1 visit, §8.9). Once it reaches `events.circleRemembersThreshold` (5), every subsequent `sacrificial-circle` room uses `chainEscalatedDescription`: "The circle recognizes your hand before you kneel. It doesn't ask anymore." No mechanical change — `rollArtifactWithMinRarity` behaves exactly as in §8.9.
+Increments on every successful `sacrifice()` call (`src/engine/events/sacrifice.ts`), across the whole run (not reset per room visit or per floor — Ritual Circle allows repeat sacrifices in 1 visit, §8.9). Once it reaches `events.circleRemembersThreshold` (5), every subsequent `sacrificial-circle` room uses `chainEscalatedDescription`: "Nobody hesitates at the circle anymore. It's just the next step in visiting it, the same as walking in." Once it reaches `events.circleRemembersThreshold2` (10) **and** floor depth is past `events.chainTier2MinFloorDepth`, it uses `chainEscalated2Description` instead. Once it reaches `events.circleRemembersThreshold3` (20) **and** floor depth is past `events.chainTier3MinFloorDepth`, it uses `chainEscalated3Description` instead. No mechanical change at any tier — `rollArtifactWithMinRarity` behaves exactly as in §8.9.
 
 ### Chain 3 — "Blood Debt" (`altarPaymentsCount`)
 
-Increments by 1 on every successful `bloodAltarPay()` (§8.5) and `collapsedFloorAttempt()` (§8.12) call — "successful" meaning the character had enough HP to pay. Counts *visits*, not HP spent, so a low-level character paying often and a high-level character paying rarely accumulate the same way regardless of how their maxHP (and therefore their HP cost) has grown. Once it reaches `events.bloodDebtThreshold` (4), the next `blood-altar` room uses `chainEscalatedDescription`: "The stone recognizes the taste. It doesn't need to ask this time — it already knows you'll pay." No mechanical change.
+Increments by 1 on every successful `bloodAltarPay()` (§8.5) and `collapsedFloorAttempt()` (§8.12) call — "successful" meaning the character had enough HP to pay. Counts *visits*, not HP spent, so a low-level character paying often and a high-level character paying rarely accumulate the same way regardless of how their maxHP (and therefore their HP cost) has grown. Once it reaches `events.bloodDebtThreshold` (4), the next `blood-altar` room uses `chainEscalatedDescription`: "Nobody hesitates at the stone anymore. The question of whether to pay stopped being asked out loud a while ago." Once it reaches `events.bloodDebtThreshold2` (8) **and** floor depth is past `events.chainTier2MinFloorDepth`, it uses `chainEscalated2Description` instead. Once it reaches `events.bloodDebtThreshold3` (16) **and** floor depth is past `events.chainTier3MinFloorDepth`, it uses `chainEscalated3Description` instead. No mechanical change at any tier.
 
-**Open question, not yet decided**: once a chain fires (Chain 2/3 especially, since they never reset), the escalated text stays the permanent state for the rest of a long run — since floor depth is unlimited (`06-level-system.md`), any sufficiently long run eventually hits both. There's an intent to layer in further escalation tiers past the current single threshold for each chain; not yet designed — see `10-event-narrative.md`.
+`pickReflectionPrompt()` (`src/engine/events/shared.ts`) mirrors the same tier-3-before-tier-2-before-tier-1-before-base priority for §8.16's reflection prompt on all 4 events that can escalate.
+
+### Chain 4 — "Taken, Never Given" (`freeRewardsTakenCount`)
+
+Increments by 1 on every successful resolution of the 7 event ids that grant an Artifact for literally
+no cost of any kind — `open-chest` (§8.2), `old-count`, `doubled-back`, `waiting-supplies`,
+`vigil-candle`, `broken-seal`, `half-a-warning` (§8.17-8.23; `the-delay` and `still-breathing` are
+excluded — both are `noArtifactReward: true`, so there's nothing taken to count). Written alongside
+each one's existing grant call, the same pattern `loreExposureCount` already uses
+(`10-event-narrative.md`'s Camp Reflection). Never resets, never decreases.
+
+Unlike Chains 1-3, this one isn't gated on floor depth alone — it also requires the party to have
+never paid a cost anywhere else in the run: `narrativeCounters.altarPaymentsCount === 0` **and**
+`narrativeCounters.artifactsSacrificed === 0` (blood-altar never paid even once, sacrificial-circle
+never fed even once). A party that's paid either cost, however rarely, no longer qualifies, no matter
+how many free rewards it's also picked up alongside that — this chain is specifically about parties
+that have never given anything back to anything, not just parties that happen to favor free rooms.
+
+Once `freeRewardsTakenCount >= events.freeTakenThreshold` (proposed **12** — flagged as
+balance-tunable, like every other chain threshold, pending real run-length data) **and** both paid
+counters above are still 0, every subsequent resolution of any of the 7 ids above appends 1 shared
+closing line, verbatim — the same shared-across-ids approach Chain 1/2/3's tier-2/3 text already
+uses, just at a single tier instead of 3 (a party this one-sided doesn't need 3 separate gradations to
+land the point):
+
+> "By now, none of you wonder why walking away from something like this always seems to leave you
+> holding more than you walked in with. It stopped feeling like luck somewhere back there."
+
+No mechanical change — same artifact roll, same grant, same everything; flavor only, exactly like
+Chains 1-3.
+
+**Feeds `10-event-narrative.md` Part F**: reaching this escalation is the 2nd, independent way the
+floor-100 checkpoint's Leave-only gate can trigger (§F.1) — alongside, not instead of, "the blood
+debt breaks" (Chain 3). Different shape of the same idea: Chain 3's trigger is a reciprocal exchange
+that broke after being honored many times over; this one is a party that was never in a reciprocal
+exchange with anything down here to begin with. Both read, from the dungeon's side, as the exact same
+absence (§11.4) — nothing here ever had a stake in this party either way.
+
+**Cross-event continuity and the description variant pool** (`10-event-narrative.md` Part C.1/C.2) sit below chain-state priority in `pickEventText()`'s resolution order — a room only falls through to a `crossEventVariants` match or a random `descriptionVariants` pick once no chain state applies. `GameState.eventOutcomes` records a per-event outcome tag (a generic `"resolved"` fallback from `closeEvent()`, or a specific tag from `bloodAltarPay`/`bloodAltarLeave`/`collapsedFloorAttempt`/`collapsedFloorLeave`/`sacrifice`) that `crossEventVariants` conditions read.
 
 ---
 
 ## 8.16 Post-Event Reflection Choice
 
-**9 of 11 events** — every event except `open-chest` and `collapsed-floor` (§8.13's "deliberately mundane" pair — giving them a reflection beat would imply there's something to reflect on, working against that). After an eligible event resolves, 1 short reflective line is shown plus 3 response options the player picks from — **purely characterization, no reward/stat/mechanical effect of any kind**. Whether a chosen stance ever feeds back into later content is explicitly undecided — see `10-event-narrative.md`.
+**17 of 19 events** — every event except `open-chest` and `collapsed-floor` (§8.13's "deliberately mundane" pair — giving them a reflection beat would imply there's something to reflect on, working against that). After an eligible event resolves, 1 short reflective line is shown plus 3 response options the player picks from — **purely characterization, no reward/stat/mechanical effect of any kind**. Whether a chosen stance ever feeds back into later content: yes, as pure flavor — see `stanceEcho` below and `10-event-narrative.md`.
 
 **Frequency**: always shown the 1st time the player resolves a given event id in a run; a `events.reflectionRepeatChance` (50%) chance every time after that (`maybeTriggerReflection`, `src/engine/events/shared.ts`).
 
-**Response options** are a shared 3-way stance — `curious` / `wary` / `dismissive` — reused across all 9 events rather than bespoke per-event choice sets; only the flavor text is bespoke, the meaning of picking each stance is shared. Recorded in `GameState.eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>` (overwritten on each re-trigger, not a history log).
+**Engagement gate**: 5 of the 17 — `blood-altar`, `sacrificial-circle`, `wandering-hermit`, `guardian-fight`, `desecrated-altar` — write reflection text that describes their core action having happened (a payment taken, a trade struck, a fight won). `maybeTriggerReflection()`'s `REQUIRES_ENGAGEMENT` map checks each one's `GameState.eventOutcomes` tag and skips reflection entirely if the party merely left — declined, or couldn't meet the cost — same reasoning as excluding open-chest/collapsed-floor outright: nothing happened, nothing to reflect on. Concretely: `bloodAltarLeave()` (declined/couldn't pay) and `sacrificeLeave()`-without-ever-sacrificing skip reflection; so does `guardianFightSkip()`, which now writes an explicit `"skipped"` outcome tag (distinct from the win path's `"resolved"`, written in `game.ts`'s combat-victory block) so a skip can never be mistaken for a won fight — this also tightens `broken-seal`'s containment-reading cross-event variant (Part C.1 pair 15), which previously could fire off a mere skip.
+
+**Response options** are a shared 3-way stance — `curious` / `wary` / `dismissive` — reused across all 17 events rather than bespoke per-event choice sets; only the flavor text is bespoke, the meaning of picking each stance is shared. Recorded in `GameState.eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>` (overwritten on each re-trigger, not a history log).
+
+**`stanceEcho`** — the payoff `11-world-bible.md` §11.13 resolved: `EventDefinition.stanceEcho?: { curious, wary, dismissive }` is appended to a `returnDescription` visit based on the party's dominant recorded stance across all of `eventReflectionStances` (`dominantReflectionStance()`, `src/engine/dungeon.ts` — undefined, so no echo, if none recorded yet or the top 2 are tied). Purely flavor, same as the base reflection system. Wired for `wandering-hermit` only so far, each of the 3 lines written to stay readable more than one way per §11.13's "a leaning, never a verdict" rule.
 
 **Escalated prompt**: the 4 events with a chain (`guardian-fight`, `desecrated-altar`, `sacrificial-circle`, `blood-altar`) show `reflection.escalatedPrompt` instead of `reflection.prompt` when the resolution that just happened was the chain-escalated one — so a player who just lived through Chain 1's forced encounter gets a reflection that matches what actually happened, not the same generic line as any routine fight. Only the lead-in line changes for the escalated case; the 3 response options stay the same (`pickReflectionPrompt`, `src/engine/events/shared.ts`).
 
@@ -339,8 +434,8 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`guardian-fight`**
 - Prompt: "The guardian's ashes still carry a trace of incense, not decay. Something tended this room, once."
-- Escalated (Chain 1 forced): "You didn't decide to fight this one. It decided you'd stalled long enough."
-- curious: "Worth remembering — someone built this on purpose." · wary: "Better not to think about who." · dismissive: "Just a monster. Move on."
+- Escalated (Chain 1 forced): "You didn't decide to fight this one. The choice to keep walking past it just wasn't there anymore."
+- curious: "Worth remembering — someone tended this on purpose." · wary: "Better not to think about who." · dismissive: "Just a monster. Move on."
 
 **`merchant`**
 - Prompt: "The hooded figure never once lifted the hood, not even to count your coin."
@@ -352,9 +447,9 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 - curious: "Worth coming back for, once you know what you're looking for." · wary: "Whatever's under there, you'd rather it stayed asleep." · dismissive: "The glow's already fading. You've still got a floor left to clear."
 
 **`blood-altar`**
-- Prompt: "The wound closes faster than it should. The stone took exactly what it asked for, no more."
-- Escalated (Chain 3, 4+ payments): "The stone barely had to ask this time. That's the part that stays with you."
-- curious: "That's precise, for a slab of rock — someone built it that way on purpose." · wary: "Next time it might ask for more than skin." · dismissive: "A fair price. You've paid worse for less."
+- Prompt: "The wound closes faster than it should. Whatever's owed here, it's always exactly the same amount, never more."
+- Escalated (Chain 3, 4+ payments): "Barely anyone hesitated this time. That's the part that stays with you."
+- curious: "That's precise, for a slab of rock — someone built it that way on purpose." · wary: "Next time it might cost more than skin." · dismissive: "A fair price. You've paid worse for less."
 
 **`cursed-shrine`**
 - Prompt: "The open eye hasn't blinked once. You'd swear it's still watching, even from here."
@@ -365,7 +460,7 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 - curious: "What was on that one, you'll never know now." · wary: "Some choices aren't worth revisiting." · dismissive: "Rigged either way — not like you had a real choice."
 
 **`sacrificial-circle`**
-- Prompt: "The circle goes quiet again, the pattern in the blood no less deliberate than before. It didn't thank you. It didn't have to."
+- Prompt: "The circle goes quiet again, the pattern in the blood no less deliberate than before. Nobody said anything about it, walking away. There wasn't anything that needed saying."
 - Escalated (Chain 2, 5+ sacrifices): "You knelt before you'd even finished deciding to."
 - curious: "That pattern wasn't drawn by accident, and you'd like to know by what." · wary: "Not a place you'd want to visit more than you have to." · dismissive: "A fair trade, and a better artifact for it. That's all it needs to be."
 
@@ -376,3 +471,104 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 **`gambling-den`**
 - Prompt: "The stranger's already shuffling for the next mark before you've finished walking away."
 - curious: "You'd bet he's been doing this longer than the dungeon's been here." · wary: "Not worth sticking around to find out what a 2nd losing streak costs you." · dismissive: "A hustler's a hustler — nothing more mysterious than that."
+
+---
+
+## 8.17 Old Count (`old-count`) — *Common*
+
+> "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops in the middle, mid-stroke."
+
+No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Chest (§8.2): the flavor text shows first, a single confirm action grants the artifact. The confirm option reads **[1] Move on** (`EventDefinition.instantRewardActionLabel`) rather than "Open the chest" — there's nothing here shaped like a container. Confirming (`Game.openChest()`) grants 1 Artifact rolled on the standard rarity table, through the normal decision flow.
+
+**Cross-event variant**: once the party has resolved `open-chest` or `collapsed-floor` this run (either outcome, for `collapsed-floor`), the description gains a closing line — "You've started noticing these more, the deeper you go." (10-event-narrative.md Part C.1, pair 13; see §8.15's cross-event-continuity paragraph for the resolution mechanism).
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.18 Doubled Back (`doubled-back`) — *Common*
+
+> "Footprints lead into this room and stop. None lead back out. The room is empty, and there's nowhere else they could have gone."
+
+Same shape as §8.17 — **[1] Move on**, 1 Artifact on the standard table.
+
+**Cross-event variant**: same trigger as Old Count — `open-chest` or `collapsed-floor` resolved this run — the description gains "You're starting to lose count of how many." (Part C.1 pair 12).
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.19 The Delay (`the-delay`) — *Common*
+
+> "Still water pools at the edge of the room, dark enough to mirror the torchlight. Your reflection catches up to you a half-second late, every time you move."
+
+Same shape as §8.17/§8.18 — **[1] Move on** — but **`noArtifactReward: true`**: no Artifact at all, pure information. Along with `still-breathing`, the 2nd event in the game with no reward attached; converted from a standard-table roll specifically to cut down on common-tier events reading as an unbroken loot piñata (10-event-narrative.md Part A) — every anomaly in the dungeon doesn't need to pay out.
+
+**No cross-event variant, deliberately** — no institution, no recurring character, no remnant-of-a-person framing. The plainest possible "this place doesn't fully obey physics" moment, kept isolated on purpose as the template for any future event that needs no Covenant/lore baggage at all (10-event-narrative.md Part C.5).
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.20 Waiting Supplies (`waiting-supplies`) — *Common*
+
+> "A bundle sits wrapped and tied at the base of the wall, exactly where someone would leave it to come back for later. The rope is knotted tight, in a careful, deliberate pattern. Nobody's coming back for this."
+
+Same shape as §8.17-8.19 — **[1] Move on** — but `guaranteedArtifactId: "travelers-ration"` rather than a standard-table roll: the reward is specifically the bundle described in the scene, not an unrelated artifact pulled from nowhere (10-event-narrative.md Part A).
+
+**Cross-event variant**: once the party has resolved `merchant` this run (any outcome), the rope's knot reads as "the same careful knot you've started to recognize" — the only tie between this event and the Merchant's spiral motif (Part C.1 pair 11). Without that prior visit, the base line above carries no such recognition.
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.21 Vigil (`vigil-candle`) — *Rare*
+
+> "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it: folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left it there isn't coming back for it."
+
+No combat. Same **[1] Move on** confirm as §8.17-8.20, but gated: `minFloorDepth: 15` (never rolled before floor 15) and `onceLifetime: true` (excluded from the roll pool for the rest of the run once it fires, tracked in `GameState.firedOnceEventIds`). The Artifact sits *in* the scene — mechanically identical to Open Chest's grant, framed as an offering left beside the candle rather than a separate loot beat.
+
+**No cross-event variant, deliberately unconnected** — the first depth-gated event a run can reach, kept as pure atmosphere rather than evidence (10-event-narrative.md Part B.2, Thread 5).
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.22 Broken Seal (`broken-seal`) — *Rare*
+
+> "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
+
+Same shape as §8.21 — **[1] Move on**, `minFloorDepth: 15`, `onceLifetime: true`, 1 Artifact on the standard table.
+
+**Cross-event variant, 2 independent readings of the same base scene** (Part C.1 pairs 14/15 — array order matters, 1st match wins):
+- If the party has resolved `blood-altar` (paid) or `sacrificial-circle` (sacrificed) this run: "...The chain wasn't unlocked. It was torn from the outside, by something that wanted in."
+- Else if the party has resolved `guardian-fight` or `desecrated-altar` this run: "...It was torn from the inside, by something that wanted out."
+- Otherwise: the base scene above, no interpretation added.
+
+The 2 readings are opposite on purpose — identical physical evidence, read through whichever side of the containment/communion split (§8.13) the party's own recent choices lean toward. Neither reading is ever confirmed correct, and neither can fire alongside the other in the same room.
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.23 Half a Warning (`half-a-warning`) — *Rare*
+
+> "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
+
+Same shape as §8.21/§8.22 — **[1] Move on**, `minFloorDepth: 35`, `onceLifetime: true`, 1 Artifact on the standard table.
+
+The first non-institutional evidence of the containment/communion schism (§8.13) the party can find — a personal testimony, not a ritual object or a Covenant ward. Echoes forward once resolved: `blood-altar` (§8.5) gains a closing line on the party's next visit — "You hesitate half a step longer than you used to, before your hand decides for you." The warning doesn't stop the drift described in §8.15's chain escalations; it only adds a beat of resistance before the same reflex wins anyway.
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.24 Still Breathing (`still-breathing`) — *Rare*
+
+> "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it the exact same way as every mark you've traded for this whole run."
+
+`minFloorDepth: 70`, `onceLifetime: true` — the deepest-gated event in the game and, by design, the rarest a player will ever actually see. **`noArtifactReward: true`** — confirming (**[1] Move on**) grants nothing at all, no artifact, no stat effect of any kind. 2 mechanical rewards were tried and cut during design (a guaranteed Epic, then a fear-relief effect): a reveal this strong doesn't need one, and needing one would itself be a sign the reveal wasn't landing.
+
+The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.4) gains a closing line on the party's next visit — "You don't look at the cloth the way you used to."
+
+**No recurring NPC, no chain.** **Reflection**: see §8.16.

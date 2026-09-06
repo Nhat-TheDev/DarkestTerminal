@@ -1,6 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
 import { spawnMonster, getMonsterSkill, getArchetype } from "../src/data/monsters";
+import { createFloor } from "../src/data/floor";
+import { Rng } from "../src/engine/rng";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
 describe("elite/boss skill kit", () => {
@@ -117,6 +119,73 @@ describe("elite/boss skill kit", () => {
     }
     expect(found).toBe(true);
   });
+
+  test("every monster skill log line derives from the skill's own target, not from which weight key rolled it", () => {
+    // Single-target skills all name their target now, whatever tier or weight key produced them —
+    // a plain monster's skill and a boss's debuff used to print without one.
+    const lines: string[] = [];
+    for (let seed = 0; seed < 40; seed++) {
+      for (const [id, tier] of [["dungeon-rat", "normal"], ["skeleton-guard", "boss"]] as const) {
+        const { ctx } = makeCtx(seed);
+        const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
+        monster.executeCooldownTurns = 99;
+        ctx.monsters.push(monster);
+        const combat = startCombat("r1", [monster.id], ctx, false);
+        queueTrivialActions(ctx, combat);
+        resolveRound(combat, ctx);
+        lines.push(...combat.log.map((l) => l.text));
+      }
+    }
+    const bite = lines.find((l) => l.includes("uses Bite"));
+    const crush = lines.find((l) => l.includes("uses Crush"));
+    const cleave = lines.find((l) => l.includes("Sweeping Cleave"));
+    expect(bite).toMatch(/^Dungeon Rat uses Bite on .+\.$/);
+    expect(crush).toMatch(/^Skeleton Guard \(Boss\) uses Crush on .+\.$/);
+    expect(cleave).toBe("Skeleton Guard (Boss) uses Sweeping Cleave, sweeping the whole party!");
+  });
+
+  test("the-founder carries the full strike/cleave/execute/debuff kit, weighted for boss tier only", () => {
+    const founder = getArchetype("the-founder");
+    expect(founder.eliteSkillIds).toEqual({ strike: "elite-strike-the-founder", cleave: "elite-cleave-the-founder" });
+    expect(founder.bossSkillIds).toEqual({ execute: "boss-execute-the-founder", debuff: "boss-debuff-the-founder" });
+    expect(getMonsterSkill("elite-strike-the-founder").target).toBe("singleEnemy");
+    expect(getMonsterSkill("elite-cleave-the-founder").target).toBe("allEnemies");
+    expect(founder.actionWeights?.boss).toEqual({ basicAttack: 30, strike: 20, cleave: 15, debuff: 35 });
+    // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
+    expect(founder.actionWeights?.elite).toBeUndefined();
+  });
+
+  test("the-founder actually reaches its strike and cleave in combat", () => {
+    const seen = new Set<string>();
+    for (let seed = 0; seed < 80 && seen.size < 2; seed++) {
+      const { ctx } = makeCtx(seed);
+      const monster = spawnMonster("the-founder", 1, { tier: "boss" });
+      ctx.monsters.push(monster);
+      const combat = startCombat("r1", [monster.id], ctx, false);
+      for (let round = 0; round < 6 && seen.size < 2; round++) {
+        // Execute charges/releases on its own cycle and bypasses the weighted pool entirely;
+        // hold it off so every boss turn goes through pickMonsterAction().
+        monster.executeCooldownTurns = 99;
+        monster.isChargingExecute = false;
+        queueTrivialActions(ctx, combat);
+        resolveRound(combat, ctx);
+        if (combat.log.some((l) => l.text.includes("Paid In Full"))) seen.add("strike");
+        if (combat.log.some((l) => l.text.includes("The Same Price"))) seen.add("cleave");
+      }
+    }
+    expect(seen).toEqual(new Set(["strike", "cleave"]));
+  });
+
+  test("the-founder is scriptedOnly — it never appears in a rolled boss room", () => {
+    expect(getArchetype("the-founder").scriptedOnly).toBe(true);
+    for (let seed = 0; seed < 200; seed++) {
+      // Depth 10 is a boss-tier floor; depth 5 rolls the same pool at elite tier.
+      for (const depth of [5, 10]) {
+        const { monsters } = createFloor(new Rng(seed), depth);
+        expect(monsters.some((m) => m.archetypeId === "the-founder")).toBe(false);
+      }
+    }
+  });
 });
 
 
@@ -221,6 +290,32 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
     resolveRound(combat, ctx);
     expect(getArchetype("zombie-knight").skillIds).toEqual([]);
     expect(knight.hp).toBe(hpBefore);
+  });
+
+  test("a self-targeted monster skill rolled from the weighted pool heals the monster, never the party", () => {
+    // Regeneration sits at weight 0 today, but the rebalance editor exists to change exactly that:
+    // its PATCH endpoint allows any key already present, and "skill" is present at 0. Before this
+    // was fixed, raising it made the Zombie heal a party member instead of itself.
+    const zombieArchetype = getArchetype("zombie");
+    const originalWeights = { ...zombieArchetype.actionWeights!.normal };
+    zombieArchetype.actionWeights!.normal = { basicAttack: 0, skill: 100 };
+    try {
+      const { ctx } = makeCtx();
+      const zombie = spawnInto(ctx, "zombie");
+      zombie.hp = Math.floor(zombie.maxHp * 0.5);
+      for (const c of ctx.party) c.hp = Math.max(1, c.maxHp - 40);
+      const partyHpBefore = ctx.party.map((c) => c.hp);
+      const monsterHpBefore = zombie.hp;
+
+      const combat = startCombat("r1", [zombie.id], ctx, false);
+      resolveRound(combat, ctx);
+
+      expect(combat.log.some((l) => l.text.includes("Regeneration"))).toBe(true);
+      expect(zombie.hp).toBeGreaterThan(monsterHpBefore);
+      expect(ctx.party.map((c) => c.hp)).toEqual(partyHpBefore);
+    } finally {
+      zombieArchetype.actionWeights!.normal = originalWeights;
+    }
   });
 
   test("the low-HP self-skill branch only applies at normal tier", () => {

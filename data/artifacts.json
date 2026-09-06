@@ -1,32 +1,32 @@
 [
-  { "id": "iron-gauntlet", "name": "Iron Gauntlet", "description": "A weathered iron gauntlet, once belonging to a nameless warrior.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 3 }] },
-  { "id": "worn-wooden-shield", "name": "Worn Wooden Shield", "description": "A wooden shield scarred with countless blade marks, yet still sturdy.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
-  { "id": "charm-of-life", "name": "Charm of Life", "description": "A heart-shaped charm, strangely warm when held close.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 20 }] },
-  { "id": "small-mana-gem", "name": "Small Mana Gem", "description": "A small gem giving off a soft glow, its inner current of energy never fading.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
-  { "id": "sharp-claw", "name": "Sharp Claw", "description": "A monster's claw honed into a secondary weapon.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
-  { "id": "stone-of-endurance", "name": "Stone of Endurance", "description": "A heavy stone etched with ancient runes, giving off a strange sense of steadiness.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
-  { "id": "ring-of-focus", "name": "Ring of Focus", "description": "A silver ring that calms the mind, making it easier to reach for magic.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
-  { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "A necklace forged from monster fangs, a symbol of a battle once won.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
-  { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "A pendant engraved with a crescent moon, radiating calm amid the dark.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
-  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "A small pouch of dried rations always kept close, its very presence steadying the mind for the road ahead.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 15 }] },
+  { "id": "iron-gauntlet", "name": "Iron Gauntlet", "description": "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 3 }] },
+  { "id": "worn-wooden-shield", "name": "Worn Wooden Shield", "description": "Every scar on it came from a blow meant for someone standing behind the one holding it — nobody's kept count of how many times that worked.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 3 }] },
+  { "id": "charm-of-life", "name": "Charm of Life", "description": "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled. Nobody who's held it since has cared about the difference.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 20 }] },
+  { "id": "small-mana-gem", "name": "Small Mana Gem", "description": "'Guard it with your life,' a spellcaster told their apprentice. The apprentice took the instruction more literally than anyone expected.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 10 }] },
+  { "id": "sharp-claw", "name": "Sharp Claw", "description": "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Mounting it was somebody else's job entirely — bringing it down was somebody else's again.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 4 }] },
+  { "id": "stone-of-endurance", "name": "Stone of Endurance", "description": "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 30 }] },
+  { "id": "ring-of-focus", "name": "Ring of Focus", "description": "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 15 }] },
+  { "id": "warriors-necklace", "name": "Warrior's Necklace", "description": "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
+  { "id": "pendant-of-calm", "name": "Pendant of Calm", "description": "'I won't need calm where I'm headed,' they said, handing it back before they left. Nobody who was there wanted to ask what they meant.", "rarity": "common", "effects": [{ "kind": "fearResist", "percent": 10 }] },
+  { "id": "travelers-ration", "name": "Traveler's Ration", "description": "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 15 }] },
 
-  { "id": "ancient-sword", "name": "Ancient Sword", "description": "An ancient sword with a faded engraving no one has managed to read.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
-  { "id": "heart-of-stone", "name": "Heart of Stone", "description": "A heart-shaped piece of stone, ice-cold yet it makes its bearer unyielding.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
-  { "id": "eternal-vial", "name": "Eternal Vial", "description": "A glass vial holding a liquid that never runs dry, a current of life swirling within.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
-  { "id": "arcane-core", "name": "Arcane Core", "description": "A crystallized core of arcane energy, humming as if whispering incantations.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
-  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Armor bristling with outward-facing thorns, rusted brown at the tips.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
-  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "An ancient dagger whose venom has soaked deep into every layer of steel, never fading.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
-  { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "A razor-sharp fang that drains a bit of life force with every bite that lands.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
-  { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "A pair of boots as light as a feather, footsteps barely touching the ground.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
-  { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "A hastily carved rune that shortens the lull between two skill casts.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
+  { "id": "ancient-sword", "name": "Ancient Sword", "description": "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. They never finished. The blade outlived the theory.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 8 }] },
+  { "id": "heart-of-stone", "name": "Heart of Stone", "description": "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. They were very convincing about it, right up until they weren't.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
+  { "id": "eternal-vial", "name": "Eternal Vial", "description": "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
+  { "id": "arcane-core", "name": "Arcane Core", "description": "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
+  { "id": "thorned-armor", "name": "Thorned Armor", "description": "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
+  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
+  { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. Everyone who heard it agreed, mostly just to end the conversation.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
+  { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
+  { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
 
-  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A cloak studded with iron spikes, heavy enough to drag on the ground.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
-  { "id": "serpent-ring", "name": "Serpent Ring", "description": "A ring carved into a coiled serpent, its hidden fangs still dripping venom.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
-  { "id": "thunder-totem", "name": "Thunder Totem", "description": "A totem carved with a lightning bolt, occasionally discharging a jolt of electricity on its own.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
+  { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
+  { "id": "serpent-ring", "name": "Serpent Ring", "description": "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
+  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
   {
     "id": "armor-of-wholeness",
     "name": "Armor of Wholeness",
-    "description": "A suit of armor without a single crack, as if it had never tasted battle.",
+    "description": "Made for someone who never got the chance to wear it into anything worth calling a battle. It still fits like it's waiting for them to come back and finish that first one.",
     "rarity": "unique",
     "effects": [
       { "kind": "statBoost", "stat": "attack", "amount": 6 },
@@ -34,14 +34,14 @@
       { "kind": "statBoost", "stat": "maxHp", "amount": 40 }
     ]
   },
-  { "id": "bloodthirsty-blade", "name": "Bloodthirsty Blade", "description": "A blood-thirsty blade that seems to grow stronger with every strike.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
-  { "id": "phantom-step", "name": "Phantom Step", "description": "A pair of mist-shrouded boots, each step leaving a faint afterimage to throw off incoming attacks.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
-  { "id": "scholars-insight", "name": "Scholar's Insight", "description": "A dungeon scholar's notebook, meticulously recording the fastest ways to learn from every battle.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
+  { "id": "bloodthirsty-blade", "name": "Bloodthirsty Blade", "description": "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it.", "rarity": "unique", "effects": [{ "kind": "lifesteal", "percent": 10 }] },
+  { "id": "phantom-step", "name": "Phantom Step", "description": "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. They got exactly what they asked for. Nobody's sure they were glad they did.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 12 }] },
+  { "id": "scholars-insight", "name": "Scholar's Insight", "description": "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 15 }] },
 
   {
     "id": "crown-of-destruction",
     "name": "Crown of Destruction",
-    "description": "The cracked crown of a fallen tyrant, still echoing with a hunger for destruction.",
+    "description": "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask.",
     "rarity": "epic",
     "effects": [
       { "kind": "autoDamage", "amount": 12 },
@@ -51,7 +51,7 @@
   {
     "id": "immortal-heart",
     "name": "Immortal Heart",
-    "description": "A heart, severed from its body long ago, that still beats in your hand.",
+    "description": "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor.",
     "rarity": "epic",
     "effects": [
       { "kind": "reflectDamage", "percent": 15 },
@@ -62,7 +62,7 @@
   {
     "id": "reapers-covenant",
     "name": "Reaper's Covenant",
-    "description": "A pact with death itself — every life claimed returns a share of vitality to its bearer.",
+    "description": "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to.",
     "rarity": "epic",
     "effects": [
       { "kind": "healOnKill", "amount": 25 },
@@ -72,7 +72,7 @@
   {
     "id": "eternal-scholars-tome",
     "name": "Eternal Scholar's Tome",
-    "description": "An ancient tome that never grows old, every page teaching a wiser way to fight.",
+    "description": "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why.",
     "rarity": "epic",
     "effects": [
       { "kind": "expBoost", "percent": 25 },
@@ -83,7 +83,7 @@
   {
     "id": "blackened-locket",
     "name": "Blackened Locket",
-    "description": "A locket shrouded in black smoke. Open it and there's nothing inside but cold.",
+    "description": "It used to hold a portrait. The photo got burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -94,7 +94,7 @@
   {
     "id": "shackle-of-hunger",
     "name": "Shackle of Hunger",
-    "description": "A rusted shackle that gnaws at its wearer's guard, in exchange for a rage that's hard to contain.",
+    "description": "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -105,7 +105,7 @@
   {
     "id": "unstable-core",
     "name": "Unstable Core",
-    "description": "An unstable core of energy, shaking violently and drawing every hostile gaze toward its bearer.",
+    "description": "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
@@ -116,12 +116,31 @@
   {
     "id": "heavy-guilt",
     "name": "Heavy Guilt",
-    "description": "An invisible weight pressing down on the shoulders, making defensive moves slower and more careless.",
+    "description": "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse.",
     "rarity": "rare",
     "isCursed": true,
     "effects": [
       { "kind": "statBoost", "stat": "defense", "amount": -6 },
       { "kind": "lifesteal", "percent": 8 }
     ]
-  }
+  },
+
+  { "id": "worn-wedding-band", "name": "Worn Wedding Band", "description": "'A promise I intend to keep,' they used to say about it. By the end, they'd stopped explaining it to anyone — including themselves.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 25 }] },
+  { "id": "childs-whittled-horse", "name": "Child's Whittled Horse", "description": "Whittled by hands too unsteady for the job, for someone who wouldn't have cared about the wobble. It was never delivered. It stands anyway, the same as it was meant to.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 5 }] },
+  { "id": "bundle-of-undelivered-letters", "name": "Bundle of Undelivered Letters", "description": "Addressed to someone who was never told to expect them, tied with string by someone who kept meaning to send just 1 more before finally handing over the whole stack. The ink on top has blurred from handling, not weather — reread more than it was ever written.", "rarity": "unique", "effects": [{ "kind": "fearResist", "percent": 15 }] },
+
+  { "id": "half-a-chalice", "name": "Half a Chalice", "description": "Two people broke this in half on purpose, each taking the piece they thought proved they were right. Neither of them made it back down here to settle it.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 8 }] },
+  { "id": "torn-ritual-page", "name": "Torn Ritual Page", "description": "Torn free by the hand writing it, not by whoever found it after. The handwriting stays careful right up until it doesn't — like something interrupted the hand before it interrupted the thought.", "rarity": "unique", "effects": [{ "kind": "expBoost", "percent": 10 }] },
+  { "id": "snapped-ritual-blade", "name": "Snapped Ritual Blade", "description": "Forged for a single, specific cut nobody ever explained to whoever was meant to swing it. It snapped on the first and only attempt. Nobody's sure if that means it failed, or worked exactly as intended.", "rarity": "epic", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 15 }, { "kind": "cooldownReduction", "turns": 1 }] },
+
+  { "id": "guardians-unburnt-ember", "name": "Guardian's Unburnt Ember", "description": "Pulled from something that had stopped moving but hadn't quite finished burning — still warm on the way up, by whoever pulled it free. It's been cold in every hand since.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "defense", "amount": 8 }] },
+  { "id": "guardians-scale", "name": "Guardian's Scale", "description": "Pried loose from something nobody who was there could agree on the shape of, afterward. It's warm on 1 side no matter how it's turned, and hasn't matched a single thing anyone's fought since.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 12 }] },
+
+  { "id": "cracked-spiral-stone", "name": "Cracked Spiral Stone", "description": "Scratched into stone with something that wasn't a chisel, long before anyone down here started using one. This wasn't a copy of anything. Every spiral cut since has been copying this, several hands removed, and none of them know it.", "rarity": "unique", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 20 }] },
+  { "id": "fused-twin-coins", "name": "Fused Twin Coins", "description": "2 coins from 2 different people, melted together by something neither of them chose. One face stays closed in on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear either owner would have wanted them to.", "rarity": "epic", "effects": [{ "kind": "statBoost", "stat": "attack", "amount": 10 }, { "kind": "statBoost", "stat": "defense", "amount": 10 }] },
+  { "id": "waystone-shard", "name": "Waystone Shard", "description": "A shard of something that was never carved, only grown that way — smooth on every broken edge except where it snapped. This was already broken long before anyone started marking these walls with a spiral.", "rarity": "unique", "restrictedDropSources": ["boss", "blood-altar"], "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 10 }] },
+
+  { "id": "vigil-cloth", "name": "Vigil Cloth", "description": "Folded before it was ever set down, the way you'd fold something you meant to come back for. It got folded the same exact way every night — until the night nobody came back to unfold it again.", "rarity": "unique", "effects": [{ "kind": "fearResist", "percent": 15 }] },
+  { "id": "torn-lock-plate", "name": "Torn Lock-Plate", "description": "The other half of what was stamped into the seal — the half torn away, not the half still in the lock. Read together, the two halves would complete the spiral. Nobody's ever held both.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 10 }] },
+  { "id": "worn-chalk-stub", "name": "Worn Chalk Stub", "description": "Worn down to a nub, carving something into stone that should have taken half as long. Whatever hand held it needed to stay steady right up until it didn't.", "rarity": "unique", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] }
 ]

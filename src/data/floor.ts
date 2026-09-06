@@ -51,7 +51,7 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
 }
 
 const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => !a.guardOnly);
-const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds);
+const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.eliteSkillIds && a.bossSkillIds && !a.scriptedOnly);
 
 type PowerTier = NonNullable<MonsterArchetype["powerTier"]>;
 

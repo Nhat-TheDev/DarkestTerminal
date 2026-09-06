@@ -1,8 +1,8 @@
-import type { Character, Monster, MonsterArchetype, MonsterTier, CombatState, CombatantRef, SkillDefinition } from "../types";
+import type { Character, Monster, MonsterArchetype, MonsterTier, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
 import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
 import { BALANCE } from "../data/balanceConfig";
 import { rollDodge } from "./artifacts";
-import { resolveSkillEffect, rollHits } from "./resolver";
+import { resolveSkillEffect, rollHits, type Actor } from "./resolver";
 import { t } from "../data/strings";
 import { applyArtifactReflectDamage } from "./combatHooks";
 import { getActorByRef, livingCharacterRefs, hasStunningStatus, applySkillEffects, type EngineContext } from "./combat";
@@ -13,24 +13,51 @@ function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): 
   return pickAggroWeighted(livingChars, rng);
 }
 
-type MonsterAction = "basicAttack" | "skill" | "strike" | "cleave" | "debuff";
+type WeightKey = "basicAttack" | "skill" | "strike" | "cleave" | "debuff";
 
-function pickMonsterAction(archetype: MonsterArchetype, tier: MonsterTier, rng: Rng): MonsterAction {
+function pickMonsterAction(archetype: MonsterArchetype, tier: MonsterTier, rng: Rng): WeightKey {
   const weights = archetype.actionWeights?.[tier];
   if (!weights) return "basicAttack";
-  const candidates: [MonsterAction, number][] = [];
-  for (const [key, weight] of Object.entries(weights) as [MonsterAction, number | undefined][]) {
+  const candidates: [WeightKey, number][] = [];
+  for (const [key, weight] of Object.entries(weights) as [WeightKey, number | undefined][]) {
     if (!weight || weight <= 0) continue;
-    if (key === "skill" && archetype.skillIds.length === 0) continue;
-    if ((key === "strike" || key === "cleave") && !archetype.eliteSkillIds) continue;
-    if (key === "debuff" && !archetype.bossSkillIds) continue;
+    if (!hasSkillForWeightKey(archetype, key)) continue;
     candidates.push([key, weight]);
   }
   if (candidates.length === 0) return "basicAttack";
   return rng.weightedPick(candidates, ([, weight]) => weight)[0];
 }
 
-function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingChars: Character[], rng: Rng): Character[] {
+function hasSkillForWeightKey(archetype: MonsterArchetype, key: WeightKey): boolean {
+  if (key === "skill") return archetype.skillIds.length > 0;
+  if (key === "strike" || key === "cleave") return Boolean(archetype.eliteSkillIds);
+  if (key === "debuff") return Boolean(archetype.bossSkillIds);
+  return true;
+}
+
+/**
+ * The one place an action-weight key still means anything: which skill it names. Everything
+ * downstream — who it hits, how it reads in the log — comes from the skill itself, which is why
+ * strike/cleave/debuff/skill all resolve into a single branch below.
+ */
+function skillIdForWeightKey(archetype: MonsterArchetype, key: WeightKey, rng: Rng): Id {
+  if (key === "strike") return archetype.eliteSkillIds!.strike;
+  if (key === "cleave") return archetype.eliteSkillIds!.cleave;
+  if (key === "debuff") return archetype.bossSkillIds!.debuff;
+  return rng.pick(archetype.skillIds);
+}
+
+function monsterSkillLogLine(actor: Monster, skill: SkillDefinition, targets: Actor[]): string {
+  if (skill.target === "allEnemies") return t("combat.monsterSkillAoe", { actor: actor.name, skill: skill.name });
+  if (skill.target === "self") return t("combat.useSkillPlain", { actor: actor.name, skill: skill.name });
+  return t("combat.monsterSkillOnTarget", { actor: actor.name, skill: skill.name, target: targets[0]!.name });
+}
+
+function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingChars: Character[], rng: Rng): Actor[] {
+  // A monster's self-targeted skill (Regeneration, Guard Stance) has to land on the monster.
+  // Without this branch it falls through to the enemy case and the monster heals or buffs a
+  // party member instead — reachable the moment such a skill is given a non-zero action weight.
+  if (skill.target === "self") return [actor];
   if (skill.target === "allEnemies") return livingChars;
   return [pickMonsterTarget(actor, livingChars, rng)];
 }
@@ -80,31 +107,15 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     return;
   }
 
-  switch (pickMonsterAction(archetype, actor.tier, ctx.rng)) {
+  const weightKey = pickMonsterAction(archetype, actor.tier, ctx.rng);
+  switch (weightKey) {
+    case "skill":
+    case "strike":
+    case "cleave":
     case "debuff": {
-      const target = pickAggroWeighted(livingChars, ctx.rng);
-      const skill = getMonsterSkill(archetype.bossSkillIds!.debuff);
-      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
-      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
-      return;
-    }
-    case "cleave": {
-      const skill = getMonsterSkill(archetype.eliteSkillIds!.cleave);
-      combat.log.push({ text: t("combat.eliteCleave", { actor: actor.name, skill: skill.name }), kind: "attack" });
-      applySkillEffects(skill, actor, livingChars, combat, ctx, combat.log);
-      return;
-    }
-    case "strike": {
-      const target = pickMonsterTarget(actor, livingChars, ctx.rng);
-      const skill = getMonsterSkill(archetype.eliteSkillIds!.strike);
-      combat.log.push({ text: t("combat.eliteStrike", { actor: actor.name, skill: skill.name, target: target.name }), kind: "attack" });
-      applySkillEffects(skill, actor, [target], combat, ctx, combat.log);
-      return;
-    }
-    case "skill": {
-      const skill = getMonsterSkill(ctx.rng.pick(archetype.skillIds));
+      const skill = getMonsterSkill(skillIdForWeightKey(archetype, weightKey, ctx.rng));
       const targets = resolveMonsterSkillTargets(skill, actor, livingChars, ctx.rng);
-      combat.log.push({ text: t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }), kind: "info" });
+      combat.log.push({ text: monsterSkillLogLine(actor, skill, targets), kind: skill.target === "self" ? "info" : "attack" });
       applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
       return;
     }

@@ -15,6 +15,10 @@ export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifac
   state.message = t("game.sacrificeResult", { old: getArtifact(sacrificeArtifactId).name, new: getArtifact(newArtifactId).name });
   grantArtifact(state, newArtifactId);
   state.narrativeCounters.artifactsSacrificed += 1; // §10.3 Chain 2 — "The Circle Remembers"
+  // Part C.1 pairs 3/4/5/7/9/10 — written eagerly here, not in closeEvent(), since a visit can
+  // sacrifice multiple times before leaving; sacrificeLeave()'s later closeEvent() must not
+  // overwrite this with the generic "resolved" fallback.
+  state.eventOutcomes["sacrificial-circle"] = "sacrificed";
   return null;
 }
 
