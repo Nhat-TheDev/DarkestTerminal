@@ -12,7 +12,7 @@ import { GROWTH_WEIGHTS } from "../data/growthWeights";
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
 /** Net modifyCombatStat delta from the character's active status effects, so recomputeCharacterStats can rebuild `stat` from scratch without dropping them. */
-function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
+export function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
   let sum = 0;
   for (const active of character.activeStatusEffects) {
     for (const e of getStatusEffect(active.statusEffectId).perTurnEffects) {

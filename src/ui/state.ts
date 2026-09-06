@@ -47,6 +47,7 @@ export type UiState =
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
   | { kind: "abilityBuyback" }
+  | { kind: "characterInfo"; characterIndex: number; previousUi: UiState }
   | { kind: "gameover" };
 
 export const ARTIFACT_ICON = "✦";

@@ -53,6 +53,7 @@ import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 import * as abilityBuybackScreen from "./screens/abilityBuyback";
+import * as characterInfoScreen from "./screens/characterInfo";
 
 const LOG_HISTORY_SIZE = 20;
 const LOG_REVEAL_INTERVAL_MS = 800;
@@ -333,6 +334,14 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
+    if (
+      key.name === "b" &&
+      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+    ) {
+      this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
+      this.render();
+      return;
+    }
     if (key.name === "left" || key.name === "right") {
       const count = this.listCountFor(this.ui);
       if (count !== null) {
@@ -398,6 +407,9 @@ export class App implements ScreenContext {
         break;
       case "campReflection":
         campReflectionScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "characterInfo":
+        characterInfoScreen.handleKey(this, this.ui, key, digit);
         break;
       case "endingCheckpoint":
         endingScreen.handleKey(this, this.ui, key, digit);
@@ -868,6 +880,9 @@ export class App implements ScreenContext {
       case "campReflection":
         return campReflectionScreen.renderMain(this.game, this.ui);
 
+      case "characterInfo":
+        return characterInfoScreen.renderMain(this.game, this.ui);
+
       case "endingCheckpoint":
         return endingScreen.renderMain(this.game, this.ui);
 
@@ -925,6 +940,8 @@ export class App implements ScreenContext {
         return eventsScreen.renderFooter(this.ui);
       case "campReflection":
         return campReflectionScreen.renderFooter(this.ui);
+      case "characterInfo":
+        return characterInfoScreen.renderFooter(this.ui);
       case "endingCheckpoint":
         return endingScreen.renderFooter(this.ui);
       case "founderDialogue":
