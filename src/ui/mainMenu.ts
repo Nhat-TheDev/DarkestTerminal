@@ -1,5 +1,6 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
-import { PALETTE, boldColorChunk, colorChunk, joinLines } from "./theme";
+import { PALETTE, boldColorChunk, colorChunk, joinLines, highlightKeyHints } from "./theme";
+import { joinHints } from "./keyHints";
 import { renderBigTextStacked } from "./bigText";
 import { t } from "../data/strings";
 import { listSaves, APP_VERSION } from "../engine/save";
@@ -43,12 +44,23 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
 
     const hint = new TextRenderable(renderer, {
       id: "menu-hint",
-      content: joinLines([[colorChunk(t("mainMenu.pressAnyKey"), PALETTE.text)]]),
+      content: "",
       marginTop: 3,
     });
     root.add(hint);
 
     const hasSaves = listSaves().length > 0;
+
+    // Pre-game screens have no `App` footer bar, so they anchor their own in the same bottom-left
+    // spot the in-game one occupies — the key hints never move between screens.
+    const footer = new TextRenderable(renderer, {
+      id: "menu-footer",
+      content: joinLines([highlightKeyHints(t("mainMenu.pressAnyKey"))]),
+      position: "absolute",
+      left: 2,
+      bottom: 1,
+    });
+    root.add(footer);
 
     const buttonsRow = new BoxRenderable(renderer, {
       id: "menu-buttons",
@@ -75,16 +87,10 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
     buttonsRow.add(makeButton("menu-btn-new", t("mainMenu.newGameOption").trim()));
     if (hasSaves) buttonsRow.add(makeButton("menu-btn-continue", t("mainMenu.continueOption").trim()));
 
-    const chooseHint = new TextRenderable(renderer, {
-      id: "menu-choose-hint",
-      content: joinLines([[colorChunk(t("mainMenu.chooseHint"), PALETTE.dim)]]),
-      marginTop: 1,
-    });
-
     const showChoice = () => {
       hint.content = joinLines([[colorChunk(t("mainMenu.chooseTitle"), PALETTE.title)]]);
       root.add(buttonsRow);
-      root.add(chooseHint);
+      footer.content = joinLines([highlightKeyHints(joinHints(t("mainMenu.chooseHint"), hasSaves ? t("mainMenu.continueHint") : null))]);
 
       const onChoiceKey = (key: KeyEvent) => {
         if (key.name === "1") {

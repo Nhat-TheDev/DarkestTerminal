@@ -25,5 +25,5 @@ export function renderMain(game: Game, _ui: CampReflectionUiState): string {
 }
 
 export function renderFooter(_ui: CampReflectionUiState): string {
-  return t("ui.footerChoose");
+  return t("ui.footerCampReflection");
 }

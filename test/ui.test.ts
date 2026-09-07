@@ -230,7 +230,7 @@ describe("character info screen", () => {
     const opened = captureCharFrame();
     expect(opened).toContain("[2] Mage");
     expect(opened).toContain("Vanguard (Level 1 Vanguard)");
-    expect(opened).toContain("[1-4] Switch Character");
+    expect(opened).toContain("[1-4] Character");
 
     mockInput.pressKey("3");
     await renderOnce();

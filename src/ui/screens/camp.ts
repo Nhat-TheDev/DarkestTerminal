@@ -22,5 +22,5 @@ export function renderMain(game: Game, _ui: CampUiState): string {
 }
 
 export function renderFooter(_ui: CampUiState): string {
-  return t("ui.footerChoose");
+  return t("ui.footerCampPrompt");
 }

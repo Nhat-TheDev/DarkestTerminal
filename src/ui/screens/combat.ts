@@ -11,6 +11,7 @@ import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
 import { paginate } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
+import { digitHint } from "../keyHints";
 
 const COMBAT_STAT_LABEL: Record<string, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed" };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: "Fear", satiety: "Satiety" };
@@ -302,18 +303,24 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
   }
 }
 
-export function renderFooter(ui: CombatUiState): string {
+export function renderFooter(ui: CombatUiState, game: Game, page = 0): string {
   switch (ui.kind) {
+    // "Use item" stays on the list even with an empty bag (it renders with a "no items" tag), so
+    // the footer counts what the panel actually shows rather than hiding a visible option.
     case "pickAction":
-      return t("ui.footerChooseAction");
-    case "pickSkill":
-      return t("ui.footerChooseSkillEsc");
+      return digitHint("ui.footerChooseAction", 2);
+    case "pickSkill": {
+      const actor = getActorByRef(ui.actorRef, game.ctx) as Character;
+      return digitHint("ui.footerChooseSkillEsc", skillEntries(actor).length);
+    }
     case "skillDetail":
       return t("ui.footerSkillDetail");
-    case "pickItemInCombat":
-      return t("ui.footerChooseItemEsc");
+    case "pickItemInCombat": {
+      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
+      return digitHint("ui.footerChooseItemEsc", pageItems.length);
+    }
     case "pickTarget":
-      return t("ui.footerChooseTargetEsc");
+      return digitHint("ui.footerChooseTargetEsc", ui.candidates.length);
     case "roundResolved":
     case "combatOver":
       return t("ui.footerPressAnyKey");

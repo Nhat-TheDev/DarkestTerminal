@@ -21,5 +21,5 @@ export function renderMain(_game: Game, _ui: FounderDialogueUiState): string {
 }
 
 export function renderFooter(_ui: FounderDialogueUiState): string {
-  return t("ui.footerChoose");
+  return t("ui.footerFounderDialogue");
 }

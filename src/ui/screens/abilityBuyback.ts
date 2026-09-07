@@ -59,5 +59,5 @@ export function renderMain(game: Game): string {
 }
 
 export function renderFooter(): string {
-  return t("ui.footerChoose");
+  return t("ui.footerAbilityBuyback");
 }

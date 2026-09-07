@@ -3,6 +3,7 @@ import type { Game } from "../../engine/game";
 import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
+import { digitHint } from "../keyHints";
 import { getClass } from "../../data/classes";
 import { getArtifact } from "../../data/artifacts";
 import { getStatusEffect } from "../../data/statusEffects";
@@ -185,5 +186,5 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
 }
 
 export function renderFooter(_ui: CharacterInfoUiState, game: Game): string {
-  return t("ui.characterInfoFooter", { last: game.state.party.length });
+  return digitHint("ui.characterInfoFooter", game.state.party.length);
 }

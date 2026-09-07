@@ -7,6 +7,7 @@ import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { itemIcon, ARTIFACT_ICON, ABILITY_ICON } from "../state";
 import { paginate } from "../pagination";
+import { digitHint } from "../keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type RewardsUiState = Extract<UiState, { kind: "roomReward" }>;
@@ -80,6 +81,8 @@ export function renderMain(_game: Game, ui: RewardsUiState, page = 0): string {
   return lines.join("\n");
 }
 
-export function renderFooter(ui: RewardsUiState): string {
-  return ui.viewing ? t("ui.detailFooter") : t("ui.roomRewardFooter");
+export function renderFooter(ui: RewardsUiState, page = 0): string {
+  if (ui.viewing) return digitHint("ui.detailFooter", 1);
+  const { pageItems } = paginate(ui.entries, page);
+  return digitHint("ui.roomRewardFooter", pageItems.length);
 }

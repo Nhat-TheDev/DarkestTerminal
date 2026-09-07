@@ -5,6 +5,7 @@ import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { ownedArtifactEntries, ARTIFACT_ICON } from "../state";
 import { paginate } from "../pagination";
+import { digitHint } from "../keyHints";
 import type { ScreenContext } from "./context";
 
 export type ArtifactsUiState = Extract<UiState, { kind: "artifactMenu" } | { kind: "artifactDetail" }>;
@@ -60,11 +61,14 @@ export function renderMain(game: Game, ui: ArtifactsUiState, page = 0): string {
   }
 }
 
-export function renderFooter(ui: ArtifactsUiState): string {
+export function renderFooter(ui: ArtifactsUiState, game: Game, page = 0): string {
   switch (ui.kind) {
-    case "artifactMenu":
-      return t("ui.footerChooseArtifact");
+    case "artifactMenu": {
+      // The menu opens from the room even with nothing equipped, so an empty page really happens.
+      const { pageItems } = paginate(ownedArtifactEntries(game.state.party), page);
+      return digitHint("ui.footerChooseArtifact", pageItems.length);
+    }
     case "artifactDetail":
-      return t("ui.detailFooter");
+      return digitHint("ui.detailFooter", 1);
   }
 }

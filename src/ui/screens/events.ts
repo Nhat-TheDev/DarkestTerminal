@@ -10,6 +10,7 @@ import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
+import { digitHint } from "../keyHints";
 import { truncateText } from "../layout";
 import { paginate, PAGE_SIZE } from "../pagination";
 import type { ScreenContext } from "./context";
@@ -387,23 +388,44 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
   }
 }
 
-export function renderFooter(ui: EventUiState): string {
+export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
+  const s = game.state;
   switch (ui.kind) {
     case "eventHpGamblePickPayer":
-      return t("ui.footerChooseCharacter");
-    case "eventOpenChest":
-    case "eventMerchant":
-    case "eventArtifactPick":
-      return t("ui.footerChoose");
-    case "eventCursedShrine":
+      return digitHint("ui.footerChooseCharacter", s.party.length);
+    case "eventMerchant": {
+      // The offer detail is its own Buy/Cancel view, and `[r]` is only worth advertising while the
+      // visit still has a refresh left (see `merchantRefresh`).
+      if (ui.viewingOfferIndex !== null) return digitHint("ui.detailFooter", 2);
+      // Every offer is numbered, plus a trailing "Leave empty-handed".
+      const options = (s.activeEvent?.offerArtifactIds.length ?? 0) + 1;
+      return digitHint((s.activeEvent?.refreshCount ?? 0) >= MERCHANT_MAX_REFRESHES ? "ui.footerChoose" : "ui.footerMerchant", options);
+    }
+    case "eventArtifactPick": {
+      // The sacrifice list keeps its last slot for "leave the ritual", so it is never empty.
+      const { pageItems } = paginate(ownedArtifactEntries(s.party), page, SACRIFICE_PAGE_SIZE);
+      return digitHint("ui.footerChoose", pageItems.length + 1);
+    }
+    case "eventHermitPickArtifact": {
+      const { pageItems } = paginate(ownedArtifactEntries(s.party), page);
+      return digitHint("ui.footerChooseArtifact", pageItems.length);
+    }
+    case "eventGuardianFight": {
+      // Past the forced threshold the Skip option is not offered at all — §10.3 Chain 1.
+      const room = getRoom(s.floor, s.currentRoomId);
+      const forced = room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3";
+      return digitHint("ui.footerChoose", forced ? 1 : 2);
+    }
     case "eventTwinAltars":
+      return digitHint("ui.footerChoose", s.activeEvent?.offerArtifactIds.length ?? 0);
+    case "eventOpenChest":
+      return digitHint("ui.footerChoose", 1);
+    case "eventReflection":
+      return digitHint("ui.footerChoose", 3);
+    case "eventCursedShrine":
     case "eventHpGamble":
     case "eventGamblingDen":
     case "eventHermit":
-    case "eventGuardianFight":
-    case "eventReflection":
-      return t("ui.footerChoose");
-    case "eventHermitPickArtifact":
-      return t("ui.footerChooseArtifact");
+      return digitHint("ui.footerChoose", 2);
   }
 }

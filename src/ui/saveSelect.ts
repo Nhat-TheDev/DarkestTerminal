@@ -1,5 +1,6 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
+import { withPageHint, digitHint } from "./keyHints";
 import { t } from "../data/strings";
 import { listSaves, QUICKSAVE_ID, AUTOSAVE_ID, type SaveMeta } from "../engine/save";
 import { paginate, pageCount, clampPage } from "./pagination";
@@ -30,6 +31,9 @@ export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> 
     const body = new TextRenderable(renderer, { id: "saveselect-body", content: "" });
     root.add(body);
 
+    const footer = new TextRenderable(renderer, { id: "saveselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
+    root.add(footer);
+
     const saves = listSaves();
     let page = 0;
 
@@ -49,9 +53,11 @@ export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> 
         });
         if (pages > 1) lines.push([colorChunk(t("ui.pageIndicator", { page: p + 1, pages }), PALETTE.dim)]);
       }
-      lines.push([]);
-      lines.push(highlightKeyHints(t("saveSelect.hint")));
       body.content = joinLines(lines);
+      const shown = paginate(saves, page).pageItems.length;
+      footer.content = joinLines([
+        highlightKeyHints(withPageHint(digitHint("saveSelect.hint", shown), pageCount(saves.length) > 1)),
+      ]);
     }
     draw();
 

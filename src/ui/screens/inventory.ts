@@ -5,6 +5,7 @@ import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries, itemIcon } from "../state";
 import { paginate } from "../pagination";
+import { digitHint } from "../keyHints";
 import type { ScreenContext } from "./context";
 import { trySelectItem } from "./combat";
 
@@ -59,11 +60,14 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
   }
 }
 
-export function renderFooter(ui: InventoryUiState): string {
+export function renderFooter(ui: InventoryUiState, game: Game, page = 0): string {
   switch (ui.kind) {
-    case "pickItemOutOfCombat":
-      return t("ui.footerChooseItemEsc");
+    case "pickItemOutOfCombat": {
+      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
+      return digitHint("ui.footerChooseItemEsc", pageItems.length);
+    }
+    // Out of combat the detail view is back-only; in combat it also offers "Use".
     case "itemDetail":
-      return t("ui.detailFooter");
+      return digitHint("ui.detailFooter", ui.origin.kind === "combat" ? 2 : 1);
   }
 }
