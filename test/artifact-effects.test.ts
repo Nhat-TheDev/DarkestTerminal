@@ -93,8 +93,9 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.equippedArtifactIds.push("immortal-heart");
     expect(totalReflectDamagePercent(c)).toBe(15);
-    expect(artifactStatBoostSum(c).defense).toBe(10);
-    expect(artifactStatBoostSum(c).maxHp).toBe(60);
+    const base = { attack: c.attack, defense: c.defense, maxHp: c.maxHp, maxMp: c.maxMp };
+    expect(artifactStatBoostSum(c, base).defense).toBe(10);
+    expect(artifactStatBoostSum(c, base).maxHp).toBe(60);
 
     c.equippedArtifactIds.push("reapers-covenant");
     expect(totalHealOnKill(c)).toBe(25);

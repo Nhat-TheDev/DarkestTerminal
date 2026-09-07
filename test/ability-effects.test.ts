@@ -48,9 +48,9 @@ describe("Abilities: stat boosts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.equippedAbilityId = null;
-    expect(abilityWidenedStatBoost(c, "aggro")).toBe(0);
-    expect(abilityWidenedStatBoost(c, "speed")).toBe(0);
-    expect(abilityWidenedStatBoost(c, "magicPower")).toBe(0);
+    expect(abilityWidenedStatBoost(c, "aggro", c.aggro)).toBe(0);
+    expect(abilityWidenedStatBoost(c, "speed", c.speed)).toBe(0);
+    expect(abilityWidenedStatBoost(c, "magicPower", c.magicPower)).toBe(0);
     expect(alwaysHitChance(c)).toBe(0);
   });
 });

@@ -2,7 +2,13 @@
   {
     "id": "vanguard",
     "name": "Vanguard",
-    "description": "Tank, high durability, holds enemy aggro.",
+    "description": "Stand in front, take the hits, and keep the enemy looking at you instead of your healer. That's the whole job.",
+    "roleTags": [
+      "Tank",
+      "Taunt",
+      "Frontline",
+      "Party Buff"
+    ],
     "baseMaxHp": 140,
     "baseMaxMp": 22,
     "baseAttack": 14,
@@ -293,7 +299,13 @@
   {
     "id": "mage",
     "name": "Mage",
-    "description": "Ranged magic damage, fragile — fire/lightning/ice element.",
+    "description": "Bring the Mage to end a fight fast — fire, lightning, and ice hit like a truck. Just keep something between it and the enemy, because it won't survive many hits back.",
+    "roleTags": [
+      "Nuker",
+      "AoE",
+      "Elemental",
+      "Glass Cannon"
+    ],
     "baseMaxHp": 70,
     "baseMaxMp": 60,
     "baseAttack": 3,
@@ -628,7 +640,13 @@
   {
     "id": "rogue",
     "name": "Rogue",
-    "description": "Single-target burst, highest speed in the party.",
+    "description": "Moves before almost anyone else, drops one target hard, and is already gone before it can hit back.",
+    "roleTags": [
+      "Assassin",
+      "Single-Target Burst",
+      "Fastest",
+      "Poison"
+    ],
     "baseMaxHp": 110,
     "baseMaxMp": 40,
     "baseAttack": 17,
@@ -943,7 +961,13 @@
   {
     "id": "acolyte",
     "name": "Acolyte",
-    "description": "Healing + lowers fear for the whole party.",
+    "description": "Why your run doesn't end on floor two — keeps HP topped up and nerves steady when things get ugly.",
+    "roleTags": [
+      "Healer",
+      "Cleanser",
+      "Stress Care",
+      "Support"
+    ],
     "baseMaxHp": 90,
     "baseMaxMp": 50,
     "baseAttack": 6,
@@ -1274,7 +1298,13 @@
   {
     "id": "viking",
     "name": "Viking",
-    "description": "Hybrid physical/lightning berserker, high risk/extremely high damage.",
+    "description": "Trades safety for numbers — puts everything behind every swing and hopes the fight's over before its own HP is.",
+    "roleTags": [
+      "Bruiser",
+      "Berserker",
+      "AoE",
+      "High Risk"
+    ],
     "baseMaxHp": 100,
     "baseMaxMp": 30,
     "baseAttack": 18,
@@ -1602,7 +1632,13 @@
   {
     "id": "plague-doctor",
     "name": "Plague Doctor",
-    "description": "AoE debuffer/support, favors effects over raw damage.",
+    "description": "Doesn't need the first hit to win — poison, blindness, and toxic fog do the work over time, and it can patch the team up when nobody else can.",
+    "roleTags": [
+      "Debuffer",
+      "AoE Control",
+      "Damage Over Time",
+      "Off-Healer"
+    ],
     "baseMaxHp": 80,
     "baseMaxMp": 60,
     "baseAttack": 2,
@@ -2013,7 +2049,13 @@
   {
     "id": "archer",
     "name": "Archer",
-    "description": "Single-target damage, crowd control, critical hits, and stat debuffs.",
+    "description": "Every shot is built to land hard — high crit odds, an ambush shot that fires the instant something moves on it, and hits that leave the target weaker for whoever swings next.",
+    "roleTags": [
+      "Marksman",
+      "Single-Target Burst",
+      "Critical Hits",
+      "Crowd Control"
+    ],
     "baseMaxHp": 110,
     "baseMaxMp": 40,
     "baseAttack": 16,
@@ -2315,7 +2357,13 @@
   {
     "id": "ninja",
     "name": "Ninja",
-    "description": "Low raw damage, high utility — stealth, a real decoy clone, bleed stacking, and execute finishers on low-HP targets.",
+    "description": "Isn't built to overpower anything — disappear from the fight entirely, let a decoy clone take the hits instead, and let bleeding pile up until a finishing strike closes it out.",
+    "roleTags": [
+      "Stealth",
+      "Decoy",
+      "Bleed",
+      "Execute"
+    ],
     "baseMaxHp": 115,
     "baseMaxMp": 42,
     "baseAttack": 14,
@@ -2656,7 +2704,13 @@
   {
     "id": "summoner",
     "name": "Summoner",
-    "description": "Leans on minions (healing, tanking, damage) derived from its own stats rather than its own weak attack.",
+    "description": "Barely fights with its own hands — it summons something to take the hits, someone to patch the party up, and whatever's left over to hit back, each one shaped in its own image.",
+    "roleTags": [
+      "Minion Master",
+      "Versatile",
+      "Indirect Damage",
+      "AoE"
+    ],
     "baseMaxHp": 90,
     "baseMaxMp": 55,
     "baseAttack": 4,

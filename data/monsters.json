@@ -2,6 +2,7 @@
   {
     "id": "dungeon-rat",
     "name": "Dungeon Rat",
+    "description": "Fat, on a floor where nothing it eats fights back, and the sound of one moving is never the sound of only one.",
     "baseHp": 45,
     "baseAttack": 16,
     "baseDefense": 1,
@@ -23,6 +24,7 @@
   {
     "id": "black-bat",
     "name": "Black Bat",
+    "description": "Half a second against you is all it needs; nothing about it suggests it intends a second pass.",
     "baseHp": 42,
     "baseAttack": 15,
     "baseDefense": 1,
@@ -44,6 +46,7 @@
   {
     "id": "slime",
     "name": "Slime",
+    "description": "Some of what is inside it has not finished dissolving. It is near enough to the surface to identify.",
     "baseHp": 52,
     "baseAttack": 16,
     "baseDefense": 1,
@@ -65,6 +68,7 @@
   {
     "id": "goblin",
     "name": "Goblin",
+    "description": "Look for it once the shouting starts, somewhere behind you — it has no intention of meeting you at the front.",
     "baseHp": 40,
     "baseAttack": 18,
     "baseDefense": 1,
@@ -86,6 +90,7 @@
   {
     "id": "cultist-initiate",
     "name": "Cultist Initiate",
+    "description": "The robe was cut for someone taller. Nobody has offered to take it in. The initiate has stopped bringing it up.",
     "baseHp": 45,
     "baseAttack": 15,
     "baseDefense": 2,
@@ -107,6 +112,7 @@
   {
     "id": "ghoulish-crawler",
     "name": "Ghoulish Crawler",
+    "description": "Whatever it used to walk on, elbows and jaw do all the work now. The elbows are worn flat; the jaw is in worse condition.",
     "baseHp": 42,
     "baseAttack": 16,
     "baseDefense": 3,
@@ -128,6 +134,7 @@
   {
     "id": "vampire-bat",
     "name": "Vampire Bat",
+    "description": "Wide, patient circles, and it comes in only once someone is already bleeding. Until then it is easy to stop watching the ceiling.",
     "baseHp": 40,
     "baseAttack": 17,
     "baseDefense": 1,
@@ -149,6 +156,7 @@
   {
     "id": "toxic-toad",
     "name": "Toxic Toad",
+    "description": "Squat, slow, entirely unconcerned. Everything that ever bit one is somewhere behind you, not moving.",
     "baseHp": 48,
     "baseAttack": 14,
     "baseDefense": 2,
@@ -170,6 +178,7 @@
   {
     "id": "skeleton",
     "name": "Skeleton",
+    "description": "Whatever held it together in life is still holding, without needing the rest of the body for it, and it moves as though carrying a weight that has been gone a long while.",
     "baseHp": 55,
     "baseAttack": 16,
     "baseDefense": 4,
@@ -191,6 +200,7 @@
   {
     "id": "zombie",
     "name": "Zombie",
+    "description": "The wound you opened is already smaller. Nothing in its face changed before, during, or since; it comes on at the pace it started at.",
     "baseHp": 61,
     "baseAttack": 13,
     "baseDefense": 6,
@@ -212,6 +222,7 @@
   {
     "id": "snake",
     "name": "Snake",
+    "description": "You hear it after it has moved, never before. It goes for whoever stands furthest from the noise, then it is back under the stone before anyone has finished shouting.",
     "baseHp": 46,
     "baseAttack": 21,
     "baseDefense": 1,
@@ -233,6 +244,7 @@
   {
     "id": "lizard",
     "name": "Lizard",
+    "description": "Plated down the back and far quicker than the plating suggests, it bites once, hard, and is backing off before the blood has finished arriving.",
     "baseHp": 52,
     "baseAttack": 13,
     "baseDefense": 6,
@@ -254,6 +266,7 @@
   {
     "id": "spider",
     "name": "Spider",
+    "description": "You will have been in the web for some seconds before you feel any of it. The strands are strung at the height of a person walking with a torch held up.",
     "baseHp": 49,
     "baseAttack": 16,
     "baseDefense": 4,
@@ -275,6 +288,7 @@
   {
     "id": "goblin-shaman",
     "name": "Goblin Shaman",
+    "description": "A stick, with things tied to it, and it believes in the stick completely. Twice now the stick has answered. Nobody present wanted a third time.",
     "baseHp": 45,
     "baseAttack": 22,
     "baseDefense": 1,
@@ -296,6 +310,7 @@
   {
     "id": "cultist-zealot",
     "name": "Cultist Zealot",
+    "description": "It comes at the loudest of you first, in the open, with no arrangements made for afterwards. Nothing it wears is armour. Nothing it carries is meant to be brought home.",
     "baseHp": 55,
     "baseAttack": 20,
     "baseDefense": 2,
@@ -317,6 +332,7 @@
   {
     "id": "ghost",
     "name": "Ghost",
+    "description": "It comes through the part of the room you had written off as empty. The cold arrives before it and stays a moment after — both times holding the shape of a person standing still.",
     "baseHp": 45,
     "baseAttack": 18,
     "baseDefense": 1,
@@ -338,6 +354,7 @@
   {
     "id": "skeleton-mage",
     "name": "Skeleton Mage",
+    "description": "The jaw has no tongue behind it. The words arrive in order regardless. The pauses fall exactly where a living speaker would have needed to take breath.",
     "baseHp": 50,
     "baseAttack": 23,
     "baseDefense": 2,
@@ -359,6 +376,7 @@
   {
     "id": "dire-wolf",
     "name": "Dire Wolf",
+    "description": "It hunts as though there are others with it, and nobody gets a look behind it to check. The party spends the whole fight listening for a second set of claws that may never arrive.",
     "baseHp": 55,
     "baseAttack": 21,
     "baseDefense": 3,
@@ -380,6 +398,7 @@
   {
     "id": "swamp-slime",
     "name": "Swamp Slime",
+    "description": "Heavier and darker than the ones on the floors above, and slower to come apart. The smell of where it formed enters the room with it and is there after the room is empty.",
     "baseHp": 60,
     "baseAttack": 17,
     "baseDefense": 4,
@@ -401,6 +420,7 @@
   {
     "id": "fire-elemental",
     "name": "Fire Elemental",
+    "description": "The stone here has never once been dry, and this has been burning on it far longer than that should allow. Where it stands longest, the floor has gone white and thin.",
     "baseHp": 50,
     "baseAttack": 24,
     "baseDefense": 2,
@@ -422,6 +442,7 @@
   {
     "id": "water-elemental",
     "name": "Water Elemental",
+    "description": "Water has no reason to hold a shape, and this holds one. Cut it: the shape closes before you finish the swing, with whatever you cut into it still turning over further in.",
     "baseHp": 55,
     "baseAttack": 19,
     "baseDefense": 4,
@@ -443,6 +464,7 @@
   {
     "id": "gargoyle",
     "name": "Gargoyle",
+    "description": "It was part of the wall right up until it wasn't. None of you can now agree on whether the wall had one on it when you came in. The argument outlasts the fight.",
     "baseHp": 60,
     "baseAttack": 17,
     "baseDefense": 7,
@@ -464,6 +486,7 @@
   {
     "id": "skeleton-archer",
     "name": "Skeleton Archer",
+    "description": "It shoots from the back, at whoever is standing on their own. The drawing hand is worn smooth exactly where a living archer's calluses would sit — a great many years of doing it correctly, none of them recent.",
     "baseHp": 55,
     "baseAttack": 24,
     "baseDefense": 2,
@@ -485,6 +508,7 @@
   {
     "id": "skeleton-warrior",
     "name": "Skeleton Warrior",
+    "description": "It still fights as though the shield is on its arm. The bone is worn where the straps would have sat, and it gives ground in measured steps somebody once drilled into it — the same order every time.",
     "baseHp": 64,
     "baseAttack": 14,
     "baseDefense": 8,
@@ -506,6 +530,7 @@
   {
     "id": "skeleton-guard",
     "name": "Skeleton Guard",
+    "description": "It stands where it was put, by someone who is not anywhere now. It has not come off that spot for anything since. The floor around it is worn in a ring exactly as wide as its reach.",
     "baseHp": 66,
     "baseAttack": 20,
     "baseDefense": 10,
@@ -540,6 +565,7 @@
   {
     "id": "orc-brute",
     "name": "Orc Brute",
+    "description": "No feint, no footwork. Nothing it carries is sharp. It swings from the shoulder, and the second swing is already coming while the first is still landing.",
     "baseHp": 65,
     "baseAttack": 22,
     "baseDefense": 5,
@@ -561,6 +587,7 @@
   {
     "id": "wraith",
     "name": "Wraith",
+    "description": "The armour keeps its shape and none of its weight. It is through the front rank before the front rank has registered anything at all, touching neither of them on the way.",
     "baseHp": 55,
     "baseAttack": 25,
     "baseDefense": 2,
@@ -582,6 +609,7 @@
   {
     "id": "armored-beetle",
     "name": "Armored Beetle",
+    "description": "Plate overlapping the whole length of the back; a blade slides off it. The seam shows and closes inside the same movement, opening only when the beetle has decided it wants something.",
     "baseHp": 55,
     "baseAttack": 14,
     "baseDefense": 10,
@@ -603,6 +631,7 @@
   {
     "id": "cave-bear",
     "name": "Cave Bear",
+    "description": "It is bigger than the corridor it came out of, and it is not thin. Whatever it lives on down here has left marks on the walls at the height of its shoulder.",
     "baseHp": 70,
     "baseAttack": 23,
     "baseDefense": 5,
@@ -624,6 +653,7 @@
   {
     "id": "lesser-golem",
     "name": "Lesser Golem",
+    "description": "Stone cut roughly into the shape of somebody who works. It carries on past the point where a living thing would have stopped. Then past the point where it has arms left to carry on with.",
     "baseHp": 65,
     "baseAttack": 18,
     "baseDefense": 8,
@@ -645,6 +675,7 @@
   {
     "id": "mimic",
     "name": "Mimic",
+    "description": "The right sort of chest, in the right sort of corner, already in the room before you were, and every party that opened one had a reason ready for why this one was different.",
     "baseHp": 65,
     "baseAttack": 26,
     "baseDefense": 5,
@@ -666,6 +697,7 @@
   {
     "id": "giant-spider",
     "name": "Giant Spider",
+    "description": "The strands across the doorway are thick enough to lean on. What it has wrapped and set aside is overhead; enough of it has kept its shape that the limbs can be counted from where you are standing.",
     "baseHp": 50,
     "baseAttack": 29,
     "baseDefense": 5,
@@ -697,6 +729,7 @@
   {
     "id": "dragon",
     "name": "Dragon",
+    "description": "The heat is on the far wall before it is. Everything here that could burn has burned already, more than once, with enough time in between to grow back and be taken off again. It will grow back after this, too.",
     "baseHp": 65,
     "baseAttack": 24,
     "baseDefense": 7,
@@ -728,6 +761,7 @@
   {
     "id": "zombie-knight",
     "name": "Zombie Knight",
+    "description": "The armour was fitted to a body that has changed shape inside it since, and the fit is worse in the places you can see. It works through the guard positions in order, correctly, one into the next, and has never found the end of the sequence.",
     "baseHp": 60,
     "baseAttack": 19,
     "baseDefense": 10,
@@ -759,6 +793,7 @@
   {
     "id": "dark-knight",
     "name": "Dark Knight",
+    "description": "It salutes before it begins, to each of you, in turn. Then it fights like someone taught properly, who has had a very long time alone to keep the training up, against opponents who were never in the room.",
     "baseHp": 58,
     "baseAttack": 21,
     "baseDefense": 10,
@@ -790,6 +825,7 @@
   {
     "id": "the-founder",
     "name": "What's Left of Him",
+    "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
     "baseHp": 80,
     "baseAttack": 28,
     "baseDefense": 12,
@@ -817,6 +853,7 @@
   {
     "id": "orc-chieftain",
     "name": "Orc Chieftain",
+    "description": "The largest of them, wearing pieces of everything that ever tried to be larger. It watches you cross the whole room towards it and does not get up. Whatever it is waiting for, it is not waiting to be ready.",
     "baseHp": 75,
     "baseAttack": 26,
     "baseDefense": 8,
@@ -848,6 +885,7 @@
   {
     "id": "vampire-lord",
     "name": "Vampire Lord",
+    "description": "Dressed, and dressed well, for somewhere that stopped existing a long time ago. None of you hold its attention until one of you starts bleeding. After that, the rest of you could leave the room unnoticed.",
     "baseHp": 70,
     "baseAttack": 28,
     "baseDefense": 6,
@@ -879,6 +917,7 @@
   {
     "id": "void-amalgamation",
     "name": "Void Amalgamation",
+    "description": "Too many parts, none of them agreeing on which way is forward. You will recognise some of the parts. They are not arranged as they were on whoever was carrying them last, and two are still trying to do their old work.",
     "baseHp": 80,
     "baseAttack": 25,
     "baseDefense": 9,
@@ -910,6 +949,7 @@
   {
     "id": "ancient-golem",
     "name": "Ancient Golem",
+    "description": "Older than the cut of the stone around it, and standing here when these walls were something else entirely. Nobody has told it they changed. It still guards a doorway that is no longer in the wall.",
     "baseHp": 85,
     "baseAttack": 22,
     "baseDefense": 12,
@@ -941,6 +981,7 @@
   {
     "id": "lich",
     "name": "Lich",
+    "description": "The room is arranged before you reach it: where the cold sits, where the light does not go, where there is nothing to put your back against. It had the time, and it expected you; all that is left to settle is which of you goes down first.",
     "baseHp": 65,
     "baseAttack": 30,
     "baseDefense": 5,

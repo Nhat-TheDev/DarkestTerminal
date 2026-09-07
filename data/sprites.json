@@ -78,12 +78,12 @@
         "....CCCCC....",
         "...HHHHSSS...",
         "...HHHSSES...",
-        "...AABCBAA...",
-        "..AABCCCBAA..",
-        "..AAABCBAAA..",
-        "..SAABCBAAS..",
-        "...AABCBAA...",
-        "..AAABCBAAA.."
+        "...BBDCDBB...",
+        "..BBBDCDBBB..",
+        "..BBDCCCDBB..",
+        "..SAADCDAAS..",
+        "...AADCDAA...",
+        "..AAADCDAAA.."
       ],
       "palette": {
         "H": "#8a7050",
@@ -92,7 +92,8 @@
         "A": "#d4c05a",
         "C": "#fbf6e4",
         "N": "#4a4028",
-        "B": "#00eb71"
+        "B": "#19b866",
+        "D": "#43e000"
       }
     },
     "viking": {
@@ -153,13 +154,13 @@
       "rows": [
         "..JJJHHH.....",
         "..HHJJSSS....",
-        "..HHHSSES..F.",
-        "..AAICIAA.EF.",
-        ".AAAICIAAE.F.",
-        ".AAAICIAEB.F.",
-        ".SAICCCIESB..",
-        "..GGGGGGEF.D.",
-        "..GGG.GGF...."
+        "..HHHSSES.F..",
+        "..AAICIAAEF..",
+        ".AAAICIBEAF..",
+        ".AAAICIEBAF..",
+        ".SAICCCEAS...",
+        "..GGGGGEF.B..",
+        "..GGG.GFG..D."
       ],
       "palette": {
         "H": "#787573",
@@ -184,7 +185,7 @@
         "B.AAAACAAAD..",
         "BDAAAACAAABD.",
         ".BSCCCCCCDNND",
-        "...WWWWWWWDB.",
+        "..FWWWWWWWDB.",
         "...WWW.WWW.D."
       ],
       "palette": {
@@ -195,9 +196,10 @@
         "C": "#425767",
         "W": "#13132a",
         "G": "#bd1c00",
-        "N": "#bfbfbf",
+        "N": "#ededed",
         "B": "#ffffff",
-        "D": "#d9d9d9"
+        "D": "#d9d9d9",
+        "F": "#7a7257"
       }
     },
     "summoner": {
@@ -227,7 +229,7 @@
   "monsters": {
     "dungeon-rat": {
       "rows": [
-        "....AA......",
+        "....AO......",
         "OOSOOO......",
         ".OOOOOOO....",
         "..OOOOOOOO..",
@@ -235,10 +237,10 @@
         "...E.E.EETTT"
       ],
       "palette": {
-        "O": "#7a5230",
+        "O": "#05331b",
         "E": "#4a3320",
-        "S": "#2a1a10",
-        "T": "#c9a878",
+        "S": "#622804",
+        "T": "#857866",
         "A": "#807b6b"
       }
     },
@@ -528,190 +530,247 @@
     },
     "the-founder": {
       "rows": [
-        "...MMMMM...",
-        "..M.....M..",
-        ".M.......M.",
-        "M....M....M",
-        "M...M.M...M",
-        ".M.......M.",
-        "..M..M..M..",
-        "...M...M..."
+        "...MMMMMMMMM...",
+        "..MAMEEDEEMAM..",
+        ".MAAEEDFDEEAAM.",
+        ".MAAMEEDEEMAAM.",
+        ".MAMAAMAMAAMAM.",
+        "..MAAAMBMAAAM..",
+        "...MMM.B.MMM...",
+        ".....B.B.B.....",
+        "....B.B...B....",
+        ".....B........."
       ],
       "palette": {
-        "M": "#5a4a5e"
+        "M": "#5a4a5e",
+        "A": "#ababab",
+        "B": "#850000",
+        "C": "#c9a227",
+        "D": "#e00f00",
+        "E": "#d3d1ca",
+        "F": "#a34100"
       }
     },
     "goblin": {
       "rows": [
-        "...........",
-        "..G.....G..",
-        "..GGGGGGG..",
-        "..G.R.R.G..",
-        "...GGWGG...",
-        "..CCCCCCC..",
-        "..C.CCC.C..",
-        "...G...G..."
+        "..DG...GD....",
+        "..DGGGGGD....",
+        "...GRGRG.....",
+        "..GGGCGGG....",
+        ".GGGGGGGGG.EA",
+        ".G.GGGGG.GEAE",
+        ".G.GGGGG.GAEE",
+        ".G.BBBBB.A...",
+        "...BB.BBA....",
+        "...GG.GG....."
       ],
       "palette": {
         "G": "#6b8442",
         "R": "#c4471c",
-        "W": "#d8cfa8",
-        "C": "#4a4234"
+        "C": "#27231b",
+        "B": "#364e18",
+        "D": "#748764",
+        "A": "#2b2512",
+        "E": "#989486"
       }
     },
     "goblin-shaman": {
       "rows": [
-        "...........",
-        "....BBB..W.",
-        "..BBYYYBB.W",
-        "...BBBBB..W",
-        "..GGGGGG..W",
-        "..MMMMMM..W",
-        "..M.MMM.M..",
-        "...GG.GG..."
+        "..DG...GD....",
+        "..DHHHHHD....",
+        "...HRHRH.....",
+        "..FFHCHFF....",
+        ".GFFFFFFFG..A",
+        ".G.FFFFF.G.AA",
+        ".G.FGGGF.GA.A",
+        ".G.BBBBB.A...",
+        "...BB.BBA....",
+        "...GG.GA....."
       ],
       "palette": {
-        "B": "#3d5228",
-        "Y": "#c8b545",
-        "G": "#5f7a3a",
-        "M": "#2f3a4a",
-        "W": "#6b5330"
+        "G": "#6b8442",
+        "R": "#c4471c",
+        "C": "#27231b",
+        "B": "#364e18",
+        "D": "#748764",
+        "A": "#2b2512",
+        "E": "#989486",
+        "F": "#4c5c2d",
+        "H": "#254922"
       }
     },
     "orc-brute": {
       "rows": [
-        "..OOOOOOO..",
-        ".OOOOOOOOO.",
-        ".O.R.O.R.O.",
-        ".OOOWOWOOO.",
-        "LLLLLLLLLLL",
-        "LLLLLLLLLLL",
-        ".LLLLLLLLL.",
-        "..OOO.OOO..",
-        "..OO...OO.."
+        ".E.GGGGG.E...",
+        ".EGRCGCRGE...",
+        "..GGAAAGG....",
+        "BBBBGGGBBBB..",
+        "GBBBBBBBBBG..",
+        "GG.BBBBB.GG..",
+        "GG.GBBBG.GG.H",
+        "GG.DDDDDFFFFH",
+        "...DD.DD...HH",
+        "...GG.GG....."
       ],
       "palette": {
-        "O": "#4e6b35",
-        "R": "#a82a14",
-        "W": "#cfc6a0",
-        "L": "#5a4028"
+        "G": "#5d723c",
+        "R": "#c4471c",
+        "C": "#27231b",
+        "B": "#263710",
+        "D": "#16210d",
+        "A": "#3d2f00",
+        "E": "#989486",
+        "F": "#332c15",
+        "H": "#bcbbb8"
       }
     },
     "cultist-initiate": {
       "rows": [
-        "...........",
-        "....RRR....",
-        "...RKKKR...",
-        "...RKKKR...",
-        "..RRRRRRR..",
-        "..RRRRRRR..",
-        ".RRRRRRRRR.",
-        ".RR.....RR."
+        ".....RRR...",
+        "....RRR.R..",
+        "...RRKRR...",
+        "...RAKAR...",
+        "..RRKKKRR..",
+        ".RRRRBRRRR.",
+        "RRRRRBRRRRR",
+        ".K.RRBRR.K.",
+        "...RRBRR...",
+        "..RRRBRRR.."
       ],
       "palette": {
         "R": "#3a2f38",
-        "K": "#0e0b10"
+        "K": "#746d78",
+        "A": "#272007",
+        "B": "#352537"
       }
     },
     "cultist-zealot": {
       "rows": [
-        "...........",
-        "....CCC....",
-        "...CKKKC...",
-        "...CY.YC...",
-        "..CCCCCCC..",
-        ".CCCCCCCCC.",
-        "K.CCCCCCC.K",
-        ".CC.....CC.",
-        ".C.......C."
+        "....RRR....",
+        "...RRKRR...",
+        "...RAKAR...",
+        "C.RRKKKRR.C",
+        "CRRRRBRRRRC",
+        "CRRRRBRRRRC",
+        "DK.BBBBB.KD",
+        "...EE.EB...",
+        "...EF.FE...",
+        "...EE.EE..."
       ],
       "palette": {
-        "C": "#4a1f22",
-        "Y": "#d4c05a",
-        "K": "#0e0b10"
+        "R": "#3f2d21",
+        "K": "#88846d",
+        "A": "#7c2803",
+        "B": "#372525",
+        "C": "#d4d4d4",
+        "D": "#424242",
+        "E": "#453d21",
+        "F": "#383324"
       }
     },
     "ghost": {
       "rows": [
-        "...........",
-        "....PPP....",
-        "...PWWWP...",
-        "...P.W.P...",
-        "..PPPPPPP..",
-        "..PPPPPPP..",
-        "..P.PPP.P..",
-        "...P.P.P..."
+        ".....WWW.....",
+        "....WWWWW....",
+        "W..WWAWAWW..W",
+        "WW.WWPWPWW.WW",
+        "WWWWWWWWWWWWW",
+        "WWWWWWWWWWWWW",
+        "WCWWWWWWWWWCW",
+        ".CWCWWWWWCWC.",
+        "..W.WCWCW.W..",
+        "......W......"
       ],
       "palette": {
-        "P": "#8e9fb5",
-        "W": "#e8f2ff"
+        "P": "#434b56",
+        "W": "#172326",
+        "A": "#414248",
+        "C": "#0e2f2d"
       }
     },
     "wraith": {
       "rows": [
-        "...........",
-        "....AAA....",
-        "...AAAAA...",
-        "...A.P.A...",
-        "..AAAAAAA..",
-        ".AAAAAAAAA.",
-        "..AAAAAAA..",
-        "...A.A.A...",
-        "....A.A...."
+        ".....WWW.....",
+        "....WWWWW....",
+        "W..WWPPPWW..W",
+        "WW.WPAPAPW.WW",
+        "WWWWWPBPWWWWW",
+        "WWWWWWBWWWWWW",
+        "WCWWWWWWWWWCW",
+        ".CWCWWWWWCWC.",
+        "..W.WCWCW.W..",
+        "......W......"
       ],
       "palette": {
-        "A": "#3b3550",
-        "P": "#7fd8c8"
+        "P": "#6f7672",
+        "W": "#172623",
+        "A": "#770303",
+        "C": "#0e2f2c",
+        "B": "#9e2f00"
       }
     },
     "skeleton-mage": {
       "rows": [
-        ".....SSS...",
-        "...SS.S.SS.",
-        "....SS.SS..",
-        "..VVVVVVV.T",
-        "..VVVVVVV.T",
-        "..VVVVVVV.W",
-        "...VVVVV..W",
-        "....SS.SS.W",
-        "....SS.SS.W"
+        "...SSS...C.",
+        ".SS.S.SS.CC",
+        "..SS.SS..B.",
+        ".DDDDDDDDL.",
+        "DDDDDDDDDB.",
+        "DDDDDDDDDB.",
+        "DDDLLLDD.B.",
+        "D.LL.LL..B.",
+        "..LL.LL...."
       ],
       "palette": {
+        "H": "#3a3830",
         "S": "#c9c2b0",
-        "V": "#2b2340",
-        "T": "#6ea8c8",
-        "W": "#6b5330"
+        "A": "#5a5548",
+        "B": "#3a372e",
+        "L": "#8a8579",
+        "C": "#a2a4ae",
+        "D": "#20252d"
       }
     },
     "ghoulish-crawler": {
       "rows": [
-        ".............",
-        "...GGGG......",
-        "..G.R.RG.....",
-        "..GGGGGG.....",
-        ".GGGGGGGGGG..",
-        "G..GGGGGG..GG",
-        "....G..G....."
+        "......GGG......",
+        ".....GBGBG.....",
+        ".....GGCGG.....",
+        "..GGRGRRRGRGG..",
+        ".GRRRRGGGRRRRG.",
+        ".RR..RRGRR..RR.",
+        "AR...GR.RG...RA",
+        "A...EGG.GGE...A",
+        ".A..ED...DE..A.",
+        ".....A...A....."
       ],
       "palette": {
         "G": "#7d8168",
-        "R": "#b03018"
+        "R": "#97210c",
+        "A": "#bb0202",
+        "B": "#ffffff",
+        "C": "#0f0f0f",
+        "D": "#496e35",
+        "E": "#7f7657"
       }
     },
     "dire-wolf": {
       "rows": [
-        ".............",
-        "FF.......F...",
-        "FFFF.FFFFFFF.",
-        "FRFFFFFFFFFFF",
-        "FWFFFFFFFFFF.",
-        ".FFFFFFFFFF..",
-        "..F.F..F.F..."
+        "..........AA.",
+        "...WF......AA",
+        "..FRFFFFFF.AA",
+        "FFFFFFFFFFFFA",
+        "...BBFFFBBBF.",
+        "...B.C..CCBB.",
+        "..B.C...C.B.."
       ],
       "palette": {
         "F": "#4a4a52",
         "R": "#c4341c",
-        "W": "#d8d2c0"
+        "W": "#d8d2c0",
+        "A": "#6b6666",
+        "B": "#59565d",
+        "C": "#5f5c6a"
       }
     },
     "vampire-bat": {
@@ -733,252 +792,295 @@
     },
     "swamp-slime": {
       "rows": [
-        "...........",
-        "...MMMMM...",
-        "..MMMMMMM..",
-        ".MMEMMMEMM.",
-        "MMMMMMMMMMM",
-        ".MMMMMMMMM.",
-        "..M.M.M.M.."
+        ".........",
+        "...OOO...",
+        ".OOEOEOO.",
+        "OAOOEOAOO",
+        ".OAOOOOA."
       ],
       "palette": {
-        "M": "#4a5a2a",
-        "E": "#1a2410"
+        "E": "#12220c",
+        "O": "#334e2c",
+        "A": "#294922"
       }
     },
     "armored-beetle": {
       "rows": [
-        ".............",
-        "....HHHHH....",
-        "...HRKKKRH...",
-        "..HKKKHKKKH..",
-        ".HKKKKHKKKKH.",
-        "H.KKKKHKKKK.H",
-        "..H.H...H.H.."
+        "..............",
+        "H.H...........",
+        "HHH...........",
+        ".H.....BBBBBB.",
+        ".HHKKKBHHBHHHB",
+        "..KRKKHHBHHHBH",
+        "..KKKKBHBHBHHB",
+        "..K.K.HBHHHBHH",
+        "......A.A..A.A"
       ],
       "palette": {
         "H": "#2e2a24",
         "K": "#514738",
-        "R": "#a8341c"
+        "R": "#a8341c",
+        "A": "#0d3f13",
+        "B": "#351d0d"
       }
     },
     "cave-bear": {
       "rows": [
-        "..B.......B..",
-        ".BBBBBBBBBB..",
-        ".B.R.R.BBBBB.",
-        ".BBWBWBBBBBB.",
-        "BBBBBBBBBBBB.",
-        "BBBBBBBBBBBB.",
-        ".BBBBBBBBBB..",
-        "..BB....BB..."
+        "..DB.DB......",
+        ".BBBBBBB.....",
+        "ABWCBBBBEE...",
+        "BBBBBBBEEEE..",
+        "..EEEEEEEEEE.",
+        ".FFEEEDFFEEE.",
+        ".F.EEDDFDEEE.",
+        "...EEDDDDEE..",
+        "...EEDDDDEE..",
+        "...EE....EE.."
       ],
       "palette": {
-        "B": "#5a4028",
+        "B": "#434715",
         "R": "#c4341c",
-        "W": "#cfc6a0"
+        "W": "#cfc6a0",
+        "A": "#372a01",
+        "C": "#1e1906",
+        "D": "#805533",
+        "E": "#353f13",
+        "F": "#493f1d"
       }
     },
     "toxic-toad": {
       "rows": [
-        ".............",
-        "...TTTTTTT...",
-        "..TYTTTTTYT..",
-        ".TTTTTTTTTTT.",
-        ".TTVTTTTTVTT.",
-        "..TTTTTTTTT..",
-        ".TT.......TT."
+        "...........",
+        "...........",
+        "....ATTA...",
+        ".TYATTAVV..",
+        "TTAVVAVVVA.",
+        "...VA...AVV",
+        "..V...VVVV."
       ],
       "palette": {
         "T": "#5c7a3d",
-        "Y": "#d8d24a",
-        "V": "#8ab04a"
+        "Y": "#cc0000",
+        "V": "#6f8844",
+        "A": "#8e19b8"
       }
     },
     "fire-elemental": {
       "rows": [
-        "...........",
-        ".....Y.....",
-        "....YOY....",
-        "...YOROY...",
-        "..YOROROY..",
-        "..OORRROO..",
-        "...ORRRO...",
-        "....O.O...."
+        "....YY...YY....",
+        "..Y.YRY.YRY.Y..",
+        ".YOYYRRRRRYYOY.",
+        "YOROOOARAOOOROY",
+        "ORORROOROORRORO",
+        "OOYORROOORROYOO",
+        "YOYYORRORROYYOY",
+        ".OY.YYOROYY.YO.",
+        "..O...YOY...O..",
+        ".......Y......."
       ],
       "palette": {
         "Y": "#f0c040",
         "O": "#d05a18",
-        "R": "#8a1a0e"
+        "R": "#8a1a0e",
+        "A": "#0300b3"
       }
     },
     "water-elemental": {
       "rows": [
-        "...........",
-        "....BBB....",
-        "...BCCCB...",
-        "..BCC.CCB..",
-        "..BCCCCCB..",
-        "..BBCCCBB..",
-        "...BBBBB...",
-        "....B.B...."
+        ".....Y...Y.....",
+        "..Y.YRY.YRY.Y..",
+        ".YOYYRRRRRYYOY.",
+        "YOROOOARAOOOROY",
+        "ORORROOROORRORO",
+        "OOYORROOORROYOO",
+        "YOYYORRORROYYOY",
+        ".OY.YOOROOY.YO.",
+        "..O..YOOOY..O..",
+        "....YYOOOYY...."
       ],
       "palette": {
-        "B": "#1e3d52",
-        "C": "#4a90a8"
+        "Y": "#afb4f8",
+        "O": "#5754f2",
+        "R": "#400e8b",
+        "A": "#b30000"
       }
     },
     "lesser-golem": {
       "rows": [
-        "...........",
-        "....KKK....",
-        "....KKK....",
-        "KKKKKKKKKKK",
-        "KKKKGGGKKKK",
-        "KKKKGGGKKKK",
-        "KKKKKKKKKKK",
-        "..KKK.KKK..",
-        "..KK...KK.."
+        ".............",
+        "....SSSSS....",
+        "...SSGGGSS...",
+        ".SSSSSGSSSSS.",
+        ".SASSSSSSSAS.",
+        ".SS.SASAS.SS.",
+        ".KK.SASAS.KK.",
+        "....SS.SS....",
+        "....AA.AA....",
+        "....KK.KK...."
       ],
       "palette": {
         "K": "#4e4a44",
-        "G": "#7fd8a8"
+        "S": "#6b6560",
+        "G": "#7fd8a8",
+        "A": "#525b55"
       }
     },
     "gargoyle": {
       "rows": [
-        ".............",
-        "...S.....S...",
-        "A..SSSSSS..A.",
-        "AA.SRSSRS.AA.",
-        "AAASSSSSSAAA.",
-        ".AASSSSSSAA..",
-        "...SS.SS.....",
-        "...S...S....."
+        "A...........A",
+        "AA..S...S..AA",
+        "AAA.SSSSS.AAA",
+        ".AAASRSRSAAA.",
+        "..SBSSSSSBS..",
+        ".SSSBSBSBSSS.",
+        ".B..SBSBS..B.",
+        "...SBSSSBS...",
+        "...SS...SS...",
+        "....B...B...."
       ],
       "palette": {
         "S": "#5e5a52",
         "A": "#3a3832",
-        "R": "#8ad8b0"
+        "R": "#8ad8b0",
+        "B": "#474e46"
       }
     },
     "mimic": {
       "rows": [
         ".............",
-        "..WWWWWWWWW..",
-        ".WWWWWWWWWWW.",
-        ".WTTWTTWTTWW.",
-        ".WWRRRRRRRWW.",
-        ".WTTWTTWTTWW.",
-        ".WWWWWWWWWWW.",
-        "..W.......W.."
+        "..CCCCCCCCC..",
+        ".CWWCBABCWWC.",
+        ".CWWCWCWCWWC.",
+        "CWWCWWCWWCWWC",
+        "CCRTRTRTRTRCC",
+        "CWWRRRRRRRWWC",
+        "CWWCRTRTRCWWC",
+        "CWWCWWCWWCWWC",
+        "CCCCCCCCCCCCC"
       ],
       "palette": {
-        "W": "#5a3a1e",
+        "W": "#5f3b1b",
         "T": "#e8e2cc",
-        "R": "#7a1418"
+        "R": "#990005",
+        "A": "#000000",
+        "B": "#d0c9b4",
+        "C": "#44230d"
       }
     },
     "orc-chieftain": {
       "rows": [
-        "A.........A",
-        ".AOOOOOOOA.",
-        ".O.R.O.R.O.",
-        ".OOOWOWOOO.",
-        "HHHHHHHHHHH",
-        "HHAAAAAAAHH",
-        ".HHHHHHHHH.",
-        "..OOO.OOO..",
-        "..OO...OO.."
+        "..E.JJJJJ.E...J",
+        "..EJRCJCRJE..JH",
+        "E..JGAAAGJ..E.D",
+        "EBBEBGGGBEBBE.D",
+        "IGBBEEBEEBBGI.D",
+        "IGGIBCECBIGGGGD",
+        "IGGIEBEBEIIII.D",
+        "IGGIDEDECIIII.D",
+        "II.IDDIDDI.II.D",
+        "....GG.GG.....D"
       ],
       "palette": {
-        "O": "#3f5a2b",
-        "R": "#e0641c",
-        "W": "#cfc6a0",
-        "H": "#6b3a22",
-        "A": "#c8b545"
+        "G": "#5d723c",
+        "R": "#c4471c",
+        "C": "#27231b",
+        "B": "#263710",
+        "D": "#16210d",
+        "A": "#3d2f00",
+        "E": "#989486",
+        "F": "#332c15",
+        "H": "#bcbbb8",
+        "I": "#b0a47d",
+        "J": "#8b8a89"
       }
     },
     "vampire-lord": {
       "rows": [
         "...........",
-        "....PPP....",
+        "....GGG....",
+        "..BGPPPGB..",
         "...PRPRP...",
-        "....PPP....",
-        "..KKKKKKK..",
-        ".KKKKKKKKK.",
-        ".KKKRRRKKK.",
-        ".KKKKKKKKK.",
-        "..KK...KK..",
-        "..K.....K.."
+        "..AAPPPAA..",
+        "..PPAAAAAA.",
+        "..KKAAAAAA.",
+        "..PKKKAAAA.",
+        "...KK.KAAA.",
+        "...KK.KKAA."
       ],
       "palette": {
         "P": "#d8cfc0",
         "R": "#c41818",
         "K": "#2a1a28",
         "A": "#4a1830",
-        "G": "#8a6a30"
+        "G": "#828282",
+        "B": "#f4d7e6"
       }
     },
     "void-amalgamation": {
       "rows": [
-        "...........",
-        "...VVVV....",
-        "..VVVVVVV..",
-        ".VEVVEVVEV.",
-        ".VVVVVVVVV.",
-        "VVVVEVVVVVV",
-        ".VVVVVVVVV.",
-        "..VVVVVVV..",
-        "..V.VV.V.V.",
-        "...V..V...."
+        "...VCVVVVV...",
+        "..VVVVAAVCV..",
+        ".VVCVAVVAVCV.",
+        ".VCVAVVEVCVV.",
+        ".VVVAVEVEVVV.",
+        ".VCVVAVVEVCV.",
+        "..VVCVAEVVV..",
+        ".B.VVVVVVVB..",
+        "B..B.B..B..B.",
+        "B.B...B..B..B"
       ],
       "palette": {
         "V": "#2e2440",
         "E": "#b060d8",
-        "W": "#0d0812",
-        "A": "#4a3a66"
+        "A": "#a45fc4",
+        "B": "#201b36",
+        "C": "#714f8c"
       }
     },
     "ancient-golem": {
       "rows": [
-        "...........",
-        "....KKK....",
-        "....KGK....",
-        "KKKKKKKKKKK",
-        "KKSSKGKSSKK",
-        "KKKKKGKKKKK",
-        "KKSSKKKSSKK",
-        "KKKKKKKKKKK",
-        "..KKK.KKK..",
-        "..KK...KK.."
+        ".............",
+        "....SSSSS....",
+        "....SGSGS....",
+        "KSKSSSSSSSKSK",
+        ".SASSKSKSSAS.",
+        ".SS.SKSKS.SS.",
+        ".KK.SASAS.KK.",
+        "....SS.SS....",
+        "....KK.KK....",
+        "....DD.DD...."
       ],
       "palette": {
         "K": "#4e4a44",
         "S": "#6b6560",
         "G": "#7fd8a8",
-        "D": "#2a2724"
+        "D": "#2a2724",
+        "A": "#525b55"
       }
     },
     "lich": {
       "rows": [
-        "...........",
-        "....BBB....",
-        "...B.B.B...",
-        "...BGBGB...",
-        "....BBB....",
-        "..RRRRRRR..",
-        ".RRRRRRRRR.",
-        ".RRRRRRRRR.",
-        "..RR...RR..",
-        "..B.....B.."
+        "...S...S.....",
+        "...SSSSS..C..",
+        "..SSESESS.CC.",
+        "...SS.SS..B..",
+        "..DDDADDDDL..",
+        ".DDDAAADDDB..",
+        ".DDAAFAADDB..",
+        ".DAAFFFAA.B..",
+        ".D.FF.FF..B..",
+        "...LL.LL....."
       ],
       "palette": {
-        "B": "#cfc8b4",
-        "G": "#6ee0a0",
-        "K": "#1e2a24",
-        "R": "#3a4a40",
-        "Y": "#c8b545"
+        "H": "#3a3830",
+        "S": "#c9c2b0",
+        "A": "#3a3951",
+        "B": "#2d2b25",
+        "L": "#8a8579",
+        "C": "#a2a4ae",
+        "D": "#1f252d",
+        "E": "#8f0000",
+        "F": "#4f527d"
       }
     }
   },
@@ -1107,15 +1209,26 @@
     },
     "the-founder": {
       "rows": [
-        "EEXEE",
-        "EX.XE",
-        "X...X",
-        "EX.XE",
-        "EEXEE"
+        ".....MMMMM.....",
+        "..MMMAAAAAMMM..",
+        ".MAAMEEDEEMAAM.",
+        "MAMAEEDFDEEAMAM",
+        "MAAAMEEDEEMAAAM",
+        ".MAMAAMAMAAMAM.",
+        "..MAAMMBMMAAM..",
+        "...MMM.B.MMM.B.",
+        "...B.B.B.B..B..",
+        "...B..B.B.B....",
+        "..B..B..B..B..."
       ],
       "palette": {
-        "X": "#ff00ff",
-        "E": "#ffaa00"
+        "M": "#5a4a5e",
+        "A": "#ababab",
+        "B": "#850000",
+        "C": "#c9a227",
+        "D": "#e00f00",
+        "E": "#d3d1ca",
+        "F": "#a34100"
       }
     },
     "orc-chieftain": {
@@ -1165,66 +1278,75 @@
     },
     "void-amalgamation": {
       "rows": [
-        "....VVVV.....",
-        "..VVVVVVVV...",
-        ".VVEVVEVVEVV.",
-        ".VVVVWWWVVVV.",
-        "VVVVVVVVVVVVV",
-        "VVEVVVVVVEVVV",
-        "VVVVVVVVVVVVV",
-        ".VVVVWVVVVVV.",
-        "..VVVVVVVVV..",
-        "..V.VV.VV.V..",
-        "...V..V..V..."
+        "....VVFVVVV....",
+        "...VDVVAAAFV...",
+        "..VDVFAVFVCVV..",
+        ".VDVFAVVEFVCVV.",
+        ".VDFVAFEVEVCFV.",
+        ".VDVVAVFVEVCVV.",
+        "..VDFVEEEVFCV..",
+        "..BVDVVVFVCVB..",
+        ".B..VDDDDDV.B..",
+        ".B.B...B..B..B.",
+        "B..B..B....B..B"
       ],
       "palette": {
         "V": "#2e2440",
         "E": "#b060d8",
-        "W": "#0d0812",
-        "A": "#4a3a66"
+        "A": "#a45fc4",
+        "B": "#201b36",
+        "C": "#8d64af",
+        "D": "#7a569f",
+        "F": "#513168"
       }
     },
     "ancient-golem": {
       "rows": [
-        ".....KKK.....",
-        ".....KGK.....",
-        "..KKKKKKKKK..",
-        "KKKKKKKKKKKKK",
-        "KKSSKKGKKSSKK",
-        "KKKKKKGKKKKKK",
-        "KKSSKKGKKSSKK",
-        "KKKKKKKKKKKKK",
-        ".KKKKKKKKKKK.",
-        "..KKKK.KKKK..",
-        "..KKK...KKK.."
+        ".....SSSSS.....",
+        ".....SGSGS.....",
+        "KKSKSSSSSSSKSKK",
+        ".KSASSKSKSSASK.",
+        ".ASSKSKSKSKSSA.",
+        ".SS.KSKSKSK.SS.",
+        ".SS.KSASASK.SS.",
+        ".KK.ASS.SSA.KK.",
+        "....SSS.SSS....",
+        "....KKK.KKK....",
+        "....DDD.DDD...."
       ],
       "palette": {
         "K": "#4e4a44",
         "S": "#6b6560",
         "G": "#7fd8a8",
-        "D": "#2a2724"
+        "D": "#2a2724",
+        "A": "#525b55"
       }
     },
     "lich": {
       "rows": [
-        "...Y..Y..Y...",
-        "....BBBBB....",
-        "...B.B.B.B...",
-        "...BGB.BGB...",
-        "....BBBBB....",
-        "..RRRRRRRRR..",
-        ".RRRRRKRRRRR.",
-        ".RRRRRKRRRRR.",
-        ".RRRRRRRRRRR.",
-        "..RRR...RRR..",
-        "..B.......B.."
+        "....G.G.G......",
+        "....SGSGS...SSS",
+        "...SSESESS..SSH",
+        "....SS.SS....BS",
+        "...DDDADDDDDDL.",
+        "..DDDAAADDDDDB.",
+        ".DDDAAFAADDD.B.",
+        ".DDAAFFFAAD..B.",
+        ".DDAFF.FFA...B.",
+        ".DD.FF.FF....B.",
+        ".D..LL.LL......"
       ],
       "palette": {
-        "B": "#cfc8b4",
-        "G": "#6ee0a0",
-        "K": "#1e2a24",
-        "R": "#3a4a40",
-        "Y": "#c8b545"
+        "H": "#3a3830",
+        "S": "#c9c2b0",
+        "A": "#3a3951",
+        "B": "#2d2b25",
+        "L": "#8a8579",
+        "C": "#a2a4ae",
+        "D": "#1f252d",
+        "E": "#8f0000",
+        "F": "#4f527d",
+        "G": "#d2ff2e"
       }
     }
   },
@@ -1365,25 +1487,26 @@
     },
     "the-founder": {
       "rows": [
-        "...GGGGGGGGG...",
-        "..GggggggggG...",
-        ".GgggggggggggG.",
-        ".GgggGGGGGgggG.",
-        ".CgggGCCCGgggC.",
-        ".CCgggCCCgggCC.",
-        "..CCgggggggCC..",
-        "...TT.TTT.TT...",
-        "...T.T...T.T...",
-        "..T...T.T...T..",
-        ".T.....T.....T.",
-        ".......T.......",
-        ".......T......."
+        ".....MMMMM.....",
+        "..MMMAAAAAMMM..",
+        ".MAAMEEDEEMAAM.",
+        "MAMAEEDFDEEAMAM",
+        "MAAAMEEDEEMAAAM",
+        ".MAMAAMAMAAMAM.",
+        "..MAAMMBMMAAM..",
+        "...MMM.B.MMM.B.",
+        "...B.B.B.B..B..",
+        "...B..B.B.B....",
+        "..B..B..B..B..."
       ],
       "palette": {
-        "G": "#8a6570",
-        "g": "#5c3d47",
-        "C": "#c9b8a8",
-        "T": "#3a1520"
+        "M": "#5a4a5e",
+        "A": "#ababab",
+        "B": "#850000",
+        "C": "#c9a227",
+        "D": "#e00f00",
+        "E": "#d3d1ca",
+        "F": "#a34100"
       }
     },
     "orc-chieftain": {
@@ -1520,9 +1643,9 @@
         "..GGGGDDDDCCCCDDDIIIIIIIIII..",
         ".......DDDDDDDEEDDIIHHHHHII..",
         "....AAAAAAAAAAAAAAAAHHHHHII..",
-        ".....AAAAAAAAAAAAAAIHHHHHII..",
-        "......AAADDIIDDAAAIIIIIIIII..",
-        "......AA.DD..DD.AA..........."
+        ".....AAAAJJJJJJAAAAIHHHHHII..",
+        "......AA.JJIIJJIAAIIIIIIIII..",
+        "......A..JJ..JJ..A..........."
       ],
       "palette": {
         "A": "#4f4e4a",
@@ -1533,23 +1656,36 @@
         "F": "#980101",
         "G": "#857f6b",
         "H": "#0f590d",
-        "I": "#0b2f04"
+        "I": "#0b2f04",
+        "J": "#272334"
       }
     },
     "guardian-fight": {
       "rows": [
-        "...........................",
-        "..K.....................K..",
-        "...K......E.....E......K...",
-        "....K....EE.....EE....K....",
-        ".....KKKKKKK...KKKKKKK.....",
-        "....KKKKKKKKK.KKKKKKKKK....",
-        "...KKKKKKKKKK.KKKKKKKKKK...",
-        "..KK.KKKKKK.KKK.KKKKKK.KK.."
+        ".............................",
+        ".............................",
+        ".AAAAA....A.AAAAA.A....AAAAA.",
+        "..AAKKK...AAAKKKAAA...KKKAA..",
+        "..AKKDK....AKDKDKA....KDKKA..",
+        ".BBBBBB..F..BBFBB..F..BBBBBB.",
+        "..BBBBBBBBBBBBBBBBBBBBBBBBB..",
+        ".BBBBCCCFEFBKFEFKBFEFCCCBBBB.",
+        ".BBBCCCCFEFBKFEFKBFEFCCCCBBB.",
+        "BBBBCCCCFEFBKFEFKBFEFCCCCBBBB",
+        "BBBCCCK.FEFBKFEFKBFEF.KCCCBBB",
+        "BBBKKKK.FEF.KKFKK.FEF.KKKKBBB",
+        "B..KKKK..F..KKKKK..F..KKKK..B",
+        "..KKKKKK...KKKKKKK...KKKKKK..",
+        ".KKKKKKKK...........KKKKKKKK."
       ],
       "palette": {
-        "K": "#150e12",
-        "E": "#d21f1f"
+        "K": "#5a5858",
+        "E": "#716d7e",
+        "A": "#3b3b3b",
+        "B": "#454545",
+        "C": "#716a6a",
+        "D": "#583de1",
+        "F": "#525252"
       }
     },
     "desecrated-altar": {
@@ -1610,9 +1746,9 @@
         "......SE..CCAACCAACC..SE......",
         ".....BBS...CCCCCCCC...SBB.....",
         "......BB....AABBAA....BB......",
-        "......SBBBBBBBBBBBBBBBBS......",
-        ".D.D.DSD.CCCBBBBBBCCC.DSD.D.D.",
-        "..D...DS.CCCCCBBCCCCC.SD...D..",
+        "..H...SBBBBBBBBBBBBBBBBS...H..",
+        "..G..DSD.CCCBBBBBBCCC.DSD..G..",
+        ".FDF..DS.CCCCCBBCCCCC.SD..FDF.",
         "..D...CCCCBBBBBBBBBBCCCC...D..",
         "..D.CCCCCCCCCCBBCCCCCCCCCC.D..",
         ".SSSSSSSSSSSSSSSSSSSSSSSSSSSS."
@@ -1625,7 +1761,9 @@
         "B": "#2f2e2d",
         "D": "#332e2e",
         "E": "#4c4b48",
-        "F": "#3a372c"
+        "F": "#3a372c",
+        "G": "#918fff",
+        "H": "#bcb8ff"
       }
     },
     "twin-altars": {
@@ -1709,21 +1847,30 @@
     },
     "wandering-hermit": {
       "rows": [
-        "...........................",
-        "......AAA.........AAA......",
-        ".....AHHHA.......AHHHA.....",
-        "......HSH.........HSH......",
-        ".....RRRRR.......RRRRR.....",
-        "....RRRRRRR.....RRRRRRR....",
-        "....RR...RR.....RR...RR....",
-        "...RRRRRRRRR...RRRRRRRRR...",
-        "...RR.RRRR.RR.RR.RRRR.RR..."
+        "..............................",
+        "..............................",
+        "...........BBBB...............",
+        ".........BBBBBBBB.............",
+        ".........BBACCABB....DD.......",
+        "........BBBCCCCBBB...D.D......",
+        "........BRRRRRRRRB...D.D......",
+        "........RRRRRRRRRRRRRC........",
+        "........RRRRRRRRRRRRRD........",
+        ".......RRRRRHHRRRRRR.D........",
+        ".......RRRRHHHHRRRR..D........",
+        ".......RRRHHHHHHRRR..D........",
+        ".......RR.SSSSSS.RR..D........",
+        ".......R..SS..SS..R..D........",
+        "..........SS..SS.....D........"
       ],
       "palette": {
-        "A": "#8a6fd8",
-        "H": "#c9b89a",
+        "A": "#4e2cb5",
+        "H": "#3b352b",
         "S": "#8a7458",
-        "R": "#5a4a34"
+        "R": "#5a4a34",
+        "B": "#372b1f",
+        "C": "#6f7e67",
+        "D": "#2c2716"
       }
     },
     "collapsed-floor": {
@@ -1771,15 +1918,19 @@
   "treasure": {
     "chest": {
       "rows": [
-        ".............",
-        "....GGGGG....",
-        "...GYYYYYG...",
-        "..GGGGGGGGG..",
-        ".WWWWWWWWWWW.",
-        ".WMMMMMMMMMW.",
-        ".WMM.....MMW.",
-        ".WWWWWWWWWWW.",
-        "..BBBBBBBBB.."
+        "....................",
+        "....................",
+        ".......WWWWWW.......",
+        ".....WWWWGGGWWW.....",
+        "...WWWWWGGGGGGWW....",
+        "..WWGGGWWGGGGWWMM...",
+        ".MMWWWGGWWGWWWBBM...",
+        ".MBBBWWWWWWWBBBBM...",
+        ".MBBBBBBWWBBBBMM....",
+        "..MMMBBBMMBBMM......",
+        ".....MMMMMMM........",
+        "........MM..........",
+        "...................."
       ],
       "palette": {
         "G": "#c9a227",

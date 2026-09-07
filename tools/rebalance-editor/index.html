@@ -726,7 +726,7 @@ function buildOverviewCards(charData, monData, tier, avgBalancePoints, tierAvgIn
       el("div", {}, [el("b", { text: fmt(charData.final.aggro) }), "aggro"]),
       el("div", {}, [el("b", { text: fmt(charData.final.speed) }), "speed"]),
       el("div", {}, [el("b", { text: fmt(charData.balancePoints, 2) }), "Balance Points"]),
-      ratioStatDiv(charData.balancePoints, avgBalancePoints, "vs. avg (6 classes)"),
+      ratioStatDiv(charData.balancePoints, avgBalancePoints, "vs. avg (" + META.classes.length + " classes)"),
     ]),
   ]);
   const charDetails = el("details", {}, [el("summary", { text: "Base → growth breakdown" })]);
@@ -968,7 +968,7 @@ function buildClassBaseEditCard(classId, data, avgBalancePoints) {
   card.appendChild(
     el("div", { class: "stat-grid" }, [
       el("div", {}, [scoreVal, "Balance Points"]),
-      el("div", {}, [scoreRatio, "vs. avg (6 classes)"]),
+      el("div", {}, [scoreRatio, "vs. avg (" + META.classes.length + " classes)"]),
     ])
   );
 

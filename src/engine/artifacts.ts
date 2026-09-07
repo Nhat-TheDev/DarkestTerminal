@@ -25,17 +25,28 @@ function equippedEffects(character: Character): ArtifactEffect[] {
 /** Every stat an Ability's `statBoost` can name: the Ability-only trio plus the 4 it shares with Artifacts. */
 export type AbilityStatBoostTarget = Extract<AbilityEffect, { kind: "statBoost" }>["stat"];
 
+/** `effect.amount` unless `effect.minPercent` is set and `base * minPercent / 100` has the larger magnitude — see
+ *  `ArtifactEffect`'s `statBoost` doc comment. `base` is the caller-supplied pre-equipment value for that stat. */
+function statBoostDelta(base: number, effect: { amount: number; minPercent?: number }): number {
+  if (!effect.minPercent) return effect.amount;
+  const floor = Math.round((base * effect.minPercent) / 100);
+  return Math.abs(floor) > Math.abs(effect.amount) ? floor : effect.amount;
+}
+
 /**
  * The equipped Ability's `statBoost` on `stat` — 0 if no Ability is equipped or it doesn't touch
  * `stat`. `party.ts` calls it for the stats only Abilities can touch (`aggro`/`speed`/`magicPower`);
  * for the 4 shared with Artifacts it is the only way to tell an Ability's contribution apart from an
- * Artifact's, since `artifactStatBoostSum` deliberately sums both together.
+ * Artifact's, since `artifactStatBoostSum` deliberately sums both together. `base` is `stat`'s own
+ * pre-equipment value (post-level-growth/Exhausted, pre-Artifact/Ability) — the `minPercent` floor's
+ * reference point; pass the constant `cls.baseAggro`/`cls.baseSpeed` for those 2 (never scale with
+ * level, so no ability there needs `minPercent` in practice, but the reference still has to be right).
  */
-export function abilityWidenedStatBoost(character: Character, stat: AbilityStatBoostTarget): number {
+export function abilityWidenedStatBoost(character: Character, stat: AbilityStatBoostTarget, base: number): number {
   if (!character.equippedAbilityId) return 0;
   return getAbility(character.equippedAbilityId)
     .effects.filter((e): e is Extract<AbilityEffect, { kind: "statBoost" }> => e.kind === "statBoost" && e.stat === stat)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + statBoostDelta(base, e), 0);
 }
 
 /** The equipped Ability's `alwaysHit` chance (a percent, e.g. `20` for 20%) — 0 if none equipped or it isn't an `alwaysHit` Ability. */
@@ -51,10 +62,16 @@ function sumOf<K extends ArtifactEffect["kind"]>(character: Character, kind: K, 
     .reduce((sum, e) => sum + ((e as unknown as Record<string, number>)[field] ?? 0), 0);
 }
 
-export function artifactStatBoostSum(character: Character): { attack: number; defense: number; maxHp: number; maxMp: number } {
+/** `base` is each stat's own pre-equipment value (post-level-growth/Exhausted) — the `minPercent` floor's
+ *  reference point for any Ability `statBoost` in the mix (Artifacts never set `minPercent`, so theirs always
+ *  fall through to the flat `amount`). */
+export function artifactStatBoostSum(
+  character: Character,
+  base: { attack: number; defense: number; maxHp: number; maxMp: number }
+): { attack: number; defense: number; maxHp: number; maxMp: number } {
   const sums = { attack: 0, defense: 0, maxHp: 0, maxMp: 0 };
   for (const effect of equippedEffects(character)) {
-    if (effect.kind === "statBoost") sums[effect.stat] += effect.amount;
+    if (effect.kind === "statBoost") sums[effect.stat] += statBoostDelta(base[effect.stat], effect);
   }
   return sums;
 }
