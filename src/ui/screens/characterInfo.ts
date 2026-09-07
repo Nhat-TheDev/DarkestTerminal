@@ -5,9 +5,10 @@ import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor 
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { getClass } from "../../data/classes";
-import { getArtifact } from "../../data/artifacts";
-import { getStatusEffect } from "../../data/statusEffects";
-import { getAbility } from "../../data/abilities";
+import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
+import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
+import { getAbility, formatAbilityEffect } from "../../data/abilities";
+import { wrapText } from "../layout";
 import { statsForLevel, activeStatusCombatStatSum } from "../../engine/party";
 import { artifactStatBoostSum, curseAggroBoostSum, abilityWidenedStatBoost } from "../../engine/artifacts";
 import { applyExhaustedMultiplier } from "../../engine/survival";
@@ -30,6 +31,20 @@ const signed = (amount: number): string => (amount > 0 ? "+" : "");
 
 const statTag = (amount: number, color: string): TextChunk =>
   colorChunk(t("ui.characterInfoStatTag", { sign: signed(amount), amount }), color);
+
+/**
+ * Width the wrapped effect/description text under an Artifact/Ability/Status entry may occupy.
+ * Fixed rather than measured: this screen renders into the middle panel, which is whatever the
+ * terminal has left after the 34-wide party panel and the 32-wide monster panel — 32 usable
+ * columns at 100. `ui.characterInfoDetailLine` indents by DETAIL_INDENT, so the wrap budget is
+ * what remains after that; wrapping to the full 32 would push every line 5 columns past the edge.
+ */
+const DETAIL_INDENT = 5;
+const DETAIL_WIDTH = 32 - DETAIL_INDENT;
+
+/** The "what does this actually do" line under a list entry — wrapped, indented, dimmed. */
+const detailLines = (text: string): TextChunk[][] =>
+  wrapText(text, DETAIL_WIDTH).map((line) => [colorChunk(t("ui.characterInfoDetailLine", { text: line }), PALETTE.dim)]);
 
 /**
  * One stat as `Name  total`, then its sources on an indented line: the base value followed by one
@@ -99,6 +114,27 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       colorChunk(t("ui.characterInfoMp", { mp: character.mp, maxMp: character.maxMp }), PALETTE.mp),
     ],
     [],
+    // maxHp/maxMp sit above the combat stats because they are what the HP:/MP: line above is
+    // measured against. Exhausted does not scale them (`party.ts` `recomputeCharacterStats`), and
+    // no status effect touches them, so those two sources are hard-zeroed here.
+    ...statLines(
+      t("ui.characterInfoStatMaxHp"),
+      baseStats.maxHp,
+      false,
+      boost.maxHp - abilityWidenedStatBoost(character, "maxHp"),
+      abilityWidenedStatBoost(character, "maxHp"),
+      0,
+      character.maxHp
+    ),
+    ...statLines(
+      t("ui.characterInfoStatMaxMp"),
+      baseStats.maxMp,
+      false,
+      boost.maxMp - abilityWidenedStatBoost(character, "maxMp"),
+      abilityWidenedStatBoost(character, "maxMp"),
+      0,
+      character.maxMp
+    ),
     ...statLines(
       t("ui.characterInfoStatAttack"),
       exhausted(baseStats.attack),
@@ -152,17 +188,21 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
     lines.push([colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]);
   } else {
     for (const artifactId of character.equippedArtifactIds) {
-      lines.push([colorChunk(t("ui.characterInfoListItem", { name: getArtifact(artifactId).name }), PALETTE.text)]);
+      const artifact = getArtifact(artifactId);
+      lines.push([colorChunk(t("ui.characterInfoListItem", { name: artifact.name }), PALETTE.text)]);
+      lines.push(...detailLines(formatArtifactEffect(artifact)));
     }
   }
 
   lines.push([]);
   lines.push([colorChunk(t("ui.characterInfoAbilityLabel"), PALETTE.mp)]);
-  lines.push(
-    character.equippedAbilityId
-      ? [colorChunk(t("ui.characterInfoListItem", { name: getAbility(character.equippedAbilityId).name }), PALETTE.text)]
-      : [colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]
-  );
+  if (character.equippedAbilityId) {
+    const ability = getAbility(character.equippedAbilityId);
+    lines.push([colorChunk(t("ui.characterInfoListItem", { name: ability.name }), PALETTE.text)]);
+    lines.push(...detailLines(formatAbilityEffect(ability)));
+  } else {
+    lines.push([colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]);
+  }
 
   lines.push([]);
   lines.push([colorChunk(t("ui.characterInfoStatusLabel"), PALETTE.text)]);
@@ -170,7 +210,11 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
     lines.push([colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]);
   } else {
     for (const active of character.activeStatusEffects) {
-      const name = getStatusEffect(active.statusEffectId).name;
+      const def = getStatusEffect(active.statusEffectId);
+      // statusDisplayName, not `def.name`: ranked variants share one `name`, so Storm-Empowered
+      // II would otherwise render identical to Storm-Empowered while the line below it reports a
+      // different number. The party panel has always used the composed name.
+      const name = statusDisplayName(def);
       lines.push([
         colorChunk(
           active.turnsRemaining !== undefined
@@ -179,6 +223,9 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
           PALETTE.text
         ),
       ]);
+      // A status carries no prose of its own — this line is composed from its mechanical fields,
+      // so what the player reads and what the engine applies can never disagree.
+      lines.push(...detailLines(formatStatusEffectMechanics(def)));
     }
   }
 

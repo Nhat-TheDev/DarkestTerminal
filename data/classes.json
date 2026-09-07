@@ -2,7 +2,13 @@
   {
     "id": "vanguard",
     "name": "Vanguard",
-    "description": "Tank, high durability, holds enemy aggro.",
+    "description": "Stand in front, take the hits, and keep the enemy looking at you instead of your healer. That's the whole job.",
+    "roleTags": [
+      "Tank",
+      "Taunt",
+      "Frontline",
+      "Party Buff"
+    ],
     "baseMaxHp": 140,
     "baseMaxMp": 22,
     "baseAttack": 14,
@@ -324,7 +330,13 @@
   {
     "id": "mage",
     "name": "Mage",
-    "description": "Ranged magic damage, fragile — fire/lightning/ice element.",
+    "description": "Bring the Mage to end a fight fast — fire, lightning, and ice hit like a truck. Just keep something between it and the enemy, because it won't survive many hits back.",
+    "roleTags": [
+      "Nuker",
+      "AoE",
+      "Elemental",
+      "Glass Cannon"
+    ],
     "baseMaxHp": 70,
     "baseMaxMp": 60,
     "baseAttack": 3,
@@ -692,7 +704,13 @@
   {
     "id": "rogue",
     "name": "Rogue",
-    "description": "Single-target burst, highest speed in the party.",
+    "description": "Moves before almost anyone else, drops one target hard, and is already gone before it can hit back.",
+    "roleTags": [
+      "Assassin",
+      "Single-Target Burst",
+      "Fastest",
+      "Poison"
+    ],
     "baseMaxHp": 110,
     "baseMaxMp": 40,
     "baseAttack": 17,
@@ -1017,7 +1035,13 @@
   {
     "id": "acolyte",
     "name": "Acolyte",
-    "description": "Healing + lowers fear for the whole party.",
+    "description": "Why your run doesn't end on floor two — keeps HP topped up and nerves steady when things get ugly.",
+    "roleTags": [
+      "Healer",
+      "Cleanser",
+      "Stress Care",
+      "Support"
+    ],
     "baseMaxHp": 90,
     "baseMaxMp": 50,
     "baseAttack": 6,
@@ -1408,7 +1432,13 @@
   {
     "id": "viking",
     "name": "Viking",
-    "description": "Hybrid physical/lightning berserker, high risk/extremely high damage.",
+    "description": "Trades safety for numbers — puts everything behind every swing and hopes the fight's over before its own HP is.",
+    "roleTags": [
+      "Bruiser",
+      "Berserker",
+      "AoE",
+      "High Risk"
+    ],
     "baseMaxHp": 100,
     "baseMaxMp": 30,
     "baseAttack": 18,
@@ -1766,7 +1796,13 @@
   {
     "id": "plague-doctor",
     "name": "Plague Doctor",
-    "description": "AoE debuffer/support, favors effects over raw damage.",
+    "description": "Doesn't need the first hit to win — poison, blindness, and toxic fog do the work over time, and it can patch the team up when nobody else can.",
+    "roleTags": [
+      "Debuffer",
+      "AoE Control",
+      "Damage Over Time",
+      "Off-Healer"
+    ],
     "baseMaxHp": 80,
     "baseMaxMp": 60,
     "baseAttack": 2,

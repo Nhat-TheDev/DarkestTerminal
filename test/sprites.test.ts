@@ -3,6 +3,7 @@ import { RGBA } from "@opentui/core";
 import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, renderSpriteInSlot, compositeSpriteRow, type Sprite } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
 import { MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { MONSTER_STYLE } from "../src/ui/theme";
 
 describe("sprite dimensions and palette consistency", () => {
   for (const { name, sprite, maxHeight } of ALL_SPRITES) {
@@ -44,6 +45,20 @@ describe("sprite dimensions and palette consistency", () => {
       const normal = spriteForMonster(archetype.id, "normal");
       expect(spriteHeight(normal)).toBeLessThanOrEqual(10);
     }
+  });
+
+  // A missing entry here is what made half the bestiary render as "??" in the battlefield and
+  // monster panels: `monsterStyle` falls back when the table drifts behind `data/monsters.json`.
+  test("every monster archetype has a MONSTER_STYLE entry", () => {
+    for (const archetype of MONSTER_ARCHETYPES) {
+      expect(MONSTER_STYLE[archetype.id]).toBeDefined();
+    }
+  });
+
+  test("MONSTER_STYLE abbreviations are unique and 3 characters wide", () => {
+    const abbrs = Object.values(MONSTER_STYLE).map((s) => s.abbr);
+    expect(new Set(abbrs).size).toBe(abbrs.length);
+    for (const abbr of abbrs) expect(abbr).toMatch(/^[A-Z]{3}$/);
   });
 
   test("every archetype that can spawn as elite/boss has its own distinct elite and boss sprite", () => {

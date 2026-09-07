@@ -1,8 +1,8 @@
-import type { ItemDefinition, Id, SkillEffect, CombatStat } from "../types";
+import type { ItemDefinition, Id, SkillEffect } from "../types";
 import itemsJson from "../../data/items.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
-import { getStatusEffect } from "./statusEffects";
+import { getStatusEffect, formatStatusEffectMechanics, COMBAT_STAT_LABEL } from "./statusEffects";
 import { t } from "./strings";
 
 export const ITEMS = itemsJson as unknown as ItemDefinition[];
@@ -14,12 +14,6 @@ export function getItem(id: Id): ItemDefinition {
 }
 
 const STAT_LABEL: Record<string, string> = { fear: t("resolver.statLabelFear"), satiety: t("resolver.statLabelSatiety") };
-const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
-  attack: t("resolver.statLabelAttack"),
-  defense: t("resolver.statLabelDefense"),
-  aggro: t("resolver.statLabelAggro"),
-  speed: t("resolver.statLabelSpeed"),
-};
 
 export function signed(amount: number): string {
   return `${amount >= 0 ? "+" : ""}${amount}`;
@@ -27,17 +21,7 @@ export function signed(amount: number): string {
 
 function statusEffectSummary(statusEffectId: Id): string {
   const status = getStatusEffect(statusEffectId);
-  const parts = status.perTurnEffects.map((e) => {
-    if (e.kind === "damage") return t("item.effectPerTurnDamage", { amount: e.amount ?? 0 });
-    if (e.kind === "heal") return t("item.effectPerTurnHeal", { amount: e.amount ?? 0 });
-    if (e.kind === "modifyCombatStat" && e.combatStat) return t("item.effectPerTurnStat", { amount: signed(e.amount ?? 0), stat: COMBAT_STAT_LABEL[e.combatStat] });
-    return "";
-  }).filter(Boolean);
-  if (status.onHitStatusEffectId) parts.push(t("item.effectOnHitRider", { status: getStatusEffect(status.onHitStatusEffectId).name }));
-  if (status.vulnerableTo) parts.push(t("item.effectVulnerable", { status: getStatusEffect(status.vulnerableTo.statusEffectId).name }));
-  if (status.stuns) parts.push(t("item.effectStuns"));
-  const body = parts.length > 0 ? parts.join(", ") : t("item.effectNoPerTurn");
-  return t("item.statusSummary", { name: status.name, turns: status.durationTurns ?? "?", body });
+  return t("item.statusSummary", { name: status.name, turns: status.durationTurns ?? "?", body: formatStatusEffectMechanics(status) });
 }
 
 function itemEffectSummary(effect: SkillEffect): string {

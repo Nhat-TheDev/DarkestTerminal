@@ -306,7 +306,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     STATUS_EFFECTS.push({
       id: "test-storm-empowered",
       name: "Test Storm-Empowered",
-      description: "",
       perTurnEffects: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
@@ -332,7 +331,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     STATUS_EFFECTS.push({
       id: "test-storm-empowered-aoe",
       name: "Test Storm-Empowered AoE",
-      description: "",
       perTurnEffects: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
@@ -369,7 +367,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     STATUS_EFFECTS.push({
       id: "test-storm-empowered-scope",
       name: "Test Storm-Empowered Scope",
-      description: "",
       perTurnEffects: [],
       durationTurns: 3,
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
@@ -395,7 +392,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     STATUS_EFFECTS.push({
       id: "test-conditional-buff",
       name: "Test Conditional Buff",
-      description: "",
       perTurnEffects: [],
       durationTurns: 3,
     });
@@ -523,7 +519,6 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     STATUS_EFFECTS.push({
       id: "test-blinded",
       name: "Test Blinded",
-      description: "",
       perTurnEffects: [],
       durationTurns: 2,
       accuracyPenaltyPercent: 60,

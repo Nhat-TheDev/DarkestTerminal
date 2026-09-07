@@ -81,7 +81,11 @@ export interface GrowthWeightsData {
 export interface CharacterClass {
   id: Id;
   name: string;
+  /** Player-facing summary of the class's role and fantasy — what it feels like to play,
+      not a recap of its stats or skill names. Shown at character select. */
   description: string;
+  /** Short team-role labels ("Tank", "Healer", "AoE"), rendered as chips in the class-detail panel. */
+  roleTags: string[];
   baseMaxHp: number;
   baseMaxMp: number;
   baseAttack: number;
@@ -120,7 +124,10 @@ export interface Character {
 export interface StatusEffectDefinition {
   id: Id;
   name: string;
-  description: string;
+  // No `description` field, deliberately: a status is fully described by the mechanical fields
+  // below, which `formatStatusEffectMechanics` renders. A prose copy alongside them only ever
+  // drifts — the one that used to live here had stopped naming numbers the data did carry
+  // (`weakened` said "lowers defense"; the data says -6).
   perTurnEffects: SkillEffect[];
   durationTurns?: number;
   onHitStatusEffectId?: Id;
@@ -356,6 +363,10 @@ export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass"
 export interface MonsterArchetype {
   id: Id;
   name: string;
+  /** Player-facing flavor only — what the thing looks or feels like in the room. Never mechanics,
+   *  never a number, never another archetype or skill by name: see "Writing `description` text" in
+   *  `docs/gameplay-decisions/02-monster.md` for why each of those is banned. */
+  description: string;
   baseHp: number;
   baseAttack: number;
   baseDefense: number;

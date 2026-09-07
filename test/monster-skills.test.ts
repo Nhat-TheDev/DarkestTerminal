@@ -255,6 +255,17 @@ describe("regular monster skills", () => {
     const ghost = { id: "ghost-test", skillIds: ["no-such-skill"], actionWeights: {} } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
+
+  // data/monsters.json reaches src/data/monsters.ts through an `as unknown as MonsterArchetype[]`
+  // cast, so TypeScript never checks it — an archetype added without a description would ship
+  // silently. The digit check enforces 02-monster.md's rule that this field carries no numbers:
+  // it is flavor a player reads, not a place to write down a balance fact.
+  test("every archetype carries a player-facing description, and no description states a number", () => {
+    for (const archetype of MONSTER_ARCHETYPES) {
+      expect(archetype.description?.trim() ?? "").not.toBe("");
+      expect(archetype.description).not.toMatch(/[0-9]/);
+    }
+  });
 });
 
 

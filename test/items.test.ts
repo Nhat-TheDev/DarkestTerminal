@@ -7,6 +7,7 @@ import { rollItemDrop, getItem } from "../src/data/items";
 import { Game } from "../src/engine/game";
 import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
+import { STATUS_EFFECTS, formatStatusEffectMechanics } from "../src/data/statusEffects";
 
 describe("items", () => {
   test("rollItemDrop fires close to the spec'd 60% of the time", () => {
@@ -133,3 +134,15 @@ describe("items", () => {
   });
 });
 
+describe("status effect mechanics text", () => {
+  // This line is the ONLY description a status has, so one that gains a new mechanical field
+  // without a branch in formatStatusEffectMechanics must fail here rather than quietly rendering
+  // "no per-turn effect" to the player.
+  test("every status effect describes itself from its own data", () => {
+    for (const def of STATUS_EFFECTS) {
+      const text = formatStatusEffectMechanics(def);
+      expect(text.length).toBeGreaterThan(0);
+      expect(text).not.toBe("no per-turn effect");
+    }
+  });
+});
