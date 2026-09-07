@@ -4,6 +4,7 @@ import { t } from "../../data/strings";
 import { endingCheckpointMode } from "../../data/endings";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
+import { digitHint } from "../keyHints";
 
 /** 10-event-narrative.md Part F.1's floor-100 checkpoint. Which options are shown is computed live
     from existing state (`endingCheckpointMode`) — nothing about the mode is ever stored, and none
@@ -34,6 +35,8 @@ export function renderMain(game: Game, _ui: EndingCheckpointUiState): string {
   return [t("ui.endingCheckpointPrompt"), "", ...options].join("\n");
 }
 
-export function renderFooter(_ui: EndingCheckpointUiState): string {
-  return t("ui.footerChoose");
+export function renderFooter(_ui: EndingCheckpointUiState, game: Game): string {
+  const mode = endingCheckpointMode(game.state);
+  const count = mode === "leaveOnly" ? 1 : mode === "full" ? 3 : 2;
+  return digitHint("ui.footerChoose", count);
 }

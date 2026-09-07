@@ -1,6 +1,7 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import type { CharacterClass, Id } from "../types";
 import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
+import { joinHints, digitHint } from "./keyHints";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -22,6 +23,9 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
     const body = new TextRenderable(renderer, { id: "charselect-body", content: "" });
     root.add(body);
 
+    const footer = new TextRenderable(renderer, { id: "charselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
+    root.add(footer);
+
     const picked: Id[] = [];
     let showFullWarning = false;
 
@@ -36,13 +40,13 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
           ),
         ]);
       });
-      lines.push([]);
-      lines.push(
-        showFullWarning
-          ? [colorChunk(t("charSelect.fullWarning"), PALETTE.dead)]
-          : highlightKeyHints(picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : t("charSelect.hint"))
-      );
+      if (showFullWarning) {
+        lines.push([]);
+        lines.push([colorChunk(t("charSelect.fullWarning"), PALETTE.dead)]);
+      }
       body.content = joinLines(lines);
+      // `[Enter] Start` only appears once the party is actually full — the key does nothing before that.
+      footer.content = joinLines([highlightKeyHints(joinHints(digitHint("charSelect.hint", classes.length), picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : null))]);
     };
     render();
 

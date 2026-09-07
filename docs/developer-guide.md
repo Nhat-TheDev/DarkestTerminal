@@ -143,6 +143,161 @@ The full theme/color palette is defined in `src/ui/theme.ts` — to change the
 color scheme or add a new class/monster, edit `PALETTE`/`CLASS_STYLE`/
 `MONSTER_STYLE` there (and add the matching sprite in `src/ui/sprites.ts`).
 
+### Key hints — where they live and how they're written
+
+Every screen has to tell the player which keys do what. Left unmanaged this
+drifts fast — the same hint ends up phrased three ways, in two different
+places on screen, naming a key the handler doesn't actually accept. The rules
+below exist so that never has to be re-litigated per screen.
+
+**R1 — Body says content, footer says keys.** There are exactly two kinds of
+text allowed to contain square brackets:
+
+| Kind | Lives in | Example | Rule |
+| --- | --- | --- | --- |
+| **Choice line** | the main panel (body) | `  [1] Equip`, `  [Enter] Continue` | The bracket is glued to one concrete option of this screen. That is content — keep it. |
+| **Key hint** | the footer bar, always | `[1-9] Item   [Esc] Back` | Any instruction about *how to press*. Never in the body, no exceptions. |
+
+So a sentence like "Press [i] to check items." never belongs in `renderMain` —
+it is a key hint and goes to `renderFooter`. Likewise a page counter drawn in
+the body says `(Page 1/2)` and nothing more; the `[←/→]` that changes the page
+is a key hint and belongs in the footer.
+
+**R2 — Footer grammar is tokens, not prose.**
+
+```
+[key] Label   [key] Label   │   [key] Label
+└── contextual ────────────┘   └── global ──┘
+```
+
+- Label: 1–2 words, Title Case, **no trailing period**. Never "Press a number to…".
+- Separator between two hints: **three spaces** (`HINT_GAP`). Between the contextual
+  group and the global group: `   │   ` (`GROUP_SEP`). Both live in `src/ui/keyHints.ts`.
+- One line. No wrapping, no full stops.
+
+**R3 — Inside a bracket there is a key name and nothing else.**
+
+| Write | Don't write | Why |
+| --- | --- | --- |
+| `[{{keys}}]` in the string, `[1]` / `[1-4]` on screen | `[1-9]` hard-coded | the range is filled in per render from the option count; a fixed `[1-9]` on a 2-option screen advertises 7 dead digits |
+| `[Enter]` `[Esc]` `[Ctrl+C]` `[Any]` | `[esc]`, `[ENTER]` | named keys are Title Case |
+| `[i]` `[a]` `[b]` `[q]` `[s]` `[r]` | `[R]` | letter keys are spelled **exactly as `key.name` arrives** — an uppercase hint for a lowercase handler is a lie |
+| `[←/→]` | `[left/right]` | the arrow pair is the one permitted two-key bracket |
+| `[Esc] Back` | `[b/Esc] Back` | **one bracket, one key**. Alternate bindings keep working, they just aren't advertised. |
+
+**R4 — Fixed order, so the eye always lands in the same place.**
+
+```
+1. select      [1-9] <what is being selected>
+2. confirm     [Enter] …
+3. screen-specific actions   [i] [a] [r] …
+4. paging      [←/→] Page
+5. back        [Esc] Back
+   │
+6. globals     [b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit
+```
+
+**R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
+`[b]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
+including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
+`saveMenu`, `[s]` is off on `gameover`/`abilityBuyback`, `[b]` only opens party
+info from a fixed list of screen kinds. The footer's global group must be
+computed from those same conditions rather than typed into individual strings,
+otherwise the two drift apart and the hint outlives the binding. `globalHints()`
+(`src/ui/keyHints.ts`) is that single derivation; `App.render` runs every footer
+through `composeFooter()` so no screen can opt out.
+
+Paging is the one hint no screen writes itself: `App.isPaginated()` derives it from
+the same `listCountFor`/`pageSizeFor` pair that drives `←`/`→`, and
+`withPageHint()` splices it in at the right spot.
+
+**R6 — Only advertise a key that works right now.** `[Enter] Start` on character
+select appears once four characters are picked, not before. `[←/→] Page` appears
+only when `pages > 1`. A dead key in the footer is worse than no footer.
+
+That applies to the digit range too, which is why footer strings carry a
+`{{keys}}` placeholder instead of a literal range. Each screen resolves it from
+the same data it just rendered — `connectedRoomChoices().length` for the room,
+`ui.candidates.length` for targeting, the current page's item count for a paged
+list — by calling `digitHint(key, count)` (`src/ui/keyHints.ts`). `digitRange`
+underneath returns `"1"` for a single option (never `"1-1"`), `"1-n"` beyond
+that, and `null` for none, in which case `digitHint` falls back to a hint-free
+string rather than rendering an empty `[]`. Counting is deliberately left to the
+screen: a central table would have to re-derive what `renderMain` already knows
+and would drift the first time an option list changed.
+
+#### Mapping — contextual part per screen
+
+The global group is appended automatically, so the table lists only what each
+screen contributes.
+
+| `ui.kind` | Contextual footer |
+| --- | --- |
+| `room` | `[1-n] Move   [i] Items   [a] Artifacts` — n = exits from this room |
+| `rest` | `[1-2] Choose   [Enter] Skip` |
+| `pickAction` | `[1-2] Action` — "Use item" stays listed (tagged) even with an empty bag |
+| `pickSkill` | `[1-n] Skill   [Esc] Back` — n = the actor's skills |
+| `skillDetail` | `[Enter] Use   [Esc] Back` |
+| `pickItemInCombat` / `pickItemOutOfCombat` | `[1-n] Item   [Esc] Back` — n = items on this page |
+| `pickTarget` | `[1-n] Target   [Esc] Back` — n = candidates |
+| `roundResolved` / `combatOver` | `[Any] Continue` |
+| `itemDetail` / `artifactDetail` | `[1-2] Choose   [Esc] Back` — `[1] Back` alone on the back-only views |
+| `artifactMenu` | `[1-n] Artifact   [Esc] Back` — `[Esc] Back` alone when nothing is equipped |
+| `artifactDecision` | `[1-2] Choose` — `[1]` alone when the artifact is forced-equip |
+| `artifactDecisionPickCharacter` | `[1-n] Character` — n = party size |
+| `artifactDecisionPickReplace` | `[1-n] Artifact` — n = the character's non-cursed artifacts |
+| `roomReward` | `[1-n] Details   [Enter] Continue` — n = entries on this page |
+| `campPrompt` | `[1] Camp   [Enter] Skip` |
+| `eventMerchant` | `[1-9] Choose   [r] Refresh` (the `[r]` drops once the visit is out of refreshes; the offer detail shows `[1-2] Choose   [Esc] Back`) |
+| `eventHpGamblePickPayer` | `[1-n] Character` — n = party size |
+| `eventHermitPickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
+| other `event*` | `[1-n] Choose` — n counts the options that event actually offers (a forced guardian fight drops to `[1]`) |
+| `campReflection` | `[1-3] Choose` |
+| `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
+| `founderDialogue` | `[1] Continue` |
+| `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |
+| `abilityBuyback` | `[1-2] Choose` |
+| `saveMenu` | `[1-3] Choose   [Esc] Cancel` |
+| `gameover` | *(empty — only the global `[Ctrl+C] Quit` remains)* |
+| main menu, waiting for a key | `[Any] Continue` |
+| main menu, choosing | `[1] Start   [2] Continue` (`[2]` only when a save exists) |
+| character select | `[1-n] Pick/Unpick` (+ `[Enter] Start` once the party is full) |
+| ability select | `[1-n] Choose   [0] Skip` (+ `[←/→] Page`); `[0] Skip` alone when the page is empty |
+| save select | `[1-n] Load` (+ `[←/→] Page`) `  [Esc] Back` |
+
+The four pre-game screens (`src/ui/mainMenu.ts`, `characterSelect.ts`,
+`abilitySelect.ts`, `saveSelect.ts`) run outside `App` and own their layout, so
+they carry their own footer element — but it is bottom-anchored and uses the
+same grammar, so the hint line never moves between screens.
+
+#### Adding a new screen
+
+1. Write the option lines in `renderMain` with `  [n] Label` prefixes — content only.
+2. Write **one** contextual footer string in `data/strings.json` following R2–R4.
+   Use `[{{keys}}]` for the digit range, and do not list `[q]`/`[s]`/`[b]`/`[Ctrl+C]`
+   there; R5 adds those.
+3. Return `digitHint(key, <options on screen>)` from the screen's `renderFooter`
+   and wire the `ui.kind` into `App.renderFooter` (`src/ui/app.ts`).
+4. Check every bracket against the `key.name` its handler compares — that check
+   is what R3 exists for.
+
+Bracketed segments are styled by `highlightKeyHints` (`src/ui/theme.ts`), which
+renders `[...]` bold in the accent color and the rest dim; the grammar above is
+what makes that styling read as a consistent row of keycaps.
+
+#### Enforcement
+
+`test/keyHints.test.ts` lints every footer string in `data/strings.json` against R2
+and R3 — no prose, no trailing period, `[key] Label` shape, one key per bracket —
+and asserts the global-hint sets, the page-hint placement and that the room screen
+renders its `[i]`/`[a]` hints in the footer rather than the body. A new footer
+string is covered automatically as long as its key starts with `ui.footer`/`ui.hint`
+or is added to that test's catalog list.
+
+It also drives a whole run headless and asserts no frame ever shows an unresolved
+`{{keys}}` or an empty `[]` bracket — the two ways a missed `digitHint` call would
+surface.
+
 ## 📁 Code structure
 
 ```

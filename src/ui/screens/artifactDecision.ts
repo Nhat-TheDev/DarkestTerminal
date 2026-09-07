@@ -5,6 +5,7 @@ import { MAX_EQUIPPED_ARTIFACTS } from "../../engine/party";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { proceedAfterVictory, type ScreenContext } from "./context";
+import { digitHint } from "../keyHints";
 
 export type ArtifactDecisionUiState = Extract<UiState, { kind: "artifactDecision" } | { kind: "artifactDecisionPickCharacter" } | { kind: "artifactDecisionPickReplace" }>;
 
@@ -100,13 +101,17 @@ export function renderMain(game: Game, ui: ArtifactDecisionUiState): string {
   }
 }
 
-export function renderFooter(ui: ArtifactDecisionUiState): string {
+export function renderFooter(ui: ArtifactDecisionUiState, game: Game): string {
   switch (ui.kind) {
+    // A forced-equip artifact has no discard option, so only [1] is live.
     case "artifactDecision":
-      return t("ui.footerChoose");
+      return digitHint("ui.footerArtifactDecision", game.state.pendingArtifactDecision?.forceEquip ? 1 : 2);
     case "artifactDecisionPickCharacter":
-      return t("ui.footerChooseCharacter");
-    case "artifactDecisionPickReplace":
-      return t("ui.footerChooseArtifact");
+      return digitHint("ui.footerChooseCharacter", game.state.party.length);
+    case "artifactDecisionPickReplace": {
+      const character = game.state.party.find((c) => c.id === ui.characterId);
+      const ordinary = character?.equippedArtifactIds.filter((id) => !getArtifact(id).isCursed) ?? [];
+      return digitHint("ui.footerChooseArtifact", ordinary.length);
+    }
   }
 }

@@ -38,6 +38,7 @@ import {
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
+import { composeFooter } from "./keyHints";
 import type { ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -590,10 +591,12 @@ export class App implements ScreenContext {
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
     if (revealing) {
       this.main.content = t("ui.revealingCombat");
-      this.footer.content = joinLines([highlightKeyHints(t("ui.footerSkipReveal"))]);
+      // The reveal swallows every key except the globals handled before it, and `[b]` is not one
+      // of them — so the party hint is suppressed rather than advertised as a dead key.
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(this.renderFooter())]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
     }
     this.renderLogContent();
   }
@@ -896,11 +899,17 @@ export class App implements ScreenContext {
     }
   }
 
+  /** Paging is driven centrally by `listCountFor`, so the `[←/→]` hint is derived from the same source rather than written into each screen's footer string. */
+  private isPaginated(): boolean {
+    const count = this.listCountFor(this.ui);
+    return count !== null && pageCount(count, pageSizeFor(this.ui.kind)) > 1;
+  }
+
   private renderFooter(): string {
     switch (this.ui.kind) {
       case "room":
       case "rest":
-        return roomScreen.renderFooter(this.ui);
+        return roomScreen.renderFooter(this.ui, this.game);
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
@@ -908,21 +917,21 @@ export class App implements ScreenContext {
       case "pickTarget":
       case "roundResolved":
       case "combatOver":
-        return combatScreen.renderFooter(this.ui);
+        return combatScreen.renderFooter(this.ui, this.game, this.listPage);
       case "pickItemOutOfCombat":
       case "itemDetail":
-        return inventoryScreen.renderFooter(this.ui);
+        return inventoryScreen.renderFooter(this.ui, this.game, this.listPage);
       case "artifactMenu":
       case "artifactDetail":
-        return artifactsScreen.renderFooter(this.ui);
+        return artifactsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "artifactDecision":
       case "artifactDecisionPickCharacter":
       case "artifactDecisionPickReplace":
-        return artifactDecisionScreen.renderFooter(this.ui);
+        return artifactDecisionScreen.renderFooter(this.ui, this.game);
       case "saveMenu":
         return saveScreen.renderFooter();
       case "roomReward":
-        return rewardsScreen.renderFooter(this.ui);
+        return rewardsScreen.renderFooter(this.ui, this.listPage);
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
       case "eventOpenChest":
@@ -937,13 +946,13 @@ export class App implements ScreenContext {
       case "eventHermitPickArtifact":
       case "eventGuardianFight":
       case "eventReflection":
-        return eventsScreen.renderFooter(this.ui);
+        return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "campReflection":
         return campReflectionScreen.renderFooter(this.ui);
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":
-        return endingScreen.renderFooter(this.ui);
+        return endingScreen.renderFooter(this.ui, this.game);
       case "founderDialogue":
         return founderDialogueScreen.renderFooter(this.ui);
       case "abilityBuyback":

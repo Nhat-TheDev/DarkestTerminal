@@ -3,6 +3,7 @@ import type { AbilityDefinition, Id } from "../types";
 import { ABILITIES, formatAbilityEffect } from "../data/abilities";
 import { loadProfile } from "../engine/profile";
 import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
+import { withPageHint, digitHint } from "./keyHints";
 import { t } from "../data/strings";
 
 const PAGE_SIZE = 9;
@@ -35,6 +36,9 @@ export function showAbilitySelect(renderer: CliRenderer, classNames: string[]): 
     const body = new TextRenderable(renderer, { id: "abilityselect-body", content: "" });
     root.add(body);
 
+    const footer = new TextRenderable(renderer, { id: "abilityselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
+    root.add(footer);
+
     const picks: (Id | null)[] = [];
     let page = 0;
 
@@ -58,9 +62,8 @@ export function showAbilitySelect(renderer: CliRenderer, classNames: string[]): 
       lines.push([]);
       lines.push([colorChunk(t("abilitySelect.skipOption"), PALETTE.dim)]);
       if (totalPages > 1) lines.push([colorChunk(t("abilitySelect.pageTag", { page: page + 1, total: totalPages }), PALETTE.dim)]);
-      lines.push([]);
-      lines.push(highlightKeyHints(t("abilitySelect.hint")));
       body.content = joinLines(lines);
+      footer.content = joinLines([highlightKeyHints(withPageHint(digitHint("abilitySelect.hint", pageOptions.length, "abilitySelect.hintSkipOnly"), totalPages > 1))]);
     };
     render();
 

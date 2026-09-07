@@ -5,7 +5,8 @@ import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries } from "../state";
 import type { ScreenContext } from "./context";
-import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "../theme";
+import { PALETTE, colorChunk, joinLines } from "../theme";
+import { digitHint } from "../keyHints";
 
 export type RoomUiState = Extract<UiState, { kind: "room" } | { kind: "rest" }>;
 
@@ -52,11 +53,6 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
         [colorChunk(t("ui.pathsLabel"), PALETTE.text)],
       ];
       choices.forEach((r, i) => lines.push([colorChunk(`  [${i + 1}] ${r.name} (${r.type})`, PALETTE.text)]));
-      if (inventoryEntries(s.inventory).length > 0) {
-        lines.push([]);
-        lines.push(highlightKeyHints(t("ui.pressItemHint")));
-      }
-      lines.push(highlightKeyHints(t("ui.pressArtifactHint")));
       return joinLines(lines);
     }
 
@@ -67,10 +63,13 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
   }
 }
 
-export function renderFooter(ui: RoomUiState): string {
+export function renderFooter(ui: RoomUiState, game: Game): string {
   switch (ui.kind) {
-    case "room":
-      return t("ui.footerRoom");
+    case "room": {
+      // `[i]` is silently ignored on an empty bag (see handleKey), so it is not advertised there.
+      const itemsKey = inventoryEntries(game.state.inventory).length > 0 ? "ui.footerRoom" : "ui.footerRoomNoItems";
+      return digitHint(itemsKey, game.connectedRoomChoices().length);
+    }
     case "rest":
       return t("ui.footerChooseActivity");
   }
