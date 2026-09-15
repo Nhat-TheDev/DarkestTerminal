@@ -5,3 +5,4 @@ saves/
 dist/
 npm/*/darkest-terminal
 npm/*/darkest-terminal.exe
+.DS_Store

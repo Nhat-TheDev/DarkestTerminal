@@ -36,7 +36,7 @@ import {
   type Sprite,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
-import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON } from "./state";
+import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { composeFooter } from "./keyHints";
 import type { ScreenContext } from "./screens/context";
@@ -298,7 +298,7 @@ export class App implements ScreenContext {
       return;
     }
     const next = this.game
-      .livingAllyRefs()
+      .livingCharactersNeedingAction()
       .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind));
     this.ui = next ? { kind: "pickAction", actorRef: next } : { kind: "roundResolved" };
     if (!next && this.game.readyToResolve()) {
@@ -688,7 +688,16 @@ export class App implements ScreenContext {
     }
     const noteLines = [...abilityLines, ...artifactLines, ...buffLines, ...debuffLines];
 
-    return [line1, hpLine, mpLine, fearLine, ...noteLines];
+    const summonLines: TextChunk[][] = this.game.ctx.summons
+      .filter((s) => s.ownerId === c.id && s.hp > 0)
+      .map((s) => [
+        plainChunk("  "),
+        colorChunk(`${SUMMON_ICON} ${s.name}:`, PALETTE.title),
+        plainChunk(" "),
+        colorChunk(t("ui.statValueSuffix", { cur: s.hp, max: s.maxHp }), hpColorFor(s.hp, s.maxHp)),
+      ]);
+
+    return [line1, hpLine, mpLine, fearLine, ...noteLines, ...summonLines];
   }
 
   private buildUnitMeta(label: string, labelColor: string, statusText: string, statusColor: string): TextChunk[][] {

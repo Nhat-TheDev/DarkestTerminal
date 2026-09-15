@@ -55,12 +55,12 @@
         "....HHHHH....",
         "EECHHHHSSS...",
         ".E.HHHSSES...",
-        "BE.AAAAAAA..B",
+        "BE.ACAAACA..B",
         "B.AAACACAAA.B",
         "BDAAAACAAAADB",
         ".BSAACACAASB.",
-        "..ENNNNNNNE..",
-        "...NNN.NNN..."
+        "..EGGGGGGGE..",
+        "...GGG.GGG..."
       ],
       "palette": {
         "H": "#2a2015",
@@ -68,9 +68,7 @@
         "E": "#2a1f18",
         "A": "#c9962e",
         "C": "#5c3d10",
-        "W": "#ede0b0",
         "G": "#3a2f1c",
-        "N": "#3a2f1c",
         "B": "#ffffff",
         "D": "#d9d9d9"
       }
@@ -78,8 +76,8 @@
     "acolyte": {
       "rows": [
         "....CCCCC....",
-        "...HHHSSSS...",
-        "...HHSSESS...",
+        "...HHHHSSS...",
+        "...HHHSSES...",
         "...AABCBAA...",
         "..AABCCCBAA..",
         "..AAABCBAAA..",
@@ -149,6 +147,80 @@
         "F": "#f9c824",
         "G": "#d5ccae",
         "I": "#cdc29d"
+      }
+    },
+    "archer": {
+      "rows": [
+        "..JJJHHH.....",
+        "..HHJJSSS....",
+        "..HHHSSES..F.",
+        "..AAICIAA.EF.",
+        ".AAAICIAAE.F.",
+        ".AAAICIAEB.F.",
+        ".SAICCCIESB..",
+        "..GGGGGGEF.D.",
+        "..GGG.GGF...."
+      ],
+      "palette": {
+        "H": "#787573",
+        "S": "#f2ce9c",
+        "E": "#454545",
+        "A": "#deae4f",
+        "G": "#322511",
+        "B": "#ffffff",
+        "D": "#adadad",
+        "F": "#4fc467",
+        "C": "#54471c",
+        "I": "#a58622",
+        "J": "#bababa"
+      }
+    },
+    "ninja": {
+      "rows": [
+        "....EEEEE....",
+        "HHCEEEENNN...",
+        ".H.EEENNGN...",
+        "BH.AAACAAA...",
+        "B.AAAACAAAD..",
+        "BDAAAACAAABD.",
+        ".BSCCCCCCDNND",
+        "...WWWWWWWDB.",
+        "...WWW.WWW.D."
+      ],
+      "palette": {
+        "H": "#2a2015",
+        "S": "#f2ce9c",
+        "E": "#001133",
+        "A": "#162245",
+        "C": "#425767",
+        "W": "#13132a",
+        "G": "#bd1c00",
+        "N": "#bfbfbf",
+        "B": "#ffffff",
+        "D": "#d9d9d9"
+      }
+    },
+    "summoner": {
+      "rows": [
+        ".CCDCCCCC....",
+        ".CCCCCSSSS...",
+        ".C.CCSSSES.EE",
+        "...AAABAAA..E",
+        "..AABABABAAEE",
+        "..AABBBBBAEE.",
+        "..SABABABEE..",
+        "...ABABAEE...",
+        "..AAAABEEAA.."
+      ],
+      "palette": {
+        "H": "#8a7050",
+        "S": "#907951",
+        "E": "#2a1f18",
+        "A": "#2e845c",
+        "C": "#3f3822",
+        "N": "#4a4028",
+        "B": "#6e8782",
+        "D": "#4f793e"
       }
     }
   },

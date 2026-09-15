@@ -7,6 +7,7 @@ import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTarge
 import { mitigatedOffense, getFearTier, rollHits, getFearAccuracyPenalty, isHelpfulStatusEffect, resolveSkillEffect } from "../src/engine/resolver";
 import type { CombatantRef, LogEntry, SkillDefinition } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { getSummonArchetype, getSummonSkill, getSummonCast } from "../src/data/summons";
 
 // Several tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills to exercise new mechanics.
 // Bun shares module state across test files within one run, so truncate back to the original length once
@@ -352,7 +353,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const self: CombatantRef = { kind: "character", id: vanguard.id };
     const targets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
 
-    const directDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, rat1.defense) + 12));
+    const directDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack * 0.7, rat1.defense) + 20));
     const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower, rat1.defense * 0.7) + 6));
 
     queueAction(combat, self, "vanguard-heavy-charge", targets, ctx);
@@ -595,11 +596,11 @@ describe("Vanguard skill ranks", () => {
     ]);
   });
 
-  test("Sword Judgment ranks resolve to dmg 30/38/47 at lv35/70/100", () => {
+  test("Sword Judgment ranks resolve to dmg 30/40/50 (90% offense) at lv35/70/100", () => {
     const skill = getSkill("vanguard-sword-judgment");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 38 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 47 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 90 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 90 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 90 }]);
   });
 });
 
@@ -630,11 +631,11 @@ describe("Mage skill ranks", () => {
     });
   });
 
-  test("Ice Age ranks resolve dmg 22/28/35 at lv35/70/100", () => {
+  test("Ice Age ranks resolve dmg 20/25/35 (110% offense) at lv35/70/100", () => {
     const skill = getSkill("mage-ice-age");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 22 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 28 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 110 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 110 }]);
   });
 });
 
@@ -678,15 +679,15 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
   test("Fire Vial ranks resolve dmg/burn% at lv1/7/15", () => {
     const skill = getSkill("plaguedoc-fire-vial");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
-      { kind: "damage", amount: 5 },
+      { kind: "damage", amount: 10 },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.6 },
     ]);
     expect(getEffectiveSkill(skill, 7).effects).toEqual([
-      { kind: "damage", amount: 7 },
+      { kind: "damage", amount: 12 },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.7 },
     ]);
     expect(getEffectiveSkill(skill, 15).effects).toEqual([
-      { kind: "damage", amount: 9 },
+      { kind: "damage", amount: 16 },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8 },
     ]);
   });
@@ -695,22 +696,22 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
     const skill = getSkill("plaguedoc-total-plague");
     expect(getEffectiveSkill(skill, 35).effectsByRelation).toEqual({
       ally: [
-        { kind: "heal", amount: 20 },
+        { kind: "heal", amount: 20, offenseMultiplierPercent: 50 },
         { kind: "removeStatusEffect" },
       ],
       enemy: [
-        { kind: "damage", amount: 10 },
+        { kind: "damage", amount: 10, offenseMultiplierPercent: 60 },
         { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.8 },
         { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8 },
       ],
     });
     expect(getEffectiveSkill(skill, 100).effectsByRelation).toEqual({
       ally: [
-        { kind: "heal", amount: 31 },
+        { kind: "heal", amount: 31, offenseMultiplierPercent: 50 },
         { kind: "removeStatusEffect" },
       ],
       enemy: [
-        { kind: "damage", amount: 16 },
+        { kind: "damage", amount: 16, offenseMultiplierPercent: 60 },
         { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.9 },
         { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.9 },
       ],
@@ -801,12 +802,12 @@ describe("Viking class", () => {
     ]);
   });
 
-  test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 32/40/50", () => {
+  test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 30/40/50 (120% offense)", () => {
     const skill = getSkill("viking-thunder-god-fury");
     expect(skill.conditionalBonus).toEqual({ requiresStatusId: "storm-empowered", ignoreDefensePercentBonus: 60, consumesStatus: true });
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 32 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 120 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 120 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120 }]);
   });
 
   test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed%", () => {
@@ -826,11 +827,11 @@ describe("Viking class", () => {
 
     const spinAxe = getSkill("viking-spin-axe");
     expect(getEffectiveSkill(spinAxe, 50).effects).toEqual([
-      { kind: "damage", amount: 18 },
+      { kind: "damage", amount: 20, offenseMultiplierPercent: 70 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.4 },
     ]);
     expect(getEffectiveSkill(spinAxe, 75).effects).toEqual([
-      { kind: "damage", amount: 22 },
+      { kind: "damage", amount: 30, offenseMultiplierPercent: 70 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.5 },
     ]);
   });
@@ -838,7 +839,10 @@ describe("Viking class", () => {
   test("storm-empowered-ii/iii and bleeding statuses exist with the documented fields", () => {
     expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, ignoreDefensePercent: 30 });
     expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, ignoreDefensePercent: 30 });
-    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 5 }]);
+    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2 }]);
+    expect(getStatusEffect("bleeding").stackable).toBe(true);
+    expect(getStatusEffect("bleeding").maxStacks).toBe(5);
+    expect(getStatusEffect("bleeding").perStackBonusPercent).toBe(100);
   });
 
   test("full combat sequence: Lightning Axe -> Frenzied Slash -> Thunder God's Fury", () => {
@@ -983,24 +987,24 @@ describe("Acolyte skill ranks incl. effectsByRelation", () => {
     const skill = getSkill("acolyte-divine-descent");
     expect(getEffectiveSkill(skill, 35).effectsByRelation).toEqual({
       ally: [
-        { kind: "heal", amount: 25 },
+        { kind: "heal", amount: 25, offenseMultiplierPercent: 60 },
         { kind: "modifyStat", stat: "fear", amount: -15 },
       ],
-      enemy: [{ kind: "damage", amount: 20 }],
+      enemy: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 80 }],
     });
     expect(getEffectiveSkill(skill, 70).effectsByRelation).toEqual({
       ally: [
-        { kind: "heal", amount: 30 },
+        { kind: "heal", amount: 30, offenseMultiplierPercent: 60 },
         { kind: "modifyStat", stat: "fear", amount: -20 },
       ],
-      enemy: [{ kind: "damage", amount: 25 }],
+      enemy: [{ kind: "damage", amount: 25, offenseMultiplierPercent: 80 }],
     });
     expect(getEffectiveSkill(skill, 100).effectsByRelation).toEqual({
       ally: [
-        { kind: "heal", amount: 40 },
+        { kind: "heal", amount: 40, offenseMultiplierPercent: 60 },
         { kind: "modifyStat", stat: "fear", amount: -25 },
       ],
-      enemy: [{ kind: "damage", amount: 30 }],
+      enemy: [{ kind: "damage", amount: 30, offenseMultiplierPercent: 80 }],
     });
   });
 
@@ -1014,6 +1018,257 @@ describe("Acolyte skill ranks incl. effectsByRelation", () => {
       ally: [{ kind: "removeStatusEffect" }],
       enemy: [{ kind: "damage", amount: 27 }],
     });
+  });
+});
+
+describe("Archer class", () => {
+  test("Archer has valid base stats and growth weights", () => {
+    expectValidCharacterBase(getClass("archer"));
+  });
+
+  test("Archer has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+    const archer = getClass("archer");
+    expect(archer.skills.length).toBe(6);
+    const basic = archer.skills.find((s) => s.slot === 0)!;
+    expect(basic.id).toBe("archer-quick-shot");
+    expect(basic.mpCost).toBe(0);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+  });
+
+  test("Aimed Shot ranks resolve dmg/critChance at lv1/7/15", () => {
+    const skill = getSkill("archer-aimed-shot");
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "damage", amount: 16, critChance: 0.35 }]);
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "damage", amount: 21, critChance: 0.42 }]);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "damage", amount: 26, critChance: 0.5 }]);
+  });
+
+  test("Volley Shot always carries the 60% offense multiplier across ranks", () => {
+    const skill = getSkill("archer-volley-shot");
+    for (const [level, amount] of [[10, 10], [25, 14], [45, 19]] as const) {
+      expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "damage", amount, offenseMultiplierPercent: 60 }]);
+    }
+  });
+
+  test("Deadeye Shot is an ultimate with guaranteed crit (critChance 1) at every rank", () => {
+    const skill = getSkill("archer-deadeye-shot");
+    expect(skill.isUltimate).toBe(true);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, critChance: 1 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 34, critChance: 1 }]);
+  });
+
+  test("overwatched/-ii/-iii trigger Overwatch, with a rank-scaled attack bonus for the interrupt shot", () => {
+    for (const [id, amount] of [["overwatched", 4], ["overwatched-ii", 10], ["overwatched-iii", 16]] as const) {
+      const status = getStatusEffect(id);
+      expect(status.triggersOverwatch).toBe(true);
+      expect(status.perTurnEffects).toEqual([{ kind: "modifyCombatStat", combatStat: "attack", amount }]);
+    }
+  });
+
+  test("Archer is selectable and fights: Aimed Shot deals damage via a full combat round", () => {
+    const { ctx } = makeCtx();
+    const archer = ctx.party.find((p) => p.classId === "archer")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemy = livingMonsterRefs(combat, ctx)[0]!;
+    const self: CombatantRef = { kind: "character", id: archer.id };
+    const hpBefore = rat.hp;
+    queueAction(combat, self, "archer-aimed-shot", [enemy], ctx);
+    resolveRound(combat, ctx);
+    expect(rat.hp).toBeLessThan(hpBefore);
+  });
+});
+
+describe("Ninja class", () => {
+  test("Ninja has valid base stats and growth weights", () => {
+    expectValidCharacterBase(getClass("ninja"));
+  });
+
+  test("Ninja has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+    const ninja = getClass("ninja");
+    expect(ninja.skills.length).toBe(6);
+    const basic = ninja.skills.find((s) => s.slot === 0)!;
+    expect(basic.id).toBe("ninja-kunai-strike");
+    expect(basic.mpCost).toBe(0);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+  });
+
+  test("Throwing Knives ranks resolve dmg/offense%/extraHitChance/bleed% at lv10/25/45", () => {
+    const skill = getSkill("ninja-throwing-knives");
+    expect(getEffectiveSkill(skill, 10).effects).toEqual([
+      { kind: "damage", amount: 11, offenseMultiplierPercent: 80, extraHitChance: 0.4 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6 },
+    ]);
+    expect(getEffectiveSkill(skill, 45).effects).toEqual([
+      { kind: "damage", amount: 18, offenseMultiplierPercent: 80, extraHitChance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.8 },
+    ]);
+    expect(skill.executeBonus).toEqual({ hpPercentThreshold: 25, bonusDamageFlat: 5 });
+  });
+
+  test("Shuriken Storm's hitCountRange widens by rank: 1-2 / 1-3 / 2-3", () => {
+    const skill = getSkill("ninja-shuriken-storm");
+    expect(getEffectiveSkill(skill, 20).effects?.[0]?.hitCountRange).toEqual({ min: 1, max: 2 });
+    expect(getEffectiveSkill(skill, 50).effects?.[0]?.hitCountRange).toEqual({ min: 1, max: 3 });
+    expect(getEffectiveSkill(skill, 75).effects?.[0]?.hitCountRange).toEqual({ min: 2, max: 3 });
+  });
+
+  test("Death Mark is an ultimate that scales with bleeding stacks and has a bigger executeBonus", () => {
+    const skill = getSkill("ninja-death-mark");
+    expect(skill.isUltimate).toBe(true);
+    expect(skill.executeBonus).toEqual({ hpPercentThreshold: 30, bonusDamageFlat: 15 });
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([
+      { kind: "damage", amount: 14, scalesWithStatusStacks: { statusEffectId: "bleeding", percentPerStack: 5 } },
+      { kind: "applyStatusEffect", statusEffectId: "bleeding" },
+    ]);
+  });
+
+  test("stealthed status is untargetable with a break bonus, no ordinary perTurnEffects", () => {
+    const status = getStatusEffect("stealthed");
+    expect(status.untargetable).toBe(true);
+    expect(status.breakBonus).toEqual({ basicAttackGuaranteedCrit: true, skillDamageBonusPercent: 10 });
+    expect(status.perTurnEffects).toEqual([]);
+  });
+
+  test("ninja-clone summon archetype exists with a basic-attack-only action weight table", () => {
+    const archetype = getSummonArchetype("ninja-clone");
+    expect(archetype.actionWeights).toEqual({ basicAttack: 1 });
+  });
+
+  test("Ninja is selectable and fights: Kunai Strike deals damage via a full combat round", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemy = livingMonsterRefs(combat, ctx)[0]!;
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    const hpBefore = rat.hp;
+    queueAction(combat, self, "ninja-kunai-strike", [enemy], ctx);
+    resolveRound(combat, ctx);
+    expect(rat.hp).toBeLessThan(hpBefore);
+  });
+});
+
+describe("Summoner class", () => {
+  test("Summoner has valid base stats and growth weights", () => {
+    expectValidCharacterBase(getClass("summoner"));
+  });
+
+  test("Summoner has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+    const summoner = getClass("summoner");
+    expect(summoner.skills.length).toBe(6);
+    const basic = summoner.skills.find((s) => s.slot === 0)!;
+    expect(basic.id).toBe("summoner-totem-strike");
+    expect(basic.mpCost).toBe(0);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+  });
+
+  test("Summon Goblin's cast profile carries the minion's attack% by rank (60/90/120), sourced from the Summoner's magicPower", () => {
+    const skill = getSkill("summoner-summon-goblin");
+    const castId = getEffectiveSkill(skill, 1).effects?.[0]?.summonCastId;
+    expect(castId).toBe("summoner-summon-goblin");
+    // The same cast profile is referenced at every rank — the per-rank growth lives inside it as a tuple.
+    expect(getEffectiveSkill(skill, 7).effects?.[0]?.summonCastId).toBe(castId);
+    expect(getEffectiveSkill(skill, 15).effects?.[0]?.summonCastId).toBe(castId);
+    expect(getSummonCast(castId!).stat.attack).toEqual({ base: 0, percent: [60, 90, 120], sourceStat: "magicPower" });
+  });
+
+  test("Summon Hellfire Imp is an ultimate that both spawns a minion and hits allEnemies", () => {
+    const skill = getSkill("summoner-summon-imp");
+    expect(skill.isUltimate).toBe(true);
+    expect(skill.target).toBe("allEnemies");
+    const effects = getEffectiveSkill(skill, 35).effects ?? [];
+    const summonEffect = effects.find((e) => e.kind === "summon");
+    expect(summonEffect).toBeDefined();
+    expect(getSummonCast(summonEffect!.summonCastId!).archetypeId).toBe("hellfire-imp");
+    expect(effects.some((e) => e.kind === "damage")).toBe(true);
+  });
+
+  test("Mastery ranks apply minion-empowerment/-ii/-iii", () => {
+    const skill = getSkill("summoner-mastery");
+    expect(getEffectiveSkill(skill, 20).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment" }]);
+    expect(getEffectiveSkill(skill, 50).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment-ii" }]);
+    expect(getEffectiveSkill(skill, 75).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment-iii" }]);
+  });
+
+  test("every Summoner minion archetype and its signature skill(s) resolve", () => {
+    for (const id of ["goblin-thrower", "stone-golem", "hellfire-imp", "healer-spirit"]) {
+      const archetype = getSummonArchetype(id);
+      for (const skillId of archetype.signatureSkillIds ?? []) getSummonSkill(skillId);
+    }
+  });
+
+  test("Summon Goblin spawns a goblin-thrower with maxHp from the Summoner's maxHp and attack from the Summoner's magicPower", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    resolveRound(combat, ctx);
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower");
+    expect(goblin).toBeDefined();
+    expect(goblin!.maxHp).toBe(Math.round((summoner.maxHp * 30) / 100));
+    // Physical-attacking minion, but funded by the magic-leaning Summoner's magicPower, not its own weak attack.
+    expect(goblin!.attack).toBe(Math.round((summoner.magicPower * 60) / 100));
+  });
+
+  test("Summon Goblin at rank 2 uses rank 2's attack% (90), not rank 1's — resolved from the shared cast profile via the caster's level", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 7; // summoner-summon-goblin's rank 2 unlockLevel
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    resolveRound(combat, ctx);
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower");
+    expect(goblin).toBeDefined();
+    expect(goblin!.attack).toBe(Math.round((summoner.magicPower * 90) / 100));
+  });
+
+  test("Summon Golem spawns a stone-golem with attack from the Summoner's magicPower too", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 10;
+    summoner.unlockedSkillIds.push("summoner-summon-golem");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-summon-golem", [self], ctx);
+    resolveRound(combat, ctx);
+    const golem = ctx.summons.find((s) => s.archetypeId === "stone-golem");
+    expect(golem).toBeDefined();
+    expect(golem!.maxHp).toBe(Math.round((summoner.maxHp * 120) / 100));
+    expect(golem!.attack).toBe(Math.round((summoner.magicPower * 70) / 100));
+  });
+
+  test("Summon Spirit spawns a healer-spirit with magicPower from the Summoner's own magicPower, not attack", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    resolveRound(combat, ctx);
+    const spirit = ctx.summons.find((s) => s.archetypeId === "healer-spirit");
+    expect(spirit).toBeDefined();
+    expect(spirit!.magicPower).toBe(Math.round((summoner.magicPower * 60) / 100));
+  });
+
+  test("Summoner is selectable and fights: Totem Strike deals damage via a full combat round", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemy = livingMonsterRefs(combat, ctx)[0]!;
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    const hpBefore = rat.hp;
+    queueAction(combat, self, "summoner-totem-strike", [enemy], ctx);
+    resolveRound(combat, ctx);
+    expect(rat.hp).toBeLessThan(hpBefore);
   });
 });
 

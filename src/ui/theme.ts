@@ -29,6 +29,9 @@ export const CLASS_STYLE: Record<string, { abbr: string; color: string }> = {
   acolyte: { abbr: "AC", color: "#a8901a" },
   viking: { abbr: "VK", color: "#8a4a2a" },
   "plague-doctor": { abbr: "PD", color: "#3a4a3a" },
+  archer: { abbr: "AR", color: "#4a6b3a" },
+  ninja: { abbr: "NJ", color: "#5a5a5a" },
+  summoner: { abbr: "SM", color: "#5a3a8a" },
 };
 
 export const MONSTER_STYLE: Record<string, { abbr: string; color: string }> = {

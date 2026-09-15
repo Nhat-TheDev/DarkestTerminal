@@ -130,6 +130,10 @@ describe("elite/boss skill kit", () => {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
         monster.executeCooldownTurns = 99;
+        // makeCtx's party has 1 character per class — their combined opening damage would otherwise
+        // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
+        // which is what this test is actually checking for.
+        monster.hp = monster.maxHp = 9999;
         ctx.monsters.push(monster);
         const combat = startCombat("r1", [monster.id], ctx, false);
         queueTrivialActions(ctx, combat);

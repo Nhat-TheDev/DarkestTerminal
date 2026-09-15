@@ -75,29 +75,29 @@
   {
     "id": "poisoned",
     "name": "Poisoned",
-    "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
+    "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP + 2.5% of max HP per turn.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 4, "maxHpPercent": 2.5 }],
     "durationTurns": 3
   },
   {
     "id": "poisoned-ii",
     "name": "Poisoned II",
-    "description": "Poison Bomb rank 2 (Rogue): lose 6 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 6 }],
+    "description": "Poison Bomb rank 2 (Rogue): lose 6 HP + 3% of max HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 6, "maxHpPercent": 3 }],
     "durationTurns": 3
   },
   {
     "id": "poisoned-iii",
     "name": "Poisoned III",
-    "description": "Poison Bomb rank 3 (Rogue): lose 8 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 8 }],
+    "description": "Poison Bomb rank 3 (Rogue): lose 8 HP + 4% of max HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 8, "maxHpPercent": 4 }],
     "durationTurns": 3
   },
   {
     "id": "burning",
     "name": "Burning",
-    "description": "Fireball/Fire Pillar (Mage): lose 5 HP per turn. Not curable via mini-game (deliberate — distinguishes it from Poisoned).",
-    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
+    "description": "Fireball/Fire Pillar (Mage): lose 6 HP + 3% of max HP per turn. Not curable via mini-game (deliberate — distinguishes it from Poisoned).",
+    "perTurnEffects": [{ "kind": "damage", "amount": 6, "maxHpPercent": 3 }],
     "durationTurns": 2
   },
   {
@@ -146,16 +146,40 @@
   {
     "id": "poison-vulnerable",
     "name": "Poison Vulnerable",
-    "description": "While active, doubles the per-turn damage of the bearer's own Poisoned tick.",
+    "description": "While active, increases the per-turn damage of the bearer's own Poisoned tick by 60%.",
     "perTurnEffects": [],
     "durationTurns": 2,
-    "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
+    "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 1.6 }
+  },
+  {
+    "id": "burning-vulnerable",
+    "name": "Burning Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Burning tick by 60%.",
+    "perTurnEffects": [],
+    "durationTurns": 2,
+    "vulnerableTo": { "statusEffectId": "burning", "multiplier": 1.6 }
+  },
+  {
+    "id": "bleeding-vulnerable",
+    "name": "Bleeding Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Bleeding tick by 60%.",
+    "perTurnEffects": [],
+    "durationTurns": 2,
+    "vulnerableTo": { "statusEffectId": "bleeding", "multiplier": 1.6 }
+  },
+  {
+    "id": "acid-burn-vulnerable",
+    "name": "Acid Burn Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Acid Burn tick by 60%.",
+    "perTurnEffects": [],
+    "durationTurns": 2,
+    "vulnerableTo": { "statusEffectId": "acid-burn", "multiplier": 1.6 }
   },
   {
     "id": "acid-burn",
     "name": "Acid Burn",
-    "description": "Acid Spit (Slime): lose 3 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 3 }],
+    "description": "Acid Spit (Slime): lose 5 HP + 2.5% of max HP per turn.",
+    "perTurnEffects": [{ "kind": "damage", "amount": 5, "maxHpPercent": 2.5 }],
     "durationTurns": 2
   },
   {
@@ -213,9 +237,45 @@
   {
     "id": "bleeding",
     "name": "Bleeding",
-    "description": "Frenzied Slash/Spinning Axe (Viking): lose 5 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
-    "durationTurns": 3
+    "description": "Frenzied Slash/Spinning Axe (Viking): lose 6 HP + 2% of max HP per turn, stacking up to 5 times (30 HP + 10% max HP per turn at max stacks).",
+    "perTurnEffects": [{ "kind": "damage", "amount": 6, "maxHpPercent": 2 }],
+    "durationTurns": 3,
+    "stackable": true,
+    "maxStacks": 5,
+    "perStackBonusPercent": 100
+  },
+  {
+    "id": "stealthed",
+    "name": "Stealthed",
+    "description": "Smoke Bomb (Ninja): untargetable by enemies until the next attack breaks it — a basic attack lands a guaranteed critical hit, a skill deals +10% damage.",
+    "perTurnEffects": [],
+    "durationTurns": 2,
+    "untargetable": true,
+    "breakBonus": { "basicAttackGuaranteedCrit": true, "skillDamageBonusPercent": 10 }
+  },
+  {
+    "id": "overwatched",
+    "name": "Overwatched",
+    "description": "Overwatched (Archer): reactively fires at the next monster to act, interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
+    "durationTurns": 1,
+    "triggersOverwatch": true
+  },
+  {
+    "id": "overwatched-ii",
+    "name": "Overwatched",
+    "description": "Overwatched (Archer): reactively fires at the next monster to act, interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 10 }],
+    "durationTurns": 1,
+    "triggersOverwatch": true
+  },
+  {
+    "id": "overwatched-iii",
+    "name": "Overwatched",
+    "description": "Overwatched (Archer): reactively fires at the next monster to act, interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 16 }],
+    "durationTurns": 1,
+    "triggersOverwatch": true
   },
   {
     "id": "blinded",
@@ -224,5 +284,43 @@
     "perTurnEffects": [],
     "durationTurns": 2,
     "accuracyPenaltyPercent": 60
+  },
+  {
+    "id": "agony",
+    "name": "Agony",
+    "description": "Hellfire Strike (Summoner's Hellfire Imp): lose 6 HP + 2% of max HP per turn, and -6 attack for the duration.",
+    "perTurnEffects": [
+      { "kind": "damage", "amount": 6, "maxHpPercent": 2 },
+      { "kind": "modifyCombatStat", "combatStat": "attack", "amount": -6 }
+    ],
+    "durationTurns": 3
+  },
+  {
+    "id": "minion-empowerment",
+    "name": "Minion Empowerment",
+    "description": "Mastery Summoner (Summoner): every minion you currently have active, plus any summoned later this combat, gets +15% max HP and +15% attack.",
+    "perTurnEffects": [],
+    "durationTurns": 99,
+    "empowersMinions": { "maxHpPercent": 15, "attackPercent": 15 }
+  },
+  {
+    "id": "minion-empowerment-ii",
+    "name": "Minion Empowerment",
+    "description": "Mastery Summoner rank 2 (Summoner): every minion you currently have active, plus any summoned later this combat, gets +25% max HP and +25% attack.",
+    "perTurnEffects": [],
+    "durationTurns": 99,
+    "empowersMinions": { "maxHpPercent": 25, "attackPercent": 25 },
+    "rankOf": "minion-empowerment",
+    "rankLevel": 2
+  },
+  {
+    "id": "minion-empowerment-iii",
+    "name": "Minion Empowerment",
+    "description": "Mastery Summoner rank 3 (Summoner): every minion you currently have active, plus any summoned later this combat, gets +35% max HP and +35% attack.",
+    "perTurnEffects": [],
+    "durationTurns": 99,
+    "empowersMinions": { "maxHpPercent": 35, "attackPercent": 35 },
+    "rankOf": "minion-empowerment",
+    "rankLevel": 3
   }
 ]

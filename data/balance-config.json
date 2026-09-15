@@ -3,7 +3,8 @@
     "defenseMitigationX": 60,
     "defenseMitigationY": 30,
     "executeCooldownTurns": 3,
-    "defensiveLowHpSkillChance": 0.7
+    "defensiveLowHpSkillChance": 0.7,
+    "defaultCritMultiplierPercent": 150
   },
   "survival": {
     "initialFear": 0,

@@ -24,6 +24,7 @@ import {
   type QueueActionError,
   livingMonsterRefs,
   livingCharacterRefs,
+  livingPlayerSideRefs,
   snapshotCombatants,
   tagLogRange,
   tagPartySnapshotRange,
@@ -67,7 +68,7 @@ export class Game {
     const rng = new Rng(seed);
     if (restore) {
       rng.setState(restore.rngState);
-      this.ctx = { party: restore.state.party, monsters: restore.monsters, rng, inventory: restore.state.inventory };
+      this.ctx = { party: restore.state.party, monsters: restore.monsters, summons: [], rng, inventory: restore.state.inventory };
       this.state = restore.state;
       return;
     }
@@ -86,7 +87,7 @@ export class Game {
       return character;
     });
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
-    this.ctx = { party, monsters, rng, inventory };
+    this.ctx = { party, monsters, summons: [], rng, inventory };
     // Part F.2's persistence layer — read once per fresh run. Eligibility (and therefore whether
     // "the-one-who-stayed" can ever roll this run) is entirely encoded by whether its id starts
     // pre-inserted into firedOnceEventIds below; no other code needs to know why.
@@ -270,6 +271,12 @@ export class Game {
   }
 
   livingAllyRefs(): CombatantRef[] {
+    if (!this.state.combat) return [];
+    return livingPlayerSideRefs(this.state.combat, this.ctx);
+  }
+
+  /** Real characters only, no summons — summons never get a player-queued action (they act automatically via AI), so the command-phase "who needs an action queued next" loop must not wait on one. */
+  livingCharactersNeedingAction(): CombatantRef[] {
     if (!this.state.combat) return [];
     return livingCharacterRefs(this.state.combat, this.ctx);
   }

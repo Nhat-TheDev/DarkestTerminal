@@ -7,6 +7,8 @@ interface BalanceConfig {
     defenseMitigationY: number;
     executeCooldownTurns: number;
     defensiveLowHpSkillChance: number;
+    /** Shared crit-damage multiplier (as a %) for any `SkillEffect.critChance` that doesn't set its own `critMultiplierPercent`. */
+    defaultCritMultiplierPercent: number;
   };
   survival: {
     initialSatiety: number;

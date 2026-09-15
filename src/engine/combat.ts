@@ -1,6 +1,7 @@
 import type {
   Character,
   Monster,
+  Summon,
   CombatState,
   Combatant,
   CombatantRef,
@@ -8,6 +9,7 @@ import type {
   SkillTarget,
   SkillDefinition,
   SkillEffect,
+  SummonStatFormula,
   ActionSource,
   Id,
   LogEntry,
@@ -15,9 +17,10 @@ import type {
   CombatantSnapshot,
   PartyStateSnapshot,
 } from "../types";
-import { getSkill, getEffectiveSkill } from "../data/classes";
+import { getSkill, getEffectiveSkill, effectiveSkillRank } from "../data/classes";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
+import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
 import { rollDodge, autoDamageAmounts, totalCooldownReduction, alwaysHitChance } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
@@ -27,6 +30,8 @@ import { runMonsterTurn } from "./monsterAI";
 import {
   type Actor,
   isCharacter,
+  isSummon,
+  isPlayerSide,
   isActorAlive,
   resolveSkillEffect,
   tickDotEffects,
@@ -36,11 +41,13 @@ import {
   rollHits,
   rollLosesControl,
   getFearTier,
+  expireStatusEffect,
 } from "./resolver";
 
 export interface EngineContext {
   party: Character[];
   monsters: Monster[];
+  summons: Summon[];
   rng: Rng;
   inventory: Record<Id, number>;
 }
@@ -59,6 +66,11 @@ export function getActorByRef(ref: CombatantRef, ctx: EngineContext): Actor {
     const c = ctx.party.find((p) => p.id === ref.id);
     if (!c) throw new Error(`Unknown character: ${ref.id}`);
     return c;
+  }
+  if (ref.kind === "summon") {
+    const s = ctx.summons.find((su) => su.id === ref.id);
+    if (!s) throw new Error(`Unknown summon: ${ref.id}`);
+    return s;
   }
   const m = ctx.monsters.find((mo) => mo.id === ref.id);
   if (!m) throw new Error(`Unknown monster: ${ref.id}`);
@@ -101,6 +113,18 @@ export function livingCharacterRefs(combat: CombatState, ctx: EngineContext): Co
     .filter((ref) => isActorAlive(getActorByRef(ref, ctx)));
 }
 
+export function livingSummonRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
+  return combat.combatants
+    .filter((c) => c.ref.kind === "summon")
+    .map((c) => c.ref)
+    .filter((ref) => isActorAlive(getActorByRef(ref, ctx)));
+}
+
+/** Every living combatant on the player's side — real characters plus any active summons (Ninja's clone, Summoner's minions). */
+export function livingPlayerSideRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
+  return [...livingCharacterRefs(combat, ctx), ...livingSummonRefs(combat, ctx)];
+}
+
 export function livingMonsterRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
   return combat.combatants
     .filter((c) => c.ref.kind === "monster")
@@ -108,17 +132,31 @@ export function livingMonsterRefs(combat: CombatState, ctx: EngineContext): Comb
     .filter((ref) => isActorAlive(getActorByRef(ref, ctx)));
 }
 
+/**
+ * `livingPlayerSideRefs`, minus anyone currently `untargetable` (a stealthed Ninja) — the pool a
+ * MONSTER's target-picking draws from. Allies still see (and can target) a stealthed teammate
+ * normally; only enemy-facing targeting excludes them, so use `livingPlayerSideRefs` for the
+ * player's own ally-targeting.
+ */
+export function livingPlayerSideEnemyFacingRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
+  return livingPlayerSideRefs(combat, ctx).filter((ref) => {
+    const a = getActorByRef(ref, ctx);
+    return !a.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).untargetable);
+  });
+}
+
 export function autoResolveTargets(target: SkillTarget, actor: CombatantRef, combat: CombatState, ctx: EngineContext): CombatantRef[] | null {
+  const actorIsPlayerSide = actor.kind !== "monster";
   switch (target) {
     case "self":
       return [actor];
     case "allAllies":
-      return actor.kind === "character" ? livingCharacterRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
+      return actorIsPlayerSide ? livingPlayerSideRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
     case "allEnemies":
-      return actor.kind === "character" ? livingMonsterRefs(combat, ctx) : livingCharacterRefs(combat, ctx);
+      return actorIsPlayerSide ? livingMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
     case "allAlliesAndEnemies": {
-      const allies = actor.kind === "character" ? livingCharacterRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
-      const enemies = actor.kind === "character" ? livingMonsterRefs(combat, ctx) : livingCharacterRefs(combat, ctx);
+      const allies = actorIsPlayerSide ? livingPlayerSideRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
+      const enemies = actorIsPlayerSide ? livingMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
       return [...allies, ...enemies];
     }
     default:
@@ -255,6 +293,36 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
   }
 }
 
+/**
+ * Overwatch (Archer): the first living character carrying a `triggersOverwatch` status reactively
+ * attacks `monsterRef` right before that monster's own turn would resolve. Consumed either way (hit
+ * or miss); a hit returns true so the caller skips `runMonsterTurn` for this ref entirely — the
+ * monster's turn for this round is discarded, not just delayed.
+ */
+function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx: EngineContext): boolean {
+  const watcher = ctx.party.find((c) => c.isAlive && c.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).triggersOverwatch));
+  if (!watcher) return false;
+  const active = watcher.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).triggersOverwatch)!;
+
+  const target = getActorByRef(monsterRef, ctx) as Monster;
+  if (!isActorAlive(target)) {
+    expireStatusEffect(watcher, active, { log: combat.log });
+    return false;
+  }
+  if (!rollHits(watcher, () => ctx.rng.next())) {
+    expireStatusEffect(watcher, active, { log: combat.log });
+    combat.log.push({ text: t("combat.overwatchMiss", { actor: watcher.name, target: target.name }), kind: "info" });
+    return false;
+  }
+  // Expired only after the shot resolves, not before — `overwatched`'s rank-scaled attack bonus
+  // (§1.12.2/data/status-effects.json) is the interrupt's only source of rank progression, so it
+  // needs to still be active while this damage is computed.
+  combat.log.push({ text: t("combat.overwatchHit", { actor: watcher.name, target: target.name }), kind: "attack" });
+  resolveSkillEffect({ kind: "damage", amount: 0 }, watcher, target, { log: combat.log });
+  expireStatusEffect(watcher, active, { log: combat.log });
+  return true;
+}
+
 export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1, satiety = 100): void {
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
@@ -282,7 +350,9 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     if (ref.kind === "character") {
       runCharacterTurn(ref, combat, ctx);
       actedRefs.push(ref);
-    } else {
+    } else if (ref.kind === "summon") {
+      runSummonTurn(ref, combat, ctx);
+    } else if (!tryTriggerOverwatch(ref, combat, ctx)) {
       runMonsterTurn(ref, combat, ctx);
     }
     if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
@@ -416,7 +486,7 @@ function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, c
 
 function effectsFor(skill: SkillDefinition, target: Actor): SkillEffect[] {
   if (skill.effectsByRelation) {
-    return isCharacter(target) ? skill.effectsByRelation.ally : skill.effectsByRelation.enemy;
+    return isPlayerSide(target) ? skill.effectsByRelation.ally : skill.effectsByRelation.enemy;
   }
   return skill.effects ?? [];
 }
@@ -488,12 +558,230 @@ function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContex
   return chance > 0 && ctx.rng.chance(chance / 100);
 }
 
+/** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
+function findBreakBonusStatus(source: Actor) {
+  return source.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).breakBonus);
+}
+
+function resolveOneDamageEffect(
+  effect: SkillEffect,
+  skill: SkillDefinition,
+  source: Actor,
+  target: Actor,
+  ctx: EngineContext,
+  log: LogEntry[],
+  stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number }
+): number {
+  const isCrit = stealthBreak.guaranteedCrit || (effect.critChance !== undefined && ctx.rng.chance(effect.critChance));
+  return resolveSkillEffect(effect, source, target, {
+    log,
+    isMagic: skill.isMagic,
+    skillName: skill.name,
+    isCrit,
+    executeBonus: skill.executeBonus,
+    bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
+  });
+}
+
+// Dismissing a summon only drops its `hp` to 0 and removes its ref from `combat.combatants` — the
+// dead entry stays in `ctx.summons` (same pattern as a dead Character/Monster staying in its own
+// array). A deterministic id would collide with a later summon of the same owner+archetype, and
+// `getActorByRef`'s `.find()` would then resolve every lookup to the stale dead entry forever —
+// so each summon gets a globally unique id instead, the same way `spawnMonster` uses a counter.
+let summonCounter = 0;
+
+/** How many minions of *different* archetypes `owner` may keep active at once — 1 by default, raised to 2/3 purely by the character level reaching Summoner's Mastery rank 2/3, independent of whether Mastery has actually been cast this combat (`01-class-skill.md` §1.11/1.12.4). */
+function maxActiveMinionsFor(owner: Character): number {
+  if (owner.classId !== "summoner") return 1;
+  const rank = effectiveSkillRank(getSkill("summoner-mastery"), owner.level);
+  if (rank >= 3) return 3;
+  if (rank >= 2) return 2;
+  return 1;
+}
+
+function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
+  return ctx.summons.filter((s) => s.ownerId === ownerId && s.hp > 0);
+}
+
+function dismissSummon(summon: Summon, combat: CombatState, log: LogEntry[]): void {
+  log.push({ text: t("combat.summonDismissed", { summon: summon.name }), kind: "info" });
+  summon.hp = 0;
+  combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
+}
+
+/** Bonuses from `StatusEffectDefinition.empowersMinions` the owner currently carries (Summoner's Mastery) — applied on spawn so a minion summoned after casting Mastery comes in already boosted. */
+function empowermentBonusFor(owner: Character): { maxHpPercent: number; attackPercent: number } {
+  let maxHpPercent = 0;
+  let attackPercent = 0;
+  for (const active of owner.activeStatusEffects) {
+    const bonus = getStatusEffect(active.statusEffectId).empowersMinions;
+    if (!bonus) continue;
+    maxHpPercent += bonus.maxHpPercent;
+    attackPercent += bonus.attackPercent;
+  }
+  return { maxHpPercent, attackPercent };
+}
+
+/** Retroactively boosts every minion `owner` currently has active — called the moment an `empowersMinions` status lands on `owner` (Mastery cast on an already-summoned minion). */
+function empowerActiveMinions(owner: Character, bonus: { maxHpPercent: number; attackPercent: number }, ctx: EngineContext): void {
+  for (const s of ownedSummons(owner.id, ctx)) {
+    s.maxHp = Math.round(s.maxHp * (1 + bonus.maxHpPercent / 100));
+    s.hp = Math.round(s.hp * (1 + bonus.maxHpPercent / 100));
+    s.attack = Math.round(s.attack * (1 + bonus.attackPercent / 100));
+  }
+}
+
+/** `formula.base + (formula.percent / 100) * owner[formula.sourceStat]`, with `bonusPercent` (Mastery's empowerment) scaling the source-derived portion only — the flat `base` term isn't boosted. */
+/** Resolves `formula.percent` to a plain number for `rank` (1-3) — a scalar is used as-is; a `[r1, r2, r3]` tuple (a stat that scales with the casting skill's rank) picks the matching element. */
+function resolveStatPercent(formula: SummonStatFormula, rank: number): number {
+  return Array.isArray(formula.percent) ? formula.percent[Math.min(2, Math.max(0, rank - 1))]! : formula.percent;
+}
+
+function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: number, bonusPercent: number): number {
+  return formula.base + (resolveStatPercent(formula, rank) / 100) * owner[formula.sourceStat] * (1 + bonusPercent / 100);
+}
+
+function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  if (!effect.summonCastId) return;
+  const cast = getSummonCast(effect.summonCastId);
+  const archetype = getSummonArchetype(cast.archetypeId);
+  const owned = ownedSummons(owner.id, ctx);
+  const sameType = owned.find((s) => s.archetypeId === archetype.id);
+  if (sameType) {
+    dismissSummon(sameType, combat, log);
+  } else if (owned.length >= maxActiveMinionsFor(owner)) {
+    const oldest = owned[0];
+    if (oldest) dismissSummon(oldest, combat, log);
+  }
+  // A cast profile is shared by all 3 ranks of the summoning skill (same id by convention), so the
+  // stat formulas alone don't say which rank is currently active — re-derive it from the caster's level.
+  const rank = effectiveSkillRank(getSkill(effect.summonCastId), owner.level) || 1;
+  const { stat } = cast;
+  const { maxHpPercent, attackPercent } = empowermentBonusFor(owner);
+  const maxHp = Math.max(1, Math.round(computeSummonStat(stat.maxHp, owner, rank, maxHpPercent)));
+  summonCounter += 1;
+  const summon: Summon = {
+    id: `${owner.id}-${archetype.id}-${summonCounter}`,
+    ownerId: owner.id,
+    archetypeId: archetype.id,
+    name: archetype.name,
+    hp: maxHp,
+    maxHp,
+    attack: Math.round(computeSummonStat(stat.attack, owner, rank, attackPercent)),
+    defense: Math.round(computeSummonStat(stat.defense, owner, rank, 0)),
+    magicPower: Math.round(computeSummonStat(stat.magicPower, owner, rank, 0)),
+    aggro: cast.aggro,
+    speed: owner.speed,
+    activeStatusEffects: [],
+    actionsTaken: 0,
+    maxActions: cast.maxActions,
+  };
+  ctx.summons.push(summon);
+  combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
+  log.push({ text: t("combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info" });
+}
+
+function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng: Rng): Id | null {
+  const weights = archetype.actionWeights;
+  if (!weights) return null;
+  const candidates: [Id | null, number][] = [];
+  for (const [key, weight] of Object.entries(weights)) {
+    if (!weight || weight <= 0) continue;
+    candidates.push([key === "basicAttack" ? null : key, weight]);
+  }
+  if (candidates.length === 0) return null;
+  return rng.weightedPick(candidates, ([, weight]) => weight)[0];
+}
+
+function expireSummonIfDone(summon: Summon, combat: CombatState, log: LogEntry[]): void {
+  if (summon.actionsTaken < summon.maxActions && summon.hp > 0) return;
+  log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
+  combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
+}
+
+/** Living player-side actor (character or summon) with the lowest current HP% — Healer Spirit's default heal target. */
+function pickLowestHpAlly(combat: CombatState, ctx: EngineContext): CombatantRef | null {
+  const allies = livingPlayerSideRefs(combat, ctx);
+  let best: CombatantRef | null = null;
+  let bestRatio = Infinity;
+  for (const ref of allies) {
+    const a = getActorByRef(ref, ctx);
+    const ratio = a.maxHp > 0 ? a.hp / a.maxHp : 0;
+    if (ratio < bestRatio) {
+      bestRatio = ratio;
+      best = ref;
+    }
+  }
+  return best;
+}
+
+function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, combat: CombatState, ctx: EngineContext): CombatantRef[] {
+  const auto = autoResolveTargets(skill.target, ref, combat, ctx);
+  if (auto) return auto;
+  if (skill.target === "singleEnemy") {
+    const enemies = livingMonsterRefs(combat, ctx);
+    return enemies.length > 0 ? [ctx.rng.pick(enemies)] : [];
+  }
+  if (skill.target === "singleAlly") {
+    const ally = pickLowestHpAlly(combat, ctx);
+    return ally ? [ally] : [];
+  }
+  return [];
+}
+
+function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
+  const summon = getActorByRef(ref, ctx) as Summon;
+  if (hasStunningStatus(summon)) {
+    combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: summon.name }), kind: "info" });
+    return;
+  }
+  const archetype = getSummonArchetype(summon.archetypeId);
+  const skillId = pickSummonAction(archetype, ctx.rng);
+  if (skillId !== null) {
+    const skill = getSummonSkill(skillId);
+    const targets = resolveSummonSkillTargets(skill, ref, combat, ctx).map((r) => getActorByRef(r, ctx));
+    if (targets.length === 0) return;
+    combat.log.push({ text: t("combat.monsterSkillOnTarget", { actor: summon.name, skill: skill.name, target: targets[0]!.name }), kind: "attack" });
+    applySkillEffects(skill, summon, targets, combat, ctx, combat.log);
+  } else {
+    const enemies = livingMonsterRefs(combat, ctx);
+    if (enemies.length === 0) return;
+    const target = getActorByRef(ctx.rng.pick(enemies), ctx) as Monster;
+    if (!rollHits(summon, () => ctx.rng.next())) {
+      combat.log.push({ text: t("combat.missedFear", { source: summon.name, target: target.name }), kind: "info" });
+    } else {
+      combat.log.push({ text: t("combat.basicAttack", { actor: summon.name, target: target.name }), kind: "attack" });
+      resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log });
+    }
+  }
+  summon.actionsTaken += 1;
+  expireSummonIfDone(summon, combat, combat.log);
+}
+
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
+
+  const breakStatus = findBreakBonusStatus(source);
+  const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
+  const stealthBreak = {
+    guaranteedCrit: skill.slot === 0 ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
+    damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
+  };
+  let brokeStealthThisCast = false;
+
+  // A "summon" effect is always self-only (it spawns off the caster's own stats, never the target's),
+  // so it's resolved once here rather than inside the per-target loop below — a skill that also has
+  // an allEnemies/allAllies component (e.g. Summoner's ultimate) would otherwise re-spawn once per target.
+  if (isCharacter(source)) {
+    for (const effect of skill.effects ?? []) {
+      if (effect.kind === "summon") spawnSummon(effect, source, combat, ctx, log);
+    }
+  }
+
   for (const target of targets) {
-    const isEnemyFacing = isCharacter(source) !== isCharacter(target);
+    const isEnemyFacing = isPlayerSide(source) !== isPlayerSide(target);
     if (isEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
       log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
       continue;
@@ -506,16 +794,32 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     for (const effect of effectsFor(skill, target)) {
       if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
       if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
+      if (effect.kind === "summon") continue; // already spawned once, above the target loop
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
+      const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
       const wasAliveBefore = isActorAlive(target);
-      const appliedAmount = resolveSkillEffect(finalEffect, source, target, { log, isMagic: skill.isMagic, skillName: skill.name });
+      let appliedAmount = 0;
+      for (let hit = 0; hit < hitCount; hit++) {
+        if (!isActorAlive(target)) break;
+        appliedAmount = resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+        if (finalEffect.kind === "damage") {
+          brokeStealthThisCast = true;
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && isActorAlive(target)) {
+            appliedAmount = resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+          }
+        }
+      }
       if (effect.kind === "damage") {
         for (const hook of combatHooks) hook.onHit?.(source, target, log);
         if (isCharacter(source)) {
           landedDamageHit = true;
           if (hasBonus) bonusEffectLanded = true;
         }
+      }
+      if (finalEffect.kind === "applyStatusEffect" && isCharacter(target)) {
+        const bonus = finalEffect.statusEffectId ? getStatusEffect(finalEffect.statusEffectId).empowersMinions : undefined;
+        if (bonus) empowerActiveMinions(target, bonus, ctx);
       }
 
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
@@ -526,6 +830,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       }
     }
   }
+  if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
 }

@@ -1,4 +1,4 @@
-import type { Character, Monster, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState } from "../types";
+import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState } from "../types";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -37,10 +37,23 @@ const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   speed: t("resolver.statLabelSpeed"),
 };
 
-export type Actor = Character | Monster;
+export type Actor = Character | Monster | Summon;
 
 export function isCharacter(actor: Actor): actor is Character {
   return "classId" in actor;
+}
+
+export function isSummon(actor: Actor): actor is Summon {
+  return "ownerId" in actor;
+}
+
+export function isMonster(actor: Actor): actor is Monster {
+  return "archetypeId" in actor && !isSummon(actor);
+}
+
+/** True for anything fighting on the player's side — a real `Character` or a `Summon` (Ninja's clone, Summoner's minions). Use this instead of `isCharacter` for enemy-facing/ally-facing checks; `isCharacter` alone is for things genuinely exclusive to real characters (MP, fear, abilities, skill ranks). */
+export function isPlayerSide(actor: Actor): boolean {
+  return isCharacter(actor) || isSummon(actor);
 }
 
 export function isActorAlive(actor: Actor): boolean {
@@ -92,7 +105,8 @@ function damageMultiplierFor(source: Actor): number {
 
 function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
   if (stat === "aggro") {
-    if (isCharacter(actor)) actor.aggro += amount;
+    // Monster has no `aggro` field (only the party's aggro decides monster targeting) — a Summon does, since it's a real target on the player's side.
+    if (isCharacter(actor) || isSummon(actor)) actor.aggro += amount;
     return;
   }
   actor[stat] += amount;
@@ -106,10 +120,16 @@ export interface ResolveContext {
   isMagic?: boolean;
   /** Required for a `modifyStat` effect targeting `"satiety"` — that stat lives on GameState (party-wide), not on the Character. */
   gameState?: GameState;
+  /** Set by the caller (after rolling `effect.critChance`) to apply this damage effect's crit multiplier. */
+  isCrit?: boolean;
+  /** The casting skill's own `SkillDefinition.executeBonus` (a `SkillDefinition`-level field, so the caller threads it through same as `skillName`/`isMagic`). */
+  executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+  /** A flat extra % applied to this specific damage instance, on top of everything else — e.g. Ninja's stealth-break bonus on a skill attack. */
+  bonusDamagePercent?: number;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
-  if (isMagic && isCharacter(source)) return source.magicPower;
+  if (isMagic && (isCharacter(source) || isSummon(source))) return source.magicPower;
   return source.attack;
 }
 
@@ -122,20 +142,38 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     case "damage": {
       const isSelfTick = source === target;
       const effectiveDefense = target.defense * (1 - (effect.ignoreDefensePercent ?? 0) / 100);
+      const critMultiplier = !isSelfTick && ctx.isCrit ? (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100 : 1;
+      const stacks = effect.scalesWithStatusStacks
+        ? target.activeStatusEffects.find((s) => s.statusEffectId === effect.scalesWithStatusStacks!.statusEffectId)?.stacks ?? 0
+        : 0;
+      const stackOffenseBonusPercent = effect.scalesWithStatusStacks ? stacks * effect.scalesWithStatusStacks.percentPerStack : 0;
+      const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent) / 100;
+      const isExecuteTarget =
+        !isSelfTick && ctx.executeBonus !== undefined && target.hp / target.maxHp < ctx.executeBonus.hpPercentThreshold / 100;
+      const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
+      const executeFlat = isExecuteTarget ? ctx.executeBonus?.bonusDamageFlat ?? 0 : 0;
+      const bonusMultiplier = !isSelfTick && ctx.bonusDamagePercent ? 1 + ctx.bonusDamagePercent / 100 : 1;
       const finalDamage = isSelfTick
         ? Math.max(1, Math.round(effect.amount ?? 0))
         : Math.max(
             1,
             Math.round(
-              ((effect.amount ?? 0) + mitigatedOffense(offensiveStatFor(source, ctx.isMagic), effectiveDefense)) * damageMultiplierFor(source)
+              ((effect.amount ?? 0) +
+                executeFlat +
+                mitigatedOffense(offensiveStatFor(source, ctx.isMagic) * offenseMultiplier, effectiveDefense)) *
+                damageMultiplierFor(source) *
+                critMultiplier *
+                executeMultiplier *
+                bonusMultiplier
             )
           );
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
+      const isCrit = !isSelfTick && ctx.isCrit;
       const damageText =
         !isSelfTick && ctx.skillName
-          ? t("resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
-          : t("resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
+          ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
+          : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
       ctx.log.push({ text: damageText, kind: "attack" });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
@@ -150,7 +188,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "heal": {
       const before = target.hp;
-      const healPower = ctx.isMagic && isCharacter(source) ? source.magicPower : 0;
+      const healPower =
+        ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
       target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0) + healPower);
       const healed = target.hp - before;
       ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
@@ -215,6 +254,12 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       return 0;
     }
+    case "summon": {
+      // Spawning a combatant needs CombatState/EngineContext (to register it in `combat.combatants`
+      // and `ctx.summons`), which this function doesn't have — `applySkillEffects` (combat.ts)
+      // intercepts a "summon" effect before it ever reaches here.
+      return 0;
+    }
   }
 }
 
@@ -234,11 +279,12 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
     // the eligibility snapshot tickSpecialEffects checks (see specialStatusSnapshot), so re-casting an
     // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
     const existing = actor.activeStatusEffects[existingIndex]!;
-    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: def.durationTurns ?? existing.turnsRemaining };
+    const stacks = def.stackable ? Math.min(def.maxStacks ?? 1, (existing.stacks ?? 1) + 1) : existing.stacks;
+    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: def.durationTurns ?? existing.turnsRemaining, stacks };
     ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
-  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1 };
+  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1, stacks: def.stackable ? 1 : undefined };
   actor.activeStatusEffects.push(entry);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
@@ -304,8 +350,14 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
     if (category === "dot") {
       for (const e of def.perTurnEffects) {
         if (e.kind !== "damage" && e.kind !== "heal" && e.kind !== "restoreMp") continue;
-        const multiplier = e.kind === "damage" ? vulnerabilityMultiplier(actor, active.statusEffectId) : 1;
-        const effectToApply = multiplier !== 1 ? { ...e, amount: (e.amount ?? 0) * multiplier } : e;
+        let amount = e.amount ?? 0;
+        if (e.kind === "damage") {
+          if (e.maxHpPercent) amount += (actor.maxHp * e.maxHpPercent) / 100;
+          if (def.stackable) amount *= 1 + ((active.stacks ?? 1) - 1) * ((def.perStackBonusPercent ?? 0) / 100);
+          if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= 0.8;
+          amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
+        }
+        const effectToApply = { ...e, amount, maxHpPercent: undefined };
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
       if (!isActorAlive(actor)) continue;

@@ -41,6 +41,27 @@
       "maxHp": 1.3,
       "maxMp": 1.3,
       "magicPower": 1.5
+    },
+    "archer": {
+      "attack": 1.6,
+      "defense": 0.9,
+      "maxHp": 1.2,
+      "maxMp": 1.3,
+      "magicPower": 0
+    },
+    "ninja": {
+      "attack": 1.5,
+      "defense": 1,
+      "maxHp": 1.1,
+      "maxMp": 1.4,
+      "magicPower": 0
+    },
+    "summoner": {
+      "attack": 0.3,
+      "defense": 0.9,
+      "maxHp": 1.2,
+      "maxMp": 1.4,
+      "magicPower": 1.2
     }
   },
   "monsterGrowthWeights": {

@@ -52,6 +52,7 @@ export type UiState =
 
 export const ARTIFACT_ICON = "✦";
 export const ABILITY_ICON = "◆";
+export const SUMMON_ICON = "☾";
 
 /** "⚔" for items used against an opponent, "✚" for recovery (heal/MP), "↑" for buffs/utility. */
 export function itemIcon(item: ItemDefinition): string {

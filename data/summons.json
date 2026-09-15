@@ -1,0 +1,308 @@
+{
+  "archetypes": [
+    {
+      "id": "ninja-clone",
+      "name": "Shadow Clone",
+      "actionWeights": {
+        "basicAttack": 1
+      }
+    },
+    {
+      "id": "goblin-thrower",
+      "name": "Goblin Thrower",
+      "actionWeights": {
+        "rock-throw": 40,
+        "basicAttack": 60
+      },
+      "signatureSkillIds": [
+        "rock-throw"
+      ]
+    },
+    {
+      "id": "stone-golem",
+      "name": "Stone Golem",
+      "actionWeights": {
+        "stomp": 40,
+        "basicAttack": 60
+      },
+      "signatureSkillIds": [
+        "stomp"
+      ]
+    },
+    {
+      "id": "hellfire-imp",
+      "name": "Hellfire Imp",
+      "actionWeights": {
+        "hellfire-strike": 40,
+        "basicAttack": 60
+      },
+      "signatureSkillIds": [
+        "hellfire-strike"
+      ]
+    },
+    {
+      "id": "healer-spirit",
+      "name": "Healer Spirit",
+      "actionWeights": {
+        "spirit-heal-single": 60,
+        "spirit-heal-party": 40
+      },
+      "signatureSkillIds": [
+        "spirit-heal-single",
+        "spirit-heal-party"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "id": "rock-throw",
+      "name": "Rock Throw",
+      "description": "Goblin Thrower's signature attack: a thrown rock at a single enemy.",
+      "mpCost": 0,
+      "target": "singleEnemy",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 8,
+          "offenseMultiplierPercent": 100
+        }
+      ],
+      "slot": 0,
+      "unlockLevel": 1
+    },
+    {
+      "id": "stomp",
+      "name": "Stomp",
+      "description": "Stone Golem's signature attack: a ground slam hitting every enemy.",
+      "mpCost": 0,
+      "target": "allEnemies",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 10,
+          "offenseMultiplierPercent": 90
+        }
+      ],
+      "slot": 0,
+      "unlockLevel": 1
+    },
+    {
+      "id": "hellfire-strike",
+      "name": "Hellfire Strike",
+      "description": "Hellfire Imp's signature attack: a burst of hellfire that scorches and cripples a single enemy.",
+      "mpCost": 0,
+      "target": "singleEnemy",
+      "isMagic": true,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 10,
+          "offenseMultiplierPercent": 120
+        },
+        {
+          "kind": "applyStatusEffect",
+          "statusEffectId": "agony"
+        },
+        {
+          "kind": "applyStatusEffect",
+          "statusEffectId": "burning",
+          "chance": 0.6
+        }
+      ],
+      "slot": 0,
+      "unlockLevel": 1
+    },
+    {
+      "id": "spirit-heal-single",
+      "name": "Spirit Heal",
+      "description": "Healer Spirit's default action: mends the ally with the lowest %HP.",
+      "mpCost": 0,
+      "target": "singleAlly",
+      "isMagic": true,
+      "effects": [
+        {
+          "kind": "heal",
+          "amount": 6,
+          "offenseMultiplierPercent": 100
+        }
+      ],
+      "slot": 0,
+      "unlockLevel": 1
+    },
+    {
+      "id": "spirit-heal-party",
+      "name": "Spirit Blessing",
+      "description": "Healer Spirit's party-wide heal, cast in place of its default single-target heal.",
+      "mpCost": 0,
+      "target": "allAllies",
+      "isMagic": true,
+      "effects": [
+        {
+          "kind": "heal",
+          "amount": 4,
+          "offenseMultiplierPercent": 80
+        }
+      ],
+      "slot": 0,
+      "unlockLevel": 1
+    }
+  ],
+  "casts": [
+    {
+      "id": "ninja-shadow-clone",
+      "archetypeId": "ninja-clone",
+      "maxActions": 2,
+      "aggro": 15,
+      "stat": {
+        "maxHp": {
+          "base": 20,
+          "percent": 50,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "attack"
+        },
+        "defense": {
+          "base": 5,
+          "percent": 60,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "magicPower"
+        }
+      }
+    },
+    {
+      "id": "summoner-summon-goblin",
+      "archetypeId": "goblin-thrower",
+      "maxActions": 3,
+      "aggro": 5,
+      "stat": {
+        "maxHp": {
+          "base": 25,
+          "percent": 30,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 5,
+          "percent": [
+            60,
+            90,
+            120
+          ],
+          "sourceStat": "magicPower"
+        },
+        "defense": {
+          "base": 2,
+          "percent": 80,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "magicPower"
+        }
+      }
+    },
+    {
+      "id": "summoner-summon-spirit",
+      "archetypeId": "healer-spirit",
+      "maxActions": 3,
+      "aggro": 5,
+      "stat": {
+        "maxHp": {
+          "base": 20,
+          "percent": 50,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "attack"
+        },
+        "defense": {
+          "base": 2,
+          "percent": 70,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 6,
+          "percent": [
+            60,
+            80,
+            100
+          ],
+          "sourceStat": "magicPower"
+        }
+      }
+    },
+    {
+      "id": "summoner-summon-golem",
+      "archetypeId": "stone-golem",
+      "maxActions": 3,
+      "aggro": 15,
+      "stat": {
+        "maxHp": {
+          "base": 30,
+          "percent": 110,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 15,
+          "percent": [
+            70,
+            100,
+            130
+          ],
+          "sourceStat": "magicPower"
+        },
+        "defense": {
+          "base": 8,
+          "percent": 80,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "magicPower"
+        }
+      }
+    },
+    {
+      "id": "summoner-summon-imp",
+      "archetypeId": "hellfire-imp",
+      "maxActions": 3,
+      "aggro": 5,
+      "stat": {
+        "maxHp": {
+          "base": 19,
+          "percent": 80,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "attack"
+        },
+        "defense": {
+          "base": 8,
+          "percent": 80,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 21,
+          "percent": [
+            90,
+            120,
+            150
+          ],
+          "sourceStat": "magicPower"
+        }
+      }
+    }
+  ]
+}
