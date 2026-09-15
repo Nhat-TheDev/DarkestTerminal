@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Darkest Terminal — Dev Save Dump</title>
+<style>
+  :root {
+    --bg: #100d0a;
+    --panel-bg: #171310;
+    --border: #4a3a2a;
+    --border-accent: #8a5a2a;
+    --text: #d8cbb0;
+    --dim: #8a7d68;
+    --title: #c9a227;
+    --danger: #c0392b;
+    --ok: #5fa85f;
+    --accent: #7aa2c9;
+  }
+  * { box-sizing: border-box; }
+  html, body { overflow-x: clip; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 15px;
+    color: var(--title);
+    margin: 0;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  #status { font-size: 12px; color: var(--dim); white-space: pre-line; }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  fieldset {
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    border-radius: 4px;
+    padding: 10px 14px 14px;
+    margin: 0 0 14px;
+  }
+  legend {
+    color: var(--title);
+    padding: 0 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 3px; min-width: 130px; }
+  label { color: var(--dim); font-size: 11px; }
+  select, input[type="text"], input[type="number"] {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 6px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button.action {
+    background: var(--border);
+    color: var(--text);
+    border: 1px solid var(--border-accent);
+    border-radius: 3px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button.action:hover { background: var(--border-accent); }
+  button.action:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.action.primary { background: var(--title); border-color: var(--title); color: var(--bg); font-weight: bold; }
+  .party-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .member { border: 1px solid var(--border); border-radius: 4px; padding: 10px; background: var(--bg); }
+  .member h3 { margin: 0 0 8px; font-size: 12px; color: var(--title); }
+  .picker { margin-top: 8px; }
+  .picker label { display: block; margin-bottom: 3px; }
+  .picker select { width: 100%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; min-height: 20px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-accent);
+    border-radius: 12px;
+    padding: 2px 4px 2px 10px;
+    font-size: 11px;
+  }
+  .chip .rarity-common { color: var(--dim); }
+  .chip .rarity-rare { color: var(--accent); }
+  .chip .rarity-unique { color: #b98cd6; }
+  .chip .rarity-epic { color: var(--title); }
+  .chip button {
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+  .chip button:hover { color: var(--danger); }
+  .inventory-list { display: flex; flex-direction: column; gap: 0; }
+  .inventory-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .inventory-row:last-child { border-bottom: none; }
+  .inventory-row .info { flex: 1; min-width: 0; }
+  .inventory-row .info .name { color: var(--text); }
+  .inventory-row .info .desc { color: var(--dim); font-size: 11px; }
+  .inventory-row input[type="number"] { width: 64px; text-align: right; }
+  .hint { color: var(--dim); font-size: 11px; margin: 0 0 10px; }
+  .outcome-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+  .outcome-row { display: flex; gap: 8px; align-items: center; }
+  .outcome-row select { flex: 1; }
+  .outcome-row input[type="text"] { flex: 1; }
+  .outcome-row button { flex-shrink: 0; }
+  #result { margin-top: 14px; }
+  #result pre {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>DEV SAVE DUMP</h1>
+  <span id="status"></span>
+</header>
+<main>
+  <fieldset>
+    <legend>Run</legend>
+    <div class="row">
+      <div class="field">
+        <label for="level">Level</label>
+        <input type="number" id="level" min="1" max="100" value="1" />
+      </div>
+      <div class="field">
+        <label for="floor">Floor</label>
+        <input type="number" id="floor" min="1" value="1" />
+      </div>
+      <div class="field">
+        <label for="room">Room</label>
+        <select id="room">
+          <option value="entry">entry</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="seed">Seed (optional)</label>
+        <input type="number" id="seed" placeholder="random" />
+      </div>
+      <div class="field">
+        <label for="saveId">Save id (optional)</label>
+        <input type="text" id="saveId" placeholder="dev-dump-&lt;timestamp&gt;" />
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Party</legend>
+    <div class="party-grid" id="party-grid"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Inventory</legend>
+    <div class="inventory-list" id="inventory-list"></div>
+  </fieldset>
+
+  <fieldset id="event-fieldset" hidden>
+    <legend>Event (chuỗi event)</legend>
+    <p class="hint">Chỉ áp dụng khi Room = event. "Force event" ép thẳng 1 event thay vì để roll ngẫu nhiên (bỏ qua điều kiện minFloorDepth/onceLifetime của chính nó).</p>
+    <div class="row">
+      <div class="field">
+        <label for="event-force">Force event</label>
+        <select id="event-force">
+          <option value="">(random)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="event-counters"></div>
+    <div class="picker">
+      <label>Already fired (once-lifetime)</label>
+      <div class="picker" id="event-fired-picker"></div>
+    </div>
+    <div class="picker">
+      <label>Already met (NPC: merchant / gambling-den / wandering-hermit)</label>
+      <div class="picker" id="event-met-picker"></div>
+    </div>
+    <div class="picker">
+      <label>Event outcomes (crossEventVariants — id + outcome tự do, tra docs/gameplay-decisions để biết giá trị hợp lệ)</label>
+      <div class="outcome-list" id="event-outcomes-list"></div>
+      <button type="button" class="action" id="event-outcome-add">+ Add outcome</button>
+    </div>
+  </fieldset>
+
+  <button class="action primary" id="generate">Generate save</button>
+
+  <div id="result"></div>
+</main>
+
+<script>
+const statusEl = document.getElementById("status");
+const partyGridEl = document.getElementById("party-grid");
+const resultEl = document.getElementById("result");
+const generateBtn = document.getElementById("generate");
+
+let classes = [];
+let abilities = [];
+let artifacts = [];
+let items = [];
+let events = [];
+let effects = { abilities: {}, artifacts: {} };
+let partySize = 4;
+let maxEquippedArtifacts = 3;
+let members = []; // { classId, abilityId: string|null, artifactIds: string[] }
+let itemCounts = {}; // itemId -> 0..100
+const NARRATIVE_COUNTER_KEYS = ["guardianFightsSkipped", "artifactsSacrificed", "altarPaymentsCount", "guardianGrudgeFiredCount", "freeRewardsTakenCount"];
+let eventFiredIds = []; // once-lifetime event ids already fired
+let eventMetIds = []; // personified NPC event ids already met
+let eventOutcomeRows = []; // [{ eventId, outcome }]
+
+function setStatus(text, kind) {
+  statusEl.textContent = text;
+  statusEl.className = kind || "";
+}
+
+async function fetchJson(url, opts) {
+  const res = await fetch(url, opts);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+
+function rarityClass(rarity) {
+  return "rarity-" + (rarity || "common");
+}
+
+function catalogById(catalog, id) {
+  return catalog.find((c) => c.id === id);
+}
+
+// --- dropdown-to-add-chip picker, used for both ability (max 1) and artifacts (max N).
+// `effectsById` (optional) shows each entry's mechanical effect in the option text and as the
+// chip's tooltip, so the effect is visible right where the pick happens. ---
+function renderPicker(container, opts) {
+  const { catalog, selectedIds, max, placeholder, onChange, effectsById } = opts;
+  container.innerHTML = "";
+
+  const remaining = catalog.filter((entry) => !selectedIds.includes(entry.id));
+  const atMax = selectedIds.length >= max;
+
+  if (!atMax && remaining.length > 0) {
+    const select = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    for (const entry of remaining) {
+      const opt = document.createElement("option");
+      opt.value = entry.id;
+      const effect = effectsById && effectsById[entry.id];
+      opt.textContent = entry.name + (entry.rarity ? " (" + entry.rarity + ")" : "") + (effect ? " — " + effect : "");
+      select.appendChild(opt);
+    }
+    select.addEventListener("change", () => {
+      if (!select.value) return;
+      selectedIds.push(select.value);
+      onChange();
+    });
+    container.appendChild(select);
+  }
+
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  for (const id of selectedIds) {
+    const entry = catalogById(catalog, id);
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    if (effectsById && effectsById[id]) chip.title = effectsById[id];
+    const label = document.createElement("span");
+    label.className = rarityClass(entry && entry.rarity);
+    label.textContent = entry ? entry.name : id;
+    chip.appendChild(label);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "×";
+    removeBtn.title = "Remove";
+    removeBtn.addEventListener("click", () => {
+      const idx = selectedIds.indexOf(id);
+      if (idx !== -1) selectedIds.splice(idx, 1);
+      onChange();
+    });
+    chip.appendChild(removeBtn);
+    chips.appendChild(chip);
+  }
+  container.appendChild(chips);
+}
+
+function renderMember(index) {
+  const member = members[index];
+  const memberEl = document.querySelector('[data-member="' + index + '"]');
+  if (!memberEl) return;
+
+  const classSelect = memberEl.querySelector(".class-select");
+  if (classSelect.children.length === 0) {
+    for (const cls of classes) {
+      const opt = document.createElement("option");
+      opt.value = cls.id;
+      opt.textContent = cls.name;
+      classSelect.appendChild(opt);
+    }
+    classSelect.value = member.classId;
+    classSelect.addEventListener("change", () => {
+      member.classId = classSelect.value;
+    });
+  }
+
+  const abilityContainer = memberEl.querySelector(".ability-picker");
+  // Picker works on an array; for this single-value field, sync the result back to member.abilityId.
+  const abilitySelectedProxy = member.abilityId ? [member.abilityId] : [];
+  renderPicker(abilityContainer, {
+    catalog: abilities,
+    selectedIds: abilitySelectedProxy,
+    max: 1,
+    placeholder: "+ Add ability",
+    effectsById: effects.abilities,
+    onChange: () => {
+      member.abilityId = abilitySelectedProxy[0] || null;
+      renderMember(index);
+    },
+  });
+
+  const artifactContainer = memberEl.querySelector(".artifact-picker");
+  renderPicker(artifactContainer, {
+    catalog: artifacts,
+    selectedIds: member.artifactIds,
+    max: maxEquippedArtifacts,
+    placeholder: "+ Add artifact",
+    effectsById: effects.artifacts,
+    onChange: () => renderMember(index),
+  });
+}
+
+function buildPartyGrid() {
+  partyGridEl.innerHTML = "";
+  members = [];
+  for (let i = 0; i < partySize; i++) {
+    members.push({ classId: classes[i % classes.length]?.id, abilityId: null, artifactIds: [] });
+    const memberEl = document.createElement("div");
+    memberEl.className = "member";
+    memberEl.setAttribute("data-member", String(i));
+    memberEl.innerHTML =
+      '<h3>Party slot ' + (i + 1) + '</h3>' +
+      '<div class="field"><label>Class</label><select class="class-select"></select></div>' +
+      '<div class="picker"><label>Ability (optional)</label><div class="ability-picker"></div></div>' +
+      '<div class="picker"><label>Artifacts (max ' + maxEquippedArtifacts + ')</label><div class="artifact-picker"></div></div>';
+    partyGridEl.appendChild(memberEl);
+    renderMember(i);
+  }
+}
+
+function buildInventoryList() {
+  const listEl = document.getElementById("inventory-list");
+  listEl.innerHTML = "";
+  itemCounts = {};
+  for (const item of items) {
+    itemCounts[item.id] = 0;
+    const row = document.createElement("div");
+    row.className = "inventory-row";
+
+    const info = document.createElement("div");
+    info.className = "info";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.name;
+    info.appendChild(name);
+    if (item.description) {
+      const desc = document.createElement("div");
+      desc.className = "desc";
+      desc.textContent = item.description;
+      info.appendChild(desc);
+    }
+    row.appendChild(info);
+
+    const count = document.createElement("input");
+    count.type = "number";
+    count.min = "0";
+    count.max = "100";
+    count.value = "0";
+    count.addEventListener("input", () => {
+      let n = Math.trunc(Number(count.value));
+      if (!Number.isFinite(n) || n < 0) n = 0;
+      if (n > 100) n = 100;
+      count.value = String(n);
+      itemCounts[item.id] = n;
+    });
+    row.appendChild(count);
+
+    listEl.appendChild(row);
+  }
+}
+
+function renderOutcomeRows() {
+  const listEl = document.getElementById("event-outcomes-list");
+  listEl.innerHTML = "";
+  eventOutcomeRows.forEach((row, i) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "outcome-row";
+
+    const select = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "(event id)";
+    select.appendChild(blank);
+    for (const ev of events) {
+      const opt = document.createElement("option");
+      opt.value = ev.id;
+      opt.textContent = ev.name;
+      select.appendChild(opt);
+    }
+    // Not a real event — a synthetic tag Camp Reflection writes into eventOutcomes directly
+    // (Game.pickCampReflectionChoice), read by events' campReflectionUnawareEcho.
+    const campReflectionOpt = document.createElement("option");
+    campReflectionOpt.value = "camp-reflection";
+    campReflectionOpt.textContent = "camp-reflection (synthetic tag)";
+    select.appendChild(campReflectionOpt);
+    select.value = row.eventId;
+    select.addEventListener("change", () => {
+      row.eventId = select.value;
+    });
+    rowEl.appendChild(select);
+
+    const outcomeInput = document.createElement("input");
+    outcomeInput.type = "text";
+    outcomeInput.placeholder = "outcome (e.g. resolved, paid, declined)";
+    outcomeInput.value = row.outcome;
+    outcomeInput.addEventListener("input", () => {
+      row.outcome = outcomeInput.value;
+    });
+    rowEl.appendChild(outcomeInput);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "action";
+    removeBtn.textContent = "×";
+    removeBtn.title = "Remove";
+    removeBtn.addEventListener("click", () => {
+      eventOutcomeRows.splice(i, 1);
+      renderOutcomeRows();
+    });
+    rowEl.appendChild(removeBtn);
+
+    listEl.appendChild(rowEl);
+  });
+}
+
+function buildEventSection() {
+  const forceSelect = document.getElementById("event-force");
+  forceSelect.innerHTML = '<option value="">(random)</option>';
+  for (const ev of events) {
+    const opt = document.createElement("option");
+    opt.value = ev.id;
+    opt.textContent = ev.name + " (" + ev.tier + (ev.onceLifetime ? ", once-lifetime" : "") + (ev.minFloorDepth ? ", floor " + ev.minFloorDepth + "+" : "") + ")";
+    forceSelect.appendChild(opt);
+  }
+
+  const countersEl = document.getElementById("event-counters");
+  countersEl.innerHTML = "";
+  for (const key of NARRATIVE_COUNTER_KEYS) {
+    const field = document.createElement("div");
+    field.className = "field";
+    const label = document.createElement("label");
+    label.setAttribute("for", "counter-" + key);
+    label.textContent = key;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.value = "0";
+    input.id = "counter-" + key;
+    field.appendChild(label);
+    field.appendChild(input);
+    countersEl.appendChild(field);
+  }
+
+  const onceLifetimeEvents = events.filter((e) => e.onceLifetime);
+  const npcEvents = events.filter((e) => e.returnDescription !== undefined);
+  renderPicker(document.getElementById("event-fired-picker"), {
+    catalog: onceLifetimeEvents,
+    selectedIds: eventFiredIds,
+    max: onceLifetimeEvents.length,
+    placeholder: "+ Mark as already fired",
+    onChange: () => buildEventSection(),
+  });
+  renderPicker(document.getElementById("event-met-picker"), {
+    catalog: npcEvents,
+    selectedIds: eventMetIds,
+    max: npcEvents.length,
+    placeholder: "+ Mark as already met",
+    onChange: () => buildEventSection(),
+  });
+
+  renderOutcomeRows();
+}
+
+function readNarrativeCounters() {
+  const counters = {};
+  for (const key of NARRATIVE_COUNTER_KEYS) {
+    const input = document.getElementById("counter-" + key);
+    counters[key] = Math.max(0, Math.trunc(Number(input.value)) || 0);
+  }
+  return counters;
+}
+
+async function loadCatalogs() {
+  setStatus("Loading catalog...");
+  const [classesJson, abilitiesJson, artifactsJson, itemsJson, eventsJson, balanceJson, roomTypesJson, effectsJson] = await Promise.all([
+    fetchJson("/api/classes"),
+    fetchJson("/api/abilities"),
+    fetchJson("/api/artifacts"),
+    fetchJson("/api/items"),
+    fetchJson("/api/events"),
+    fetchJson("/api/balance"),
+    fetchJson("/api/room-types"),
+    fetchJson("/api/effects"),
+  ]);
+  classes = classesJson;
+  abilities = abilitiesJson;
+  artifacts = artifactsJson;
+  items = itemsJson;
+  events = eventsJson;
+  effects = effectsJson;
+  partySize = balanceJson.party.size;
+  maxEquippedArtifacts = balanceJson.party.maxEquippedArtifacts;
+
+  const roomSelect = document.getElementById("room");
+  roomSelect.innerHTML = "";
+  for (const room of ["entry", ...roomTypesJson.roomTypes]) {
+    const opt = document.createElement("option");
+    opt.value = room;
+    opt.textContent = room;
+    roomSelect.appendChild(opt);
+  }
+  const eventFieldset = document.getElementById("event-fieldset");
+  const syncEventFieldsetVisibility = () => { eventFieldset.hidden = roomSelect.value !== "event"; };
+  roomSelect.addEventListener("change", syncEventFieldsetVisibility);
+  syncEventFieldsetVisibility();
+
+  buildPartyGrid();
+  buildInventoryList();
+  buildEventSection();
+  setStatus("Ready.");
+}
+
+async function generate() {
+  generateBtn.disabled = true;
+  setStatus("Generating...");
+  resultEl.innerHTML = "";
+  try {
+    const body = {
+      level: Number(document.getElementById("level").value) || 1,
+      floor: Number(document.getElementById("floor").value) || undefined,
+      room: document.getElementById("room").value,
+      seed: document.getElementById("seed").value ? Number(document.getElementById("seed").value) : undefined,
+      id: document.getElementById("saveId").value || undefined,
+      party: members.map((m) => ({ classId: m.classId, abilityId: m.abilityId, artifactIds: m.artifactIds })),
+      items: Object.fromEntries(Object.entries(itemCounts).filter(([, n]) => n > 0)),
+    };
+    if (document.getElementById("room").value === "event") {
+      body.event = {
+        forceEventId: document.getElementById("event-force").value || undefined,
+        narrativeCounters: readNarrativeCounters(),
+        firedOnceEventIds: eventFiredIds,
+        metNarrativeNpcIds: eventMetIds,
+        eventOutcomes: Object.fromEntries(eventOutcomeRows.filter((r) => r.eventId && r.outcome).map((r) => [r.eventId, r.outcome])),
+      };
+    }
+    const response = await fetchJson("/api/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setStatus(response.message, "ok");
+
+    const downloadBtn = document.createElement("button");
+    downloadBtn.className = "action";
+    downloadBtn.textContent = "Download " + response.meta.id + ".json";
+    downloadBtn.addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(response.save)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = response.meta.id + ".json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    resultEl.appendChild(downloadBtn);
+
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(response.meta, null, 2);
+    resultEl.appendChild(pre);
+  } catch (err) {
+    setStatus(String(err.message || err), "error");
+  } finally {
+    generateBtn.disabled = false;
+  }
+}
+
+generateBtn.addEventListener("click", generate);
+document.getElementById("event-outcome-add").addEventListener("click", () => {
+  eventOutcomeRows.push({ eventId: "", outcome: "" });
+  renderOutcomeRows();
+});
+loadCatalogs().catch((err) => setStatus(String(err.message || err), "error"));
+</script>
+</body>
+</html>

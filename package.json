@@ -39,11 +39,12 @@
   "files": ["bin", "README.md", "LICENSE"],
   "scripts": {
     "start": "bun run src/main.ts",
-    "build": "bun build ./src/main.ts --compile --outfile dist/darkest-terminal",
+    "build": "bun build ./src/main.ts --compile --define __DEV__=false --outfile dist/darkest-terminal",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "sprite-editor": "bun run tools/sprite-editor/server.ts",
-    "rebalance-editor": "bun --watch tools/rebalance-editor/server.ts"
+    "rebalance-editor": "bun --watch tools/rebalance-editor/server.ts",
+    "dump-save": "bun run tools/dev-save-dump/server.ts"
   },
   "dependencies": {
     "@opentui/core": "^0.5.3"

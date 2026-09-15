@@ -218,7 +218,7 @@ export function pickEventText(state: GameState, room: Room, event: EventDefiniti
   return pickFallbackText(state, room, event);
 }
 
-function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
+export function resolveEventEntry(state: GameState, room: Room, ctx: EngineContext): void {
   if (!room.rolledEventId) {
     room.rolledEventId = rollEvent(ctx.rng, state.floor.depth, state.firedOnceEventIds);
     // Part C.2 — picked once per room, at roll time, so re-renders within the same visit stay

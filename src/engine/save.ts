@@ -11,6 +11,7 @@ import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { PROFILE_FILENAME } from "./profile";
 import { SAVE_DIR } from "./paths";
+import { DEV_MODE } from "./devMode";
 import pkg from "../../package.json";
 
 /** Save-format version, stamped on every save at write time. Tied to the app's own release version (package.json). */
@@ -44,6 +45,15 @@ export interface SaveMeta {
   saveVersion?: string;
   /** Absent on saves written before runId existed. Same runId across every save (quick/auto/manual) of one playthrough. */
   runId?: string;
+  /** Set only by `writeDevDumpSave` (tools/dev-save-dump). Gates loading — see `isDevDumpAllowed`. */
+  devDump?: true;
+}
+
+/** A `devDump` save only loads/lists in dev mode — a release binary can never load one, hard-gated
+    at compile time via `DEV_MODE`. `devMode` is overridable only so tests can exercise the blocked
+    branch; every real call site relies on the default. */
+export function isDevDumpAllowed(meta: Pick<SaveMeta, "devDump">, devMode: boolean = DEV_MODE): boolean {
+  return !meta.devDump || devMode;
 }
 
 export interface SaveFile {
@@ -61,7 +71,7 @@ function savePath(id: Id): string {
   return join(SAVE_DIR, `${id}.json`);
 }
 
-function buildSaveFile(game: Game, id: Id): SaveFile {
+function buildSaveFile(game: Game, id: Id, devDump?: true): SaveFile {
   return {
     meta: {
       id,
@@ -71,6 +81,7 @@ function buildSaveFile(game: Game, id: Id): SaveFile {
       partyClassIds: game.state.party.map((c) => c.classId),
       saveVersion: APP_VERSION,
       runId: game.state.runId,
+      ...(devDump ? { devDump } : {}),
     },
     state: JSON.parse(JSON.stringify(game.state)),
     monsters: JSON.parse(JSON.stringify(game.ctx.monsters)),
@@ -78,9 +89,9 @@ function buildSaveFile(game: Game, id: Id): SaveFile {
   };
 }
 
-function writeSave(game: Game, id: Id): SaveMeta {
+function writeSave(game: Game, id: Id, devDump?: true): SaveMeta {
   ensureSaveDir();
-  const save = buildSaveFile(game, id);
+  const save = buildSaveFile(game, id, devDump);
   writeFileSync(savePath(id), JSON.stringify(save));
   return save.meta;
 }
@@ -95,6 +106,13 @@ export function quickSave(game: Game): SaveMeta {
 
 export function autoSave(game: Game): SaveMeta {
   return writeSave(game, AUTOSAVE_ID);
+}
+
+/** Only entry point that writes a `devDump` save (tools/dev-save-dump) — refuses outside dev mode
+    so the tool can't accidentally produce a save a release binary would then also refuse to load. */
+export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
+  if (!DEV_MODE) throw new Error("writeDevDumpSave is only available in dev mode");
+  return writeSave(game, id, true);
 }
 
 /** Skips unreadable/invalid files silently — including `profile.ts`'s PROFILE_FILENAME, which
@@ -171,7 +189,7 @@ export function isSaveStateValid(state: GameState): boolean {
 export function listSaves(): SaveMeta[] {
   const metas: SaveMeta[] = [];
   forEachSaveFile((_path, save) => {
-    if (isSaveVersionAllowed(save.meta.saveVersion) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
+    if (isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
   });
   return metas.sort((a, b) => b.timestamp - a.timestamp);
 }
@@ -184,6 +202,7 @@ export function loadSave(id: Id): SaveFile {
 // deleteSavesForRun can later find it. Re-validates rather than trusting the caller pre-filtered.
 export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   if (!isSaveVersionAllowed(save.meta.saveVersion)) throw new Error(`Save version not allowed: ${save.meta.saveVersion ?? UNVERSIONED}`);
+  if (!isDevDumpAllowed(save.meta)) throw new Error("Dev-dump saves can only be loaded in dev mode");
   const hadRunId = typeof save.state.runId === "string";
   const state = migrateGameState(save.state);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
