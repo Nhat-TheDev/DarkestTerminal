@@ -191,8 +191,8 @@
   </fieldset>
 
   <fieldset id="event-fieldset" hidden>
-    <legend>Event (chuỗi event)</legend>
-    <p class="hint">Chỉ áp dụng khi Room = event. "Force event" ép thẳng 1 event thay vì để roll ngẫu nhiên (bỏ qua điều kiện minFloorDepth/onceLifetime của chính nó).</p>
+    <legend>Event (narrative chain setup)</legend>
+    <p class="hint">Only applies when Room = event. "Force event" pins a specific event instead of letting it roll at random (bypassing that event's own minFloorDepth/onceLifetime gate).</p>
     <div class="row">
       <div class="field">
         <label for="event-force">Force event</label>
@@ -211,7 +211,7 @@
       <div class="picker" id="event-met-picker"></div>
     </div>
     <div class="picker">
-      <label>Event outcomes (crossEventVariants — id + outcome tự do, tra docs/gameplay-decisions để biết giá trị hợp lệ)</label>
+      <label>Event outcomes (crossEventVariants — free-text id + outcome, check docs/gameplay-decisions for valid values)</label>
       <div class="outcome-list" id="event-outcomes-list"></div>
       <button type="button" class="action" id="event-outcome-add">+ Add outcome</button>
     </div>
@@ -478,6 +478,36 @@ function renderOutcomeRows() {
   });
 }
 
+function onceLifetimeEvents() {
+  return events.filter((e) => e.onceLifetime);
+}
+function npcEvents() {
+  return events.filter((e) => e.returnDescription !== undefined);
+}
+
+// Each picker re-renders only itself on change — NOT the whole Event section — so toggling a
+// "fired"/"met" chip never touches the Force-event select or the narrative-counter inputs sitting
+// next to it (those aren't tracked in JS state the way eventFiredIds/eventMetIds are, so a full
+// section rebuild would silently reset whatever the user had already typed into them).
+function renderFiredPicker() {
+  renderPicker(document.getElementById("event-fired-picker"), {
+    catalog: onceLifetimeEvents(),
+    selectedIds: eventFiredIds,
+    max: onceLifetimeEvents().length,
+    placeholder: "+ Mark as already fired",
+    onChange: renderFiredPicker,
+  });
+}
+function renderMetPicker() {
+  renderPicker(document.getElementById("event-met-picker"), {
+    catalog: npcEvents(),
+    selectedIds: eventMetIds,
+    max: npcEvents().length,
+    placeholder: "+ Mark as already met",
+    onChange: renderMetPicker,
+  });
+}
+
 function buildEventSection() {
   const forceSelect = document.getElementById("event-force");
   forceSelect.innerHTML = '<option value="">(random)</option>';
@@ -506,23 +536,8 @@ function buildEventSection() {
     countersEl.appendChild(field);
   }
 
-  const onceLifetimeEvents = events.filter((e) => e.onceLifetime);
-  const npcEvents = events.filter((e) => e.returnDescription !== undefined);
-  renderPicker(document.getElementById("event-fired-picker"), {
-    catalog: onceLifetimeEvents,
-    selectedIds: eventFiredIds,
-    max: onceLifetimeEvents.length,
-    placeholder: "+ Mark as already fired",
-    onChange: () => buildEventSection(),
-  });
-  renderPicker(document.getElementById("event-met-picker"), {
-    catalog: npcEvents,
-    selectedIds: eventMetIds,
-    max: npcEvents.length,
-    placeholder: "+ Mark as already met",
-    onChange: () => buildEventSection(),
-  });
-
+  renderFiredPicker();
+  renderMetPicker();
   renderOutcomeRows();
 }
 

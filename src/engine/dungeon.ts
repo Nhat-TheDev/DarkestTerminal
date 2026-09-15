@@ -41,16 +41,12 @@ function roomHasLivingMonsters(room: Room, ctx: EngineContext): boolean {
   });
 }
 
-export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineContext): void {
-  const current = getRoom(state.floor, state.currentRoomId);
-  if (!current.connectedRoomIds.includes(targetRoomId)) {
-    state.message = t("errors.roomNotConnected");
-    return;
-  }
-
-  state.currentRoomId = targetRoomId;
-  const room = getRoom(state.floor, targetRoomId);
-
+/** Room-type dispatch for "the party just landed on `room`": starts combat, arms Camp Reflection,
+    resolves an event, or just drains satiety and reports arrival — whichever `room.type` calls for.
+    Shared by `moveToRoom` (real play) and `tools/dev-save-dump/applyDump.ts` (jumps straight to a
+    room without walking there), so a dev-dump save always gets the same side effects a real arrival
+    would produce. */
+export function enterRoom(state: GameState, room: Room, ctx: EngineContext): void {
   // A room that starts a fight drains satiety on victory, not on the ambush itself.
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");
@@ -84,6 +80,17 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   drainSatiety(state, SATIETY_DRAIN_COMBAT, []);
   recomputeAllPartyStats(state);
   state.message = t("dungeon.arrived", { room: room.name });
+}
+
+export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineContext): void {
+  const current = getRoom(state.floor, state.currentRoomId);
+  if (!current.connectedRoomIds.includes(targetRoomId)) {
+    state.message = t("errors.roomNotConnected");
+    return;
+  }
+
+  state.currentRoomId = targetRoomId;
+  enterRoom(state, getRoom(state.floor, targetRoomId), ctx);
 }
 
 /** 11-world-bible.md §11.13 tier 2 — a chain's deeper escalation requires both its own higher

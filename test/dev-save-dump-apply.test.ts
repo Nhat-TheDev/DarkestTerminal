@@ -1,6 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { Game } from "../src/engine/game";
 import { applyDump } from "../tools/dev-save-dump/applyDump";
+import { BALANCE } from "../src/data/balanceConfig";
+import { ENDING_CHECKPOINT_FLOOR_DEPTH, FOUNDER_FLOOR_DEPTH } from "../src/data/endings";
 
 const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
 
@@ -48,5 +50,46 @@ describe("dev-save-dump applyDump", () => {
     applyDump(game, { level: 999, floorDepth: -5, roomArg: "entry" });
     expect(game.state.party[0]!.level).toBe(100);
     expect(game.state.floor.depth).toBeGreaterThanOrEqual(1);
+  });
+
+  test("landing in a rest room arms Camp Reflection the same way a real arrival there would", () => {
+    const game = new Game(6, PARTY);
+    game.state.loreExposureCount = BALANCE.survival.campReflectionTier1Threshold;
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "rest" });
+    expect(room.type).toBe("rest");
+    expect(game.state.pendingCampReflectionTier).toBe(1);
+  });
+
+  test("landing in an event room resolves a real event and drains satiety, instead of doing nothing", () => {
+    const game = new Game(7, PARTY);
+    const satietyBefore = game.state.satiety;
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "event", forceEventId: "merchant" });
+    expect(room.type).toBe("event");
+    expect(room.rolledEventId).toBe("merchant");
+    expect(game.state.activeEvent?.eventId).toBe("merchant");
+    expect(game.state.satiety).toBeLessThan(satietyBefore);
+  });
+
+  test("reaching the ending-checkpoint floor arms the checkpoint instead of resolving the requested room", () => {
+    const game = new Game(8, PARTY);
+    applyDump(game, { level: 50, floorDepth: ENDING_CHECKPOINT_FLOOR_DEPTH, roomArg: "boss" });
+    expect(game.state.pendingEndingCheckpoint).toBe(true);
+    expect(game.state.combat).toBeNull();
+  });
+
+  test("reaching the founder floor after continuing past the checkpoint arms the founder dialogue", () => {
+    const game = new Game(9, PARTY);
+    game.state.continuedPastCheckpoint = true;
+    applyDump(game, { level: 100, floorDepth: FOUNDER_FLOOR_DEPTH, roomArg: "boss" });
+    expect(game.state.pendingFounderDialogue).toBe(true);
+    expect(game.state.combat).toBeNull();
+  });
+
+  test("reaching the founder floor without having continued past the checkpoint resolves the room normally", () => {
+    const game = new Game(10, PARTY);
+    const room = applyDump(game, { level: 100, floorDepth: FOUNDER_FLOOR_DEPTH, roomArg: "boss" });
+    expect(game.state.pendingFounderDialogue).toBe(false);
+    expect(room.type).toBe("boss");
+    expect(game.state.combat).not.toBeNull();
   });
 });

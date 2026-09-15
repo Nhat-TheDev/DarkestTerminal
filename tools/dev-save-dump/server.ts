@@ -55,6 +55,10 @@ function badRequest(message: string): Response {
   return Response.json({ ok: false, error: message }, { status: 400 });
 }
 
+// Written straight into a filename (savePath, src/engine/save.ts) — reject anything but a plain
+// id so a request can't write or read outside SAVE_DIR (e.g. "../../etc/passwd").
+const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
+
 interface PartyMemberInput {
   classId?: unknown;
   abilityId?: unknown;
@@ -107,31 +111,34 @@ function validateParty(party: unknown): ValidatedMember[] | { error: string } {
     return { error: `party must have exactly ${BALANCE.party.size} members, got ${Array.isArray(party) ? party.length : typeof party}.` };
   }
   const members: ValidatedMember[] = [];
-  for (const [i, raw] of (party as PartyMemberInput[]).entries()) {
-    if (typeof raw.classId !== "string") return { error: `party[${i}].classId is required.` };
+  for (const [i, raw] of (party as unknown[]).entries()) {
+    if (typeof raw !== "object" || raw === null) return { error: `party[${i}] must be an object.` };
+    const member = raw as PartyMemberInput;
+    if (typeof member.classId !== "string") return { error: `party[${i}].classId is required.` };
     try {
-      getClass(raw.classId);
+      getClass(member.classId);
     } catch {
-      return { error: `party[${i}].classId "${raw.classId}" is unknown.` };
+      return { error: `party[${i}].classId "${member.classId}" is unknown.` };
     }
 
     let abilityId: Id | null = null;
-    if (raw.abilityId !== undefined && raw.abilityId !== null) {
-      if (typeof raw.abilityId !== "string") return { error: `party[${i}].abilityId must be a string or null.` };
+    if (member.abilityId !== undefined && member.abilityId !== null) {
+      if (typeof member.abilityId !== "string") return { error: `party[${i}].abilityId must be a string or null.` };
       try {
-        getAbility(raw.abilityId);
+        getAbility(member.abilityId);
       } catch {
-        return { error: `party[${i}].abilityId "${raw.abilityId}" is unknown.` };
+        return { error: `party[${i}].abilityId "${member.abilityId}" is unknown.` };
       }
-      abilityId = raw.abilityId;
+      abilityId = member.abilityId;
     }
 
-    const artifactIdsRaw = raw.artifactIds ?? [];
+    const artifactIdsRaw = member.artifactIds ?? [];
     if (!Array.isArray(artifactIdsRaw)) return { error: `party[${i}].artifactIds must be an array.` };
     if (artifactIdsRaw.length > MAX_EQUIPPED_ARTIFACTS) {
       return { error: `party[${i}].artifactIds has ${artifactIdsRaw.length}, max is ${MAX_EQUIPPED_ARTIFACTS}.` };
     }
     const artifactIds: Id[] = [];
+    const seenArtifactIds = new Set<Id>();
     for (const artifactId of artifactIdsRaw) {
       if (typeof artifactId !== "string") return { error: `party[${i}].artifactIds must all be strings.` };
       try {
@@ -139,10 +146,12 @@ function validateParty(party: unknown): ValidatedMember[] | { error: string } {
       } catch {
         return { error: `party[${i}].artifactIds "${artifactId}" is unknown.` };
       }
+      if (seenArtifactIds.has(artifactId)) return { error: `party[${i}].artifactIds has "${artifactId}" more than once.` };
+      seenArtifactIds.add(artifactId);
       artifactIds.push(artifactId);
     }
 
-    members.push({ classId: raw.classId, abilityId, artifactIds });
+    members.push({ classId: member.classId, abilityId, artifactIds });
   }
   return members;
 }
@@ -257,6 +266,7 @@ async function handleGenerate(req: Request): Promise<Response> {
   if (!Number.isFinite(seed)) return badRequest(`seed must be a number, got "${body.seed}".`);
   const roomArg = typeof body.room === "string" && body.room.length > 0 ? body.room : "entry";
   const saveId = typeof body.id === "string" && body.id.length > 0 ? body.id : `dev-dump-${Date.now()}`;
+  if (!SAFE_SAVE_ID.test(saveId)) return badRequest(`id must match ${SAFE_SAVE_ID} (letters, digits, "-", "_" only), got "${saveId}".`);
 
   const members = validateParty(body.party);
   if (!Array.isArray(members)) return badRequest(members.error);
@@ -270,37 +280,46 @@ async function handleGenerate(req: Request): Promise<Response> {
   const classIds = members.map((m) => m.classId);
   const abilityIds = members.map((m) => m.abilityId);
 
-  let room;
   const game = new Game(seed, classIds, undefined, abilityIds);
+  // firedOnceEventIds/metNarrativeNpcIds are unioned onto the Game constructor's own defaults
+  // (e.g. its one-time exclusion of "the-one-who-stayed" for an eligible retired-character profile)
+  // rather than replacing them outright — the UI always sends both fields once Room=event, even as
+  // an empty array when the user never touched those pickers, and a plain replace would silently
+  // wipe a default the player never asked to clear.
   if (eventResult?.narrativeCounters) Object.assign(game.state.narrativeCounters, eventResult.narrativeCounters);
-  if (eventResult?.firedOnceEventIds) game.state.firedOnceEventIds = eventResult.firedOnceEventIds;
-  if (eventResult?.metNarrativeNpcIds) game.state.metNarrativeNpcIds = eventResult.metNarrativeNpcIds;
+  if (eventResult?.firedOnceEventIds) {
+    game.state.firedOnceEventIds = Array.from(new Set([...game.state.firedOnceEventIds, ...eventResult.firedOnceEventIds]));
+  }
+  if (eventResult?.metNarrativeNpcIds) {
+    game.state.metNarrativeNpcIds = Array.from(new Set([...game.state.metNarrativeNpcIds, ...eventResult.metNarrativeNpcIds]));
+  }
   if (eventResult?.eventOutcomes) Object.assign(game.state.eventOutcomes, eventResult.eventOutcomes);
+
   try {
-    room = applyDump(game, { level, floorDepth, roomArg, forceEventId: eventResult?.forceEventId });
+    const room = applyDump(game, { level, floorDepth, roomArg, forceEventId: eventResult?.forceEventId });
+
+    members.forEach((member, i) => {
+      game.state.party[i]!.equippedArtifactIds = [...member.artifactIds];
+    });
+    if (itemsResult) game.state.inventory = itemsResult.inventory;
+    recomputeAllPartyStats(game.state);
+    for (const c of game.state.party) {
+      c.hp = c.maxHp;
+      c.mp = c.maxMp;
+    }
+
+    const meta = writeDevDumpSave(game, saveId);
+    const save = loadSave(meta.id);
+    const eventNote = room.type === "event" && room.rolledEventId ? ` — event "${room.rolledEventId}"` : "";
+    return Response.json({
+      ok: true,
+      meta,
+      save,
+      message: `Wrote dev-dump save "${meta.id}" to ${SAVE_DIR} — level ${game.state.party[0]!.level} · floor ${game.state.floor.depth} · room ${room.id} (${room.type}, "${room.name}")${game.state.combat ? " — ambushed" : ""}${eventNote}`,
+    });
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : String(err));
   }
-
-  members.forEach((member, i) => {
-    game.state.party[i]!.equippedArtifactIds = [...member.artifactIds];
-  });
-  if (itemsResult) game.state.inventory = itemsResult.inventory;
-  recomputeAllPartyStats(game.state);
-  for (const c of game.state.party) {
-    c.hp = c.maxHp;
-    c.mp = c.maxMp;
-  }
-
-  const meta = writeDevDumpSave(game, saveId);
-  const save = loadSave(meta.id);
-  const eventNote = room.type === "event" && room.rolledEventId ? ` — event "${room.rolledEventId}"` : "";
-  return Response.json({
-    ok: true,
-    meta,
-    save,
-    message: `Wrote dev-dump save "${meta.id}" to ${SAVE_DIR} — level ${game.state.party[0]!.level} · floor ${game.state.floor.depth} · room ${room.id} (${room.type}, "${room.name}")${game.state.combat ? " — ambushed" : ""}${eventNote}`,
-  });
 }
 
 if (!DEV_MODE) {

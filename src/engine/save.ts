@@ -67,7 +67,14 @@ function ensureSaveDir(): void {
   if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
 }
 
+// Every existing caller passes a fixed or computed id (QUICKSAVE_ID, AUTOSAVE_ID, `save-${Date.now()}`,
+// dev-save-dump's `dev-dump-${Date.now()}`), but `id` still ends up straight in a filename here —
+// reject anything else so a caller passing an untrusted id (e.g. tools/dev-save-dump/server.ts's
+// user-supplied save name) can't write or read outside SAVE_DIR via a path-traversal id.
+const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
+
 function savePath(id: Id): string {
+  if (!SAFE_SAVE_ID.test(id)) throw new Error(`Invalid save id: ${id}`);
   return join(SAVE_DIR, `${id}.json`);
 }
 
