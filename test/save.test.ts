@@ -5,9 +5,11 @@ import {
   UNVERSIONED,
   isSaveVersionAllowed,
   isSaveStateValid,
+  isDevDumpAllowed,
   quickSave,
   autoSave,
   manualSave,
+  writeDevDumpSave,
   listSaves,
   deleteSavesForRun,
   loadSave,
@@ -44,6 +46,31 @@ describe("Save version blocking", () => {
       ALLOWED_LEGACY_SAVE_VERSIONS.length = 0;
       ALLOWED_LEGACY_SAVE_VERSIONS.push(...original);
     }
+  });
+});
+
+describe("Dev-dump save gating", () => {
+  test("a save with no devDump flag is always allowed, dev mode or not", () => {
+    expect(isDevDumpAllowed({})).toBe(true);
+    expect(isDevDumpAllowed({}, false)).toBe(true);
+  });
+
+  test("a devDump save is allowed in dev mode and blocked outside it", () => {
+    expect(isDevDumpAllowed({ devDump: true }, true)).toBe(true);
+    expect(isDevDumpAllowed({ devDump: true }, false)).toBe(false);
+  });
+
+  test("writeDevDumpSave stamps meta.devDump and the save loads normally under dev mode (this test run)", () => {
+    withGame(7, (game) => {
+      const meta = writeDevDumpSave(game, "dev-dump-test");
+      expect(meta.devDump).toBe(true);
+      expect(listSaves().some((m) => m.id === "dev-dump-test")).toBe(true);
+
+      const save = loadSave("dev-dump-test");
+      expect(save.meta.devDump).toBe(true);
+      const resumed = gameFromSave(save, "dev-dump-test");
+      expect(resumed.state.runId).toBe(game.state.runId);
+    });
   });
 });
 
