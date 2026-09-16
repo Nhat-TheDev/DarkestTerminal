@@ -25,7 +25,7 @@ export function signed(amount: number): string {
   return `${amount >= 0 ? "+" : ""}${amount}`;
 }
 
-function statusEffectSummary(statusEffectId: Id): string {
+function statusEffectSummary(statusEffectId: Id, durationTurns: number | undefined): string {
   const status = getStatusEffect(statusEffectId);
   const parts = status.perTurnEffects.map((e) => {
     if (e.kind === "damage") return t("item.effectPerTurnDamage", { amount: e.amount ?? 0 });
@@ -37,7 +37,7 @@ function statusEffectSummary(statusEffectId: Id): string {
   if (status.vulnerableTo) parts.push(t("item.effectVulnerable", { status: getStatusEffect(status.vulnerableTo.statusEffectId).name }));
   if (status.stuns) parts.push(t("item.effectStuns"));
   const body = parts.length > 0 ? parts.join(", ") : t("item.effectNoPerTurn");
-  return t("item.statusSummary", { name: status.name, turns: status.durationTurns ?? "?", body });
+  return t("item.statusSummary", { name: status.name, turns: durationTurns ?? 1, body });
 }
 
 function itemEffectSummary(effect: SkillEffect): string {
@@ -53,7 +53,9 @@ function itemEffectSummary(effect: SkillEffect): string {
     case "removeStatusEffect":
       return t("item.effectRemoveStatus");
     case "applyStatusEffect":
-      return effect.statusEffectId ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId) }) : t("item.effectApplyStatusGeneric");
+      return effect.statusEffectId
+        ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId, effect.durationTurns) })
+        : t("item.effectApplyStatusGeneric");
     case "modifyCombatStat": {
       const label = effect.combatStat ? COMBAT_STAT_LABEL[effect.combatStat] : "";
       return t("effect.signedStat", { amount: signed(effect.amount ?? 0), stat: label });

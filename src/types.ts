@@ -11,7 +11,8 @@ export type SkillEffectKind =
   | "applyStatusEffect"
   | "removeStatusEffect"
   | "modifyStat"
-  | "modifyCombatStat";
+  | "modifyCombatStat"
+  | "summon";
 
 export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
@@ -27,6 +28,61 @@ export interface SkillEffect {
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
+  /** Scales the caster's offensive stat (attack/magicPower) before mitigation — e.g. 60 = the skill only uses 60% of it. Absent/100 = today's unscaled behavior. */
+  offenseMultiplierPercent?: number;
+  /** DoT-tick-only: adds `target.maxHp * maxHpPercent / 100` on top of `amount` for a `damage` perTurnEffect, so DoTs keep pace with HP growth across levels. */
+  maxHpPercent?: number;
+  /** Rolled independently of the accuracy roll, same pattern as `chance` on a proc effect — on a hit, the damage is multiplied by `critMultiplierPercent` (or the shared default). */
+  critChance?: number;
+  /** Overrides `BALANCE.combat.defaultCritMultiplierPercent` for this skill's own crits. */
+  critMultiplierPercent?: number;
+  /** Rolled independently after the main hit — on success, this effect resolves a 2nd time against the same target (its own independent damage + proc rolls). */
+  extraHitChance?: number;
+  /** For an `allEnemies` `damage` effect: how many times each enemy is struck, rolled per enemy within `[min, max]` inclusive. Absent = struck once. */
+  hitCountRange?: { min: number; max: number };
+  /** Scales this `damage` effect by `1 + (stacks * percentPerStack / 100)`, where `stacks` is the target's current stack count of `statusEffectId` (0 if absent). */
+  scalesWithStatusStacks?: { statusEffectId: Id; percentPerStack: number };
+  /** For `kind: "summon"`: spawns a `Summon` via the cast profile named here (`data/summons.json` → `casts`, looked up with `getSummonCast`). Re-casting the same archetype replaces the owner's existing one; a different archetype is added alongside it up to the owner's active-minion cap (1 by default), evicting the oldest once at that cap. */
+  summonCastId?: Id;
+  /** For `applyStatusEffect`: how many turns this specific application lasts (shared by `alsoApplyStatusEffectIds`, if any) — absent defaults to 1. Each skill declares its own duration; the status definition itself no longer carries one, so the same status can last a different number of turns depending on what applied it. */
+  durationTurns?: number;
+  /** Overrides the skill's own `target` for just this effect, resolved separately from every other effect in the skill — e.g. a skill that both damages `allEnemies` and needs a `summon` effect to always land on the caster sets `target: "self"` on that one effect. Only resolvable target kinds that need no player picking (`self`/`allAllies`/`allEnemies`/`allAlliesAndEnemies`) are supported; a `single*` override is silently skipped, since there's no UI for picking a 2nd target within one cast. */
+  target?: SkillTarget;
+  /** Restricts this effect to only the targets already resolved by the skill's own `target` that are on the given side (relative to `isPlayerSide`, not relative to the caster) — e.g. one `heal` effect with `appliesToRelation: "ally"` and one `damage` effect with `"enemy"` on a skill targeting `allAlliesAndEnemies` replaces the old `effectsByRelation` split. Unlike `target`, this filters within the already-resolved population rather than resolving a different one — the only shape that correctly expresses a skill like Purify, whose `singleAllyOrEnemy` target is 1 player-picked actor whose side decides which effect fires. */
+  appliesToRelation?: "ally" | "enemy";
+  /** For `modifyCombatStat`: the applied delta is whichever has the larger magnitude of `amount` or `actorStat * minPercent / 100` (read from the actor's stat before this delta is applied), sign preserved — so a flat buff/debuff stays meaningful once the underlying stat has grown well past where `amount` alone would be negligible. Absent = today's flat-only behavior. */
+  minPercent?: number;
+}
+
+/** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
+export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
+
+/**
+ * One minion stat's value: `base + (percent / 100) * owner[sourceStat]` — e.g. a physically-attacking
+ * minion whose power is meant to scale off a magic-focused caster's investment sets
+ * `sourceStat: "magicPower"` on its `attack` formula (Summoner's Goblin Thrower/Stone Golem,
+ * `01-class-skill.md` §1.11.1). `percent` is a single number when it doesn't change across the
+ * casting skill's 3 ranks, or a `[rank1, rank2, rank3]` tuple when it does (e.g. a minion's own
+ * attack growing with the summon skill's rank) — one cast profile is shared by all 3 ranks either way.
+ */
+export interface SummonStatFormula {
+  base: number;
+  percent: number | [number, number, number];
+  sourceStat: SummonSourceStat;
+}
+
+/**
+ * A minion-summoning skill's full cast configuration — `data/summons.json` → `casts`, referenced from
+ * `SkillEffect.summonCastId` (by convention the same id as the summoning `SkillDefinition`, since a
+ * skill's ranks 1-3 all reference 1 shared cast profile; `effectiveSkillRank` resolves which rank is
+ * currently active to pick the right element out of any `SummonStatFormula.percent` tuple).
+ */
+export interface SummonCast {
+  id: Id;
+  archetypeId: Id;
+  maxActions: number;
+  stat: Record<SummonSourceStat, SummonStatFormula>;
+  aggro: number;
 }
 
 export type SkillTarget =
@@ -43,7 +99,6 @@ export interface SkillRankDefinition {
   unlockLevel: number;
   mpCost: number;
   effects?: SkillEffect[];
-  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
 }
 
 export interface SkillDefinition {
@@ -53,7 +108,6 @@ export interface SkillDefinition {
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
-  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
   slot: 0 | 1 | 2 | 3 | 4 | 5;
   unlockLevel: number;
   usesPerCombat?: number;
@@ -63,6 +117,8 @@ export interface SkillDefinition {
   isMagic?: boolean;
   ranks?: SkillRankDefinition[];
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
+  /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. Distinct from the unrelated Boss "Execute" charge-up mechanic (`Monster.executeCooldownTurns`). */
+  executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
 }
 
 export interface GrowthWeights {
@@ -122,9 +178,8 @@ export interface StatusEffectDefinition {
   name: string;
   description: string;
   perTurnEffects: SkillEffect[];
-  durationTurns?: number;
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
+  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -133,6 +188,19 @@ export interface StatusEffectDefinition {
   rankLevel?: 2 | 3;
   /** Overrides the turn-countdown schedule inferred from `perTurnEffects`' shape — for a status whose shape alone doesn't capture its intended timing, e.g. a pure stat-mod rider that must tick in lockstep with a "special" status it's always co-applied with. */
   tickCategory?: "dot" | "statMod" | "special";
+  /** Re-applying this status to a target that already carries it adds a stack (up to `maxStacks`) instead of only refreshing duration. */
+  stackable?: boolean;
+  maxStacks?: number;
+  /** Each stack beyond the first multiplies the status's `damage` perTurnEffects by `1 + perStackBonusPercent / 100`. */
+  perStackBonusPercent?: number;
+  /** While the bearer carries this status, the moment resolution reaches the next monster's turn, the bearer reactively attacks that monster first — a hit discards the monster's turn entirely. Consumed after the first monster reached, hit or miss. */
+  triggersOverwatch?: boolean;
+  /** While active, the bearer is excluded from every enemy skill's target resolution (singleEnemy/allEnemies target-picking skips it, same as a dead combatant). */
+  untargetable?: boolean;
+  /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
+  breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
+  /** While the bearer (a Character) carries this status, every `Summon` it owns gets these bonuses: applied once, retroactively, to every currently-active owned summon the moment this status lands, and applied again to any summon spawned later while it's still active (Summoner's Mastery, §1.11). */
+  empowersMinions?: { maxHpPercent: number; attackPercent: number };
 }
 
 export interface ItemDefinition {
@@ -321,6 +389,10 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
+  /** Current stack count for a `stackable` status (`StatusEffectDefinition.stackable`); absent/undefined for non-stackable statuses. */
+  stacks?: number;
+  /** The exact combat-stat delta(s) actually applied for this status's `modifyCombatStat` perTurnEffects, keyed by stat — set once when the status is first applied (after resolving any `minPercent` floor against the actor's stat at that moment) and read back on expiry to undo precisely that amount, since recomputing from `amount`/`minPercent` at expiry could disagree if the actor's stat moved in between (e.g. a 2nd, unrelated buff/debuff on the same stat). Absent for a status with no `modifyCombatStat` perTurnEffects. */
+  appliedAmounts?: Partial<Record<CombatStat, number>>;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";
@@ -405,7 +477,41 @@ export interface Monster {
   executeTargetId?: Id;
 }
 
-export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id };
+/**
+ * A temporary, player-side combatant summoned by a character's skill (Ninja's clone, Summoner's
+ * minions — `01-class-skill.md` §1.12.4). Shaped like `Monster` (no MP/fear/abilities — those stay
+ * `Character`-only), but fights on the player's side: it can be targeted and killed by enemies,
+ * draws enemy aggro like a real ally, and takes its own turn in `turnQueue`. Vanishes once
+ * `actionsTaken` reaches `maxActions` (a turn skipped by stun does not count) or its `hp` hits 0.
+ */
+export interface Summon {
+  id: Id;
+  /** The character who summoned it — whose stats it was derived from at cast time. */
+  ownerId: Id;
+  /** Which kind of summon this is (`"ninja-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
+  archetypeId: Id;
+  name: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  magicPower: number;
+  aggro: number;
+  speed: number;
+  activeStatusEffects: ActiveStatusEffect[];
+  actionsTaken: number;
+  maxActions: number;
+}
+
+export interface SummonArchetype {
+  id: Id;
+  name: string;
+  /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
+  actionWeights?: Record<string, number>;
+  signatureSkillIds?: Id[];
+}
+
+export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };
 
 export interface Combatant {
   ref: CombatantRef;

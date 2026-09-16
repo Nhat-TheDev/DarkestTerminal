@@ -31,7 +31,8 @@ describe("status effect turn-countdown timing, per category", () => {
 
       queueAction(combat, mageRef, "mage-bludgeon", [rat2Ref], ctx);
       resolveRound(combat, ctx);
-      expect(rat1.hp).toBe(hpAfterRound1 - 5);
+      // Burning: 6 flat + 3% of rat1's 200 maxHp = 12.
+      expect(rat1.hp).toBe(hpAfterRound1 - 12);
       expect(rat1.activeStatusEffects.find((s) => s.statusEffectId === "burning")?.turnsRemaining).toBe(1);
       return;
     }

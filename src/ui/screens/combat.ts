@@ -25,6 +25,22 @@ const TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
   allEnemies: "to all enemies",
 };
 
+/**
+ * Who this specific effect lands on — usually just the skill's own `target`, but an effect can
+ * override that (`effect.target`, e.g. a `summon` effect that always lands on the caster) or narrow
+ * it to 1 side of an already-resolved population (`effect.appliesToRelation`, e.g. Purify's ally-only
+ * `removeStatusEffect` vs its enemy-only `damage`) — the plurality (1 ally vs "your party") still
+ * follows the skill's own target, since `appliesToRelation` only filters, it doesn't resolve its own set.
+ */
+function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
+  if (e.target) return TARGET_SUFFIX[e.target] ?? "";
+  if (e.appliesToRelation) {
+    const isAllTargets = sk.target.startsWith("all");
+    return e.appliesToRelation === "ally" ? (isAllTargets ? "to your party" : "to an ally") : isAllTargets ? "to all enemies" : "to an enemy";
+  }
+  return TARGET_SUFFIX[sk.target] ?? "";
+}
+
 /** A status's own perTurnEffects, formatted as "+6 Defense/turn" style fragments — null if it has none. */
 function statusPerTurnSummary(def: StatusEffectDefinition): string | null {
   const parts = def.perTurnEffects
@@ -40,22 +56,23 @@ function statusPerTurnSummary(def: StatusEffectDefinition): string | null {
 
 /**
  * One bulleted line per skill effect, built entirely from the skill's own data — never the caster's
- * live stats. Damage gets its own shape — "100% Base Attack + 10" — describing the damage formula
- * itself (100% of the caster's Attack stat, plus the skill's own flat `amount`), not a trigger chance.
- * Every other effect kind is prefixed with its actual trigger chance (100% when guaranteed), and every
- * bullet ends with who it targets.
+ * live stats. Damage gets its own shape — "80% Base Attack + 10" — describing the damage formula
+ * itself (the effect's own offenseMultiplierPercent, absent/100 meaning unscaled, of the caster's
+ * Attack stat, plus the skill's own flat `amount`), not a trigger chance. Every other effect kind is
+ * prefixed with its actual trigger chance (100% when guaranteed), and every bullet ends with who it targets.
  */
-function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
-  const targetSuffix = TARGET_SUFFIX[sk.target] ?? "";
+export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
+  const targetSuffix = targetSuffixFor(e, sk);
   if (e.kind === "damage") {
     const statLabel = sk.isMagic ? "Magic Power" : "Attack";
+    const percent = e.offenseMultiplierPercent ?? 100;
     const base = e.amount ?? 0;
     return base === 0
-      ? t("ui.skillEffectDamageScalingOnly", { statLabel, targetSuffix })
-      : t("ui.skillEffectDamageScaling", { statLabel, statAmount: base, targetSuffix });
+      ? t("ui.skillEffectDamageScalingOnly", { percent, statLabel, targetSuffix })
+      : t("ui.skillEffectDamageScaling", { percent, statLabel, statAmount: base, targetSuffix });
   }
   if (e.kind === "heal" && sk.isMagic) {
-    return t("ui.skillEffectHealScaling", { amount: e.amount ?? 0, targetSuffix });
+    return t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
   }
   const chance = `${Math.round((e.chance ?? 1) * 100)}%`;
   let body: string | null;
@@ -75,7 +92,7 @@ function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
     case "applyStatusEffect": {
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
-      const turnsSuffix = def.durationTurns ? ` (${def.durationTurns}t)` : "";
+      const turnsSuffix = ` (${e.durationTurns ?? 1}t)`;
       const perTurn = statusPerTurnSummary(def);
       const perTurnSuffix = perTurn ? ` (${perTurn})` : "";
       body = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${turnsSuffix}${perTurnSuffix}`;

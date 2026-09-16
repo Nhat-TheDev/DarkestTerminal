@@ -2,227 +2,538 @@
   {
     "id": "guard",
     "name": "Guard",
-    "description": "Shield Guard (Vanguard): +6 defense per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 6 }],
-    "durationTurns": 1
+    "description": "Mildly raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 6,
+        "minPercent": 10
+      }
+    ]
   },
   {
     "id": "guard-ii",
     "name": "Guard II",
-    "description": "Shield Guard rank 2 (Vanguard): +8 defense per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 8 }],
-    "durationTurns": 1
+    "description": "Moderately raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8,
+        "minPercent": 12.5
+      }
+    ]
   },
   {
     "id": "guard-iii",
     "name": "Guard III",
-    "description": "Shield Guard rank 3 (Vanguard): +10 defense per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 10 }],
-    "durationTurns": 1
+    "description": "Sharply raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 10,
+        "minPercent": 15
+      }
+    ]
   },
   {
     "id": "taunt",
     "name": "Taunt",
-    "description": "Shield Guard (Vanguard): +40 aggro per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 40 }],
-    "durationTurns": 1
+    "description": "Raises aggro for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": 40
+      }
+    ]
   },
   {
     "id": "rally",
     "name": "Rally",
-    "description": "Rally (Vanguard): +4 attack per turn, applied to the whole party.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
-    "durationTurns": 1
+    "description": "Mildly raises the whole party's attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 4,
+        "minPercent": 5
+      }
+    ]
   },
   {
     "id": "rally-ii",
     "name": "Rally II",
-    "description": "Rally rank 2 (Vanguard): +6 attack per turn, applied to the whole party.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
-    "durationTurns": 1
+    "description": "Moderately raises the whole party's attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      }
+    ]
   },
   {
     "id": "rally-iii",
     "name": "Rally III",
-    "description": "Rally rank 3 (Vanguard): +8 attack per turn, applied to the whole party.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 8 }],
-    "durationTurns": 1
+    "description": "Sharply raises the whole party's attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 8,
+        "minPercent": 10
+      }
+    ]
   },
   {
     "id": "poison-coat",
     "name": "Poison Coat",
-    "description": "Poison Coat (Rogue): no effect by itself each turn — while active, every damaging hit the bearer lands also applies \"Poisoned\" to whoever got hit.",
+    "description": "No effect by itself each turn — while active, every damaging hit the bearer lands also applies Poisoned to whoever got hit.",
     "perTurnEffects": [],
-    "durationTurns": 3,
     "onHitStatusEffectId": "poisoned"
   },
   {
     "id": "venom-edge",
     "name": "Venom Edge",
-    "description": "Poison Coat rank 2 (Rogue): +4 attack per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 4 }],
-    "durationTurns": 3,
+    "description": "Mildly raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 4,
+        "minPercent": 5
+      }
+    ],
     "tickCategory": "special"
   },
   {
     "id": "venom-edge-ii",
     "name": "Venom Edge II",
-    "description": "Poison Coat rank 3 (Rogue): +6 attack per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
-    "durationTurns": 3,
+    "description": "Moderately raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      }
+    ],
     "tickCategory": "special"
   },
   {
     "id": "poisoned",
     "name": "Poisoned",
-    "description": "Poison Coat/Poison Bomb (Rogue): lose 4 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 4 }],
-    "durationTurns": 3
+    "description": "Mildly drains HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 4,
+        "maxHpPercent": 2.5
+      }
+    ]
   },
   {
     "id": "poisoned-ii",
     "name": "Poisoned II",
-    "description": "Poison Bomb rank 2 (Rogue): lose 6 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 6 }],
-    "durationTurns": 3
+    "description": "Moderately drains HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 6,
+        "maxHpPercent": 3
+      }
+    ]
   },
   {
     "id": "poisoned-iii",
     "name": "Poisoned III",
-    "description": "Poison Bomb rank 3 (Rogue): lose 8 HP per turn. Exclusive to Poison Bomb — every other poison source stays plain Poisoned.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 8 }],
-    "durationTurns": 3
+    "description": "Sharply drains HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 8,
+        "maxHpPercent": 4
+      }
+    ]
   },
   {
     "id": "burning",
     "name": "Burning",
-    "description": "Fireball/Fire Pillar (Mage): lose 5 HP per turn. Not curable via mini-game (deliberate — distinguishes it from Poisoned).",
-    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
-    "durationTurns": 2
+    "description": "Drains HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 6,
+        "maxHpPercent": 3
+      }
+    ]
   },
   {
     "id": "weakened",
     "name": "Weakened",
-    "description": "Crush (Skeleton Guard - Boss): lowers the target's defense for a few turns.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -6 }],
-    "durationTurns": 2
+    "description": "Lowers defense for a few turns.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -6,
+        "minPercent": -10
+      }
+    ]
   },
   {
     "id": "stunned",
     "name": "Stunned",
-    "description": "Lightning Bolt/Lightning Storm (Mage): skips the turn entirely while active. Not curable via mini-game.",
+    "description": "Skips the turn entirely while active.",
     "perTurnEffects": [],
-    "durationTurns": 1,
+    "stuns": true
+  },
+  {
+    "id": "stagger",
+    "name": "Stagger",
+    "description": "Skips the turn entirely while active.",
+    "perTurnEffects": [],
     "stuns": true
   },
   {
     "id": "empower",
     "name": "Empower",
-    "description": "+6 attack per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 6 }],
-    "durationTurns": 2
+    "description": "Raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      }
+    ]
   },
   {
     "id": "fortify",
     "name": "Fortify",
-    "description": "+8 defense per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": 8 }],
-    "durationTurns": 2
+    "description": "Raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8,
+        "minPercent": 12
+      }
+    ]
   },
   {
     "id": "distracted",
     "name": "Distracted",
-    "description": "-20 aggro per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "aggro", "amount": -20 }],
-    "durationTurns": 1
+    "description": "Lowers aggro for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": -20
+      }
+    ]
   },
   {
     "id": "regeneration",
     "name": "Regeneration",
-    "description": "heal 10 HP per turn.",
-    "perTurnEffects": [{ "kind": "heal", "amount": 10 }],
-    "durationTurns": 3
+    "description": "Restores HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 10
+      }
+    ]
   },
   {
     "id": "poison-vulnerable",
     "name": "Poison Vulnerable",
-    "description": "While active, doubles the per-turn damage of the bearer's own Poisoned tick.",
+    "description": "While active, increases the per-turn damage of the bearer's own Poisoned tick.",
     "perTurnEffects": [],
-    "durationTurns": 2,
-    "vulnerableTo": { "statusEffectId": "poisoned", "multiplier": 2 }
+    "vulnerableTo": {
+      "statusEffectId": "poisoned",
+      "multiplier": 1.6
+    }
+  },
+  {
+    "id": "burning-vulnerable",
+    "name": "Burning Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Burning tick.",
+    "perTurnEffects": [],
+    "vulnerableTo": {
+      "statusEffectId": "burning",
+      "multiplier": 1.6
+    }
+  },
+  {
+    "id": "bleeding-vulnerable",
+    "name": "Bleeding Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Bleeding tick.",
+    "perTurnEffects": [],
+    "vulnerableTo": {
+      "statusEffectId": "bleeding",
+      "multiplier": 1.6
+    }
+  },
+  {
+    "id": "acid-burn-vulnerable",
+    "name": "Acid Burn Vulnerable",
+    "description": "While active, increases the per-turn damage of the bearer's own Acid Burn tick.",
+    "perTurnEffects": [],
+    "vulnerableTo": {
+      "statusEffectId": "acid-burn",
+      "multiplier": 1.6
+    }
   },
   {
     "id": "acid-burn",
     "name": "Acid Burn",
-    "description": "Acid Spit (Slime): lose 3 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 3 }],
-    "durationTurns": 2
+    "description": "Drains HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 5,
+        "maxHpPercent": 2.5
+      }
+    ]
   },
   {
     "id": "corroded",
     "name": "Corroded",
-    "description": "Acid Spit (Slime): lowers the target's defense for a few turns.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 }],
-    "durationTurns": 2
+    "description": "Lowers defense for a few turns.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -4,
+        "minPercent": -7
+      }
+    ]
   },
   {
     "id": "webbed",
     "name": "Webbed",
-    "description": "Web Spit (Spider): lose 20 speed per turn.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "speed", "amount": -20 }],
-    "durationTurns": 2
+    "description": "Lowers speed for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": -20
+      }
+    ]
   },
   {
     "id": "storm-empowered",
     "name": "Storm-Empowered",
-    "description": "Lightning Axe (Viking): every landed hit also splashes lightning damage across all enemies.",
+    "description": "Every landed hit also splashes lightning damage across all enemies.",
     "perTurnEffects": [],
-    "durationTurns": 3,
-    "onHitAoeDamage": { "amount": 6, "isMagic": true, "ignoreDefensePercent": 30 }
+    "onHitAoeDamage": {
+      "amount": 6,
+      "isMagic": true,
+      "offenseMultiplierPercent": 80,
+      "ignoreDefensePercent": 30
+    }
   },
   {
     "id": "storm-empowered-ii",
     "name": "Storm-Empowered",
-    "description": "Lightning Axe rank 2 (Viking): every landed hit also splashes stronger lightning damage across all enemies.",
+    "description": "Every landed hit also splashes stronger lightning damage across all enemies.",
     "perTurnEffects": [],
-    "durationTurns": 3,
-    "onHitAoeDamage": { "amount": 8, "isMagic": true, "ignoreDefensePercent": 30 },
+    "onHitAoeDamage": {
+      "amount": 8,
+      "isMagic": true,
+      "offenseMultiplierPercent": 90,
+      "ignoreDefensePercent": 30
+    },
     "rankOf": "storm-empowered",
     "rankLevel": 2
   },
   {
     "id": "storm-empowered-iii",
     "name": "Storm-Empowered",
-    "description": "Lightning Axe rank 3 (Viking): every landed hit also splashes the strongest lightning damage across all enemies.",
+    "description": "Every landed hit also splashes the strongest lightning damage across all enemies.",
     "perTurnEffects": [],
-    "durationTurns": 3,
-    "onHitAoeDamage": { "amount": 10, "isMagic": true, "ignoreDefensePercent": 30 },
+    "onHitAoeDamage": {
+      "amount": 10,
+      "isMagic": true,
+      "offenseMultiplierPercent": 100,
+      "ignoreDefensePercent": 30
+    },
     "rankOf": "storm-empowered",
     "rankLevel": 3
   },
   {
     "id": "storm-recoil",
     "name": "Storm Recoil",
-    "description": "Lightning Axe (Viking): -4 defense, +8 aggro per turn while channeling storm energy.",
+    "description": "Lowers defense and raises aggro while channeling storm energy.",
     "perTurnEffects": [
-      { "kind": "modifyCombatStat", "combatStat": "defense", "amount": -4 },
-      { "kind": "modifyCombatStat", "combatStat": "aggro", "amount": 8 }
-    ],
-    "durationTurns": 1
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -4,
+        "minPercent": -7
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": 8
+      }
+    ]
   },
   {
     "id": "bleeding",
     "name": "Bleeding",
-    "description": "Frenzied Slash/Spinning Axe (Viking): lose 5 HP per turn.",
-    "perTurnEffects": [{ "kind": "damage", "amount": 5 }],
-    "durationTurns": 3
+    "description": "Drains HP per turn, growing stronger with each stack.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 6,
+        "maxHpPercent": 2
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 5,
+    "perStackBonusPercent": 100
+  },
+  {
+    "id": "stealthed",
+    "name": "Stealthed",
+    "description": "Untargetable by enemies until the next attack breaks it — a basic attack lands a guaranteed critical hit, a skill deals a mild damage bonus.",
+    "perTurnEffects": [],
+    "untargetable": true,
+    "breakBonus": {
+      "basicAttackGuaranteedCrit": true,
+      "skillDamageBonusPercent": 10
+    }
+  },
+  {
+    "id": "stealthed-ii",
+    "name": "Stealthed",
+    "description": "Untargetable by enemies until the next attack breaks it — a basic attack lands a guaranteed critical hit, a skill deals a moderate damage bonus.",
+    "perTurnEffects": [],
+    "untargetable": true,
+    "rankOf": "stealthed",
+    "rankLevel": 2,
+    "breakBonus": {
+      "basicAttackGuaranteedCrit": true,
+      "skillDamageBonusPercent": 20
+    }
+  },
+  {
+    "id": "stealthed-iii",
+    "name": "Stealthed",
+    "description": "Untargetable by enemies until the next attack breaks it — a basic attack lands a guaranteed critical hit, a skill deals a sharp damage bonus.",
+    "perTurnEffects": [],
+    "untargetable": true,
+    "rankOf": "stealthed",
+    "rankLevel": 3,
+    "breakBonus": {
+      "basicAttackGuaranteedCrit": true,
+      "skillDamageBonusPercent": 30
+    }
+  },
+  {
+    "id": "overwatched",
+    "name": "Overwatched",
+    "description": "Reactively fires at the next monster to act (a mild attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 4,
+        "minPercent": 5
+      }
+    ],
+    "triggersOverwatch": true
+  },
+  {
+    "id": "overwatched-ii",
+    "name": "Overwatched",
+    "description": "Reactively fires at the next monster to act (a moderate attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 10,
+        "minPercent": 12
+      }
+    ],
+    "triggersOverwatch": true
+  },
+  {
+    "id": "overwatched-iii",
+    "name": "Overwatched",
+    "description": "Reactively fires at the next monster to act (a sharp attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 16,
+        "minPercent": 18
+      }
+    ],
+    "triggersOverwatch": true
   },
   {
     "id": "blinded",
     "name": "Blinded",
-    "description": "Blinding Vial (Plague Doctor): the bearer's own attacks/skills miss 60% more often for the duration.",
+    "description": "The bearer's own attacks/skills miss more often for the duration.",
     "perTurnEffects": [],
-    "durationTurns": 2,
     "accuracyPenaltyPercent": 60
+  },
+  {
+    "id": "agony",
+    "name": "Agony",
+    "description": "Drains HP per turn, and lowers attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 6,
+        "maxHpPercent": 2
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": -6,
+        "minPercent": -7.5
+      }
+    ]
+  },
+  {
+    "id": "minion-empowerment",
+    "name": "Minion Empowerment",
+    "description": "Every minion you currently have active, plus any summoned later this combat, gets a mild boost to max HP and attack.",
+    "perTurnEffects": [],
+    "empowersMinions": {
+      "maxHpPercent": 15,
+      "attackPercent": 15
+    }
+  },
+  {
+    "id": "minion-empowerment-ii",
+    "name": "Minion Empowerment",
+    "description": "Every minion you currently have active, plus any summoned later this combat, gets a moderate boost to max HP and attack.",
+    "perTurnEffects": [],
+    "empowersMinions": {
+      "maxHpPercent": 25,
+      "attackPercent": 25
+    },
+    "rankOf": "minion-empowerment",
+    "rankLevel": 2
+  },
+  {
+    "id": "minion-empowerment-iii",
+    "name": "Minion Empowerment",
+    "description": "Every minion you currently have active, plus any summoned later this combat, gets a sharp boost to max HP and attack.",
+    "perTurnEffects": [],
+    "empowersMinions": {
+      "maxHpPercent": 35,
+      "attackPercent": 35
+    },
+    "rankOf": "minion-empowerment",
+    "rankLevel": 3
   }
 ]

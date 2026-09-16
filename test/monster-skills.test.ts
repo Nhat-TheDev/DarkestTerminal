@@ -130,6 +130,10 @@ describe("elite/boss skill kit", () => {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
         monster.executeCooldownTurns = 99;
+        // makeCtx's party has 1 character per class — their combined opening damage would otherwise
+        // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
+        // which is what this test is actually checking for.
+        monster.hp = monster.maxHp = 9999;
         ctx.monsters.push(monster);
         const combat = startCombat("r1", [monster.id], ctx, false);
         queueTrivialActions(ctx, combat);
@@ -209,18 +213,18 @@ describe("regular monster skills", () => {
   test("Slime's Acid Spit procs acid-burn and corroded together, Spider's Web Spit procs webbed", () => {
     expect(getMonsterSkill("acid-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
-      { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5, durationTurns: 2 },
     ]);
     expect(getMonsterSkill("web-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
-      { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5, durationTurns: 2 },
     ]);
   });
 
   test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
     const skill = getMonsterSkill("guard-stance");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard" }]);
+    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }]);
   });
 
   test("actionWeights.normal is 70/30 for random archetypes, 100/0 for Zombie/Skeleton Warrior", () => {

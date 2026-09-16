@@ -3,13 +3,14 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { getSkill } from "../src/data/classes";
-import type { Character } from "../src/types";
+import type { Character, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
+import { skillEffectLine } from "../src/ui/screens/combat";
 
 describe("headless UI smoke test", () => {
   test("plays a scripted run via keypresses without crashing", async () => {
@@ -235,5 +236,57 @@ describe("character info screen", () => {
     mockInput.pressKey("3");
     await renderOnce();
     expect(captureCharFrame()).toContain("Rogue (Level 1 Rogue)");
+  });
+});
+
+describe("skillEffectLine: damage/heal scaling description shows the effect's real offenseMultiplierPercent", () => {
+  test("a damage effect below 100% shows its own percent, not a hardcoded 100%", () => {
+    const skill = getSkill("archer-volley-shot");
+    const effect = skill.effects![0]!; // amount:10, offenseMultiplierPercent:60
+    expect(skillEffectLine(effect, skill)).toBe("  • 60% Base Attack + 10 Attack to all enemies");
+  });
+
+  test("a damage effect above 100% shows its own percent too", () => {
+    const skill = getSkill("viking-throw-axe");
+    const effect = skill.effects![0]!; // amount:16, offenseMultiplierPercent:100 (rank 1)
+    expect(skillEffectLine(effect, skill)).toBe("  • 100% Base Attack + 16 Attack to an enemy");
+  });
+
+  test("a flat-amount-only damage effect (e.g. a basic attack) with no offenseMultiplierPercent falls back to 100%", () => {
+    const skill = getSkill("vanguard-slash");
+    const effect = skill.effects![0]!; // amount:0
+    expect(effect.offenseMultiplierPercent).toBeUndefined();
+    expect(skillEffectLine(effect, skill)).toBe("  • 100% Base Attack to an enemy");
+  });
+
+  test("a heal effect with a non-100% offenseMultiplierPercent shows its own percent", () => {
+    const skill = getSkill("acolyte-heal");
+    const effect = skill.effects![0]!; // amount:16, offenseMultiplierPercent:90 (rank 1)
+    expect(skillEffectLine(effect, skill)).toBe("  • Heals: 90% Base Magic Power + 16 HP to an ally");
+  });
+});
+
+describe("skillEffectLine: per-effect target overrides (replaces the old effectsByRelation)", () => {
+  test("appliesToRelation on a singleAllyOrEnemy skill (Purify) shows the singular ally/enemy suffix per effect", () => {
+    const skill = getSkill("acolyte-purify");
+    const [removeStatus, damage] = skill.effects!;
+    expect(removeStatus!.appliesToRelation).toBe("ally");
+    expect(skillEffectLine(removeStatus!, skill)).toBe("  • 100%: Removes 1 debuff to an ally");
+    expect(damage!.appliesToRelation).toBe("enemy");
+    expect(skillEffectLine(damage!, skill)).toBe("  • 100% Base Magic Power + 15 Magic Power to an enemy");
+  });
+
+  test("appliesToRelation on an allAlliesAndEnemies skill (Total Plague) shows the plural party/all-enemies suffix per effect", () => {
+    const skill = getSkill("plaguedoc-total-plague");
+    const heal = skill.effects!.find((e) => e.kind === "heal")!;
+    const damage = skill.effects!.find((e) => e.kind === "damage")!;
+    expect(skillEffectLine(heal, skill)).toContain("to your party");
+    expect(skillEffectLine(damage, skill)).toContain("to all enemies");
+  });
+
+  test("effect.target overrides the skill's own target for that 1 effect's suffix", () => {
+    const skill = getSkill("mage-fireball"); // any allEnemies-less singleEnemy skill works as a stand-in host
+    const overriddenEffect: SkillEffect = { kind: "damage", amount: 5, target: "self" };
+    expect(skillEffectLine(overriddenEffect, skill)).toContain("to yourself");
   });
 });

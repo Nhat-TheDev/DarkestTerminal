@@ -1,16 +1,19 @@
-import type { Character, Monster, MonsterArchetype, MonsterTier, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
+import type { Character, Monster, Summon, MonsterArchetype, MonsterTier, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
 import { getArchetype, getMonsterSkill, EXECUTE_COOLDOWN_TURNS } from "../data/monsters";
 import { BALANCE } from "../data/balanceConfig";
 import { rollDodge } from "./artifacts";
-import { resolveSkillEffect, rollHits, type Actor } from "./resolver";
+import { resolveSkillEffect, rollHits, isCharacter, type Actor } from "./resolver";
 import { t } from "../data/strings";
 import { applyArtifactReflectDamage } from "./combatHooks";
-import { getActorByRef, livingCharacterRefs, hasStunningStatus, applySkillEffects, type EngineContext } from "./combat";
+import { getActorByRef, livingPlayerSideEnemyFacingRefs, hasStunningStatus, applySkillEffects, type EngineContext } from "./combat";
 import { Rng } from "./rng";
 
-function pickMonsterTarget(actor: Monster, livingChars: Character[], rng: Rng): Character {
-  if (actor.aiPattern === "opportunistic") return pickInverseAggroWeighted(livingChars, rng);
-  return pickAggroWeighted(livingChars, rng);
+/** A monster's targeting pool: every living character/summon not currently `untargetable` (a stealthed Ninja). */
+type Targetable = Character | Summon;
+
+function pickMonsterTarget(actor: Monster, livingTargets: Targetable[], rng: Rng): Targetable {
+  if (actor.aiPattern === "opportunistic") return pickInverseAggroWeighted(livingTargets, rng);
+  return pickAggroWeighted(livingTargets, rng);
 }
 
 /** `null` = the basic attack; anything else is a skill id straight out of `actionWeights`. */
@@ -34,13 +37,13 @@ function monsterSkillLogLine(actor: Monster, skill: SkillDefinition, targets: Ac
   return t("combat.monsterSkillOnTarget", { actor: actor.name, skill: skill.name, target: targets[0]!.name });
 }
 
-function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingChars: Character[], rng: Rng): Actor[] {
+function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingTargets: Targetable[], rng: Rng): Actor[] {
   // A monster's self-targeted skill (Regeneration, Guard Stance) has to land on the monster.
   // Without this branch it falls through to the enemy case and the monster heals or buffs a
   // party member instead — reachable the moment such a skill is given a non-zero action weight.
   if (skill.target === "self") return [actor];
-  if (skill.target === "allEnemies") return livingChars;
-  return [pickMonsterTarget(actor, livingChars, rng)];
+  if (skill.target === "allEnemies") return livingTargets;
+  return [pickMonsterTarget(actor, livingTargets, rng)];
 }
 
 export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
@@ -50,7 +53,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     return;
   }
 
-  const livingChars = livingCharacterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Character);
+  const livingChars = livingPlayerSideEnemyFacingRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Targetable);
   if (livingChars.length === 0) return;
 
   const archetype = getArchetype(actor.archetypeId);
@@ -104,16 +107,16 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     combat.log.push({ text: t("combat.missedFear", { source: actor.name, target: target.name }), kind: "info" });
     return;
   }
-  if (rollDodge(target, ctx.rng)) {
+  if (isCharacter(target) && rollDodge(target, ctx.rng)) {
     combat.log.push({ text: t("combat.dodge", { target: target.name, actor: actor.name }), kind: "info" });
     return;
   }
   combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: target.name }), kind: "attack" });
   const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
-  if (damageDealt > 0) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
+  if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
 }
 
-function pickAggroWeighted(characters: Character[], rng: Rng): Character {
+function pickAggroWeighted(characters: Targetable[], rng: Rng): Targetable {
   return rng.weightedPick(characters, (c) => Math.max(1, c.aggro));
 }
 
@@ -126,7 +129,7 @@ function pickAggroWeighted(characters: Character[], rng: Rng): Character {
  * The consequence is deliberate: Shield Guard's +40 aggro pushes the Vanguard out of danger and
  * pulls the rest of the party into it, so taunting is the wrong move against these archetypes.
  */
-function pickInverseAggroWeighted(characters: Character[], rng: Rng): Character {
+function pickInverseAggroWeighted(characters: Targetable[], rng: Rng): Targetable {
   const aggros = characters.map((c) => c.aggro);
   const mirror = Math.max(...aggros) + Math.min(...aggros);
   return rng.weightedPick(characters, (c) => Math.max(1, mirror - c.aggro));

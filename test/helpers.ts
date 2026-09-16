@@ -10,7 +10,7 @@ export function makeCtx(seed = 1) {
   const rng = new Rng(seed);
   const { floor, monsters } = createFloor(rng);
   const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-  const ctx: EngineContext = { party, monsters, rng, inventory: {} };
+  const ctx: EngineContext = { party, monsters, summons: [], rng, inventory: {} };
   return { ctx, floor, monsters, party };
 }
 

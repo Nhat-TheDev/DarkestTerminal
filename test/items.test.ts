@@ -100,14 +100,15 @@ describe("items", () => {
     expect(target.activeStatusEffects.filter((s) => s.statusEffectId === "regeneration")).toHaveLength(1);
   });
 
-  test("poison-vulnerable doubles the bearer's own Poisoned DoT tick", () => {
+  test("poison-vulnerable increases the bearer's own Poisoned DoT tick by 60%", () => {
     const { ctx } = makeCtx();
     const target = ctx.party[0]!;
     target.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
     target.activeStatusEffects.push({ statusEffectId: "poison-vulnerable", turnsRemaining: 2 });
     const before = target.hp;
     tickDotEffects(target, { log: [] });
-    expect(before - target.hp).toBe(8);
+    const expectedTick = Math.max(1, Math.round((4 + target.maxHp * 0.025) * 1.6));
+    expect(before - target.hp).toBe(expectedTick);
   });
 
   test("Game.useItemOutOfCombat heals outside combat, decrements inventory, and rejects singleEnemy items", () => {
