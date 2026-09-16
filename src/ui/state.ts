@@ -44,6 +44,7 @@ export type UiState =
   | { kind: "eventGuardianFight" }
   | { kind: "eventReflection" }
   | { kind: "campReflection" }
+  | { kind: "floorMilestone" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
   | { kind: "abilityBuyback" }

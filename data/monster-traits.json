@@ -1,0 +1,27 @@
+[
+  {
+    "id": "flying",
+    "name": "Flying",
+    "profile": { "statBuff": { "speedFlat": 4, "defensePercent": -5 } }
+  },
+  {
+    "id": "plated",
+    "name": "Plated",
+    "profile": { "statBuff": { "defensePercent": 10, "speedFlat": -3 } }
+  },
+  {
+    "id": "venomous",
+    "name": "Venomous",
+    "profile": { "resistPercent": { "poison": 30 } }
+  },
+  {
+    "id": "swift",
+    "name": "Swift",
+    "profile": { "statBuff": { "speedFlat": 6, "maxHpPercent": -8 } }
+  },
+  {
+    "id": "massive",
+    "name": "Massive",
+    "profile": { "statBuff": { "maxHpPercent": 15, "speedFlat": -4 } }
+  }
+]

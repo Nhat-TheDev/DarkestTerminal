@@ -51,6 +51,11 @@
         "spirit-heal-single",
         "spirit-heal-party"
       ]
+    },
+    {
+      "id": "recall-totem",
+      "name": "Recall Totem",
+      "passive": true
     }
   ],
   "skills": [
@@ -310,6 +315,34 @@
             90,
             110
           ],
+          "sourceStat": "magicPower"
+        }
+      }
+    },
+    {
+      "id": "summoner-totem-recall",
+      "archetypeId": "recall-totem",
+      "maxActions": 1,
+      "aggro": 10,
+      "stat": {
+        "maxHp": {
+          "base": 20,
+          "percent": 50,
+          "sourceStat": "maxHp"
+        },
+        "attack": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "attack"
+        },
+        "defense": {
+          "base": 0,
+          "percent": 0,
+          "sourceStat": "defense"
+        },
+        "magicPower": {
+          "base": 0,
+          "percent": 0,
           "sourceStat": "magicPower"
         }
       }

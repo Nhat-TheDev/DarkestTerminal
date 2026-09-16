@@ -294,7 +294,26 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "vanguard-passive",
+      "name": "Bulwark",
+      "description": "Years on the front line have hardened more than just the shield arm.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "mage",
@@ -316,18 +335,20 @@
     "skills": [
       {
         "id": "mage-bludgeon",
-        "name": "Bludgeon",
-        "description": "Strikes with a staff — basic damage, free.",
+        "name": "Arcane Bolt",
+        "description": "A weak bolt of raw arcane force — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "damageType": "magic"
           }
         ],
         "slot": 0,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "mage-fireball",
@@ -345,7 +366,8 @@
               {
                 "kind": "damage",
                 "amount": 10,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -363,7 +385,8 @@
               {
                 "kind": "damage",
                 "amount": 13,
-                "offenseMultiplierPercent": 105
+                "offenseMultiplierPercent": 105,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -381,7 +404,8 @@
               {
                 "kind": "damage",
                 "amount": 16,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -409,7 +433,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -427,7 +452,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -445,7 +471,8 @@
               {
                 "kind": "damage",
                 "amount": 19,
-                "offenseMultiplierPercent": 115
+                "offenseMultiplierPercent": 115,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -474,7 +501,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -492,7 +520,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 85
+                "offenseMultiplierPercent": 85,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -510,7 +539,8 @@
               {
                 "kind": "damage",
                 "amount": 19,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -539,7 +569,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -557,7 +588,8 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -575,7 +607,8 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -605,7 +638,8 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "ice"
               }
             ]
           },
@@ -617,7 +651,8 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 120,
+                "damageType": "ice"
               }
             ]
           },
@@ -629,13 +664,33 @@
               {
                 "kind": "damage",
                 "amount": 35,
-                "offenseMultiplierPercent": 130
+                "offenseMultiplierPercent": 130,
+                "damageType": "ice"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "mage-passive",
+      "name": "Arcane Shred",
+      "description": "Every bolt that lands leaves the target's wards a little thinner than the last.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "rogue",
@@ -956,7 +1011,26 @@
         "isUltimate": true,
         "cooldownTurns": 5
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "rogue-passive",
+      "name": "Venomcraft",
+      "description": "Knows exactly where the poison is already working, and where to add to it.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "acolyte",
@@ -1104,7 +1178,8 @@
                 "kind": "damage",
                 "amount": 15,
                 "offenseMultiplierPercent": 100,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1121,7 +1196,8 @@
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 110,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1138,7 +1214,8 @@
                 "kind": "damage",
                 "amount": 27,
                 "offenseMultiplierPercent": 120,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           }
@@ -1237,7 +1314,8 @@
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 80,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1262,7 +1340,8 @@
                 "kind": "damage",
                 "amount": 25,
                 "offenseMultiplierPercent": 85,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1287,13 +1366,33 @@
                 "kind": "damage",
                 "amount": 30,
                 "offenseMultiplierPercent": 90,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "acolyte-passive",
+      "name": "Devotion",
+      "description": "Faith turns inward for protection, outward for grace.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "viking",
@@ -1597,7 +1696,8 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "lightning"
               }
             ]
           },
@@ -1609,7 +1709,8 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               }
             ]
           },
@@ -1621,13 +1722,33 @@
               {
                 "kind": "damage",
                 "amount": 50,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 120,
+                "damageType": "lightning"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "viking-passive",
+      "name": "Blood Fury",
+      "description": "The closer death gets, the harder the swing.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "plague-doctor",
@@ -1679,7 +1800,8 @@
               {
                 "kind": "damage",
                 "amount": 10,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1697,7 +1819,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 95
+                "offenseMultiplierPercent": 95,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1715,7 +1838,8 @@
               {
                 "kind": "damage",
                 "amount": 16,
-                "offenseMultiplierPercent": 105
+                "offenseMultiplierPercent": 105,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1855,7 +1979,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 50,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1879,7 +2004,8 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 60,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1903,7 +2029,8 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 70,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -2044,7 +2171,26 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "plaguedoc-passive",
+      "name": "Contagion",
+      "description": "Every touch carries something new — the body just hasn't noticed yet.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "archer",
@@ -2352,7 +2498,26 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "archer-passive",
+      "name": "Deadly Precision",
+      "description": "Every shot is aimed like it's the one that matters.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "ninja",
@@ -2699,7 +2864,26 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "ninja-passive",
+      "name": "Afterimage",
+      "description": "Never quite where the strike lands, and sometimes there's 2 to answer for it.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   },
   {
     "id": "summoner",
@@ -2885,53 +3069,6 @@
         ]
       },
       {
-        "id": "summoner-mastery",
-        "name": "Mastery Summoner",
-        "description": "Empowers every minion currently active, and any summoned later this combat, with bonus max HP and attack. Reaching rank 2/3 also raises how many different-type minions you may have active at once, to 2/3, independent of whether Mastery has been cast this combat.",
-        "target": "self",
-        "slot": 4,
-        "isBuff": true,
-        "cooldownTurns": 8,
-        "ranks": [
-          {
-            "rank": 1,
-            "unlockLevel": 20,
-            "mpCost": 10,
-            "effects": [
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment",
-                "durationTurns": 99
-              }
-            ]
-          },
-          {
-            "rank": 2,
-            "unlockLevel": 50,
-            "mpCost": 11,
-            "effects": [
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-ii",
-                "durationTurns": 99
-              }
-            ]
-          },
-          {
-            "rank": 3,
-            "unlockLevel": 75,
-            "mpCost": 12,
-            "effects": [
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-iii",
-                "durationTurns": 99
-              }
-            ]
-          }
-        ]
-      },
-      {
         "id": "summoner-summon-imp",
         "name": "Summon Hellfire Imp",
         "description": "Summons a Hellfire Imp and immediately scorches every enemy with hellfire. Always hits; effectiveness reduced by fear.",
@@ -2993,7 +3130,100 @@
             ]
           }
         ]
+      },
+      {
+        "id": "summoner-totem-recall",
+        "name": "Totem Recall",
+        "description": "Plants a totem that channels strength into the whole party, until something breaks it.",
+        "target": "self",
+        "slot": 4,
+        "isBuff": true,
+        "cooldownTurns": 8,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 20,
+            "mpCost": 10,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 8,
+                "minPercent": 10
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 50,
+            "mpCost": 11,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 14,
+                "minPercent": 15
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 75,
+            "mpCost": 12,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 20,
+                "minPercent": 20
+              }
+            ]
+          }
+        ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "summoner-passive",
+      "name": "Bound Legion",
+      "description": "The pact strengthens on its own, and can hold more of them at once.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35
+        }
+      ]
+    }
   }
 ]

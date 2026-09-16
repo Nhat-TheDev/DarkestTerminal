@@ -56,6 +56,17 @@ import { maybeTriggerReflection } from "./events/shared";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
+/** Shown on the floor-milestone screen (§4 of the design spec) after clearing the boss/guard room
+ *  of a floor depth that's a multiple of 10 — deliberately atmospheric rather than stating
+ *  "monsters got stronger" outright, matching this game's flavor-text tone. */
+const FLOOR_MILESTONE_MESSAGES = [
+  "Something changes in the dark beyond this floor.",
+  "The air grows heavier past this point.",
+  "The walls remember what comes next.",
+  "Further down, the dark holds its breath.",
+  "The dungeon does not forgive what follows.",
+];
+
 export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
@@ -125,6 +136,7 @@ export class Game {
       firedOnceEventIds: retiredCharacterEventEligible ? [] : ["the-one-who-stayed"],
       loreExposureCount: 0,
       pendingCampReflectionTier: null,
+      pendingFloorMilestoneMessage: null,
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
       continuedPastCheckpoint: false,
@@ -679,8 +691,15 @@ export class Game {
   clearFinishedCombat(): boolean {
     if (this.state.combat?.phase !== "over") return false;
     const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";
+    if (wasBossRoomVictory && this.state.floor.depth % 10 === 0) {
+      this.state.pendingFloorMilestoneMessage = this.ctx.rng.pick(FLOOR_MILESTONE_MESSAGES);
+    }
     this.endCombat();
     return wasBossRoomVictory;
+  }
+
+  dismissFloorMilestoneMessage(): void {
+    this.state.pendingFloorMilestoneMessage = null;
   }
 
   className(classId: string): string {

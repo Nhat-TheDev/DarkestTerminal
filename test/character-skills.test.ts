@@ -1,5 +1,5 @@
 import { describe, test, expect, afterAll } from "bun:test";
-import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../src/data/classes";
+import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank } from "../src/data/classes";
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
@@ -54,7 +54,10 @@ describe("new skill mechanics", () => {
   test("Poison Coat buff makes a landed hit auto-apply Poisoned", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
-    const tanky = spawnInto(ctx, "skeleton-guard");
+    // lesser-golem (Golem race, 40% physical resist) rather than skeleton-guard (its Skeletal
+    // subRace is now 30% WEAK to physical) — this test needs the monster to survive round 1's
+    // party-wide attacks so round 2 can verify Poison Coat's on-hit proc.
+    const tanky = spawnInto(ctx, "lesser-golem");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
 
@@ -171,9 +174,12 @@ describe("new skill mechanics", () => {
     vanguard.unlockedSkillIds.push("vanguard-sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
     vanguard.mp = 999;
     vanguard.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
-    const skeleton = spawnInto(ctx, "skeleton-guard");
-    const combat = startCombat("r1", [skeleton.id], ctx, false);
-    const enemyRef: CombatantRef = { kind: "monster", id: skeleton.id };
+    // vampire-bat (Beast race, Predator subRace) rather than skeleton-guard — its Skeletal subRace
+    // is 30% weak to physical, which would inflate actualDamage past amountOnlyScaledDamage and
+    // confound this test's whole point (isolating the fear-tier scaling formula, not race damage).
+    const enemy = spawnInto(ctx, "vampire-bat");
+    const combat = startCombat("r1", [enemy.id], ctx, false);
+    const enemyRef: CombatantRef = { kind: "monster", id: enemy.id };
     const enemyActor = getActorByRef(enemyRef, ctx);
     // If only `amount` were scaled (the pre-fix behavior), damage would be
     // round(30*0.6) + mitigatedOffense(vanguard.attack*0.85, defense) — the offense-scaled term unaffected.
@@ -714,9 +720,9 @@ describe("Mage skill ranks", () => {
 
   test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100", () => {
     const skill = getSkill("mage-ice-age");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }]);
   });
 });
 
@@ -759,15 +765,15 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
   test("Fire Vial ranks resolve dmg/burn% at lv1/7/15", () => {
     const skill = getSkill("plaguedoc-fire-vial");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
-      { kind: "damage", amount: 10, offenseMultiplierPercent: 90 },
+      { kind: "damage", amount: 10, offenseMultiplierPercent: 90, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.6, durationTurns: 2 },
     ]);
     expect(getEffectiveSkill(skill, 7).effects).toEqual([
-      { kind: "damage", amount: 12, offenseMultiplierPercent: 95 },
+      { kind: "damage", amount: 12, offenseMultiplierPercent: 95, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.7, durationTurns: 2 },
     ]);
     expect(getEffectiveSkill(skill, 15).effects).toEqual([
-      { kind: "damage", amount: 16, offenseMultiplierPercent: 105 },
+      { kind: "damage", amount: 16, offenseMultiplierPercent: 105, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8, durationTurns: 2 },
     ]);
   });
@@ -877,9 +883,9 @@ describe("Viking class", () => {
   test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 30/40/50", () => {
     const skill = getSkill("viking-thunder-god-fury");
     expect(skill.conditionalBonus).toEqual({ requiresStatusId: "storm-empowered", ignoreDefensePercentBonus: 60, consumesStatus: true });
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 80 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 100 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 80, damageType: "lightning" }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 100, damageType: "lightning" }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120, damageType: "lightning" }]);
   });
 
   test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed%", () => {
@@ -909,9 +915,9 @@ describe("Viking class", () => {
   });
 
   test("storm-empowered-ii/iii and bleeding statuses exist with the documented fields", () => {
-    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, offenseMultiplierPercent: 90, ignoreDefensePercent: 30 });
-    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, offenseMultiplierPercent: 100, ignoreDefensePercent: 30 });
-    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2 }]);
+    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, offenseMultiplierPercent: 90, ignoreDefensePercent: 30, damageType: "lightning" });
+    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, offenseMultiplierPercent: 100, ignoreDefensePercent: 30, damageType: "lightning" });
+    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2, damageType: "bleed" }]);
     expect(getStatusEffect("bleeding").stackable).toBe(true);
     expect(getStatusEffect("bleeding").maxStacks).toBe(5);
     expect(getStatusEffect("bleeding").perStackBonusPercent).toBe(100);
@@ -1069,17 +1075,17 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
       { kind: "heal", amount: 25, offenseMultiplierPercent: 70, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -15, appliesToRelation: "ally" },
-      { kind: "damage", amount: 20, offenseMultiplierPercent: 80, appliesToRelation: "enemy" },
+      { kind: "damage", amount: 20, offenseMultiplierPercent: 80, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([
       { kind: "heal", amount: 30, offenseMultiplierPercent: 75, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -20, appliesToRelation: "ally" },
-      { kind: "damage", amount: 25, offenseMultiplierPercent: 85, appliesToRelation: "enemy" },
+      { kind: "damage", amount: 25, offenseMultiplierPercent: 85, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([
       { kind: "heal", amount: 40, offenseMultiplierPercent: 80, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -25, appliesToRelation: "ally" },
-      { kind: "damage", amount: 30, offenseMultiplierPercent: 90, appliesToRelation: "enemy" },
+      { kind: "damage", amount: 30, offenseMultiplierPercent: 90, appliesToRelation: "enemy", damageType: "holy" },
     ]);
   });
 
@@ -1087,11 +1093,11 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
     const skill = getSkill("acolyte-purify");
     expect(getEffectiveSkill(skill, 10).effects).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
-      { kind: "damage", amount: 15, offenseMultiplierPercent: 100, appliesToRelation: "enemy" },
+      { kind: "damage", amount: 15, offenseMultiplierPercent: 100, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 45).effects).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
-      { kind: "damage", amount: 27, offenseMultiplierPercent: 120, appliesToRelation: "enemy" },
+      { kind: "damage", amount: 27, offenseMultiplierPercent: 120, appliesToRelation: "enemy", damageType: "holy" },
     ]);
   });
 });
@@ -1270,11 +1276,20 @@ describe("Summoner class", () => {
     expect(effects.some((e) => e.kind === "damage")).toBe(true);
   });
 
-  test("Mastery ranks apply minion-empowerment/-ii/-iii", () => {
-    const skill = getSkill("summoner-mastery");
-    expect(getEffectiveSkill(skill, 20).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment", durationTurns: 99 }]);
-    expect(getEffectiveSkill(skill, 50).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment-ii", durationTurns: 99 }]);
-    expect(getEffectiveSkill(skill, 75).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "minion-empowerment-iii", durationTurns: 99 }]);
+  test("summoner-mastery no longer exists as a castable skill", () => {
+    expect(() => getSkill("summoner-mastery")).toThrow();
+  });
+
+  test("summoner-totem-recall exists in slot 4 and grants an attack buff to allies except summons", () => {
+    const cls = getClass("summoner");
+    const skill = cls.skills.find((s) => s.id === "summoner-totem-recall")!;
+    expect(skill).toBeDefined();
+    expect(skill.slot).toBe(4);
+    const buffEffect = getEffectiveSkill(skill, 75).effects!.find((e) => e.kind === "applyStatusEffect")!;
+    expect(buffEffect.statusEffectId).toBe("totem-recall-buff");
+    expect(buffEffect.target).toBe("allAllies");
+    expect(buffEffect.excludesSummonTargets).toBe(true);
+    expect(buffEffect.linksToCasterSummon).toBe(true);
   });
 
   test("every Summoner minion archetype and its signature skill(s) resolve", () => {
@@ -1286,10 +1301,19 @@ describe("Summoner class", () => {
 
   // Reads the actual cast profile rather than hardcoding balance numbers, so a rebalance pass
   // (retuning base/percent in data/summons.json) doesn't need a matching edit here too.
+  // Every Summoner's minions get the passive's maxHp/attack bonus baked in from spawn (§11 of the
+  // design spec) — 0/20/10 (maxHp%/attack%) at rank 0/1, 25/13 at rank 2, 30/17 at rank 3.
+  function summonerPassiveBonusPercent(owner: Character, statName: "maxHp" | "attack"): number {
+    const rank = getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level);
+    const byRank = { 0: { maxHp: 0, attack: 0 }, 1: { maxHp: 20, attack: 10 }, 2: { maxHp: 25, attack: 13 }, 3: { maxHp: 30, attack: 17 } } as const;
+    return statName === "maxHp" ? byRank[rank].maxHp : byRank[rank].attack;
+  }
+
   function expectedStat(castId: string, statName: "maxHp" | "attack" | "defense" | "magicPower", owner: Character, rank: number): number {
     const formula = getSummonCast(castId).stat[statName];
     const percent = Array.isArray(formula.percent) ? formula.percent[rank - 1]! : formula.percent;
-    return Math.round(formula.base + (percent / 100) * owner[formula.sourceStat]);
+    const bonusPercent = statName === "maxHp" || statName === "attack" ? summonerPassiveBonusPercent(owner, statName) : 0;
+    return Math.round(formula.base + (percent / 100) * owner[formula.sourceStat] * (1 + bonusPercent / 100));
   }
 
   test("Summon Goblin spawns a goblin-thrower with maxHp from the Summoner's maxHp and attack from the Summoner's magicPower", () => {
@@ -1365,6 +1389,70 @@ describe("Summoner class", () => {
     queueAction(combat, self, "summoner-totem-strike", [enemy], ctx);
     resolveRound(combat, ctx);
     expect(rat.hp).toBeLessThan(hpBefore);
+  });
+});
+
+describe("damageType tagging", () => {
+  function damageEffectsOf(classId: string, skillId: string): Array<{ damageType?: string }> {
+    const cls = getClass(classId);
+    const skill = cls.skills.find((s) => s.id === skillId)!;
+    const flat = skill.effects ?? [];
+    const ranked = (skill.ranks ?? []).flatMap((r) => r.effects ?? []);
+    return [...flat, ...ranked].filter((e) => e.kind === "damage");
+  }
+
+  test("Mage elemental skills carry the right damageType", () => {
+    expect(damageEffectsOf("mage", "mage-fireball").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("mage", "mage-fire-pillar").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("mage", "mage-lightning-bolt").every((e) => e.damageType === "lightning")).toBe(true);
+    expect(damageEffectsOf("mage", "mage-lightning-storm").every((e) => e.damageType === "lightning")).toBe(true);
+    expect(damageEffectsOf("mage", "mage-ice-age").every((e) => e.damageType === "ice")).toBe(true);
+  });
+
+  test("mage-bludgeon is renamed to Arcane Bolt, isMagic true, damageType magic", () => {
+    const cls = getClass("mage");
+    const skill = cls.skills.find((s) => s.id === "mage-bludgeon")!;
+    expect(skill.name).toBe("Arcane Bolt");
+    expect(skill.description).toBe("A weak bolt of raw arcane force — basic damage.");
+    expect(skill.isMagic).toBe(true);
+    expect((skill.effects ?? [])[0]?.damageType).toBe("magic");
+  });
+
+  test("Viking's Thunder God's Fury is lightning, other Viking damage skills are untagged (physical)", () => {
+    expect(damageEffectsOf("viking", "viking-thunder-god-fury").every((e) => e.damageType === "lightning")).toBe(true);
+    for (const id of ["viking-axe-slash", "viking-frenzied-slash", "viking-throw-axe", "viking-spin-axe"]) {
+      expect(damageEffectsOf("viking", id).every((e) => e.damageType === undefined)).toBe(true);
+    }
+  });
+
+  test("Plague Doctor's Fire Vial is fire, Spreading Toxic Fog is poison", () => {
+    expect(damageEffectsOf("plague-doctor", "plaguedoc-fire-vial").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("plague-doctor", "plaguedoc-toxic-fog").every((e) => e.damageType === "poison")).toBe(true);
+  });
+
+  test("Acolyte's Purify/Divine Descent enemy-facing damage effect is holy", () => {
+    for (const skillId of ["acolyte-purify", "acolyte-divine-descent"]) {
+      const cls = getClass("acolyte");
+      const skill = cls.skills.find((s) => s.id === skillId)!;
+      const damageEffects = (skill.ranks ?? []).flatMap((r) => (r.effects ?? []).filter((e) => e.kind === "damage"));
+      expect(damageEffects.length).toBeGreaterThan(0);
+      expect(damageEffects.every((e) => e.damageType === "holy" && e.appliesToRelation === "enemy")).toBe(true);
+    }
+  });
+
+  test("status-effect DoT ticks carry the right damageType", () => {
+    expect(getStatusEffect("poisoned").perTurnEffects[0]?.damageType).toBe("poison");
+    expect(getStatusEffect("poisoned-ii").perTurnEffects[0]?.damageType).toBe("poison");
+    expect(getStatusEffect("poisoned-iii").perTurnEffects[0]?.damageType).toBe("poison");
+    expect(getStatusEffect("bleeding").perTurnEffects[0]?.damageType).toBe("bleed");
+    expect(getStatusEffect("burning").perTurnEffects[0]?.damageType).toBe("fire");
+    expect(getStatusEffect("acid-burn").perTurnEffects[0]?.damageType).toBe("poison");
+  });
+
+  test("storm-empowered's onHitAoeDamage carries damageType lightning", () => {
+    expect(getStatusEffect("storm-empowered").onHitAoeDamage?.damageType).toBe("lightning");
+    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage?.damageType).toBe("lightning");
+    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage?.damageType).toBe("lightning");
   });
 });
 

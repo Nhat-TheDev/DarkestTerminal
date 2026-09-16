@@ -17,14 +17,15 @@ import type {
   CombatantSnapshot,
   PartyStateSnapshot,
 } from "../types";
-import { getSkill, getEffectiveSkill, effectiveSkillRank } from "../data/classes";
+import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, getUnlockedPassiveRank } from "../data/classes";
 import { characterBaseStats } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
-import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent } from "./artifacts";
+import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent, combinePercents } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
+import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
@@ -539,6 +540,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
           amount: def.onHitAoeDamage.amount,
           ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent,
           offenseMultiplierPercent: def.onHitAoeDamage.offenseMultiplierPercent,
+          damageType: def.onHitAoeDamage.damageType,
         },
         source,
         enemy,
@@ -584,11 +586,68 @@ function harmfulStatusOnCharacter(effect: SkillEffect, target: Actor, isEnemyFac
   return ids.map((id) => getStatusEffect(id)).find((def) => !isHelpfulStatusEffect(def)) ?? null;
 }
 
+const ACOLYTE_DEBUFF_RESIST_BY_RANK = { 0: 0, 1: 30, 2: 40, 3: 50 } as const;
+
+/** Acolyte's passive (§11 of the design spec) — a self-only harmful-status resist, unlocked at
+ *  level 5/20/35. Combines with the bearer's Artifact/Ability `debuffResist` (see `harmfulStatusOnCharacter`'s
+ *  call site) the same multiplicative way independent resist sources always combine. */
+export function acolyteDebuffResistPercent(target: Character): number {
+  if (target.classId !== "acolyte") return 0;
+  return ACOLYTE_DEBUFF_RESIST_BY_RANK[getUnlockedPassiveRank(getClass("acolyte").passiveSkill, target.level)];
+}
+
+const VIKING_PASSIVE_BY_RANK = {
+  0: { hpThresholdPercent: 0, damageBonusPercent: 0 },
+  1: { hpThresholdPercent: 40, damageBonusPercent: 20 },
+  2: { hpThresholdPercent: 45, damageBonusPercent: 30 },
+  3: { hpThresholdPercent: 50, damageBonusPercent: 40 },
+} as const;
+
+const VIKING_SELF_DAMAGE_PERCENT = 3; // fixed across all ranks
+
+/** Viking's passive (§11 of the design spec) — a below-a-HP-threshold outgoing damage buff, unlocked
+ *  at level 5/20/35, that costs a fixed 3% of maxHp on any attack that lands while it's active
+ *  (harsher trade-off, deliberately not scaled by rank). Never triggers on a buff-only skill. */
+function vikingBloodFuryBonus(source: Actor): number {
+  if (!isCharacter(source) || source.classId !== "viking") return 0;
+  const rank = getUnlockedPassiveRank(getClass("viking").passiveSkill, source.level);
+  const { hpThresholdPercent, damageBonusPercent } = VIKING_PASSIVE_BY_RANK[rank];
+  if (hpThresholdPercent === 0) return 0;
+  return source.hp / source.maxHp < hpThresholdPercent / 100 ? damageBonusPercent : 0;
+}
+
+const NINJA_PASSIVE_CLONE_CHANCE_BY_RANK = { 0: 0, 1: 0.2, 2: 0.25, 3: 0.3 } as const;
+const MAX_NINJA_CLONES = 2;
+
+/** Ninja's passive (§11 of the design spec) — a chance, on any hit the Ninja lands, to spawn a 2nd
+ *  independent shadow clone (capped at 2), unlocked at level 5/20/35. Goes through
+ *  `spawnAdditionalSummon` rather than the normal `summon` skill-effect path (which always replaces
+ *  a same-archetype summon on recast) since the whole point is to stack a 2nd one. */
+function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  if (source.classId !== "ninja") return;
+  const chance = NINJA_PASSIVE_CLONE_CHANCE_BY_RANK[getUnlockedPassiveRank(getClass("ninja").passiveSkill, source.level)];
+  if (chance === 0) return;
+  const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === "ninja-clone");
+  if (existingClones.length >= MAX_NINJA_CLONES || existingClones.length === 0) return;
+  if (!ctx.rng.chance(chance)) return;
+  spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, source, combat, ctx, log);
+}
+
 /** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
 function findBreakBonusStatus(source: Actor) {
   return source.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).breakBonus);
 }
 
+const ARCHER_PASSIVE_BY_RANK = {
+  0: { critChancePercent: 0, critMultiplierPercent: BALANCE.combat.defaultCritMultiplierPercent },
+  1: { critChancePercent: 2, critMultiplierPercent: 160 },
+  2: { critChancePercent: 5, critMultiplierPercent: 170 },
+  3: { critChancePercent: 8, critMultiplierPercent: 180 },
+} as const;
+
+/** Archer's passive (§11 of the design spec) — a character-level crit chance/multiplier, unlocked
+ *  at level 5/20/35, that adds on top of (not replaces) whatever crit a skill's own effect already
+ *  carries: chance is additive, multiplier is whichever of the two is larger. */
 function resolveOneDamageEffect(
   effect: SkillEffect,
   skill: SkillDefinition,
@@ -596,17 +655,32 @@ function resolveOneDamageEffect(
   target: Actor,
   ctx: EngineContext,
   log: LogEntry[],
-  stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number }
+  stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
+  linkedSummonId?: Id
 ): number {
-  const isCrit = stealthBreak.guaranteedCrit || (effect.critChance !== undefined && ctx.rng.chance(effect.critChance));
-  return resolveSkillEffect(effect, source, target, {
-    log,
-    isMagic: skill.isMagic,
-    skillName: skill.name,
-    isCrit,
-    executeBonus: skill.executeBonus,
-    bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
-  });
+  const archerBonus =
+    isCharacter(source) && source.classId === "archer"
+      ? ARCHER_PASSIVE_BY_RANK[getUnlockedPassiveRank(getClass("archer").passiveSkill, source.level)]
+      : { critChancePercent: 0, critMultiplierPercent: BALANCE.combat.defaultCritMultiplierPercent };
+  const totalCritChance = (effect.critChance ?? 0) + archerBonus.critChancePercent / 100;
+  const isCrit = stealthBreak.guaranteedCrit || (totalCritChance > 0 && ctx.rng.chance(totalCritChance));
+  const effectiveCritMultiplierPercent = Math.max(effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent, archerBonus.critMultiplierPercent);
+  const castByOwnClassSkill = isCharacter(source) && getClass(source.classId).skills.some((s) => s.id === skill.id);
+  return resolveSkillEffect(
+    { ...effect, critMultiplierPercent: effectiveCritMultiplierPercent },
+    source,
+    target,
+    {
+      log,
+      isMagic: skill.isMagic,
+      skillName: skill.name,
+      isCrit,
+      executeBonus: skill.executeBonus,
+      bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
+      castByOwnClassSkill,
+      linkedSummonId,
+    }
+  );
 }
 
 // Dismissing a summon only drops its `hp` to 0 and removes its ref from `combat.combatants` — the
@@ -616,10 +690,11 @@ function resolveOneDamageEffect(
 // so each summon gets a globally unique id instead, the same way `spawnMonster` uses a counter.
 let summonCounter = 0;
 
-/** How many minions of *different* archetypes `owner` may keep active at once — 1 by default, raised to 2/3 purely by the character level reaching Summoner's Mastery rank 2/3, independent of whether Mastery has actually been cast this combat (`01-class-skill.md` §1.11/1.12.4). */
+/** How many minions of *different* archetypes `owner` may keep active at once — 1 by default, raised
+ *  to 2/3 purely by the Summoner's passive rank (level 20/35), independent of anything being cast. */
 function maxActiveMinionsFor(owner: Character): number {
   if (owner.classId !== "summoner") return 1;
-  const rank = effectiveSkillRank(getSkill("summoner-mastery"), owner.level);
+  const rank = getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level);
   if (rank >= 3) return 3;
   if (rank >= 2) return 2;
   return 1;
@@ -629,32 +704,37 @@ function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
   return ctx.summons.filter((s) => s.ownerId === ownerId && s.hp > 0);
 }
 
-function dismissSummon(summon: Summon, combat: CombatState, log: LogEntry[]): void {
+/** Force-expires any active status on any party member that was linked to this exact summon
+ *  (`ActiveStatusEffect.linkedSummonId` — Totem Recall's "the buff lasts until the totem dies"
+ *  mechanism) — called wherever a summon actually leaves combat, whether by dying, running out of
+ *  actions, or being evicted/replaced. */
+function expireLinkedAllyBuffs(summon: Summon, ctx: EngineContext, log: LogEntry[]): void {
+  for (const character of ctx.party) {
+    for (const active of [...character.activeStatusEffects]) {
+      if (active.linkedSummonId === summon.id) expireStatusEffect(character, active, { log });
+    }
+  }
+}
+
+function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   log.push({ text: t("combat.summonDismissed", { summon: summon.name }), kind: "info" });
   summon.hp = 0;
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
+  expireLinkedAllyBuffs(summon, ctx, log);
 }
 
-/** Bonuses from `StatusEffectDefinition.empowersMinions` the owner currently carries (Summoner's Mastery) — applied on spawn so a minion summoned after casting Mastery comes in already boosted. */
+const SUMMONER_PASSIVE_BY_RANK = {
+  0: { maxHpPercent: 0, attackPercent: 0 },
+  1: { maxHpPercent: 20, attackPercent: 10 },
+  2: { maxHpPercent: 25, attackPercent: 13 },
+  3: { maxHpPercent: 30, attackPercent: 17 },
+} as const;
+
+/** Summoner's passive (§11 of the design spec) — applied at spawn time to every minion, always,
+ *  once the owner is level 5+. Replaces the old cast-based Mastery/`empowersMinions` status entirely. */
 function empowermentBonusFor(owner: Character): { maxHpPercent: number; attackPercent: number } {
-  let maxHpPercent = 0;
-  let attackPercent = 0;
-  for (const active of owner.activeStatusEffects) {
-    const bonus = getStatusEffect(active.statusEffectId).empowersMinions;
-    if (!bonus) continue;
-    maxHpPercent += bonus.maxHpPercent;
-    attackPercent += bonus.attackPercent;
-  }
-  return { maxHpPercent, attackPercent };
-}
-
-/** Retroactively boosts every minion `owner` currently has active — called the moment an `empowersMinions` status lands on `owner` (Mastery cast on an already-summoned minion). */
-function empowerActiveMinions(owner: Character, bonus: { maxHpPercent: number; attackPercent: number }, ctx: EngineContext): void {
-  for (const s of ownedSummons(owner.id, ctx)) {
-    s.maxHp = Math.round(s.maxHp * (1 + bonus.maxHpPercent / 100));
-    s.hp = Math.round(s.hp * (1 + bonus.maxHpPercent / 100));
-    s.attack = Math.round(s.attack * (1 + bonus.attackPercent / 100));
-  }
+  if (owner.classId !== "summoner") return { maxHpPercent: 0, attackPercent: 0 };
+  return SUMMONER_PASSIVE_BY_RANK[getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level)];
 }
 
 /** `formula.base + (formula.percent / 100) * owner[formula.sourceStat]`, with `bonusPercent` (Mastery's empowerment) scaling the source-derived portion only — the flat `base` term isn't boosted. */
@@ -672,18 +752,13 @@ function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: n
   return formula.base + (resolveStatPercent(formula, rank) / 100) * owner[formula.sourceStat] * (1 + bonusPercent / 100);
 }
 
-function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
-  if (!effect.summonCastId) return;
+/** Builds and registers 1 new summon from `effect.summonCastId` — no eviction, no cap check; the
+ *  caller decides whether/what to evict first (`spawnSummon`) or whether a cap even applies
+ *  (`spawnAdditionalSummon`). */
+function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
+  if (!effect.summonCastId) return undefined;
   const cast = getSummonCast(effect.summonCastId);
   const archetype = getSummonArchetype(cast.archetypeId);
-  const owned = ownedSummons(owner.id, ctx);
-  const sameType = owned.find((s) => s.archetypeId === archetype.id);
-  if (sameType) {
-    dismissSummon(sameType, combat, log);
-  } else if (owned.length >= maxActiveMinionsFor(owner)) {
-    const oldest = owned[0];
-    if (oldest) dismissSummon(oldest, combat, log);
-  }
   // A cast profile is shared by all 3 ranks of the summoning skill (same id by convention), so the
   // stat formulas alone don't say which rank is currently active — re-derive it from the caster's level.
   const rank = effectiveSkillRank(getSkill(effect.summonCastId), owner.level) || 1;
@@ -722,6 +797,30 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
   ctx.summons.push(summon);
   combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
   log.push({ text: t("combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info" });
+  return summon;
+}
+
+function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
+  if (!effect.summonCastId) return undefined;
+  const cast = getSummonCast(effect.summonCastId);
+  const archetype = getSummonArchetype(cast.archetypeId);
+  const owned = ownedSummons(owner.id, ctx);
+  const sameType = owned.find((s) => s.archetypeId === archetype.id);
+  if (sameType) {
+    dismissSummon(sameType, combat, ctx, log);
+  } else if (owned.length >= maxActiveMinionsFor(owner)) {
+    const oldest = owned[0];
+    if (oldest) dismissSummon(oldest, combat, ctx, log);
+  }
+  return addSummon(effect, owner, combat, ctx, log);
+}
+
+/** Adds an extra summon of an archetype `owner` may already have active, bypassing `spawnSummon`'s
+ *  same-type-replaces eviction rule that every ordinary summon skill follows on a recast — used by
+ *  Ninja's passive to stack up to 2 shadow clones instead of replacing the first. The caller is
+ *  responsible for its own cap check before calling this. */
+export function spawnAdditionalSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
+  return addSummon(effect, owner, combat, ctx, log);
 }
 
 function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng: Rng): Id | null {
@@ -777,6 +876,7 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
   // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
   // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
   summon.hp = 0;
+  expireLinkedAllyBuffs(summon, ctx, log);
 }
 
 /**
@@ -840,6 +940,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
     return;
   }
   const archetype = getSummonArchetype(summon.archetypeId);
+  if (archetype.passive) return;
   const skillId = pickSummonAction(archetype, ctx.rng);
   if (skillId !== null) {
     const skill = getSummonSkill(skillId);
@@ -869,9 +970,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
+  const vikingBonus = !skill.isBuff ? vikingBloodFuryBonus(source) : 0;
   const stealthBreak = {
     guaranteedCrit: skill.slot === 0 ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
-    damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
+    damageBonusPercent: (skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0) + vikingBonus,
   };
   let brokeStealthThisCast = false;
 
@@ -883,6 +985,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   // land on the caster regardless of what the skill's own target happens to be.
   const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
+  // Set by this cast's own `summon` override effect (resolved first, in array order) so a later
+  // override effect in the same cast — e.g. Totem Recall's ally buff — can tie its own expiry to
+  // the summon it was cast alongside (`SkillEffect.linksToCasterSummon`).
+  let spawnedSummonId: Id | undefined;
   if (overrideEffects.length > 0) {
     const sourceRef: CombatantRef = isCharacter(source)
       ? { kind: "character", id: source.id }
@@ -894,13 +1000,23 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
       for (const resolved of overrideTargets) {
         if (effect.kind === "summon") {
-          if (isCharacter(source)) spawnSummon(effect, source, combat, ctx, log);
+          if (isCharacter(source)) spawnedSummonId = spawnSummon(effect, source, combat, ctx, log)?.id;
           continue;
         }
+        if (effect.excludesSummonTargets && isSummon(resolved)) continue;
         const overrideEnemyFacing = isPlayerSide(source) !== isPlayerSide(resolved);
         if (overrideEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) continue;
         if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
-        resolveOneDamageEffect(effect, skill, source, resolved, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
+        resolveOneDamageEffect(
+          effect,
+          skill,
+          source,
+          resolved,
+          ctx,
+          log,
+          { guaranteedCrit: false, damageBonusPercent: 0 },
+          effect.linksToCasterSummon ? spawnedSummonId : undefined
+        );
       }
     }
   }
@@ -926,7 +1042,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const harmfulStatus = harmfulStatusOnCharacter(effect, target, isEnemyFacing);
       // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
       // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.
-      const resistPercent = harmfulStatus && isCharacter(target) ? debuffResistPercent(target) : 0;
+      const resistPercent =
+        harmfulStatus && isCharacter(target) ? combinePercents(debuffResistPercent(target), acolyteDebuffResistPercent(target)) : 0;
       if (resistPercent > 0) {
         const baseChance = effect.chance ?? 1;
         const roll = ctx.rng.next();
@@ -960,11 +1077,6 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
           if (hasBonus) bonusEffectLanded = true;
         }
       }
-      if (finalEffect.kind === "applyStatusEffect" && isCharacter(target)) {
-        const bonus = finalEffect.statusEffectId ? getStatusEffect(finalEffect.statusEffectId).empowersMinions : undefined;
-        if (bonus) empowerActiveMinions(target, bonus, ctx);
-      }
-
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         if (wasAliveBefore && !isActorAlive(target)) {
@@ -975,6 +1087,11 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && vikingBonus > 0) {
+    const selfDamage = Math.round(source.maxHp * (VIKING_SELF_DAMAGE_PERCENT / 100));
+    source.hp = Math.max(1, source.hp - selfDamage);
+  }
+  if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
 }
 

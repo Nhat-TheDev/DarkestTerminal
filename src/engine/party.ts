@@ -1,6 +1,6 @@
 import type { Character, CharacterClass, CombatStat, GameState, Id } from "../types";
 import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
-import { getClass } from "../data/classes";
+import { getClass, getUnlockedPassiveRank } from "../data/classes";
 import { getArtifact } from "../data/artifacts";
 import { getStatusEffect } from "../data/statusEffects";
 import { artifactStatBoostSum, curseAggroBoostSum, abilityWidenedStatBoost } from "./artifacts";
@@ -83,6 +83,16 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
   };
 }
 
+/** Vanguard's passive (§11 of the design spec) — a permanent, unconditional buff, unlocked at
+ *  level 5/20/35. Applied as a final multiplier on the fully-computed maxHp/defense (after
+ *  artifact boosts, same layering as every other stat modifier here) and a flat add to aggro. */
+const VANGUARD_PASSIVE_BY_RANK = {
+  0: { maxHpPercent: 0, defensePercent: 0, aggroFlat: 0 },
+  1: { maxHpPercent: 5, defensePercent: 7, aggroFlat: 3 },
+  2: { maxHpPercent: 10, defensePercent: 10, aggroFlat: 6 },
+  3: { maxHpPercent: 15, defensePercent: 14, aggroFlat: 9 },
+} as const;
+
 /** `satiety`'s Exhausted penalty applies to base stats before artifact/curse bonuses are added; maxHp/maxMp are unaffected. */
 export function recomputeCharacterStats(character: Character, satiety: number): void {
   const cls = getClass(character.classId);
@@ -91,16 +101,21 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   const exhaustedDefense = applyExhaustedMultiplier(base.defense, satiety);
   const exhaustedMagicPower = applyExhaustedMultiplier(base.magicPower, satiety);
   const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
+  const vanguardPassive =
+    character.classId === "vanguard" ? VANGUARD_PASSIVE_BY_RANK[getUnlockedPassiveRank(cls.passiveSkill, character.level)] : undefined;
   character.attack = exhaustedAttack + boost.attack + activeStatusCombatStatSum(character, "attack");
   character.defense = exhaustedDefense + boost.defense + activeStatusCombatStatSum(character, "defense");
+  if (vanguardPassive) character.defense = Math.round(character.defense * (1 + vanguardPassive.defensePercent / 100));
   character.magicPower = exhaustedMagicPower + boost.magicPower;
   character.maxHp = base.maxHp + boost.maxHp;
+  if (vanguardPassive) character.maxHp = Math.round(character.maxHp * (1 + vanguardPassive.maxHpPercent / 100));
   character.maxMp = base.maxMp + boost.maxMp;
   character.aggro =
     applyExhaustedMultiplier(cls.baseAggro, satiety) +
     curseAggroBoostSum(character) +
     abilityWidenedStatBoost(character, "aggro", cls.baseAggro) +
-    activeStatusCombatStatSum(character, "aggro");
+    activeStatusCombatStatSum(character, "aggro") +
+    (vanguardPassive?.aggroFlat ?? 0);
   character.speed =
     applyExhaustedMultiplier(cls.baseSpeed, satiety) + boost.speed + activeStatusCombatStatSum(character, "speed");
   character.hp = Math.min(character.hp, character.maxHp);

@@ -1,0 +1,164 @@
+[
+  {
+    "id": "undead",
+    "name": "Undead",
+    "profile": {
+      "resistPercent": { "poison": 20, "bleed": 60 },
+      "weakPercent": { "fire": 20, "magic": 20, "holy": 40 }
+    },
+    "subRaces": [
+      {
+        "id": "skeletal",
+        "name": "Skeletal",
+        "profile": { "resistPercent": { "bleed": 100 }, "weakPercent": { "physical": 30 } }
+      },
+      {
+        "id": "rotting",
+        "name": "Rotting",
+        "profile": { "resistPercent": { "poison": 60 }, "statBuff": { "maxHpPercent": 10 } }
+      },
+      {
+        "id": "vampiric",
+        "name": "Vampiric",
+        "profile": { "weakPercent": { "fire": 30, "holy": 60 }, "statBuff": { "attackPercent": 10 } }
+      }
+    ]
+  },
+  {
+    "id": "beast",
+    "name": "Beast",
+    "profile": {},
+    "subRaces": [
+      {
+        "id": "predator",
+        "name": "Predator",
+        "profile": { "statBuff": { "attackPercent": 8 } }
+      },
+      {
+        "id": "vermin",
+        "name": "Vermin",
+        "profile": { "resistPercent": { "poison": 40 }, "statBuff": { "defensePercent": -5 } }
+      },
+      {
+        "id": "draconic",
+        "name": "Draconic",
+        "profile": {
+          "resistPercent": { "fire": 40, "magic": 20, "ice": 40 },
+          "statBuff": { "attackPercent": 15, "maxHpPercent": 15 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "shadow-creature",
+    "name": "Shadow Creature",
+    "profile": {
+      "resistPercent": { "physical": 50 },
+      "weakPercent": { "magic": 50 },
+      "statBuff": { "speedFlat": 2 }
+    },
+    "subRaces": [
+      {
+        "id": "wraithkin",
+        "name": "Wraithkin",
+        "profile": { "resistPercent": { "physical": 70, "ice": 20, "poison": 100, "bleed": 100 } }
+      },
+      {
+        "id": "void",
+        "name": "Void",
+        "profile": { "statBuff": { "maxHpPercent": 20 }, "weakPercent": { "fire": 15 } }
+      }
+    ]
+  },
+  {
+    "id": "demi-human",
+    "name": "Demi-Human",
+    "profile": { "statBuff": { "maxHpPercent": 10, "attackPercent": 10 } },
+    "subRaces": [
+      {
+        "id": "marauder",
+        "name": "Marauder",
+        "profile": { "weakPercent": { "magic": 10 } }
+      }
+    ]
+  },
+  {
+    "id": "human-like",
+    "name": "Human-like",
+    "profile": {},
+    "subRaces": [
+      {
+        "id": "cultist",
+        "name": "Cultist",
+        "profile": { "resistPercent": { "magic": 20 }, "weakPercent": { "physical": 10 } }
+      },
+      {
+        "id": "knight",
+        "name": "Knight",
+        "profile": { "statBuff": { "defensePercent": 15 } }
+      }
+    ]
+  },
+  {
+    "id": "slime",
+    "name": "Slime",
+    "profile": {
+      "resistPercent": { "poison": 50, "bleed": 50, "physical": 20 },
+      "weakPercent": { "magic": 50 },
+      "statBuff": { "maxHpPercent": 10, "attackPercent": -5 }
+    },
+    "subRaces": [
+      {
+        "id": "ooze",
+        "name": "Ooze",
+        "profile": {}
+      },
+      {
+        "id": "toxic-ooze",
+        "name": "Toxic Ooze",
+        "profile": { "statBuff": { "defensePercent": 5 }, "resistPercent": { "poison": 100 } }
+      }
+    ]
+  },
+  {
+    "id": "elemental",
+    "name": "Elemental",
+    "profile": {
+      "resistPercent": { "poison": 50, "bleed": 50, "physical": 20 },
+      "statBuff": { "attackPercent": 5 }
+    },
+    "subRaces": [
+      {
+        "id": "fire",
+        "name": "Fire",
+        "profile": { "resistPercent": { "fire": 100 }, "weakPercent": { "ice": 40 } }
+      },
+      {
+        "id": "water",
+        "name": "Water",
+        "profile": { "resistPercent": { "fire": 50 }, "weakPercent": { "lightning": 40 } }
+      }
+    ]
+  },
+  {
+    "id": "golem",
+    "name": "Golem",
+    "profile": {
+      "resistPercent": { "poison": 50, "bleed": 50, "physical": 40 },
+      "weakPercent": { "magic": 50 },
+      "statBuff": { "speedFlat": -5, "maxHpPercent": 7, "defensePercent": 7 }
+    },
+    "subRaces": [
+      {
+        "id": "stone-golem",
+        "name": "Stone Golem",
+        "profile": {}
+      },
+      {
+        "id": "animate-object",
+        "name": "Animate Object",
+        "profile": { "resistPercent": { "physical": 60 }, "statBuff": { "speedFlat": 10 } }
+      }
+    ]
+  }
+]

@@ -22,7 +22,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "predator",
+    "traitIds": [
+      "swift"
+    ],
+    "minFloor": 0
   },
   {
     "id": "black-bat",
@@ -47,7 +53,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "predator",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 0
   },
   {
     "id": "slime",
@@ -72,7 +84,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "slime",
+    "subRace": "ooze",
+    "minFloor": 0
   },
   {
     "id": "goblin",
@@ -97,7 +112,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "demi-human",
+    "subRace": "marauder",
+    "minFloor": 0
   },
   {
     "id": "cultist-initiate",
@@ -122,7 +140,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "human-like",
+    "subRace": "cultist",
+    "minFloor": 0
   },
   {
     "id": "ghoulish-crawler",
@@ -147,7 +168,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "rotting",
+    "minFloor": 0
   },
   {
     "id": "vampire-bat",
@@ -172,7 +196,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "predator",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 0
   },
   {
     "id": "toxic-toad",
@@ -197,7 +227,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "traitIds": [
+      "venomous"
+    ],
+    "minFloor": 0
   },
   {
     "id": "skeleton",
@@ -222,7 +258,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "minFloor": 0
   },
   {
     "id": "zombie",
@@ -247,7 +286,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "rotting",
+    "minFloor": 0
   },
   {
     "id": "snake",
@@ -272,7 +314,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "traitIds": [
+      "venomous"
+    ],
+    "minFloor": 0
   },
   {
     "id": "lizard",
@@ -297,7 +345,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "minFloor": 0
   },
   {
     "id": "spider",
@@ -322,7 +373,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "traitIds": [
+      "venomous"
+    ],
+    "minFloor": 10
   },
   {
     "id": "goblin-shaman",
@@ -347,7 +404,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "demi-human",
+    "subRace": "marauder",
+    "minFloor": 10
   },
   {
     "id": "cultist-zealot",
@@ -372,7 +432,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "human-like",
+    "subRace": "cultist",
+    "minFloor": 10
   },
   {
     "id": "ghost",
@@ -397,7 +460,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "shadow-creature",
+    "subRace": "wraithkin",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 30
   },
   {
     "id": "skeleton-mage",
@@ -422,7 +491,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "minFloor": 20
   },
   {
     "id": "dire-wolf",
@@ -447,7 +519,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "predator",
+    "traitIds": [
+      "swift"
+    ],
+    "minFloor": 20
   },
   {
     "id": "swamp-slime",
@@ -472,7 +550,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "slime",
+    "subRace": "toxic-ooze",
+    "minFloor": 20
   },
   {
     "id": "fire-elemental",
@@ -497,7 +578,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "elemental",
+    "subRace": "fire",
+    "minFloor": 30
   },
   {
     "id": "water-elemental",
@@ -522,7 +606,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "elemental",
+    "subRace": "water",
+    "minFloor": 30
   },
   {
     "id": "gargoyle",
@@ -547,7 +634,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "golem",
+    "subRace": "stone-golem",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 30
   },
   {
     "id": "skeleton-archer",
@@ -572,7 +665,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "minFloor": 20
   },
   {
     "id": "skeleton-warrior",
@@ -597,7 +693,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "minFloor": 20
   },
   {
     "id": "skeleton-guard",
@@ -637,7 +736,13 @@
       "normal",
       "elite",
       "boss"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "traitIds": [
+      "plated"
+    ],
+    "minFloor": 0
   },
   {
     "id": "orc-brute",
@@ -662,7 +767,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "demi-human",
+    "subRace": "marauder",
+    "traitIds": [
+      "massive"
+    ],
+    "minFloor": 30
   },
   {
     "id": "wraith",
@@ -687,7 +798,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "shadow-creature",
+    "subRace": "wraithkin",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 40
   },
   {
     "id": "armored-beetle",
@@ -712,7 +829,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "traitIds": [
+      "plated"
+    ],
+    "minFloor": 20
   },
   {
     "id": "cave-bear",
@@ -737,7 +860,13 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "predator",
+    "traitIds": [
+      "massive"
+    ],
+    "minFloor": 30
   },
   {
     "id": "lesser-golem",
@@ -762,7 +891,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "golem",
+    "subRace": "stone-golem",
+    "minFloor": 40
   },
   {
     "id": "mimic",
@@ -787,7 +919,10 @@
     },
     "roles": [
       "normal"
-    ]
+    ],
+    "race": "golem",
+    "subRace": "animate-object",
+    "minFloor": 40
   },
   {
     "id": "giant-spider",
@@ -822,7 +957,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "vermin",
+    "traitIds": [
+      "venomous"
+    ],
+    "minFloor": 20
   },
   {
     "id": "dragon",
@@ -857,7 +998,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "beast",
+    "subRace": "draconic",
+    "traitIds": [
+      "flying"
+    ],
+    "minFloor": 100
   },
   {
     "id": "zombie-knight",
@@ -892,7 +1039,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "rotting",
+    "traitIds": [
+      "plated"
+    ],
+    "minFloor": 30
   },
   {
     "id": "dark-knight",
@@ -927,7 +1080,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "human-like",
+    "subRace": "knight",
+    "traitIds": [
+      "plated"
+    ],
+    "minFloor": 60
   },
   {
     "id": "the-founder",
@@ -957,7 +1116,9 @@
     "roles": [
       "boss"
     ],
-    "finalBoss": true
+    "finalBoss": true,
+    "race": "undead",
+    "subRace": "rotting"
   },
   {
     "id": "orc-chieftain",
@@ -992,7 +1153,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "demi-human",
+    "subRace": "marauder",
+    "traitIds": [
+      "massive"
+    ],
+    "minFloor": 40
   },
   {
     "id": "vampire-lord",
@@ -1027,7 +1194,10 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "vampiric",
+    "minFloor": 50
   },
   {
     "id": "void-amalgamation",
@@ -1062,7 +1232,10 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "shadow-creature",
+    "subRace": "void",
+    "minFloor": 70
   },
   {
     "id": "ancient-golem",
@@ -1097,7 +1270,13 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "golem",
+    "subRace": "stone-golem",
+    "traitIds": [
+      "massive"
+    ],
+    "minFloor": 90
   },
   {
     "id": "lich",
@@ -1132,6 +1311,9 @@
     "roles": [
       "elite",
       "boss"
-    ]
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "minFloor": 80
   }
 ]

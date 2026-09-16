@@ -132,7 +132,8 @@
       {
         "kind": "damage",
         "amount": 4,
-        "maxHpPercent": 2.5
+        "maxHpPercent": 2.5,
+        "damageType": "poison"
       }
     ]
   },
@@ -144,7 +145,8 @@
       {
         "kind": "damage",
         "amount": 6,
-        "maxHpPercent": 3
+        "maxHpPercent": 3,
+        "damageType": "poison"
       }
     ]
   },
@@ -156,7 +158,8 @@
       {
         "kind": "damage",
         "amount": 8,
-        "maxHpPercent": 4
+        "maxHpPercent": 4,
+        "damageType": "poison"
       }
     ]
   },
@@ -168,7 +171,8 @@
       {
         "kind": "damage",
         "amount": 6,
-        "maxHpPercent": 3
+        "maxHpPercent": 3,
+        "damageType": "fire"
       }
     ]
   },
@@ -296,7 +300,8 @@
       {
         "kind": "damage",
         "amount": 5,
-        "maxHpPercent": 2.5
+        "maxHpPercent": 2.5,
+        "damageType": "poison"
       }
     ]
   },
@@ -334,7 +339,8 @@
       "amount": 6,
       "isMagic": true,
       "offenseMultiplierPercent": 80,
-      "ignoreDefensePercent": 30
+      "ignoreDefensePercent": 30,
+      "damageType": "lightning"
     }
   },
   {
@@ -346,7 +352,8 @@
       "amount": 8,
       "isMagic": true,
       "offenseMultiplierPercent": 90,
-      "ignoreDefensePercent": 30
+      "ignoreDefensePercent": 30,
+      "damageType": "lightning"
     },
     "rankOf": "storm-empowered",
     "rankLevel": 2
@@ -360,7 +367,8 @@
       "amount": 10,
       "isMagic": true,
       "offenseMultiplierPercent": 100,
-      "ignoreDefensePercent": 30
+      "ignoreDefensePercent": 30,
+      "damageType": "lightning"
     },
     "rankOf": "storm-empowered",
     "rankLevel": 3
@@ -391,7 +399,8 @@
       {
         "kind": "damage",
         "amount": 6,
-        "maxHpPercent": 2
+        "maxHpPercent": 2,
+        "damageType": "bleed"
       }
     ],
     "stackable": true,
@@ -503,37 +512,29 @@
     ]
   },
   {
-    "id": "minion-empowerment",
-    "name": "Minion Empowerment",
-    "description": "Every minion you currently have active, plus any summoned later this combat, gets a mild boost to max HP and attack.",
-    "perTurnEffects": [],
-    "empowersMinions": {
-      "maxHpPercent": 15,
-      "attackPercent": 15
-    }
+    "id": "totem-recall-buff",
+    "name": "Totem's Strength",
+    "description": "Channeled by Totem Recall — boosts attack until the totem falls.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 0 }]
   },
   {
-    "id": "minion-empowerment-ii",
-    "name": "Minion Empowerment",
-    "description": "Every minion you currently have active, plus any summoned later this combat, gets a moderate boost to max HP and attack.",
-    "perTurnEffects": [],
-    "empowersMinions": {
-      "maxHpPercent": 25,
-      "attackPercent": 25
-    },
-    "rankOf": "minion-empowerment",
-    "rankLevel": 2
+    "id": "mage-shred",
+    "name": "Shredded",
+    "description": "Mage's passive: stacking defense reduction, up to 3 stacks.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -5, "minPercent": -5 }],
+    "stackable": true,
+    "maxStacks": 3
   },
   {
-    "id": "minion-empowerment-iii",
-    "name": "Minion Empowerment",
-    "description": "Every minion you currently have active, plus any summoned later this combat, gets a sharp boost to max HP and attack.",
-    "perTurnEffects": [],
-    "empowersMinions": {
-      "maxHpPercent": 35,
-      "attackPercent": 35
-    },
-    "rankOf": "minion-empowerment",
-    "rankLevel": 3
+    "id": "slowed",
+    "name": "Slowed",
+    "description": "Plague Doctor's passive: lose 5 speed for a couple turns.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "speed", "amount": -5 }]
+  },
+  {
+    "id": "enfeebled",
+    "name": "Enfeebled",
+    "description": "Plague Doctor's passive: lowers the target's attack for a couple turns.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": -15 }]
   }
 ]

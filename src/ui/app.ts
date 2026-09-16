@@ -52,6 +52,7 @@ import * as artifactDecisionScreen from "./screens/artifactDecision";
 import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
 import * as campReflectionScreen from "./screens/campReflection";
+import * as floorMilestoneScreen from "./screens/floorMilestone";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as saveScreen from "./screens/save";
@@ -282,6 +283,10 @@ export class App implements ScreenContext {
         this.ui = { kind: "campReflection" };
         return;
       }
+      if (this.game.state.pendingFloorMilestoneMessage) {
+        this.ui = { kind: "floorMilestone" };
+        return;
+      }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       if (room.type === "rest" && !room.cleared) {
         this.ui = { kind: "rest" };
@@ -413,6 +418,9 @@ export class App implements ScreenContext {
         break;
       case "campReflection":
         campReflectionScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "floorMilestone":
+        floorMilestoneScreen.handleKey(this, this.ui, key, digit);
         break;
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
@@ -932,6 +940,9 @@ export class App implements ScreenContext {
       case "campReflection":
         return campReflectionScreen.renderMain(this.game, this.ui);
 
+      case "floorMilestone":
+        return floorMilestoneScreen.renderMain(this.game, this.ui);
+
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
 
@@ -998,6 +1009,8 @@ export class App implements ScreenContext {
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "campReflection":
         return campReflectionScreen.renderFooter(this.ui);
+      case "floorMilestone":
+        return floorMilestoneScreen.renderFooter(this.ui);
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":

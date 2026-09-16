@@ -254,10 +254,10 @@ describe("regular monster skills", () => {
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
     assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
 
-    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
 
-    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
+    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 

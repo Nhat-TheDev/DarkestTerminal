@@ -17,12 +17,17 @@ import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 import { Game } from "../src/engine/game";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
+import { getSummonCast } from "../src/data/summons";
+import { effectiveSkillRank, getSkill } from "../src/data/classes";
 
 describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
     const { ctx } = makeCtx();
 
-    const tanky = spawnInto(ctx, "skeleton-guard");
+    // lesser-golem (Golem race, 40% physical resist) rather than skeleton-guard (its Skeletal
+    // subRace is now 30% WEAK to physical) — this test is about turn order surviving to see both
+    // characters act, not about how many hits it takes to down the monster.
+    const tanky = spawnInto(ctx, "lesser-golem");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -443,10 +448,10 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect((getActorByRef(activeMinions[0]!.ref, ctx) as Summon).archetypeId).toBe("healer-spirit");
   });
 
-  test("reaching Mastery rank 2 by level (without casting it) raises the cap to 2 different-type minions", () => {
+  test("reaching passive rank 2 by level (without casting anything) raises the cap to 2 different-type minions", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    summoner.level = 50;
+    summoner.level = 20; // passive rank 2: +1 cap
     summoner.unlockedSkillIds.push("summoner-summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
@@ -468,27 +473,29 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(active.map((s) => s.archetypeId).sort()).toEqual(["healer-spirit", "stone-golem"]);
   });
 
-  test("Mastery empowers every currently active minion, and any minion summoned afterward, with bonus max HP/attack", () => {
+  test("a level-35 Summoner's minions spawn with +17% attack, +30% maxHp from the passive, innately", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    summoner.level = 20;
-    summoner.unlockedSkillIds.push("summoner-mastery");
+    summoner.level = 35; // passive rank 3: +17% attack, +30% maxHp
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-
     queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
-    const unbuffedMaxHp = goblin.maxHp;
-    const unbuffedAttack = goblin.attack;
 
-    queueAction(combat, self, "summoner-mastery", [self], ctx);
-    resolveRound(combat, ctx);
-    expect(summoner.activeStatusEffects.some((s) => s.statusEffectId === "minion-empowerment")).toBe(true);
-    expect(goblin.maxHp).toBe(Math.round(unbuffedMaxHp * 1.15));
-    expect(goblin.attack).toBe(Math.round(unbuffedAttack * 1.15));
+    // Computed directly from the cast formula + the passive's rank-3 bonus, not by comparing against
+    // an unbuffed instance at a different level — the Summoner's own maxHp/magicPower (the formula's
+    // sourceStat) also grows with level, which would confound a simple before/after ratio.
+    const cast = getSummonCast("summoner-summon-goblin");
+    const skillRank = effectiveSkillRank(getSkill("summoner-summon-goblin"), summoner.level) || 1;
+    const maxHpPercent = cast.stat.maxHp.percent as number;
+    const attackPercent = Array.isArray(cast.stat.attack.percent) ? cast.stat.attack.percent[skillRank - 1]! : cast.stat.attack.percent;
+    const expectedMaxHp = Math.round(cast.stat.maxHp.base + (maxHpPercent / 100) * summoner.maxHp * 1.3);
+    const expectedAttack = Math.round(cast.stat.attack.base + (attackPercent / 100) * summoner.magicPower * 1.17);
+    expect(goblin.maxHp).toBe(expectedMaxHp);
+    expect(goblin.attack).toBe(expectedAttack);
   });
 
   test("Healer Spirit heals on its own turn regardless of which of its 2 heal skills is picked", () => {

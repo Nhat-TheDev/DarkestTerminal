@@ -253,6 +253,7 @@ screen contributes.
 | `eventHermitPickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
 | other `event*` | `[1-n] Choose` — n counts the options that event actually offers (a forced guardian fight drops to `[1]`) |
 | `campReflection` | `[1-3] Choose` |
+| `floorMilestone` | `[Enter] Continue` |
 | `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
 | `founderDialogue` | `[1] Continue` |
 | `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |

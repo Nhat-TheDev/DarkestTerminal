@@ -1,7 +1,11 @@
-import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState } from "../types";
+import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
+import { resolveRaceProfile } from "../data/monsterRaces";
+import { getClass, getUnlockedPassiveRank } from "../data/classes";
+
+const ACOLYTE_HEAL_BOOST_BY_RANK = { 0: 0, 1: 10, 2: 20, 3: 25 } as const;
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
@@ -146,6 +150,12 @@ export interface ResolveContext {
   bonusDamagePercent?: number;
   /** Replaces the source's live `attack`/`magicPower` as the stat a `damage` effect's `offenseMultiplierPercent` scales — used by an Ability's `autoDamage`, which scales off the bearer's base stat, not whatever buffs/equipment currently sit on top of it. */
   offensiveStatOverride?: number;
+  /** Set by the caller (combat.ts) when this effect came from the source's own class skill, as opposed
+   *  to an item or another class's skill — the only thing Acolyte's own-healing-output passive boosts. */
+  castByOwnClassSkill?: boolean;
+  /** For `applyStatusEffect` with `effect.linksToCasterSummon` — the id of the summon (from this same
+   *  skill's own `summon` effect) this status's expiry is tied to. Set by combat.ts's `applySkillEffects`. */
+  linkedSummonId?: Id;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -155,6 +165,17 @@ function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
 
 export function mitigatedOffense(off: number, def: number): number {
   return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
+}
+
+/** Resist/weak only ever applies to a Monster target — a Character is never affected, per this
+ *  feature's design (see docs/superpowers/specs/2026-09-16-monster-race-damage-scaling-design.md,
+ *  Design invariant 2). Returns 1 (no-op) for anything that isn't a Monster. */
+function raceMultiplierFor(target: Actor, damageType: DamageType): number {
+  if (!isMonster(target)) return 1;
+  const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);
+  const resist = profile.resistPercent[damageType];
+  const weak = profile.weakPercent[damageType];
+  return (1 - resist / 100) * (1 + weak / 100);
 }
 
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
@@ -173,20 +194,20 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
       const executeFlat = isExecuteTarget ? ctx.executeBonus?.bonusDamageFlat ?? 0 : 0;
       const bonusMultiplier = !isSelfTick && ctx.bonusDamagePercent ? 1 + ctx.bonusDamagePercent / 100 : 1;
-      const finalDamage = isSelfTick
-        ? Math.max(1, Math.round(effect.amount ?? 0))
-        : Math.max(
-            1,
-            Math.round(
-              ((effect.amount ?? 0) +
-                executeFlat +
-                mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
-                damageMultiplierFor(source) *
-                critMultiplier *
-                executeMultiplier *
-                bonusMultiplier
-            )
+      const raceMultiplier = raceMultiplierFor(target, effect.damageType ?? "physical");
+      const rawDamage = isSelfTick
+        ? Math.round((effect.amount ?? 0) * raceMultiplier)
+        : Math.round(
+            ((effect.amount ?? 0) +
+              executeFlat +
+              mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
+              damageMultiplierFor(source) *
+              critMultiplier *
+              executeMultiplier *
+              bonusMultiplier *
+              raceMultiplier
           );
+      const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
       const isCrit = !isSelfTick && ctx.isCrit;
@@ -210,7 +231,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const before = target.hp;
       const healPower =
         ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
-      target.hp = Math.min(target.maxHp, target.hp + Math.round((effect.amount ?? 0) + healPower));
+      const acolyteBoost =
+        ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
+          ? 1 + ACOLYTE_HEAL_BOOST_BY_RANK[getUnlockedPassiveRank(getClass("acolyte").passiveSkill, source.level)] / 100
+          : 1;
+      target.hp = Math.min(target.maxHp, target.hp + Math.round(((effect.amount ?? 0) + healPower) * acolyteBoost));
       const healed = target.hp - before;
       ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
       return healed;
@@ -224,8 +249,15 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "applyStatusEffect": {
       if (!effect.statusEffectId) return 0;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx);
-      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, effect.durationTurns, ctx);
+      // A status normally applies its own JSON-declared modifyCombatStat magnitude; passing
+      // amount/minPercent on the *effect* here (unused by "applyStatusEffect" otherwise) overrides
+      // it — needed by a passive like Mage's shred, whose 1 status id must express 3 different
+      // rank magnitudes rather than needing a separate status per rank.
+      const magnitudeOverride =
+        effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
+      const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId);
+      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId);
       return 0;
     }
     case "removeStatusEffect": {
@@ -291,54 +323,80 @@ function nameOf(actor: Actor): string {
   return actor.name;
 }
 
-/** Computes each `modifyCombatStat` entry's actual delta and applies it to `actor`, returning the
-    per-stat amounts actually applied — computed before any delta is applied, so a status with 2+
-    modifyCombatStat entries (e.g. storm-recoil's defense debuff + aggro buff) never has one entry's
-    own delta bleed into another's minPercent floor. Callers store the result as the entry's
-    `appliedAmounts`, which `expireStatusEffect` later reads back to undo precisely that amount. */
-function applyStatModifiers(actor: Actor, def: StatusEffectDefinition): Partial<Record<CombatStat, number>> {
-  const appliedAmounts: Partial<Record<CombatStat, number>> = {};
-  for (const e of def.perTurnEffects) {
-    if (e.kind === "modifyCombatStat" && e.combatStat) appliedAmounts[e.combatStat] = computeCombatStatDelta(actor, e);
-  }
-  for (const e of def.perTurnEffects) {
-    if (e.kind === "modifyCombatStat" && e.combatStat) applyCombatStatDelta(actor, e.combatStat, appliedAmounts[e.combatStat]!);
-  }
-  return appliedAmounts;
+/** `amount`/`minPercent` override the status's own JSON-declared magnitude for every modifyCombatStat
+ *  perTurnEffect it has — see the "applyStatusEffect" case in resolveSkillEffect. */
+interface StatusMagnitudeOverride {
+  amount?: number;
+  minPercent?: number;
 }
 
-function applyStatusEffectToActor(actor: Actor, statusEffectId: string, durationTurns: number | undefined, ctx: ResolveContext): void {
+function modifyCombatStatEffects(def: StatusEffectDefinition, override: StatusMagnitudeOverride | undefined): SkillEffect[] {
+  return def.perTurnEffects
+    .filter((e) => e.kind === "modifyCombatStat" && e.combatStat)
+    .map((e) => (override ? { ...e, amount: override.amount ?? e.amount, minPercent: override.minPercent ?? e.minPercent } : e));
+}
+
+function applyStatusEffectToActor(
+  actor: Actor,
+  statusEffectId: string,
+  durationTurns: number | undefined,
+  ctx: ResolveContext,
+  magnitudeOverride?: StatusMagnitudeOverride,
+  linkedSummonId?: Id
+): void {
   const def = getStatusEffect(statusEffectId);
+  const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
     // Replaced, not mutated in place: a fresh object identity keeps a refreshed "special" status out of
     // the eligibility snapshot tickSpecialEffects checks (see specialStatusSnapshot), so re-casting an
     // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
     const existing = actor.activeStatusEffects[existingIndex]!;
-    const stacks = def.stackable ? Math.min(def.maxStacks ?? 1, (existing.stacks ?? 1) + 1) : existing.stacks;
-    // Undo the old delta before recomputing a fresh one — otherwise the old appliedAmounts is
-    // orphaned and `expireStatusEffect` later falls back to the flat `amount`, undoing the wrong
-    // quantity and permanently drifting the stat by the difference.
-    for (const e of def.perTurnEffects) {
-      if (e.kind === "modifyCombatStat" && e.combatStat) applyCombatStatDelta(actor, e.combatStat, -(existing.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
+    const stackedBefore = existing.stacks ?? 1;
+    const stackedAfter = def.stackable ? Math.min(def.maxStacks ?? 1, stackedBefore + 1) : existing.stacks;
+    const gainedANewStack = def.stackable && stackedAfter !== undefined && stackedAfter > stackedBefore;
+    const appliedAmounts = { ...existing.appliedAmounts };
+    if (gainedANewStack) {
+      // A fresh, independent delta for this new stack — computed against the actor's CURRENT stat
+      // value, then accumulated on top of whatever earlier stacks already applied (not overwritten),
+      // so expireStatusEffect's undo still unwinds the correct running total.
+      for (const e of statEffects) {
+        const delta = computeCombatStatDelta(actor, e);
+        applyCombatStatDelta(actor, e.combatStat!, delta);
+        appliedAmounts[e.combatStat!] = (appliedAmounts[e.combatStat!] ?? 0) + delta;
+      }
     }
-    const appliedAmounts = applyStatModifiers(actor, def);
-    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: durationTurns ?? existing.turnsRemaining, stacks, appliedAmounts };
+    actor.activeStatusEffects[existingIndex] = {
+      statusEffectId,
+      turnsRemaining: durationTurns ?? existing.turnsRemaining,
+      stacks: stackedAfter,
+      appliedAmounts,
+      linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
+    };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
     // making the stacking mechanic invisible to the player.
-    const stackGained = def.stackable && stacks !== undefined && stacks > (existing.stacks ?? 1);
     ctx.log.push({
-      text: stackGained
-        ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stacks! })
+      text: gainedANewStack
+        ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stackedAfter })
         : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }),
       kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
     });
     return;
   }
-  const appliedAmounts = applyStatModifiers(actor, def);
-  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: durationTurns ?? 1, stacks: def.stackable ? 1 : undefined, appliedAmounts };
+  // Computed before any delta is applied, so a status with 2+ modifyCombatStat entries (e.g. storm-recoil's
+  // defense debuff + aggro buff) never has one entry's own delta bleed into another's minPercent floor.
+  const appliedAmounts: Partial<Record<CombatStat, number>> = {};
+  for (const e of statEffects) appliedAmounts[e.combatStat!] = computeCombatStatDelta(actor, e);
+  const entry: ActiveStatusEffect = {
+    statusEffectId,
+    turnsRemaining: durationTurns ?? 1,
+    stacks: def.stackable ? 1 : undefined,
+    appliedAmounts,
+    linkedSummonId,
+  };
   actor.activeStatusEffects.push(entry);
+  for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
   ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
 }
 

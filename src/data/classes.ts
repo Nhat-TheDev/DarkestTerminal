@@ -1,4 +1,4 @@
-import type { CharacterClass, SkillDefinition, SkillRankDefinition } from "../types";
+import type { CharacterClass, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 
 /**
@@ -59,6 +59,17 @@ export function getEffectiveSkill(skill: SkillDefinition, level: number): SkillD
 export function effectiveSkillRank(skill: SkillDefinition, level: number): number {
   let rank = 0;
   for (const r of skill.ranks ?? []) {
+    if (r.unlockLevel <= level && r.rank > rank) rank = r.rank;
+  }
+  return rank;
+}
+
+/** Rank derived purely from level, independent of anything being cast — a passive is never queued
+ *  or triggered by the player, so there's no "has this been cast" question the way a normal
+ *  skill's `effectiveSkillRank` implicitly assumes. */
+export function getUnlockedPassiveRank(passive: PassiveSkillDefinition, level: number): 0 | 1 | 2 | 3 {
+  let rank: 0 | 1 | 2 | 3 = 0;
+  for (const r of passive.ranks) {
     if (r.unlockLevel <= level && r.rank > rank) rank = r.rank;
   }
   return rank;

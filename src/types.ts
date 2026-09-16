@@ -14,6 +14,8 @@ export type SkillEffectKind =
   | "modifyCombatStat"
   | "summon";
 
+export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
+
 export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
 export interface SkillEffect {
@@ -52,6 +54,16 @@ export interface SkillEffect {
   appliesToRelation?: "ally" | "enemy";
   /** For `modifyCombatStat`: the applied delta is whichever has the larger magnitude of `amount` or `actorStat * minPercent / 100` (read from the actor's stat before this delta is applied), sign preserved — so a flat buff/debuff stays meaningful once the underlying stat has grown well past where `amount` alone would be negligible. Absent = today's flat-only behavior. */
   minPercent?: number;
+  /** Only meaningful when kind === "damage". Defaults to "physical" when absent — every existing
+   *  effect (monster skills, artifacts, abilities, items) stays untagged and keeps that default. */
+  damageType?: DamageType;
+  /** For `applyStatusEffect`: ties this status's expiry to the summon this same skill cast also
+   *  spawns via its own `summon` effect (resolved first — see `applySkillEffects` in combat.ts) —
+   *  Totem Recall's "the buff lasts until the totem dies" mechanism, instead of a fixed duration. */
+  linksToCasterSummon?: boolean;
+  /** Excludes `Summon` targets from this specific effect within an `allAllies`/`allAlliesAndEnemies`
+   *  resolution — Totem Recall's buff reaches party members but not the caster's own minions. */
+  excludesSummonTargets?: boolean;
 }
 
 /** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
@@ -137,6 +149,18 @@ export interface SkillDefinition {
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
 }
 
+export interface PassiveRankDefinition {
+  rank: 1 | 2 | 3;
+  unlockLevel: number;
+}
+
+export interface PassiveSkillDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  ranks: PassiveRankDefinition[]; // exactly 3
+}
+
 export interface GrowthWeights {
   attack: number;
   defense: number;
@@ -166,6 +190,7 @@ export interface CharacterClass {
   baseSpeed: number;
   baseMagicPower: number;
   skills: SkillDefinition[];
+  passiveSkill: PassiveSkillDefinition;
 }
 
 export interface Character {
@@ -199,7 +224,7 @@ export interface StatusEffectDefinition {
   description: string;
   perTurnEffects: SkillEffect[];
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number };
+  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -219,8 +244,6 @@ export interface StatusEffectDefinition {
   untargetable?: boolean;
   /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
-  /** While the bearer (a Character) carries this status, every `Summon` it owns gets these bonuses: applied once, retroactively, to every currently-active owned summon the moment this status lands, and applied again to any summon spawned later while it's still active (Summoner's Mastery, §1.11). */
-  empowersMinions?: { maxHpPercent: number; attackPercent: number };
 }
 
 export interface ItemDefinition {
@@ -422,6 +445,9 @@ export interface ActiveStatusEffect {
   stacks?: number;
   /** The exact combat-stat delta(s) actually applied for this status's `modifyCombatStat` perTurnEffects, keyed by stat — set once when the status is first applied (after resolving any `minPercent` floor against the actor's stat at that moment) and read back on expiry to undo precisely that amount, since recomputing from `amount`/`minPercent` at expiry could disagree if the actor's stat moved in between (e.g. a 2nd, unrelated buff/debuff on the same stat). Absent for a status with no `modifyCombatStat` perTurnEffects. */
   appliedAmounts?: Partial<Record<CombatStat, number>>;
+  /** If set, this status is force-expired the instant the named `Summon` (by id) leaves combat —
+   *  Totem Recall's "the buff lasts until the totem dies" mechanism (`SkillEffect.linksToCasterSummon`). */
+  linkedSummonId?: Id;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";
@@ -453,6 +479,43 @@ export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
 
 /** Stat-budget archetype, mirroring how `classGrowthWeights` splits a character class's budget across stats — see `monsterGrowthWeights` (`data/growth-weights.json`). Multipliers sum to 3 (1 per stat) the same way `classGrowthWeights` sums to 5. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
+
+export interface RaceProfile {
+  // Recommended range for a single race/subRace/trait entry: 10-100. Final resolved value
+  // (after merging race -> subRace -> traits) is clamped to 0-100 regardless — summed
+  // trait+subRace contributions can legitimately land above what any single source declares.
+  resistPercent?: Partial<Record<DamageType, number>>;
+  // Recommended range for a single entry: 10-50. Final resolved value is clamped to 0-100, same
+  // reasoning as resistPercent.
+  weakPercent?: Partial<Record<DamageType, number>>;
+  statBuff?: {
+    maxHpPercent?: number;
+    attackPercent?: number;
+    defensePercent?: number;
+    speedFlat?: number; // flat add, not a percent — speed is never percent-scaled anywhere else
+  };
+}
+
+export interface SubRaceDefinition {
+  id: Id;
+  name: string;
+  /** Per-key override on top of the parent race's resistPercent/weakPercent; statBuff fields ADD
+   *  to the parent's instead (see resolveRaceProfile in src/data/monsterRaces.ts). */
+  profile: RaceProfile;
+}
+
+export interface RaceDefinition {
+  id: Id;
+  name: string;
+  profile: RaceProfile;
+  subRaces: SubRaceDefinition[]; // 1-3 entries
+}
+
+export interface TraitDefinition {
+  id: Id;
+  name: string;
+  profile: RaceProfile; // added on top of the resolved race+subRace profile
+}
 
 export interface MonsterArchetype {
   id: Id;
@@ -487,6 +550,12 @@ export interface MonsterArchetype {
    *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of
    *  silently leaving the monster with nothing but its basic attack. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
+  race: Id;           // data/monster-races.json race id
+  subRace?: Id;        // must belong to that race's subRaces if present
+  traitIds?: Id[];      // data/monster-traits.json ids, default []
+  /** Multiple of 10, undefined only for the finalBoss archetype — the depth below which floor.ts
+   *  will never pick this archetype at random. See §5 of the design spec. */
+  minFloor?: number;
 }
 
 export type MonsterTier = "normal" | "elite" | "boss";
@@ -503,6 +572,9 @@ export interface Monster {
   tier: MonsterTier;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  race: Id;
+  subRace?: Id;
+  traitIds?: Id[];
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;
   executeCooldownTurns?: number;
@@ -551,6 +623,10 @@ export interface SummonArchetype {
   /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];
+  /** Never takes a turn — no skill, no basic-attack fallback, and `actionsTaken` never increments, so
+   *  it can't expire by running out of actions either. For a summon whose whole purpose is to just
+   *  stand there (Totem Recall) rather than fight, so its lifetime depends only on actually dying. */
+  passive?: boolean;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };
@@ -695,6 +771,10 @@ export interface GameState {
       Skipped if `pendingReflection` is currently set. Cleared once the player picks a response
       (`Game.pickCampReflectionChoice`). */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
+  /** Set by `Game.clearFinishedCombat()` on a boss-room victory at a floor depth that's a multiple
+      of 10 — one line randomly picked from a fixed pool, pinned so a re-render shows the same text.
+      Cleared by `Game.dismissFloorMilestoneMessage()`. */
+  pendingFloorMilestoneMessage?: string | null;
   /** Which option (0/1/2) was picked at each Camp Reflection tier — a genuine per-tier record,
       unlike `eventReflectionStances`, since each tier fires exactly once per run. */
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
