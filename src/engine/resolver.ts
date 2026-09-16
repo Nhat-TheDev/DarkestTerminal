@@ -112,6 +112,24 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
   actor[stat] += amount;
 }
 
+function getCombatStatValue(actor: Actor, stat: CombatStat): number {
+  if (stat === "aggro") return isCharacter(actor) || isSummon(actor) ? actor.aggro : 0;
+  return actor[stat];
+}
+
+/**
+ * The delta a `modifyCombatStat` effect actually applies: `effect.amount` unless `effect.minPercent`
+ * is set and `actorStat * minPercent / 100` (read from the actor's stat *before* this delta lands) has
+ * the larger magnitude — sign preserved either way, so a negative `minPercent` floors a debuff the same
+ * way a positive one floors a buff. A tie keeps the flat `amount`.
+ */
+function computeCombatStatDelta(actor: Actor, effect: SkillEffect): number {
+  const amount = effect.amount ?? 0;
+  if (!effect.minPercent || !effect.combatStat) return amount;
+  const floor = Math.round((getCombatStatValue(actor, effect.combatStat) * effect.minPercent) / 100);
+  return Math.abs(floor) > Math.abs(amount) ? floor : amount;
+}
+
 export interface ResolveContext {
   log: LogEntry[];
   statusEffectName?: string;
@@ -204,8 +222,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "applyStatusEffect": {
       if (!effect.statusEffectId) return 0;
-      applyStatusEffectToActor(target, effect.statusEffectId, ctx);
-      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, ctx);
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx);
+      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, effect.durationTurns, ctx);
       return 0;
     }
     case "removeStatusEffect": {
@@ -243,8 +261,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "modifyCombatStat": {
       if (!effect.combatStat) return 0;
-      applyCombatStatDelta(target, effect.combatStat, effect.amount ?? 0);
-      const delta = effect.amount ?? 0;
+      const delta = computeCombatStatDelta(target, effect);
+      applyCombatStatDelta(target, effect.combatStat, delta);
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
         ctx.log.push({
@@ -271,7 +289,7 @@ function nameOf(actor: Actor): string {
   return actor.name;
 }
 
-function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: ResolveContext): void {
+function applyStatusEffectToActor(actor: Actor, statusEffectId: string, durationTurns: number | undefined, ctx: ResolveContext): void {
   const def = getStatusEffect(statusEffectId);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
@@ -280,15 +298,21 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, ctx: Res
     // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
     const existing = actor.activeStatusEffects[existingIndex]!;
     const stacks = def.stackable ? Math.min(def.maxStacks ?? 1, (existing.stacks ?? 1) + 1) : existing.stacks;
-    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: def.durationTurns ?? existing.turnsRemaining, stacks };
+    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: durationTurns ?? existing.turnsRemaining, stacks };
     ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
     return;
   }
-  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: def.durationTurns ?? 1, stacks: def.stackable ? 1 : undefined };
+  // Computed before any delta is applied, so a status with 2+ modifyCombatStat entries (e.g. storm-recoil's
+  // defense debuff + aggro buff) never has one entry's own delta bleed into another's minPercent floor.
+  const appliedAmounts: Partial<Record<CombatStat, number>> = {};
+  for (const e of def.perTurnEffects) {
+    if (e.kind === "modifyCombatStat" && e.combatStat) appliedAmounts[e.combatStat] = computeCombatStatDelta(actor, e);
+  }
+  const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: durationTurns ?? 1, stacks: def.stackable ? 1 : undefined, appliedAmounts };
   actor.activeStatusEffects.push(entry);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
-      applyCombatStatDelta(actor, e.combatStat, e.amount ?? 0);
+      applyCombatStatDelta(actor, e.combatStat, appliedAmounts[e.combatStat]!);
     }
   }
   ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
@@ -306,7 +330,10 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
   const def = getStatusEffect(active.statusEffectId);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
-      applyCombatStatDelta(actor, e.combatStat, -(e.amount ?? 0));
+      // Undoes the exact value stored at apply time, not a fresh recompute — the actor's stat may
+      // have moved since (e.g. a 2nd, unrelated buff/debuff on the same stat), which would make a
+      // recomputed minPercent floor disagree with what was actually added.
+      applyCombatStatDelta(actor, e.combatStat, -(active.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);

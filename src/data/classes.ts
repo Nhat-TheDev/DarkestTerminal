@@ -3,14 +3,14 @@ import classesJson from "../../data/classes.json";
 
 /**
  * A ranked skill's rank-1 numbers are its "base" numbers — `data/classes.json` doesn't repeat
- * mpCost/effects(ByRelation)/unlockLevel at the top level and in `ranks[0]`; this fills the top
- * level in from `ranks[0]` once at load, so every other reader (`getEffectiveSkill`, `party.ts`'s
+ * mpCost/effects/unlockLevel at the top level and in `ranks[0]`; this fills the top level in from
+ * `ranks[0]` once at load, so every other reader (`getEffectiveSkill`, `party.ts`'s
  * `unlockedSkillIds` filter, the UI, tests) keeps seeing a fully-populated `SkillDefinition`.
  */
 function normalizeRankedSkill(skill: SkillDefinition): SkillDefinition {
   const rank1 = skill.ranks?.find((r) => r.rank === 1);
   if (!rank1) return skill;
-  return { ...skill, mpCost: rank1.mpCost, unlockLevel: rank1.unlockLevel, effects: rank1.effects, effectsByRelation: rank1.effectsByRelation };
+  return { ...skill, mpCost: rank1.mpCost, unlockLevel: rank1.unlockLevel, effects: rank1.effects };
 }
 
 export const CLASSES = classesJson as unknown as CharacterClass[];
@@ -38,7 +38,7 @@ export function getSkill(id: string): SkillDefinition {
 }
 
 /**
- * Resolves a skill's mpCost/effects(ByRelation) to the highest rank unlocked at `level`.
+ * Resolves a skill's mpCost/effects to the highest rank unlocked at `level`.
  * Returns the skill unchanged if it has no `ranks` or none are unlocked yet.
  */
 export function getEffectiveSkill(skill: SkillDefinition, level: number): SkillDefinition {
@@ -52,7 +52,6 @@ export function getEffectiveSkill(skill: SkillDefinition, level: number): SkillD
     ...skill,
     mpCost: effective.mpCost,
     effects: effective.effects,
-    effectsByRelation: effective.effectsByRelation,
   };
 }
 

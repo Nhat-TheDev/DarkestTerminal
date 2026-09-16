@@ -44,6 +44,14 @@ export interface SkillEffect {
   scalesWithStatusStacks?: { statusEffectId: Id; percentPerStack: number };
   /** For `kind: "summon"`: spawns a `Summon` via the cast profile named here (`data/summons.json` → `casts`, looked up with `getSummonCast`). Re-casting the same archetype replaces the owner's existing one; a different archetype is added alongside it up to the owner's active-minion cap (1 by default), evicting the oldest once at that cap. */
   summonCastId?: Id;
+  /** For `applyStatusEffect`: how many turns this specific application lasts (shared by `alsoApplyStatusEffectIds`, if any) — absent defaults to 1. Each skill declares its own duration; the status definition itself no longer carries one, so the same status can last a different number of turns depending on what applied it. */
+  durationTurns?: number;
+  /** Overrides the skill's own `target` for just this effect, resolved separately from every other effect in the skill — e.g. a skill that both damages `allEnemies` and needs a `summon` effect to always land on the caster sets `target: "self"` on that one effect. Only resolvable target kinds that need no player picking (`self`/`allAllies`/`allEnemies`/`allAlliesAndEnemies`) are supported; a `single*` override is silently skipped, since there's no UI for picking a 2nd target within one cast. */
+  target?: SkillTarget;
+  /** Restricts this effect to only the targets already resolved by the skill's own `target` that are on the given side (relative to `isPlayerSide`, not relative to the caster) — e.g. one `heal` effect with `appliesToRelation: "ally"` and one `damage` effect with `"enemy"` on a skill targeting `allAlliesAndEnemies` replaces the old `effectsByRelation` split. Unlike `target`, this filters within the already-resolved population rather than resolving a different one — the only shape that correctly expresses a skill like Purify, whose `singleAllyOrEnemy` target is 1 player-picked actor whose side decides which effect fires. */
+  appliesToRelation?: "ally" | "enemy";
+  /** For `modifyCombatStat`: the applied delta is whichever has the larger magnitude of `amount` or `actorStat * minPercent / 100` (read from the actor's stat before this delta is applied), sign preserved — so a flat buff/debuff stays meaningful once the underlying stat has grown well past where `amount` alone would be negligible. Absent = today's flat-only behavior. */
+  minPercent?: number;
 }
 
 /** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
@@ -91,7 +99,6 @@ export interface SkillRankDefinition {
   unlockLevel: number;
   mpCost: number;
   effects?: SkillEffect[];
-  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
 }
 
 export interface SkillDefinition {
@@ -101,7 +108,6 @@ export interface SkillDefinition {
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
-  effectsByRelation?: { ally: SkillEffect[]; enemy: SkillEffect[] };
   slot: 0 | 1 | 2 | 3 | 4 | 5;
   unlockLevel: number;
   usesPerCombat?: number;
@@ -172,9 +178,8 @@ export interface StatusEffectDefinition {
   name: string;
   description: string;
   perTurnEffects: SkillEffect[];
-  durationTurns?: number;
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
+  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -386,6 +391,8 @@ export interface ActiveStatusEffect {
   turnsRemaining: number;
   /** Current stack count for a `stackable` status (`StatusEffectDefinition.stackable`); absent/undefined for non-stackable statuses. */
   stacks?: number;
+  /** The exact combat-stat delta(s) actually applied for this status's `modifyCombatStat` perTurnEffects, keyed by stat — set once when the status is first applied (after resolving any `minPercent` floor against the actor's stat at that moment) and read back on expiry to undo precisely that amount, since recomputing from `amount`/`minPercent` at expiry could disagree if the actor's stat moved in between (e.g. a 2nd, unrelated buff/debuff on the same stat). Absent for a status with no `modifyCombatStat` perTurnEffects. */
+  appliedAmounts?: Partial<Record<CombatStat, number>>;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";

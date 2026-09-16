@@ -313,7 +313,7 @@ export function computeDamage(opts: {
 }
 
 function effectsOf(skill: SkillDefinition): SkillEffect[] {
-  return skill.effectsByRelation ? skill.effectsByRelation.enemy : (skill.effects ?? []);
+  return (skill.effects ?? []).filter((e) => e.appliesToRelation !== "ally");
 }
 
 export interface SkillDamagePreview {

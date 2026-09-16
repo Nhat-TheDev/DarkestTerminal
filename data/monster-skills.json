@@ -58,7 +58,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "weakened"
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -123,7 +124,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "poisoned"
+        "statusEffectId": "poisoned",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -188,7 +190,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "burning"
+        "statusEffectId": "burning",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -253,7 +256,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "weakened"
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -318,7 +322,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "stunned"
+        "statusEffectId": "stunned",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -372,7 +377,8 @@
         "alsoApplyStatusEffectIds": [
           "corroded"
         ],
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -422,7 +428,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "poisoned",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -457,7 +464,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "webbed",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -487,7 +495,8 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "guard"
+        "statusEffectId": "guard",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -552,7 +561,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "blinded"
+        "statusEffectId": "blinded",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -587,7 +597,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -607,7 +618,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "burning",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -622,7 +634,8 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "guard"
+        "statusEffectId": "guard",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -642,7 +655,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -662,7 +676,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "bleeding",
-        "chance": 0.5
+        "chance": 0.5,
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -711,7 +726,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "stunned"
+        "statusEffectId": "stunned",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -776,7 +792,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "bleeding"
+        "statusEffectId": "bleeding",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -841,7 +858,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "corroded"
+        "statusEffectId": "corroded",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -906,7 +924,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "weakened"
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -971,7 +990,8 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "blinded"
+        "statusEffectId": "blinded",
+        "durationTurns": 2
       }
     ],
     "slot": 0,

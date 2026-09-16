@@ -4,7 +4,12 @@
     "name": "Small Health Potion",
     "description": "A deep red potion with the familiar herbal smell every adventurer knows.",
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 30 }],
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 30
+      }
+    ],
     "weight": 1
   },
   {
@@ -12,7 +17,12 @@
     "name": "Large Health Potion",
     "description": "A more concentrated version, bottled thick to survive being jostled in a travel pack.",
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 70 }],
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 70
+      }
+    ],
     "weight": 0.5
   },
   {
@@ -20,7 +30,12 @@
     "name": "Small Mana Potion",
     "description": "A shimmering blue liquid, cool to the tongue.",
     "target": "self",
-    "effects": [{ "kind": "restoreMp", "amount": 20 }],
+    "effects": [
+      {
+        "kind": "restoreMp",
+        "amount": 20
+      }
+    ],
     "weight": 1
   },
   {
@@ -28,7 +43,12 @@
     "name": "Large Mana Potion",
     "description": "Kept in a crystal flask, used to recharge magic after the most exhausting spells.",
     "target": "self",
-    "effects": [{ "kind": "restoreMp", "amount": 45 }],
+    "effects": [
+      {
+        "kind": "restoreMp",
+        "amount": 45
+      }
+    ],
     "weight": 0.5
   },
   {
@@ -36,17 +56,37 @@
     "name": "Exploration Kit",
     "description": "Rope, chalk, and a well-worn map case — everything needed to press on a little longer between real rests.",
     "target": "allAllies",
-    "effects": [{ "kind": "modifyStat", "stat": "satiety", "amount": 30 }],
+    "effects": [
+      {
+        "kind": "modifyStat",
+        "stat": "satiety",
+        "amount": 30
+      }
+    ],
     "weight": 0.15,
     "combatUsable": false,
-    "archetypeIds": ["zombie", "zombie-knight", "skeleton", "skeleton-archer", "skeleton-warrior", "skeleton-guard", "dark-knight"]
+    "archetypeIds": [
+      "zombie",
+      "zombie-knight",
+      "skeleton",
+      "skeleton-archer",
+      "skeleton-warrior",
+      "skeleton-guard",
+      "dark-knight"
+    ]
   },
   {
     "id": "calming-draught",
     "name": "Calming Draught",
     "description": "A strong herbal tea that slows the heartbeat amid the suffocating dark.",
     "target": "self",
-    "effects": [{ "kind": "modifyStat", "stat": "fear", "amount": -25 }],
+    "effects": [
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": -25
+      }
+    ],
     "weight": 1
   },
   {
@@ -54,7 +94,11 @@
     "name": "Antidote",
     "description": "A bitter white pill, trusted by dungeon healers.",
     "target": "self",
-    "effects": [{ "kind": "removeStatusEffect" }],
+    "effects": [
+      {
+        "kind": "removeStatusEffect"
+      }
+    ],
     "weight": 0.5
   },
   {
@@ -62,7 +106,13 @@
     "name": "Whetstone",
     "description": "A handheld sharpening stone — a few strokes are enough to make a blade sharp again.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "empower",
+        "durationTurns": 2
+      }
+    ],
     "weight": 0.5
   },
   {
@@ -70,7 +120,13 @@
     "name": "Temporary Ward",
     "description": "A temporary charm, hastily carved on a piece of wood to soften the next blow.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fortify",
+        "durationTurns": 2
+      }
+    ],
     "weight": 0.5
   },
   {
@@ -78,8 +134,18 @@
     "name": "Grave Dust",
     "description": "Finely ground bone dust from an old grave — rubbed on skin, it sets the flesh like old bone.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
-    "archetypeIds": ["skeleton", "skeleton-archer", "skeleton-guard"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fortify",
+        "durationTurns": 2
+      }
+    ],
+    "archetypeIds": [
+      "skeleton",
+      "skeleton-archer",
+      "skeleton-guard"
+    ],
     "weight": 0.5
   },
   {
@@ -87,8 +153,18 @@
     "name": "Broken Blade Fragment",
     "description": "A broken weapon fragment, still sharp, stripped down to be reforged into a new blade.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "empower" }],
-    "archetypeIds": ["skeleton-warrior", "zombie-knight", "dark-knight"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "empower",
+        "durationTurns": 2
+      }
+    ],
+    "archetypeIds": [
+      "skeleton-warrior",
+      "zombie-knight",
+      "dark-knight"
+    ],
     "weight": 0.5
   },
   {
@@ -96,8 +172,17 @@
     "name": "Rotten Flesh",
     "description": "A piece of rotting flesh reeking with a foul stench — other monsters would rather steer clear.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "distracted" }],
-    "archetypeIds": ["zombie", "zombie-knight"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "distracted",
+        "durationTurns": 1
+      }
+    ],
+    "archetypeIds": [
+      "zombie",
+      "zombie-knight"
+    ],
     "weight": 1
   },
   {
@@ -105,8 +190,18 @@
     "name": "Venom Gland",
     "description": "A still-fresh venom gland, used to coat a weapon before a long encounter.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-coat" }],
-    "archetypeIds": ["snake", "lizard", "spider"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poison-coat",
+        "durationTurns": 3
+      }
+    ],
+    "archetypeIds": [
+      "snake",
+      "lizard",
+      "spider"
+    ],
     "weight": 0.5
   },
   {
@@ -114,8 +209,16 @@
     "name": "Venom Thorn",
     "description": "A thorn as thick as a finger — piercing a target makes the venom already in their body take hold many times faster.",
     "target": "singleEnemy",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "poison-vulnerable" }],
-    "archetypeIds": ["giant-spider"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poison-vulnerable",
+        "durationTurns": 2
+      }
+    ],
+    "archetypeIds": [
+      "giant-spider"
+    ],
     "weight": 1
   },
   {
@@ -123,8 +226,16 @@
     "name": "Rat Meat",
     "description": "Dungeon rat meat, tough but strangely nutritious — the body visibly recovers after eating it.",
     "target": "singleAlly",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "regeneration" }],
-    "archetypeIds": ["dungeon-rat"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "regeneration",
+        "durationTurns": 3
+      }
+    ],
+    "archetypeIds": [
+      "dungeon-rat"
+    ],
     "weight": 0.5
   },
   {
@@ -132,8 +243,15 @@
     "name": "Bat Blood",
     "description": "Still-warm bat blood, gulped down mid-battle to stay standing.",
     "target": "self",
-    "effects": [{ "kind": "heal", "amount": 20 }],
-    "archetypeIds": ["black-bat"],
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 20
+      }
+    ],
+    "archetypeIds": [
+      "black-bat"
+    ],
     "weight": 1
   },
   {
@@ -141,8 +259,15 @@
     "name": "Slime Solution",
     "description": "The translucent ooze of a slime monster, strangely able to unclog the flow of magic.",
     "target": "self",
-    "effects": [{ "kind": "restoreMp", "amount": 20 }],
-    "archetypeIds": ["slime"],
+    "effects": [
+      {
+        "kind": "restoreMp",
+        "amount": 20
+      }
+    ],
+    "archetypeIds": [
+      "slime"
+    ],
     "weight": 1
   },
   {
@@ -150,8 +275,16 @@
     "name": "Dragon Scale",
     "description": "A heavy dragon scale, its metallic sheen still warm from fire — enough to forge a shield for the whole party.",
     "target": "allAllies",
-    "effects": [{ "kind": "applyStatusEffect", "statusEffectId": "fortify" }],
-    "archetypeIds": ["dragon"],
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fortify",
+        "durationTurns": 2
+      }
+    ],
+    "archetypeIds": [
+      "dragon"
+    ],
     "weight": 0.5
   }
 ]

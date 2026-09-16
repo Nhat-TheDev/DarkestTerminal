@@ -104,7 +104,6 @@ Current damage/heal amounts and proc chances: `data/monster-skills.json`. *Snake
 {
   "id": "corroded",
   "name": "Corroded",
-  "durationTurns": "<see data/status-effects.json>",
   "perTurnEffects": [
     { "kind": "damage", "amount": "<see data/status-effects.json>" },
     { "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }
@@ -120,7 +119,6 @@ Distinct from both `weakened` (`01-class-skill.md` §1.7 — pure defense reduct
 {
   "id": "webbed",
   "name": "Webbed",
-  "durationTurns": "<see data/status-effects.json>",
   "perTurnEffects": [
     { "kind": "modifyCombatStat", "combatStat": "speed", "amount": "<see data/status-effects.json>" }
   ]

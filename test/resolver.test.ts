@@ -131,7 +131,7 @@ describe("resolver", () => {
     const vanguard = ctx.party[0]!;
     const baseDef = vanguard.defense;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(baseDef - 6);
 
     // Stat-mod ticks (unlike DoT/HoT and "special" statuses) decrement the very round they're cast in.
@@ -141,6 +141,54 @@ describe("resolver", () => {
 
     tickStatModEffects(vanguard, { log });
     expect(vanguard.defense).toBe(baseDef);
+    expect(vanguard.activeStatusEffects).toHaveLength(0);
+  });
+
+  test("minPercent floors a buff's delta once the actor's stat has grown past where the flat amount matters", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    vanguard.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20, beats the flat 6
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(220);
+
+    tickStatModEffects(vanguard, { log });
+    expect(vanguard.defense).toBe(200); // undoes the applied 20, not the flat 6
+    expect(vanguard.activeStatusEffects).toHaveLength(0);
+  });
+
+  test("minPercent leaves a debuff's delta alone below the floor, and floors it once the target's stat is high enough", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    const log: LogEntry[] = [];
+
+    vanguard.defense = 50; // weakened: amount -6, minPercent -10 -> floor = round(50*-0.1) = -5, smaller magnitude than -6
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(44);
+    tickStatModEffects(vanguard, { log });
+    tickStatModEffects(vanguard, { log });
+    expect(vanguard.defense).toBe(50);
+
+    vanguard.defense = 300; // floor = round(300*-0.1) = -30, beats the flat -6
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(270);
+    tickStatModEffects(vanguard, { log });
+    tickStatModEffects(vanguard, { log });
+    expect(vanguard.defense).toBe(300); // undoes the applied -30, not the flat -6
+  });
+
+  test("expiry undoes the exact stored delta even if the actor's stat moved in the meantime", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    vanguard.defense = 200; // guard applies floor(20) here, stored on the ActiveStatusEffect entry
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(220);
+
+    vanguard.defense += 500; // an unrelated change to the same stat, e.g. a 2nd buff/item — recomputing the floor now would disagree with what was actually applied
+
+    tickStatModEffects(vanguard, { log });
+    expect(vanguard.defense).toBe(700); // 220 + 500, minus the stored 20 - not a re-derived floor off the new 720 (which would undo 72)
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
@@ -175,9 +223,9 @@ describe("resolver", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, vanguard, vanguard, { log });
     tickDotEffects(vanguard, { log });
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, vanguard, vanguard, { log });
     expect(vanguard.activeStatusEffects).toHaveLength(1);
     expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);
   });
@@ -235,7 +283,7 @@ describe("room-clear status effect cleanup", () => {
   test("a debuff survives a room win, keeping its duration and penalty", () => {
     const { game, vanguard, rat } = setUpOneHpFight(11);
     const baseDef = vanguard.defense;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened" }, vanguard, vanguard, { log: game.state.combat!.log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log: game.state.combat!.log });
     expect(vanguard.defense).toBe(baseDef - 6);
 
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };

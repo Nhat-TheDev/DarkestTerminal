@@ -107,7 +107,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 *Poison Coat is a self-buff that "coats the weapon in poison" — its value comes indirectly through subsequent hits. Rogue has no dedicated defensive skill — the kit is 100% offense/debuff. MP costs, damage amounts, and cooldowns: `data/classes.json`.*
 
-**On Poison Coat and the "buffs are always 1 turn" rule**: `poison-coat` is **not** forced down to a 1-turn duration the way Shield Guard/Rally are, even though it is also a self-buff — see `data/status-effects.json` for its actual `durationTurns`. `poison-coat` carries no `modifyCombatStat` — it's a buff-rider (it toggles the "attacks auto-apply poison" mechanic). Its cooldown follows the shared "duration + 1" formula (§1.7, "Design notes").
+**On Poison Coat and the "buffs are always 1 turn" rule**: `poison-coat` is **not** forced down to a 1-turn duration the way Shield Guard/Rally are, even though it is also a self-buff — see `rogue-poison-coat`'s `applyStatusEffect` effect in `data/classes.json` for its actual `durationTurns`. `poison-coat` carries no `modifyCombatStat` — it's a buff-rider (it toggles the "attacks auto-apply poison" mechanic). Its cooldown follows the shared "duration + 1" formula (§1.7, "Design notes").
 
 ### 1.4 Acolyte — healing + team-wide fear reduction
 
@@ -153,13 +153,12 @@ The Viking needed **2 fields not present** in the schema before it (`src/types.t
 onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
 ```
 
-New status effect `storm-empowered` (shape — actual `durationTurns`/`amount`/`ignoreDefensePercent` live in `data/status-effects.json`; row also included in the summary table, section 1.7):
+New status effect `storm-empowered` (shape — actual `amount`/`ignoreDefensePercent` live in `data/status-effects.json`, `durationTurns` on `viking-lightning-axe`'s applying effect in `data/classes.json`; row also included in the summary table, section 1.7):
 
 ```json
 {
   "id": "storm-empowered",
   "name": "Storm-Empowered",
-  "durationTurns": "<see data/status-effects.json>",
   "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" }
 }
 ```
@@ -182,8 +181,7 @@ New status `bleeding` (physical DoT, structured like `poisoned`) — shape only,
 {
   "id": "bleeding",
   "name": "Bleeding",
-  "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }],
-  "durationTurns": "<see data/status-effects.json>"
+  "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }]
 }
 ```
 
@@ -205,17 +203,16 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (s
 | 4 | `plaguedoc-toxic-fog` | Spreading Toxic Fog | allEnemies | `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"` | — | 50% Base MagicPower + 15 / 20 / 27 MagicPower |
 | 5 | `plaguedoc-total-plague` | Total Plague | allAllies **and** allEnemies at once | allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate) | — | heal allAllies : 50% Base MagicPower + 20/25/31 · dmg allEnemies: 60% Base MagicPower 10/13/16 MagicPower |
 
-*All skills are `isMagic: true`. Skill 5 uses `effectsByRelation` (2 sides) — the same mechanic as `acolyte-divine-descent` (section 1.4).*
+*All skills are `isMagic: true`. Skill 5 splits its effects by `appliesToRelation: "ally" | "enemy"` (2 sides) — the same mechanic as `acolyte-divine-descent` (section 1.4).*
 
 #### `blinded` — a new status, and the `rollHits()` change it needed
 
-`burning`, `poisoned`, `weakened` already exist (section 1.7), reused as-is. `blinded` is new (shape below; current `durationTurns`/`accuracyPenaltyPercent` live in `data/status-effects.json`):
+`burning`, `poisoned`, `weakened` already exist (section 1.7), reused as-is. `blinded` is new (shape below; current `accuracyPenaltyPercent` lives in `data/status-effects.json`, `durationTurns` on each applying effect in `data/classes.json`):
 
 ```json
 {
   "id": "blinded",
   "name": "Blinded",
-  "durationTurns": "<see data/status-effects.json>",
   "accuracyPenaltyPercent": "<see data/status-effects.json>",
   "perTurnEffects": []
 }
@@ -253,9 +250,11 @@ Exact magnitudes/durations/proc chances for every row above: `data/status-effect
 
 **Design idea, not implemented**: Poisoned (and its stronger Poison Bomb variants below) was conceived as being cure-able early by playing a mini-game — a concept only, no field or mechanic for it exists in the current code. See `minigame-decisions.md` if this direction is ever picked up.
 
-**Default `durationTurns` convention**: `applyStatusEffectToActor` (`resolver.ts`) falls back to a default of 1 turn when a status doesn't declare `durationTurns` in `data/status-effects.json`.
-- **Buffs (carrying `modifyCombatStat`, applied by the actor to itself/allies)**: default to that 1-turn fallback, matching the "buffs are always 1 turn" rule — no need to explicitly set `durationTurns` in JSON if it's 1, though it's still good practice to write it for clarity.
-- **Debuffs/control effects (Poisoned, Burning, Stunned) and buff-riders that aren't stat-buffs (Poison Coat, Storm-Empowered)**: **must always declare `durationTurns` explicitly**, never relying on the default.
+**Default `durationTurns` convention**: `durationTurns` is not a field of `StatusEffectDefinition` — it lives on the `applyStatusEffect` `SkillEffect` that applies the status (`docs/technical-decisions.md` §4), since the same status can be granted for a different number of turns by different sources. `applyStatusEffectToActor` (`resolver.ts`) falls back to a default of 1 turn when the applying effect doesn't set `durationTurns`.
+- **Buffs (carrying `modifyCombatStat`, applied by the actor to itself/allies)**: default to that 1-turn fallback, matching the "buffs are always 1 turn" rule — no need to explicitly set `durationTurns` on the effect if it's 1, though it's still good practice to write it for clarity.
+- **Debuffs/control effects (Poisoned, Burning, Stunned) and buff-riders that aren't stat-buffs (Poison Coat, Storm-Empowered)**: **must always declare `durationTurns` explicitly** on the applying effect, never relying on the default.
+
+**Combat-stat buff/debuff floor (`minPercent`)**: a flat `modifyCombatStat` amount has the same problem a flat DoT tick had (§1.7.1) — it's a lot at level 1, negligible at level 100. Guard/-ii/-iii, Rally/-ii/-iii, Venom Edge/-ii, Overwatch/-ii/-iii, Weakened, Corroded, Agony, and Storm Recoil's defense debuff all carry a `minPercent` on their `modifyCombatStat` entry in `data/status-effects.json`, so the applied delta is whichever of the flat amount or a percent of the actor's own stat is larger in magnitude — see `docs/technical-decisions.md` §4.8. `aggro`-only buffs (Taunt, Storm Recoil's aggro line) deliberately have none: `aggro` doesn't grow with character level, so a flat aggro bonus never becomes relatively negligible.
 
 ### 1.7.1 DoT rework — `maxHpPercent`, Elite/Boss dampening, and "weak against X" vulnerability
 
@@ -316,10 +315,10 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 ```json
 [
-  { "id": "guard-ii", "name": "Guard II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
-  { "id": "guard-iii", "name": "Guard III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rally-ii", "name": "Rally II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rally-iii", "name": "Rally III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
+  { "id": "guard-ii", "name": "Guard II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
+  { "id": "guard-iii", "name": "Guard III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
+  { "id": "rally-ii", "name": "Rally II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "rally-iii", "name": "Rally III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
@@ -327,13 +326,13 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 #### Poison Coat — rank-up adds a separate attack-buff status (Rogue)
 
-**Poison Coat** (Rogue, slot 1) scales by applying a *second*, independent status alongside the base `poison-coat` at rank 2/3, rather than by growing `poison-coat` itself: `poison-coat` (the on-hit poison rider, `onHitStatusEffectId: "poisoned"`, no `perTurnEffects` of its own) is cast unchanged at every rank, and `rogue-poison-coat`'s rank 2/3 `effects` additionally apply `venom-edge`/`venom-edge-ii` — a pure `modifyCombatStat attack` status with no on-hit rider. They're two distinct status ids (not one combined `poison-coat-ii`/`poison-coat-iii` status) so each can be categorized cleanly by the turn-countdown system (`src/engine/resolver.ts`'s `statusCategory`): `poison-coat` has no per-turn effect and is "special" by shape, while `venom-edge` is a stat modifier and would be "statMod" by shape — but a stat-mod status ticks down unconditionally at round-end with no free round, while a "special" status doesn't tick until the bearer's own next turn, so left to shape-inference alone the two would drift out of sync despite always being cast together. `venom-edge`/`venom-edge-ii` instead set `"tickCategory": "special"` (a StatusEffectDefinition field that overrides the shape-inferred category) so both statuses always tick — and expire — on the same turn. `durationTurns` stays identical across every rank of both statuses, so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
+**Poison Coat** (Rogue, slot 1) scales by applying a *second*, independent status alongside the base `poison-coat` at rank 2/3, rather than by growing `poison-coat` itself: `poison-coat` (the on-hit poison rider, `onHitStatusEffectId: "poisoned"`, no `perTurnEffects` of its own) is cast unchanged at every rank, and `rogue-poison-coat`'s rank 2/3 `effects` additionally apply `venom-edge`/`venom-edge-ii` — a pure `modifyCombatStat attack` status with no on-hit rider. They're two distinct status ids (not one combined `poison-coat-ii`/`poison-coat-iii` status) so each can be categorized cleanly by the turn-countdown system (`src/engine/resolver.ts`'s `statusCategory`): `poison-coat` has no per-turn effect and is "special" by shape, while `venom-edge` is a stat modifier and would be "statMod" by shape — but a stat-mod status ticks down unconditionally at round-end with no free round, while a "special" status doesn't tick until the bearer's own next turn, so left to shape-inference alone the two would drift out of sync despite always being cast together. `venom-edge`/`venom-edge-ii` instead set `"tickCategory": "special"` (a StatusEffectDefinition field that overrides the shape-inferred category) so both statuses always tick — and expire — on the same turn. `rogue-poison-coat`'s `applyStatusEffect` effects declare the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
-  { "id": "poison-coat", "name": "Poison Coat", "durationTurns": "<see data/status-effects.json>", "onHitStatusEffectId": "poisoned", "perTurnEffects": [] },
-  { "id": "venom-edge", "name": "Venom Edge", "durationTurns": "<see data/status-effects.json>", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
-  { "id": "venom-edge-ii", "name": "Venom Edge II", "durationTurns": "<see data/status-effects.json>", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
+  { "id": "poison-coat", "name": "Poison Coat", "onHitStatusEffectId": "poisoned", "perTurnEffects": [] },
+  { "id": "venom-edge", "name": "Venom Edge", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "venom-edge-ii", "name": "Venom Edge II", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
@@ -345,8 +344,8 @@ Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is 
 
 ```json
 [
-  { "id": "poisoned-ii", "name": "Poisoned II", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] },
-  { "id": "poisoned-iii", "name": "Poisoned III", "durationTurns": "<see data/status-effects.json>", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] }
+  { "id": "poisoned-ii", "name": "Poisoned II", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] },
+  { "id": "poisoned-iii", "name": "Poisoned III", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
@@ -354,12 +353,12 @@ Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is 
 
 #### Storm-Empowered — rank scaling (Viking)
 
-`storm-empowered` (Lightning Axe's self-buff, section 1.5.2) is the Viking's signature rider — its `onHitAoeDamage.amount` **is** the skill's core value, the same situation as Poison Bomb's `poisoned` above and Poison Coat's attack buff. It has 2 rank-exclusive variants scaling that amount up; `ignoreDefensePercent`/`durationTurns` stay fixed so the existing `cooldownTurns = durationTurns + 1` formula still holds at every rank. Shape (current magnitudes: `data/status-effects.json`):
+`storm-empowered` (Lightning Axe's self-buff, section 1.5.2) is the Viking's signature rider — its `onHitAoeDamage.amount` **is** the skill's core value, the same situation as Poison Bomb's `poisoned` above and Poison Coat's attack buff. It has 2 rank-exclusive variants scaling that amount up; `ignoreDefensePercent` stays fixed and `viking-lightning-axe`'s applying effect declares the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still holds at every rank. The splash's `magicPower` contribution is also scaled by `onHitAoeDamage.offenseMultiplierPercent` (80/90/100 at rank 1/2/3, `docs/technical-decisions.md` §4.8) — previously every rank used the caster's full, unscaled `magicPower` on every hit, which made the proc's per-hit output outsized relative to a dedicated damage skill. Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
-  { "id": "storm-empowered-ii", "name": "Storm-Empowered II", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" } },
-  { "id": "storm-empowered-iii", "name": "Storm-Empowered III", "durationTurns": "<see data/status-effects.json>", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "ignoreDefensePercent": "<see data/status-effects.json>" } }
+  { "id": "storm-empowered-ii", "name": "Storm-Empowered II", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "offenseMultiplierPercent": "<see data/status-effects.json>", "ignoreDefensePercent": "<see data/status-effects.json>" } },
+  { "id": "storm-empowered-iii", "name": "Storm-Empowered III", "onHitAoeDamage": { "amount": "<see data/status-effects.json>", "isMagic": true, "offenseMultiplierPercent": "<see data/status-effects.json>", "ignoreDefensePercent": "<see data/status-effects.json>" } }
 ]
 ```
 
@@ -425,7 +424,7 @@ Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai.
 |---|---|---|---|---|---|---|
 | 1 | `ninja-smoke-bomb` | Smoke Bomb | self | `applyStatusEffect "stealthed"` — untargetable, breaks on the Ninja's next attack; see 1.10.1 | ✅ | — |
 | 2 | `ninja-shadow-clone` | Shadow Clone | self | summons combatant `ninja-clone` (HP = % of Ninja's `maxHp`, high `aggro` — weighted only, not a forced taunt) — vanishes after **2** actions taken; see section 1.12.4 | ✅ | — |
-| 3 | `ninja-throwing-knives` | Throwing Knives | singleEnemy | `damage` + chance to `applyStatusEffect "bleeding"` (60%, stacking — 1.12.6) + small `executeBonus` below an HP% threshold (1.12.5) + **40% chance to throw a 2nd knife** (independent damage + bleeding roll) | — | 80% Base ATK + 11 ATK |
+| 3 | `ninja-throwing-knives` | Throwing Knives | singleEnemy | `damage` + chance to `applyStatusEffect "bleeding"` (60%, stacking — 1.12.6) + **40% chance to throw a 2nd knife** (independent damage + bleeding roll) — no `executeBonus`; Death Mark alone carries the ninja's execute mechanic | — | 80% Base ATK + 11 ATK |
 | 4 | `ninja-shuriken-storm` | Shuriken Storm | allEnemies | `damage`/enemy, each enemy struck **1-2× (rank 1) / 1-3× (rank 2) / 2-3× (rank 3)** — hit count rolled per enemy — each individual hit has 60% chance to `applyStatusEffect "bleeding"` | — | 60% Base ATK + 8 ATK per hit |
 | 5 | `ninja-death-mark` | Death Mark | singleEnemy | `damage`, scaling `+5%` per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` if the target is below 30% HP — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack | — | (100 + 5×stacks)% Base ATK + 14 ATK |
 
@@ -517,7 +516,7 @@ New `CombatantRef` kind: `{ kind: "summon"; id: Id; ownerId: Id }`. A summon has
 
 #### 1.12.5 Execute bonus (`executeBonus`)
 
-New optional field on `SkillDefinition`: `executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number }` — if the target's current HP is below `hpPercentThreshold` (as a % of its own `maxHp`) when the skill resolves, the skill's damage gets an extra bonus (percentage-of-base and/or a flat add, per skill). Used by Ninja's Throwing Knives (small bonus) and Death Mark (larger, flat bonus per the design). **Distinct from** the existing Boss "Execute" charge-up mechanic (`06-level-system.md` §6.12, `Monster.executeCooldownTurns`/`isChargingExecute`/`executeTargetId`) — same word, unrelated mechanic; that one is a monster-side charge-then-unleash finisher untied to the target's HP%, this one is a character-side conditional damage bonus keyed directly to the target's HP%.
+New optional field on `SkillDefinition`: `executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number }` — if the target's current HP is below `hpPercentThreshold` (as a % of its own `maxHp`) when the skill resolves, the skill's damage gets an extra bonus (percentage-of-base and/or a flat add, per skill). Used by Ninja's Death Mark. **Distinct from** the existing Boss "Execute" charge-up mechanic (`06-level-system.md` §6.12, `Monster.executeCooldownTurns`/`isChargingExecute`/`executeTargetId`) — same word, unrelated mechanic; that one is a monster-side charge-then-unleash finisher untied to the target's HP%, this one is a character-side conditional damage bonus keyed directly to the target's HP%.
 
 #### 1.12.6 Stackable status effects — `bleeding` becomes stackable, game-wide
 
@@ -537,13 +536,13 @@ Archer's Volley Shot (60%) and Ninja's Throwing Knives (80%)/Shuriken Storm (60%
 
 ### Design notes
 - Each class has exactly 1 "ultimate" skill in slot 5 — it **always hits, with no accuracy roll**, but its effectiveness (damage/heal) scales down by fear tier via a dedicated formula, replacing the usual hit/miss roll + flat damage-reduction combo used by ordinary skills (`04-fear-combat.md` section 4). Ultimates use `isUltimate: true` and share a fixed `cooldownTurns` across every class (`data/classes.json`) — they do not use `usesPerCombat` (see the last bullet below).
-- `modifyCombatStat` (attack/defense/aggro/speed buffs/debuffs) is always routed through `applyStatusEffect` — there is no effect that adjusts a combat stat instantly or permanently; all of them carry `durationTurns` on `StatusEffectDefinition`.
-- `StatusEffectDefinition` is shared by both buffs (e.g. "guard") and debuffs (e.g. "poisoned") — both expire via `durationTurns`. Full table + default-duration convention: section 1.7.
+- `modifyCombatStat` (attack/defense/aggro/speed buffs/debuffs) is always routed through `applyStatusEffect` — there is no effect that adjusts a combat stat instantly or permanently; every application carries a `durationTurns` on the applying `SkillEffect` (not on `StatusEffectDefinition` — see the "Default `durationTurns` convention" note below).
+- `StatusEffectDefinition` is shared by both buffs (e.g. "guard") and debuffs (e.g. "poisoned") — both expire via the `durationTurns` set by whichever effect applied them. Full table + default-duration convention: section 1.7.
 - **Skills with a `chance` on 1 effect** (e.g. Fireball's burn proc) only roll for that specific effect, separate from the skill's overall accuracy roll — the main `damage` effect still always applies if the skill hits; only the secondary (proc) effect is probabilistic.
 - **AoE skills** (`allEnemies`, or the "enemy" half of a two-sided skill): accuracy is rolled **separately for each target**, not once for the whole skill — one enemy dodging doesn't mean the whole group dodges.
-- **Two-sided skills** (Purify, Divine Descent, Total Plague): the effect applied depends on whether the target is an ally or an enemy, rather than sharing one effect list — see `effectsByRelation` in `docs/technical-decisions.md` §4.
+- **Two-sided skills** (Purify, Divine Descent, Total Plague): the effect applied depends on whether the target is an ally or an enemy, via each effect's own `appliesToRelation: "ally" | "enemy"` filter, rather than sharing one effect list — see `docs/technical-decisions.md` §4.4.
 - **Cooldown** (`cooldownTurns`): every class-specific skill beyond the first two slots has a cooldown (slots 1-2 have none). 2 formulas:
-  - **Buff skills** (`isBuff: true` — Shield Guard, Rally, Poison Coat, Lightning Axe): `cooldownTurns = the main status's durationTurns + 1`.
+  - **Buff skills** (`isBuff: true` — Shield Guard, Rally, Poison Coat, Lightning Axe): `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`.
   - **Other damage/utility skills + ultimates**: assigned by hand based on power level, not a fixed formula (ultimates share one fixed value across classes — `data/classes.json`).
 - `usesPerCombat` is not used by any character skill — every skill uses `cooldownTurns`, including ultimates. The field still exists on `SkillDefinition`/`ItemDefinition` for Items (`07-items-artifacts.md` §7).
 - **Buff skills always grant a temporary speed bonus** for turn-order purposes in the round they're used (the bonus amount: `src/engine/combat.ts`). This applies only to the skills marked "Buff?" in each class's table (Shield Guard, Rally, Poison Coat, Lightning Axe) — not to support skills that don't carry a status (Prayer, Heal, Mass Heal for Acolyte adjust instantly, without going through `applyStatusEffect`). This is a temporary bonus only for ordering turns within the current round — it is not added to the character's base `speed` — technical design in `docs/technical-decisions.md` §4.7.

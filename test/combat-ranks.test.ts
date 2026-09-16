@@ -260,6 +260,36 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(resolved.hp).toBeGreaterThan(0);
   });
 
+  test("a minion that expires by running out of actions is zeroed out, not left as a ghost that still counts toward the owner's active-minion cap", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    resolveRound(combat, ctx); // goblin spawns mid-round, doesn't act yet
+    resolveRound(combat, ctx); // action 1
+    resolveRound(combat, ctx); // action 2
+    resolveRound(combat, ctx); // action 3 — goblin-thrower's maxActions, expires this round
+
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
+    expect(goblin.actionsTaken).toBe(3);
+    expect(goblin.hp).toBe(0);
+    expect(combat.combatants.some((c) => c.ref.kind === "summon")).toBe(false);
+
+    // A different-type summon right after must not see the expired goblin as still "owned" —
+    // it should be added cleanly, not treated as if the owner were already at any cap.
+    summoner.cooldownsRemaining["summoner-summon-spirit"] = 0;
+    summoner.mp = summoner.maxMp;
+    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    resolveRound(combat, ctx);
+    const activeMinions = combat.combatants.filter((c) => c.ref.kind === "summon");
+    expect(activeMinions).toHaveLength(1);
+    expect((getActorByRef(activeMinions[0]!.ref, ctx) as Summon).archetypeId).toBe("healer-spirit");
+  });
+
   test("reaching Mastery rank 2 by level (without casting it) raises the cap to 2 different-type minions", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;

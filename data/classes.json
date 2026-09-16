@@ -42,11 +42,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard"
+                "statusEffectId": "guard",
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "taunt"
+                "statusEffectId": "taunt",
+                "durationTurns": 1
               }
             ]
           },
@@ -57,11 +59,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-ii"
+                "statusEffectId": "guard-ii",
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "taunt"
+                "statusEffectId": "taunt",
+                "durationTurns": 1
               }
             ]
           },
@@ -72,11 +76,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-iii"
+                "statusEffectId": "guard-iii",
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "taunt"
+                "statusEffectId": "taunt",
+                "durationTurns": 1
               }
             ]
           }
@@ -96,7 +102,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 10
+                "amount": 10,
+                "offenseMultiplierPercent": 100
               }
             ]
           },
@@ -107,7 +114,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 13
+                "amount": 13,
+                "offenseMultiplierPercent": 105
               }
             ]
           },
@@ -118,7 +126,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 110
               }
             ]
           }
@@ -145,7 +154,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally"
+                "statusEffectId": "rally",
+                "durationTurns": 1
               }
             ]
           },
@@ -161,7 +171,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally-ii"
+                "statusEffectId": "rally-ii",
+                "durationTurns": 1
               }
             ]
           },
@@ -177,7 +188,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally-iii"
+                "statusEffectId": "rally-iii",
+                "durationTurns": 1
               }
             ]
           }
@@ -211,7 +223,7 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 80
               }
             ]
           },
@@ -223,7 +235,7 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 90
               }
             ]
           }
@@ -246,7 +258,7 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 85
               }
             ]
           },
@@ -258,7 +270,7 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 95
               }
             ]
           },
@@ -270,7 +282,7 @@
               {
                 "kind": "damage",
                 "amount": 50,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 110
               }
             ]
           }
@@ -320,12 +332,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 10
+                "amount": 10,
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.3
+                "chance": 0.3,
+                "durationTurns": 2
               }
             ]
           },
@@ -336,12 +350,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 13
+                "amount": 13,
+                "offenseMultiplierPercent": 105
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.4
+                "chance": 0.4,
+                "durationTurns": 2
               }
             ]
           },
@@ -352,12 +368,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 110
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 2
               }
             ]
           }
@@ -378,12 +396,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12
+                "amount": 12,
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.2
+                "chance": 0.2,
+                "durationTurns": 1
               }
             ]
           },
@@ -394,12 +414,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 15
+                "amount": 15,
+                "offenseMultiplierPercent": 110
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.28
+                "chance": 0.28,
+                "durationTurns": 1
               }
             ]
           },
@@ -410,12 +432,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 19
+                "amount": 19,
+                "offenseMultiplierPercent": 115
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.35
+                "chance": 0.35,
+                "durationTurns": 1
               }
             ]
           }
@@ -437,12 +461,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12
+                "amount": 12,
+                "offenseMultiplierPercent": 80
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 2
               }
             ]
           },
@@ -453,12 +479,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 15
+                "amount": 15,
+                "offenseMultiplierPercent": 85
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 2
               }
             ]
           },
@@ -469,12 +497,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 19
+                "amount": 19,
+                "offenseMultiplierPercent": 90
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 2
               }
             ]
           }
@@ -502,7 +532,8 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.3
+                "chance": 0.3,
+                "durationTurns": 1
               }
             ]
           },
@@ -514,12 +545,13 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 90
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.38
+                "chance": 0.38,
+                "durationTurns": 1
               }
             ]
           },
@@ -531,12 +563,13 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stunned",
-                "chance": 0.45
+                "chance": 0.45,
+                "durationTurns": 1
               }
             ]
           }
@@ -572,7 +605,7 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 120
               }
             ]
           },
@@ -584,7 +617,7 @@
               {
                 "kind": "damage",
                 "amount": 35,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 130
               }
             ]
           }
@@ -635,7 +668,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat"
+                "statusEffectId": "poison-coat",
+                "durationTurns": 3
               }
             ]
           },
@@ -646,11 +680,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat"
+                "statusEffectId": "poison-coat",
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "venom-edge"
+                "statusEffectId": "venom-edge",
+                "durationTurns": 3
               }
             ]
           },
@@ -661,11 +697,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat"
+                "statusEffectId": "poison-coat",
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "venom-edge-ii"
+                "statusEffectId": "venom-edge-ii",
+                "durationTurns": 3
               }
             ]
           }
@@ -685,7 +723,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12
+                "amount": 12,
+                "offenseMultiplierPercent": 90
               }
             ]
           },
@@ -696,7 +735,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 15
+                "amount": 15,
+                "offenseMultiplierPercent": 100
               }
             ]
           },
@@ -707,7 +747,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 19
+                "amount": 19,
+                "offenseMultiplierPercent": 110
               }
             ]
           }
@@ -729,7 +770,7 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 115
               }
             ]
           },
@@ -741,7 +782,7 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 125
               }
             ]
           },
@@ -753,7 +794,7 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 140
               }
             ]
           }
@@ -773,8 +814,14 @@
             "mpCost": 10,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 10,
+                "offenseMultiplierPercent": 50
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poisoned"
+                "statusEffectId": "poisoned",
+                "durationTurns": 3
               }
             ]
           },
@@ -784,8 +831,14 @@
             "mpCost": 11,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 55
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poisoned-ii"
+                "statusEffectId": "poisoned-ii",
+                "durationTurns": 3
               }
             ]
           },
@@ -795,8 +848,14 @@
             "mpCost": 12,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 30,
+                "offenseMultiplierPercent": 60
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poisoned-iii"
+                "statusEffectId": "poisoned-iii",
+                "durationTurns": 3
               }
             ]
           }
@@ -816,17 +875,17 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 45
               },
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 45
               },
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 45
               }
             ]
           },
@@ -838,17 +897,17 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 55
               },
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 55
               },
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 55
               }
             ]
           },
@@ -860,17 +919,17 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 65
               },
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 65
               },
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 65
               }
             ]
           }
@@ -968,7 +1027,8 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 90
               }
             ]
           },
@@ -979,7 +1039,8 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 22
+                "amount": 22,
+                "offenseMultiplierPercent": 100
               }
             ]
           },
@@ -990,7 +1051,8 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 30
+                "amount": 30,
+                "offenseMultiplierPercent": 110
               }
             ]
           }
@@ -1009,55 +1071,52 @@
             "rank": 1,
             "unlockLevel": 10,
             "mpCost": 9,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 15
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 15,
+                "offenseMultiplierPercent": 100,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 2,
             "unlockLevel": 25,
             "mpCost": 10,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 20
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 110,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 3,
             "unlockLevel": 45,
             "mpCost": 11,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 27
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 27,
+                "offenseMultiplierPercent": 120,
+                "appliesToRelation": "enemy"
+              }
+            ]
           }
         ]
       },
@@ -1095,7 +1154,7 @@
               {
                 "kind": "heal",
                 "amount": 20,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 70
               },
               {
                 "kind": "modifyStat",
@@ -1112,7 +1171,7 @@
               {
                 "kind": "heal",
                 "amount": 25,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 80
               },
               {
                 "kind": "modifyStat",
@@ -1137,79 +1196,76 @@
             "rank": 1,
             "unlockLevel": 35,
             "mpCost": 20,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 25,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "modifyStat",
-                  "stat": "fear",
-                  "amount": -15
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 20,
-                  "offenseMultiplierPercent": 80
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 25,
+                "offenseMultiplierPercent": 70,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "modifyStat",
+                "stat": "fear",
+                "amount": -15,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 80,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 2,
             "unlockLevel": 70,
             "mpCost": 21,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 30,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "modifyStat",
-                  "stat": "fear",
-                  "amount": -20
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 25,
-                  "offenseMultiplierPercent": 80
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 30,
+                "offenseMultiplierPercent": 75,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "modifyStat",
+                "stat": "fear",
+                "amount": -20,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 25,
+                "offenseMultiplierPercent": 85,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 3,
             "unlockLevel": 100,
             "mpCost": 22,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 40,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "modifyStat",
-                  "stat": "fear",
-                  "amount": -25
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 30,
-                  "offenseMultiplierPercent": 80
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 40,
+                "offenseMultiplierPercent": 80,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "modifyStat",
+                "stat": "fear",
+                "amount": -25,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 30,
+                "offenseMultiplierPercent": 90,
+                "appliesToRelation": "enemy"
+              }
+            ]
           }
         ]
       }
@@ -1258,11 +1314,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-empowered"
+                "statusEffectId": "storm-empowered",
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-recoil"
+                "statusEffectId": "storm-recoil",
+                "durationTurns": 1
               }
             ]
           },
@@ -1273,11 +1331,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-empowered-ii"
+                "statusEffectId": "storm-empowered-ii",
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-recoil"
+                "statusEffectId": "storm-recoil",
+                "durationTurns": 1
               }
             ]
           },
@@ -1288,11 +1348,13 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-empowered-iii"
+                "statusEffectId": "storm-empowered-iii",
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "storm-recoil"
+                "statusEffectId": "storm-recoil",
+                "durationTurns": 1
               }
             ]
           }
@@ -1316,12 +1378,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 9
+                "amount": 9,
+                "offenseMultiplierPercent": 95
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 3
               }
             ]
           },
@@ -1332,12 +1396,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12
+                "amount": 12,
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 3
               }
             ]
           },
@@ -1348,12 +1414,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 15
+                "amount": 15,
+                "offenseMultiplierPercent": 105
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 3
               }
             ]
           }
@@ -1378,7 +1446,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 100
               }
             ]
           },
@@ -1389,7 +1458,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 20
+                "amount": 20,
+                "offenseMultiplierPercent": 107
               }
             ]
           },
@@ -1400,7 +1470,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 25
+                "amount": 25,
+                "offenseMultiplierPercent": 115
               }
             ]
           }
@@ -1431,7 +1502,8 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.3
+                "chance": 0.3,
+                "durationTurns": 3
               }
             ]
           },
@@ -1443,12 +1515,13 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 77
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.4
+                "chance": 0.4,
+                "durationTurns": 3
               }
             ]
           },
@@ -1460,12 +1533,13 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 85
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 3
               }
             ]
           }
@@ -1493,7 +1567,7 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 80
               }
             ]
           },
@@ -1505,7 +1579,7 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 100
               }
             ]
           },
@@ -1568,12 +1642,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 10
+                "amount": 10,
+                "offenseMultiplierPercent": 90
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 2
               }
             ]
           },
@@ -1584,12 +1660,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12
+                "amount": 12,
+                "offenseMultiplierPercent": 95
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 2
               }
             ]
           },
@@ -1600,12 +1678,14 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 105
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.8
+                "chance": 0.8,
+                "durationTurns": 2
               }
             ]
           }
@@ -1639,7 +1719,7 @@
               {
                 "kind": "heal",
                 "amount": 20,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 95
               }
             ]
           },
@@ -1651,7 +1731,7 @@
               {
                 "kind": "heal",
                 "amount": 25,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 100
               }
             ]
           }
@@ -1679,7 +1759,8 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "blinded",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 2
               }
             ]
           },
@@ -1691,12 +1772,13 @@
               {
                 "kind": "damage",
                 "amount": 13,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 85
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "blinded",
-                "chance": 0.8
+                "chance": 0.8,
+                "durationTurns": 2
               }
             ]
           },
@@ -1708,12 +1790,13 @@
               {
                 "kind": "damage",
                 "amount": 18,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 90
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "blinded",
-                "chance": 0.9
+                "chance": 0.9,
+                "durationTurns": 2
               }
             ]
           }
@@ -1736,17 +1819,19 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 50
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.4
+                "chance": 0.4,
+                "durationTurns": 2
               }
             ]
           },
@@ -1763,12 +1848,14 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 2
               }
             ]
           },
@@ -1780,17 +1867,19 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 70
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.8
+                "chance": 0.8,
+                "durationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 2
               }
             ]
           }
@@ -1810,103 +1899,112 @@
             "rank": 1,
             "unlockLevel": 35,
             "mpCost": 22,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 20,
-                  "offenseMultiplierPercent": 50
-                },
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 10,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "poisoned",
-                  "chance": 0.8
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "burning",
-                  "chance": 0.8
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 20,
+                "offenseMultiplierPercent": 60,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 10,
+                "offenseMultiplierPercent": 70,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "poisoned",
+                "chance": 0.8,
+                "durationTurns": 3,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "burning",
+                "chance": 0.8,
+                "durationTurns": 2,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 2,
             "unlockLevel": 70,
             "mpCost": 23,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 25,
-                  "offenseMultiplierPercent": 50
-                },
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 13,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "poisoned",
-                  "chance": 0.85
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "burning",
-                  "chance": 0.85
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 25,
+                "offenseMultiplierPercent": 65,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 13,
+                "offenseMultiplierPercent": 75,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "poisoned",
+                "chance": 0.85,
+                "durationTurns": 3,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "burning",
+                "chance": 0.85,
+                "durationTurns": 2,
+                "appliesToRelation": "enemy"
+              }
+            ]
           },
           {
             "rank": 3,
             "unlockLevel": 100,
             "mpCost": 24,
-            "effectsByRelation": {
-              "ally": [
-                {
-                  "kind": "heal",
-                  "amount": 31,
-                  "offenseMultiplierPercent": 50
-                },
-                {
-                  "kind": "removeStatusEffect"
-                }
-              ],
-              "enemy": [
-                {
-                  "kind": "damage",
-                  "amount": 16,
-                  "offenseMultiplierPercent": 60
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "poisoned",
-                  "chance": 0.9
-                },
-                {
-                  "kind": "applyStatusEffect",
-                  "statusEffectId": "burning",
-                  "chance": 0.9
-                }
-              ]
-            }
+            "effects": [
+              {
+                "kind": "heal",
+                "amount": 31,
+                "offenseMultiplierPercent": 70,
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "removeStatusEffect",
+                "appliesToRelation": "ally"
+              },
+              {
+                "kind": "damage",
+                "amount": 16,
+                "offenseMultiplierPercent": 85,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "poisoned",
+                "chance": 0.9,
+                "durationTurns": 3,
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "burning",
+                "chance": 0.9,
+                "durationTurns": 2,
+                "appliesToRelation": "enemy"
+              }
+            ]
           }
         ]
       }
@@ -1954,7 +2052,8 @@
               {
                 "kind": "damage",
                 "amount": 16,
-                "critChance": 0.35
+                "offenseMultiplierPercent": 90,
+                "critChance": 0.3
               }
             ]
           },
@@ -1966,7 +2065,8 @@
               {
                 "kind": "damage",
                 "amount": 21,
-                "critChance": 0.42
+                "offenseMultiplierPercent": 95,
+                "critChance": 0.35
               }
             ]
           },
@@ -1978,7 +2078,8 @@
               {
                 "kind": "damage",
                 "amount": 26,
-                "critChance": 0.5
+                "offenseMultiplierPercent": 105,
+                "critChance": 0.4
               }
             ]
           }
@@ -2000,7 +2101,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "overwatched"
+                "statusEffectId": "overwatched",
+                "durationTurns": 1
               }
             ]
           },
@@ -2011,7 +2113,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "overwatched-ii"
+                "statusEffectId": "overwatched-ii",
+                "durationTurns": 1
               }
             ]
           },
@@ -2022,7 +2125,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "overwatched-iii"
+                "statusEffectId": "overwatched-iii",
+                "durationTurns": 1
               }
             ]
           }
@@ -2056,7 +2160,7 @@
               {
                 "kind": "damage",
                 "amount": 14,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 66
               }
             ]
           },
@@ -2068,7 +2172,7 @@
               {
                 "kind": "damage",
                 "amount": 19,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 75
               }
             ]
           }
@@ -2089,12 +2193,20 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 16
+                "amount": 16,
+                "offenseMultiplierPercent": 80
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stagger",
+                "chance": 0.3,
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.5
+                "chance": 0.5,
+                "durationTurns": 2
               }
             ]
           },
@@ -2105,12 +2217,20 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 21
+                "amount": 21,
+                "offenseMultiplierPercent": 90
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stagger",
+                "chance": 0.4,
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 2
               }
             ]
           },
@@ -2121,12 +2241,20 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 27
+                "amount": 27,
+                "offenseMultiplierPercent": 100
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stagger",
+                "chance": 0.45,
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 2
               }
             ]
           }
@@ -2149,6 +2277,7 @@
               {
                 "kind": "damage",
                 "amount": 20,
+                "offenseMultiplierPercent": 90,
                 "critChance": 1
               }
             ]
@@ -2161,6 +2290,7 @@
               {
                 "kind": "damage",
                 "amount": 27,
+                "offenseMultiplierPercent": 100,
                 "critChance": 1
               }
             ]
@@ -2173,6 +2303,7 @@
               {
                 "kind": "damage",
                 "amount": 34,
+                "offenseMultiplierPercent": 110,
                 "critChance": 1
               }
             ]
@@ -2224,29 +2355,32 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "stealthed"
+                "statusEffectId": "stealthed",
+                "durationTurns": 2
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 7,
+            "mpCost": 8,
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "stealthed"
+                "statusEffectId": "stealthed-ii",
+                "durationTurns": 2
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 8,
+            "mpCost": 10,
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "stealthed"
+                "statusEffectId": "stealthed-iii",
+                "durationTurns": 2
               }
             ]
           }
@@ -2275,7 +2409,7 @@
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 9,
+            "mpCost": 10,
             "effects": [
               {
                 "kind": "summon",
@@ -2286,7 +2420,7 @@
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 10,
+            "mpCost": 12,
             "effects": [
               {
                 "kind": "summon",
@@ -2303,10 +2437,6 @@
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 2,
-        "executeBonus": {
-          "hpPercentThreshold": 25,
-          "bonusDamageFlat": 5
-        },
         "ranks": [
           {
             "rank": 1,
@@ -2315,14 +2445,15 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 11,
+                "amount": 10,
                 "offenseMultiplierPercent": 80,
                 "extraHitChance": 0.4
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 3
               }
             ]
           },
@@ -2334,13 +2465,14 @@
               {
                 "kind": "damage",
                 "amount": 14,
-                "offenseMultiplierPercent": 80,
+                "offenseMultiplierPercent": 85,
                 "extraHitChance": 0.45
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 3
               }
             ]
           },
@@ -2352,13 +2484,14 @@
               {
                 "kind": "damage",
                 "amount": 18,
-                "offenseMultiplierPercent": 80,
+                "offenseMultiplierPercent": 90,
                 "extraHitChance": 0.5
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.8
+                "chance": 0.8,
+                "durationTurns": 3
               }
             ]
           }
@@ -2375,12 +2508,12 @@
           {
             "rank": 1,
             "unlockLevel": 20,
-            "mpCost": 13,
+            "mpCost": 12,
             "effects": [
               {
                 "kind": "damage",
                 "amount": 8,
-                "offenseMultiplierPercent": 60,
+                "offenseMultiplierPercent": 55,
                 "hitCountRange": {
                   "min": 1,
                   "max": 2
@@ -2389,7 +2522,8 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.6
+                "chance": 0.6,
+                "durationTurns": 3
               }
             ]
           },
@@ -2400,7 +2534,7 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 10,
+                "amount": 15,
                 "offenseMultiplierPercent": 60,
                 "hitCountRange": {
                   "min": 1,
@@ -2410,19 +2544,20 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.7
+                "chance": 0.7,
+                "durationTurns": 3
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 75,
-            "mpCost": 15,
+            "mpCost": 18,
             "effects": [
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 60,
+                "offenseMultiplierPercent": 65,
                 "hitCountRange": {
                   "min": 2,
                   "max": 3
@@ -2431,7 +2566,8 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "bleeding",
-                "chance": 0.8
+                "chance": 0.8,
+                "durationTurns": 3
               }
             ]
           }
@@ -2447,7 +2583,7 @@
         "cooldownTurns": 5,
         "executeBonus": {
           "hpPercentThreshold": 30,
-          "bonusDamageFlat": 15
+          "bonusDamageFlat": 30
         },
         "ranks": [
           {
@@ -2458,6 +2594,7 @@
               {
                 "kind": "damage",
                 "amount": 14,
+                "offenseMultiplierPercent": 100,
                 "scalesWithStatusStacks": {
                   "statusEffectId": "bleeding",
                   "percentPerStack": 5
@@ -2465,7 +2602,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding"
+                "statusEffectId": "bleeding",
+                "durationTurns": 3
               }
             ]
           },
@@ -2477,6 +2615,7 @@
               {
                 "kind": "damage",
                 "amount": 19,
+                "offenseMultiplierPercent": 115,
                 "scalesWithStatusStacks": {
                   "statusEffectId": "bleeding",
                   "percentPerStack": 5
@@ -2484,7 +2623,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding"
+                "statusEffectId": "bleeding",
+                "durationTurns": 3
               }
             ]
           },
@@ -2496,6 +2636,7 @@
               {
                 "kind": "damage",
                 "amount": 24,
+                "offenseMultiplierPercent": 135,
                 "scalesWithStatusStacks": {
                   "statusEffectId": "bleeding",
                   "percentPerStack": 5
@@ -2503,7 +2644,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding"
+                "statusEffectId": "bleeding",
+                "durationTurns": 3
               }
             ]
           }
@@ -2630,7 +2772,7 @@
         "id": "summoner-summon-golem",
         "name": "Summon Golem",
         "description": "Summons a Stone Golem — high HP, moderate attack, high aggro (draws enemy attacks).",
-        "target": "self",
+        "target": "singleEnemy",
         "slot": 3,
         "isBuff": true,
         "cooldownTurns": 6,
@@ -2642,7 +2784,13 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem"
+                "summonCastId": "summoner-summon-golem",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 90
               }
             ]
           },
@@ -2653,7 +2801,13 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem"
+                "summonCastId": "summoner-summon-golem",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 18,
+                "offenseMultiplierPercent": 105
               }
             ]
           },
@@ -2664,7 +2818,13 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem"
+                "summonCastId": "summoner-summon-golem",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 26,
+                "offenseMultiplierPercent": 120
               }
             ]
           }
@@ -2686,7 +2846,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment"
+                "statusEffectId": "minion-empowerment",
+                "durationTurns": 99
               }
             ]
           },
@@ -2697,7 +2858,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-ii"
+                "statusEffectId": "minion-empowerment-ii",
+                "durationTurns": 99
               }
             ]
           },
@@ -2708,7 +2870,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-iii"
+                "statusEffectId": "minion-empowerment-iii",
+                "durationTurns": 99
               }
             ]
           }
@@ -2731,7 +2894,8 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp"
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
               },
               {
                 "kind": "damage",
@@ -2747,7 +2911,8 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp"
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
               },
               {
                 "kind": "damage",
@@ -2763,7 +2928,8 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp"
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
               },
               {
                 "kind": "damage",

@@ -213,18 +213,18 @@ describe("regular monster skills", () => {
   test("Slime's Acid Spit procs acid-burn and corroded together, Spider's Web Spit procs webbed", () => {
     expect(getMonsterSkill("acid-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
-      { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5, durationTurns: 2 },
     ]);
     expect(getMonsterSkill("web-spit").effects).toEqual([
       { kind: "damage", amount: 2 },
-      { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5 },
+      { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5, durationTurns: 2 },
     ]);
   });
 
   test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
     const skill = getMonsterSkill("guard-stance");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard" }]);
+    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }]);
   });
 
   test("actionWeights.normal is 70/30 for random archetypes, 100/0 for Zombie/Skeleton Warrior", () => {

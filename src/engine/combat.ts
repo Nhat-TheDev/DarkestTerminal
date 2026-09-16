@@ -484,13 +484,6 @@ function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, c
   return alive.map((t) => getActorByRef(t, ctx));
 }
 
-function effectsFor(skill: SkillDefinition, target: Actor): SkillEffect[] {
-  if (skill.effectsByRelation) {
-    return isPlayerSide(target) ? skill.effectsByRelation.ally : skill.effectsByRelation.enemy;
-  }
-  return skill.effects ?? [];
-}
-
 function ultimateEffectivenessMultiplier(fear: number): number {
   switch (getFearTier(fear)) {
     case 1:
@@ -520,7 +513,12 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
     for (const ref of livingMonsterRefs(combat, ctx)) {
       const enemy = getActorByRef(ref, ctx);
       resolveSkillEffect(
-        { kind: "damage", amount: def.onHitAoeDamage.amount, ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent },
+        {
+          kind: "damage",
+          amount: def.onHitAoeDamage.amount,
+          ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent,
+          offenseMultiplierPercent: def.onHitAoeDamage.offenseMultiplierPercent,
+        },
         source,
         enemy,
         { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " ") }
@@ -697,6 +695,10 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, log: LogEntry[]
   if (summon.actionsTaken < summon.maxActions && summon.hp > 0) return;
   log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
+  // Without this, ownedSummons()'s `hp > 0` filter keeps counting an action-expired summon toward
+  // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
+  // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
+  summon.hp = 0;
 }
 
 /** Living player-side actor (character or summon) with the lowest current HP% — Healer Spirit's default heal target. */
@@ -771,12 +773,33 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   };
   let brokeStealthThisCast = false;
 
-  // A "summon" effect is always self-only (it spawns off the caster's own stats, never the target's),
-  // so it's resolved once here rather than inside the per-target loop below — a skill that also has
-  // an allEnemies/allAllies component (e.g. Summoner's ultimate) would otherwise re-spawn once per target.
-  if (isCharacter(source)) {
-    for (const effect of skill.effects ?? []) {
-      if (effect.kind === "summon") spawnSummon(effect, source, combat, ctx, log);
+  // An effect with its own `target` resolves against a separate population from the skill's main
+  // target(s) — e.g. Summoner's ultimate needs its `summon` effect to always land on the caster while
+  // its `damage` effect still hits allEnemies. Resolved once here, per override effect, before the main
+  // per-target loop below (which skips every such effect via the `isOverrideEffect` check). A `summon`
+  // effect is always treated as an override — even with no explicit `target` — since it must always
+  // land on the caster regardless of what the skill's own target happens to be.
+  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
+  const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
+  if (overrideEffects.length > 0) {
+    const sourceRef: CombatantRef = isCharacter(source)
+      ? { kind: "character", id: source.id }
+      : isSummon(source)
+        ? { kind: "summon", id: source.id }
+        : { kind: "monster", id: source.id };
+    for (const effect of overrideEffects) {
+      const overrideTarget = effect.kind === "summon" ? (effect.target ?? "self") : effect.target!;
+      const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
+      for (const resolved of overrideTargets) {
+        if (effect.kind === "summon") {
+          if (isCharacter(source)) spawnSummon(effect, source, combat, ctx, log);
+          continue;
+        }
+        const overrideEnemyFacing = isPlayerSide(source) !== isPlayerSide(resolved);
+        if (overrideEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) continue;
+        if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
+        resolveOneDamageEffect(effect, skill, source, resolved, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
+      }
     }
   }
 
@@ -786,15 +809,19 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
       continue;
     }
-    if (isEnemyFacing && isCharacter(target) && effectsFor(skill, target).some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
+    const activeEffects = (skill.effects ?? []).filter((e) => !isOverrideEffect(e));
+    if (isEnemyFacing && isCharacter(target) && activeEffects.some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
       log.push({ text: t("combat.dodge", { target: target.name, actor: sourceName(source) }), kind: "info" });
       continue;
     }
 
-    for (const effect of effectsFor(skill, target)) {
+    for (const effect of activeEffects) {
+      if (effect.appliesToRelation) {
+        const targetIsAlly = isPlayerSide(target);
+        if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
+      }
       if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
       if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
-      if (effect.kind === "summon") continue; // already spawned once, above the target loop
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
