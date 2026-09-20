@@ -1,21 +1,28 @@
 import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
-import { withPageHint, digitHint } from "./keyHints";
+import { digitHint } from "./keyHints";
 import { t } from "../data/strings";
-import { listSaves, QUICKSAVE_ID, AUTOSAVE_ID, type SaveMeta } from "../engine/save";
-import { paginate, pageCount, clampPage } from "./pagination";
+import { getClass } from "../data/classes";
+import { listSlots, type SlotEntry } from "../engine/save";
+import type { Id } from "../types";
 
-function kindLabel(id: string): string {
-  if (id === QUICKSAVE_ID) return t("saveSelect.kindQuick");
-  if (id === AUTOSAVE_ID) return t("saveSelect.kindAuto");
-  return t("saveSelect.kindManual");
+export type SlotSelectMode = "new" | "continue";
+
+function formatPlayTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString();
+function slotNumber(id: Id): number {
+  return Number(id.replace("slot", ""));
 }
 
-export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> {
+/**
+ * "new" lists all five slots (an occupied one asks before it is overwritten); "continue" lists only
+ * the occupied ones. Resolves to the chosen slot id, or null on Esc.
+ */
+export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<Id | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "saveselect-root",
@@ -34,55 +41,58 @@ export function showSaveSelect(renderer: CliRenderer): Promise<SaveMeta | null> 
     const footer = new TextRenderable(renderer, { id: "saveselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
     root.add(footer);
 
-    const saves = listSaves();
-    let page = 0;
+    const slots: SlotEntry[] = listSlots().filter((slot) => mode === "new" || slot.meta !== null);
+    let pendingOverwrite: SlotEntry | null = null;
 
     function draw(): void {
-      const lines = [[colorChunk(t("saveSelect.title"), PALETTE.title)], []];
-      if (saves.length === 0) {
-        lines.push([colorChunk(t("saveSelect.empty"), PALETTE.dim)]);
-      } else {
-        const { pageItems, page: p, pages } = paginate(saves, page);
-        pageItems.forEach((save, i) => {
-          lines.push([
-            colorChunk(
-              t("saveSelect.entryLine", { i: i + 1, label: kindLabel(save.id), depth: save.floorDepth, level: save.partyLevel, time: formatTime(save.timestamp) }),
-              PALETTE.text
-            ),
-          ]);
-        });
-        if (pages > 1) lines.push([colorChunk(t("ui.pageIndicator", { page: p + 1, pages }), PALETTE.dim)]);
+      const lines = [[colorChunk(t(mode === "new" ? "saveSelect.titleNew" : "saveSelect.titleContinue"), PALETTE.title)], []];
+      slots.forEach((slot, i) => {
+        const n = slotNumber(slot.id);
+        if (!slot.meta) {
+          lines.push([colorChunk(t("saveSelect.emptyLine", { i: i + 1, slot: n }), PALETTE.dim)]);
+          return;
+        }
+        const { floorDepth, playTime, partyClassIds, timestamp } = slot.meta;
+        lines.push([colorChunk(t("saveSelect.entryLine", { i: i + 1, slot: n, depth: floorDepth, playTime: formatPlayTime(playTime) }), PALETTE.text)]);
+        lines.push([
+          colorChunk(t("saveSelect.entryDetail", { classes: partyClassIds.map((id) => getClass(id).name).join(", "), time: new Date(timestamp).toLocaleString() }), PALETTE.dim),
+        ]);
+      });
+      if (pendingOverwrite) {
+        lines.push([], [colorChunk(t("saveSelect.overwriteWarning", { slot: slotNumber(pendingOverwrite.id) }), PALETTE.title)]);
       }
       body.content = joinLines(lines);
-      const shown = paginate(saves, page).pageItems.length;
-      footer.content = joinLines([
-        highlightKeyHints(withPageHint(digitHint("saveSelect.hint", shown), pageCount(saves.length) > 1)),
-      ]);
+      footer.content = joinLines([highlightKeyHints(pendingOverwrite ? t("saveSelect.confirmHint") : digitHint("saveSelect.hint", slots.length))]);
     }
     draw();
 
+    const finish = (result: Id | null) => {
+      renderer.keyInput.off("keypress", onKey);
+      renderer.root.remove(root);
+      resolve(result);
+    };
+
     const onKey = (key: KeyEvent) => {
-      if (key.name === "escape") {
-        renderer.keyInput.off("keypress", onKey);
-        renderer.root.remove(root);
-        resolve(null);
-        return;
-      }
-      if (key.name === "left" || key.name === "right") {
-        if (pageCount(saves.length) > 1) {
-          page = clampPage(page + (key.name === "right" ? 1 : -1), saves.length);
+      if (pendingOverwrite) {
+        if (key.name === "1") finish(pendingOverwrite.id);
+        else if (key.name === "escape") {
+          pendingOverwrite = null;
           draw();
         }
         return;
       }
-      const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
-      const { pageItems } = paginate(saves, page);
-      const save = digit !== null ? pageItems[digit - 1] : undefined;
-      if (save) {
-        renderer.keyInput.off("keypress", onKey);
-        renderer.root.remove(root);
-        resolve(save);
+      if (key.name === "escape") {
+        finish(null);
+        return;
       }
+      const slot = /^[1-9]$/.test(key.name) ? slots[Number(key.name) - 1] : undefined;
+      if (!slot) return;
+      if (mode === "new" && slot.meta) {
+        pendingOverwrite = slot;
+        draw();
+        return;
+      }
+      finish(slot.id);
     };
     renderer.keyInput.on("keypress", onKey);
   });

@@ -1,5 +1,5 @@
 import type { Game } from "../../engine/game";
-import { autoSave } from "../../engine/save";
+import { saveRun } from "../../engine/save";
 import type { UiState } from "../state";
 
 export interface ScreenContext {
@@ -21,7 +21,7 @@ export interface ScreenContext {
 export function advanceFloorWithAutoSave(ctx: ScreenContext): void {
   const depthBefore = ctx.game.state.floor.depth;
   ctx.game.advanceToNextFloor();
-  if (ctx.game.state.floor.depth > depthBefore) autoSave(ctx.game);
+  if (ctx.game.state.floor.depth > depthBefore) saveRun(ctx.game);
 }
 
 /**

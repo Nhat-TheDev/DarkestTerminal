@@ -10,7 +10,7 @@ const FOOTER_KEYS = Object.keys(STRINGS).filter(
   (k) =>
     k.startsWith("ui.footer") ||
     k.startsWith("ui.hint") ||
-    ["ui.detailFooter", "ui.saveMenuFooter", "ui.roomRewardFooter", "ui.characterInfoFooter", "mainMenu.chooseHint", "mainMenu.continueHint", "mainMenu.pressAnyKey", "charSelect.hint", "charSelect.readyHint", "abilitySelect.hint", "saveSelect.hint"].includes(k)
+    ["ui.detailFooter", "ui.saveMenuFooter", "ui.roomRewardFooter", "ui.characterInfoFooter", "mainMenu.chooseHint", "mainMenu.continueHint", "mainMenu.pressAnyKey", "charSelect.hint", "charSelect.readyHint", "abilitySelect.hint", "saveSelect.hint", "saveSelect.confirmHint"].includes(k)
 );
 
 describe("key-hint grammar (R2/R3)", () => {

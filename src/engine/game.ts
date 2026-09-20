@@ -59,12 +59,18 @@ export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
 
+  /** Save slot this run writes to; null for runs that aren't persisted (tests, dev tools). */
+  public currentSaveSlot: Id | null = null;
+  private readonly playTimeBaseSec: number;
+  private readonly sessionStart = Date.now();
+
   constructor(
     seed = Date.now(),
     classIds?: Id[],
-    restore?: { state: GameState; monsters: Monster[]; rngState: number },
+    restore?: { state: GameState; monsters: Monster[]; rngState: number; playTimeSec: number },
     abilityIds?: (Id | null)[]
   ) {
+    this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
       rng.setState(restore.rngState);
@@ -139,6 +145,11 @@ export class Game {
       character.mp = character.maxMp;
     }
     this.checkEntryRoomAmbush();
+  }
+
+  /** Seconds played across every session of this run: the saved total plus the time since this Game was created. */
+  playTimeSec(): number {
+    return this.playTimeBaseSec + Math.floor((Date.now() - this.sessionStart) / 1000);
   }
 
   private checkEntryRoomAmbush(): void {

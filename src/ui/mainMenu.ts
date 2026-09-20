@@ -3,7 +3,7 @@ import { PALETTE, boldColorChunk, colorChunk, joinLines, highlightKeyHints } fro
 import { joinHints } from "./keyHints";
 import { renderBigTextStacked } from "./bigText";
 import { t } from "../data/strings";
-import { listSaves, APP_VERSION } from "../engine/save";
+import { listSlots, APP_VERSION } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
 
@@ -74,7 +74,7 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
     });
     root.add(hint);
 
-    const hasSaves = listSaves().length > 0;
+    const hasSaves = listSlots().some((slot) => slot.meta !== null);
 
     // Pre-game screens have no `App` footer bar, so they anchor their own in the same bottom-left
     // spot the in-game one occupies — the key hints never move between screens.

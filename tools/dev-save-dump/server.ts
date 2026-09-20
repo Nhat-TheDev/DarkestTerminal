@@ -20,7 +20,7 @@ import { ARTIFACTS, getArtifact, formatArtifactEffect } from "../../src/data/art
 import { getItem } from "../../src/data/items";
 import { getEvent } from "../../src/data/events";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "../../src/engine/party";
-import { writeDevDumpSave, loadSave } from "../../src/engine/save";
+import { writeDevDumpSave, loadSave, firstFreeSlotId } from "../../src/engine/save";
 import { SAVE_DIR } from "../../src/engine/paths";
 import { BALANCE } from "../../src/data/balanceConfig";
 import type { GameState, Id } from "../../src/types";
@@ -265,7 +265,8 @@ async function handleGenerate(req: Request): Promise<Response> {
   if (!Number.isFinite(floorDepth)) return badRequest(`floor must be a number, got "${body.floor}".`);
   if (!Number.isFinite(seed)) return badRequest(`seed must be a number, got "${body.seed}".`);
   const roomArg = typeof body.room === "string" && body.room.length > 0 ? body.room : "entry";
-  const saveId = typeof body.id === "string" && body.id.length > 0 ? body.id : `dev-dump-${Date.now()}`;
+  const saveId = typeof body.id === "string" && body.id.length > 0 ? body.id : firstFreeSlotId();
+  if (saveId === null) return badRequest("All save slots are full — pass an explicit id (e.g. slot1) to overwrite one.");
   if (!SAFE_SAVE_ID.test(saveId)) return badRequest(`id must match ${SAFE_SAVE_ID} (letters, digits, "-", "_" only), got "${saveId}".`);
 
   const members = validateParty(body.party);

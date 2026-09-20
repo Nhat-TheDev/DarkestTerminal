@@ -5,8 +5,8 @@ import { ABILITIES } from "../data/abilities";
 import { SAVE_DIR } from "./paths";
 
 /**
- * `profile.json` — the one piece of state that survives permadeath's save-wipe
- * (`deleteSavesForRun`). A single global file per install, shared by every save slot, never part of
+ * `profile.json` — the one piece of state that survives permadeath's slot-clear
+ * (`deleteSlot`). A single global file per install, shared by every save slot, never part of
  * any `SaveFile`. `11-abilities.md` §11.1 "The persistent profile".
  * Never imports from `./save` or `./game` — `save.ts` imports `Game`, which imports this module, so
  * a dependency in that direction would be circular (`SAVE_DIR` lives in `./paths` for exactly that
