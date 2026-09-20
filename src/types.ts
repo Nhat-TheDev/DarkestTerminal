@@ -137,7 +137,11 @@ export interface GrowthWeightsData {
 export interface CharacterClass {
   id: Id;
   name: string;
+  /** Player-facing summary of the class's role and fantasy — what it feels like to play,
+      not a recap of its stats or skill names. Shown at character select. */
   description: string;
+  /** Short team-role labels ("Tank", "Healer", "AoE"), rendered as chips in the class-detail panel. */
+  roleTags: string[];
   baseMaxHp: number;
   baseMaxMp: number;
   baseAttack: number;
@@ -217,13 +221,20 @@ export interface ItemDefinition {
 export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
 
 export type ArtifactEffect =
-  | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp"; amount: number }
+  /** `minPercent`: the applied boost is whichever has the larger magnitude of `amount` or `base * minPercent / 100`,
+      where `base` is the character's own class-base-plus-level-growth value for `stat` (before any Artifact/Ability/status/Exhausted modifier) —
+      so a flat boost stays meaningful once that stat has grown well past where `amount` alone would be negligible,
+      the same idea as `SkillEffect.minPercent` for status effects. Absent = today's flat-only behavior. Currently
+      only set by `data/abilities.json` entries; Artifacts don't use it. */
+  | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp"; amount: number; minPercent?: number }
   | { kind: "reflectDamage"; percent: number }
   | { kind: "poisonOnHit"; chance: number }
   | { kind: "lifesteal"; percent: number }
   | { kind: "dodgeChance"; chance: number }
-  | { kind: "healOnKill"; amount: number }
-  | { kind: "autoDamage"; amount: number }
+  /** `minPercent`: the heal is whichever has the larger magnitude of `amount` or `baseMaxHp * minPercent / 100` (the bearer's class-base-plus-level max HP, not the live one), so a flat heal stays meaningful as max HP grows — the same floor idea as `statBoost.minPercent`. Absent = flat `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
+  | { kind: "healOnKill"; amount: number; minPercent?: number }
+  /** `offenseMultiplierPercent`: when set, the tick is a real `damage` resolution — `amount` + the bearer's BASE `magicPower` (if `isMagic`) or `attack` (otherwise, class base plus level growth, ignoring live buffs/equipment) times this percent, mitigated by the target's defense, same as `SkillEffect.offenseMultiplierPercent`. Absent = the legacy fixed, unmitigated `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
+  | { kind: "autoDamage"; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
@@ -246,7 +257,7 @@ export interface ArtifactDefinition {
 /** Effect kinds only Abilities can use — either genuinely new (`alwaysHit`) or a `statBoost` targeting a stat `ArtifactEffect`'s own `statBoost` can't (`aggro`/`speed`/`magicPower`). See `docs/gameplay-decisions/11-abilities.md` §11.1. */
 export type AbilityOnlyEffect =
   | { kind: "alwaysHit"; chance: number }
-  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number };
+  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number; minPercent?: number };
 
 /** Reuses every `ArtifactEffect` kind except `curseAggroBoost` (cursed-Artifact-only) — Abilities are never cursed — plus `AbilityOnlyEffect`. */
 export type AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect;
@@ -428,12 +439,23 @@ export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass"
 export interface MonsterArchetype {
   id: Id;
   name: string;
+  /** Player-facing flavor only — what the thing looks or feels like in the room. Never mechanics,
+   *  never a number, never another archetype or skill by name: see "Writing `description` text" in
+   *  `docs/gameplay-decisions/02-monster.md` for why each of those is banned. */
+  description: string;
   baseHp: number;
   baseAttack: number;
   baseDefense: number;
   baseSpeed: number;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  /** Every role this archetype can spawn as. Exactly one of:
+   *  `["normal"]` (trash), `["normal","elite","boss"]` (triple-role),
+   *  `["elite","boss"]` (guard-only), `["boss"]` + `finalBoss: true` (final boss).
+   *  Must match the keys of `actionWeights` exactly. */
+  roles: MonsterTier[];
+  /** True for the single scripted final boss. Never enters any random roll. */
+  finalBoss?: boolean;
   /** Every skill this archetype can roll, at any tier. Which tier each one is usable at, and how
    *  often, is `actionWeights` — a skill is available at a tier exactly when that tier's weights
    *  name it. Does not include `executeSkillId`, which never goes through the weighted roll. */
@@ -442,13 +464,6 @@ export interface MonsterArchetype {
   /** The charged finisher: telegraphs for a turn, then always releases, then cools down. Outside
    *  the weighted roll entirely, which is why it is a field of its own rather than a skillIds entry. */
   executeSkillId?: Id;
-  guardOnly?: boolean;
-  /**
-   * Never enters any random roll — spawned only by name from a scripted call site. `guardOnly`
-   * can't express this (Skeleton Guard is guard-room-eligible without it), and being able to act
-   * at both elite and boss tier is otherwise exactly what marks an archetype as guard-room material.
-   */
-  scriptedOnly?: boolean;
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: `"basicAttack"` plus any id from `skillIds`, mapped to its relative weight. Keys are
    *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of

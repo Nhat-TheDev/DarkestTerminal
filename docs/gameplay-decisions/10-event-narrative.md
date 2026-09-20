@@ -1062,9 +1062,9 @@ explicit requirement — "don't rob the player's own judgment" — intact even w
 citable answers to some of it.
 
 **The fight — built**: `the-founder` (`data/monsters.json`), a Boss-tier `MonsterArchetype` with
-`guardOnly: true` and `scriptedOnly: true`, so it's excluded from every normal Elite/Boss-room roll
-and only ever spawned by `Game.enterFounderFight()`. `scriptedOnly` is what carries that exclusion:
-`GUARD_ROOM_ARCHETYPES` (`src/data/floor.ts`) otherwise treats "can act at both elite and boss tier"
+`roles: ["boss"]` and `finalBoss: true`, so it's excluded from every normal Elite/Boss-room roll
+and only ever spawned by `Game.enterFounderFight()`. `finalBoss` is what carries that exclusion:
+`GUARD_ROOM_ARCHETYPES` (`src/data/monsters.ts`) otherwise treats "elite+boss roles"
 as the definition of guard-room material, and the founder can. "Stronger than
 any existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
 depth-scaling every monster already uses — no bespoke stat multiplier needed. 4 new skills, all
@@ -1142,7 +1142,7 @@ layer) and the boss kit it flagged as undesigned:
   kill, so the mechanism had to be an explicit per-call-site opt-in, never inferred from the rarity
   table name alone — confirmed with a dedicated test.
 - **Floor 120's boss**, `the-founder` (`data/monsters.json`, `data/monster-skills.json`,
-  `data/sprites.json`): `guardOnly: true` plus `scriptedOnly: true`, so it's excluded from every
+  `data/sprites.json`): `roles: ["boss"]` plus `finalBoss: true`, so it's excluded from every
   normal Elite/Boss-room roll and only ever spawned directly by `Game.enterFounderFight()`. The
   second flag is load-bearing: it has a full skill kit like every other Boss archetype, and
   `GUARD_ROOM_ARCHETYPES` would otherwise read that as guard-room eligibility. Stats are

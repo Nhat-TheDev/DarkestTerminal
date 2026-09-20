@@ -12,7 +12,7 @@ import {
   totalReflectDamagePercent,
   totalLifestealPercent,
   totalHealOnKill,
-  autoDamageAmounts,
+  autoDamageEntries,
   totalExpBoostPercent,
   fearResistMultiplier,
   totalCooldownReduction,
@@ -93,15 +93,16 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.equippedArtifactIds.push("immortal-heart");
     expect(totalReflectDamagePercent(c)).toBe(15);
-    expect(artifactStatBoostSum(c).defense).toBe(10);
-    expect(artifactStatBoostSum(c).maxHp).toBe(60);
+    const base = { attack: c.attack, defense: c.defense, maxHp: c.maxHp, maxMp: c.maxMp };
+    expect(artifactStatBoostSum(c, base).defense).toBe(10);
+    expect(artifactStatBoostSum(c, base).maxHp).toBe(60);
 
     c.equippedArtifactIds.push("reapers-covenant");
-    expect(totalHealOnKill(c)).toBe(25);
+    expect(totalHealOnKill(c, c.maxHp)).toBe(25);
     expect(totalLifestealPercent(c)).toBe(8);
 
     c.equippedArtifactIds.push("thunder-totem", "thunder-totem");
-    expect(autoDamageAmounts(c)).toEqual([6, 6]);
+    expect(autoDamageEntries(c).map((e) => e.effect.amount)).toEqual([6, 6]);
   });
 
   test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction are per-character", () => {

@@ -378,7 +378,7 @@ function monsterBalancePointsClient(base) {
  * docs/gameplay-decisions/02-monster.md "Monster Balance Points". */
 const MONSTER_TIER_LABELS = { weak: "Weak", medium: "Medium", strong: "Strong", eliteBoss: "Elite/Boss" };
 function monsterTierBucket(monsterMeta) {
-  return monsterMeta.guardOnly ? "eliteBoss" : monsterMeta.powerTier || "other";
+  return monsterMeta.roles.includes("normal") ? monsterMeta.powerTier || "other" : "eliteBoss";
 }
 
 /** Fetches every class's computed Balance Points (level 1) and averages them — used as the "vs. avg" comparison
@@ -395,7 +395,7 @@ async function computeMonsterTierAverages() {
   const buckets = {};
   await Promise.all(
     META.monsters.map(async (m) => {
-      const tier = m.guardOnly ? "elite" : "normal";
+      const tier = m.roles[0];
       const data = await api(`/api/monster?archetypeId=${m.id}&depth=1&tier=${tier}`);
       const bucket = monsterTierBucket(m);
       (buckets[bucket] ||= []).push(data.balancePoints);
@@ -533,7 +533,8 @@ function populateClassSelect(sel) {
 function populateMonsterSelect(sel) {
   sel.innerHTML = "";
   for (const m of META.monsters) {
-    const label = m.name + (m.guardOnly ? " [guard-only]" : "") + (m.powerTier ? " [" + m.powerTier + "]" : "") + (m.isGuardCapable ? " ★elite/boss-capable" : "");
+    const roleTag = m.finalBoss ? " [final-boss]" : !m.roles.includes("normal") ? " [guard-only]" : "";
+    const label = m.name + roleTag + (m.powerTier ? " [" + m.powerTier + "]" : "") + (m.isGuardCapable ? " ★elite/boss-capable" : "");
     sel.appendChild(el("option", { value: m.id, text: label }));
   }
 }
@@ -597,20 +598,22 @@ function syncTierOptions(archetypeSelId, tierSelId) {
   const archetypeSel = $("#" + archetypeSelId);
   const tierSel = $("#" + tierSelId);
   const archetype = META.monsters.find((m) => m.id === archetypeSel.value);
-  const capable = archetype ? archetype.isGuardCapable : false;
-  const guardOnly = archetype ? archetype.guardOnly : false;
+  const roles = archetype ? archetype.roles : ["normal"];
+  const canNormal = roles.includes("normal");
+  const canElite = roles.includes("elite");
+  const canBoss = roles.includes("boss");
   for (const opt of $$("option", tierSel)) {
     if (opt.value === "elite" || opt.value === "boss") {
-      opt.disabled = !capable;
-      opt.textContent = (opt.value === "elite" ? "Elite" : "Boss") + (capable ? "" : " (archetype has no elite/boss kit)");
+      const allowed = opt.value === "elite" ? canElite : canBoss;
+      opt.disabled = !allowed;
+      opt.textContent = (opt.value === "elite" ? "Elite" : "Boss") + (allowed ? "" : " (archetype has no " + opt.value + " role)");
     }
     if (opt.value === "normal") {
-      opt.disabled = guardOnly;
-      opt.textContent = "Normal" + (guardOnly ? " (this archetype never spawns at normal tier — guard-only)" : "");
+      opt.disabled = !canNormal;
+      opt.textContent = "Normal" + (canNormal ? "" : " (this archetype never spawns at normal tier — guard-only)");
     }
   }
-  if (!capable && tierSel.value !== "normal") tierSel.value = "normal";
-  if (guardOnly && tierSel.value === "normal") tierSel.value = "elite";
+  if (!roles.includes(tierSel.value)) tierSel.value = roles[0];
 }
 
 function fearTier() {
@@ -726,7 +729,7 @@ function buildOverviewCards(charData, monData, tier, avgBalancePoints, tierAvgIn
       el("div", {}, [el("b", { text: fmt(charData.final.aggro) }), "aggro"]),
       el("div", {}, [el("b", { text: fmt(charData.final.speed) }), "speed"]),
       el("div", {}, [el("b", { text: fmt(charData.balancePoints, 2) }), "Balance Points"]),
-      ratioStatDiv(charData.balancePoints, avgBalancePoints, "vs. avg (6 classes)"),
+      ratioStatDiv(charData.balancePoints, avgBalancePoints, "vs. avg (" + META.classes.length + " classes)"),
     ]),
   ]);
   const charDetails = el("details", {}, [el("summary", { text: "Base → growth breakdown" })]);
@@ -968,7 +971,7 @@ function buildClassBaseEditCard(classId, data, avgBalancePoints) {
   card.appendChild(
     el("div", { class: "stat-grid" }, [
       el("div", {}, [scoreVal, "Balance Points"]),
-      el("div", {}, [scoreRatio, "vs. avg (6 classes)"]),
+      el("div", {}, [scoreRatio, "vs. avg (" + META.classes.length + " classes)"]),
     ])
   );
 
@@ -1035,7 +1038,7 @@ function buildClassBaseEditCard(classId, data, avgBalancePoints) {
 }
 
 function buildClassGrowthEditCard(classId, clsMeta) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Growth weights (trọng số) — saves to data/classes.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Growth weights — saves to data/classes.json" })]);
   const growthIds = ["edit-gwAttack", "edit-gwDefense", "edit-gwMaxHp", "edit-gwMaxMp", "edit-gwMagicPower"];
   const growthTotalEl = el("b", { text: fmt(clsMeta.growthWeightTotal, 2) });
   function recomputeGrowthTotal() {
@@ -1184,7 +1187,7 @@ function buildMonsterExpEditCard(archetypeId, data) {
 }
 
 function buildMonsterActionWeightsEditCard(archetypeId, data, tier) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Action weights (trọng số, tier: " + tier + ") — saves to data/monsters.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Action weights (tier: " + tier + ") — saves to data/monsters.json" })]);
   if (!data.actionWeights) {
     card.appendChild(el("p", { class: "hint", text: "No actionWeights defined for this archetype/tier." }));
     return card;

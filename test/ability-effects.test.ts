@@ -1,10 +1,12 @@
 import { describe, test, expect } from "bun:test";
-import { getSkill } from "../src/data/classes";
+import { getSkill, getClass } from "../src/data/classes";
 import { Rng } from "../src/engine/rng";
-import { startCombat, applySkillEffects } from "../src/engine/combat";
-import { recomputeCharacterStats } from "../src/engine/party";
-import { abilityWidenedStatBoost, alwaysHitChance } from "../src/engine/artifacts";
-import { ABILITIES, getAbility, rollAbility } from "../src/data/abilities";
+import { startCombat, applySkillEffects, resolveRound } from "../src/engine/combat";
+import { mitigatedOffense } from "../src/engine/resolver";
+import { recomputeCharacterStats, statsForLevel, characterBaseStats } from "../src/engine/party";
+import { applyArtifactHealOnKill } from "../src/engine/combatHooks";
+import { abilityWidenedStatBoost, alwaysHitChance, totalHealOnKill } from "../src/engine/artifacts";
+import { ABILITIES, getAbility, rollAbility, formatAbilityEffect } from "../src/data/abilities";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, isAbilityUnlocked, type Profile } from "../src/engine/profile";
 import { Game } from "../src/engine/game";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -14,14 +16,39 @@ import { CLASSES } from "../src/data/classes";
 import { buildRewardEntries } from "../src/ui/state";
 import type { LogEntry } from "../src/types";
 
+/** Expected delta of an Ability `statBoost` on a pre-equipment `base`, per the documented minPercent rule. Deliberately independent of the engine so the test checks the hook against the data, and data edits can't silently break it again. */
+function expectedAbilityStatBoost(abilityId: string, stat: string, base: number): number {
+  const effect = getAbility(abilityId).effects.find((e) => e.kind === "statBoost" && "stat" in e && e.stat === stat) as
+    | { amount: number; minPercent?: number }
+    | undefined;
+  if (!effect) throw new Error(`test setup: ability "${abilityId}" has no statBoost for "${stat}"`);
+  if (effect.minPercent === undefined) return effect.amount;
+  return Math.max(effect.amount, Math.round((base * effect.minPercent) / 100));
+}
+
 describe("Abilities: stat boosts", () => {
   test("statBoost through an equipped Ability applies via the same hook Artifacts use (attack/defense/maxHp/maxMp)", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     const baseAttack = c.attack;
-    c.equippedAbilityId = "battle-instinct"; // statBoost attack +4
+    c.equippedAbilityId = "battle-instinct";
     recomputeCharacterStats(c, 100);
-    expect(c.attack).toBe(baseAttack + 4);
+    expect(c.attack).toBe(baseAttack + expectedAbilityStatBoost("battle-instinct", "attack", baseAttack));
+  });
+
+  test("the minPercent floor is measured against the raw base stat, not the Exhausted-reduced one", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.level = 100;
+    const base = characterBaseStats(c);
+    c.equippedAbilityId = null;
+    recomputeCharacterStats(c, 0);
+    const exhaustedAttack = c.attack;
+    expect(exhaustedAttack).toBeLessThan(base.attack); // satiety 0 really is penalizing
+
+    c.equippedAbilityId = "battle-instinct";
+    recomputeCharacterStats(c, 0);
+    expect(c.attack - exhaustedAttack).toBe(expectedAbilityStatBoost("battle-instinct", "attack", base.attack));
   });
 
   test("Ability-only statBoost stats (aggro/speed/magicPower) apply via the widened hook", () => {
@@ -31,27 +58,125 @@ describe("Abilities: stat boosts", () => {
     const baseAggro = c.aggro;
     const baseMagicPower = c.magicPower;
 
-    c.equippedAbilityId = "eye-of-the-storm"; // autoDamage 12 + statBoost aggro +15
+    c.equippedAbilityId = "eye-of-the-storm"; // autoDamage + statBoost aggro
     recomputeCharacterStats(c, 100);
-    expect(c.aggro).toBe(baseAggro + 15);
+    expect(c.aggro).toBe(baseAggro + expectedAbilityStatBoost("eye-of-the-storm", "aggro", baseAggro));
 
-    c.equippedAbilityId = "restless-vigor"; // statBoost speed +3
+    c.equippedAbilityId = "restless-vigor"; // statBoost speed
     recomputeCharacterStats(c, 100);
-    expect(c.speed).toBe(baseSpeed + 3);
+    expect(c.speed).toBe(baseSpeed + expectedAbilityStatBoost("restless-vigor", "speed", baseSpeed));
 
-    c.equippedAbilityId = "arcane-aptitude"; // statBoost magicPower +4
+    c.equippedAbilityId = "arcane-aptitude"; // statBoost magicPower
     recomputeCharacterStats(c, 100);
-    expect(c.magicPower).toBe(baseMagicPower + 4);
+    expect(c.magicPower).toBe(baseMagicPower + expectedAbilityStatBoost("arcane-aptitude", "magicPower", baseMagicPower));
   });
 
   test("no Ability equipped contributes nothing", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.equippedAbilityId = null;
-    expect(abilityWidenedStatBoost(c, "aggro")).toBe(0);
-    expect(abilityWidenedStatBoost(c, "speed")).toBe(0);
-    expect(abilityWidenedStatBoost(c, "magicPower")).toBe(0);
+    expect(abilityWidenedStatBoost(c, "aggro", c.aggro)).toBe(0);
+    expect(abilityWidenedStatBoost(c, "speed", c.speed)).toBe(0);
+    expect(abilityWidenedStatBoost(c, "magicPower", c.magicPower)).toBe(0);
     expect(alwaysHitChance(c)).toBe(0);
+  });
+});
+
+describe("Abilities: healOnKill and autoDamage scale off the bearer's base stats", () => {
+  test("healOnKill takes the larger of the flat amount and minPercent of the bearer's base max HP", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedAbilityId = "reapers-instinct";
+    const effect = getAbility("reapers-instinct").effects.find((e) => e.kind === "healOnKill") as { amount: number; minPercent: number };
+
+    c.level = 1;
+    expect(totalHealOnKill(c, characterBaseStats(c).maxHp)).toBe(effect.amount);
+
+    c.level = 100;
+    const base = characterBaseStats(c).maxHp;
+    expect(totalHealOnKill(c, base)).toBe(Math.max(effect.amount, Math.round((base * effect.minPercent) / 100)));
+    expect(Math.round((base * effect.minPercent) / 100)).toBeGreaterThan(effect.amount);
+  });
+
+  test("the on-kill heal ignores max HP the bearer has gained from equipment, ability or buffs", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedAbilityId = "reapers-instinct";
+    c.level = 100;
+    const effect = getAbility("reapers-instinct").effects.find((e) => e.kind === "healOnKill") as { minPercent: number };
+    const expected = Math.round((characterBaseStats(c).maxHp * effect.minPercent) / 100);
+
+    c.maxHp = 1_000_000;
+    c.hp = 1;
+    applyArtifactHealOnKill(c, []);
+    expect(c.hp - 1).toBe(expected);
+  });
+
+  function autoDamageTaken(abilityId: string, classId: string, liveStat: number | null): { taken: number; expected: number } {
+    const { ctx } = makeCtx();
+    const c = ctx.party.find((p) => p.classId === classId)!;
+    c.level = 100;
+    c.equippedAbilityId = abilityId;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = 50000;
+    rat.hp = 50000;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    if (liveStat !== null) {
+      c.attack = liveStat;
+      c.magicPower = liveStat;
+    }
+    const effect = getAbility(abilityId).effects.find((e) => e.kind === "autoDamage") as {
+      amount: number;
+      offenseMultiplierPercent: number;
+      isMagic?: boolean;
+    };
+    const base = characterBaseStats(c);
+    const offense = (effect.isMagic ? base.magicPower : base.attack) * (effect.offenseMultiplierPercent / 100);
+    const expected = Math.max(1, Math.round(effect.amount + mitigatedOffense(offense, rat.defense)));
+    resolveRound(combat, ctx);
+    return { taken: 50000 - rat.hp, expected };
+  }
+
+  test("autoDamage deals amount + offenseMultiplierPercent of the BASE stat, ignoring the live (buffed) stat", () => {
+    for (const [ability, classId] of [
+      ["thunderous-aura", "mage"],
+      ["eye-of-the-storm", "rogue"],
+    ] as const) {
+      const plain = autoDamageTaken(ability, classId, null);
+      const buffed = autoDamageTaken(ability, classId, 9999);
+      const drained = autoDamageTaken(ability, classId, 1);
+      expect(plain.taken).toBe(plain.expected);
+      expect(buffed.taken).toBe(plain.taken);
+      expect(drained.taken).toBe(plain.taken);
+    }
+  });
+
+  test("a magic autoDamage Ability reads base magicPower, a non-magic one reads base attack", () => {
+    // mage: high base magicPower, tiny base attack — rogue: the reverse
+    expect(autoDamageTaken("thunderous-aura", "mage", null).taken).toBeGreaterThan(autoDamageTaken("thunderous-aura", "rogue", null).taken);
+    expect(autoDamageTaken("eye-of-the-storm", "rogue", null).taken).toBeGreaterThan(autoDamageTaken("eye-of-the-storm", "mage", null).taken);
+  });
+
+  test("the combat log names the Ability that dealt the auto damage", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party.find((p) => p.classId === "mage")!;
+    c.equippedAbilityId = "thunderous-aura";
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text.includes("Thunderous Aura"))).toBe(true);
+  });
+});
+
+describe("Abilities: effect text surfaces the level scaling", () => {
+  test("every effect carrying minPercent or offenseMultiplierPercent shows its percentage in the description", () => {
+    for (const ability of ABILITIES) {
+      const text = formatAbilityEffect(ability);
+      for (const effect of ability.effects) {
+        const percent = "minPercent" in effect ? effect.minPercent : "offenseMultiplierPercent" in effect ? effect.offenseMultiplierPercent : undefined;
+        if (percent !== undefined) expect(text).toContain(`${percent}%`);
+      }
+    }
   });
 });
 
@@ -300,18 +425,22 @@ describe("Elite/Boss ability unlock: revealed on the room-clear reward screen, l
 describe("Abilities: run entry", () => {
   test("an equipped Ability's stat boost is live before the first combat, at full hp", () => {
     const classIds = CLASSES.map((c) => c.id);
-    // undying-will is +60 maxHp, battle-instinct is +4 attack.
+    // undying-will grants a maxHp statBoost (amount 60, minPercent 10); battle-instinct grants an
+    // attack statBoost (amount 5, minPercent 5) — each resolved against the character's
+    // pre-equipment base (a fresh run starts at level 1, satiety 100 → no Exhausted multiplier).
     const game = new Game(11, classIds, undefined, ["undying-will", "battle-instinct"]);
     const [vanguard, mage] = game.state.party;
+    const vanguardMaxHp = statsForLevel(getClass(vanguard!.classId), vanguard!.level).maxHp;
+    const mageAttack = statsForLevel(getClass(mage!.classId), mage!.level).attack;
 
-    expect(vanguard!.maxHp).toBe(200);
-    expect(vanguard!.hp).toBe(200);
-    expect(mage!.attack).toBe(7);
+    expect(vanguard!.maxHp).toBe(vanguardMaxHp + expectedAbilityStatBoost("undying-will", "maxHp", vanguardMaxHp));
+    expect(vanguard!.hp).toBe(vanguard!.maxHp);
+    expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 
     // The bonus must survive the first recompute rather than being clamped away into a permanent
     // hp shortfall — `recomputeCharacterStats` only ever clamps hp down.
     recomputeCharacterStats(vanguard!, game.state.satiety);
-    expect(vanguard!.hp).toBe(200);
+    expect(vanguard!.hp).toBe(vanguard!.maxHp);
   });
 
   test("two characters cannot enter a run carrying the same Ability", () => {

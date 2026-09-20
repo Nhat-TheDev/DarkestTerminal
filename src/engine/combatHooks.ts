@@ -4,6 +4,7 @@ import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, tota
 import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
+import { characterBaseStats } from "./party";
 
 export interface SkillEffectHooks {
   /** Fires once per damage effect that resolves against a target. */
@@ -40,7 +41,7 @@ export function applyArtifactLifesteal(bearer: Character, damageDealt: number, l
 }
 
 export function applyArtifactHealOnKill(bearer: Character, log: LogEntry[]): void {
-  const amount = totalHealOnKill(bearer);
+  const amount = totalHealOnKill(bearer, characterBaseStats(bearer).maxHp);
   if (amount <= 0) return;
   const before = bearer.hp;
   bearer.hp = Math.min(bearer.maxHp, bearer.hp + amount);

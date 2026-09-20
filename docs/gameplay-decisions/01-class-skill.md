@@ -390,7 +390,7 @@ Basic attack (slot 0): **Quick Shot** (`archer-quick-shot`), physical, bow.
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (flat) |
 |---|---|---|---|---|---|---|
 | 1 | `archer-aimed-shot` | Aimed Shot | singleEnemy | `damage` + high `critChance` (signature crit skill) | — | 100% Base ATK + 16 ATK |
-| 2 | `archer-overwatch` | Canh Chừng (Overwatch) | self | `applyStatusEffect "overwatched"` — see section 1.12.2 for the interrupt mechanic | ✅ | — |
+| 2 | `archer-overwatch` | Overwatch | self | `applyStatusEffect "overwatched"` — see section 1.12.2 for the interrupt mechanic | ✅ | — |
 | 3 | `archer-volley-shot` | Volley Shot | allEnemies | `damage`/enemy — **needs the new 60% offense multiplier**, see below | — | 60% Base ATK + 10 ATK |
 | 4 | `archer-crippling-shot` | Crippling Shot | singleEnemy | `damage` + chance to `applyStatusEffect "weakened"` (defense debuff, reused from section 1.7) | — | 100% Base ATK + 16 ATK |
 | 5 | `archer-deadeye-shot` | Deadeye Shot | singleEnemy | `damage` — **always hits**, `critChance` 100%, effectiveness scales down with fear via the ultimate formula (`04-fear-combat.md` §4) | — | 100% Base ATK + 16 ATK |
@@ -440,7 +440,7 @@ The breaking attack itself carries a bonus, via a new `StatusEffectDefinition` f
 - If the breaking attack is the **basic attack** → guaranteed critical hit (100% `critChance` for that hit only).
 - If the breaking attack is a **skill** → that skill's damage is increased by **+10%**.
 
-### 1.11 Summoner (Chiêu Hồi Sư) — minions that heal, tank, and deal damage, scaled off the caster's own stats
+### 1.11 Summoner — minions that heal, tank, and deal damage, scaled off the caster's own stats
 
 **Status: implemented.**
 
@@ -450,11 +450,11 @@ Basic attack (slot 0): **Totem Strike** (`summoner-totem-strike`), physical, wea
 
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (Summoner's own cast) |
 |---|---|---|---|---|---|---|
-| 1 | `summoner-summon-goblin` | Summon Goblin | self | summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns: 40% Ném Đá (Rock Throw — ranged `damage`, singleEnemy) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — (the cast itself deals no damage; see minion stats below) |
+| 1 | `summoner-summon-goblin` | Summon Goblin | self | summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns: 40% Rock Throw (ranged `damage`, singleEnemy) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — (the cast itself deals no damage; see minion stats below) |
 | 2 | `summoner-summon-spirit` | Summon Spirit | self | summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the ally with the lowest %HP; 40% chance to instead cast a party-wide heal (`allAllies`) that turn. Vanishes after 3 actions taken. | ✅ | — |
-| 3 | `summoner-summon-golem` | Summon Golem | self | summons `stone-golem` — high HP, moderate `attack`, **high `aggro` (15)**. Each turn: 40% Dậm Đất (Stomp — `damage`, allEnemies) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — |
+| 3 | `summoner-summon-golem` | Summon Golem | self | summons `stone-golem` — high HP, moderate `attack`, **high `aggro` (15)**. Each turn: 40% Stomp (`damage`, allEnemies) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — |
 | 4 | `summoner-mastery` | Mastery Summoner | self | **Rank 1**: `applyStatusEffect "minion-empowerment"` — buffs HP/`attack` of every minion currently active plus any summoned later this combat. **Rank 2/3**: a stronger `minion-empowerment-ii/iii` **+ passively raises `maxActiveMinions` to 2/3** — the cap increase applies purely from reaching that rank's `unlockLevel` (character level), independent of whether Mastery has actually been cast this combat; only the HP/attack buff itself needs casting. See 1.12.4. | ✅ | — |
-| 5 (ultimate) | `summoner-summon-imp` | Summon Hellfire Imp | self **+** allEnemies | summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has 60% chance to `applyStatusEffect "burning"`. Each turn: 40% Đòn Lửa Địa Ngục (Hellfire Strike — high single-target `damage` + new status "đau đớn"/agony = DoT + `attack` debuff) / 60% basic attack. Vanishes after 3 actions taken. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula | — | 100% Base MagicPower + 8 MagicPower (`isMagic`, the on-cast AoE burst only — the Imp's own later turns use its own stats, see below) |
+| 5 (ultimate) | `summoner-summon-imp` | Summon Hellfire Imp | self **+** allEnemies | summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has 60% chance to `applyStatusEffect "burning"`. Each turn: 40% Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) / 60% basic attack. Vanishes after 3 actions taken. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula | — | 100% Base MagicPower + 8 MagicPower (`isMagic`, the on-cast AoE burst only — the Imp's own later turns use its own stats, see below) |
 
 - Default cap (Mastery not yet at rank 2/3): **1 minion** active at a time — casting a new summon skill dismisses whichever minion is currently active. Rank 2 → up to **2** minions of **different types** simultaneously; rank 3 → up to **3**.
 - All 4 summon skills (slots 1, 2, 3, 5) cost a large amount of MP.
@@ -467,9 +467,9 @@ Basic attack (slot 0): **Totem Strike** (`summoner-totem-strike`), physical, wea
 
 | Minion | `maxHp` | `defense` | `aggro` | `attack` | `magicPower` | Signature skill | % Scale + Bonus amount (minion's own) |
 |---|---|---|---|---|---|---|
-| `goblin-thrower` | 30% base HP | 80% base DEF | 5 | 50% Base magicPower + 5/15/25 | 0 | Ném Đá (Rock Throw, singleEnemy) | 100% minion ATK + 8 |
-| `stone-golem` | 120% base HP | 80% base DEF | 15 | 60% Base magicPower + 10/25/40 | 0 | Dậm Đất (Stomp, allEnemies) | 90% minion ATK + 10 |
-| `hellfire-imp` | 80% base HP | 80% base DEF | 5 | 0 | 80% Base magicPower + 15/30/50 | Đòn Lửa Địa Ngục (Hellfire Strike, singleEnemy) | 120% minion magicPower + 10 |
+| `goblin-thrower` | 30% base HP | 80% base DEF | 5 | 50% Base magicPower + 5/15/25 | 0 | Rock Throw (singleEnemy) | 100% minion ATK + 8 |
+| `stone-golem` | 120% base HP | 80% base DEF | 15 | 60% Base magicPower + 10/25/40 | 0 | Stomp (allEnemies) | 90% minion ATK + 10 |
+| `hellfire-imp` | 80% base HP | 80% base DEF | 5 | 0 | 80% Base magicPower + 15/30/50 | Hellfire Strike (singleEnemy) | 120% minion magicPower + 10 |
 | `healer-spirit` | 50% base HP | 80% base DEF | 5 | 0 | 50% Base magicPower + 5/10/15 | Heal (default, singleAlly — lowest %HP) / party heal (40% proc, allAllies) | 100% minion MagicPower + 6 (single) / 80% minion MagicPower + 4 (party, per target) |
 
 *Every minion's basic attack (the other 60% of its action-weight roll) uses the same `attack`/`magicPower` value above with `amount: 0`, the same "100% base, no bonus" shape as every character's own basic attack (section 1.0).*

@@ -1,6 +1,7 @@
 import { bg, type TextChunk } from "@opentui/core";
 import { plainChunk } from "./theme";
-import type { MonsterTier } from "../types";
+import type { MonsterArchetype, MonsterTier } from "../types";
+import { MONSTER_ARCHETYPES } from "../data/monsters";
 import spritesJson from "../../data/sprites.json";
 
 export interface Sprite {
@@ -13,18 +14,24 @@ interface SpritesFile {
   monsters: Record<string, Sprite>;
   elites: Record<string, Sprite>;
   bosses: Record<string, Sprite>;
+  events: Record<string, Sprite>;
+  rest: Record<string, Sprite>;
+  treasure: Record<string, Sprite>;
 }
 
 const SPRITES = spritesJson as unknown as SpritesFile;
 
 export const MAX_UNIT_HEIGHT = 10;
 export const MAX_ELITE_HEIGHT = 11;
-export const MAX_BOSS_HEIGHT = 13;
+export const MAX_BOSS_HEIGHT = 15;
 
 export const CLASS_SPRITES: Record<string, Sprite> = SPRITES.classes;
 export const MONSTER_SPRITES: Record<string, Sprite> = SPRITES.monsters;
 export const ELITE_SPRITES: Record<string, Sprite> = SPRITES.elites;
 export const BOSS_SPRITES: Record<string, Sprite> = SPRITES.bosses;
+export const EVENT_SPRITES: Record<string, Sprite> = SPRITES.events;
+export const REST_SPRITES: Record<string, Sprite> = SPRITES.rest;
+export const TREASURE_SPRITES: Record<string, Sprite> = SPRITES.treasure;
 
 export const TOMBSTONE_SPRITE: Sprite = {
   rows: [
@@ -46,25 +53,10 @@ export const TOMBSTONE_SPRITE: Sprite = {
   },
 };
 
-export const CAMPFIRE_SPRITE: Sprite = {
-  rows: [
-    ".............",
-    "......Y......",
-    ".....YOY.....",
-    "....YOOOY....",
-    "...ROOOOOR...",
-    "....RRRRR....",
-    "...BB...BB...",
-    "..BB.....BB..",
-    ".............",
-  ],
-  palette: {
-    Y: "#f2c14e",
-    O: "#e2711d",
-    R: "#b23a1f",
-    B: "#5a3a22",
-  },
-};
+// Sourced from data/sprites.json (edit via the sprite editor tool's "rest"/"treasure" categories)
+// rather than hardcoded here, so they're actually reachable from the visual editor.
+export const CAMPFIRE_SPRITE: Sprite = REST_SPRITES["campfire"]!;
+export const TREASURE_CHEST_SPRITE: Sprite = TREASURE_SPRITES["chest"]!;
 
 export function spriteForClass(classId: string): Sprite {
   const sprite = CLASS_SPRITES[classId];
@@ -77,6 +69,38 @@ export function spriteForMonster(archetypeId: string, tier: MonsterTier): Sprite
   const sprite = table[archetypeId];
   if (!sprite) throw new Error(`No ${tier} sprite for monster archetype: ${archetypeId}`);
   return sprite;
+}
+
+/**
+ * Every role an archetype declares must have exactly one sprite, and no extras:
+ * ["normal"] = 1 normal sprite, ["elite","boss"] = elite + boss only,
+ * ["normal","elite","boss"] = all 3, final boss = boss only.
+ */
+export function assertMonsterSpritesConsistent(archetypes: MonsterArchetype[]): void {
+  for (const archetype of archetypes) {
+    const expected: MonsterTier[] = archetype.roles;
+    const tables: Record<MonsterTier, Record<string, Sprite>> = {
+      normal: MONSTER_SPRITES,
+      elite: ELITE_SPRITES,
+      boss: BOSS_SPRITES,
+    };
+    for (const tier of ["normal", "elite", "boss"] as MonsterTier[]) {
+      const has = tables[tier][archetype.id] !== undefined;
+      const wants = expected.includes(tier);
+      if (wants && !has) {
+        throw new Error(`data/sprites.json: "${archetype.id}" declares role "${tier}" but has no ${tier} sprite`);
+      }
+      if (!wants && has) {
+        throw new Error(`data/sprites.json: "${archetype.id}" has no role "${tier}" but ships a ${tier} sprite`);
+      }
+    }
+  }
+}
+
+assertMonsterSpritesConsistent(MONSTER_ARCHETYPES);
+
+export function spriteForEvent(eventId: string): Sprite | null {
+  return EVENT_SPRITES[eventId] ?? null;
 }
 
 export function spriteWidth(sprite: Sprite): number {
@@ -156,6 +180,8 @@ export const ALL_SPRITES: { name: string; sprite: Sprite; maxHeight: number }[] 
   ...Object.entries(MONSTER_SPRITES).map(([name, sprite]) => ({ name, sprite, maxHeight: MAX_UNIT_HEIGHT })),
   ...Object.entries(ELITE_SPRITES).map(([name, sprite]) => ({ name: `${name}-elite`, sprite, maxHeight: MAX_ELITE_HEIGHT })),
   ...Object.entries(BOSS_SPRITES).map(([name, sprite]) => ({ name: `${name}-boss`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(EVENT_SPRITES).map(([name, sprite]) => ({ name: `${name}-event`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(REST_SPRITES).map(([name, sprite]) => ({ name: `${name}-rest`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(TREASURE_SPRITES).map(([name, sprite]) => ({ name: `${name}-treasure`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   { name: "tombstone", sprite: TOMBSTONE_SPRITE, maxHeight: MAX_BOSS_HEIGHT },
-  { name: "campfire", sprite: CAMPFIRE_SPRITE, maxHeight: MAX_BOSS_HEIGHT },
 ];

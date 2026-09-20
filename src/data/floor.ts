@@ -1,6 +1,6 @@
 import type { Floor, Monster, Room, RoomType, MonsterArchetype } from "../types";
 import { spawnMonster } from "./monsters";
-import { MONSTER_ARCHETYPES } from "./monsters";
+import { COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES } from "./monsters";
 import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatterns";
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
@@ -49,11 +49,6 @@ function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
   used.add(name);
   return name;
 }
-
-const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => !a.guardOnly);
-// A guard room spawns at elite tier on most floors and boss tier on boss floors, so an archetype
-// is only eligible if it can actually act at both.
-const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.actionWeights?.elite && a.actionWeights?.boss && !a.scriptedOnly);
 
 type PowerTier = NonNullable<MonsterArchetype["powerTier"]>;
 

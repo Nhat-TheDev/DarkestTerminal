@@ -25,8 +25,11 @@ const STAT_LABEL: Record<string, string> = {
 
 function abilityEffectSummary(effect: AbilityEffect): string {
   switch (effect.kind) {
-    case "statBoost":
-      return t("effect.signedStat", { amount: signed(effect.amount), stat: STAT_LABEL[effect.stat] ?? effect.stat });
+    case "statBoost": {
+      const stat = STAT_LABEL[effect.stat] ?? effect.stat;
+      const flat = t("effect.signedStat", { amount: signed(effect.amount), stat });
+      return effect.minPercent === undefined ? flat : t("ability.effectMinPercentStat", { flat, percent: effect.minPercent, stat });
+    }
     case "reflectDamage":
       return t("artifact.effectReflectDamage", { percent: effect.percent });
     case "poisonOnHit":
@@ -36,9 +39,14 @@ function abilityEffectSummary(effect: AbilityEffect): string {
     case "dodgeChance":
       return t("artifact.effectDodgeChance", { chance: effect.chance });
     case "healOnKill":
-      return t("artifact.effectHealOnKill", { amount: effect.amount });
-    case "autoDamage":
-      return t("artifact.effectAutoDamage", { amount: effect.amount });
+      return effect.minPercent === undefined
+        ? t("artifact.effectHealOnKill", { amount: effect.amount })
+        : t("ability.effectHealOnKillMin", { amount: effect.amount, percent: effect.minPercent });
+    case "autoDamage": {
+      if (effect.offenseMultiplierPercent === undefined) return t("artifact.effectAutoDamage", { amount: effect.amount });
+      const stat = effect.isMagic ? "magicPower" : "attack";
+      return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
+    }
     case "expBoost":
       return t("artifact.effectExpBoost", { percent: effect.percent });
     case "fearResist":
@@ -81,7 +89,7 @@ export function abilitiesOfRarity(rarity: ArtifactRarity): AbilityDefinition[] {
   return ABILITIES.filter((a) => a.rarity === rarity);
 }
 
-/** Non-common abilities of `rarity` not already in `unlockedAbilityIds` — the roll only ever surfaces something new ("tỉ lệ rơi chỉ rơi những abilities chưa có trong pool chung"). */
+/** Non-common abilities of `rarity` not already in `unlockedAbilityIds` — the roll only ever surfaces something new. */
 export function availableAbilitiesOfRarity(rarity: ArtifactRarity, unlockedAbilityIds: Id[]): AbilityDefinition[] {
   return abilitiesOfRarity(rarity).filter((a) => !unlockedAbilityIds.includes(a.id));
 }

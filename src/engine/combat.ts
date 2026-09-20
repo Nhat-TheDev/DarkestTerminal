@@ -18,10 +18,11 @@ import type {
   PartyStateSnapshot,
 } from "../types";
 import { getSkill, getEffectiveSkill, effectiveSkillRank } from "../data/classes";
+import { characterBaseStats } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
-import { rollDodge, autoDamageAmounts, totalCooldownReduction, alwaysHitChance } from "./artifacts";
+import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
@@ -283,12 +284,22 @@ export function tagPartySnapshotRange(combat: CombatState, fromIndex: number, pa
 function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
   for (const character of ctx.party) {
     if (!character.isAlive) continue;
-    for (const amount of autoDamageAmounts(character)) {
+    for (const { effect, sourceName } of autoDamageEntries(character)) {
       const alive = livingMonsterRefs(combat, ctx);
       if (alive.length === 0) return;
       const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
-      target.hp = Math.max(0, target.hp - amount);
-      combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack" });
+      if (effect.offenseMultiplierPercent !== undefined) {
+        const base = characterBaseStats(character);
+        resolveSkillEffect(
+          { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
+          character,
+          target,
+          { log: combat.log, isMagic: effect.isMagic, skillName: sourceName, offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack }
+        );
+        continue;
+      }
+      target.hp = Math.max(0, target.hp - effect.amount);
+      combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
     }
   }
 }

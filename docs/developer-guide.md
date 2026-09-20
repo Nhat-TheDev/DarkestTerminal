@@ -59,7 +59,7 @@ of the code doesn't need to know the data comes from JSON.
 | File | Contents | Loader |
 |---|---|---|
 | `data/classes.json` | 6 classes (Vanguard/Mage/Rogue/Acolyte/Viking/Plague Doctor): stats + all 6 skills per class | `src/data/classes.ts` |
-| `data/monsters.json` | 15 monster archetypes (11 regular combat + 5 guard-room): base stats + AI pattern + `guardOnly` flag | `src/data/monsters.ts` |
+| `data/monsters.json` | 41 monster archetypes (30 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 5 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Consumable items (shared items + archetype-specific items, incl. the combat-unusable Exploration Kit) | `src/data/items.ts` |
@@ -67,7 +67,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts...) | `src/data/balanceConfig.ts` |
-| `data/sprites.json` | Pixel-art (character grid + palette) for the 6 classes + every monster archetype, with dedicated elite/boss variants for the guard-room archetypes | `src/ui/sprites.ts` |
+| `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI | `src/data/strings.ts` |
 
 ## 🗺️ Floor structure — generated at runtime
@@ -107,10 +107,10 @@ A dedicated panel right under the header, showing the party of 4 characters
 (left) and the monsters/boss in the current room (right), rendered as pixel
 art: **1 pixel = 1 character cell** (a space with a background color, no
 visible glyph). Characters/regular monsters are up to **10 pixels** tall,
-elites up to **11 pixels**, bosses up to **13 pixels** (`MAX_UNIT_HEIGHT`/
+elites up to **11 pixels**, bosses up to **15 pixels** (`MAX_UNIT_HEIGHT`/
 `MAX_ELITE_HEIGHT`/`MAX_BOSS_HEIGHT`, `src/ui/sprites.ts`) — every unit is
 rendered into the same fixed-width slot (`SLOT_WIDTH`, `src/ui/app.ts`) and
-bottom-aligned within a shared 13-pixel-tall frame. Below each sprite are 2 lines
+bottom-aligned within a shared 15-pixel-tall frame. Below each sprite are 2 lines
 of text (abbreviation + current HP) — full detail (long names, MP, effects...)
 lives in the "Expedition"/"Monsters" panels below. Sprite data lives in
 `src/ui/sprites.ts`, with its own tests (`test/sprites.test.ts`) that catch

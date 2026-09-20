@@ -18,10 +18,10 @@ Every `MonsterArchetype` carries a fixed `monsterType`, mirroring how a characte
 
 | Type | attack | defense | maxHp |
 |---|---|---|---|
-| `balanced` (căn bằng) | 1.0 | 1.0 | 1.0 |
-| `tanky` (thịt dày) | 0.8 | 0.9 | 1.3 |
-| `armored` (giáp dày) | 0.8 | 1.3 | 0.9 |
-| `damage` (sát thương mạnh) | 1.3 | 0.9 | 0.8 |
+| `balanced` (balanced) | 1.0 | 1.0 | 1.0 |
+| `tanky` (high HP) | 0.8 | 0.9 | 1.3 |
+| `armored` (high defense) | 0.8 | 1.3 | 0.9 |
+| `damage` (high damage) | 1.3 | 0.9 | 0.8 |
 
 Unlike `growthWeights` (which only weights the per-level growth increment, leaving `baseX` untouched — §6.8), the type multiplier is applied to the *entire* floor-scaled stat (`base + growthBonusForDepth`) in `spawnMonster()`, the same way `eliteMultiplier`/`bossMultiplier` already work — and it stacks multiplicatively with the elite/boss tier multiplier when both apply. `speed` and `expReward` are unaffected by `monsterType`.
 
@@ -58,12 +58,16 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
  Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between.
 
-### Two archetype groups — regular combat vs guard-room (elite/boss)
+### Archetype roles — normal / guard / triple / final boss
 
-Every archetype in `data/monsters.json` is split into 2 groups by the `guardOnly?: boolean` field (`MonsterArchetype`, `src/types.ts`):
+Every archetype in `data/monsters.json` declares `roles: MonsterTier[]` (`MonsterArchetype`, `src/types.ts`), the single source of truth for where it can spawn:
 
-- **Regular combat** (`guardOnly` unset/`false`): appear randomly in ordinary combat rooms — `COMBAT_ROOM_ARCHETYPES` in `src/data/floor.ts`, filtering out any archetype with `guardOnly: true`.
-- **Guard-room** (every archetype carrying `actionWeights` for both the `elite` and the `boss` tier, i.e. able to act at either — see `06-level-system.md` §6.12): guard the boss/elite room at the end of each floor — `GUARD_ROOM_ARCHETYPES` in `floor.ts`, filtered to archetypes that have both skill-kit fields, with 1 randomly chosen when building a `boss` room. **Skeleton Guard** is the only archetype that belongs to **both groups** (it still appears in regular combat as well as being eligible as a guard-room pick) — the rest of the guard-room archetypes are marked `guardOnly: true`, appearing **only** at the elite/boss tier and never as ordinary trash monsters (e.g. Dragon will never randomly show up as filler on the way to the boss). A separate `scriptedOnly: true` takes an archetype out of *every* roll, guard rooms included — it is spawned by name from a scripted call site or not at all.
+- **Trash** (`roles: ["normal"]` + `powerTier`): appear randomly in ordinary combat rooms — `COMBAT_ROOM_ARCHETYPES` in `src/data/monsters.ts`.
+- **Guard-only** (`roles: ["elite","boss"]`, no `powerTier`): guard the boss/elite room at the end of each floor — `GUARD_ROOM_ARCHETYPES`, 1 randomly chosen when building a `boss` room. Never appear as ordinary trash (e.g. Dragon never shows up as filler).
+- **Triple-role** (`roles: ["normal","elite","boss"]`): both. **Skeleton Guard** is currently the only one.
+- **Final boss** (`roles: ["boss"]` + `finalBoss: true`): exactly 1 (`the-founder`), spawned by name from `Game.enterFounderFight()`, never rolled.
+
+`roles` must match `actionWeights` keys exactly, and sprite coverage in `data/sprites.json` must match `roles` exactly (normal→`monsters`, elite→`elites`, boss→`bosses`). Both are validated at load (`assertMonsterDataConsistent`, `assertMonsterSpritesConsistent`).
 
 Every guard-room randomly picks among the guard-room archetypes each time the room is built, using the same shared scaling formula (elite/boss still use the shared `eliteMultiplier`/`bossMultiplier`, §6.5/§6.11).
 
@@ -165,7 +169,7 @@ player will actually read.
 
 ### Guard-room archetypes (elite/boss)
 
-Skeleton Guard (shared with regular combat) plus the archetypes marked `guardOnly: true` — as of writing this includes Giant Spider, Dragon, Zombie Knight, and Dark Knight, each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
+Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — as of writing this includes Giant Spider, Dragon, Zombie Knight, and Dark Knight, each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
 
 ### Monster Balance Points
 

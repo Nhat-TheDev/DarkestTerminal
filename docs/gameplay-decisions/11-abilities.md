@@ -62,6 +62,30 @@ AbilityOnlyEffect =
 AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect
 ```
 
+#### Level scaling of flat effects (`minPercent` / `offenseMultiplierPercent`)
+
+A flat number that is strong at level 1 is negligible at level 100, so three of the shared effect
+kinds carry an optional scaling field that only `data/abilities.json` entries set — Artifacts keep
+their flat behavior:
+
+- **Every percentage below is measured against the bearer's base stats** — class base plus level
+  growth (`characterBaseStats`, `src/engine/party.ts`), before any Artifact, Ability, status effect or
+  Exhausted modifier — never the live stat, so equipment or a buff can't inflate an Ability's own scaling.
+- `statBoost.minPercent` (`attack`/`defense`/`maxHp`/`maxMp`/`magicPower`): the boost is the larger
+  magnitude of `amount` or `round(base * minPercent / 100)`, where `base` is the character's base value
+  for that stat.
+  Not used for `aggro`/`speed` — they don't grow with level, so a flat bonus never goes stale.
+  Shipped values: 5% common, 8% rare, 10% epic.
+- `healOnKill.minPercent`: the heal is the larger of `amount` or `round(baseMaxHp * minPercent / 100)`.
+  Shipped values: 3% unique, 5% epic.
+- `autoDamage.offenseMultiplierPercent` (+ `isMagic`): the per-round tick becomes a real `damage`
+  resolution — `amount` plus the bearer's base `magicPower` (`isMagic: true`) or base `attack`
+  (otherwise) times the percent, mitigated by the target's defense, like a skill's `offenseMultiplierPercent`. Which stat
+  it uses follows the Ability's own nature: Thunderous Aura (lightning, no weapon) is magic; Eye of the
+  Storm (paired with an aggro boost, a front-line ability) is physical. Without the field the tick is
+  the legacy fixed, unmitigated `amount` (every Artifact). The combat log names the Ability
+  ("X takes N damage from Y's Thunderous Aura").
+
 Note: this deliberately produces 2 union members both tagged
 `kind: "statBoost"` (the `ArtifactEffect`-derived one, still fixed to its
 original 4 stats, plus this new one) rather than 1 merged variant — valid
@@ -158,8 +182,7 @@ AbilityProfile {
 - This file is **never** touched by `deleteSavesForRun` — it's the one
   piece of state a permadeath wipe must not destroy.
 - A fresh install has no `profile.json` → treated as `{ version: 1,
-  unlockedAbilityIds: [] }` (only commons available), exactly matching
-  "Ban đầu người chơi chỉ nhận đc common."
+  unlockedAbilityIds: [] }` (only commons available).
 
 ### Character-select flow
 
@@ -225,8 +248,7 @@ sources:
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
 - **The roll excludes any ability id already in `unlockedAbilityIds`.**
-  This directly implements "tỉ lệ rơi chỉ rơi những abilities chưa có
-  trong pool chung": a hit always surfaces something the player doesn't
+  This directly implements "drops only surface abilities not already in the shared pool": a hit always surfaces something the player doesn't
   already have.
   - **Catalog-exhaustion fallback**: if every ability in the rolled
     rarity tier is already unlocked, re-roll the rarity excluding that
@@ -323,8 +345,7 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
    run that were never equipped (so never at risk) are still in it
    untouched, and anything left unreclaimed is gone until re-earned from
    scratch via a future Elite/Boss roll. This is the entire mechanism
-   behind "sau khi chơi lại người chơi sẽ có thêm quyền được lựa chọn
-   abilities" — more choices next time is simply a byproduct of the pool
+   behind "after replaying, players get more abilities to choose from" — more choices next time is simply a byproduct of the pool
    having grown, not a separate reward screen.
 
 Why this replaces the old probabilistic system entirely: guaranteed loss
@@ -576,8 +597,8 @@ relevant nudge without redefining the turn order on its own.
 
 | id | name | description | effect |
 |---|---|---|---|
-| `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | `healOnKill 20` |
-| `thunderous-aura` | Thunderous Aura | An aura that occasionally lashes out on its own, independent of any weapon. | `autoDamage 6` |
+| `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | `healOnKill 20` (min 3% max HP) |
+| `thunderous-aura` | Thunderous Aura | An aura that occasionally lashes out on its own, independent of any weapon. | `autoDamage 20 + 40% magic power` |
 | `vampiric-discipline` | Vampiric Discipline | A discipline where the fight itself has started feeding it back. | `lifesteal 10%` |
 | `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | `dodgeChance 12%` |
 | `battle-scholar` | Battle Scholar | Draws a lesson from every fight, learning faster than the rest of the party. | `expBoost 15%` |
@@ -595,8 +616,8 @@ above what a Rare-tier effect would carry, below the Epic reference.
 | id | name | description | effects |
 |---|---|---|---|
 | `undying-will` | Undying Will | Sends every blow back on whoever dealt it, and has more left in reserve to survive what follows. | `reflectDamage 15%` + `statBoost maxHp +60` |
-| `reapers-instinct` | Reaper's Instinct | Every kill closes the wounds already taken — and leaves this fighter feeding on whatever's left of the fight. | `healOnKill 25` + `lifesteal 8%` |
-| `eye-of-the-storm` | Eye of the Storm | The stillness at the center of the storm — impossible to look away from, while the chaos around it strikes on its own. | `autoDamage 12` + `statBoost aggro +15` |
+| `reapers-instinct` | Reaper's Instinct | Every kill closes the wounds already taken — and leaves this fighter feeding on whatever's left of the fight. | `healOnKill 25` (min 5% max HP) + `lifesteal 8%` |
+| `eye-of-the-storm` | Eye of the Storm | The stillness at the center of the storm — impossible to look away from, while the chaos around it strikes with this fighter's own strength. | `autoDamage 22 + 50% attack` + `statBoost aggro +15` |
 | `grandmasters-focus` | Grandmaster's Focus | Nothing in a fight goes to waste anymore — not the cooldown between strikes, not the lesson buried in losing one. | `cooldownReduction 1` + `expBoost 25%` |
 | `unerring-will` | Unerring Will | A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied. | `alwaysHit 20%` + `fearResist 12%` |
 

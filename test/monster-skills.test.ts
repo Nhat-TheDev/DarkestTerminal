@@ -186,8 +186,9 @@ describe("elite/boss skill kit", () => {
     expect(seen).toEqual(new Set(["strike", "cleave"]));
   });
 
-  test("the-founder is scriptedOnly — it never appears in a rolled boss room", () => {
-    expect(getArchetype("the-founder").scriptedOnly).toBe(true);
+  test("the-founder is the final boss — it never appears in a rolled boss room", () => {
+    expect(getArchetype("the-founder").finalBoss).toBe(true);
+    expect(getArchetype("the-founder").roles).toEqual(["boss"]);
     for (let seed = 0; seed < 200; seed++) {
       // Depth 10 is a boss-tier floor; depth 5 rolls the same pool at elite tier.
       for (const depth of [5, 10]) {
@@ -253,11 +254,22 @@ describe("regular monster skills", () => {
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
     assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
 
-    const typo = { id: "typo-test", skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
 
-    const ghost = { id: "ghost-test", skillIds: ["no-such-skill"], actionWeights: {} } as unknown as MonsterArchetype;
+    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
+  });
+
+  // data/monsters.json reaches src/data/monsters.ts through an `as unknown as MonsterArchetype[]`
+  // cast, so TypeScript never checks it — an archetype added without a description would ship
+  // silently. The digit check enforces 02-monster.md's rule that this field carries no numbers:
+  // it is flavor a player reads, not a place to write down a balance fact.
+  test("every archetype carries a player-facing description, and no description states a number", () => {
+    for (const archetype of MONSTER_ARCHETYPES) {
+      expect(archetype.description?.trim() ?? "").not.toBe("");
+      expect(archetype.description).not.toMatch(/[0-9]/);
+    }
   });
 });
 
@@ -352,7 +364,10 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
 
   test("the low-HP self-skill branch only applies at normal tier", () => {
     const { ctx } = makeCtx();
-    const zombieAsBoss = spawnMonster("zombie", 1, { tier: "boss" });
+    // Zombie is normal-only so it can never spawn as boss; flip the tier after spawn
+    // to verify the branch itself is gated on actor.tier, not on the archetype.
+    const zombieAsBoss = spawnMonster("zombie", 1);
+    zombieAsBoss.tier = "boss";
     zombieAsBoss.hp = Math.floor(zombieAsBoss.maxHp * 0.1);
     ctx.monsters.push(zombieAsBoss);
     const combat = startCombat("r1", [zombieAsBoss.id], ctx, false);
