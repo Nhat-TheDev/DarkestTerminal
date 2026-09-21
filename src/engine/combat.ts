@@ -760,7 +760,10 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
  */
 function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   if (summon.actionsTaken < summon.maxActions && summon.hp > 0) return;
-  log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
+  // A summon with a deathBurst announces its own departure via the detonation line below — logging
+  // the generic "fades away" line first would read as a contradictory two-line narration (a gentle
+  // fade immediately followed by a violent explosion) for what's really one event.
+  if (!summon.deathBurst) log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
   triggerSummonDeathBurst(summon, combat, ctx, log);
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
   // Without this, ownedSummons()'s `hp > 0` filter keeps counting an action-expired summon toward
