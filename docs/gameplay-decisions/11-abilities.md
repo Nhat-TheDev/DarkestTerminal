@@ -320,7 +320,7 @@ For a rarity `r` at depth `d` (clamped to `[1, depthCap]`):
 `weight(r, d) = atDepth1[r] + (atDepthCap[r] − atDepth1[r]) × (d − 1) / (depthCap − 1)`,
 then fed into the same `rng.weightedPick` pattern `rollArtifactRarity`
 already uses (`src/data/artifacts.ts`), filtering zero-weight entries
-first. Identical shape to the existing Artifact `RARITY_WEIGHTS` table:
+first. Same idea as the Artifact rarity odds (`artifactRarityWeights`, `07-items-artifacts.md`) but with its own tables:
 Elite skews common/rare, Boss never rolls common and skews unique/epic —
 Boss kills stay the better free-unlock roll *and* the only Stardust
 source, which is what makes reaching Bosses worth the detour on top of

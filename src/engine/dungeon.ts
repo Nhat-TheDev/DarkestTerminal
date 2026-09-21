@@ -267,11 +267,11 @@ export function resolveEventEntry(state: GameState, room: Room, ctx: EngineConte
   if (!state.activeEvent) {
     if (event.id === "merchant") {
       const offerCount = BALANCE.events.merchantOfferCount;
-      state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng)), refreshCount: 0 };
+      state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth)), refreshCount: 0 };
     } else if (event.id === "cursed-shrine") {
-      state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifactOrCursed(ctx.rng)] };
+      state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifactOrCursed(ctx.rng, state.floor.depth)] };
     } else if (event.id === "twin-altars") {
-      state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifact("treasureOrEvent", ctx.rng), rollArtifact("treasureOrEvent", ctx.rng)] };
+      state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth), rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth)] };
     } else if (event.id === "gambling-den") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [] };
     }

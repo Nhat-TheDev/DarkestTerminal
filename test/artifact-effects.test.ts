@@ -4,7 +4,8 @@ import { Rng } from "../src/engine/rng";
 import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { rollArtifactRarity, ARTIFACTS, formatArtifactEffect } from "../src/data/artifacts";
+import { rollArtifactRarity, artifactRarityWeights, ARTIFACTS, formatArtifactEffect } from "../src/data/artifacts";
+import { BALANCE } from "../src/data/balanceConfig";
 import { t } from "../src/data/strings";
 import { applyPartyExp, statsForLevel, recomputeCharacterStats, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
 import {
@@ -26,17 +27,64 @@ import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
 describe("artifacts", () => {
-  test("rollArtifactRarity: Elite never Epic, Boss never Common/Rare, Treasure/Event spans all 4", () => {
-    const rng = new Rng(5);
-    const seen = { elite: new Set<string>(), boss: new Set<string>(), treasureOrEvent: new Set<string>() };
-    for (let i = 0; i < 4000; i++) {
-      seen.elite.add(rollArtifactRarity("elite", rng));
-      seen.boss.add(rollArtifactRarity("boss", rng));
-      seen.treasureOrEvent.add(rollArtifactRarity("treasureOrEvent", rng));
+  test("artifactRarityWeights: the anchor step returns the configured anchor, every step sums to 100", () => {
+    const { anchorFirstFloor, anchorWeights } = BALANCE.artifacts;
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const anchor = anchorWeights[source];
+      const total = Object.values(anchor).reduce((sum, w) => sum + w, 0);
+      const atAnchor = artifactRarityWeights(source, anchorFirstFloor);
+      for (const rarity of ["common", "rare", "unique", "epic"] as const) expect(atAnchor[rarity]).toBeCloseTo((100 * anchor[rarity]) / total, 6);
+      for (const depth of [1, 10, 11, 25, 35, 60, 200]) {
+        const sum = Object.values(artifactRarityWeights(source, depth)).reduce((a, b) => a + b, 0);
+        expect(sum).toBeCloseTo(100, 6);
+      }
     }
-    expect([...seen.elite].sort()).toEqual(["common", "rare", "unique"]);
-    expect([...seen.boss].sort()).toEqual(["epic", "unique"]);
-    expect([...seen.treasureOrEvent].sort()).toEqual(["common", "epic", "rare", "unique"]);
+  });
+
+  test("artifactRarityWeights: deeper floors shift weight up the rarities, one 10-floor step at a time", () => {
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const at = (depth: number) => artifactRarityWeights(source, depth);
+      // floors within the same step share odds; crossing a multiple of 10 changes them
+      expect(at(1)).toEqual(at(10));
+      expect(at(10)).not.toEqual(at(11));
+      let previous = at(1);
+      for (const depth of [11, 21, 31, 41, 51, 61]) {
+        const current = at(depth);
+        expect(current.common).toBeLessThan(previous.common);
+        if (source !== "elite") expect(current.epic).toBeGreaterThan(previous.epic);
+        expect(current.unique / (current.common + current.rare)).toBeGreaterThan(previous.unique / (previous.common + previous.rare));
+        previous = current;
+      }
+    }
+  });
+
+  test("Elite never rolls Epic at any depth; floors 1-10 almost never roll Unique or Epic", () => {
+    for (const depth of [1, 10, 35, 80, 300]) expect(artifactRarityWeights("elite", depth).epic).toBe(0);
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const early = artifactRarityWeights(source, 5);
+      expect(early.unique + early.epic).toBeLessThan(5);
+    }
+  });
+
+  test("rollArtifactRarity draws from the depth's odds: early floors never show Epic, deep Boss floors mostly do", () => {
+    const rng = new Rng(5);
+    const counts = (source: "elite" | "boss" | "treasureOrEvent", depth: number) => {
+      const seen = { common: 0, rare: 0, unique: 0, epic: 0 };
+      for (let i = 0; i < 4000; i++) seen[rollArtifactRarity(source, rng, depth)]++;
+      return seen;
+    };
+    expect(counts("elite", 400).epic).toBe(0);
+    expect(counts("treasureOrEvent", 5).epic).toBe(0);
+    expect(counts("boss", 55).epic / 4000).toBeGreaterThan(0.5);
+    expect(counts("boss", 5).common / 4000).toBeGreaterThan(0.6);
+  });
+
+  test("artifactRarityWeights: odds freeze beyond maxStepsFromAnchor and stay finite at absurd depths", () => {
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const frozen = artifactRarityWeights(source, 140);
+      expect(artifactRarityWeights(source, 1_000_000)).toEqual(frozen);
+      expect(Object.values(frozen).every(Number.isFinite)).toBe(true);
+    }
   });
 
   test("equip fills slots up to MAX_EQUIPPED_ARTIFACTS, then requires a replacement", () => {

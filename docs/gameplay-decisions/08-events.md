@@ -21,7 +21,7 @@ Every time the party steps into a room with `RoomType === "event"`, the system r
 
 The roll is otherwise independent of party state, but 4 rare events carry a `minFloorDepth` gate (`vigil-candle`/`broken-seal` at 15, `half-a-warning` at 35, `still-breathing` at 70) and are also `onceLifetime` — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
 
-All Artifact rewards in §8 share the exact same `treasureOrEvent` rarity weights (`RARITY_WEIGHTS`, `src/data/artifacts.ts`) already defined in `07-items-artifacts.md` §7.2 "Rarity & drop rate per tier", **unless an event states its own table** (e.g. `collapsed-floor` only rolls Unique/Epic, `sacrificial-circle`'s roll has a minimum tier floor).
+All Artifact rewards in §8 share the same depth-scaled `treasureOrEvent` rarity odds (`artifactRarityWeights`, `src/data/artifacts.ts`) defined in `07-items-artifacts.md` §7.2 "Level bands & drop schedule", **unless an event states its own table** (e.g. `collapsed-floor` rolls the Boss odds, `sacrificial-circle` and `wandering-hermit` use a fixed table with a minimum tier floor).
 
 ```
 EventDefinition {
@@ -186,7 +186,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 > "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted."
 
-**No combat** (`kind: "artifactExchange"`). Sacrifice 1 **currently-equipped** artifact (nothing sits unequipped anymore — every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes the same `treasureOrEvent` weights used everywhere else (`RARITY_WEIGHTS`) rather than using a separate table, excluding tiers below the threshold.
+**No combat** (`kind: "artifactExchange"`). Sacrifice 1 **currently-equipped** artifact (nothing sits unequipped anymore — every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
 Choose the artifact to sacrifice from anywhere across the party, confirm → it's permanently removed → roll immediately, the result goes through the normal decision flow. There's no limit on the number of sacrifices in a single visit to the room as long as there's still an artifact to sacrifice — each sacrifice/roll counts as its own action and can be repeated until satisfied or out of artifacts (the room stays open between sacrifices; each new roll's decision must be resolved before the next sacrifice can be made).
 
@@ -259,7 +259,7 @@ A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the o
 
 - Choose 1 character to "climb down and rescue": pay a flat % of that character's maxHP (rounded down — `events.collapsedFloorHpPercent`, `data/balance-config.json`, exported as `COLLAPSED_FLOOR_HP_PERCENT` in `src/engine/events/collapsedFloor.ts`) regardless of the outcome.
 - Roll for success (`events.collapsedFloorSuccessChance`, `data/balance-config.json`):
-  - **Rescue succeeds**: receive 1 Artifact, rolled restricted to {Unique, Epic} — reusing the exact same `boss` weight ratio from `RARITY_WEIGHTS` (`src/data/artifacts.ts`) as the existing Boss table in `07-items-artifacts.md` §7.2, no new table created. Goes through the normal decision flow.
+  - **Rescue succeeds**: receive 1 Artifact, rolled from the Boss odds at the current floor depth (`artifactRarityWeights("boss", depth)`, `07-items-artifacts.md` §7.2) — no table of its own, so on shallow floors the reward is mostly Common or Rare. Goes through the normal decision flow.
   - **Too late**: nothing further is received — only the HP already paid is lost.
 - Safety limit: if the HP cost is ≥ the chosen character's current HP, the "climb down and rescue" option is locked for that character.
 - Can be skipped from the start, losing nothing.

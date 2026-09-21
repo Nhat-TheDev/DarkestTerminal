@@ -20,7 +20,7 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   // blood-altar's) acknowledge whether the trapped person was actually reached in time.
   state.eventOutcomes["collapsed-floor"] = rescued ? "rescued" : "failed";
   if (rescued) {
-    const artifactId = rollArtifact("boss", ctx.rng);
+    const artifactId = rollArtifact("boss", ctx.rng, state.floor.depth);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
     grantArtifact(state, artifactId);
   } else {

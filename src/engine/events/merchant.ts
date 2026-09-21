@@ -32,7 +32,7 @@ export function merchantRefresh(state: GameState, ctx: EngineContext): PartyActi
   if (refreshCount >= MERCHANT_MAX_REFRESHES) return { reason: t("errors.merchantMaxRefreshesReached") };
   if (state.coins < MERCHANT_REFRESH_COST_COINS) return { reason: t("errors.notEnoughCoins") };
   state.coins -= MERCHANT_REFRESH_COST_COINS;
-  active.offerArtifactIds = Array.from({ length: MERCHANT_OFFER_COUNT }, () => rollArtifact("treasureOrEvent", ctx.rng));
+  active.offerArtifactIds = Array.from({ length: MERCHANT_OFFER_COUNT }, () => rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth));
   active.refreshCount = refreshCount + 1;
   state.message = t("game.merchantRefreshed");
   return null;

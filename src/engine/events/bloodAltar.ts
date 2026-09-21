@@ -17,7 +17,7 @@ export function bloodAltarPay(state: GameState, ctx: EngineContext, characterId:
   // §F.4 — the escape key becomes reachable here only once the party has already paid enough to be
   // nearing Chain 3's own tier-2 escalation, checked against the count *before* this payment's own increment.
   const allowShard = state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold2 ? "blood-altar" : undefined;
-  const artifactId = rollArtifact("treasureOrEvent", ctx.rng, allowShard);
+  const artifactId = rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth, allowShard);
   state.message = t("game.paidHpForArtifact", { payer: character.name, cost, artifact: getArtifact(artifactId).name });
   grantArtifact(state, artifactId);
   state.narrativeCounters.altarPaymentsCount += 1; // §10.3 Chain 3 — "Blood Debt"

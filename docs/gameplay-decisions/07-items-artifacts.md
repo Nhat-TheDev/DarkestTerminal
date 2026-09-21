@@ -149,10 +149,10 @@ ArtifactDefinition {
 
 | Source | Drop chance for 1 Artifact | Notes |
 |---|---|---|
-| Killing an **Elite** (floor's final room, not Boss) | Guaranteed | Rarity rolled from the `elite` weights in `RARITY_WEIGHTS` (`src/data/artifacts.ts`) — never Epic |
-| Killing a **real Boss** (every `bossFloorInterval` floors, `06-level-system.md` §6.11) | Guaranteed | Rarity rolled from the `boss` weights in `RARITY_WEIGHTS` — never Common/Rare |
+| Killing an **Elite** (floor's final room, not Boss) | Guaranteed | Rarity rolled from the `elite` odds at the current floor depth (`artifactRarityWeights`, `src/data/artifacts.ts`) — never Epic |
+| Killing a **real Boss** (every `bossFloorInterval` floors, `06-level-system.md` §6.11) | Guaranteed | Rarity rolled from the `boss` odds at the current floor depth — mostly Common/Rare on floors 1–20, Unique/Epic-heavy from floor 31 |
 | **Treasure room** | — | Was spec'd as its own guaranteed-Artifact room type, but never wired into the floor generator; the placeholder `RoomType` value has since been removed from the codebase as dead code, so there's no such room type in code at all |
-| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.2) fills the "guaranteed artifact, no combat" role Treasure room was meant to have. Rarity uses the `treasureOrEvent` weights in `RARITY_WEIGHTS` |
+| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.2) fills the "guaranteed artifact, no combat" role Treasure room was meant to have. Rarity uses the `treasureOrEvent` odds at the current floor depth, except the exchange events, see below |
 
 **Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (see below). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the Event room drop Artifacts.
 
@@ -160,13 +160,52 @@ ArtifactDefinition {
 
 ### Rarity & drop rate per tier
 
-**Elite and Boss have entirely separate rarity tables** (not just different weights), both defined in `RARITY_WEIGHTS` (`src/data/artifacts.ts`, not JSON — this is a code-level constant):
+**Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". Two rules survive from the earlier fixed tables: **Elite never rolls Epic** (its Epic anchor is 0, and a zero anchor stays zero at every depth), and Treasure/Event sit between Elite and Boss in average quality.
 
-- **Elite** — only rolls {Common, Rare, Unique}, **never Epic**.
-- **Boss** — only rolls {Unique, Epic}, **never Common/Rare**.
-- **Treasure room / Event room** — a 3rd weight table (`treasureOrEvent`), sitting between Elite and Boss in average quality, rolling all 4 rarities.
+Not depth-scaled, on purpose: **Sacrificial Circle** and **Wandering Hermit** roll through `rollArtifactWithMinRarity`, which keeps a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) renormalized above the required minimum, and **Gambling Den** picks its jackpot rarity directly from `events.gamblingDenRounds`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
 
-Exact weights for all 3 tables: `RARITY_WEIGHTS` in `src/data/artifacts.ts`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
+### Level bands & drop schedule
+
+Each rarity is tuned for a character level band, and floor depth stands in for level (a monster at floor `d` is built on the same growth curve as a character at level `d`; that equivalence is an assumption, not measured from play):
+
+| Rarity | Intended level band |
+|---|---|
+| Common | 1–15 |
+| Rare | 16–30 |
+| Unique | 31–45 |
+| Epic | 46+ |
+
+**Stat budget for pure-stat artifacts.** One artifact should improve its stat's *effect* by about **6% (Common), 8% (Rare), 10% (Unique), 12% (Epic)** at the middle of its band, measured against the mean stat of the classes that actually use it (level 8 / 23 / 38 / 60). For `attack`, `magicPower`, `maxHp` and `maxMp` that is a plain share of the stat. For `defense` the share is of effective HP, `bonus / (60 + defense)`, because of the mitigation curve (`mitigatedOffense`, `resolver.ts`); a defense point buys far less than its share of the stat suggests. An artifact with two stats counts each at 0.7, one with three at 0.5. Catalog values at or above the budget stay as they are, so it is a floor for new items rather than a cap; `cracked-spiral-stone` (`maxMp +22`) and `fused-twin-coins` (`attack +13`) sit on it.
+
+**Stats stay flat; `autoDamage` scales.** Artifacts are swapped during a run, so their stat bonuses are flat numbers, not shares of the bearer's base stats (Abilities, which last the whole run, use `minPercent` instead). The exception is `autoDamage`, whose fixed damage falls to 1–2% of a monster's HP at its level band. `thunder-totem` deals `6 + 25%` of the bearer's base `magicPower` and `crown-of-destruction` deals `12 + 30%` of base `attack` (plus its `poisonOnHit`), resolved as a normal `damage` hit against defense on 1 random living monster per round. That is about 4.3% of a floor-38 monster's HP for the totem and 5.2% of a floor-60 monster's for the crown (1.4% and 2.1% before scaling), roughly half of `thunderous-aura` and `lodestone` at the same tier. A class with none of the scaling stat (a Rogue with the totem, a Mage with the crown) gets a weaker tick than the old fixed one, since the flat part is now mitigated too.
+
+**Rarity odds by depth.** Depth is grouped into steps of `floorsPerStep` floors (10), so floors 1–10 share one set of odds, 11–20 the next, and so on. The step containing `anchorFirstFloor` (31) uses the source's `anchorWeights`; every other step follows
+
+```
+w_r   = anchor_r × tilt ^ ( i_r × (step − anchorStep) )     i = 0, 1, 2, 3 for common, rare, unique, epic
+odds  = 100 × w_r / Σ w
+```
+
+Going deeper multiplies rare by `tilt`, unique by `tilt²` and epic by `tilt³` relative to common; going shallower divides. `tilt` is 2.5. Anchors (common / rare / unique / epic):
+
+| Source | Anchor at floors 31–40 |
+|---|---|
+| Elite | 15 / 40 / 45 / 0 |
+| Boss | 5 / 25 / 55 / 15 |
+| Treasure / Event / Merchant | 15 / 35 / 40 / 10 |
+
+Resulting odds (%):
+
+| Floors | Elite | Boss | Treasure / Event |
+|---|---|---|---|
+| 1–10 | 84.5 / 14.4 / 1.0 / 0 | 73.2 / 23.4 / 3.3 / 0.1 | 86.2 / 12.9 / 0.9 / 0 |
+| 11–20 | 66.5 / 28.4 / 5.1 / 0 | 47.8 / 38.2 / 13.4 / 0.6 | 69.2 / 25.8 / 4.7 / 0.2 |
+| 21–30 | 39.3 / 41.9 / 18.8 / 0 | 20.2 / 40.4 / 35.5 / 3.9 | 41.6 / 38.8 / 17.8 / 1.8 |
+| 31–40 | 15 / 40 / 45 / 0 | 5 / 25 / 55 / 15 | 15 / 35 / 40 / 10 |
+| 41–50 | 3.8 / 25.2 / 71.0 / 0 | 0.8 / 9.7 / 53.2 / 36.3 | 2.9 / 17.2 / 49.1 / 30.7 |
+| 51–60 | 0.7 / 12.4 / 86.9 / 0 | 0.1 / 2.6 / 36.0 / 61.3 | 0.4 / 5.2 / 36.9 / 57.6 |
+
+The first ten floors almost never drop a Unique or Epic (about 1% from Elite and events, 3.4% from a Boss), which is the point of the schedule. The exponential shape also means that from about floor 70 only Unique and Epic still drop. From floor 141 on (`maxStepsFromAnchor`, 10 steps from the anchor) the odds stop changing. Anchors and `tilt` are first-pass numbers; the whole schedule is tuned from `balance-config.json` without touching code. Collapsed Floor rolls the Boss odds at the current depth, so on shallow floors its reward is a Common or Rare rather than a guaranteed Unique/Epic.
 
 ### Catalog
 
@@ -358,7 +397,7 @@ guaranteedArtifactId?: Id;
 ```ts
 // src/engine/events/openChest.ts
 if (!event.noArtifactReward) {
-  const artifactId = event.guaranteedArtifactId ?? rollArtifact("treasureOrEvent", ctx.rng);
+  const artifactId = event.guaranteedArtifactId ?? rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth);
   grantArtifact(state, artifactId);
 }
 ```
