@@ -226,18 +226,22 @@ export type ArtifactEffect =
       so a flat boost stays meaningful once that stat has grown well past where `amount` alone would be negligible,
       the same idea as `SkillEffect.minPercent` for status effects. Absent = today's flat-only behavior. Currently
       only set by `data/abilities.json` entries; Artifacts don't use it. */
-  | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp"; amount: number; minPercent?: number }
+  | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp" | "magicPower" | "speed"; amount: number; minPercent?: number }
   | { kind: "reflectDamage"; percent: number }
   | { kind: "poisonOnHit"; chance: number }
   | { kind: "lifesteal"; percent: number }
   | { kind: "dodgeChance"; chance: number }
   /** `minPercent`: the heal is whichever has the larger magnitude of `amount` or `baseMaxHp * minPercent / 100` (the bearer's class-base-plus-level max HP, not the live one), so a flat heal stays meaningful as max HP grows — the same floor idea as `statBoost.minPercent`. Absent = flat `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
   | { kind: "healOnKill"; amount: number; minPercent?: number }
-  /** `offenseMultiplierPercent`: when set, the tick is a real `damage` resolution — `amount` + the bearer's BASE `magicPower` (if `isMagic`) or `attack` (otherwise, class base plus level growth, ignoring live buffs/equipment) times this percent, mitigated by the target's defense, same as `SkillEffect.offenseMultiplierPercent`. Absent = the legacy fixed, unmitigated `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
+  /** `offenseMultiplierPercent`: when set, the tick is a real `damage` resolution — `amount` + the bearer's BASE `magicPower` (if `isMagic`) or `attack` (otherwise, class base plus level growth, ignoring live buffs/equipment) times this percent, mitigated by the target's defense, same as `SkillEffect.offenseMultiplierPercent`. Absent = the legacy fixed, unmitigated `amount`. Set by `data/abilities.json` entries and by the Artifacts that carry `autoDamage` (`thunder-totem`, `crown-of-destruction`). */
   | { kind: "autoDamage"; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
+  /** The bearer's own enemy-targeting hit and debuff-chance rolls each have this percent chance to succeed outright before they are rolled. Stacks across equipped sources as independent chances. `11-abilities.md` §11.1.1. */
+  | { kind: "alwaysHit"; chance: number }
+  /** Reduces the land chance of every harmful status an enemy skill applies to the bearer by this percent, relative (60% with `percent: 30` becomes 42%; an effect with no `chance` counts as 100%). Stacks across equipped sources multiplicatively. `11-abilities.md` §11.1.2. */
+  | { kind: "debuffResist"; percent: number }
   | { kind: "curseAggroBoost"; amount: number };
 
 export interface ArtifactDefinition {
@@ -254,10 +258,8 @@ export interface ArtifactDefinition {
   restrictedDropSources?: ("boss" | "blood-altar")[];
 }
 
-/** Effect kinds only Abilities can use — either genuinely new (`alwaysHit`) or a `statBoost` targeting a stat `ArtifactEffect`'s own `statBoost` can't (`aggro`/`speed`/`magicPower`). See `docs/gameplay-decisions/11-abilities.md` §11.1. */
-export type AbilityOnlyEffect =
-  | { kind: "alwaysHit"; chance: number }
-  | { kind: "statBoost"; stat: "aggro" | "speed" | "magicPower"; amount: number; minPercent?: number };
+/** The one effect kind only Abilities can use: a `statBoost` on `aggro`, which `ArtifactEffect` reserves for the cursed-only `curseAggroBoost`. See `docs/gameplay-decisions/11-abilities.md` §11.1. */
+export type AbilityOnlyEffect = { kind: "statBoost"; stat: "aggro"; amount: number; minPercent?: number };
 
 /** Reuses every `ArtifactEffect` kind except `curseAggroBoost` (cursed-Artifact-only) — Abilities are never cursed — plus `AbilityOnlyEffect`. */
 export type AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect;

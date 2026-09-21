@@ -5,7 +5,7 @@ import { startCombat, applySkillEffects, resolveRound } from "../src/engine/comb
 import { mitigatedOffense } from "../src/engine/resolver";
 import { recomputeCharacterStats, statsForLevel, characterBaseStats } from "../src/engine/party";
 import { applyArtifactHealOnKill } from "../src/engine/combatHooks";
-import { abilityWidenedStatBoost, alwaysHitChance, totalHealOnKill } from "../src/engine/artifacts";
+import { abilityWidenedStatBoost, alwaysHitChance, debuffResistPercent, totalHealOnKill } from "../src/engine/artifacts";
 import { ABILITIES, getAbility, rollAbility, formatAbilityEffect } from "../src/data/abilities";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, isAbilityUnlocked, type Profile } from "../src/engine/profile";
 import { Game } from "../src/engine/game";
@@ -14,7 +14,7 @@ import { makeCtx, spawnInto } from "./helpers";
 import { migrateGameState } from "../src/engine/migration";
 import { CLASSES } from "../src/data/classes";
 import { buildRewardEntries } from "../src/ui/state";
-import type { LogEntry } from "../src/types";
+import type { LogEntry, SkillDefinition } from "../src/types";
 
 /** Expected delta of an Ability `statBoost` on a pre-equipment `base`, per the documented minPercent rule. Deliberately independent of the engine so the test checks the hook against the data, and data edits can't silently break it again. */
 function expectedAbilityStatBoost(abilityId: string, stat: string, base: number): number {
@@ -58,9 +58,9 @@ describe("Abilities: stat boosts", () => {
     const baseAggro = c.aggro;
     const baseMagicPower = c.magicPower;
 
-    c.equippedAbilityId = "eye-of-the-storm"; // autoDamage + statBoost aggro
+    c.equippedAbilityId = "lodestone"; // autoDamage + statBoost aggro
     recomputeCharacterStats(c, 100);
-    expect(c.aggro).toBe(baseAggro + expectedAbilityStatBoost("eye-of-the-storm", "aggro", baseAggro));
+    expect(c.aggro).toBe(baseAggro + expectedAbilityStatBoost("lodestone", "aggro", baseAggro));
 
     c.equippedAbilityId = "restless-vigor"; // statBoost speed
     recomputeCharacterStats(c, 100);
@@ -140,7 +140,7 @@ describe("Abilities: healOnKill and autoDamage scale off the bearer's base stats
   test("autoDamage deals amount + offenseMultiplierPercent of the BASE stat, ignoring the live (buffed) stat", () => {
     for (const [ability, classId] of [
       ["thunderous-aura", "mage"],
-      ["eye-of-the-storm", "rogue"],
+      ["lodestone", "rogue"],
     ] as const) {
       const plain = autoDamageTaken(ability, classId, null);
       const buffed = autoDamageTaken(ability, classId, 9999);
@@ -154,7 +154,7 @@ describe("Abilities: healOnKill and autoDamage scale off the bearer's base stats
   test("a magic autoDamage Ability reads base magicPower, a non-magic one reads base attack", () => {
     // mage: high base magicPower, tiny base attack — rogue: the reverse
     expect(autoDamageTaken("thunderous-aura", "mage", null).taken).toBeGreaterThan(autoDamageTaken("thunderous-aura", "rogue", null).taken);
-    expect(autoDamageTaken("eye-of-the-storm", "rogue", null).taken).toBeGreaterThan(autoDamageTaken("eye-of-the-storm", "mage", null).taken);
+    expect(autoDamageTaken("lodestone", "rogue", null).taken).toBeGreaterThan(autoDamageTaken("lodestone", "mage", null).taken);
   });
 
   test("the combat log names the Ability that dealt the auto damage", () => {
@@ -225,6 +225,71 @@ describe("Abilities: alwaysHit", () => {
     const rate = misses / trials;
     expect(rate).toBeGreaterThan(0.17);
     expect(rate).toBeLessThan(0.23);
+  });
+});
+
+describe("Abilities: debuffResist", () => {
+  const statusSkill = (statusEffectId: string, chance?: number): SkillDefinition => ({
+    id: "test-status",
+    name: "Test Status",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "applyStatusEffect", statusEffectId, durationTurns: 2, chance }],
+    slot: 0,
+    unlockLevel: 1,
+  });
+
+  function landRate(abilityId: string | null, statusEffectId: string, trials = 4000, chance?: number) {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.equippedAbilityId = abilityId;
+    const combat = startCombat("test-room", [], ctx, false);
+    const monster = spawnInto(ctx, "dungeon-rat", 1);
+    const log: LogEntry[] = [];
+    let landed = 0;
+    for (let i = 0; i < trials; i++) {
+      c.activeStatusEffects = [];
+      applySkillEffects(statusSkill(statusEffectId, chance), monster, [c], combat, ctx, log);
+      if (c.activeStatusEffects.some((s) => s.statusEffectId === statusEffectId)) landed++;
+    }
+    return { rate: landed / trials, log };
+  }
+
+  test("reads the equipped Ability's percent, 0 without one", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(debuffResistPercent(c)).toBe(0);
+    c.equippedAbilityId = "sealed-bulwark";
+    expect(debuffResistPercent(c)).toBe(getAbility("sealed-bulwark").effects.find((e) => e.kind === "debuffResist")!.percent);
+  });
+
+  test("a guaranteed harmful status lands (1 - percent) of the time, and the misses are logged", () => {
+    const bearer = makeCtx().ctx.party[0]!;
+    bearer.equippedAbilityId = "sealed-bulwark";
+    const percent = debuffResistPercent(bearer);
+    const { rate, log } = landRate("sealed-bulwark", "poisoned");
+    expect(rate).toBeGreaterThan(1 - percent / 100 - 0.04);
+    expect(rate).toBeLessThan(1 - percent / 100 + 0.04);
+    expect(log.some((e) => e.text.includes("throws off Poisoned"))).toBe(true);
+  });
+
+  test("a 60% status under a 32% resist lands 40.8% of the time", () => {
+    const { rate } = landRate("sealed-bulwark", "poisoned", 6000, 0.6);
+    expect(rate).toBeGreaterThan(0.408 - 0.04);
+    expect(rate).toBeLessThan(0.408 + 0.04);
+  });
+
+  test("without the Ability every harmful status lands", () => {
+    expect(landRate(null, "poisoned", 500).rate).toBe(1);
+  });
+
+  test("a helpful status is never thrown off", () => {
+    expect(landRate("sealed-bulwark", "regeneration", 500).rate).toBe(1);
+  });
+
+  test("effect text states the percent", () => {
+    expect(formatAbilityEffect(getAbility("stubborn-blood"))).toContain("10%");
   });
 });
 
@@ -425,15 +490,15 @@ describe("Elite/Boss ability unlock: revealed on the room-clear reward screen, l
 describe("Abilities: run entry", () => {
   test("an equipped Ability's stat boost is live before the first combat, at full hp", () => {
     const classIds = CLASSES.map((c) => c.id);
-    // undying-will grants a maxHp statBoost (amount 60, minPercent 10); battle-instinct grants an
+    // thornhide grants a maxHp statBoost (amount 60, minPercent 10); battle-instinct grants an
     // attack statBoost (amount 5, minPercent 5) — each resolved against the character's
     // pre-equipment base (a fresh run starts at level 1, satiety 100 → no Exhausted multiplier).
-    const game = new Game(11, classIds, undefined, ["undying-will", "battle-instinct"]);
+    const game = new Game(11, classIds, undefined, ["thornhide", "battle-instinct"]);
     const [vanguard, mage] = game.state.party;
     const vanguardMaxHp = statsForLevel(getClass(vanguard!.classId), vanguard!.level).maxHp;
     const mageAttack = statsForLevel(getClass(mage!.classId), mage!.level).attack;
 
-    expect(vanguard!.maxHp).toBe(vanguardMaxHp + expectedAbilityStatBoost("undying-will", "maxHp", vanguardMaxHp));
+    expect(vanguard!.maxHp).toBe(vanguardMaxHp + expectedAbilityStatBoost("thornhide", "maxHp", vanguardMaxHp));
     expect(vanguard!.hp).toBe(vanguard!.maxHp);
     expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 

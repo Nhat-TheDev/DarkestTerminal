@@ -3,6 +3,7 @@ import artifactsJson from "../../data/artifacts.json";
 import type { Rng } from "../engine/rng";
 import { t } from "./strings";
 import { signed } from "./items";
+import { autoDamageSummary } from "./abilities";
 
 export const ARTIFACTS = artifactsJson as unknown as ArtifactDefinition[];
 
@@ -17,6 +18,8 @@ const STAT_LABEL: Record<string, string> = {
   defense: t("resolver.statLabelDefense"),
   maxHp: t("artifact.statLabelMaxHp"),
   maxMp: t("artifact.statLabelMaxMp"),
+  magicPower: t("ability.statLabelMagicPower"),
+  speed: t("resolver.statLabelSpeed"),
 };
 
 function artifactEffectSummary(effect: ArtifactEffect): string {
@@ -34,13 +37,17 @@ function artifactEffectSummary(effect: ArtifactEffect): string {
     case "healOnKill":
       return t("artifact.effectHealOnKill", { amount: effect.amount });
     case "autoDamage":
-      return t("artifact.effectAutoDamage", { amount: effect.amount });
+      return autoDamageSummary(effect);
     case "expBoost":
       return t("artifact.effectExpBoost", { percent: effect.percent });
     case "fearResist":
       return t("artifact.effectFearResist", { percent: effect.percent });
     case "cooldownReduction":
       return t("artifact.effectCooldownReduction", { turns: effect.turns });
+    case "alwaysHit":
+      return t("ability.effectAlwaysHit", { chance: effect.chance });
+    case "debuffResist":
+      return t("ability.effectDebuffResist", { percent: effect.percent });
     case "curseAggroBoost":
       return t("artifact.effectCurseAggroBoost", { amount: effect.amount });
     default:

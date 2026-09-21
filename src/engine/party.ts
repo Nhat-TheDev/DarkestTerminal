@@ -90,10 +90,10 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   const exhaustedAttack = applyExhaustedMultiplier(base.attack, satiety);
   const exhaustedDefense = applyExhaustedMultiplier(base.defense, satiety);
   const exhaustedMagicPower = applyExhaustedMultiplier(base.magicPower, satiety);
-  const boost = artifactStatBoostSum(character, base);
+  const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
   character.attack = exhaustedAttack + boost.attack + activeStatusCombatStatSum(character, "attack");
   character.defense = exhaustedDefense + boost.defense + activeStatusCombatStatSum(character, "defense");
-  character.magicPower = exhaustedMagicPower + abilityWidenedStatBoost(character, "magicPower", base.magicPower);
+  character.magicPower = exhaustedMagicPower + boost.magicPower;
   character.maxHp = base.maxHp + boost.maxHp;
   character.maxMp = base.maxMp + boost.maxMp;
   character.aggro =
@@ -102,7 +102,7 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
     abilityWidenedStatBoost(character, "aggro", cls.baseAggro) +
     activeStatusCombatStatSum(character, "aggro");
   character.speed =
-    applyExhaustedMultiplier(cls.baseSpeed, satiety) + abilityWidenedStatBoost(character, "speed", cls.baseSpeed) + activeStatusCombatStatSum(character, "speed");
+    applyExhaustedMultiplier(cls.baseSpeed, satiety) + boost.speed + activeStatusCombatStatSum(character, "speed");
   character.hp = Math.min(character.hp, character.maxHp);
   character.mp = Math.min(character.mp, character.maxMp);
 }

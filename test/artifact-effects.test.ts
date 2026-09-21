@@ -4,7 +4,8 @@ import { Rng } from "../src/engine/rng";
 import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { rollArtifactRarity } from "../src/data/artifacts";
+import { rollArtifactRarity, ARTIFACTS, formatArtifactEffect } from "../src/data/artifacts";
+import { t } from "../src/data/strings";
 import { applyPartyExp, statsForLevel, recomputeCharacterStats, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
 import {
   rollDodge,
@@ -16,6 +17,8 @@ import {
   totalExpBoostPercent,
   fearResistMultiplier,
   totalCooldownReduction,
+  alwaysHitChance,
+  debuffResistPercent,
 } from "../src/engine/artifacts";
 import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
@@ -93,7 +96,7 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.equippedArtifactIds.push("immortal-heart");
     expect(totalReflectDamagePercent(c)).toBe(15);
-    const base = { attack: c.attack, defense: c.defense, maxHp: c.maxHp, maxMp: c.maxMp };
+    const base = { attack: c.attack, defense: c.defense, maxHp: c.maxHp, maxMp: c.maxMp, magicPower: c.magicPower, speed: c.speed };
     expect(artifactStatBoostSum(c, base).defense).toBe(10);
     expect(artifactStatBoostSum(c, base).maxHp).toBe(60);
 
@@ -266,14 +269,39 @@ describe("artifacts", () => {
 
   test("autoDamage fires at the start of the round, independent of turn order", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("thunder-totem");
+    const mage = ctx.party.find((p) => p.classId === "mage")!;
+    mage.equippedArtifactIds.push("thunder-totem");
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    const self: CombatantRef = { kind: "character", id: mage.id };
+    queueAction(combat, self, "mage-bludgeon", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes(`${vanguard.name}'s artifact deals 6 damage`))).toBe(true);
+    const firstAutoHit = combat.log.findIndex((l) => l.text.includes("Thunder Totem"));
+    const firstAction = combat.log.findIndex((l) => l.text.includes("Bludgeon"));
+    expect(firstAutoHit).toBeGreaterThanOrEqual(0);
+    expect(firstAutoHit).toBeLessThan(firstAction === -1 ? Infinity : firstAction);
+  });
+
+  test("autoDamage artifacts hit one target and scale off base magicPower or base attack", () => {
+    const taken = (artifactId: string, classId: string, liveStat: number | null) => {
+      const { ctx } = makeCtx();
+      const c = ctx.party.find((p) => p.classId === classId)!;
+      c.level = 60;
+      c.equippedArtifactIds.push(artifactId);
+      const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
+      for (const r of rats) r.maxHp = r.hp = 50000;
+      const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+      if (liveStat !== null) c.attack = c.magicPower = liveStat;
+      resolveRound(combat, ctx);
+      const hits = rats.map((r) => 50000 - r.hp).filter((d) => d > 0);
+      expect(hits).toHaveLength(1);
+      return hits[0]!;
+    };
+    expect(taken("thunder-totem", "mage", null)).toBeGreaterThan(taken("thunder-totem", "rogue", null));
+    expect(taken("crown-of-destruction", "rogue", null)).toBeGreaterThan(taken("crown-of-destruction", "mage", null));
+    // live stats (buffs, equipment) never feed the tick
+    expect(taken("thunder-totem", "mage", 9999)).toBe(taken("thunder-totem", "mage", null));
+    expect(taken("crown-of-destruction", "rogue", 1)).toBe(taken("crown-of-destruction", "rogue", null));
   });
 
   test("cooldownReduction shortens a skill's cooldown at resolution", () => {
@@ -312,5 +340,42 @@ describe("artifacts", () => {
     const expectedExp = Math.round(rat.expReward * 1.15);
     expect(game.state.combat!.log.some((l) => l.text.includes(`gains ${expectedExp} EXP`))).toBe(true);
   });
-});
 
+  test("magicPower and speed statBoosts apply to the bearer and survive Exhausted", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    const cls = getClass(c.classId);
+    const baseMagic = statsForLevel(cls, c.level).magicPower;
+    c.equippedArtifactIds.push("resonant-tuning-fork", "runners-ankle-cord"); // +8 magicPower, +2 speed
+    recomputeCharacterStats(c, 100);
+    expect(c.magicPower).toBe(baseMagic + 8);
+    expect(c.speed).toBe(cls.baseSpeed + 2);
+
+    recomputeCharacterStats(c, 30);
+    expect(c.magicPower).toBe(Math.round(baseMagic * (2 / 3)) + 8);
+    expect(c.speed).toBe(Math.round(cls.baseSpeed * (2 / 3)) + 2);
+  });
+
+  test("alwaysHit and debuffResist combine as independent chances across artifacts and the Ability", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(alwaysHitChance(c)).toBe(0);
+    expect(debuffResistPercent(c)).toBe(0);
+
+    c.equippedArtifactIds.push("hunters-tally-stick", "bitter-root-charm"); // alwaysHit 8, debuffResist 10
+    expect(alwaysHitChance(c)).toBe(8);
+    expect(debuffResistPercent(c)).toBe(10);
+
+    c.equippedArtifactIds.push("threshold-salt-pouch"); // debuffResist 15
+    expect(debuffResistPercent(c)).toBeCloseTo(100 * (1 - 0.9 * 0.85), 6);
+
+    c.equippedAbilityId = "unerring-will"; // alwaysHit 20
+    expect(alwaysHitChance(c)).toBeCloseTo(100 * (1 - 0.92 * 0.8), 6);
+  });
+
+  test("every artifact effect kind has a formatter line", () => {
+    for (const artifact of ARTIFACTS) {
+      expect(formatArtifactEffect(artifact)).not.toContain(t("effect.default"));
+    }
+  });
+});

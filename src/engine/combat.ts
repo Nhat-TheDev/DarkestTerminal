@@ -22,7 +22,7 @@ import { characterBaseStats } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
-import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance } from "./artifacts";
+import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
@@ -43,6 +43,7 @@ import {
   rollLosesControl,
   getFearTier,
   expireStatusEffect,
+  isHelpfulStatusEffect,
 } from "./resolver";
 
 export interface EngineContext {
@@ -557,7 +558,7 @@ function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bo
   source.activeStatusEffects = source.activeStatusEffects.filter((a) => !statusSatisfiesRequirement(a.statusEffectId, requiredId));
 }
 
-/** An Ability's `alwaysHit` chance, re-rolled fresh for the wearer's own enemy-targeting rolls only — a hit here skips whatever roll it's guarding entirely; a miss falls through to that roll exactly as if `alwaysHit` didn't exist. `11-abilities.md` §11.1.1. */
+/** The bearer's `alwaysHit` chance (Artifacts and Ability combined), re-rolled fresh for the wearer's own enemy-targeting rolls only — a hit here skips whatever roll it's guarding entirely; a miss falls through to that roll exactly as if `alwaysHit` didn't exist. `11-abilities.md` §11.1.1. */
 function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContext): boolean {
   if (!isEnemyFacing || !isCharacter(source)) return false;
   // `Rng.chance` advances the stream even at p = 0, so a party with no `alwaysHit` Ability would
@@ -565,6 +566,13 @@ function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContex
   // seeded stream along with it.
   const chance = alwaysHitChance(source);
   return chance > 0 && ctx.rng.chance(chance / 100);
+}
+
+/** The first harmful status an enemy skill's `applyStatusEffect` is about to put on a Character — the only application the bearer's `debuffResist` (Artifacts and Ability combined) reduces. `11-abilities.md` §11.1.2. */
+function harmfulStatusOnCharacter(effect: SkillEffect, target: Actor, isEnemyFacing: boolean) {
+  if (!isEnemyFacing || !isCharacter(target) || effect.kind !== "applyStatusEffect") return null;
+  const ids = [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])].filter((id): id is Id => id !== undefined);
+  return ids.map((id) => getStatusEffect(id)).find((def) => !isHelpfulStatusEffect(def)) ?? null;
 }
 
 /** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
@@ -832,7 +840,18 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
       }
       if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
-      if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
+      const harmfulStatus = harmfulStatusOnCharacter(effect, target, isEnemyFacing);
+      // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
+      // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.
+      const resistPercent = harmfulStatus && isCharacter(target) ? debuffResistPercent(target) : 0;
+      if (resistPercent > 0) {
+        const baseChance = effect.chance ?? 1;
+        const roll = ctx.rng.next();
+        if (roll >= baseChance * (1 - resistPercent / 100)) {
+          if (roll < baseChance) log.push({ text: t("combat.debuffResisted", { target: target.name, status: statusDisplayName(harmfulStatus!) }), kind: "info" });
+          continue;
+        }
+      } else if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;

@@ -94,7 +94,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
   const isExhausted = exhausted(100) !== 100;
   // `artifactStatBoostSum` deliberately folds the equipped Ability's shared effects in with the
   // Artifacts', so the Ability's share has to be subtracted back out to colour the two apart.
-  const boost = artifactStatBoostSum(character, baseStats);
+  const boost = artifactStatBoostSum(character, { ...baseStats, speed: cls.baseSpeed });
   const abilityBoost = (stat: "attack" | "defense") => abilityWidenedStatBoost(character, stat, baseStats[stat]);
 
   // Which digit switches to whom — the only place the party's indices are visible on this screen.
@@ -157,7 +157,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       t("ui.characterInfoStatMagicPower"),
       exhausted(baseStats.magicPower),
       isExhausted,
-      0,
+      boost.magicPower - abilityWidenedStatBoost(character, "magicPower", baseStats.magicPower),
       abilityWidenedStatBoost(character, "magicPower", baseStats.magicPower),
       0,
       character.magicPower
@@ -166,7 +166,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       t("ui.characterInfoStatSpeed"),
       exhausted(cls.baseSpeed),
       isExhausted,
-      0,
+      boost.speed - abilityWidenedStatBoost(character, "speed", cls.baseSpeed),
       abilityWidenedStatBoost(character, "speed", cls.baseSpeed),
       activeStatusCombatStatSum(character, "speed"),
       character.speed

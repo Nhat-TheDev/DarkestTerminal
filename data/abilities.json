@@ -30,7 +30,7 @@
   {
     "id": "hardy-constitution",
     "name": "Hardy Constitution",
-    "description": "A body built to endure — nothing magical about it, just resilience that doesn't quit.",
+    "description": "Takes the same hits as everyone else and gets up from more of them.",
     "rarity": "common",
     "effects": [
       {
@@ -68,8 +68,8 @@
     ]
   },
   {
-    "id": "evasive-instinct",
-    "name": "Evasive Instinct",
+    "id": "sidestep",
+    "name": "Sidestep",
     "description": "A half-step sideways that's already happened by the time the blow arrives.",
     "rarity": "common",
     "effects": [
@@ -80,9 +80,9 @@
     ]
   },
   {
-    "id": "leeching-will",
-    "name": "Leeching Will",
-    "description": "A stubborn will that leeches a little life back from every wound it deals.",
+    "id": "leechs-thirst",
+    "name": "Leech's Thirst",
+    "description": "Takes back a mouthful from every wound it deals.",
     "rarity": "common",
     "effects": [
       {
@@ -94,7 +94,7 @@
   {
     "id": "arcane-aptitude",
     "name": "Arcane Aptitude",
-    "description": "A natural aptitude for channeling magic, drawn on with every spell cast.",
+    "description": "Spells take shape before the words are finished.",
     "rarity": "common",
     "effects": [
       {
@@ -102,6 +102,18 @@
         "stat": "magicPower",
         "amount": 5,
         "minPercent": 5
+      }
+    ]
+  },
+  {
+    "id": "stubborn-blood",
+    "name": "Stubborn Blood",
+    "description": "Poison, hexes, whatever the dark drips into the wound — sometimes the body just refuses it.",
+    "rarity": "common",
+    "effects": [
+      {
+        "kind": "debuffResist",
+        "percent": 10
       }
     ]
   },
@@ -122,7 +134,7 @@
   {
     "id": "bulwark-stance",
     "name": "Bulwark Stance",
-    "description": "A stance drilled until it's second nature — nothing gets through easily.",
+    "description": "Feet set, weight behind the shield. Blows arrive at something already braced for them.",
     "rarity": "rare",
     "effects": [
       {
@@ -136,7 +148,7 @@
   {
     "id": "second-wind",
     "name": "Second Wind",
-    "description": "The talent for finding one more reserve of strength when it matters most.",
+    "description": "Past the point where the body should have quit, there turns out to be a little more.",
     "rarity": "rare",
     "effects": [
       {
@@ -150,7 +162,7 @@
   {
     "id": "bloodletting",
     "name": "Bloodletting",
-    "description": "A brutal technique that turns every wound dealt into strength regained.",
+    "description": "Every wound it opens gives a little back.",
     "rarity": "rare",
     "effects": [
       {
@@ -174,13 +186,65 @@
   {
     "id": "restless-vigor",
     "name": "Restless Vigor",
-    "description": "An energy that never settles, always pushing the body to move first.",
+    "description": "Never quite at rest, even in camp, and first to move whenever anything starts.",
     "rarity": "rare",
     "effects": [
       {
         "kind": "statBoost",
         "stat": "speed",
         "amount": 5
+      }
+    ]
+  },
+  {
+    "id": "deepened-channel",
+    "name": "Deepened Channel",
+    "description": "The spell leaves with more behind it than the caster meant to give.",
+    "rarity": "rare",
+    "effects": [
+      {
+        "kind": "statBoost",
+        "stat": "magicPower",
+        "amount": 10,
+        "minPercent": 10
+      }
+    ]
+  },
+  {
+    "id": "wellspring",
+    "name": "Wellspring",
+    "description": "A deeper reserve than the caster remembers building.",
+    "rarity": "rare",
+    "effects": [
+      {
+        "kind": "statBoost",
+        "stat": "maxMp",
+        "amount": 20,
+        "minPercent": 10
+      }
+    ]
+  },
+  {
+    "id": "fixed-gaze",
+    "name": "Fixed Gaze",
+    "description": "Doesn't blink until the curse has taken.",
+    "rarity": "rare",
+    "effects": [
+      {
+        "kind": "alwaysHit",
+        "chance": 10
+      }
+    ]
+  },
+  {
+    "id": "warded-flesh",
+    "name": "Warded Flesh",
+    "description": "Old marks under the skin turn curses aside before they settle.",
+    "rarity": "rare",
+    "effects": [
+      {
+        "kind": "debuffResist",
+        "percent": 16
       }
     ]
   },
@@ -200,7 +264,7 @@
   {
     "id": "thunderous-aura",
     "name": "Thunderous Aura",
-    "description": "An aura that occasionally lashes out on its own, independent of any weapon.",
+    "description": "Lightning gathers on its own and strikes something every round, no weapon raised.",
     "rarity": "unique",
     "effects": [
       {
@@ -214,7 +278,7 @@
   {
     "id": "vampiric-discipline",
     "name": "Vampiric Discipline",
-    "description": "A discipline where the fight itself has started feeding it back.",
+    "description": "Drinks deep from every wound it deals.",
     "rarity": "unique",
     "effects": [
       {
@@ -238,7 +302,7 @@
   {
     "id": "battle-scholar",
     "name": "Battle Scholar",
-    "description": "Draws a lesson from every fight, learning faster than the rest of the party.",
+    "description": "Writes down what nearly killed it after every fight, and reads it back before the next.",
     "rarity": "unique",
     "effects": [
       {
@@ -248,9 +312,46 @@
     ]
   },
   {
-    "id": "undying-will",
-    "name": "Undying Will",
-    "description": "Sends every blow back on whoever dealt it, and has more left in reserve to survive what follows.",
+    "id": "hexbinder",
+    "name": "Hexbinder",
+    "description": "Says the target's name aloud. The curse takes it as an order.",
+    "rarity": "unique",
+    "effects": [
+      {
+        "kind": "alwaysHit",
+        "chance": 15
+      }
+    ]
+  },
+  {
+    "id": "quickened-pulse",
+    "name": "Quickened Pulse",
+    "description": "A pulse that runs a beat ahead of everyone else's, and the body follows it.",
+    "rarity": "unique",
+    "effects": [
+      {
+        "kind": "statBoost",
+        "stat": "speed",
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "bitter-marrow",
+    "name": "Bitter Marrow",
+    "description": "What the enemy tries to put in the blood fails to take more often than it should. Something in the bone won't have it.",
+    "rarity": "unique",
+    "effects": [
+      {
+        "kind": "debuffResist",
+        "percent": 24
+      }
+    ]
+  },
+  {
+    "id": "thornhide",
+    "name": "Thornhide",
+    "description": "A share of every blow goes back to whoever dealt it, and there's more left in the body to take the next.",
     "rarity": "epic",
     "effects": [
       {
@@ -268,7 +369,7 @@
   {
     "id": "reapers-instinct",
     "name": "Reaper's Instinct",
-    "description": "Every kill closes the wounds already taken — and leaves this fighter feeding on whatever's left of the fight.",
+    "description": "Every kill closes a little of what the fight opened, and every wound it deals feeds it a little more.",
     "rarity": "epic",
     "effects": [
       {
@@ -283,9 +384,9 @@
     ]
   },
   {
-    "id": "eye-of-the-storm",
-    "name": "Eye of the Storm",
-    "description": "The stillness at the center of the storm — impossible to look away from, while the chaos around it strikes with this fighter's own strength.",
+    "id": "lodestone",
+    "name": "Lodestone",
+    "description": "Every enemy in the room keeps looking at it, and every round something near it takes a hit no one saw thrown.",
     "rarity": "epic",
     "effects": [
       {
@@ -303,7 +404,7 @@
   {
     "id": "grandmasters-focus",
     "name": "Grandmaster's Focus",
-    "description": "Nothing in a fight goes to waste anymore — not the cooldown between strikes, not the lesson buried in losing one.",
+    "description": "Waits less between strikes and takes more from every fight.",
     "rarity": "epic",
     "effects": [
       {
@@ -319,7 +420,7 @@
   {
     "id": "unerring-will",
     "name": "Unerring Will",
-    "description": "A conviction so absolute that fear itself can't shake the outcome — some strikes and afflictions simply cannot be denied.",
+    "description": "Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss.",
     "rarity": "epic",
     "effects": [
       {
@@ -329,6 +430,44 @@
       {
         "kind": "fearResist",
         "percent": 12
+      }
+    ]
+  },
+  {
+    "id": "arcane-font",
+    "name": "Arcane Font",
+    "description": "Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins.",
+    "rarity": "epic",
+    "effects": [
+      {
+        "kind": "statBoost",
+        "stat": "magicPower",
+        "amount": 14,
+        "minPercent": 10
+      },
+      {
+        "kind": "statBoost",
+        "stat": "maxMp",
+        "amount": 28,
+        "minPercent": 10
+      }
+    ]
+  },
+  {
+    "id": "sealed-bulwark",
+    "name": "Sealed Bulwark",
+    "description": "Plate and ward set into the same frame — blows slow to land, and curses slower to stay.",
+    "rarity": "epic",
+    "effects": [
+      {
+        "kind": "debuffResist",
+        "percent": 32
+      },
+      {
+        "kind": "statBoost",
+        "stat": "defense",
+        "amount": 12,
+        "minPercent": 10
       }
     ]
   }

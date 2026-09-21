@@ -1,4 +1,4 @@
-import type { AbilityDefinition, AbilityEffect, ArtifactRarity, Id } from "../types";
+import type { AbilityDefinition, AbilityEffect, ArtifactEffect, ArtifactRarity, Id } from "../types";
 import abilitiesJson from "../../data/abilities.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
@@ -23,6 +23,13 @@ const STAT_LABEL: Record<string, string> = {
   magicPower: t("ability.statLabelMagicPower"),
 };
 
+/** Text for an `autoDamage` effect, shared with `formatArtifactEffect` — Artifacts can carry the scaled form too. */
+export function autoDamageSummary(effect: Extract<ArtifactEffect, { kind: "autoDamage" }>): string {
+  if (effect.offenseMultiplierPercent === undefined) return t("artifact.effectAutoDamage", { amount: effect.amount });
+  const stat = effect.isMagic ? "magicPower" : "attack";
+  return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
+}
+
 function abilityEffectSummary(effect: AbilityEffect): string {
   switch (effect.kind) {
     case "statBoost": {
@@ -42,11 +49,8 @@ function abilityEffectSummary(effect: AbilityEffect): string {
       return effect.minPercent === undefined
         ? t("artifact.effectHealOnKill", { amount: effect.amount })
         : t("ability.effectHealOnKillMin", { amount: effect.amount, percent: effect.minPercent });
-    case "autoDamage": {
-      if (effect.offenseMultiplierPercent === undefined) return t("artifact.effectAutoDamage", { amount: effect.amount });
-      const stat = effect.isMagic ? "magicPower" : "attack";
-      return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
-    }
+    case "autoDamage":
+      return autoDamageSummary(effect);
     case "expBoost":
       return t("artifact.effectExpBoost", { percent: effect.percent });
     case "fearResist":
@@ -55,6 +59,8 @@ function abilityEffectSummary(effect: AbilityEffect): string {
       return t("artifact.effectCooldownReduction", { turns: effect.turns });
     case "alwaysHit":
       return t("ability.effectAlwaysHit", { chance: effect.chance });
+    case "debuffResist":
+      return t("ability.effectDebuffResist", { percent: effect.percent });
     default:
       return t("effect.default");
   }

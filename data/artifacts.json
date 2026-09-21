@@ -22,7 +22,7 @@
 
   { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
   { "id": "serpent-ring", "name": "Serpent Ring", "description": "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
-  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6 }] },
+  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6, "offenseMultiplierPercent": 25, "isMagic": true }] },
   {
     "id": "armor-of-wholeness",
     "name": "Armor of Wholeness",
@@ -44,7 +44,7 @@
     "description": "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask.",
     "rarity": "epic",
     "effects": [
-      { "kind": "autoDamage", "amount": 12 },
+      { "kind": "autoDamage", "amount": 12, "offenseMultiplierPercent": 30 },
       { "kind": "poisonOnHit", "chance": 8 }
     ]
   },
@@ -142,5 +142,16 @@
 
   { "id": "vigil-cloth", "name": "Vigil Cloth", "description": "Folded before it was ever set down, the way you'd fold something you meant to come back for. It got folded the same exact way every night — until the night nobody came back to unfold it again.", "rarity": "unique", "effects": [{ "kind": "fearResist", "percent": 15 }] },
   { "id": "torn-lock-plate", "name": "Torn Lock-Plate", "description": "The other half of what was stamped into the seal — the half torn away, not the half still in the lock. Read together, the two halves would complete the spiral. Nobody's ever held both.", "rarity": "unique", "effects": [{ "kind": "dodgeChance", "chance": 10 }] },
-  { "id": "worn-chalk-stub", "name": "Worn Chalk Stub", "description": "Worn down to a nub, carving something into stone that should have taken half as long. Whatever hand held it needed to stay steady right up until it didn't.", "rarity": "unique", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] }
+  { "id": "worn-chalk-stub", "name": "Worn Chalk Stub", "description": "Worn down to a nub, carving something into stone that should have taken half as long. Whatever hand held it needed to stay steady right up until it didn't.", "rarity": "unique", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
+  { "id": "cracked-scrying-glass", "name": "Cracked Scrying Glass", "description": "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass.", "rarity": "common", "effects": [{ "kind": "statBoost", "stat": "magicPower", "amount": 3 }] },
+  { "id": "knotted-red-thread", "name": "Knotted Red Thread", "description": "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what.", "rarity": "common", "effects": [{ "kind": "debuffResist", "percent": 6 }] },
+  { "id": "resonant-tuning-fork", "name": "Resonant Tuning Fork", "description": "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "magicPower", "amount": 8 }] },
+  { "id": "runners-ankle-cord", "name": "Runner's Ankle Cord", "description": "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "speed", "amount": 2 }] },
+  { "id": "bitter-root-charm", "name": "Bitter Root Charm", "description": "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it.", "rarity": "rare", "effects": [{ "kind": "debuffResist", "percent": 10 }] },
+  { "id": "hunters-tally-stick", "name": "Hunter's Tally Stick", "description": "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished.", "rarity": "rare", "effects": [{ "kind": "alwaysHit", "chance": 8 }] },
+  { "id": "censer-of-ash", "name": "Censer of Ash", "description": "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first.", "rarity": "unique", "effects": [{ "kind": "statBoost", "stat": "magicPower", "amount": 12 }] },
+  { "id": "signal-whistle", "name": "Signal Whistle", "description": "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look.", "rarity": "unique", "effects": [{ "kind": "statBoost", "stat": "speed", "amount": 4 }] },
+  { "id": "threshold-salt-pouch", "name": "Threshold Salt Pouch", "description": "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one.", "rarity": "unique", "effects": [{ "kind": "debuffResist", "percent": 15 }] },
+  { "id": "stormglass-orb", "name": "Stormglass Orb", "description": "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again.", "rarity": "epic", "effects": [{ "kind": "statBoost", "stat": "magicPower", "amount": 15 }, { "kind": "cooldownReduction", "turns": 1 }] },
+  { "id": "unbroken-seal", "name": "Unbroken Seal", "description": "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside.", "rarity": "epic", "effects": [{ "kind": "debuffResist", "percent": 20 }, { "kind": "fearResist", "percent": 15 }] }
 ]
