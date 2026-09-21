@@ -346,6 +346,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     const actor = getActorByRef(c.ref, ctx);
     if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log });
   }
+  pruneDeadSummons(combat, ctx, combat.log);
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
   blockStart = combat.log.length;
@@ -368,6 +369,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
       runMonsterTurn(ref, combat, ctx);
     }
     if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
+    pruneDeadSummons(combat, ctx, combat.log);
     tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
     if (isCombatOver(combat, ctx)) break;
@@ -649,9 +651,14 @@ function empowerActiveMinions(owner: Character, bonus: { maxHpPercent: number; a
 }
 
 /** `formula.base + (formula.percent / 100) * owner[formula.sourceStat]`, with `bonusPercent` (Mastery's empowerment) scaling the source-derived portion only — the flat `base` term isn't boosted. */
+/** Resolves a scalar-or-`[r1, r2, r3]` value to a plain number for `rank` (1-3) — a scalar is used as-is; a tuple (a value that scales with the casting skill's rank) picks the matching element. Shared by `SummonStatFormula.percent` and `SummonCast.onDeath`'s per-rank fields. */
+function resolveRankValue(value: number | [number, number, number], rank: number): number {
+  return Array.isArray(value) ? value[Math.min(2, Math.max(0, rank - 1))]! : value;
+}
+
 /** Resolves `formula.percent` to a plain number for `rank` (1-3) — a scalar is used as-is; a `[r1, r2, r3]` tuple (a stat that scales with the casting skill's rank) picks the matching element. */
 function resolveStatPercent(formula: SummonStatFormula, rank: number): number {
-  return Array.isArray(formula.percent) ? formula.percent[Math.min(2, Math.max(0, rank - 1))]! : formula.percent;
+  return resolveRankValue(formula.percent, rank);
 }
 
 function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: number, bonusPercent: number): number {
@@ -676,6 +683,17 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
   const { stat } = cast;
   const { maxHpPercent, attackPercent } = empowermentBonusFor(owner);
   const maxHp = Math.max(1, Math.round(computeSummonStat(stat.maxHp, owner, rank, maxHpPercent)));
+  const { onDeath } = cast;
+  const deathBurst = onDeath
+    ? {
+        amount: resolveRankValue(onDeath.amount, rank),
+        offenseMultiplierPercent: resolveRankValue(onDeath.offenseMultiplierPercent, rank),
+        offensiveStatOverride: owner[onDeath.sourceStat],
+        statusEffectId: onDeath.statusEffectId,
+        statusEffectChance: resolveRankValue(onDeath.statusEffectChance, rank),
+        durationTurns: onDeath.durationTurns,
+      }
+    : undefined;
   summonCounter += 1;
   const summon: Summon = {
     id: `${owner.id}-${archetype.id}-${summonCounter}`,
@@ -692,6 +710,7 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
     activeStatusEffects: [],
     actionsTaken: 0,
     maxActions: cast.maxActions,
+    deathBurst,
   };
   ctx.summons.push(summon);
   combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
@@ -710,14 +729,53 @@ function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng:
   return rng.weightedPick(candidates, ([, weight]) => weight)[0];
 }
 
-function expireSummonIfDone(summon: Summon, combat: CombatState, log: LogEntry[]): void {
+/** Fires a summon's `deathBurst` (Ninja's Shadow Clone) once, right before it leaves combat — an AoE hit to every living enemy plus a chance to apply its configured status, both computed off the owner's stat frozen at spawn time (`spawnSummon`), not whatever the summon or owner carries now. No-op for a summon with no `deathBurst` (every other archetype today). */
+function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  const burst = summon.deathBurst;
+  if (!burst) return;
+  const targets = livingMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Monster);
+  if (targets.length === 0) return;
+  log.push({ text: t("combat.summonDeathBurst", { summon: summon.name }), kind: "attack" });
+  for (const target of targets) {
+    resolveSkillEffect(
+      { kind: "damage", amount: burst.amount, offenseMultiplierPercent: burst.offenseMultiplierPercent },
+      summon,
+      target,
+      { log, offensiveStatOverride: burst.offensiveStatOverride }
+    );
+    if (burst.statusEffectId && ctx.rng.chance(burst.statusEffectChance)) {
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: burst.statusEffectId, durationTurns: burst.durationTurns }, summon, target, { log });
+    }
+  }
+}
+
+/**
+ * Removes a summon from combat once it's actually done — killed (hp 0, from a hit or a DoT tick) or
+ * out of actions — firing its `deathBurst` first. Safe to call repeatedly/from multiple checkpoints
+ * each round (`resolveRound`'s DoT-tick and per-turn sweeps, plus the direct call at the end of the
+ * summon's own turn): once a summon is done, it's dropped from `combat.combatants`, so a later sweep
+ * simply won't find it again and this becomes a no-op. Does *not* run for a manual dismiss/replace
+ * (`dismissSummon` — recasting the same archetype, or eviction at the owner's minion cap) — the burst
+ * is meant to be the cost of the summon actually falling in battle, not a free nuke on recast.
+ */
+function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   if (summon.actionsTaken < summon.maxActions && summon.hp > 0) return;
   log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
+  triggerSummonDeathBurst(summon, combat, ctx, log);
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
   // Without this, ownedSummons()'s `hp > 0` filter keeps counting an action-expired summon toward
   // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
   // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
   summon.hp = 0;
+}
+
+/** Sweeps every summon still in `combat.combatants` for one that just died (a hit, a DoT tick) or ran out of actions, and finalizes it (`expireSummonIfDone`). Called after every point in a round a summon could take lethal damage or use up its last action — see that function's own doc for why repeated calls are safe. */
+function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  for (const c of combat.combatants) {
+    if (c.ref.kind !== "summon") continue;
+    const summon = ctx.summons.find((s) => s.id === c.ref.id);
+    if (summon) expireSummonIfDone(summon, combat, ctx, log);
+  }
 }
 
 /** Living player-side actor (character or summon) with the lowest current HP% — Healer Spirit's default heal target. */
@@ -776,7 +834,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
     }
   }
   summon.actionsTaken += 1;
-  expireSummonIfDone(summon, combat, combat.log);
+  expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
