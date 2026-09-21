@@ -4,7 +4,7 @@
 
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
-import { MONSTER_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
+import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
 import {
   growthBonus,
   growthBonusForDepth,
@@ -78,13 +78,14 @@ export function getCatalog() {
     monsters: MONSTER_ARCHETYPES.map((m) => ({
       id: m.id,
       name: m.name,
-      guardOnly: m.guardOnly ?? false,
+      roles: m.roles,
+      finalBoss: m.finalBoss ?? false,
       powerTier: m.powerTier ?? null,
       aiPattern: m.aiPattern,
       monsterType: m.monsterType,
       base: { hp: m.baseHp, attack: m.baseAttack, defense: m.baseDefense, speed: m.baseSpeed },
       expReward: m.expReward,
-      isGuardCapable: Boolean(m.actionWeights?.elite && m.actionWeights?.boss),
+      isGuardCapable: GUARD_ROOM_ARCHETYPES.includes(m),
       actionWeights: m.actionWeights ?? null,
     })),
     monsterSkills: MONSTER_SKILLS,

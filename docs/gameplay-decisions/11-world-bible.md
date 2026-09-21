@@ -369,7 +369,7 @@ reason it was, the setting has quietly drifted.
   one per scene — see the one-observable-change rule above.
 - If a new recurring NPC is ever added, decide first whether they belong on §11.7's line of
   contact or run parallel to it the way the Stranger does — and give them their own
-  self-description (à la §11.8), not a slot on a spectrum.
+  self-description (in the style of §11.8), not a slot on a spectrum.
 - A reflection stance (§8.16) can *echo* toward one of §11.8's figures in later text, but should
   never be written as a strict classifier — a wary party can still end up consumed; a curious
   party can still stay disciplined. Treat it as a leaning, not a verdict. If an implementation

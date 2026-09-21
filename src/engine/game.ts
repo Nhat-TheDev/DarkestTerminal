@@ -508,7 +508,7 @@ export class Game {
             // §F.4 — only a real Boss kill may roll waystone-shard; Collapsed Floor separately
             // rolls this same "boss" rarity table without qualifying (bloodAltar.ts is the only
             // other allowed source, gated on its own condition, not this one).
-            const artifactId = rollArtifact(monster.tier, this.ctx.rng, monster.tier === "boss" ? "boss" : undefined);
+            const artifactId = rollArtifact(monster.tier, this.ctx.rng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
             grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
 
@@ -536,7 +536,7 @@ export class Game {
           this.state.combat.log.push({ text: t("game.coinsEarned", { amount: coinsGained }), kind: "info" });
         }
         if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
-          const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng);
+          const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng, this.state.floor.depth);
           grantArtifact(this.state, artifactId);
           droppedArtifactIds.push(artifactId);
           // Part C.1 pair 8 — guardian-fight/desecrated-altar's win path never calls closeEvent()

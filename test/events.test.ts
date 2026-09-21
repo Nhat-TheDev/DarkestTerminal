@@ -62,7 +62,7 @@ describe("events", () => {
     let cursedCount = 0;
     const total = 4000;
     for (let i = 0; i < total; i++) {
-      if (getArtifact(rollArtifactOrCursed(rng)).isCursed) cursedCount++;
+      if (getArtifact(rollArtifactOrCursed(rng, 35)).isCursed) cursedCount++;
     }
     expect(cursedCount / total).toBeGreaterThan(0.24);
     expect(cursedCount / total).toBeLessThan(0.36);
@@ -349,12 +349,13 @@ describe("events", () => {
     expect(game2.hermitExchangeFortune("iron-gauntlet")).not.toBeNull(); // not enough coins
   });
 
-  test("collapsedFloorAttempt costs HP, grants Unique/Epic on success", () => {
+  test("collapsedFloorAttempt costs HP, grants an artifact rolled from the depth-scaled boss odds on success", () => {
     let sawSuccess = false;
     let sawFailure = false;
     for (let seed = 1; seed < 60 && !(sawSuccess && sawFailure); seed++) {
       const game = new Game(seed);
       forceEventRoom(game, "collapsed-floor");
+      game.state.floor.depth = 61; // deep enough that the depth-scaled boss odds are effectively Unique/Epic only
       const c = game.state.party[0]!;
       const hpBefore = c.hp;
       expect(game.collapsedFloorAttempt(c.id)).toBeNull();
@@ -1301,21 +1302,21 @@ describe("waystone-shard's restricted drop source (10-event-narrative.md §F.4)"
   test("never rolls from the standard treasureOrEvent table", () => {
     const rng = new Rng(200);
     for (let i = 0; i < 5000; i++) {
-      expect(rollArtifact("treasureOrEvent", rng)).not.toBe("waystone-shard");
+      expect(rollArtifact("treasureOrEvent", rng, 35)).not.toBe("waystone-shard");
     }
   });
 
   test("never rolls from an Elite kill", () => {
     const rng = new Rng(201);
     for (let i = 0; i < 5000; i++) {
-      expect(rollArtifact("elite", rng)).not.toBe("waystone-shard");
+      expect(rollArtifact("elite", rng, 35)).not.toBe("waystone-shard");
     }
   });
 
   test("never rolls from collapsed-floor's own use of the 'boss' rarity table (not a Boss kill)", () => {
     const rng = new Rng(202);
     for (let i = 0; i < 5000; i++) {
-      expect(rollArtifact("boss", rng)).not.toBe("waystone-shard");
+      expect(rollArtifact("boss", rng, 35)).not.toBe("waystone-shard");
     }
   });
 
@@ -1323,7 +1324,7 @@ describe("waystone-shard's restricted drop source (10-event-narrative.md §F.4)"
     const rng = new Rng(203);
     let sawIt = false;
     for (let i = 0; i < 5000 && !sawIt; i++) {
-      if (rollArtifact("boss", rng, "boss") === "waystone-shard") sawIt = true;
+      if (rollArtifact("boss", rng, 35, "boss") === "waystone-shard") sawIt = true;
     }
     expect(sawIt).toBe(true);
   });

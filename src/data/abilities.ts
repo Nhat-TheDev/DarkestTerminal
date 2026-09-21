@@ -1,4 +1,4 @@
-import type { AbilityDefinition, AbilityEffect, ArtifactRarity, Id } from "../types";
+import type { AbilityDefinition, AbilityEffect, ArtifactEffect, ArtifactRarity, Id } from "../types";
 import abilitiesJson from "../../data/abilities.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
@@ -23,10 +23,20 @@ const STAT_LABEL: Record<string, string> = {
   magicPower: t("ability.statLabelMagicPower"),
 };
 
+/** Text for an `autoDamage` effect, shared with `formatArtifactEffect` — Artifacts can carry the scaled form too. */
+export function autoDamageSummary(effect: Extract<ArtifactEffect, { kind: "autoDamage" }>): string {
+  if (effect.offenseMultiplierPercent === undefined) return t("artifact.effectAutoDamage", { amount: effect.amount });
+  const stat = effect.isMagic ? "magicPower" : "attack";
+  return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
+}
+
 function abilityEffectSummary(effect: AbilityEffect): string {
   switch (effect.kind) {
-    case "statBoost":
-      return t("effect.signedStat", { amount: signed(effect.amount), stat: STAT_LABEL[effect.stat] ?? effect.stat });
+    case "statBoost": {
+      const stat = STAT_LABEL[effect.stat] ?? effect.stat;
+      const flat = t("effect.signedStat", { amount: signed(effect.amount), stat });
+      return effect.minPercent === undefined ? flat : t("ability.effectMinPercentStat", { flat, percent: effect.minPercent, stat });
+    }
     case "reflectDamage":
       return t("artifact.effectReflectDamage", { percent: effect.percent });
     case "poisonOnHit":
@@ -36,9 +46,11 @@ function abilityEffectSummary(effect: AbilityEffect): string {
     case "dodgeChance":
       return t("artifact.effectDodgeChance", { chance: effect.chance });
     case "healOnKill":
-      return t("artifact.effectHealOnKill", { amount: effect.amount });
+      return effect.minPercent === undefined
+        ? t("artifact.effectHealOnKill", { amount: effect.amount })
+        : t("ability.effectHealOnKillMin", { amount: effect.amount, percent: effect.minPercent });
     case "autoDamage":
-      return t("artifact.effectAutoDamage", { amount: effect.amount });
+      return autoDamageSummary(effect);
     case "expBoost":
       return t("artifact.effectExpBoost", { percent: effect.percent });
     case "fearResist":
@@ -47,6 +59,8 @@ function abilityEffectSummary(effect: AbilityEffect): string {
       return t("artifact.effectCooldownReduction", { turns: effect.turns });
     case "alwaysHit":
       return t("ability.effectAlwaysHit", { chance: effect.chance });
+    case "debuffResist":
+      return t("ability.effectDebuffResist", { percent: effect.percent });
     default:
       return t("effect.default");
   }
@@ -81,7 +95,7 @@ export function abilitiesOfRarity(rarity: ArtifactRarity): AbilityDefinition[] {
   return ABILITIES.filter((a) => a.rarity === rarity);
 }
 
-/** Non-common abilities of `rarity` not already in `unlockedAbilityIds` — the roll only ever surfaces something new ("tỉ lệ rơi chỉ rơi những abilities chưa có trong pool chung"). */
+/** Non-common abilities of `rarity` not already in `unlockedAbilityIds` — the roll only ever surfaces something new. */
 export function availableAbilitiesOfRarity(rarity: ArtifactRarity, unlockedAbilityIds: Id[]): AbilityDefinition[] {
   return abilitiesOfRarity(rarity).filter((a) => !unlockedAbilityIds.includes(a.id));
 }

@@ -144,6 +144,8 @@ export interface ResolveContext {
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
   /** A flat extra % applied to this specific damage instance, on top of everything else — e.g. Ninja's stealth-break bonus on a skill attack. */
   bonusDamagePercent?: number;
+  /** Replaces the source's live `attack`/`magicPower` as the stat a `damage` effect's `offenseMultiplierPercent` scales — used by an Ability's `autoDamage`, which scales off the bearer's base stat, not whatever buffs/equipment currently sit on top of it. */
+  offensiveStatOverride?: number;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -178,7 +180,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
             Math.round(
               ((effect.amount ?? 0) +
                 executeFlat +
-                mitigatedOffense(offensiveStatFor(source, ctx.isMagic) * offenseMultiplier, effectiveDefense)) *
+                mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
                 damageMultiplierFor(source) *
                 critMultiplier *
                 executeMultiplier *

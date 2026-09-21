@@ -118,6 +118,15 @@ interface BalanceConfig {
     itemDropChance: number;
     itemWeightDepthGrowth: number;
   };
+  /** Artifact rarity odds by floor depth — `docs/gameplay-decisions/07-items-artifacts.md`, "Level bands & drop schedule". Each source's `anchorWeights` are its odds on the step containing `anchorFirstFloor`; every other step scales rarity `i` (common = 0 … epic = 3) by `tilt ^ (i × stepsFromAnchor)` and renormalizes. */
+  artifacts: {
+    floorsPerStep: number;
+    anchorFirstFloor: number;
+    tilt: number;
+    /** Steps away from the anchor beyond which the odds stop changing. */
+    maxStepsFromAnchor: number;
+    anchorWeights: Record<"elite" | "boss" | "treasureOrEvent", Record<ArtifactRarity, number>>;
+  };
   abilities: {
     dropChance: number;
     depthCap: number;

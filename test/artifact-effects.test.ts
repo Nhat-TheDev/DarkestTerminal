@@ -4,7 +4,9 @@ import { Rng } from "../src/engine/rng";
 import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { rollArtifactRarity } from "../src/data/artifacts";
+import { rollArtifactRarity, artifactRarityWeights, ARTIFACTS, formatArtifactEffect } from "../src/data/artifacts";
+import { BALANCE } from "../src/data/balanceConfig";
+import { t } from "../src/data/strings";
 import { applyPartyExp, statsForLevel, recomputeCharacterStats, MAX_EQUIPPED_ARTIFACTS } from "../src/engine/party";
 import {
   rollDodge,
@@ -12,10 +14,12 @@ import {
   totalReflectDamagePercent,
   totalLifestealPercent,
   totalHealOnKill,
-  autoDamageAmounts,
+  autoDamageEntries,
   totalExpBoostPercent,
   fearResistMultiplier,
   totalCooldownReduction,
+  alwaysHitChance,
+  debuffResistPercent,
 } from "../src/engine/artifacts";
 import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
@@ -23,17 +27,64 @@ import type { CombatantRef } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
 describe("artifacts", () => {
-  test("rollArtifactRarity: Elite never Epic, Boss never Common/Rare, Treasure/Event spans all 4", () => {
-    const rng = new Rng(5);
-    const seen = { elite: new Set<string>(), boss: new Set<string>(), treasureOrEvent: new Set<string>() };
-    for (let i = 0; i < 4000; i++) {
-      seen.elite.add(rollArtifactRarity("elite", rng));
-      seen.boss.add(rollArtifactRarity("boss", rng));
-      seen.treasureOrEvent.add(rollArtifactRarity("treasureOrEvent", rng));
+  test("artifactRarityWeights: the anchor step returns the configured anchor, every step sums to 100", () => {
+    const { anchorFirstFloor, anchorWeights } = BALANCE.artifacts;
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const anchor = anchorWeights[source];
+      const total = Object.values(anchor).reduce((sum, w) => sum + w, 0);
+      const atAnchor = artifactRarityWeights(source, anchorFirstFloor);
+      for (const rarity of ["common", "rare", "unique", "epic"] as const) expect(atAnchor[rarity]).toBeCloseTo((100 * anchor[rarity]) / total, 6);
+      for (const depth of [1, 10, 11, 25, 35, 60, 200]) {
+        const sum = Object.values(artifactRarityWeights(source, depth)).reduce((a, b) => a + b, 0);
+        expect(sum).toBeCloseTo(100, 6);
+      }
     }
-    expect([...seen.elite].sort()).toEqual(["common", "rare", "unique"]);
-    expect([...seen.boss].sort()).toEqual(["epic", "unique"]);
-    expect([...seen.treasureOrEvent].sort()).toEqual(["common", "epic", "rare", "unique"]);
+  });
+
+  test("artifactRarityWeights: deeper floors shift weight up the rarities, one 10-floor step at a time", () => {
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const at = (depth: number) => artifactRarityWeights(source, depth);
+      // floors within the same step share odds; crossing a multiple of 10 changes them
+      expect(at(1)).toEqual(at(10));
+      expect(at(10)).not.toEqual(at(11));
+      let previous = at(1);
+      for (const depth of [11, 21, 31, 41, 51, 61]) {
+        const current = at(depth);
+        expect(current.common).toBeLessThan(previous.common);
+        if (source !== "elite") expect(current.epic).toBeGreaterThan(previous.epic);
+        expect(current.unique / (current.common + current.rare)).toBeGreaterThan(previous.unique / (previous.common + previous.rare));
+        previous = current;
+      }
+    }
+  });
+
+  test("Elite never rolls Epic at any depth; floors 1-10 almost never roll Unique or Epic", () => {
+    for (const depth of [1, 10, 35, 80, 300]) expect(artifactRarityWeights("elite", depth).epic).toBe(0);
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const early = artifactRarityWeights(source, 5);
+      expect(early.unique + early.epic).toBeLessThan(5);
+    }
+  });
+
+  test("rollArtifactRarity draws from the depth's odds: early floors never show Epic, deep Boss floors mostly do", () => {
+    const rng = new Rng(5);
+    const counts = (source: "elite" | "boss" | "treasureOrEvent", depth: number) => {
+      const seen = { common: 0, rare: 0, unique: 0, epic: 0 };
+      for (let i = 0; i < 4000; i++) seen[rollArtifactRarity(source, rng, depth)]++;
+      return seen;
+    };
+    expect(counts("elite", 400).epic).toBe(0);
+    expect(counts("treasureOrEvent", 5).epic).toBe(0);
+    expect(counts("boss", 55).epic / 4000).toBeGreaterThan(0.5);
+    expect(counts("boss", 5).common / 4000).toBeGreaterThan(0.6);
+  });
+
+  test("artifactRarityWeights: odds freeze beyond maxStepsFromAnchor and stay finite at absurd depths", () => {
+    for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
+      const frozen = artifactRarityWeights(source, 140);
+      expect(artifactRarityWeights(source, 1_000_000)).toEqual(frozen);
+      expect(Object.values(frozen).every(Number.isFinite)).toBe(true);
+    }
   });
 
   test("equip fills slots up to MAX_EQUIPPED_ARTIFACTS, then requires a replacement", () => {
@@ -93,15 +144,16 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.equippedArtifactIds.push("immortal-heart");
     expect(totalReflectDamagePercent(c)).toBe(15);
-    expect(artifactStatBoostSum(c).defense).toBe(10);
-    expect(artifactStatBoostSum(c).maxHp).toBe(60);
+    const base = { attack: c.attack, defense: c.defense, maxHp: c.maxHp, maxMp: c.maxMp, magicPower: c.magicPower, speed: c.speed };
+    expect(artifactStatBoostSum(c, base).defense).toBe(10);
+    expect(artifactStatBoostSum(c, base).maxHp).toBe(60);
 
     c.equippedArtifactIds.push("reapers-covenant");
-    expect(totalHealOnKill(c)).toBe(25);
+    expect(totalHealOnKill(c, c.maxHp)).toBe(25);
     expect(totalLifestealPercent(c)).toBe(8);
 
     c.equippedArtifactIds.push("thunder-totem", "thunder-totem");
-    expect(autoDamageAmounts(c)).toEqual([6, 6]);
+    expect(autoDamageEntries(c).map((e) => e.effect.amount)).toEqual([6, 6]);
   });
 
   test("totalExpBoostPercent is party-wide; fearResist/cooldownReduction are per-character", () => {
@@ -265,14 +317,39 @@ describe("artifacts", () => {
 
   test("autoDamage fires at the start of the round, independent of turn order", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("thunder-totem");
+    const mage = ctx.party.find((p) => p.classId === "mage")!;
+    mage.equippedArtifactIds.push("thunder-totem");
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    const self: CombatantRef = { kind: "character", id: mage.id };
+    queueAction(combat, self, "mage-bludgeon", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes(`${vanguard.name}'s artifact deals 6 damage`))).toBe(true);
+    const firstAutoHit = combat.log.findIndex((l) => l.text.includes("Thunder Totem"));
+    const firstAction = combat.log.findIndex((l) => l.text.includes("Bludgeon"));
+    expect(firstAutoHit).toBeGreaterThanOrEqual(0);
+    expect(firstAutoHit).toBeLessThan(firstAction === -1 ? Infinity : firstAction);
+  });
+
+  test("autoDamage artifacts hit one target and scale off base magicPower or base attack", () => {
+    const taken = (artifactId: string, classId: string, liveStat: number | null) => {
+      const { ctx } = makeCtx();
+      const c = ctx.party.find((p) => p.classId === classId)!;
+      c.level = 60;
+      c.equippedArtifactIds.push(artifactId);
+      const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
+      for (const r of rats) r.maxHp = r.hp = 50000;
+      const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+      if (liveStat !== null) c.attack = c.magicPower = liveStat;
+      resolveRound(combat, ctx);
+      const hits = rats.map((r) => 50000 - r.hp).filter((d) => d > 0);
+      expect(hits).toHaveLength(1);
+      return hits[0]!;
+    };
+    expect(taken("thunder-totem", "mage", null)).toBeGreaterThan(taken("thunder-totem", "rogue", null));
+    expect(taken("crown-of-destruction", "rogue", null)).toBeGreaterThan(taken("crown-of-destruction", "mage", null));
+    // live stats (buffs, equipment) never feed the tick
+    expect(taken("thunder-totem", "mage", 9999)).toBe(taken("thunder-totem", "mage", null));
+    expect(taken("crown-of-destruction", "rogue", 1)).toBe(taken("crown-of-destruction", "rogue", null));
   });
 
   test("cooldownReduction shortens a skill's cooldown at resolution", () => {
@@ -311,5 +388,42 @@ describe("artifacts", () => {
     const expectedExp = Math.round(rat.expReward * 1.15);
     expect(game.state.combat!.log.some((l) => l.text.includes(`gains ${expectedExp} EXP`))).toBe(true);
   });
-});
 
+  test("magicPower and speed statBoosts apply to the bearer and survive Exhausted", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    const cls = getClass(c.classId);
+    const baseMagic = statsForLevel(cls, c.level).magicPower;
+    c.equippedArtifactIds.push("resonant-tuning-fork", "runners-ankle-cord"); // +8 magicPower, +2 speed
+    recomputeCharacterStats(c, 100);
+    expect(c.magicPower).toBe(baseMagic + 8);
+    expect(c.speed).toBe(cls.baseSpeed + 2);
+
+    recomputeCharacterStats(c, 30);
+    expect(c.magicPower).toBe(Math.round(baseMagic * (2 / 3)) + 8);
+    expect(c.speed).toBe(Math.round(cls.baseSpeed * (2 / 3)) + 2);
+  });
+
+  test("alwaysHit and debuffResist combine as independent chances across artifacts and the Ability", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(alwaysHitChance(c)).toBe(0);
+    expect(debuffResistPercent(c)).toBe(0);
+
+    c.equippedArtifactIds.push("hunters-tally-stick", "bitter-root-charm"); // alwaysHit 8, debuffResist 10
+    expect(alwaysHitChance(c)).toBe(8);
+    expect(debuffResistPercent(c)).toBe(10);
+
+    c.equippedArtifactIds.push("threshold-salt-pouch"); // debuffResist 15
+    expect(debuffResistPercent(c)).toBeCloseTo(100 * (1 - 0.9 * 0.85), 6);
+
+    c.equippedAbilityId = "unerring-will"; // alwaysHit 20
+    expect(alwaysHitChance(c)).toBeCloseTo(100 * (1 - 0.92 * 0.8), 6);
+  });
+
+  test("every artifact effect kind has a formatter line", () => {
+    for (const artifact of ARTIFACTS) {
+      expect(formatArtifactEffect(artifact)).not.toContain(t("effect.default"));
+    }
+  });
+});

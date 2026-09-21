@@ -123,6 +123,17 @@
     "itemDropChance": 0.6,
     "itemWeightDepthGrowth": 0.1
   },
+  "artifacts": {
+    "floorsPerStep": 10,
+    "anchorFirstFloor": 31,
+    "tilt": 2.5,
+    "maxStepsFromAnchor": 10,
+    "anchorWeights": {
+      "elite": { "common": 15, "rare": 40, "unique": 45, "epic": 0 },
+      "boss": { "common": 5, "rare": 25, "unique": 55, "epic": 15 },
+      "treasureOrEvent": { "common": 15, "rare": 35, "unique": 40, "epic": 10 }
+    }
+  },
   "abilities": {
     "dropChance": 0.35,
     "depthCap": 30,

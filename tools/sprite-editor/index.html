@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <title>Darkest Terminal — Sprite Editor</title>
@@ -156,83 +156,86 @@
 <main>
   <div style="display:flex; flex-direction:column; gap:12px;">
     <fieldset>
-      <legend>Đối tượng</legend>
-      <label>Loại</label>
+      <legend>Subject</legend>
+      <label>Type</label>
       <select id="category">
-        <option value="classes">Nhân vật (classes)</option>
-        <option value="monsters">Quái vật thường (monsters)</option>
-        <option value="elites">Elite (elites)</option>
-        <option value="bosses">Trùm (bosses)</option>
+        <option value="classes">Characters (classes)</option>
+        <option value="monsters">Common monsters (monsters)</option>
+        <option value="elites">Elites (elites)</option>
+        <option value="bosses">Bosses (bosses)</option>
+        <option value="events">Event rooms (events)</option>
+        <option value="rest">Rest rooms (rest)</option>
+        <option value="treasure">Treasure rooms (treasure)</option>
       </select>
 
       <div id="idPickerWrap">
-        <label>Có sẵn</label>
+        <label>Existing</label>
         <select id="existingId"></select>
-        <label>ID (chữ thường, số, gạch ngang)</label>
+        <label>ID (lowercase, digits, hyphens)</label>
         <input type="text" id="idInput" placeholder="vd: skeleton-guard" />
         <p class="hint" id="idHint"></p>
       </div>
 
       <div class="row">
-        <button id="loadBtn">Tải</button>
-        <button id="newBtn">Tạo mới</button>
+        <button id="loadBtn">Load</button>
+        <button id="newBtn">New</button>
       </div>
     </fieldset>
 
     <fieldset>
-      <legend>Kích thước</legend>
+      <legend>Size</legend>
       <div class="row">
         <div>
-          <label>Rộng</label>
+          <label>Width (max <span id="maxWidthLabel">20</span>)</label>
           <input type="number" id="widthInput" min="1" max="20" value="9" />
         </div>
         <div>
-          <label>Cao (tối đa <span id="maxHeightLabel">10</span>)</label>
+          <label>Height (max <span id="maxHeightLabel">10</span>)</label>
           <input type="number" id="heightInput" min="1" max="13" value="9" />
         </div>
       </div>
       <div class="row">
-        <button id="resizeBtn" style="flex:1;">Đổi kích thước</button>
+        <button id="resizeBtn" style="flex:1;">Resize</button>
       </div>
-      <p class="hint">Đổi kích thước giữ lại pixel ở góc trên-trái, phần thêm mới sẽ trống.</p>
+      <p class="hint">Resizing keeps pixels at the top-left; new cells start empty.</p>
     </fieldset>
 
     <fieldset>
-      <legend>Công cụ</legend>
+      <legend>Tools</legend>
       <div class="row">
         <button id="copyBtn" style="flex:1;">Copy</button>
         <button id="pasteBtn" style="flex:1;">Paste</button>
       </div>
-      <label style="margin-top: 8px;">Di chuyển</label>
+      <label style="margin-top: 8px;">Move</label>
       <div class="row">
-        <button id="moveLeftBtn" style="flex:1;">Trái</button>
-        <button id="moveUpBtn" style="flex:1;">Lên</button>
-        <button id="moveDownBtn" style="flex:1;">Xuống</button>
-        <button id="moveRightBtn" style="flex:1;">Phải</button>
+        <button id="moveLeftBtn" style="flex:1;">Left</button>
+        <button id="moveUpBtn" style="flex:1;">Up</button>
+        <button id="moveDownBtn" style="flex:1;">Down</button>
+        <button id="moveRightBtn" style="flex:1;">Right</button>
       </div>
     </fieldset>
 
     <fieldset>
-      <legend>Preview (tỉ lệ ô 1:2 như terminal)</legend>
+      <legend>Preview (1:2 cell ratio like the terminal)</legend>
       <div id="preview"><canvas id="previewCanvas"></canvas></div>
     </fieldset>
   </div>
 
   <div>
     <div id="gridWrap"><div id="grid"></div></div>
-    <p class="hint">Click hoặc giữ chuột kéo để tô. Chọn "Xoá" ở bảng màu bên phải để tẩy về ô trống.</p>
+    <p class="hint">Click or drag to paint. Pick "Erase" in the palette on the right to clear back to empty.</p>
   </div>
 
   <div>
     <fieldset>
-      <legend>Bảng màu</legend>
+      <legend>Palette</legend>
       <div id="palette"></div>
       <div class="row">
-        <button id="addColorBtn" style="flex:1;">+ Thêm màu</button>
+        <button id="addColorBtn" style="flex:1;">+ Add color</button>
       </div>
     </fieldset>
     <div class="row" style="margin-top:12px;">
-      <button id="saveBtn" class="primary" style="flex:1;">Lưu vào data/sprites.json</button>
+      <button id="saveBtn" class="primary" style="flex:1;">Save to data/sprites.json</button>
     </div>
   </div>
 </main>
@@ -253,10 +256,23 @@
   let clipboardGrid = null;
   let clipboardPalette = null;
 
-  // Archetypes that ever spawn as elite/boss (GUARD_ROOM_ARCHETYPES in src/data/floor.ts) —
-  // for elites/bosses categories, the ID must match one of these to actually take effect in-game.
-  const GUARD_ARCHETYPE_IDS = ["skeleton-guard", "giant-spider", "dragon", "zombie-knight", "dark-knight"];
-  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 13 };
+  // Valid sprite ids per monster category, derived from `roles` in data/monsters.json (loadSpritesData):
+  // monsters = roles includes normal, elites = includes elite, bosses = includes boss.
+  let ROLE_SPRITE_IDS = { monsters: [], elites: [], bosses: [] };
+  // Event ids from data/events.json — for the "events" category, the ID must match one of these
+  // to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
+  const EVENT_IDS = [
+    "open-chest", "guardian-fight", "merchant", "desecrated-altar", "blood-altar",
+    "cursed-shrine", "twin-altars", "sacrificial-circle", "gambling-den", "wandering-hermit", "collapsed-floor",
+  ];
+  // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
+  // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
+  const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
+  // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+  // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
+  // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
 
   const el = (id) => document.getElementById(id);
   const statusEl = el("status");
@@ -267,6 +283,7 @@
   const widthInput = el("widthInput");
   const heightInput = el("heightInput");
   const maxHeightLabel = el("maxHeightLabel");
+  const maxWidthLabel = el("maxWidthLabel");
   const gridEl = el("grid");
   const paletteEl = el("palette");
   const previewCanvas = el("previewCanvas");
@@ -280,9 +297,19 @@
     return MAX_HEIGHT[category];
   }
 
+  function maxWidth() {
+    return MAX_WIDTH[category];
+  }
+
   function updateIdHint() {
-    if (category === "elites" || category === "bosses") {
-      idHintEl.textContent = `ID phải trùng 1 archetype quái trong "monsters" để game dùng đúng: ${GUARD_ARCHETYPE_IDS.join(", ")}.`;
+    if (category === "elites" || category === "bosses" || category === "monsters") {
+      idHintEl.textContent = `ID must match 1 archetype with the matching role in data/monsters.json to take effect in-game, e.g.: ${ROLE_SPRITE_IDS[category].join(", ")}.`;
+    } else if (category === "events") {
+      idHintEl.textContent = `ID must match 1 event in data/events.json to take effect in-game: ${EVENT_IDS.join(", ")}.`;
+    } else if (category === "treasure") {
+      idHintEl.textContent = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
+    } else if (category === "rest") {
+      idHintEl.textContent = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
     } else {
       idHintEl.textContent = "";
     }
@@ -291,6 +318,9 @@
   async function loadSpritesData() {
     const res = await fetch("/api/sprites");
     spritesData = await res.json();
+    const archetypes = await (await fetch("/api/monsters")).json();
+    const idsWithRole = (role) => archetypes.filter((a) => a.roles.includes(role)).map((a) => a.id).sort();
+    ROLE_SPRITE_IDS = { monsters: idsWithRole("normal"), elites: idsWithRole("elite"), bosses: idsWithRole("boss") };
   }
 
   function currentSection() {
@@ -337,41 +367,46 @@
       const ch = String.fromCharCode(code);
       if (!used.has(ch)) return ch;
     }
-    throw new Error("Hết ký tự cho bảng màu.");
+    throw new Error("Out of palette characters.");
   }
 
   function loadBtnHandler() {
     const id = existingIdEl.value;
     const sprite = currentSection()[id];
     if (!sprite) {
-      setStatus("Không tìm thấy id đó.", "error");
+      setStatus("No sprite with that id.", "error");
       return;
     }
     idInputEl.value = id;
     loadSpriteIntoEditor(sprite);
-    setStatus(`Đã tải "${id}".`, "ok");
+    setStatus(`Loaded "${id}".`, "ok");
   }
 
   function newBtnHandler() {
-    width = Number(widthInput.value) || 9;
+    width = Math.min(Number(widthInput.value) || 9, maxWidth());
     height = Math.min(Number(heightInput.value) || 9, maxHeight());
     grid = blankGrid(width, height);
     palette = { A: "#8a5a2a" };
     activeKey = "A";
     widthInput.value = String(width);
     heightInput.value = String(height);
-    if (category === "elites" || category === "bosses") {
-      const missing = GUARD_ARCHETYPE_IDS.find((id) => !currentSection()[id]);
+    if (category === "elites" || category === "bosses" || category === "monsters") {
+      const missing = ROLE_SPRITE_IDS[category].find((id) => !currentSection()[id]);
       if (missing) idInputEl.value = missing;
+    } else if (category === "events") {
+      const missing = EVENT_IDS.find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    } else if (category === "rest" || category === "treasure") {
+      idInputEl.value = ROOM_SPRITE_ID[category];
     }
     renderPalette();
     renderGrid();
     renderPreview();
-    setStatus("Sprite trống mới — vẽ rồi đặt ID và Lưu.", "ok");
+    setStatus("Blank sprite — paint it, set an ID, then Save.", "ok");
   }
 
   function resizeBtnHandler() {
-    const newWidth = Math.max(1, Math.min(20, Number(widthInput.value) || width));
+    const newWidth = Math.max(1, Math.min(maxWidth(), Number(widthInput.value) || width));
     const newHeight = Math.max(1, Math.min(maxHeight(), Number(heightInput.value) || height));
     const next = blankGrid(newWidth, newHeight);
     for (let r = 0; r < Math.min(height, newHeight); r++) {
@@ -391,16 +426,16 @@
   function copyBtnHandler() {
     clipboardGrid = grid.map(r => [...r]);
     clipboardPalette = { ...palette };
-    setStatus("Đã copy sprite.", "ok");
+    setStatus("Copied sprite.", "ok");
   }
 
   function pasteBtnHandler() {
     if (!clipboardGrid) {
-      setStatus("Chưa có gì để paste.", "error");
+      setStatus("Nothing to paste.", "error");
       return;
     }
     const newHeight = Math.min(maxHeight(), clipboardGrid.length);
-    const newWidth = clipboardGrid[0].length;
+    const newWidth = Math.min(maxWidth(), clipboardGrid[0].length);
     grid = blankGrid(newWidth, newHeight);
     for (let r = 0; r < newHeight; r++) {
       for (let c = 0; c < newWidth; c++) {
@@ -416,7 +451,7 @@
     renderPalette();
     renderGrid();
     renderPreview();
-    setStatus("Đã paste sprite.", "ok");
+    setStatus("Pasted sprite.", "ok");
   }
 
   function canMove(dx, dy) {
@@ -437,7 +472,7 @@
 
   function moveBtnHandler(dx, dy) {
     if (!canMove(dx, dy)) {
-      setStatus("Không thể di chuyển, bị cắt phần đánh màu.", "error");
+      setStatus("Can't move — painted cells would be clipped.", "error");
       return;
     }
     const next = blankGrid(width, height);
@@ -453,7 +488,7 @@
     grid = next;
     renderGrid();
     renderPreview();
-    setStatus("Đã di chuyển.", "ok");
+    setStatus("Moved.", "ok");
   }
 
   function renderGrid() {
@@ -500,7 +535,7 @@
 
     const eraserRow = document.createElement("div");
     eraserRow.className = "swatch eraser" + (activeKey === ERASER ? " active" : "");
-    eraserRow.innerHTML = `<span class="key">·</span><span class="hex">Xoá (ô trống)</span>`;
+    eraserRow.innerHTML = `<span class="key">·</span><span class="hex">Erase (empty cell)</span>`;
     eraserRow.addEventListener("click", () => { activeKey = ERASER; renderPalette(); });
     paletteEl.appendChild(eraserRow);
 
@@ -533,7 +568,7 @@
 
       const delBtn = document.createElement("button");
       delBtn.textContent = "×";
-      delBtn.title = "Xoá màu này (ô đang dùng sẽ về trống)";
+      delBtn.title = "Delete this color (cells using it go empty)";
       delBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         for (let r = 0; r < height; r++) {
@@ -587,13 +622,17 @@
 
     const id = idInputEl.value.trim();
     if (!/^[a-z][a-z0-9-]*$/.test(id)) {
-      setStatus("ID phải bắt đầu bằng chữ thường, chỉ gồm chữ thường/số/gạch ngang.", "error");
+      setStatus("ID must start with a lowercase letter and use only lowercase/digits/hyphens.", "error");
       return;
     }
     const unusedIdWarning =
-      (category === "elites" || category === "bosses") && !GUARD_ARCHETYPE_IDS.includes(id)
-        ? ` (Cảnh báo: "${id}" không nằm trong danh sách archetype có thể làm elite/boss — game sẽ không dùng sprite này.)`
-        : "";
+      (category === "monsters" || category === "elites" || category === "bosses") && !ROLE_SPRITE_IDS[category].includes(id)
+        ? ` (Warning: "${id}" has no ${category === "monsters" ? "normal" : category === "elites" ? "elite" : "boss"} role in data/monsters.json — the game won't use this sprite.)`
+        : category === "events" && !EVENT_IDS.includes(id)
+          ? ` (Warning: "${id}" is not an event id in data/events.json — the game won't use this sprite.)`
+          : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
+            ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
+            : "";
 
     try {
       const res = await fetch("/api/sprites", {
@@ -603,22 +642,25 @@
       });
       const data = await res.json();
       if (!data.ok) {
-        setStatus("Lỗi: " + data.error, "error");
+        setStatus("Error: " + data.error, "error");
         return;
       }
-      setStatus(`Đã lưu "${id}" vào data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
+      setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
       await loadSpritesData();
       populateExistingIds();
       existingIdEl.value = id;
       idInputEl.value = id;
     } catch (e) {
-      setStatus("Lỗi kết nối: " + e.message, "error");
+      setStatus("Connection error: " + e.message, "error");
     }
   }
 
   categoryEl.addEventListener("change", () => {
     category = categoryEl.value;
     maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
     populateExistingIds();
     if (existingIdEl.value) {
       loadSpriteIntoEditor(currentSection()[existingIdEl.value]);
@@ -628,7 +670,7 @@
     }
   });
   // Auto-load on selecting a different existing sprite — previously this only updated the ID
-  // text field, leaving the grid/palette showing the PREVIOUS sprite until "Tải" was clicked
+  // text field, leaving the grid/palette showing the PREVIOUS sprite until "Load" was clicked
   // separately, which read as "loading a new sprite keeps the old one's color pattern".
   existingIdEl.addEventListener("change", loadBtnHandler);
   el("loadBtn").addEventListener("click", loadBtnHandler);
@@ -644,6 +686,10 @@
   el("saveBtn").addEventListener("click", saveHandler);
 
   (async function init() {
+    maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
     await loadSpritesData();
     populateExistingIds();
     // Load whatever populateExistingIds actually left selected in the dropdown — hardcoding
@@ -651,7 +697,7 @@
     // exactly the "dropdown says X but the grid shows Y" bug this tool had.
     const firstId = existingIdEl.value;
     loadSpriteIntoEditor((firstId && currentSection()[firstId]) || Object.values(currentSection())[0]);
-    setStatus("Sẵn sàng.", "ok");
+    setStatus("Ready.", "ok");
   })();
 })();
 </script>

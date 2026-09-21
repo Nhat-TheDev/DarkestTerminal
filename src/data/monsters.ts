@@ -28,9 +28,45 @@ export function getMonsterSkill(id: string): SkillDefinition {
  * An action-weight key names a skill and nothing else, so a typo used to be invisible: nothing
  * resolved it, and the monster quietly spent the rest of its life on basic attacks. Checked once
  * for the whole catalog, here, where the error can name the archetype that caused it.
+ *
+ * `roles` is the single source of truth for where an archetype can appear:
+ * ["normal"] = trash, ["normal","elite","boss"] = triple-role,
+ * ["elite","boss"] = guard-only, ["boss"] + finalBoss = scripted final boss.
  */
 export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): void {
+  const validTiers: MonsterTier[] = ["normal", "elite", "boss"];
+  let finalBossCount = 0;
   for (const archetype of archetypes) {
+    if (!Array.isArray(archetype.roles) || archetype.roles.length === 0) {
+      throw new Error(`data/monsters.json: "${archetype.id}" needs a non-empty "roles" array`);
+    }
+    const roleSet = new Set(archetype.roles);
+    if (roleSet.size !== archetype.roles.length) {
+      throw new Error(`data/monsters.json: "${archetype.id}" has duplicate entries in "roles"`);
+    }
+    for (const role of archetype.roles) {
+      if (!validTiers.includes(role)) {
+        throw new Error(`data/monsters.json: "${archetype.id}" has unknown role "${role}"`);
+      }
+    }
+    if (archetype.finalBoss) {
+      finalBossCount += 1;
+      if (archetype.roles.length !== 1 || archetype.roles[0] !== "boss") {
+        throw new Error(`data/monsters.json: "${archetype.id}" finalBoss must have roles ["boss"]`);
+      }
+    }
+    const weightTiers = new Set(Object.keys(archetype.actionWeights ?? {}));
+    if (weightTiers.size !== roleSet.size || ![...roleSet].every((r) => weightTiers.has(r))) {
+      throw new Error(
+        `data/monsters.json: "${archetype.id}" roles [${archetype.roles.join(",")}] must match actionWeights keys [${[...weightTiers].join(",")}]`
+      );
+    }
+    if (roleSet.has("normal") && archetype.powerTier === undefined) {
+      throw new Error(`data/monsters.json: "${archetype.id}" has role "normal" so it needs a "powerTier"`);
+    }
+    if (!roleSet.has("normal") && archetype.powerTier !== undefined) {
+      throw new Error(`data/monsters.json: "${archetype.id}" has no role "normal" so it must not set "powerTier"`);
+    }
     const declared = new Set(archetype.skillIds);
     for (const id of archetype.executeSkillId ? [...archetype.skillIds, archetype.executeSkillId] : archetype.skillIds) {
       getMonsterSkill(id); // throws on an unknown id
@@ -43,9 +79,23 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
       }
     }
   }
+  if (finalBossCount !== 1) {
+    throw new Error(`data/monsters.json: catalog must define exactly 1 finalBoss, found ${finalBossCount}`);
+  }
 }
 
 assertMonsterDataConsistent(MONSTER_ARCHETYPES);
+
+/** Ordinary combat rooms: every archetype with a normal kit. */
+export const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("normal"));
+
+/** Guard rooms: every archetype able to act as elite and boss, excluding the scripted final boss. */
+export const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter(
+  (a) => a.roles.includes("elite") && a.roles.includes("boss") && !a.finalBoss
+);
+
+/** The single scripted final boss. */
+export const FINAL_BOSS_ARCHETYPE = MONSTER_ARCHETYPES.find((a) => a.finalBoss)!;
 
 let monsterCounter = 0;
 
@@ -58,6 +108,9 @@ export const MONSTER_TYPE_MULTIPLIER = GROWTH_WEIGHTS.monsterGrowthWeights;
 export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { tier?: MonsterTier }): Monster {
   const archetype = getArchetype(archetypeId);
   const tier: MonsterTier = opts?.tier ?? "normal";
+  if (!archetype.roles.includes(tier)) {
+    throw new Error(`Cannot spawn "${archetypeId}" as "${tier}" — roles are [${archetype.roles.join(",")}]`);
+  }
   const tierMultiplier = tier === "elite" || tier === "boss" ? TIER_MULTIPLIER[tier] : undefined;
   const typeMultiplier = MONSTER_TYPE_MULTIPLIER[archetype.monsterType];
 

@@ -42,7 +42,7 @@ describe("coins", () => {
       expect(amount).toBeGreaterThanOrEqual(BALANCE.currency.coinDropByTier.weak[0]);
       expect(amount).toBeLessThanOrEqual(BALANCE.currency.coinDropByTier.weak[1]);
     }
-    const boss = spawnMonster("dungeon-rat", 1, { tier: "boss" });
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
     for (let i = 0; i < 200; i++) {
       const amount = rollCoinDrop(boss, rng);
       expect(amount).toBeGreaterThanOrEqual(BALANCE.currency.coinDropByTier.boss[0]);

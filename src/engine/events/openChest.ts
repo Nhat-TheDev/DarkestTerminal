@@ -16,7 +16,7 @@ export function openChest(state: GameState, ctx: EngineContext): PartyActionErro
   if (!event.noArtifactReward) {
     // A scene whose reward is a specific object described in the text itself (waiting-supplies'
     // bundle, vigil-candle's offering) grants exactly that artifact, not a random roll.
-    const artifactId = event.guaranteedArtifactId ?? rollArtifact("treasureOrEvent", ctx.rng);
+    const artifactId = event.guaranteedArtifactId ?? rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth);
     grantArtifact(state, artifactId);
   }
   closeEvent(state);

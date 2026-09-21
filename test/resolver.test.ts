@@ -204,7 +204,7 @@ describe("resolver", () => {
   });
 
   test("statusCategory classifies a restoreMp per-turn effect as dot (MP-over-time), same schedule as damage/heal", () => {
-    const def: StatusEffectDefinition = { id: "test-mp-regen", name: "x", description: "x", perTurnEffects: [{ kind: "restoreMp", amount: 5 }] };
+    const def: StatusEffectDefinition = { id: "test-mp-regen", name: "x", description: "", perTurnEffects: [{ kind: "restoreMp", amount: 5 }] };
     expect(statusCategory(def)).toBe("dot");
   });
 
@@ -212,7 +212,7 @@ describe("resolver", () => {
     const def: StatusEffectDefinition = {
       id: "test-forced-special",
       name: "x",
-      description: "x",
+      description: "",
       perTurnEffects: [{ kind: "modifyCombatStat", combatStat: "attack", amount: 4 }],
       tickCategory: "special",
     };

@@ -39,6 +39,11 @@ interface LevelStats {
   unlockedSkillIds: string[];
 }
 
+/** The character's class base plus level growth — before any Artifact/Ability/status/Exhausted modifier. The reference every percentage scaling of an Ability is measured against. */
+export function characterBaseStats(character: Character): LevelStats {
+  return statsForLevel(getClass(character.classId), character.level);
+}
+
 export function statsForLevel(cls: CharacterClass, level: number): LevelStats {
   const gw = GROWTH_WEIGHTS.classGrowthWeights[cls.id]!;
   return {
@@ -82,15 +87,22 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
 export function recomputeCharacterStats(character: Character, satiety: number): void {
   const cls = getClass(character.classId);
   const base = statsForLevel(cls, character.level);
-  const boost = artifactStatBoostSum(character);
-  character.attack = applyExhaustedMultiplier(base.attack, satiety) + boost.attack + activeStatusCombatStatSum(character, "attack");
-  character.defense = applyExhaustedMultiplier(base.defense, satiety) + boost.defense + activeStatusCombatStatSum(character, "defense");
-  character.magicPower = applyExhaustedMultiplier(base.magicPower, satiety) + abilityWidenedStatBoost(character, "magicPower");
+  const exhaustedAttack = applyExhaustedMultiplier(base.attack, satiety);
+  const exhaustedDefense = applyExhaustedMultiplier(base.defense, satiety);
+  const exhaustedMagicPower = applyExhaustedMultiplier(base.magicPower, satiety);
+  const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
+  character.attack = exhaustedAttack + boost.attack + activeStatusCombatStatSum(character, "attack");
+  character.defense = exhaustedDefense + boost.defense + activeStatusCombatStatSum(character, "defense");
+  character.magicPower = exhaustedMagicPower + boost.magicPower;
   character.maxHp = base.maxHp + boost.maxHp;
   character.maxMp = base.maxMp + boost.maxMp;
   character.aggro =
-    applyExhaustedMultiplier(cls.baseAggro, satiety) + curseAggroBoostSum(character) + abilityWidenedStatBoost(character, "aggro") + activeStatusCombatStatSum(character, "aggro");
-  character.speed = applyExhaustedMultiplier(cls.baseSpeed, satiety) + abilityWidenedStatBoost(character, "speed") + activeStatusCombatStatSum(character, "speed");
+    applyExhaustedMultiplier(cls.baseAggro, satiety) +
+    curseAggroBoostSum(character) +
+    abilityWidenedStatBoost(character, "aggro", cls.baseAggro) +
+    activeStatusCombatStatSum(character, "aggro");
+  character.speed =
+    applyExhaustedMultiplier(cls.baseSpeed, satiety) + boost.speed + activeStatusCombatStatSum(character, "speed");
   character.hp = Math.min(character.hp, character.maxHp);
   character.mp = Math.min(character.mp, character.maxMp);
 }

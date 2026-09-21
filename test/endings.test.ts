@@ -302,6 +302,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
     const founder = game.ctx.monsters.find((m) => m.id === room.monsterIds[0])!;
     founder.hp = 1;
     const vanguard = game.state.party[0]!;
+    vanguard.speed = founder.speed + 1; // this test is about the victory bookkeeping, not turn order: the killing blow must land first
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
     const founderRef: CombatantRef = { kind: "monster", id: founder.id };
     expect(game.queue(vanguardRef, "vanguard-slash", [founderRef])).toBeNull();

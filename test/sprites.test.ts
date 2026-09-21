@@ -1,8 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { RGBA } from "@opentui/core";
-import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, renderSpriteInSlot, compositeSpriteRow, type Sprite } from "../src/ui/sprites";
+import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, type Sprite } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
-import { MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { MONSTER_ARCHETYPES, getArchetype, COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES, FINAL_BOSS_ARCHETYPE } from "../src/data/monsters";
+import { MONSTER_STYLE } from "../src/ui/theme";
 
 describe("sprite dimensions and palette consistency", () => {
   for (const { name, sprite, maxHeight } of ALL_SPRITES) {
@@ -39,27 +40,65 @@ describe("sprite dimensions and palette consistency", () => {
     }
   });
 
-  test("every monster archetype has a normal sprite", () => {
+  test("sprite coverage matches roles exactly: normal/elite/boss/final-boss", () => {
+    expect(() => assertMonsterSpritesConsistent(MONSTER_ARCHETYPES)).not.toThrow();
     for (const archetype of MONSTER_ARCHETYPES) {
+      for (const tier of ["normal", "elite", "boss"] as const) {
+        const wants = archetype.roles.includes(tier);
+        if (wants) {
+          expect(() => spriteForMonster(archetype.id, tier)).not.toThrow();
+        } else {
+          expect(() => spriteForMonster(archetype.id, tier)).toThrow();
+        }
+      }
+    }
+  });
+
+  test("assertMonsterSpritesConsistent rejects a declared role with no sprite and a sprite with no declared role", () => {
+    const rat = getArchetype("dungeon-rat");
+    expect(() => assertMonsterSpritesConsistent([{ ...rat, roles: ["normal", "elite"] }])).toThrow(/declares role "elite" but has no elite sprite/);
+    const dragon = getArchetype("dragon");
+    expect(() => assertMonsterSpritesConsistent([{ ...dragon, roles: ["elite"] }])).toThrow(/has no role "boss" but ships a boss sprite/);
+  });
+
+  test("every normal-role archetype has a normal sprite", () => {
+    for (const archetype of COMBAT_ROOM_ARCHETYPES) {
       const normal = spriteForMonster(archetype.id, "normal");
       expect(spriteHeight(normal)).toBeLessThanOrEqual(10);
     }
   });
 
-  test("every archetype that can spawn as elite/boss has its own distinct elite and boss sprite", () => {
-    // Mirrors GUARD_ROOM_ARCHETYPES in src/data/floor.ts — a scriptedOnly archetype has an
-    // elite kit but is never spawned at elite tier, so it owes no elite sprite.
-    const guardCapable = MONSTER_ARCHETYPES.filter((a) => a.actionWeights?.elite && a.actionWeights?.boss && !a.scriptedOnly);
-    expect(guardCapable.length).toBeGreaterThan(0);
-    for (const archetype of guardCapable) {
-      const normal = spriteForMonster(archetype.id, "normal");
+  // A missing entry here is what made half the bestiary render as "??" in the battlefield and
+  // monster panels: `monsterStyle` falls back when the table drifts behind `data/monsters.json`.
+  test("every monster archetype has a MONSTER_STYLE entry", () => {
+    for (const archetype of MONSTER_ARCHETYPES) {
+      expect(MONSTER_STYLE[archetype.id]).toBeDefined();
+    }
+  });
+
+  test("MONSTER_STYLE abbreviations are unique and 3 characters wide", () => {
+    const abbrs = Object.values(MONSTER_STYLE).map((s) => s.abbr);
+    expect(new Set(abbrs).size).toBe(abbrs.length);
+    for (const abbr of abbrs) expect(abbr).toMatch(/^[A-Z]{3}$/);
+  });
+
+  test("every guard archetype has distinct elite and boss sprites; final boss has boss only", () => {
+    expect(GUARD_ROOM_ARCHETYPES.length).toBeGreaterThan(0);
+    for (const archetype of GUARD_ROOM_ARCHETYPES) {
       const elite = spriteForMonster(archetype.id, "elite");
       const boss = spriteForMonster(archetype.id, "boss");
-      expect(spriteHeight(elite)).toBeLessThanOrEqual(11);
-      expect(spriteHeight(boss)).toBeLessThanOrEqual(13);
-      const keys = new Set([normal, elite, boss].map((s) => JSON.stringify(s)));
-      expect(keys.size).toBe(3);
+      expect(JSON.stringify(elite)).not.toBe(JSON.stringify(boss));
+      if (archetype.roles.includes("normal")) {
+        const normal = spriteForMonster(archetype.id, "normal");
+        expect(new Set([normal, elite, boss].map((s) => JSON.stringify(s))).size).toBe(3);
+      } else {
+        expect(() => spriteForMonster(archetype.id, "normal")).toThrow();
+      }
     }
+    expect(FINAL_BOSS_ARCHETYPE.id).toBe("the-founder");
+    expect(() => spriteForMonster("the-founder", "boss")).not.toThrow();
+    expect(() => spriteForMonster("the-founder", "normal")).toThrow();
+    expect(() => spriteForMonster("the-founder", "elite")).toThrow();
   });
 });
 

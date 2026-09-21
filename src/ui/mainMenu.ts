@@ -1,4 +1,4 @@
-import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
+import { BoxRenderable, CliRenderEvents, TextRenderable, type CliRenderer, type KeyEvent } from "@opentui/core";
 import { PALETTE, boldColorChunk, colorChunk, joinLines, highlightKeyHints } from "./theme";
 import { joinHints } from "./keyHints";
 import { renderBigTextStacked } from "./bigText";
@@ -6,6 +6,9 @@ import { t } from "../data/strings";
 import { listSaves, APP_VERSION } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
+
+/** Below this width the battlefield/event panels start clipping content, so nudge the player to widen. */
+const NARROW_TERMINAL_WIDTH = 100;
 
 export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
   return new Promise((resolve) => {
@@ -28,6 +31,28 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       bottom: 0,
     });
     root.add(version);
+
+    const terminalHint = new BoxRenderable(renderer, {
+      id: "menu-terminal-hint",
+      position: "absolute",
+      bottom: 1,
+      left: 0,
+      right: 0,
+      alignItems: "center",
+      visible: renderer.width < NARROW_TERMINAL_WIDTH,
+    });
+    terminalHint.add(
+      new TextRenderable(renderer, {
+        id: "menu-terminal-hint-text",
+        content: joinLines([[colorChunk(t("mainMenu.terminalSizeHint"), PALETTE.dim)]]),
+      })
+    );
+    root.add(terminalHint);
+
+    const onResize = (width: number) => {
+      terminalHint.visible = width < NARROW_TERMINAL_WIDTH;
+    };
+    renderer.on(CliRenderEvents.RESIZE, onResize);
 
     const title = new TextRenderable(renderer, {
       id: "menu-title",
@@ -95,10 +120,12 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       const onChoiceKey = (key: KeyEvent) => {
         if (key.name === "1") {
           renderer.keyInput.off("keypress", onChoiceKey);
+          renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
           resolve("new");
         } else if (key.name === "2" && hasSaves) {
           renderer.keyInput.off("keypress", onChoiceKey);
+          renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
           resolve("continue");
         }
