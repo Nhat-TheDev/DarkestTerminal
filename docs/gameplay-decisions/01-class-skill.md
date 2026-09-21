@@ -72,26 +72,26 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
 | 1 | `vanguard-shield-guard` | Shield Guard | self | `applyStatusEffect "guard"` (temporary defense buff) **+** `applyStatusEffect "taunt"` (temporary aggro buff) — 2 independent statuses, applied together | ✅ | — |
-| 2 | `vanguard-shield-throw` | Shield Throw | singleEnemy | `damage` | — | 100% Base ATK + 10 / 13 / 16 ATK |
+| 2 | `vanguard-shield-throw` | Shield Throw | singleEnemy | `damage` | — | 100 / 105 / 110% Base ATK + 10 / 13 / 16 ATK |
 | 3 | `vanguard-rally` | Rally | allAllies | `modifyStat fear` (instant, whole party) + `applyStatusEffect "rally"` (temporary attack buff, whole party) | ✅ | — |
-| 4 | `vanguard-heavy-charge` | Heavy Charge | allEnemies | `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4) | — | 70% Base ATK + 20 / 30 / 40 ATK |
-| 5 | `vanguard-sword-judgment` | Sword Judgment | singleEnemy | `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 90% Base ATK + 30 / 40 / 50 ATK |
+| 4 | `vanguard-heavy-charge` | Heavy Charge | allEnemies | `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4) | — | 70 / 80 / 90% Base ATK + 20 / 30 / 40 ATK |
+| 5 | `vanguard-sword-judgment` | Sword Judgment | singleEnemy | `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 85 / 95 / 110% Base ATK + 30 / 40 / 50 ATK |
 
 *Shield Guard carries both the "aggro draw" role and the "defense" role, while Rally is a whole-party buff rather than just self-taunt. The "Buff?" column marks skills that receive `isBuff: true` — see the `durationTurns`/cooldown/speed rules specific to buffs in section 1.7 and `docs/technical-decisions.md` §4.7. MP costs, damage/heal amounts, and cooldown lengths: `data/classes.json`.*
 
-**"% Scale + Bonus amount" column**: per `src/engine/resolver.ts`'s `resolveSkillEffect` case `"damage"`, the engine computes `finalDamage = amount + mitigatedOffense(attack, defense)` — the caster's `attack` stat is always used **in full** (100%, mitigated by the target's `defense`; no skill in the 6 implemented classes scales this term down), and `amount` is a flat bonus added on top, unaffected by defense mitigation. So every entry here reads `100% Base ATK + <amount> ATK`, where `<amount>` is the exact `SkillEffect.amount` value per rank, straight from `data/classes.json` — the flat number a dev would read/write directly in that JSON field. `heal` works the same way (`100% Base MagicPower + amount`, `case "heal"`: `amount + magicPower`). Skills with no `damage`/`heal` effect (pure buffs/status/utility) show `—`. A multi-hit skill (e.g. Rogue's Flurry Assault) shows the **per-hit** amount.
+**"% Scale + Bonus amount" column**: per `src/engine/resolver.ts`'s `resolveSkillEffect` case `"damage"`, the engine computes `finalDamage = amount + mitigatedOffense(attack * offenseMultiplier, defense)`, where `offenseMultiplier = (effect.offenseMultiplierPercent ?? 100) / 100` — the caster's `attack` stat is mitigated by the target's `defense` same as always, but is scaled by this **per-skill, per-rank** multiplier *before* mitigation (see section 1.12.7). `amount` is a flat bonus added on top of the mitigated term, unaffected by defense mitigation. So every entry here reads `<percent>% Base ATK + <amount> ATK`, where `<percent>`/`<amount>` are the exact `SkillEffect.offenseMultiplierPercent` (100 when the field is absent) and `SkillEffect.amount` values per rank, straight from `data/classes.json` — most skills across the roster now carry a non-100% multiplier that also changes rank-to-rank, so both numbers are read directly from the JSON rather than assumed. `heal` works the same way (`<percent>% Base MagicPower + amount`, `case "heal"`: `amount + magicPower * offenseMultiplier`). Skills with no `damage`/`heal` effect (pure buffs/status/utility) show `—`. A multi-hit skill (e.g. Rogue's Flurry Assault) shows the **per-hit** amount.
 
 ### 1.2 Mage — ranged magic damage, fragile; fire/lightning/ice school
 
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
-| 1 | `mage-fireball` | Fireball | singleEnemy | `damage` + chance to `applyStatusEffect "burning"` | — | 100% Base MagicPower + 10 / 13 / 16 MagicPower |
-| 2 | `mage-lightning-bolt` | Lightning Bolt | singleEnemy | `damage` + chance to `applyStatusEffect "stunned"` | — | 100% Base MagicPower + 12 / 15 / 19 MagicPower |
-| 3 | `mage-fire-pillar` | Fire Pillar | allEnemies | `damage`/enemy + chance to `applyStatusEffect "burning"` **per enemy** (rolled separately for each target, both accuracy and proc) | — | 100% Base MagicPower + 12 / 15 / 19 MagicPower |
-| 4 | `mage-lightning-storm` | Lightning Storm | allEnemies | `damage`/enemy + chance to `applyStatusEffect "stunned"` **per enemy** | — | 80% Base MagicPower + 15 / 20 / 30 MagicPower |
-| 5 | `mage-ice-age` | Ice Age | allEnemies | `damage`/enemy — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 110% Base MagicPower + 20 / 25 / 35 MagicPower |
+| 1 | `mage-fireball` | Fireball | singleEnemy | `damage` + chance to `applyStatusEffect "burning"` | — | 100 / 105 / 110% Base MagicPower + 10 / 13 / 16 MagicPower |
+| 2 | `mage-lightning-bolt` | Lightning Bolt | singleEnemy | `damage` + chance to `applyStatusEffect "stunned"` | — | 100 / 110 / 115% Base MagicPower + 12 / 15 / 19 MagicPower |
+| 3 | `mage-fire-pillar` | Fire Pillar | allEnemies | `damage`/enemy + chance to `applyStatusEffect "burning"` **per enemy** (rolled separately for each target, both accuracy and proc) | — | 80 / 85 / 90% Base MagicPower + 12 / 15 / 19 MagicPower |
+| 4 | `mage-lightning-storm` | Lightning Storm | allEnemies | `damage`/enemy + chance to `applyStatusEffect "stunned"` **per enemy** | — | 80 / 90 / 100% Base MagicPower + 15 / 20 / 30 MagicPower |
+| 5 | `mage-ice-age` | Ice Age | allEnemies | `damage`/enemy — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 110 / 120 / 130% Base MagicPower + 20 / 25 / 35 MagicPower |
 
-*All of Mage's skills are `isMagic: true`, so the engine substitutes `magicPower` for `attack` in the same formula (`amount + mitigatedOffense(magicPower, defense)`) — `magicPower` still contributes at its full 100%, same as every other class's `attack`.*
+*All of Mage's skills are `isMagic: true`, so the engine substitutes `magicPower` for `attack` in the same formula (`amount + mitigatedOffense(magicPower * offenseMultiplier, defense)`) — see the "% Scale + Bonus amount" column note under section 1.1 for how `offenseMultiplier` is read per skill/rank from `data/classes.json`.*
 
 *Mage is purely fire/lightning/ice, with a kit focused on damage plus burn/stun procs. Bludgeon (slot 0) covers the "free action when out of mana" role. MP costs, damage amounts, and proc chances: `data/classes.json`.*
 
@@ -100,10 +100,10 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
 | 1 | `rogue-poison-coat` | Poison Coat | self | `applyStatusEffect "poison-coat"` (self-buff, **does not** deal damage itself — every `damage` effect this actor deals while the buff is active automatically carries `applyStatusEffect "poisoned"` onto the target hit; see "on-hit rider" in `docs/technical-decisions.md` §4.2) | ✅ | — |
-| 2 | `rogue-knife-throw` | Knife Throw | singleEnemy | `damage` | — | 100% Base ATK + 12 / 15 / 19 ATK |
-| 3 | `rogue-backstab` | Backstab | singleEnemy | `damage` | — | 120% Base ATK + 15 / 20 / 25 ATK |
-| 4 | `rogue-poison-bomb` | Poison Bomb | allEnemies | `applyStatusEffect "poisoned"` per enemy — accuracy rolled separately per enemy | — | — |
-| 5 | `rogue-flurry-assault` | Flurry Assault | singleEnemy | several consecutive `damage` hits — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 50% Base ATK + 12 / 15 / 20 ATK per hit (×3 hits) |
+| 2 | `rogue-knife-throw` | Knife Throw | singleEnemy | `damage` | — | 90 / 100 / 110% Base ATK + 12 / 15 / 19 ATK |
+| 3 | `rogue-backstab` | Backstab | singleEnemy | `damage` | — | 115 / 125 / 140% Base ATK + 15 / 20 / 25 ATK |
+| 4 | `rogue-poison-bomb` | Poison Bomb | allEnemies | `damage`/enemy + `applyStatusEffect "poisoned"` per enemy — accuracy rolled separately per enemy | — | 50 / 55 / 60% Base ATK + 10 / 20 / 30 ATK |
+| 5 | `rogue-flurry-assault` | Flurry Assault | singleEnemy | several consecutive `damage` hits — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | 45 / 55 / 65% Base ATK + 12 / 15 / 20 ATK per hit (×3 hits) |
 
 *Poison Coat is a self-buff that "coats the weapon in poison" — its value comes indirectly through subsequent hits. Rogue has no dedicated defensive skill — the kit is 100% offense/debuff. MP costs, damage amounts, and cooldowns: `data/classes.json`.*
 
@@ -114,10 +114,10 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
 | 1 | `acolyte-prayer` | Prayer | singleAlly | `modifyStat fear` | — | — |
-| 2 | `acolyte-heal` | Heal | singleAlly | `heal` | — | 100% Base MagicPower + 16 / 22 / 30 MagicPower |
-| 3 | `acolyte-purify` | Purify | **singleAlly OR singleEnemy** (the player chooses the side when targeting) | targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage` | — | ally: — · enemy: 100% Base MagicPower + 15 / 20 / 27 MagicPower |
-| 4 | `acolyte-mass-heal` | Mass Heal | allAllies | `heal` + `modifyStat fear` | — | 60% Base MagicPower + 15 / 20 / 25 MagicPower |
-| 5 | `acolyte-divine-descent` | Divine Descent | **allAllies AND allEnemies at once** | allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | heal allAllies : 60% Base MagicPower + heal 25/30/40 · dmg allEnemies : 80% Base MagicPower 20/25/30 MagicPower |
+| 2 | `acolyte-heal` | Heal | singleAlly | `heal` | — | 90 / 100 / 110% Base MagicPower + 16 / 22 / 30 MagicPower |
+| 3 | `acolyte-purify` | Purify | **singleAlly OR singleEnemy** (the player chooses the side when targeting) | targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage` | — | ally: — · enemy: 100 / 110 / 120% Base MagicPower + 15 / 20 / 27 MagicPower |
+| 4 | `acolyte-mass-heal` | Mass Heal | allAllies | `heal` + `modifyStat fear` | — | 60 / 70 / 80% Base MagicPower + 15 / 20 / 25 MagicPower |
+| 5 | `acolyte-divine-descent` | Divine Descent | **allAllies AND allEnemies at once** | allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4) | — | heal allAllies : 70 / 75 / 80% Base MagicPower + 25/30/40 · dmg allEnemies : 80 / 85 / 90% Base MagicPower + 20/25/30 MagicPower |
 
 *None of Acolyte's skills are marked "Buff?" — `modifyStat fear` is an instant adjustment, not routed through `applyStatusEffect`/`durationTurns`.*
 
@@ -136,10 +136,10 @@ Basic attack (slot 0, same as every class — section 1.0): **Axe Slash** (`viki
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
 | 1 | `viking-lightning-axe` | Lightning Axe | self | `applyStatusEffect "storm-empowered"` + temporary defense debuff + temporary aggro buff | ✅ | — |
-| 2 | `viking-frenzied-slash` | Frenzied Slash | singleEnemy | `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered` | — | 100% Base ATK + 9 / 12 / 15 ATK |
-| 3 | `viking-throw-axe` | Throw Axe | singleEnemy | `damage` (physical) — same `storm-empowered` conditionalBonus | — | 100% Base ATK + 16 / 20 / 25 ATK |
-| 4 | `viking-spin-axe` | Spinning Axe | allEnemies | `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus | — | 70% Base ATK + 15 / 20 / 30 ATK |
-| 5 | `viking-thunder-god-fury` | Thunder God's Fury | allEnemies | `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use | — | 120% Base ATK + 30 / 40 / 50 ATK |
+| 2 | `viking-frenzied-slash` | Frenzied Slash | singleEnemy | `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered` | — | 95 / 100 / 105% Base ATK + 9 / 12 / 15 ATK |
+| 3 | `viking-throw-axe` | Throw Axe | singleEnemy | `damage` (physical) — same `storm-empowered` conditionalBonus | — | 100 / 107 / 115% Base ATK + 16 / 20 / 25 ATK |
+| 4 | `viking-spin-axe` | Spinning Axe | allEnemies | `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus | — | 70 / 77 / 85% Base ATK + 15 / 20 / 30 ATK |
+| 5 | `viking-thunder-god-fury` | Thunder God's Fury | allEnemies | `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use | — | 80 / 100 / 120% Base ATK + 30 / 40 / 50 ATK |
 
 *Skills 2-5 are all purely physical (not `isMagic`) — the Viking's magic damage only comes indirectly through the `storm-empowered` proc (1.5.2), not directly through the skill formula the way Mage/Acolyte work.*
 
@@ -197,11 +197,11 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (s
 
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (R1/R2/R3) |
 |---|---|---|---|---|---|---|
-| 1 | `plaguedoc-fire-vial` | Fire Vial | singleEnemy | `damage` + chance to `applyStatusEffect "burning"` | — | 100% Base MagicPower + 10 / 12 / 16 MagicPower |
-| 2 | `plaguedoc-healing-draught` | Healing Draught | singleAlly | `heal` | — | 90% Base MagicPower + 15 / 20 / 25 MagicPower |
-| 3 | `plaguedoc-blinding-vial` | Blinding Vial | singleEnemy | `damage` + chance to `applyStatusEffect "blinded"` | — | 80% Base MagicPower + 10 / 13 / 18 MagicPower |
-| 4 | `plaguedoc-toxic-fog` | Spreading Toxic Fog | allEnemies | `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"` | — | 50% Base MagicPower + 15 / 20 / 27 MagicPower |
-| 5 | `plaguedoc-total-plague` | Total Plague | allAllies **and** allEnemies at once | allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate) | — | heal allAllies : 50% Base MagicPower + 20/25/31 · dmg allEnemies: 60% Base MagicPower 10/13/16 MagicPower |
+| 1 | `plaguedoc-fire-vial` | Fire Vial | singleEnemy | `damage` + chance to `applyStatusEffect "burning"` | — | 90 / 95 / 105% Base MagicPower + 10 / 12 / 16 MagicPower |
+| 2 | `plaguedoc-healing-draught` | Healing Draught | singleAlly | `heal` | — | 90 / 95 / 100% Base MagicPower + 15 / 20 / 25 MagicPower |
+| 3 | `plaguedoc-blinding-vial` | Blinding Vial | singleEnemy | `damage` + chance to `applyStatusEffect "blinded"` | — | 80 / 85 / 90% Base MagicPower + 10 / 13 / 18 MagicPower |
+| 4 | `plaguedoc-toxic-fog` | Spreading Toxic Fog | allEnemies | `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"` | — | 50 / 60 / 70% Base MagicPower + 15 / 25 / 40 MagicPower |
+| 5 | `plaguedoc-total-plague` | Total Plague | allAllies **and** allEnemies at once | allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate) | — | heal allAllies : 60 / 65 / 70% Base MagicPower + 20/25/31 · dmg allEnemies: 70 / 75 / 85% Base MagicPower + 10/13/16 MagicPower |
 
 *All skills are `isMagic: true`. Skill 5 splits its effects by `appliesToRelation: "ally" | "enemy"` (2 sides) — the same mechanic as `acolyte-divine-descent` (section 1.4).*
 
@@ -389,15 +389,15 @@ Basic attack (slot 0): **Quick Shot** (`archer-quick-shot`), physical, bow.
 
 | Slot | Skill id | Name | Target | Effect (shape) | Buff? | % Scale + Bonus amount (flat) |
 |---|---|---|---|---|---|---|
-| 1 | `archer-aimed-shot` | Aimed Shot | singleEnemy | `damage` + high `critChance` (signature crit skill) | — | 100% Base ATK + 16 ATK |
+| 1 | `archer-aimed-shot` | Aimed Shot | singleEnemy | `damage` + high `critChance` (signature crit skill) | — | 90% Base ATK + 16 ATK |
 | 2 | `archer-overwatch` | Overwatch | self | `applyStatusEffect "overwatched"` — see section 1.12.2 for the interrupt mechanic | ✅ | — |
 | 3 | `archer-volley-shot` | Volley Shot | allEnemies | `damage`/enemy — **needs the new 60% offense multiplier**, see below | — | 60% Base ATK + 10 ATK |
-| 4 | `archer-crippling-shot` | Crippling Shot | singleEnemy | `damage` + chance to `applyStatusEffect "weakened"` (defense debuff, reused from section 1.7) | — | 100% Base ATK + 16 ATK |
-| 5 | `archer-deadeye-shot` | Deadeye Shot | singleEnemy | `damage` — **always hits**, `critChance` 100%, effectiveness scales down with fear via the ultimate formula (`04-fear-combat.md` §4) | — | 100% Base ATK + 16 ATK |
+| 4 | `archer-crippling-shot` | Crippling Shot | singleEnemy | `damage` + chance to `applyStatusEffect "stagger"` (skips the target's next turn) + chance to `applyStatusEffect "weakened"` (defense debuff, reused from section 1.7) | — | 80% Base ATK + 16 ATK |
+| 5 | `archer-deadeye-shot` | Deadeye Shot | singleEnemy | `damage` — **always hits**, `critChance` 100%, effectiveness scales down with fear via the ultimate formula (`04-fear-combat.md` §4) | — | 90% Base ATK + 20 ATK |
 
-**"Bonus amount" column**: same meaning as the 6 original classes (1.1-1.6) — the flat number in that skill's `SkillEffect.amount` in `data/classes.json`, shown here at rank 1; every skill has all 3 ranks implemented. Skills with no `damage` effect show `—`.
+**"Bonus amount" column**: same meaning as the 6 original classes (1.1-1.6) — the percent/flat numbers come from that skill's rank-1 `SkillEffect.offenseMultiplierPercent`/`amount` in `data/classes.json`, shown here at rank 1; every skill has all 3 ranks implemented, and the percent climbs at rank 2/3 the same way the flat amount does (see `data/classes.json` for the exact per-rank figures). Skills with no `damage` effect show `—`.
 
-**Volley Shot** hits for **60%** of the caster's `attack`, weaker than a skill that uses `attack` at its full, un-scaled value — the only skill in the original 6 classes to do so, via the new `offenseMultiplierPercent?: number` `SkillEffect` field (absent/100 = the unscaled behavior every other skill still uses), applied as `(attack * offenseMultiplierPercent/100) + amount` before defense mitigation. See section 1.12.7.
+**Volley Shot** hits for **60%** of the caster's `attack`, weaker than a skill that uses `attack` at its full, un-scaled value — introduced via the new `offenseMultiplierPercent?: number` `SkillEffect` field (absent/100 = full, un-scaled `attack`/`magicPower`), applied as `(attack * offenseMultiplierPercent/100) + amount` before defense mitigation. The field was added for Archer/Ninja (this class and 1.10) but has since been retuned onto most damage/heal skills across every class, not just these — see section 1.12.7.
 
 *No self-buff beyond Overwatch — Archer is close to 100% offense/control, matching the brief ("single-target damage, CC, crit, stat debuff"). Arrow Rain (an earlier AoE draft) was dropped in favor of Volley Shot.*
 
@@ -428,7 +428,7 @@ Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai.
 | 4 | `ninja-shuriken-storm` | Shuriken Storm | allEnemies | `damage`/enemy, each enemy struck **1-2× (rank 1) / 1-3× (rank 2) / 2-3× (rank 3)** — hit count rolled per enemy — each individual hit has 60% chance to `applyStatusEffect "bleeding"` | — | 60% Base ATK + 8 ATK per hit |
 | 5 | `ninja-death-mark` | Death Mark | singleEnemy | `damage`, scaling `+5%` per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` if the target is below 30% HP — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack | — | (100 + 5×stacks)% Base ATK + 14 ATK |
 
-**"% Scale + Bonus amount" column**: same meaning as Archer's table above — the flat part is from `baseAttack: 14`, shown at rank 1; every skill has all 3 ranks implemented. Throwing Knives (80%) and Shuriken Storm (60%) both use `offenseMultiplierPercent` (1.12.7); Death Mark's base% is dynamic — `100% + 5%` per existing `bleeding` stack on the target, read via `scalesWithStatusStacks` (1.12.6), not a fixed multiplier.
+**"% Scale + Bonus amount" column**: same meaning as Archer's table above — the numbers are from `baseAttack: 14`, shown at rank 1; every skill has all 3 ranks implemented, and both the percent and the flat amount climb at rank 2/3 (`data/classes.json`). Throwing Knives (80%) and Shuriken Storm (60%) both use `offenseMultiplierPercent` (1.12.7); Death Mark's base% is dynamic — `100% + 5%` per existing `bleeding` stack on the target, read via `scalesWithStatusStacks` (1.12.6), on top of its own rank-scaled base (100/115/135%), not a fixed multiplier.
 
 *Base damage on skills 3-5 is intentionally tuned lower than Archer/Rogue's equivalents (per the brief, "weaker than Archer and Rogue") — Ninja's value comes from stealth, drawing hits off the team via Shadow Clone, and execute burst, not raw per-hit damage.*
 
@@ -452,9 +452,9 @@ Basic attack (slot 0): **Totem Strike** (`summoner-totem-strike`), physical, wea
 |---|---|---|---|---|---|---|
 | 1 | `summoner-summon-goblin` | Summon Goblin | self | summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns: 40% Rock Throw (ranged `damage`, singleEnemy) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — (the cast itself deals no damage; see minion stats below) |
 | 2 | `summoner-summon-spirit` | Summon Spirit | self | summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the ally with the lowest %HP; 40% chance to instead cast a party-wide heal (`allAllies`) that turn. Vanishes after 3 actions taken. | ✅ | — |
-| 3 | `summoner-summon-golem` | Summon Golem | self | summons `stone-golem` — high HP, moderate `attack`, **high `aggro` (15)**. Each turn: 40% Stomp (`damage`, allEnemies) / 60% basic attack. Vanishes after 3 actions taken. | ✅ | — |
+| 3 | `summoner-summon-golem` | Summon Golem | self **+** singleEnemy | summons `stone-golem` — high HP, moderate `attack`, **high `aggro` (15)**. Each turn: 40% Stomp (`damage`, allEnemies) / 60% basic attack. Vanishes after 3 actions taken. **On cast, also deals `damage` directly to the chosen enemy** | ✅ | 90% Base ATK + 12 ATK |
 | 4 | `summoner-mastery` | Mastery Summoner | self | **Rank 1**: `applyStatusEffect "minion-empowerment"` — buffs HP/`attack` of every minion currently active plus any summoned later this combat. **Rank 2/3**: a stronger `minion-empowerment-ii/iii` **+ passively raises `maxActiveMinions` to 2/3** — the cap increase applies purely from reaching that rank's `unlockLevel` (character level), independent of whether Mastery has actually been cast this combat; only the HP/attack buff itself needs casting. See 1.12.4. | ✅ | — |
-| 5 (ultimate) | `summoner-summon-imp` | Summon Hellfire Imp | self **+** allEnemies | summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has 60% chance to `applyStatusEffect "burning"`. Each turn: 40% Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) / 60% basic attack. Vanishes after 3 actions taken. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula | — | 100% Base MagicPower + 8 MagicPower (`isMagic`, the on-cast AoE burst only — the Imp's own later turns use its own stats, see below) |
+| 5 (ultimate) | `summoner-summon-imp` | Summon Hellfire Imp | self **+** allEnemies | summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has 60% chance to `applyStatusEffect "burning"`. Each turn: 40% Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) / 60% basic attack. Vanishes after 3 actions taken. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula | — | 80% Base MagicPower + 8 MagicPower (`isMagic`, the on-cast AoE burst only — the Imp's own later turns use its own stats, see below) |
 
 - Default cap (Mastery not yet at rank 2/3): **1 minion** active at a time — casting a new summon skill dismisses whichever minion is currently active. Rank 2 → up to **2** minions of **different types** simultaneously; rank 3 → up to **3**.
 - All 4 summon skills (slots 1, 2, 3, 5) cost a large amount of MP.
@@ -530,9 +530,11 @@ A new field is also needed to let a skill **read** a target's current stack coun
 
 #### 1.12.7 Offense multiplier (`offenseMultiplierPercent`) — needed for any skill whose base scaling isn't 100% of attack
 
-Every skill in the game today (all 6 implemented classes, and every Archer/Ninja skill except the 3 below) uses the caster's `attack`/`magicPower` **at full, un-scaled value** in `mitigatedOffense` — confirmed against `src/engine/resolver.ts`'s `resolveSkillEffect` case `"damage"`: `finalDamage = amount + mitigatedOffense(offensiveStatFor(source), effectiveDefense)`, where `offensiveStatFor` returns the raw stat, no per-skill multiplier applied to it. There is currently no way to make a skill weaker than "100% of attack" on the base term — only `ignoreDefensePercent` (scales the *target's* defense down) and the flat `amount` (added after mitigation) exist.
+Before Archer/Ninja, every skill in the game used the caster's `attack`/`magicPower` **at full, un-scaled value** in `mitigatedOffense` — there was no way to make a skill weaker (or stronger) than "100% of attack" on the base term, only `ignoreDefensePercent` (scales the *target's* defense down) and the flat `amount` (added after mitigation) existed.
 
-Archer's Volley Shot (60%) and Ninja's Throwing Knives (80%)/Shuriken Storm (60%) all need their base offense scaled **down** — a deliberate weaker-per-hit tradeoff for Volley Shot's AoE reach and Throwing Knives/Shuriken Storm's extra-hit-chance/hit-count upside. New optional `SkillEffect` field: `offenseMultiplierPercent?: number` (absent/`100` = today's unchanged behavior for every existing skill). Applied as `finalDamage = amount + mitigatedOffense(offensiveStat * (offenseMultiplierPercent ?? 100) / 100, effectiveDefense)`.
+Archer's Volley Shot (60%) and Ninja's Throwing Knives (80%)/Shuriken Storm (60%) needed their base offense scaled **down** — a deliberate weaker-per-hit tradeoff for Volley Shot's AoE reach and Throwing Knives/Shuriken Storm's extra-hit-chance/hit-count upside — which is what motivated the new optional `SkillEffect` field: `offenseMultiplierPercent?: number` (absent/`100` = the pre-Archer/Ninja unscaled behavior). Applied as `finalDamage = amount + mitigatedOffense(offensiveStat * (offenseMultiplierPercent ?? 100) / 100, effectiveDefense)`; `case "heal"` reads the same field the same way (`amount + magicPower * (offenseMultiplierPercent ?? 100) / 100`).
+
+**Current status — no longer limited to those 3 skills.** The Archer/Ninja/Summoner pass that added this field was followed by a full retune of the 6 original classes' skills onto the same mechanism, so `offenseMultiplierPercent` now appears on almost every `damage`/`heal` effect across all 9 classes, with a value that typically **also climbs rank-to-rank** rather than staying fixed (e.g. Rogue's Backstab: 115% at rank 1 → 140% at rank 3). The "100% Base ATK"-style figures written into the per-class tables above (sections 1.1-1.6, 1.9-1.11) reflect each skill's actual current rank-1 percent, not a universal default — always check `data/classes.json` for the current per-rank value rather than assuming 100%.
 
 ### Design notes
 - Each class has exactly 1 "ultimate" skill in slot 5 — it **always hits, with no accuracy roll**, but its effectiveness (damage/heal) scales down by fear tier via a dedicated formula, replacing the usual hit/miss roll + flat damage-reduction combo used by ordinary skills (`04-fear-combat.md` section 4). Ultimates use `isUltimate: true` and share a fixed `cooldownTurns` across every class (`data/classes.json`) — they do not use `usesPerCombat` (see the last bullet below).
