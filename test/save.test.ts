@@ -19,7 +19,10 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
-import type { GameState } from "../src/types";
+import { getActorByRef, startCombat } from "../src/engine/combat";
+import { getRoom } from "../src/engine/dungeon";
+import { spawnMonster } from "../src/data/monsters";
+import type { GameState, Summon } from "../src/types";
 
 const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
 
@@ -184,6 +187,70 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       deleteSlot("slot3");
       expect(listSlots().find((s) => s.id === "slot3")?.meta).toBeNull();
       expect(() => deleteSlot("slot3")).not.toThrow();
+    });
+  });
+
+  test("a save/load round-trip keeps an active summon usable instead of leaving a dangling combatant ref", () => {
+    withGame(11, (game) => {
+      game.currentSaveSlot = "slot1";
+      const owner = game.state.party[0]!;
+      const rat = spawnMonster("dungeon-rat", 1);
+      game.ctx.monsters.push(rat);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [rat.id];
+      room.cleared = false;
+      game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+
+      const summon: Summon = {
+        id: "test-summon-1",
+        ownerId: owner.id,
+        archetypeId: "ninja-clone",
+        name: "Test Clone",
+        hp: 10,
+        maxHp: 10,
+        attack: 1,
+        defense: 1,
+        magicPower: 0,
+        aggro: 20,
+        speed: 5,
+        activeStatusEffects: [],
+        actionsTaken: 0,
+        maxActions: 2,
+      };
+      game.ctx.summons.push(summon);
+      game.state.combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
+
+      saveRun(game);
+      const resumed = gameFromSave(loadSave("slot1"), "slot1");
+
+      expect(resumed.ctx.summons).toHaveLength(1);
+      expect(resumed.ctx.summons[0]!.id).toBe(summon.id);
+      expect(() => getActorByRef({ kind: "summon", id: summon.id }, resumed.ctx)).not.toThrow();
+    });
+  });
+
+  test("a legacy save with no summons field still loads, dropping the now-dangling summon combatant ref instead of crashing", () => {
+    withGame(12, (game) => {
+      game.currentSaveSlot = "slot1";
+      const rat = spawnMonster("dungeon-rat", 1);
+      game.ctx.monsters.push(rat);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [rat.id];
+      room.cleared = false;
+      game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+      const summonRef = { kind: "summon" as const, id: "test-summon-legacy" };
+      game.state.combat.combatants.push({ ref: summonRef, speed: 5 });
+      game.state.combat.turnQueue.push(summonRef);
+
+      saveRun(game);
+      const save = loadSave("slot1");
+      delete save.summons; // simulates a save written before this field existed
+
+      const resumed = gameFromSave(save, "slot1");
+
+      expect(resumed.ctx.summons).toHaveLength(0);
+      expect(resumed.state.combat!.combatants.some((c) => c.ref.kind === "summon")).toBe(false);
+      expect(resumed.state.combat!.turnQueue.some((r) => r.kind === "summon")).toBe(false);
     });
   });
 

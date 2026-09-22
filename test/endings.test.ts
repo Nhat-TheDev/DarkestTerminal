@@ -231,6 +231,28 @@ describe("migration default for pendingEndingCheckpoint", () => {
   });
 });
 
+describe("migration backfill for narrativeCounters", () => {
+  test("individually backfills every sub-field, not just guardianGrudgeFiredCount/freeRewardsTakenCount", () => {
+    // narrativeCounters already exists (so the whole-object fallback is skipped) but predates
+    // artifactsSacrificed/altarPaymentsCount/guardianFightsSkipped — a real shape from before those
+    // fields were added. Left `undefined`, the next `+= 1` on any of them would compute NaN,
+    // permanently breaking that counter's threshold checks for the run.
+    const legacy = {
+      party: [],
+      inventory: {},
+      narrativeCounters: { guardianGrudgeFiredCount: 2, freeRewardsTakenCount: 1 },
+    } as unknown as Parameters<typeof migrateGameState>[0];
+    const migrated = migrateGameState(legacy);
+    expect(migrated.narrativeCounters).toEqual({
+      guardianFightsSkipped: 0,
+      artifactsSacrificed: 0,
+      altarPaymentsCount: 0,
+      guardianGrudgeFiredCount: 2,
+      freeRewardsTakenCount: 1,
+    });
+  });
+});
+
 describe("Part F.5: Continue → the founder encounter", () => {
   function toFloor119Continued(game: Game) {
     game.state.combat = null;

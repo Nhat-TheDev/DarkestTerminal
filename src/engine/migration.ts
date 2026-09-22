@@ -18,6 +18,13 @@ export function migrateGameState(raw: unknown): GameState {
   if (!Array.isArray(state.metNarrativeNpcIds)) state.metNarrativeNpcIds = [];
   if (!state.narrativeCounters)
     state.narrativeCounters = { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0, freeRewardsTakenCount: 0 };
+  // Individually guarded (not just the whole-object fallback above) so a save whose narrativeCounters
+  // object already exists but predates one of these fields doesn't load with it `undefined` — the
+  // next `+= 1` on an undefined counter computes NaN and permanently breaks that counter's threshold
+  // checks for the run.
+  if (typeof state.narrativeCounters.guardianFightsSkipped !== "number") state.narrativeCounters.guardianFightsSkipped = 0;
+  if (typeof state.narrativeCounters.artifactsSacrificed !== "number") state.narrativeCounters.artifactsSacrificed = 0;
+  if (typeof state.narrativeCounters.altarPaymentsCount !== "number") state.narrativeCounters.altarPaymentsCount = 0;
   if (typeof state.narrativeCounters.guardianGrudgeFiredCount !== "number") state.narrativeCounters.guardianGrudgeFiredCount = 0;
   if (typeof state.narrativeCounters.freeRewardsTakenCount !== "number") state.narrativeCounters.freeRewardsTakenCount = 0;
   if (!state.eventReflectionStances) state.eventReflectionStances = {};
