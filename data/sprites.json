@@ -499,11 +499,11 @@
         "...GG.GG....."
       ],
       "palette": {
-        "G": "#5d723c",
+        "G": "#537321",
         "R": "#c4471c",
         "C": "#27231b",
-        "B": "#263710",
-        "D": "#16210d",
+        "B": "#2f4a0d",
+        "D": "#213d0a",
         "A": "#3d2f00",
         "E": "#989486",
         "F": "#332c15",
@@ -1285,9 +1285,9 @@
         "GGGJFFFEHEFFFJGGGGGG",
         "GGGJEEEEFEEEEJJJJ.I.",
         "GGGJEEEFJFEEEJJJJ.I.",
-        "JJJJJFFFJFFFJJJJJ.I.",
-        "JJ.JJGGGJGGGJJ.JJ.I.",
-        "J...JKKK.KKKJ...J.I."
+        "JJJ.JFFFJFFFJ.JJJ.I.",
+        "JJ...GGGJGGG...JJ.I.",
+        "J....KKK.KKK....J.I."
       ],
       "palette": {
         "G": "#5d723c",
