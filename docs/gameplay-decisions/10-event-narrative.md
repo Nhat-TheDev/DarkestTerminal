@@ -734,12 +734,13 @@ content is designed to appear there.
 
 ### F.1 The floor-100 checkpoint
 
-On reaching floor 100 (still alive), the run pauses on a **guaranteed story beat**, not a normal
-event roll — mechanically distinct from `rollEvent()`'s probabilistic system, since this must fire
-every single time a run reaches this depth, unconditionally.
+Once the party defeats floor 100's own boss (still alive), the run pauses on a **guaranteed story
+beat**, not a normal event roll — mechanically distinct from `rollEvent()`'s probabilistic system,
+since this must fire every single time a run clears that boss, unconditionally. Floor 100 itself
+plays out as an ordinary floor up to that point — normal rooms, events, and ambushes included.
 
-**3 mutually exclusive modes**, decided by 2 gates checked in the order below the moment floor 100 is
-reached — never all 4 endings competing on 1 menu:
+**3 mutually exclusive modes**, decided by 2 gates checked in the order below the moment floor 100's
+boss falls — never all 4 endings competing on 1 menu:
 
 | Condition | What the checkpoint offers |
 |---|---|
@@ -996,7 +997,7 @@ Available only under §F.1's condition.
 
 > "To keep going, past the point where any of you can say this is still a choice you'd recommend."
 
-Choosing it does not end the run — floor 100 continues normally, monster/floor generation unchanged,
+Choosing it does not end the run — floor generation resumes normally from floor 101 onward, unchanged,
 until floor 120.
 
 **Floor 120 — the final encounter.** On arrival, before any combat:

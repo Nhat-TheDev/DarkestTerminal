@@ -110,6 +110,7 @@
   "resolver.statChange": "{{target}} {{verb}} {{amount}} {{stat}}.",
   "resolver.statusRefresh": "{{actor}} refreshes the {{effect}} effect.",
   "resolver.statusApply": "{{actor}} gains the {{effect}} effect.",
+  "resolver.statusStack": "{{actor}}'s {{effect}} effect stacks to {{stacks}}.",
   "resolver.statusExpire": "{{actor}}'s {{effect}} effect expires.",
   "resolver.verbIncrease": "gains",
   "resolver.verbDecrease": "loses",
@@ -421,5 +422,6 @@
   "ui.skillDetailEnterOption": "  [Enter] Use",
   "ui.hpSuffix": " ({{hp}}/{{maxHp}} HP)",
   "ui.inventoryLine": "  [{{i}}] {{name}} x{{qty}}",
-  "ui.statusTurnsSuffix": " ({{turns}}t)"
+  "ui.statusTurnsSuffix": " ({{turns}}t)",
+  "ui.statusStacksSuffix": " x{{stacks}}"
 }

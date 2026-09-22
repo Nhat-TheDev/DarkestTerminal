@@ -238,8 +238,8 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
-    // Part F.1 — a guaranteed, non-rolled story beat, checked before anything else (including a
-    // pending artifact decision): the floor-100 entry room's own ambush waits for this to resolve.
+    // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls, checked before
+    // anything else (including a pending artifact decision from that same boss kill).
     if (this.game.state.pendingEndingCheckpoint) {
       this.ui = { kind: "endingCheckpoint" };
       return;
@@ -689,7 +689,12 @@ export class App implements ScreenContext {
       const def = getStatusEffect(eff.statusEffectId);
       const target = isHelpfulStatusEffect(def) ? buffLines : debuffLines;
       const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
-      target.push([plainChunk("  "), colorChunk(statusDisplayName(def), color), colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color)]);
+      target.push([
+        plainChunk("  "),
+        colorChunk(statusDisplayName(def), color),
+        colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+        ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
+      ]);
     }
     const noteLines = [...abilityLines, ...artifactLines, ...buffLines, ...debuffLines];
 
@@ -856,7 +861,12 @@ export class App implements ScreenContext {
       for (const eff of activeStatusEffects) {
         const def = getStatusEffect(eff.statusEffectId);
         const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
-        lines.push([plainChunk("  "), colorChunk(statusDisplayName(def), color), colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color)]);
+        lines.push([
+          plainChunk("  "),
+          colorChunk(statusDisplayName(def), color),
+          colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+          ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
+        ]);
       }
     }
     return lines.length > 0 ? lines : [[colorChunk(t("ui.noMoreMonsters"), PALETTE.dim)]];

@@ -600,19 +600,22 @@ export class Game {
   }
 
   advanceToNextFloor(): void {
+    // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls (not merely on
+    // arrival). This only ever runs via the normal boss-clear -> floor-advance pipeline
+    // (clearFinishedCombat sets pendingFloorAdvance, finishVictorySequence calls this method), so
+    // `this.state.floor.depth` is still 100 here — floor 100 itself was played through normally.
+    // `continuedPastCheckpoint` guards this same check from refiring on the recursive call
+    // pickEndingChoice("continue") makes below to actually reach floor 101.
+    if (this.state.floor.depth === ENDING_CHECKPOINT_FLOOR_DEPTH && !this.state.continuedPastCheckpoint) {
+      this.state.pendingEndingCheckpoint = true;
+      return;
+    }
     const nextDepth = this.state.floor.depth + 1;
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
     this.state.message = t("game.nextFloor", { depth: nextDepth });
-    // Part F.1 — a guaranteed, non-rolled story beat the moment floor 100 is reached alive. Blocks
-    // everything else (including this same entry room's own ambush check) until resolved via
-    // pickEndingChoice(); the entry room's monsters, if any, wait exactly where they are.
-    if (nextDepth === ENDING_CHECKPOINT_FLOOR_DEPTH) {
-      this.state.pendingEndingCheckpoint = true;
-      return;
-    }
     // Part F.5 — the founder encounter, guaranteed the same way, only for a party that chose
     // Continue. Never rolled, never repeats (advancing further only ever happens once past it).
     if (nextDepth === FOUNDER_FLOOR_DEPTH && this.state.continuedPastCheckpoint) {
@@ -647,10 +650,12 @@ export class Game {
     } else if (choice === "leave") {
       this.state.gameOver = hasWaystoneShardEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
     } else {
-      // Continue: floor generation resumes normally toward floor 120 (§F.5) — marked here so
-      // advanceToNextFloor() knows to fire the founder encounter once that depth is reached.
+      // Continue: resumes the boss-clear -> floor-advance flow the checkpoint intercepted, now
+      // toward floor 120 (§F.5) — continuedPastCheckpoint is set first so the depth-100 gate above
+      // doesn't refire, then advanceToNextFloor() actually generates floor 101 (and will fire the
+      // founder encounter once floor 120 is reached).
       this.state.continuedPastCheckpoint = true;
-      this.checkEntryRoomAmbush();
+      this.advanceToNextFloor();
     }
   }
 

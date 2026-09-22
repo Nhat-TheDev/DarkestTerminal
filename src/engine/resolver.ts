@@ -324,7 +324,16 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, duration
     }
     const appliedAmounts = applyStatModifiers(actor, def);
     actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: durationTurns ?? existing.turnsRemaining, stacks, appliedAmounts };
-    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+    // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
+    // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
+    // making the stacking mechanic invisible to the player.
+    const stackGained = def.stackable && stacks !== undefined && stacks > (existing.stacks ?? 1);
+    ctx.log.push({
+      text: stackGained
+        ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stacks! })
+        : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+      kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
+    });
     return;
   }
   const appliedAmounts = applyStatModifiers(actor, def);

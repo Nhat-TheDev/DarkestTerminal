@@ -624,7 +624,7 @@ export interface GameState {
       never a confirmed death. Continuing past floor 100 (Ending 3) sets nothing here — the run
       keeps playing normally toward floor 120, per §F.5. */
   gameOver: "victory" | "defeat" | "stay" | "letGo" | "leaveAmbushed" | "leaveEscaped" | null;
-  /** Set when the run advances to floor 100 still alive (Part F.1) — a guaranteed, non-rolled
+  /** Set when the party defeats floor 100's own boss (Part F.1) — a guaranteed, non-rolled
       story beat, checked before anything else in `syncUiToGameState()`. Which endings are actually
       offered is computed live from existing state (`src/data/endings.ts`'s `endingCheckpointMode`),
       never stored, so nothing here needs to change if that state changes before the player answers

@@ -189,6 +189,35 @@ describe("resolver", () => {
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
+  test("reapplying a stackable status that actually gains a stack logs statusStack, not statusRefresh", () => {
+    const { ctx } = makeCtx();
+    const victim = ctx.monsters[0]!;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(1);
+    expect(log.some((l) => /stacks to \d+/.test(l.text))).toBe(false);
+
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(2);
+    expect(log.at(-1)!.text).toMatch(/stacks to 2/);
+
+    // Once capped at maxStacks, a further reapply gains no new stack and falls back to a plain refresh.
+    victim.activeStatusEffects[0]!.stacks = 5;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(5);
+    expect(log.at(-1)!.text).toMatch(/refreshes/);
+  });
+
+  test("reapplying a non-stackable status always logs a plain refresh, never statusStack", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(log.at(-1)!.text).toMatch(/refreshes/);
+    expect(vanguard.activeStatusEffects[0]!.stacks).toBeUndefined();
+  });
+
   test("minPercent leaves a debuff's delta alone below the floor, and floors it once the target's stat is high enough", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
