@@ -90,6 +90,7 @@
   "combat.summonSpawned": "{{owner}} summons {{summon}}.",
   "combat.summonDismissed": "{{summon}} is dismissed.",
   "combat.summonExpired": "{{summon}} fades away.",
+  "combat.summonDeathBurst": "{{summon}} detonates as it fades, tearing into every enemy!",
   "combat.partyWiped": "The party has fallen...",
   "combat.roomCleared": "Every monster in the room has been defeated!",
   "resolver.statLabelFear": "fear",
