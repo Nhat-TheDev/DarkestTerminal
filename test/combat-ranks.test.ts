@@ -190,6 +190,80 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     expect(clone.actionsTaken).toBe(2);
     expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
   });
+
+  test("Shadow Clone's maxHp is flat (doesn't scale with the Ninja's own maxHp), and its aggro is a flat 20", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    ninja.maxHp = 999; // if maxHp scaling ever crept back in, the clone's maxHp would move with this
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    resolveRound(combat, ctx);
+
+    const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
+    expect(clone.maxHp).toBe(20);
+    expect(clone.aggro).toBe(20);
+  });
+
+  test("Shadow Clone detonates for AoE damage against every enemy when it expires", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    resolveRound(combat, ctx);
+    resolveRound(combat, ctx); // clone's 1st action
+    const hpBeforeExpiry = rat.hp;
+
+    resolveRound(combat, ctx); // clone's 2nd action — expires and detonates
+    expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
+    expect(rat.hp).toBeLessThan(hpBeforeExpiry);
+    expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(true);
+  });
+
+  test("Shadow Clone detonates when it dies mid-combat, not just when it runs out of actions", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    resolveRound(combat, ctx);
+
+    const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
+    clone.hp = 0; // simulates being killed by enemy damage before it ever gets to act on its own
+    const hpBeforeDeath = rat.hp;
+
+    resolveRound(combat, ctx);
+    expect(clone.actionsTaken).toBe(0);
+    expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
+    expect(rat.hp).toBeLessThan(hpBeforeDeath);
+    expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(true);
+  });
+
+  test("recasting Shadow Clone (dismissing the old one) does not trigger the detonation burst", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    resolveRound(combat, ctx);
+    ninja.mp = ninja.maxMp;
+    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+
+    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    resolveRound(combat, ctx);
+
+    expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(false);
+    expect(combat.log.some((l) => l.text.includes("dismissed"))).toBe(true);
+  });
 });
 
 describe("Ninja Smoke Bomb (stealth / untargetable)", () => {

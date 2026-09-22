@@ -83,6 +83,22 @@ export interface SummonCast {
   maxActions: number;
   stat: Record<SummonSourceStat, SummonStatFormula>;
   aggro: number;
+  /**
+   * An AoE burst fired once when a summon spawned from this cast is removed by dying in combat, a
+   * DoT tick, or running out of `maxActions` — never on a manual dismiss/replace (recasting the same
+   * archetype, or eviction at the owner's minion cap). `offenseMultiplierPercent`/`amount`/
+   * `statusEffectChance` resolve per the casting skill's rank (scalar or `[r1, r2, r3]` tuple, same
+   * convention as `SummonStatFormula.percent`) and are frozen onto the `Summon` at spawn time
+   * (`Summon.deathBurst`), using the owner's `sourceStat` as it was at that moment.
+   */
+  onDeath?: {
+    offenseMultiplierPercent: number | [number, number, number];
+    amount: number | [number, number, number];
+    sourceStat: SummonSourceStat;
+    statusEffectId?: Id;
+    statusEffectChance: number | [number, number, number];
+    durationTurns?: number;
+  };
 }
 
 export type SkillTarget =
@@ -518,6 +534,15 @@ export interface Summon {
   activeStatusEffects: ActiveStatusEffect[];
   actionsTaken: number;
   maxActions: number;
+  /** Resolved once from `SummonCast.onDeath` at spawn time (`spawnSummon`) — fires via `triggerSummonDeathBurst` the moment this summon is removed from combat by dying or running out of actions. `offensiveStatOverride` is the owner's `onDeath.sourceStat` value frozen at cast time. */
+  deathBurst?: {
+    amount: number;
+    offenseMultiplierPercent: number;
+    offensiveStatOverride: number;
+    statusEffectId?: Id;
+    statusEffectChance: number;
+    durationTurns?: number;
+  };
 }
 
 export interface SummonArchetype {

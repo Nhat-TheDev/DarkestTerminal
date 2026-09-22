@@ -154,11 +154,11 @@
       "id": "ninja-shadow-clone",
       "archetypeId": "ninja-clone",
       "maxActions": 2,
-      "aggro": 15,
+      "aggro": 20,
       "stat": {
         "maxHp": {
           "base": 20,
-          "percent": 50,
+          "percent": 0,
           "sourceStat": "maxHp"
         },
         "attack": {
@@ -176,6 +176,14 @@
           "percent": 0,
           "sourceStat": "magicPower"
         }
+      },
+      "onDeath": {
+        "offenseMultiplierPercent": [30, 40, 50],
+        "amount": [10, 15, 22],
+        "sourceStat": "attack",
+        "statusEffectId": "bleeding",
+        "statusEffectChance": [0.3, 0.33, 0.37],
+        "durationTurns": 3
       }
     },
     {
