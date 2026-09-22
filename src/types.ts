@@ -288,7 +288,7 @@ export interface AbilityDefinition {
   effects: AbilityEffect[];
 }
 
-/** Persisted separately from any run's `SaveFile` — `docs/gameplay-decisions/11-abilities.md` §11.1 "The persistent profile". Survives permadeath's save-wipe (`deleteSavesForRun`). */
+/** Persisted separately from any run's `SaveFile` — `docs/gameplay-decisions/11-abilities.md` §11.1 "The persistent profile". Survives permadeath's slot-clear (`deleteSlot`). */
 export interface AbilityProfile {
   version: number;
   unlockedAbilityIds: Id[];

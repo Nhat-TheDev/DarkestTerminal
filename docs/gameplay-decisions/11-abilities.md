@@ -29,7 +29,7 @@ What an Ability is, vs. an Item, vs. an Artifact:
 
 Abilities are the game's first mechanic with state that outlives a single
 run. Everything else in the game (`SaveFile`, `src/engine/save.ts`) is
-destroyed on permadeath (`deleteSavesForRun`) — the persistent ability
+destroyed on permadeath (`deleteSlot`) — the persistent ability
 profile is deliberately the one exception.
 
 ---
@@ -213,7 +213,7 @@ AbilityProfile {
   it never needs to appear in `unlockedAbilityIds`.
 - A `rare`/`unique`/`epic` ability is only selectable at character select
   once its id is in `unlockedAbilityIds`.
-- This file is **never** touched by `deleteSavesForRun` — it's the one
+- This file is **never** touched by `deleteSlot` — it's the one
   piece of state a permadeath wipe must not destroy.
 - A fresh install has no `profile.json` → treated as `{ version: 1,
   unlockedAbilityIds: [] }` (only commons available).
@@ -330,7 +330,7 @@ whatever Elites a floor happens to offer.
 
 Hooks into the sole place `gameOver` becomes `"defeat"`
 (`Game.postMoveCheck()`, `src/engine/game.ts`), before
-`App.syncUiToGameState()` triggers `deleteSavesForRun`:
+`App.syncUiToGameState()` triggers `deleteSlot`:
 
 1. **Guaranteed loss, no roll.** For every character whose
    `equippedAbilityId` resolves to a non-`common` ability, immediately
@@ -362,7 +362,7 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
    - Spending stops once `runStardust` can no longer afford anything left
      to reclaim.
 4. **Persist** — write the updated `AbilityProfile` to `profile.json`
-   *before or independently of* `deleteSavesForRun`, so the per-run wipe
+   *before or independently of* `deleteSlot`, so the per-run wipe
    never touches it. Any `runStardust` left unspent is discarded with the
    rest of the run's state — it does not carry over to the next run (a
    fresh run always starts at `runStardust = 0`).
@@ -399,7 +399,7 @@ without needing a hand-picked cap bolted on top.
 
 - **Exactly one `profile.json`, shared globally.** `resolveSaveDir()`
   (`src/engine/save.ts`) resolves to a single directory per install/OS
-  user — every quicksave, autosave, and manual save already lives there
+  user — every save slot file already lives there
   side by side. `profile.json` is one more file in that same directory,
   **not** per save-slot and **not** per-run. A character's
   `equippedAbilityId` is locked in once, at that run's creation

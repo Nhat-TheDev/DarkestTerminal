@@ -4,11 +4,11 @@ import { App } from "./ui/app";
 import { showMainMenu } from "./ui/mainMenu";
 import { showCharacterSelect } from "./ui/characterSelect";
 import { showAbilitySelect } from "./ui/abilitySelect";
-import { showSaveSelect } from "./ui/saveSelect";
+import { showSlotSelect } from "./ui/saveSelect";
 import { PALETTE } from "./ui/theme";
 import { Game } from "./engine/game";
 import { CLASSES, getClass } from "./data/classes";
-import { loadSave, gameFromSave } from "./engine/save";
+import { loadSave, gameFromSave, saveRun } from "./engine/save";
 
 async function main() {
   const renderer = await createCliRenderer({ exitOnCtrlC: true, backgroundColor: PALETTE.bg });
@@ -16,14 +16,21 @@ async function main() {
   for (;;) {
     const choice = await showMainMenu(renderer);
     if (choice === "new") {
+      const slotId = await showSlotSelect(renderer, "new");
+      if (!slotId) continue;
       const classIds = await showCharacterSelect(renderer, CLASSES);
       const abilityIds = await showAbilitySelect(renderer, classIds.map((id) => getClass(id).name));
-      new App(renderer, new Game(Date.now(), classIds, undefined, abilityIds));
+      const game = new Game(Date.now(), classIds, undefined, abilityIds);
+      // Claim the slot now: a run that dies before its first save must not leave the previous
+      // run's file behind for permadeath to delete.
+      game.currentSaveSlot = slotId;
+      saveRun(game);
+      new App(renderer, game);
       return;
     }
-    const saveMeta = await showSaveSelect(renderer);
-    if (!saveMeta) continue;
-    new App(renderer, gameFromSave(loadSave(saveMeta.id), saveMeta.id));
+    const slotId = await showSlotSelect(renderer, "continue");
+    if (!slotId) continue;
+    new App(renderer, gameFromSave(loadSave(slotId), slotId));
     return;
   }
 }

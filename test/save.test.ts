@@ -6,17 +6,18 @@ import {
   isSaveVersionAllowed,
   isSaveStateValid,
   isDevDumpAllowed,
-  quickSave,
-  autoSave,
-  manualSave,
+  saveRun,
   writeDevDumpSave,
-  listSaves,
-  deleteSavesForRun,
+  listSlots,
+  deleteSlot,
+  firstFreeSlotId,
   loadSave,
   gameFromSave,
-  QUICKSAVE_ID,
-  AUTOSAVE_ID,
+  SLOT_IDS,
 } from "../src/engine/save";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
 import type { GameState } from "../src/types";
 
@@ -62,13 +63,13 @@ describe("Dev-dump save gating", () => {
 
   test("writeDevDumpSave stamps meta.devDump and the save loads normally under dev mode (this test run)", () => {
     withGame(7, (game) => {
-      const meta = writeDevDumpSave(game, "dev-dump-test");
+      const meta = writeDevDumpSave(game, "slot4");
       expect(meta.devDump).toBe(true);
-      expect(listSaves().some((m) => m.id === "dev-dump-test")).toBe(true);
+      expect(listSlots().find((s) => s.id === "slot4")?.meta?.devDump).toBe(true);
 
-      const save = loadSave("dev-dump-test");
+      const save = loadSave("slot4");
       expect(save.meta.devDump).toBe(true);
-      const resumed = gameFromSave(save, "dev-dump-test");
+      const resumed = gameFromSave(save, "slot4");
       expect(resumed.state.runId).toBe(game.state.runId);
     });
   });
@@ -124,67 +125,109 @@ function withGame(seed: number, fn: (game: Game) => void): void {
   try {
     fn(game);
   } finally {
-    deleteSavesForRun(game.state.runId);
+    SLOT_IDS.forEach(deleteSlot);
   }
 }
 
-describe("Save file read/write (isolated temp dir via bunfig.toml preload)", () => {
-  test("quickSave writes a file that listSaves() and loadSave() can find and read back", () => {
+describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
+  test("saveRun writes to the run's slot, and listSlots/loadSave read it back", () => {
     withGame(2, (game) => {
-      quickSave(game);
-      expect(listSaves().some((m) => m.id === QUICKSAVE_ID)).toBe(true);
-      expect(loadSave(QUICKSAVE_ID).state.runId).toBe(game.state.runId);
+      game.currentSaveSlot = "slot2";
+      saveRun(game);
+      const slot = listSlots().find((s) => s.id === "slot2");
+      expect(slot?.meta?.runId).toBe(game.state.runId);
+      expect(loadSave("slot2").state.runId).toBe(game.state.runId);
     });
   });
 
-  test("deleteSavesForRun removes every save (quick/auto/manual) sharing a runId", () => {
+  test("saveRun is a no-op for a run with no slot", () => {
     withGame(3, (game) => {
-      quickSave(game);
-      autoSave(game);
-      const manualMeta = manualSave(game);
-      expect(listSaves().some((m) => m.id === QUICKSAVE_ID)).toBe(true);
-      expect(listSaves().some((m) => m.id === AUTOSAVE_ID)).toBe(true);
-      expect(listSaves().some((m) => m.id === manualMeta.id)).toBe(true);
-
-      deleteSavesForRun(game.state.runId);
-
-      expect(listSaves().some((m) => m.id === QUICKSAVE_ID)).toBe(false);
-      expect(listSaves().some((m) => m.id === AUTOSAVE_ID)).toBe(false);
-      expect(listSaves().some((m) => m.id === manualMeta.id)).toBe(false);
+      expect(saveRun(game)).toBeNull();
+      expect(listSlots().every((s) => s.meta === null)).toBe(true);
     });
   });
 
-  test("gameFromSave persists a fresh runId back to disk for a save written before runId existed", () => {
-    withGame(4, (game) => {
-      const meta = manualSave(game);
-      const save = loadSave(meta.id);
-      delete (save.meta as { runId?: string }).runId;
-      delete (save.state as { runId?: string }).runId;
+  test("listSlots always returns one entry per slot, in order", () => {
+    withGame(4, () => {
+      expect(listSlots().map((s) => s.id)).toEqual([...SLOT_IDS]);
+    });
+  });
 
-      const resumed = gameFromSave(save, meta.id);
-      expect(typeof resumed.state.runId).toBe("string");
-      expect(loadSave(meta.id).meta.runId).toBe(resumed.state.runId);
+  test("a slot whose save fails validation reads as empty, and firstFreeSlotId can reuse it", () => {
+    withGame(5, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      expect(firstFreeSlotId()).toBe("slot2");
 
-      deleteSavesForRun(resumed.state.runId);
-      expect(listSaves().some((m) => m.id === meta.id)).toBe(false);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "0.0.1-not-a-real-version";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+      expect(listSlots()[0]!.meta).toBeNull();
+      expect(firstFreeSlotId()).toBe("slot1");
+    });
+  });
+
+  test("firstFreeSlotId is null when every slot is occupied", () => {
+    withGame(6, (game) => {
+      for (const id of SLOT_IDS) {
+        game.currentSaveSlot = id;
+        saveRun(game);
+      }
+      expect(firstFreeSlotId()).toBeNull();
+    });
+  });
+
+  test("deleteSlot removes the slot's file and tolerates an empty slot", () => {
+    withGame(7, (game) => {
+      game.currentSaveSlot = "slot3";
+      saveRun(game);
+      deleteSlot("slot3");
+      expect(listSlots().find((s) => s.id === "slot3")?.meta).toBeNull();
+      expect(() => deleteSlot("slot3")).not.toThrow();
+    });
+  });
+
+  test("gameFromSave binds the run to the slot it was loaded from", () => {
+    withGame(8, (game) => {
+      game.currentSaveSlot = "slot5";
+      saveRun(game);
+      const resumed = gameFromSave(loadSave("slot5"), "slot5");
+      expect(resumed.currentSaveSlot).toBe("slot5");
+      expect(resumed.state.runId).toBe(game.state.runId);
+    });
+  });
+
+  test("playtime carries across a save/load instead of restarting", () => {
+    withGame(9, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.playTime = 3600;
+      const resumed = gameFromSave(save, "slot1");
+      expect(resumed.playTimeSec()).toBeGreaterThanOrEqual(3600);
+      expect(resumed.playTimeSec()).toBeLessThan(3700);
+      saveRun(resumed);
+      expect(loadSave("slot1").meta.playTime).toBeGreaterThanOrEqual(3600);
     });
   });
 
   test("gameFromSave throws for a disallowed save version", () => {
-    withGame(5, (game) => {
-      const meta = manualSave(game);
-      const save = loadSave(meta.id);
+    withGame(10, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
       save.meta.saveVersion = "0.0.1-not-a-real-version";
-      expect(() => gameFromSave(save, meta.id)).toThrow();
+      expect(() => gameFromSave(save, "slot1")).toThrow();
     });
   });
 
   test("gameFromSave throws for a structurally invalid save state", () => {
-    withGame(6, (game) => {
-      const meta = manualSave(game);
-      const save = loadSave(meta.id);
+    withGame(11, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
       save.state.coins = -1;
-      expect(() => gameFromSave(save, meta.id)).toThrow();
+      expect(() => gameFromSave(save, "slot1")).toThrow();
     });
   });
 });

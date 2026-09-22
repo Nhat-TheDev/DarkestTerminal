@@ -11,7 +11,7 @@ import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
-import { quickSave, deleteSavesForRun } from "../engine/save";
+import { saveRun, deleteSlot } from "../engine/save";
 import {
   PALETTE,
   CLASS_STYLE,
@@ -251,13 +251,15 @@ export class App implements ScreenContext {
       return;
     }
     if (this.game.state.gameOver) {
-      // Every terminal ending (not just ordinary defeat) invalidates this run's saves the same way —
+      // Every terminal ending (not just ordinary defeat) clears this run's slot the same way —
       // Stay/Let Go/Leave are conclusions, not a state a later Continue should ever resume from.
-      // "abilityBuyback" is also part of the post-death flow — this run's saves must still be
-      // deleted exactly once on the first transition into either screen, not re-fired every time
+      // "abilityBuyback" is also part of the post-death flow — the slot must still be cleared
+      // exactly once on the first transition into either screen, not re-fired every time
       // syncUiToGameState is called while the buyback is still in progress.
-      if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory") {
-        deleteSavesForRun(this.game.state.runId);
+      if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
+        deleteSlot(this.game.currentSaveSlot);
+        this.game.currentSaveSlot = null;
+        this.pushToast(t("ui.saveDeletedMsg"));
       }
       if (this.game.state.pendingAbilityBuyback) {
         this.ui = { kind: "abilityBuyback" };
@@ -321,7 +323,7 @@ export class App implements ScreenContext {
       return;
     }
     if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && key.name === "s") {
-      quickSave(this.game);
+      saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
       return;

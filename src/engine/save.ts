@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GameState, Id, Monster } from "../types";
 import { Game } from "./game";
@@ -9,7 +9,6 @@ import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
-import { PROFILE_FILENAME } from "./profile";
 import { SAVE_DIR } from "./paths";
 import { DEV_MODE } from "./devMode";
 import pkg from "../../package.json";
@@ -32,8 +31,8 @@ export function isSaveVersionAllowed(version: string | undefined): boolean {
   return normalized === APP_VERSION || ALLOWED_LEGACY_SAVE_VERSIONS.includes(normalized);
 }
 
-export const QUICKSAVE_ID = "quicksave";
-export const AUTOSAVE_ID = "autosave";
+export const NUM_SAVE_SLOTS = 5;
+export const SLOT_IDS: readonly Id[] = Array.from({ length: NUM_SAVE_SLOTS }, (_, i) => `slot${i + 1}`);
 
 export interface SaveMeta {
   id: Id;
@@ -43,10 +42,12 @@ export interface SaveMeta {
   partyClassIds: Id[];
   /** Absent on saves written before this versioning feature existed. */
   saveVersion?: string;
-  /** Absent on saves written before runId existed. Same runId across every save (quick/auto/manual) of one playthrough. */
+  /** Absent on saves written before runId existed. */
   runId?: string;
   /** Set only by `writeDevDumpSave` (tools/dev-save-dump). Gates loading — see `isDevDumpAllowed`. */
   devDump?: true;
+  /** Seconds played across every session of the run, up to this save. */
+  playTime: number;
 }
 
 /** A `devDump` save only loads/lists in dev mode — a release binary can never load one, hard-gated
@@ -63,14 +64,19 @@ export interface SaveFile {
   rngState: number;
 }
 
+/** `meta` is null for an empty slot (or one whose file can't be loaded — see `listSlots`). */
+export interface SlotEntry {
+  id: Id;
+  meta: SaveMeta | null;
+}
+
 function ensureSaveDir(): void {
   if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
 }
 
-// Every existing caller passes a fixed or computed id (QUICKSAVE_ID, AUTOSAVE_ID, `save-${Date.now()}`,
-// dev-save-dump's `dev-dump-${Date.now()}`), but `id` still ends up straight in a filename here —
-// reject anything else so a caller passing an untrusted id (e.g. tools/dev-save-dump/server.ts's
-// user-supplied save name) can't write or read outside SAVE_DIR via a path-traversal id.
+// `id` ends up straight in a filename here — reject anything else so a caller passing an untrusted
+// id (e.g. tools/dev-save-dump/server.ts's user-supplied save name) can't write or read outside
+// SAVE_DIR via a path-traversal id.
 const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
 
 function savePath(id: Id): string {
@@ -88,6 +94,7 @@ function buildSaveFile(game: Game, id: Id, devDump?: true): SaveFile {
       partyClassIds: game.state.party.map((c) => c.classId),
       saveVersion: APP_VERSION,
       runId: game.state.runId,
+      playTime: game.playTimeSec(),
       ...(devDump ? { devDump } : {}),
     },
     state: JSON.parse(JSON.stringify(game.state)),
@@ -103,16 +110,10 @@ function writeSave(game: Game, id: Id, devDump?: true): SaveMeta {
   return save.meta;
 }
 
-export function manualSave(game: Game): SaveMeta {
-  return writeSave(game, `save-${Date.now()}`);
-}
-
-export function quickSave(game: Game): SaveMeta {
-  return writeSave(game, QUICKSAVE_ID);
-}
-
-export function autoSave(game: Game): SaveMeta {
-  return writeSave(game, AUTOSAVE_ID);
+/** Writes the run to its slot. A run with no slot (tests, dev tools) isn't persisted. */
+export function saveRun(game: Game): SaveMeta | null {
+  if (!game.currentSaveSlot) return null;
+  return writeSave(game, game.currentSaveSlot);
 }
 
 /** Only entry point that writes a `devDump` save (tools/dev-save-dump) — refuses outside dev mode
@@ -122,33 +123,14 @@ export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
   return writeSave(game, id, true);
 }
 
-/** Skips unreadable/invalid files silently — including `profile.ts`'s PROFILE_FILENAME, which
-    deliberately shares this same directory but isn't a SaveFile. */
-function forEachSaveFile(fn: (path: string, save: SaveFile) => void): void {
-  if (!existsSync(SAVE_DIR)) return;
-  for (const file of readdirSync(SAVE_DIR)) {
-    if (!file.endsWith(".json") || file === PROFILE_FILENAME) continue;
-    const path = join(SAVE_DIR, file);
-    let save: SaveFile;
-    try {
-      save = JSON.parse(readFileSync(path, "utf8")) as SaveFile;
-    } catch {
-      continue;
-    }
-    fn(path, save);
+export function deleteSlot(id: Id): void {
+  const path = savePath(id);
+  if (!existsSync(path)) return;
+  try {
+    unlinkSync(path);
+  } catch (err) {
+    console.error(`Failed to delete save file ${path}:`, err);
   }
-}
-
-/** Invalidates every save (quicksave/autosave/manual) of a run — called on permadeath. */
-export function deleteSavesForRun(runId: string): void {
-  forEachSaveFile((path, save) => {
-    if (save.meta.runId !== runId) return;
-    try {
-      unlinkSync(path);
-    } catch (err) {
-      console.error(`Failed to delete save file ${path}:`, err);
-    }
-  });
 }
 
 function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
@@ -193,33 +175,36 @@ export function isSaveStateValid(state: GameState): boolean {
   return true;
 }
 
-export function listSaves(): SaveMeta[] {
-  const metas: SaveMeta[] = [];
-  forEachSaveFile((_path, save) => {
-    if (isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state))) metas.push(save.meta);
+/** Always one entry per slot. A slot whose file is unreadable, from a disallowed version, a dev dump
+    outside dev mode, or fails validation reads as empty (the file itself is left on disk). */
+export function listSlots(): SlotEntry[] {
+  return SLOT_IDS.map((id) => {
+    try {
+      const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
+      const loadable = isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state));
+      return { id, meta: loadable ? save.meta : null };
+    } catch {
+      return { id, meta: null };
+    }
   });
-  return metas.sort((a, b) => b.timestamp - a.timestamp);
+}
+
+export function firstFreeSlotId(): Id | null {
+  return listSlots().find((slot) => slot.meta === null)?.id ?? null;
 }
 
 export function loadSave(id: Id): SaveFile {
   return JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
 }
 
-// `id` lets a pre-runId save get its freshly-migrated runId written back to itself, so
-// deleteSavesForRun can later find it. Re-validates rather than trusting the caller pre-filtered.
+// Binds the loaded run to the slot it was read from. Re-validates rather than trusting the caller pre-filtered.
 export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   if (!isSaveVersionAllowed(save.meta.saveVersion)) throw new Error(`Save version not allowed: ${save.meta.saveVersion ?? UNVERSIONED}`);
   if (!isDevDumpAllowed(save.meta)) throw new Error("Dev-dump saves can only be loaded in dev mode");
-  const hadRunId = typeof save.state.runId === "string";
   const state = migrateGameState(save.state);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
-  const game = new Game(seed, undefined, { state, monsters: save.monsters, rngState: save.rngState });
+  const game = new Game(seed, undefined, { state, monsters: save.monsters, rngState: save.rngState, playTimeSec: save.meta.playTime });
   recomputeAllPartyStats(game.state);
-  if (!hadRunId) {
-    try {
-      writeSave(game, id);
-    } catch {
-    }
-  }
+  game.currentSaveSlot = id;
   return game;
 }
