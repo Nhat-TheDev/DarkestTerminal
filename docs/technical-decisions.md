@@ -49,7 +49,7 @@ constants in `src/data/floorPatterns.ts`:
 - Each branch point = exactly 2 rooms: 1 normal room + 1 event room (the player picks one of the two when passing through that stage).
 - Because branch points are spaced apart by at least `MIN_BRANCH_SPACING`, no 2 event rooms are ever adjacent on the same path.
 - At most `MAX_EVENT_ROOMS_PER_PATH` event rooms per path (`floorGeneration.maxEventRoomsPerPath`).
-- `MIN_REST_ROOMS_PER_PATH`–`MAX_REST_ROOMS_PER_PATH` rest rooms per path (`floorGeneration.minRestRoomsPerPath`/`maxRestRoomsPerPath`) — chosen randomly among stages that aren't start/boss/branch points.
+- `MIN_REST_ROOMS_PER_PATH`–`MAX_REST_ROOMS_PER_PATH` rest rooms per path (`floorGeneration.minRestRoomsPerPath`/`maxRestRoomsPerPath`) — chosen randomly among stages that aren't start/boss/branch points; `pickRestStages` removes a picked stage's immediate neighbors from the candidate pool before the next pick, so no 2 rest rooms are ever adjacent either. The pick count can fall short of the random target when neighbor-filtering exhausts the candidate pool, rather than force an adjacent pair in — with the current `minRestRoomsPerPath: 1` this never drops below the configured minimum, but raising that minimum isn't guaranteed to be satisfiable by this function and would need re-checking.
 - `roomId` is unique across the whole layout.
 
 `validateGeneratedStages(stages)` re-checks all of the rules above — used as

@@ -89,6 +89,13 @@ describe("generateFloorLayout", () => {
         expect(restStages.length).toBeLessThanOrEqual(MAX_REST_ROOMS_PER_PATH);
       });
 
+      test("2 rest rooms are never adjacent", () => {
+        const restStageIndices = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.length === 1 && s[0]!.tag === "free").map(({ i }) => i);
+        for (let k = 1; k < restStageIndices.length; k++) {
+          expect(restStageIndices[k]! - restStageIndices[k - 1]!).toBeGreaterThan(1);
+        }
+      });
+
       test("every roomId is unique", () => {
         const ids = stages.flat().map((r) => r.roomId);
         expect(new Set(ids).size).toBe(ids.length);
