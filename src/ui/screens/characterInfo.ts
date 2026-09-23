@@ -4,7 +4,8 @@ import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
-import { getClass } from "../../data/classes";
+import { getClass, passiveRankDef } from "../../data/classes";
+import type { PassiveRankDefinition, PassiveSkillDefinition } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
@@ -45,6 +46,38 @@ const DETAIL_WIDTH = 32 - DETAIL_INDENT;
 /** The "what does this actually do" line under a list entry — wrapped, indented, dimmed. */
 const detailLines = (text: string): TextChunk[][] =>
   wrapText(text, DETAIL_WIDTH).map((line) => [colorChunk(t("ui.characterInfoDetailLine", { text: line }), PALETTE.dim)]);
+
+/**
+ * The passive's actual mechanical effect at its currently-unlocked rank, composed straight from
+ * `rankDef`'s fields — never a hand-typed number, so this can never drift from what the engine
+ * applies (`party.ts`/`resolver.ts`/`combat.ts`/`combatHooks.ts`/`artifacts.ts` all read the exact
+ * same `data/classes.json` fields). One switch arm per class since each passive does something
+ * structurally different — no shared formula to factor out.
+ */
+export function formatPassiveEffect(classId: string, passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
+  switch (classId) {
+    case "vanguard":
+      return `+${rankDef.maxHpPercent}% max HP, +${rankDef.defensePercent}% defense, +${rankDef.aggroFlat} aggro.`;
+    case "mage":
+      return `Each hit reduces the target's defense by ${Math.abs(rankDef.shredFlat ?? 0)} (${Math.abs(rankDef.shredPercent ?? 0)}%), up to 3 stacks.`;
+    case "rogue":
+      return `Hits on a poisoned target deal +${rankDef.bonusPercent}% and +${rankDef.bonusFlat} bonus poison damage.`;
+    case "acolyte":
+      return `Own heals +${rankDef.healBoostPercent}% stronger. +${rankDef.debuffResistPercent}% resist to harmful status effects.`;
+    case "viking":
+      return `Below ${rankDef.hpThresholdPercent}% HP, attacks deal +${rankDef.damageBonusPercent}% damage — costs ${passive.selfDamagePercent}% max HP per hit landed.`;
+    case "plague-doctor":
+      return `Each hit rolls twice for a ${rankDef.procChancePercent}% chance to inflict a random debuff.`;
+    case "archer":
+      return `+${rankDef.critChancePercent}% crit chance; crit damage raised to ${rankDef.critMultiplierPercent}%.`;
+    case "ninja":
+      return `+${rankDef.dodgePercent}% dodge chance. ${rankDef.secondCloneChancePercent}% chance per hit to summon a 2nd Shadow Clone (max ${passive.maxClones}).`;
+    case "summoner":
+      return `Minions get +${rankDef.minionMaxHpPercent}% HP, +${rankDef.minionAttackPercent}% attack. Can keep ${rankDef.maxActiveMinions} minions active at once.`;
+    default:
+      return "";
+  }
+}
 
 /**
  * One stat as `Name  total`, then its sources on an indented line: the base value followed by one
@@ -181,8 +214,22 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       character.aggro
     ),
     [],
-    [colorChunk(t("ui.characterInfoArtifactsLabel"), PALETTE.title)],
+    [colorChunk(t("ui.characterInfoPassiveLabel"), PALETTE.title)],
   ];
+
+  const rankDef = passiveRankDef(cls.passiveSkill, character.level);
+  if (!rankDef) {
+    const firstUnlock = cls.passiveSkill.ranks[0]!.unlockLevel;
+    lines.push([colorChunk(t("ui.characterInfoPassiveItemLocked", { name: cls.passiveSkill.name, level: firstUnlock }), PALETTE.dim)]);
+  } else {
+    lines.push([colorChunk(t("ui.characterInfoPassiveItemRanked", { name: cls.passiveSkill.name, rank: rankDef.rank }), PALETTE.text)]);
+    lines.push(...detailLines(formatPassiveEffect(character.classId, cls.passiveSkill, rankDef)));
+    const nextRank = cls.passiveSkill.ranks.find((r) => r.rank === rankDef.rank + 1);
+    if (nextRank) lines.push(...detailLines(t("ui.characterInfoPassiveNextRank", { level: nextRank.unlockLevel })));
+  }
+
+  lines.push([]);
+  lines.push([colorChunk(t("ui.characterInfoArtifactsLabel"), PALETTE.title)]);
 
   if (character.equippedArtifactIds.length === 0) {
     lines.push([colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]);

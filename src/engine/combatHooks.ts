@@ -5,7 +5,7 @@ import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
-import { getClass, getUnlockedPassiveRank } from "../data/classes";
+import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
   /** Fires once per damage effect that resolves against a target. */
@@ -83,13 +83,6 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-const ROGUE_PASSIVE_BY_RANK = {
-  0: { percent: 0, flat: 0 },
-  1: { percent: 15, flat: 5 },
-  2: { percent: 20, flat: 10 },
-  3: { percent: 30, flat: 20 },
-} as const;
-
 const POISON_FAMILY_STATUS_IDS = ["poisoned", "poisoned-ii", "poisoned-iii"];
 
 /** Rogue's passive (§11 of the design spec) — bonus poison-type damage on a hit that lands
@@ -99,8 +92,9 @@ const roguePoisonBonusHook: SkillEffectHooks = {
     if (!isCharacter(source) || source.classId !== "rogue") return;
     const targetIsPoisoned = target.activeStatusEffects.some((s) => POISON_FAMILY_STATUS_IDS.includes(s.statusEffectId));
     if (!targetIsPoisoned) return;
-    const rank = getUnlockedPassiveRank(getClass("rogue").passiveSkill, source.level);
-    const { percent, flat } = ROGUE_PASSIVE_BY_RANK[rank];
+    const rankDef = passiveRankDef(getClass("rogue").passiveSkill, source.level);
+    const percent = rankDef?.bonusPercent ?? 0;
+    const flat = rankDef?.bonusFlat ?? 0;
     if (percent === 0 && flat === 0) return;
     const bonusAmount = Math.round(damage * (percent / 100)) + flat;
     // ignoreDefensePercent: 100 + offenseMultiplierPercent: 0 together zero out
@@ -116,13 +110,6 @@ const roguePoisonBonusHook: SkillEffectHooks = {
   },
 };
 
-const MAGE_PASSIVE_BY_RANK = {
-  0: { flat: 0, percent: 0 },
-  1: { flat: -5, percent: -5 },
-  2: { flat: -8, percent: -7 },
-  3: { flat: -12, percent: -10 },
-} as const;
-
 /** Mage's passive (§11 of the design spec) — every hit the Mage lands stacks a defense-shredding
  *  status on the target (up to 3 stacks), magnitude scaling with the passive's unlocked rank. The
  *  same "mage-shred" status id is reused across ranks; amount/minPercent on the effect override its
@@ -130,8 +117,9 @@ const MAGE_PASSIVE_BY_RANK = {
 const mageShredHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, _ctx, log) {
     if (!isCharacter(source) || source.classId !== "mage") return;
-    const rank = getUnlockedPassiveRank(getClass("mage").passiveSkill, source.level);
-    const { flat, percent } = MAGE_PASSIVE_BY_RANK[rank];
+    const rankDef = passiveRankDef(getClass("mage").passiveSkill, source.level);
+    const flat = rankDef?.shredFlat ?? 0;
+    const percent = rankDef?.shredPercent ?? 0;
     if (flat === 0 && percent === 0) return;
     resolveSkillEffect(
       { kind: "applyStatusEffect", statusEffectId: "mage-shred", amount: flat, minPercent: percent },
@@ -142,19 +130,17 @@ const mageShredHook: SkillEffectHooks = {
   },
 };
 
-const PLAGUE_DOCTOR_PASSIVE_PROC_CHANCE_BY_RANK = { 0: 0, 1: 0.3, 2: 0.4, 3: 0.5 } as const;
-const PLAGUE_DOCTOR_DEBUFF_POOL = ["poisoned", "burning", "weakened", "blinded", "slowed", "enfeebled"];
-
 /** Plague Doctor's passive (§11 of the design spec) — every hit rolls twice (independently) for a
- *  random debuff from a 6-entry pool, unlocked at level 5/20/35. */
+ *  random debuff from `debuffPool`, unlocked at level 5/20/35. */
 const plagueDoctorDebuffProcHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "plague-doctor") return;
-    const chance = PLAGUE_DOCTOR_PASSIVE_PROC_CHANCE_BY_RANK[getUnlockedPassiveRank(getClass("plague-doctor").passiveSkill, source.level)];
+    const passive = getClass("plague-doctor").passiveSkill;
+    const chance = (passiveRankDef(passive, source.level)?.procChancePercent ?? 0) / 100;
     if (chance === 0) return;
     for (let roll = 0; roll < 2; roll++) {
       if (!ctx.rng.chance(chance)) continue;
-      const statusId = ctx.rng.pick(PLAGUE_DOCTOR_DEBUFF_POOL);
+      const statusId = ctx.rng.pick(passive.debuffPool ?? []);
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: statusId, durationTurns: 2 }, source, target, { log });
     }
   },

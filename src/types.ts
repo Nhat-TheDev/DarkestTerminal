@@ -133,6 +133,9 @@ export interface SkillDefinition {
   id: Id;
   name: string;
   description: string;
+  /** Terser version of `description`, sized to fit on the compact pickSkill list line without
+   *  wrapping/truncating — `description` itself stays full-length for the skillDetail screen. */
+  shortDescription?: string;
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
@@ -149,9 +152,30 @@ export interface SkillDefinition {
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
 }
 
+/** One class's mechanic fields, all optional since a given class's passive only ever reads its
+ *  own handful — same "one shared shape, many optional fields" pattern as `SkillEffect`. */
 export interface PassiveRankDefinition {
   rank: 1 | 2 | 3;
   unlockLevel: number;
+  maxHpPercent?: number; // Vanguard
+  defensePercent?: number; // Vanguard
+  aggroFlat?: number; // Vanguard
+  shredFlat?: number; // Mage
+  shredPercent?: number; // Mage
+  bonusPercent?: number; // Rogue
+  bonusFlat?: number; // Rogue
+  healBoostPercent?: number; // Acolyte
+  debuffResistPercent?: number; // Acolyte
+  hpThresholdPercent?: number; // Viking
+  damageBonusPercent?: number; // Viking
+  procChancePercent?: number; // Plague Doctor
+  critChancePercent?: number; // Archer
+  critMultiplierPercent?: number; // Archer
+  dodgePercent?: number; // Ninja
+  secondCloneChancePercent?: number; // Ninja
+  minionMaxHpPercent?: number; // Summoner
+  minionAttackPercent?: number; // Summoner
+  maxActiveMinions?: number; // Summoner
 }
 
 export interface PassiveSkillDefinition {
@@ -159,6 +183,9 @@ export interface PassiveSkillDefinition {
   name: string;
   description: string;
   ranks: PassiveRankDefinition[]; // exactly 3
+  selfDamagePercent?: number; // Viking — fixed across ranks, not scaled
+  maxClones?: number; // Ninja — fixed across ranks, not scaled
+  debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }
 
 export interface GrowthWeights {

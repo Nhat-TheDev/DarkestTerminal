@@ -3,7 +3,6 @@ import type { Character, CombatantRef, SkillDefinition, SkillEffect, SkillTarget
 import type { Game } from "../../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
-import { truncateText } from "../layout";
 import { t } from "../../data/strings";
 import { signed } from "../../data/items";
 import { getStatusEffect, statusDisplayName } from "../../data/statusEffects";
@@ -268,14 +267,13 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
       const lines: TextChunk[][] = [[plainChunk(t("ui.turnOfChooseSkill", { actor: actor.name }))]];
       skillEntries(actor).forEach((sk, i) => {
         const unusable = checkSkillUsable(actor, sk);
-        const { dmgAmount, usesLeft } = skillMeta(actor, sk);
+        const { usesLeft } = skillMeta(actor, sk);
         const usesSuffix = usesLeft !== null ? t("ui.usesLeftSuffix", { count: usesLeft }) : "";
-        const dmgSuffix = dmgAmount !== null ? t("ui.dmgEstimateSuffix", { amount: dmgAmount }) : "";
-        const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix}${dmgSuffix})`;
+        const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix})`;
         if (unusable) {
           lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
         } else {
-          lines.push([plainChunk(`${head} — ${truncateText(sk.description, 34)}`)]);
+          lines.push([plainChunk(`${head} — ${sk.shortDescription ?? sk.description}`)]);
         }
       });
       return joinLines(lines);

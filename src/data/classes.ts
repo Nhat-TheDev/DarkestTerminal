@@ -1,4 +1,4 @@
-import type { CharacterClass, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition } from "../types";
+import type { CharacterClass, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 
 /**
@@ -73,4 +73,12 @@ export function getUnlockedPassiveRank(passive: PassiveSkillDefinition, level: n
     if (r.unlockLevel <= level && r.rank > rank) rank = r.rank;
   }
   return rank;
+}
+
+/** The rank definition (mechanic fields) currently unlocked at `level`, or null below rank 1 —
+ *  the single lookup every passive's engine/UI code shares instead of each keeping its own table. */
+export function passiveRankDef(passive: PassiveSkillDefinition, level: number): PassiveRankDefinition | null {
+  const rank = getUnlockedPassiveRank(passive, level);
+  if (rank === 0) return null;
+  return passive.ranks.find((r) => r.rank === rank) ?? null;
 }

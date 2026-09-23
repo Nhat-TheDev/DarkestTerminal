@@ -3,9 +3,7 @@ import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
-import { getClass, getUnlockedPassiveRank } from "../data/classes";
-
-const ACOLYTE_HEAL_BOOST_BY_RANK = { 0: 0, 1: 10, 2: 20, 3: 25 } as const;
+import { getClass, passiveRankDef } from "../data/classes";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
@@ -233,7 +231,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
       const acolyteBoost =
         ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
-          ? 1 + ACOLYTE_HEAL_BOOST_BY_RANK[getUnlockedPassiveRank(getClass("acolyte").passiveSkill, source.level)] / 100
+          ? 1 + (passiveRankDef(getClass("acolyte").passiveSkill, source.level)?.healBoostPercent ?? 0) / 100
           : 1;
       target.hp = Math.min(target.maxHp, target.hp + Math.round(((effect.amount ?? 0) + healPower) * acolyteBoost));
       const healed = target.hp - before;

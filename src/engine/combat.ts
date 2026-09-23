@@ -17,7 +17,7 @@ import type {
   CombatantSnapshot,
   PartyStateSnapshot,
 } from "../types";
-import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, getUnlockedPassiveRank } from "../data/classes";
+import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, passiveRankDef } from "../data/classes";
 import { characterBaseStats } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
@@ -586,49 +586,35 @@ function harmfulStatusOnCharacter(effect: SkillEffect, target: Actor, isEnemyFac
   return ids.map((id) => getStatusEffect(id)).find((def) => !isHelpfulStatusEffect(def)) ?? null;
 }
 
-const ACOLYTE_DEBUFF_RESIST_BY_RANK = { 0: 0, 1: 30, 2: 40, 3: 50 } as const;
-
 /** Acolyte's passive (§11 of the design spec) — a self-only harmful-status resist, unlocked at
  *  level 5/20/35. Combines with the bearer's Artifact/Ability `debuffResist` (see `harmfulStatusOnCharacter`'s
  *  call site) the same multiplicative way independent resist sources always combine. */
 export function acolyteDebuffResistPercent(target: Character): number {
   if (target.classId !== "acolyte") return 0;
-  return ACOLYTE_DEBUFF_RESIST_BY_RANK[getUnlockedPassiveRank(getClass("acolyte").passiveSkill, target.level)];
+  return passiveRankDef(getClass("acolyte").passiveSkill, target.level)?.debuffResistPercent ?? 0;
 }
-
-const VIKING_PASSIVE_BY_RANK = {
-  0: { hpThresholdPercent: 0, damageBonusPercent: 0 },
-  1: { hpThresholdPercent: 40, damageBonusPercent: 20 },
-  2: { hpThresholdPercent: 45, damageBonusPercent: 30 },
-  3: { hpThresholdPercent: 50, damageBonusPercent: 40 },
-} as const;
-
-const VIKING_SELF_DAMAGE_PERCENT = 3; // fixed across all ranks
 
 /** Viking's passive (§11 of the design spec) — a below-a-HP-threshold outgoing damage buff, unlocked
- *  at level 5/20/35, that costs a fixed 3% of maxHp on any attack that lands while it's active
- *  (harsher trade-off, deliberately not scaled by rank). Never triggers on a buff-only skill. */
+ *  at level 5/20/35, that costs a fixed `selfDamagePercent` of maxHp on any attack that lands while
+ *  it's active (harsher trade-off, deliberately not scaled by rank). Never triggers on a buff-only skill. */
 function vikingBloodFuryBonus(source: Actor): number {
   if (!isCharacter(source) || source.classId !== "viking") return 0;
-  const rank = getUnlockedPassiveRank(getClass("viking").passiveSkill, source.level);
-  const { hpThresholdPercent, damageBonusPercent } = VIKING_PASSIVE_BY_RANK[rank];
-  if (hpThresholdPercent === 0) return 0;
-  return source.hp / source.maxHp < hpThresholdPercent / 100 ? damageBonusPercent : 0;
+  const rankDef = passiveRankDef(getClass("viking").passiveSkill, source.level);
+  if (!rankDef) return 0;
+  return source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100 ? rankDef.damageBonusPercent ?? 0 : 0;
 }
 
-const NINJA_PASSIVE_CLONE_CHANCE_BY_RANK = { 0: 0, 1: 0.2, 2: 0.25, 3: 0.3 } as const;
-const MAX_NINJA_CLONES = 2;
-
 /** Ninja's passive (§11 of the design spec) — a chance, on any hit the Ninja lands, to spawn a 2nd
- *  independent shadow clone (capped at 2), unlocked at level 5/20/35. Goes through
+ *  independent shadow clone (capped at `maxClones`), unlocked at level 5/20/35. Goes through
  *  `spawnAdditionalSummon` rather than the normal `summon` skill-effect path (which always replaces
  *  a same-archetype summon on recast) since the whole point is to stack a 2nd one. */
 function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   if (source.classId !== "ninja") return;
-  const chance = NINJA_PASSIVE_CLONE_CHANCE_BY_RANK[getUnlockedPassiveRank(getClass("ninja").passiveSkill, source.level)];
+  const passive = getClass("ninja").passiveSkill;
+  const chance = (passiveRankDef(passive, source.level)?.secondCloneChancePercent ?? 0) / 100;
   if (chance === 0) return;
   const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === "ninja-clone");
-  if (existingClones.length >= MAX_NINJA_CLONES || existingClones.length === 0) return;
+  if (existingClones.length >= (passive.maxClones ?? 0) || existingClones.length === 0) return;
   if (!ctx.rng.chance(chance)) return;
   spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, source, combat, ctx, log);
 }
@@ -637,13 +623,6 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
 function findBreakBonusStatus(source: Actor) {
   return source.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).breakBonus);
 }
-
-const ARCHER_PASSIVE_BY_RANK = {
-  0: { critChancePercent: 0, critMultiplierPercent: BALANCE.combat.defaultCritMultiplierPercent },
-  1: { critChancePercent: 2, critMultiplierPercent: 160 },
-  2: { critChancePercent: 5, critMultiplierPercent: 170 },
-  3: { critChancePercent: 8, critMultiplierPercent: 180 },
-} as const;
 
 /** Archer's passive (§11 of the design spec) — a character-level crit chance/multiplier, unlocked
  *  at level 5/20/35, that adds on top of (not replaces) whatever crit a skill's own effect already
@@ -658,10 +637,11 @@ function resolveOneDamageEffect(
   stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
   linkedSummonId?: Id
 ): number {
-  const archerBonus =
-    isCharacter(source) && source.classId === "archer"
-      ? ARCHER_PASSIVE_BY_RANK[getUnlockedPassiveRank(getClass("archer").passiveSkill, source.level)]
-      : { critChancePercent: 0, critMultiplierPercent: BALANCE.combat.defaultCritMultiplierPercent };
+  const archerRank = isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
+  const archerBonus = {
+    critChancePercent: archerRank?.critChancePercent ?? 0,
+    critMultiplierPercent: archerRank?.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent,
+  };
   const totalCritChance = (effect.critChance ?? 0) + archerBonus.critChancePercent / 100;
   const isCrit = stealthBreak.guaranteedCrit || (totalCritChance > 0 && ctx.rng.chance(totalCritChance));
   const effectiveCritMultiplierPercent = Math.max(effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent, archerBonus.critMultiplierPercent);
@@ -694,10 +674,7 @@ let summonCounter = 0;
  *  to 2/3 purely by the Summoner's passive rank (level 20/35), independent of anything being cast. */
 function maxActiveMinionsFor(owner: Character): number {
   if (owner.classId !== "summoner") return 1;
-  const rank = getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level);
-  if (rank >= 3) return 3;
-  if (rank >= 2) return 2;
-  return 1;
+  return passiveRankDef(getClass("summoner").passiveSkill, owner.level)?.maxActiveMinions ?? 1;
 }
 
 function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
@@ -723,18 +700,12 @@ function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, 
   expireLinkedAllyBuffs(summon, ctx, log);
 }
 
-const SUMMONER_PASSIVE_BY_RANK = {
-  0: { maxHpPercent: 0, attackPercent: 0 },
-  1: { maxHpPercent: 20, attackPercent: 10 },
-  2: { maxHpPercent: 25, attackPercent: 13 },
-  3: { maxHpPercent: 30, attackPercent: 17 },
-} as const;
-
 /** Summoner's passive (§11 of the design spec) — applied at spawn time to every minion, always,
  *  once the owner is level 5+. Replaces the old cast-based Mastery/`empowersMinions` status entirely. */
 function empowermentBonusFor(owner: Character): { maxHpPercent: number; attackPercent: number } {
   if (owner.classId !== "summoner") return { maxHpPercent: 0, attackPercent: 0 };
-  return SUMMONER_PASSIVE_BY_RANK[getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level)];
+  const rankDef = passiveRankDef(getClass("summoner").passiveSkill, owner.level);
+  return { maxHpPercent: rankDef?.minionMaxHpPercent ?? 0, attackPercent: rankDef?.minionAttackPercent ?? 0 };
 }
 
 /** `formula.base + (formula.percent / 100) * owner[formula.sourceStat]`, with `bonusPercent` (Mastery's empowerment) scaling the source-derived portion only — the flat `base` term isn't boosted. */
@@ -1088,7 +1059,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
   if (landedDamageHit && isCharacter(source) && vikingBonus > 0) {
-    const selfDamage = Math.round(source.maxHp * (VIKING_SELF_DAMAGE_PERCENT / 100));
+    const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
   if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
