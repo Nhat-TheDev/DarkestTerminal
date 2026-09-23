@@ -25,10 +25,11 @@ describe("monsterDepthBuffPercent", () => {
     expect(monsterDepthBuffPercent(111)).toBe(53.25);
   });
 
-  test("plateau: floor 120 and any depth beyond it stays at 53.25%, never extrapolates further", () => {
+  test("beyond the last configured bracket, the final increment (+2%) keeps applying every 10 floors forever", () => {
     expect(monsterDepthBuffPercent(120)).toBe(53.25);
-    expect(monsterDepthBuffPercent(200)).toBe(53.25);
-    expect(monsterDepthBuffPercent(999)).toBe(53.25);
+    expect(monsterDepthBuffPercent(130)).toBe(55.25);
+    expect(monsterDepthBuffPercent(200)).toBe(69.25);
+    expect(monsterDepthBuffPercent(999)).toBe(229.25);
   });
 
   test("per-stat coefficients match the design spec exactly", () => {

@@ -11,34 +11,34 @@
     {
       "maxLevel": 25,
       "attack": 2,
-      "defense": 1,
+      "defense": 1.5,
       "maxHp": 10,
       "maxMp": 4,
       "magicPower": 2
     },
     {
       "maxLevel": 50,
-      "attack": 1,
-      "defense": 0.5,
+      "attack": 1.5,
+      "defense": 1,
       "maxHp": 7,
       "maxMp": 3,
-      "magicPower": 1
+      "magicPower": 1.5
     },
     {
       "maxLevel": 75,
-      "attack": 0.5,
-      "defense": 0.3333333333333333,
+      "attack": 0.8,
+      "defense": 0.5,
       "maxHp": 5,
       "maxMp": 2,
-      "magicPower": 0.5
+      "magicPower": 0.8
     },
     {
       "maxLevel": 100,
-      "attack": 0.3333333333333333,
+      "attack": 0.4,
       "defense": 0.25,
       "maxHp": 3,
       "maxMp": 1,
-      "magicPower": 0.3333333333333333
+      "magicPower": 0.4
     }
   ],
   "expTiers": [
@@ -137,19 +137,7 @@
   },
   "expRewardDepthRate": 0.1,
   "bossFloorInterval": 5,
-  "monsterDepthBuffBrackets": [
-    { "maxFloor": 10, "bonusPercent": 0 },
-    { "maxFloor": 20, "bonusPercent": 10 },
-    { "maxFloor": 30, "bonusPercent": 18 },
-    { "maxFloor": 40, "bonusPercent": 25 },
-    { "maxFloor": 50, "bonusPercent": 31 },
-    { "maxFloor": 60, "bonusPercent": 36 },
-    { "maxFloor": 70, "bonusPercent": 40.25 },
-    { "maxFloor": 80, "bonusPercent": 43.75 },
-    { "maxFloor": 90, "bonusPercent": 46.75 },
-    { "maxFloor": 100, "bonusPercent": 49.25 },
-    { "maxFloor": 110, "bonusPercent": 51.25 },
-    { "maxFloor": 120, "bonusPercent": 53.25 }
-  ],
+  "monsterDepthBuffBracketFloors": 10,
+  "monsterDepthBuffBracketIncrements": [10, 8, 7, 6, 5, 4.25, 3.5, 3, 2.5, 2],
   "monsterDepthBuffStatCoefficients": { "maxHp": 1.5, "attack": 1, "defense": 0.75 }
 }

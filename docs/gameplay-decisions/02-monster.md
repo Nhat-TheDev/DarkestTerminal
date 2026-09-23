@@ -60,12 +60,15 @@ out, instead of still losing 1 HP/turn. Resist/weak never applies to a `Characte
 ### Floor-depth buff
 
 A universal, race-independent multiplier on top of the existing floor-depth growth curve
-(`growthBonusForDepth`) — 12 brackets of 10 floors each, front-loaded then plateauing at
-+2%/bracket from floor 101 on, reaching +53.25% by floor 120. `data/level-growth.json`'s
-`monsterDepthBuffBrackets` is the source of truth for the actual bracket values; `monsterDepthBuffPercent`
-(`src/data/levelGrowth.ts`) looks up the current bracket as a **step function, not interpolated** —
-a monster spawned right after crossing a boundary (e.g. floor 11) gets the full new bracket's bonus
-immediately, no gradual ramp.
+(`growthBonusForDepth`) — 10-floor brackets, each adding a front-loaded then tapering increment
+(+10, +8, +7, +6, +5, +4.25, +3.5, +3, +2.5, +2) on top of the running total. `data/level-growth.json`'s
+`monsterDepthBuffBracketIncrements` (paired with `monsterDepthBuffBracketFloors`, the bracket size)
+is the source of truth for those increments; `monsterDepthBuffPercent` (`src/data/levelGrowth.ts`)
+sums them cumulatively as a **step function, not interpolated** — a monster spawned right after
+crossing a boundary (e.g. floor 11) gets the full new bracket's bonus immediately, no gradual ramp.
+Depth is uncapped: once the configured increments run out (floor 120+), the last one (+2%) keeps
+being added every subsequent bracket forever, so the bonus never plateaus — matching the game's
+infinite-floor roguelike design instead of stopping at a fixed cap.
 
 That base percent is scaled per-stat before being applied in `spawnMonster`
 (`monsterDepthBuffStatCoefficients`, same file): **HP ×1.5, attack ×1, defense ×0.75** — monsters

@@ -24,11 +24,6 @@ interface TierMultiplier {
   exp: number;
 }
 
-interface DepthBuffBracket {
-  maxFloor: number;
-  bonusPercent: number;
-}
-
 interface DepthBuffStatCoefficients {
   maxHp: number;
   attack: number;
@@ -42,7 +37,8 @@ interface LevelGrowthFile {
   bossMultiplier: TierMultiplier;
   expRewardDepthRate: number;
   bossFloorInterval: number;
-  monsterDepthBuffBrackets: DepthBuffBracket[];
+  monsterDepthBuffBracketFloors: number;
+  monsterDepthBuffBracketIncrements: number[];
   monsterDepthBuffStatCoefficients: DepthBuffStatCoefficients;
 }
 
@@ -57,12 +53,21 @@ export const MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS: DepthBuffStatCoefficients = D
 
 /** Step function, not interpolated — a monster spawned right after crossing a bracket boundary
  *  gets the full new bracket's bonus immediately (docs/superpowers/specs/2026-09-16-monster-race-
- *  damage-scaling-design.md §4). Depth beyond the last bracket's maxFloor stays at that bracket's
- *  value — it never extrapolates further. */
+ *  damage-scaling-design.md §4). Bonus is the cumulative sum of each bracket's increment; once
+ *  the configured increments run out, the last one keeps applying every subsequent bracket
+ *  forever — depth is uncapped, so the bonus never plateaus. */
 export function monsterDepthBuffPercent(floorDepth: number): number {
-  const brackets = DATA.monsterDepthBuffBrackets;
-  const bracket = brackets.find((b) => floorDepth <= b.maxFloor);
-  return (bracket ?? brackets[brackets.length - 1]!).bonusPercent;
+  const bracketFloors = DATA.monsterDepthBuffBracketFloors;
+  const increments = DATA.monsterDepthBuffBracketIncrements;
+  const bracketIndex = Math.floor((floorDepth - 1) / bracketFloors);
+  if (bracketIndex <= 0) return 0;
+
+  if (bracketIndex <= increments.length) {
+    return increments.slice(0, bracketIndex).reduce((sum, inc) => sum + inc, 0);
+  }
+  const lastIncrement = increments[increments.length - 1]!;
+  const allIncrementsTotal = increments.reduce((sum, inc) => sum + inc, 0);
+  return allIncrementsTotal + (bracketIndex - increments.length) * lastIncrement;
 }
 
 function tierFor(level: number): Tier {
