@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { GameState, Id, Monster } from "../types";
+import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
 import { migrateGameState } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
@@ -62,6 +62,8 @@ export interface SaveFile {
   state: GameState;
   monsters: Monster[];
   rngState: number;
+  /** Absent on saves written before this field existed — treated as `[]` on load (`gameFromSave`). */
+  summons?: Summon[];
 }
 
 /** `meta` is null for an empty slot (or one whose file can't be loaded — see `listSlots`). */
@@ -99,6 +101,7 @@ function buildSaveFile(game: Game, id: Id, devDump?: true): SaveFile {
     },
     state: JSON.parse(JSON.stringify(game.state)),
     monsters: JSON.parse(JSON.stringify(game.ctx.monsters)),
+    summons: JSON.parse(JSON.stringify(game.ctx.summons)),
     rngState: game.ctx.rng.getState(),
   };
 }
@@ -197,13 +200,30 @@ export function loadSave(id: Id): SaveFile {
   return JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
 }
 
+// A save written before `summons` existed on `SaveFile` (or otherwise missing an entry the combat
+// state still references) would leave `state.combat` pointing at a summon `getActorByRef` can never
+// resolve, throwing "Unknown summon" the instant that ref is looked up. Rather than crash on an
+// already-broken save, drop the dangling refs — the summon silently doesn't come back, same as if it
+// had expired the moment the save was made.
+function pruneOrphanedSummonRefs(state: GameState, summons: Summon[]): void {
+  const combat = state.combat;
+  if (!combat) return;
+  const validIds = new Set(summons.map((s) => s.id));
+  const isOrphaned = (ref: CombatantRef) => ref.kind === "summon" && !validIds.has(ref.id);
+  combat.combatants = combat.combatants.filter((c) => !isOrphaned(c.ref));
+  combat.turnQueue = combat.turnQueue.filter((ref) => !isOrphaned(ref));
+  combat.queuedActions = combat.queuedActions.filter((a) => !isOrphaned(a.actor)).map((a) => ({ ...a, targets: a.targets.filter((t) => !isOrphaned(t)) }));
+}
+
 // Binds the loaded run to the slot it was read from. Re-validates rather than trusting the caller pre-filtered.
 export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   if (!isSaveVersionAllowed(save.meta.saveVersion)) throw new Error(`Save version not allowed: ${save.meta.saveVersion ?? UNVERSIONED}`);
   if (!isDevDumpAllowed(save.meta)) throw new Error("Dev-dump saves can only be loaded in dev mode");
   const state = migrateGameState(save.state);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
-  const game = new Game(seed, undefined, { state, monsters: save.monsters, rngState: save.rngState, playTimeSec: save.meta.playTime });
+  const summons = save.summons ?? [];
+  pruneOrphanedSummonRefs(state, summons);
+  const game = new Game(seed, undefined, { state, monsters: save.monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
   recomputeAllPartyStats(game.state);
   game.currentSaveSlot = id;
   return game;

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster, ArtifactRarity } from "../types";
+import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -28,6 +28,7 @@ import {
   snapshotCombatants,
   tagLogRange,
   tagPartySnapshotRange,
+  dismissSummonsAtCombatEnd,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
@@ -67,14 +68,14 @@ export class Game {
   constructor(
     seed = Date.now(),
     classIds?: Id[],
-    restore?: { state: GameState; monsters: Monster[]; rngState: number; playTimeSec: number },
+    restore?: { state: GameState; monsters: Monster[]; summons: Summon[]; rngState: number; playTimeSec: number },
     abilityIds?: (Id | null)[]
   ) {
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
       rng.setState(restore.rngState);
-      this.ctx = { party: restore.state.party, monsters: restore.monsters, summons: [], rng, inventory: restore.state.inventory };
+      this.ctx = { party: restore.state.party, monsters: restore.monsters, summons: restore.summons, rng, inventory: restore.state.inventory };
       this.state = restore.state;
       return;
     }
@@ -187,8 +188,19 @@ export class Game {
    * invalidate this run's saves (permadeath) — `11-abilities.md` §11.1 "Death flow" runs first, since
    * it needs the party's still-current `equippedAbilityId`s before anything else changes.
    */
+  /** Dismisses any still-living summon and drops `state.combat` — shared by `clearFinishedCombat`
+      (victory) and `triggerDefeat` (a party wipe), since `syncUiToGameState` (src/ui/app.ts) checks
+      `gameOver` before `combat.phase === "over"`, so the "combatOver" screen never runs on defeat and
+      `clearFinishedCombat` itself never gets called for that path. No-op if combat already ended. */
+  private endCombat(): void {
+    if (!this.state.combat) return;
+    dismissSummonsAtCombatEnd(this.ctx);
+    this.state.combat = null;
+  }
+
   private triggerDefeat(): void {
     if (this.state.gameOver !== null) return;
+    this.endCombat();
     this.state.gameOver = "defeat";
     this.runAbilityDeathFlow();
   }
@@ -588,19 +600,22 @@ export class Game {
   }
 
   advanceToNextFloor(): void {
+    // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls (not merely on
+    // arrival). This only ever runs via the normal boss-clear -> floor-advance pipeline
+    // (clearFinishedCombat sets pendingFloorAdvance, finishVictorySequence calls this method), so
+    // `this.state.floor.depth` is still 100 here — floor 100 itself was played through normally.
+    // `continuedPastCheckpoint` guards this same check from refiring on the recursive call
+    // pickEndingChoice("continue") makes below to actually reach floor 101.
+    if (this.state.floor.depth === ENDING_CHECKPOINT_FLOOR_DEPTH && !this.state.continuedPastCheckpoint) {
+      this.state.pendingEndingCheckpoint = true;
+      return;
+    }
     const nextDepth = this.state.floor.depth + 1;
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
     this.state.message = t("game.nextFloor", { depth: nextDepth });
-    // Part F.1 — a guaranteed, non-rolled story beat the moment floor 100 is reached alive. Blocks
-    // everything else (including this same entry room's own ambush check) until resolved via
-    // pickEndingChoice(); the entry room's monsters, if any, wait exactly where they are.
-    if (nextDepth === ENDING_CHECKPOINT_FLOOR_DEPTH) {
-      this.state.pendingEndingCheckpoint = true;
-      return;
-    }
     // Part F.5 — the founder encounter, guaranteed the same way, only for a party that chose
     // Continue. Never rolled, never repeats (advancing further only ever happens once past it).
     if (nextDepth === FOUNDER_FLOOR_DEPTH && this.state.continuedPastCheckpoint) {
@@ -635,10 +650,12 @@ export class Game {
     } else if (choice === "leave") {
       this.state.gameOver = hasWaystoneShardEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
     } else {
-      // Continue: floor generation resumes normally toward floor 120 (§F.5) — marked here so
-      // advanceToNextFloor() knows to fire the founder encounter once that depth is reached.
+      // Continue: resumes the boss-clear -> floor-advance flow the checkpoint intercepted, now
+      // toward floor 120 (§F.5) — continuedPastCheckpoint is set first so the depth-100 gate above
+      // doesn't refire, then advanceToNextFloor() actually generates floor 101 (and will fire the
+      // founder encounter once floor 120 is reached).
       this.state.continuedPastCheckpoint = true;
-      this.checkEntryRoomAmbush();
+      this.advanceToNextFloor();
     }
   }
 
@@ -662,7 +679,7 @@ export class Game {
   clearFinishedCombat(): boolean {
     if (this.state.combat?.phase !== "over") return false;
     const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";
-    this.state.combat = null;
+    this.endCombat();
     return wasBossRoomVictory;
   }
 

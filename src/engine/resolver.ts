@@ -210,7 +210,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const before = target.hp;
       const healPower =
         ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
-      target.hp = Math.min(target.maxHp, target.hp + (effect.amount ?? 0) + healPower);
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((effect.amount ?? 0) + healPower));
       const healed = target.hp - before;
       ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
       return healed;
@@ -291,6 +291,22 @@ function nameOf(actor: Actor): string {
   return actor.name;
 }
 
+/** Computes each `modifyCombatStat` entry's actual delta and applies it to `actor`, returning the
+    per-stat amounts actually applied — computed before any delta is applied, so a status with 2+
+    modifyCombatStat entries (e.g. storm-recoil's defense debuff + aggro buff) never has one entry's
+    own delta bleed into another's minPercent floor. Callers store the result as the entry's
+    `appliedAmounts`, which `expireStatusEffect` later reads back to undo precisely that amount. */
+function applyStatModifiers(actor: Actor, def: StatusEffectDefinition): Partial<Record<CombatStat, number>> {
+  const appliedAmounts: Partial<Record<CombatStat, number>> = {};
+  for (const e of def.perTurnEffects) {
+    if (e.kind === "modifyCombatStat" && e.combatStat) appliedAmounts[e.combatStat] = computeCombatStatDelta(actor, e);
+  }
+  for (const e of def.perTurnEffects) {
+    if (e.kind === "modifyCombatStat" && e.combatStat) applyCombatStatDelta(actor, e.combatStat, appliedAmounts[e.combatStat]!);
+  }
+  return appliedAmounts;
+}
+
 function applyStatusEffectToActor(actor: Actor, statusEffectId: string, durationTurns: number | undefined, ctx: ResolveContext): void {
   const def = getStatusEffect(statusEffectId);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
@@ -300,30 +316,40 @@ function applyStatusEffectToActor(actor: Actor, statusEffectId: string, duration
     // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
     const existing = actor.activeStatusEffects[existingIndex]!;
     const stacks = def.stackable ? Math.min(def.maxStacks ?? 1, (existing.stacks ?? 1) + 1) : existing.stacks;
-    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: durationTurns ?? existing.turnsRemaining, stacks };
-    ctx.log.push({ text: t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+    // Undo the old delta before recomputing a fresh one — otherwise the old appliedAmounts is
+    // orphaned and `expireStatusEffect` later falls back to the flat `amount`, undoing the wrong
+    // quantity and permanently drifting the stat by the difference.
+    for (const e of def.perTurnEffects) {
+      if (e.kind === "modifyCombatStat" && e.combatStat) applyCombatStatDelta(actor, e.combatStat, -(existing.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
+    }
+    const appliedAmounts = applyStatModifiers(actor, def);
+    actor.activeStatusEffects[existingIndex] = { statusEffectId, turnsRemaining: durationTurns ?? existing.turnsRemaining, stacks, appliedAmounts };
+    // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
+    // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
+    // making the stacking mechanic invisible to the player.
+    const stackGained = def.stackable && stacks !== undefined && stacks > (existing.stacks ?? 1);
+    ctx.log.push({
+      text: stackGained
+        ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stacks! })
+        : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+      kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
+    });
     return;
   }
-  // Computed before any delta is applied, so a status with 2+ modifyCombatStat entries (e.g. storm-recoil's
-  // defense debuff + aggro buff) never has one entry's own delta bleed into another's minPercent floor.
-  const appliedAmounts: Partial<Record<CombatStat, number>> = {};
-  for (const e of def.perTurnEffects) {
-    if (e.kind === "modifyCombatStat" && e.combatStat) appliedAmounts[e.combatStat] = computeCombatStatDelta(actor, e);
-  }
+  const appliedAmounts = applyStatModifiers(actor, def);
   const entry: ActiveStatusEffect = { statusEffectId, turnsRemaining: durationTurns ?? 1, stacks: def.stackable ? 1 : undefined, appliedAmounts };
   actor.activeStatusEffects.push(entry);
-  for (const e of def.perTurnEffects) {
-    if (e.kind === "modifyCombatStat" && e.combatStat) {
-      applyCombatStatDelta(actor, e.combatStat, appliedAmounts[e.combatStat]!);
-    }
-  }
   ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
+  // Every no-id use in data/classes.json is a "cleanse 1 debuff" effect (appliesToRelation: "ally") —
+  // the target is specifically the first harmful status, never just whatever sits at index 0. If the
+  // actor is carrying no debuff at all, there is nothing for this effect to do; falling back to index
+  // 0 would strip a helpful buff instead, which no skill in the data intends.
   const target = statusEffectId
     ? actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId)
-    : actor.activeStatusEffects[0];
+    : actor.activeStatusEffects.find((s) => !isHelpfulStatusEffect(getStatusEffect(s.statusEffectId)));
   if (!target) return;
   expireStatusEffect(actor, target, ctx);
 }

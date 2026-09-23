@@ -105,6 +105,19 @@ describe("resolver", () => {
     expect(target.hp).toBe(target.maxHp);
   });
 
+  test("a magic heal rounds to a whole number instead of leaving a fractional HP amount in the log", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.magicPower = 71; // 71 * 50% = 35.5 -> must round, not land as a fractional heal
+    target.hp = Math.max(1, target.maxHp - 100);
+    const before = target.hp;
+    const log: LogEntry[] = [];
+    const healed = resolveSkillEffect({ kind: "heal", amount: 0, offenseMultiplierPercent: 50 }, target, target, { log, isMagic: true });
+    expect(Number.isInteger(healed)).toBe(true);
+    expect(target.hp - before).toBe(healed);
+    expect(log.some((l) => /recovers \d+ HP\./.test(l.text))).toBe(true);
+  });
+
   test("modifyStat clamps fear/hunger/thirst to [0, 100]", () => {
     const { ctx } = makeCtx();
     const target = ctx.party[0]!;
@@ -155,6 +168,54 @@ describe("resolver", () => {
     tickStatModEffects(vanguard, { log });
     expect(vanguard.defense).toBe(200); // undoes the applied 20, not the flat 6
     expect(vanguard.activeStatusEffects).toHaveLength(0);
+  });
+
+  test("refreshing a minPercent-floored status recomputes appliedAmounts instead of losing them, so expiry undoes the right amount", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    vanguard.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(220);
+
+    // Recast while still active — refreshes the same entry rather than stacking a 2nd instance.
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(vanguard.defense).toBe(220);
+    expect(vanguard.activeStatusEffects).toHaveLength(1);
+
+    tickStatModEffects(vanguard, { log });
+    // Must undo the full +20 minPercent-floored delta, not the flat +6 `amount`.
+    expect(vanguard.defense).toBe(200);
+    expect(vanguard.activeStatusEffects).toHaveLength(0);
+  });
+
+  test("reapplying a stackable status that actually gains a stack logs statusStack, not statusRefresh", () => {
+    const { ctx } = makeCtx();
+    const victim = ctx.monsters[0]!;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(1);
+    expect(log.some((l) => /stacks to \d+/.test(l.text))).toBe(false);
+
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(2);
+    expect(log.at(-1)!.text).toMatch(/stacks to 2/);
+
+    // Once capped at maxStacks, a further reapply gains no new stack and falls back to a plain refresh.
+    victim.activeStatusEffects[0]!.stacks = 5;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
+    expect(victim.activeStatusEffects[0]!.stacks).toBe(5);
+    expect(log.at(-1)!.text).toMatch(/refreshes/);
+  });
+
+  test("reapplying a non-stackable status always logs a plain refresh, never statusStack", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    expect(log.at(-1)!.text).toMatch(/refreshes/);
+    expect(vanguard.activeStatusEffects[0]!.stacks).toBeUndefined();
   });
 
   test("minPercent leaves a debuff's delta alone below the floor, and floors it once the target's stat is high enough", () => {

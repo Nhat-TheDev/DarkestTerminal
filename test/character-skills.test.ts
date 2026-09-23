@@ -104,6 +104,45 @@ describe("new skill mechanics", () => {
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
   });
 
+  test("Purify strips the debuff, not an earlier-applied buff, when the ally carries both", () => {
+    const { ctx } = makeCtx();
+    const acolyte = createCharacter("cp-test2", "Acolyte Test", getClass("acolyte"), 10);
+    ctx.party.push(acolyte);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    // Buff applied BEFORE the debuff, so a naive "remove index 0" would strip the wrong one.
+    vanguard.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 });
+    vanguard.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
+
+    const tanky = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
+    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+
+    expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+  });
+
+  test("Purify does nothing when the ally has a buff but no debuff, instead of stripping the buff", () => {
+    const { ctx } = makeCtx();
+    const acolyte = createCharacter("cp-test3", "Acolyte Test", getClass("acolyte"), 10);
+    ctx.party.push(acolyte);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 }); // no debuff present
+
+    const tanky = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
+    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+
+    expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+  });
+
   test("ultimate skills always hit even at high fear, but scale damage down instead of missing", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
@@ -124,6 +163,28 @@ describe("new skill mechanics", () => {
     expect(combat.log.some((l) => l.text.includes("misses its attack"))).toBe(false);
     expect(actualDamage).toBeGreaterThan(0);
     expect(actualDamage).toBeLessThan(fullPowerDamage);
+  });
+
+  test("an ultimate's fear-tier penalty scales its whole power budget (offenseMultiplierPercent-based portion included), not just its flat amount", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.unlockedSkillIds.push("vanguard-sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
+    vanguard.mp = 999;
+    vanguard.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
+    const skeleton = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [skeleton.id], ctx, false);
+    const enemyRef: CombatantRef = { kind: "monster", id: skeleton.id };
+    const enemyActor = getActorByRef(enemyRef, ctx);
+    // If only `amount` were scaled (the pre-fix behavior), damage would be
+    // round(30*0.6) + mitigatedOffense(vanguard.attack*0.85, defense) — the offense-scaled term unaffected.
+    const amountOnlyScaledDamage = Math.max(1, Math.round(30 * 0.6) + mitigatedOffense(vanguard.attack * 0.85, enemyActor.defense));
+
+    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-sword-judgment", [enemyRef], ctx);
+    const hpBefore = enemyActor.hp;
+    resolveRound(combat, ctx);
+    const actualDamage = hpBefore - enemyActor.hp;
+
+    expect(actualDamage).toBeLessThan(amountOnlyScaledDamage);
   });
 
   test("the damage log line names the skill that dealt it, so it's clear which attack landed", () => {

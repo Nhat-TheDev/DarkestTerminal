@@ -5,7 +5,7 @@ import { getClass } from "../../src/data/classes";
 import { getRoom, enterRoom } from "../../src/engine/dungeon";
 import { statsForLevel, recomputeAllPartyStats } from "../../src/engine/party";
 import { expCostForLevel, MAX_LEVEL } from "../../src/data/levelGrowth";
-import { ENDING_CHECKPOINT_FLOOR_DEPTH, FOUNDER_FLOOR_DEPTH } from "../../src/data/endings";
+import { FOUNDER_FLOOR_DEPTH } from "../../src/data/endings";
 import { resolveRoomId } from "./args";
 
 export interface DumpOptions {
@@ -44,12 +44,11 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
   game.state.currentRoomId = roomId;
   const room = getRoom(floor, roomId);
 
-  // Mirrors `Game.advanceToNextFloor()`'s own precedence: these 2 guaranteed story beats block
-  // everything else the moment the party reaches that depth, checked before any room-type logic.
-  if (floorDepth === ENDING_CHECKPOINT_FLOOR_DEPTH) {
-    game.state.pendingEndingCheckpoint = true;
-    return room;
-  }
+  // Mirrors `Game.advanceToNextFloor()`'s own precedence: the founder encounter is a guaranteed
+  // story beat that blocks everything else the moment the party reaches that depth, checked before
+  // any room-type logic. The floor-100 checkpoint has no equivalent here — it now fires only after
+  // floor 100's own boss is defeated (Part F.1), not on arrival, so dumping to depth 100 lands on it
+  // like any ordinary floor.
   if (floorDepth === FOUNDER_FLOOR_DEPTH && game.state.continuedPastCheckpoint) {
     game.state.pendingFounderDialogue = true;
     return room;

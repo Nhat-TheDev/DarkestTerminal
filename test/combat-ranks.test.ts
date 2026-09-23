@@ -14,6 +14,9 @@ import {
 } from "../src/engine/combat";
 import type { CombatantRef, Summon } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { Game } from "../src/engine/game";
+import { getRoom } from "../src/engine/dungeon";
+import { spawnMonster } from "../src/data/monsters";
 
 describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
@@ -263,6 +266,82 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
 
     expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(false);
     expect(combat.log.some((l) => l.text.includes("dismissed"))).toBe(true);
+  });
+
+  test("a Shadow Clone still alive when the room's combat ends is dismissed instead of lingering in ctx.summons", () => {
+    const game = new Game(1);
+    const ninja = game.state.party.find((p) => p.classId === "ninja")!;
+    ninja.mp = ninja.maxMp;
+    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    const rat = spawnMonster("dungeon-rat", 1);
+    rat.hp = 1;
+    rat.attack = 0;
+    game.ctx.monsters.push(rat);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.monsterIds = [rat.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+
+    const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
+    expect(game.queue(ninjaRef, "ninja-shadow-clone", [ninjaRef])).toBeNull();
+    for (const ref of game.livingCharactersNeedingAction()) {
+      if (ref.id === ninja.id) continue;
+      const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
+      game.queue(ref, skillId, targets);
+    }
+    game.resolve();
+
+    // The rat dies this same round (1 hp), before the freshly-spawned clone ever gets a turn of its
+    // own — so it's still hp > 0 and actionsTaken 0 when combat.phase flips to "over".
+    expect(game.state.combat?.phase).toBe("over");
+    expect(game.state.combat?.outcome).toBe("victory");
+    const clone = game.ctx.summons.find((s) => s.ownerId === ninja.id)!;
+    expect(clone).toBeDefined();
+    expect(clone.hp).toBeGreaterThan(0);
+
+    game.clearFinishedCombat();
+    expect(clone.hp).toBe(0);
+  });
+
+  test("a Shadow Clone still alive when the party is wiped is dismissed too, same as on victory", () => {
+    const game = new Game(2);
+    const ninja = game.state.party.find((p) => p.classId === "ninja")!;
+    ninja.mp = ninja.maxMp;
+    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    const rat = spawnMonster("dungeon-rat", 1);
+    rat.hp = 99999;
+    rat.attack = 0; // never actually deals the killing blow — the wipe below is simulated directly
+    game.ctx.monsters.push(rat);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.monsterIds = [rat.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+
+    const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
+    expect(game.queue(ninjaRef, "ninja-shadow-clone", [ninjaRef])).toBeNull();
+    for (const ref of game.livingCharactersNeedingAction()) {
+      if (ref.id === ninja.id) continue;
+      const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
+      game.queue(ref, skillId, targets);
+    }
+    game.resolve();
+    expect(game.state.combat?.phase).not.toBe("over"); // the rat survives, combat is still ongoing
+
+    const clone = game.ctx.summons.find((s) => s.ownerId === ninja.id)!;
+    expect(clone).toBeDefined();
+    expect(clone.hp).toBeGreaterThan(0);
+
+    // Same helper `postMoveCheck`/`resolve()`'s defeat branch call internally on a real party wipe
+    // (test/ability-effects.test.ts's `wipeParty` uses the same pattern).
+    for (const c of game.state.party) {
+      c.hp = 0;
+      c.isAlive = false;
+    }
+    (game as unknown as { triggerDefeat: () => void }).triggerDefeat();
+
+    expect(game.state.gameOver).toBe("defeat");
+    expect(game.state.combat).toBeNull();
+    expect(clone.hp).toBe(0);
   });
 });
 

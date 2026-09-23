@@ -70,11 +70,12 @@ describe("dev-save-dump applyDump", () => {
     expect(game.state.satiety).toBeLessThan(satietyBefore);
   });
 
-  test("reaching the ending-checkpoint floor arms the checkpoint instead of resolving the requested room", () => {
+  test("landing on the ending-checkpoint floor resolves the requested room normally — the checkpoint only fires after that floor's own boss is defeated, not on arrival", () => {
     const game = new Game(8, PARTY);
-    applyDump(game, { level: 50, floorDepth: ENDING_CHECKPOINT_FLOOR_DEPTH, roomArg: "boss" });
-    expect(game.state.pendingEndingCheckpoint).toBe(true);
-    expect(game.state.combat).toBeNull();
+    const room = applyDump(game, { level: 50, floorDepth: ENDING_CHECKPOINT_FLOOR_DEPTH, roomArg: "boss" });
+    expect(game.state.pendingEndingCheckpoint).toBe(false);
+    expect(room.type).toBe("boss");
+    expect(game.state.combat).not.toBeNull();
   });
 
   test("reaching the founder floor after continuing past the checkpoint arms the founder dialogue", () => {

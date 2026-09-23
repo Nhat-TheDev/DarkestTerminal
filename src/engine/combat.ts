@@ -511,13 +511,20 @@ function ultimateEffectivenessMultiplier(fear: number): number {
   }
 }
 
+/** Scales BOTH the flat `amount` and the stat-scaled `offenseMultiplierPercent` by the same fear-tier
+    coefficient, so the whole pre-mitigation power budget (`offenseMultiplierPercent% of base stat +
+    amount`) shrinks together — scaling `amount` alone left the (usually much larger) stat-scaled
+    portion of an ultimate's damage/heal completely unaffected by Fear. */
 function scaleEffectForUltimate(effect: SkillEffect, source: Actor): SkillEffect {
   if (!isCharacter(source)) return effect;
   if (effect.kind !== "damage" && effect.kind !== "heal") return effect;
-  if (effect.amount === undefined) return effect;
   const mult = ultimateEffectivenessMultiplier(source.survival.fear);
   if (mult === 1) return effect;
-  return { ...effect, amount: Math.round(effect.amount * mult) };
+  return {
+    ...effect,
+    amount: effect.amount !== undefined ? Math.round(effect.amount * mult) : effect.amount,
+    offenseMultiplierPercent: effect.offenseMultiplierPercent !== undefined ? Math.round(effect.offenseMultiplierPercent * mult) : effect.offenseMultiplierPercent,
+  };
 }
 
 function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
@@ -772,6 +779,21 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
   summon.hp = 0;
 }
 
+/**
+ * Clears every summon still standing (`hp > 0`) when its combat ends — a summon otherwise only
+ * leaves `ctx.summons` via `expireSummonIfDone` (dying or running out of actions) or `dismissSummon`
+ * (recast/eviction), both of which only fire *during* a round. One that's still alive and hasn't
+ * used up its actions when the last monster falls would otherwise linger in `ctx.summons` forever —
+ * visible as a stale HP line in the party panel, and wrongly counted by `ownedSummons` on the next
+ * cast. No `deathBurst` here: that's the cost of falling in battle, not of the fight simply ending.
+ * Call from `clearFinishedCombat`, after which `combat.combatants` itself is discarded anyway.
+ */
+export function dismissSummonsAtCombatEnd(ctx: EngineContext): void {
+  for (const summon of ctx.summons) {
+    if (summon.hp > 0) summon.hp = 0;
+  }
+}
+
 /** Sweeps every summon still in `combat.combatants` for one that just died (a hit, a DoT tick) or ran out of actions, and finalizes it (`expireSummonIfDone`). Called after every point in a round a summon could take lethal damage or use up its last action — see that function's own doc for why repeated calls are safe. */
 function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const c of combat.combatants) {
@@ -917,14 +939,17 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
       const wasAliveBefore = isActorAlive(target);
+      // Summed across every hit (hitCountRange's multi-hit and any extraHitChance bonus hit), not just
+      // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
+      // a multi-hit skill actually dealt this cast, not just its final swing.
       let appliedAmount = 0;
       for (let hit = 0; hit < hitCount; hit++) {
         if (!isActorAlive(target)) break;
-        appliedAmount = resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+        appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
           if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && isActorAlive(target)) {
-            appliedAmount = resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+            appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
           }
         }
       }

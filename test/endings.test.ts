@@ -17,9 +17,12 @@ import { migrateGameState } from "../src/engine/migration";
 import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, PROFILE_FILENAME } from "../src/engine/profile";
 import { EVENTS } from "../src/data/events";
 
-function toFloor99(game: Game) {
+/** Simulates the real trigger path: floor 100 already fully played through and its own boss just
+    defeated (the boss-clear -> floor-advance pipeline calls `advanceToNextFloor()` while still on
+    the floor whose boss was just cleared) — not merely arriving at floor 100 from floor 99. */
+function toFloor100BossCleared(game: Game) {
   game.state.combat = null;
-  game.state.floor.depth = 99;
+  game.state.floor.depth = 100;
 }
 
 function resetProfile() {
@@ -91,13 +94,22 @@ describe("hasWaystoneShardEquipped", () => {
 });
 
 describe("advanceToNextFloor's floor-100 checkpoint trigger", () => {
-  test("sets pendingEndingCheckpoint exactly on reaching floor 100, blocking the entry room's own ambush", () => {
+  test("sets pendingEndingCheckpoint once floor 100's own boss falls", () => {
     const game = new Game(409);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     expect(game.state.floor.depth).toBe(ENDING_CHECKPOINT_FLOOR_DEPTH);
     expect(game.state.pendingEndingCheckpoint).toBe(true);
     expect(game.state.combat).toBeNull();
+  });
+
+  test("does not set it merely on arriving at floor 100 — only after its own boss is defeated", () => {
+    const game = new Game(4091);
+    game.state.combat = null;
+    game.state.floor.depth = 99;
+    game.advanceToNextFloor();
+    expect(game.state.floor.depth).toBe(ENDING_CHECKPOINT_FLOOR_DEPTH);
+    expect(game.state.pendingEndingCheckpoint).toBe(false);
   });
 
   test("does not set it for any other floor", () => {
@@ -117,7 +129,7 @@ describe("Game.pickEndingChoice", () => {
 
   test("stay/letGo are rejected in 'leaveOnly' mode", () => {
     const game = new Game(412);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold;
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
@@ -127,7 +139,7 @@ describe("Game.pickEndingChoice", () => {
 
   test("stay sets gameOver to 'stay' and clears the checkpoint", () => {
     const game = new Game(413);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
     expect(game.state.gameOver).toBe("stay");
@@ -136,7 +148,7 @@ describe("Game.pickEndingChoice", () => {
 
   test("letGo sets gameOver to 'letGo'", () => {
     const game = new Game(414);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("letGo");
     expect(game.state.gameOver).toBe("letGo");
@@ -144,7 +156,7 @@ describe("Game.pickEndingChoice", () => {
 
   test("continue is rejected outside 'full' mode and leaves the run playable", () => {
     const game = new Game(415);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("continue");
     expect(game.state.gameOver).toBeNull();
@@ -154,7 +166,7 @@ describe("Game.pickEndingChoice", () => {
   test("continue proceeds without ending the run in 'full' mode", () => {
     const game = new Game(416);
     game.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("continue");
     expect(game.state.gameOver).toBeNull();
@@ -164,14 +176,14 @@ describe("Game.pickEndingChoice", () => {
   test("'full' mode still allows stay/letGo directly, not only continue", () => {
     const game1 = new Game(4161);
     game1.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game1);
+    toFloor100BossCleared(game1);
     game1.advanceToNextFloor();
     game1.pickEndingChoice("stay");
     expect(game1.state.gameOver).toBe("stay");
 
     const game2 = new Game(4162);
     game2.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game2);
+    toFloor100BossCleared(game2);
     game2.advanceToNextFloor();
     game2.pickEndingChoice("letGo");
     expect(game2.state.gameOver).toBe("letGo");
@@ -179,7 +191,7 @@ describe("Game.pickEndingChoice", () => {
 
   test("leave is rejected outside 'leaveOnly' mode (both 'stayOrLetGo' and 'full')", () => {
     const game1 = new Game(4163); // stayOrLetGo (no triggers, no tier 4)
-    toFloor99(game1);
+    toFloor100BossCleared(game1);
     game1.advanceToNextFloor();
     game1.pickEndingChoice("leave");
     expect(game1.state.gameOver).toBeNull();
@@ -187,7 +199,7 @@ describe("Game.pickEndingChoice", () => {
 
     const game2 = new Game(4164); // full (tier 4, no Leave trigger)
     game2.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game2);
+    toFloor100BossCleared(game2);
     game2.advanceToNextFloor();
     game2.pickEndingChoice("leave");
     expect(game2.state.gameOver).toBeNull();
@@ -197,7 +209,7 @@ describe("Game.pickEndingChoice", () => {
   test("stay/letGo/continue are all rejected once resolved (checkpoint already cleared)", () => {
     const game = new Game(4165);
     game.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
     expect(game.state.gameOver).toBe("stay");
@@ -207,14 +219,14 @@ describe("Game.pickEndingChoice", () => {
 
   test("leave resolves to 'leaveAmbushed' without the shard, 'leaveEscaped' with it equipped", () => {
     const game1 = new Game(417);
-    toFloor99(game1);
+    toFloor100BossCleared(game1);
     game1.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold;
     game1.advanceToNextFloor();
     game1.pickEndingChoice("leave");
     expect(game1.state.gameOver).toBe("leaveAmbushed");
 
     const game2 = new Game(418);
-    toFloor99(game2);
+    toFloor100BossCleared(game2);
     game2.state.narrativeCounters.freeRewardsTakenCount = BALANCE.events.freeTakenThreshold;
     game2.state.party[0]!.equippedArtifactIds = ["waystone-shard"];
     game2.advanceToNextFloor();
@@ -231,6 +243,28 @@ describe("migration default for pendingEndingCheckpoint", () => {
   });
 });
 
+describe("migration backfill for narrativeCounters", () => {
+  test("individually backfills every sub-field, not just guardianGrudgeFiredCount/freeRewardsTakenCount", () => {
+    // narrativeCounters already exists (so the whole-object fallback is skipped) but predates
+    // artifactsSacrificed/altarPaymentsCount/guardianFightsSkipped — a real shape from before those
+    // fields were added. Left `undefined`, the next `+= 1` on any of them would compute NaN,
+    // permanently breaking that counter's threshold checks for the run.
+    const legacy = {
+      party: [],
+      inventory: {},
+      narrativeCounters: { guardianGrudgeFiredCount: 2, freeRewardsTakenCount: 1 },
+    } as unknown as Parameters<typeof migrateGameState>[0];
+    const migrated = migrateGameState(legacy);
+    expect(migrated.narrativeCounters).toEqual({
+      guardianFightsSkipped: 0,
+      artifactsSacrificed: 0,
+      altarPaymentsCount: 0,
+      guardianGrudgeFiredCount: 2,
+      freeRewardsTakenCount: 1,
+    });
+  });
+});
+
 describe("Part F.5: Continue → the founder encounter", () => {
   function toFloor119Continued(game: Game) {
     game.state.combat = null;
@@ -241,7 +275,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
   test("continue marks continuedPastCheckpoint and leaves the run playable", () => {
     const game = new Game(419);
     game.state.loreExposureCount = BALANCE.survival.campReflectionTier4Threshold;
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("continue");
     expect(game.state.continuedPastCheckpoint).toBe(true);
@@ -316,7 +350,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
 
   test("winning an ordinary boss fight never triggers the event-removal bulk-insert", () => {
     const game = new Game(425);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor(); // floor 100 checkpoint
     game.pickEndingChoice("letGo");
     expect(FOUNDER_VICTORY_REMOVED_EVENT_IDS.some((id) => game.state.firedOnceEventIds.includes(id))).toBe(false);
@@ -368,7 +402,7 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
   test("choosing Stay persists the picked party member's class to the profile", () => {
     resetProfile();
     const game = new Game(504);
-    toFloor99(game);
+    toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
     const profile = loadProfile();
@@ -422,7 +456,7 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
     const game = new Game(509, ["vanguard", "rogue"]);
     game.state.combat = null;
     game.state.party[0]!.isAlive = false; // vanguard dead, rogue alive
-    game.state.floor.depth = 99;
+    game.state.floor.depth = 100;
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
     expect(loadProfile().retiredCharacters).toEqual([{ classId: "rogue" }]);

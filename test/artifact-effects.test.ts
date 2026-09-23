@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { getClass, getSkill } from "../src/data/classes";
 import { Rng } from "../src/engine/rng";
-import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
+import { startCombat, queueAction, resolveRound, livingMonsterRefs, livingCharacterRefs, applySkillEffects } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { rollArtifactRarity, artifactRarityWeights, ARTIFACTS, formatArtifactEffect } from "../src/data/artifacts";
@@ -23,7 +23,7 @@ import {
 } from "../src/engine/artifacts";
 import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
-import type { CombatantRef } from "../src/types";
+import type { CombatantRef, SkillDefinition } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 
 describe("artifacts", () => {
@@ -313,6 +313,33 @@ describe("artifacts", () => {
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("upon defeating an enemy"))).toBe(true);
     expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
+  });
+
+  test("lifesteal heals off the full damage of a multi-hit skill, not just its last hit", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.equippedArtifactIds.push("reapers-covenant"); // 8% lifesteal
+    vanguard.hp = Math.max(1, vanguard.maxHp - 100);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.hp = 99999;
+    rat.defense = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    // offenseMultiplierPercent: 0 keeps each hit's damage a deterministic flat 20, regardless of the
+    // Vanguard's own attack stat, so the expected total (3 x 20 = 60) is exact, not just "greater than".
+    const multiHitSkill: SkillDefinition = {
+      id: "test-multi-hit",
+      name: "Test Multi Hit",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      slot: 0,
+      unlockLevel: 1,
+    };
+    const hpBefore = vanguard.hp;
+    applySkillEffects(multiHitSkill, vanguard, [rat], combat, ctx, combat.log);
+    // Lifesteal must scale off all 3 hits (60 total), not just the last one: round(60*0.08)=5.
+    expect(vanguard.hp - hpBefore).toBe(5);
   });
 
   test("autoDamage fires at the start of the round, independent of turn order", () => {
