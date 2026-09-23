@@ -3,6 +3,7 @@
     {
       "id": "ninja-clone",
       "name": "Shadow Clone",
+      "speed": 1,
       "actionWeights": {
         "basicAttack": 1
       }
@@ -10,6 +11,7 @@
     {
       "id": "goblin-thrower",
       "name": "Goblin Thrower",
+      "speed": 12,
       "actionWeights": {
         "rock-throw": 40,
         "basicAttack": 60
@@ -21,6 +23,7 @@
     {
       "id": "stone-golem",
       "name": "Stone Golem",
+      "speed": 6,
       "actionWeights": {
         "stomp": 40,
         "basicAttack": 60
@@ -32,6 +35,7 @@
     {
       "id": "hellfire-imp",
       "name": "Hellfire Imp",
+      "speed": 16,
       "actionWeights": {
         "hellfire-strike": 40,
         "basicAttack": 60
@@ -43,6 +47,7 @@
     {
       "id": "healer-spirit",
       "name": "Healer Spirit",
+      "speed": 10,
       "actionWeights": {
         "spirit-heal-single": 60,
         "spirit-heal-party": 40
@@ -55,6 +60,7 @@
     {
       "id": "recall-totem",
       "name": "Recall Totem",
+      "speed": 1,
       "passive": true
     }
   ],

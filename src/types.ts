@@ -647,6 +647,11 @@ export interface Summon {
 export interface SummonArchetype {
   id: Id;
   name: string;
+  /** Fixed trait of this creature, independent of the owner's own `speed` — used for its turn-order
+   *  position every round it's out, and to decide whether it acts immediately the round it's cast
+   *  (faster than its owner) or waits for its first normal turn next round (see `runCharacterTurn`,
+   *  `src/engine/combat.ts`). */
+  speed: number;
   /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];

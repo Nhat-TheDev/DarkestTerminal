@@ -231,10 +231,18 @@ export function allLivingCharactersHaveQueuedActions(combat: CombatState, ctx: E
   return living.every((ref) => combat.queuedActions.some((qa) => refEquals(qa.actor, ref)));
 }
 
+/** A skill that summons (goblin/spirit/golem, totem recall, shadow clone) always follows normal
+ *  speed order, even when it's also flagged `isBuff` — only a summon-free buff cuts the line. */
+function isSummonSkill(def: SkillDefinition): boolean {
+  return (def.effects ?? []).some((e) => e.kind === "summon");
+}
+
 function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   if (c.ref.kind !== "character") return c.speed;
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
-  if (queued && actionDefinition(queued.source).isBuff) return c.speed + 20;
+  if (!queued) return c.speed;
+  const def = actionDefinition(queued.source);
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + 20;
   return c.speed;
 }
 
@@ -465,7 +473,14 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
       : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }),
     kind: announceKind,
   });
-  applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
+  const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
+  // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed) — it
+  // would otherwise sit idle until next round regardless of speed. A summon faster than its owner
+  // instead acts immediately, right after being cast; a slower one just waits for its normal turn
+  // next round, same as before.
+  if (spawnedSummon && spawnedSummon.speed > actor.speed && !isCombatOver(combat, ctx)) {
+    runSummonTurn({ kind: "summon", id: spawnedSummon.id }, combat, ctx);
+  }
 }
 
 type ExecutionTargets = Actor[] | "fizzle";
@@ -759,7 +774,7 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
     defense: Math.round(computeSummonStat(stat.defense, owner, rank, 0)),
     magicPower: Math.round(computeSummonStat(stat.magicPower, owner, rank, 0)),
     aggro: cast.aggro,
-    speed: owner.speed,
+    speed: archetype.speed,
     activeStatusEffects: [],
     actionsTaken: 0,
     maxActions: cast.maxActions,
@@ -934,7 +949,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
-export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
@@ -960,6 +975,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   // override effect in the same cast — e.g. Totem Recall's ally buff — can tie its own expiry to
   // the summon it was cast alongside (`SkillEffect.linksToCasterSummon`).
   let spawnedSummonId: Id | undefined;
+  let spawnedSummon: Summon | undefined;
   if (overrideEffects.length > 0) {
     const sourceRef: CombatantRef = isCharacter(source)
       ? { kind: "character", id: source.id }
@@ -971,7 +987,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
       for (const resolved of overrideTargets) {
         if (effect.kind === "summon") {
-          if (isCharacter(source)) spawnedSummonId = spawnSummon(effect, source, combat, ctx, log)?.id;
+          if (isCharacter(source)) {
+            spawnedSummon = spawnSummon(effect, source, combat, ctx, log);
+            spawnedSummonId = spawnedSummon?.id;
+          }
           continue;
         }
         if (effect.excludesSummonTargets && isSummon(resolved)) continue;
@@ -1064,6 +1083,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   }
   if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
+  return spawnedSummon;
 }
 
 function sourceName(source: Actor): string {

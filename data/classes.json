@@ -3179,70 +3179,6 @@
         ]
       },
       {
-        "id": "summoner-summon-imp",
-        "name": "Summon Hellfire Imp",
-        "description": "Summons a Hellfire Imp and immediately scorches every enemy with hellfire. Always hits; effectiveness reduced by fear.",
-        "shortDescription": "Summons an Imp, scorches every foe.",
-        "target": "allEnemies",
-        "isMagic": true,
-        "slot": 5,
-        "isUltimate": true,
-        "cooldownTurns": 5,
-        "ranks": [
-          {
-            "rank": 1,
-            "unlockLevel": 35,
-            "mpCost": 20,
-            "effects": [
-              {
-                "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
-                "target": "self"
-              },
-              {
-                "kind": "damage",
-                "amount": 8,
-                "offenseMultiplierPercent": 80
-              }
-            ]
-          },
-          {
-            "rank": 2,
-            "unlockLevel": 70,
-            "mpCost": 21,
-            "effects": [
-              {
-                "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
-                "target": "self"
-              },
-              {
-                "kind": "damage",
-                "amount": 13,
-                "offenseMultiplierPercent": 80
-              }
-            ]
-          },
-          {
-            "rank": 3,
-            "unlockLevel": 100,
-            "mpCost": 22,
-            "effects": [
-              {
-                "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
-                "target": "self"
-              },
-              {
-                "kind": "damage",
-                "amount": 18,
-                "offenseMultiplierPercent": 80
-              }
-            ]
-          }
-        ]
-      },
-      {
         "id": "summoner-totem-recall",
         "name": "Totem Recall",
         "description": "Plants a totem that channels strength into the whole party, until something breaks it.",
@@ -3312,6 +3248,70 @@
                 "durationTurns": 99,
                 "amount": 20,
                 "minPercent": 20
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "summoner-summon-imp",
+        "name": "Summon Hellfire Imp",
+        "description": "Summons a Hellfire Imp and immediately scorches every enemy with hellfire. Always hits; effectiveness reduced by fear.",
+        "shortDescription": "Summons an Imp, scorches every foe.",
+        "target": "allEnemies",
+        "isMagic": true,
+        "slot": 5,
+        "isUltimate": true,
+        "cooldownTurns": 5,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 35,
+            "mpCost": 20,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 8,
+                "offenseMultiplierPercent": 80
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 70,
+            "mpCost": 21,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 13,
+                "offenseMultiplierPercent": 80
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 100,
+            "mpCost": 22,
+            "effects": [
+              {
+                "kind": "summon",
+                "summonCastId": "summoner-summon-imp",
+                "target": "self"
+              },
+              {
+                "kind": "damage",
+                "amount": 18,
+                "offenseMultiplierPercent": 80
               }
             ]
           }
