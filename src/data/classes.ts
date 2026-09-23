@@ -21,6 +21,11 @@ for (const cls of CLASSES) {
     throw new Error(`data/classes.json: class "${cls.id}" must have exactly 6 skills (has ${cls.skills.length})`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
+
+  const passiveRanks = cls.passiveSkill.ranks.map((r) => r.rank);
+  if (passiveRanks.length !== 3 || ![1, 2, 3].every((rank) => passiveRanks.includes(rank as 1 | 2 | 3))) {
+    throw new Error(`data/classes.json: class "${cls.id}"'s passiveSkill must have exactly ranks 1, 2, and 3 (has ${JSON.stringify(passiveRanks)})`);
+  }
 }
 
 export function getClass(id: string): CharacterClass {

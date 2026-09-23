@@ -51,32 +51,52 @@ const detailLines = (text: string): TextChunk[][] =>
  * The passive's actual mechanical effect at its currently-unlocked rank, composed straight from
  * `rankDef`'s fields — never a hand-typed number, so this can never drift from what the engine
  * applies (`party.ts`/`resolver.ts`/`combat.ts`/`combatHooks.ts`/`artifacts.ts` all read the exact
- * same `data/classes.json` fields). One switch arm per class since each passive does something
- * structurally different — no shared formula to factor out.
+ * same `data/classes.json` fields). Driven by which fields are present, not by `classId` — same
+ * shape as `formatArtifactEffect`/`formatStatusEffectMechanics` switching on effect kind rather
+ * than on which artifact/status it came from, so a class needs no code change here unless it
+ * introduces a genuinely new field.
  */
-export function formatPassiveEffect(classId: string, passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
-  switch (classId) {
-    case "vanguard":
-      return `+${rankDef.maxHpPercent}% max HP, +${rankDef.defensePercent}% defense, +${rankDef.aggroFlat} aggro.`;
-    case "mage":
-      return `Each hit reduces the target's defense by ${Math.abs(rankDef.shredFlat ?? 0)} (${Math.abs(rankDef.shredPercent ?? 0)}%), up to 3 stacks.`;
-    case "rogue":
-      return `Hits on a poisoned target deal +${rankDef.bonusPercent}% and +${rankDef.bonusFlat} bonus poison damage.`;
-    case "acolyte":
-      return `Own heals +${rankDef.healBoostPercent}% stronger. +${rankDef.debuffResistPercent}% resist to harmful status effects.`;
-    case "viking":
-      return `Below ${rankDef.hpThresholdPercent}% HP, attacks deal +${rankDef.damageBonusPercent}% damage — costs ${passive.selfDamagePercent}% max HP per hit landed.`;
-    case "plague-doctor":
-      return `Each hit rolls twice for a ${rankDef.procChancePercent}% chance to inflict a random debuff.`;
-    case "archer":
-      return `+${rankDef.critChancePercent}% crit chance; crit damage raised to ${rankDef.critMultiplierPercent}%.`;
-    case "ninja":
-      return `+${rankDef.dodgePercent}% dodge chance. ${rankDef.secondCloneChancePercent}% chance per hit to summon a 2nd Shadow Clone (max ${passive.maxClones}).`;
-    case "summoner":
-      return `Minions get +${rankDef.minionMaxHpPercent}% HP, +${rankDef.minionAttackPercent}% attack. Can keep ${rankDef.maxActiveMinions} minions active at once.`;
-    default:
-      return "";
+export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
+  const parts: string[] = [];
+  if (rankDef.maxHpPercent !== undefined) {
+    parts.push(t("passive.vanguardBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
   }
+  if (rankDef.shredFlat !== undefined) {
+    parts.push(t("passive.mageShred", { flat: Math.abs(rankDef.shredFlat), percent: Math.abs(rankDef.shredPercent ?? 0) }));
+  }
+  if (rankDef.bonusPercent !== undefined) {
+    parts.push(t("passive.roguePoisonBonus", { percent: rankDef.bonusPercent, flat: rankDef.bonusFlat ?? 0 }));
+  }
+  if (rankDef.healBoostPercent !== undefined) {
+    parts.push(t("passive.acolyteHealBoost", { percent: rankDef.healBoostPercent }));
+  }
+  if (rankDef.debuffResistPercent !== undefined) {
+    parts.push(t("passive.acolyteDebuffResist", { percent: rankDef.debuffResistPercent }));
+  }
+  if (rankDef.hpThresholdPercent !== undefined) {
+    parts.push(
+      t("passive.vikingBloodFury", { threshold: rankDef.hpThresholdPercent, bonus: rankDef.damageBonusPercent ?? 0, selfDamage: passive.selfDamagePercent ?? 0 })
+    );
+  }
+  if (rankDef.procChancePercent !== undefined) {
+    parts.push(t("passive.plagueDoctorProc", { percent: rankDef.procChancePercent }));
+  }
+  if (rankDef.critChancePercent !== undefined) {
+    parts.push(t("passive.archerCrit", { chance: rankDef.critChancePercent, multiplier: rankDef.critMultiplierPercent ?? 0 }));
+  }
+  if (rankDef.dodgePercent !== undefined) {
+    parts.push(t("passive.ninjaDodge", { percent: rankDef.dodgePercent }));
+  }
+  if (rankDef.secondCloneChancePercent !== undefined) {
+    parts.push(t("passive.ninjaSecondClone", { chance: rankDef.secondCloneChancePercent, max: passive.maxClones ?? 0 }));
+  }
+  if (rankDef.minionMaxHpPercent !== undefined) {
+    parts.push(t("passive.summonerMinionBuff", { hp: rankDef.minionMaxHpPercent, attack: rankDef.minionAttackPercent ?? 0 }));
+  }
+  if (rankDef.maxActiveMinions !== undefined) {
+    parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
+  }
+  return parts.join(" ");
 }
 
 /**
@@ -223,7 +243,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
     lines.push([colorChunk(t("ui.characterInfoPassiveItemLocked", { name: cls.passiveSkill.name, level: firstUnlock }), PALETTE.dim)]);
   } else {
     lines.push([colorChunk(t("ui.characterInfoPassiveItemRanked", { name: cls.passiveSkill.name, rank: rankDef.rank }), PALETTE.text)]);
-    lines.push(...detailLines(formatPassiveEffect(character.classId, cls.passiveSkill, rankDef)));
+    lines.push(...detailLines(formatPassiveEffect(cls.passiveSkill, rankDef)));
     const nextRank = cls.passiveSkill.ranks.find((r) => r.rank === rankDef.rank + 1);
     if (nextRank) lines.push(...detailLines(t("ui.characterInfoPassiveNextRank", { level: nextRank.unlockLevel })));
   }
