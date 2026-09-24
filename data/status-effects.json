@@ -148,7 +148,8 @@
         "maxHpPercent": 3,
         "damageType": "poison"
       }
-    ]
+    ],
+    "rankOf": "poisoned"
   },
   {
     "id": "poisoned-iii",
@@ -161,7 +162,8 @@
         "maxHpPercent": 4,
         "damageType": "poison"
       }
-    ]
+    ],
+    "rankOf": "poisoned"
   },
   {
     "id": "burning",
@@ -518,23 +520,45 @@
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 0 }]
   },
   {
+    "id": "viking-blood-fury",
+    "name": "Bloodrage",
+    "description": "Attack sharpens as the blood runs low.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 0 }]
+  },
+  {
     "id": "mage-shred",
     "name": "Shredded",
-    "description": "Mage's passive: stacking defense reduction, up to 3 stacks.",
+    "description": "Wards fray with every landed hit.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -5, "minPercent": -5 }],
+    "stackable": true,
+    "maxStacks": 3
+  },
+  {
+    "id": "mage-shred-ii",
+    "name": "Shredded II",
+    "description": "Wards fray faster with every landed hit.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -8, "minPercent": -7 }],
+    "stackable": true,
+    "maxStacks": 3
+  },
+  {
+    "id": "mage-shred-iii",
+    "name": "Shredded III",
+    "description": "Wards collapse with every landed hit.",
+    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -12, "minPercent": -10 }],
     "stackable": true,
     "maxStacks": 3
   },
   {
     "id": "slowed",
     "name": "Slowed",
-    "description": "Plague Doctor's passive: lose 5 speed for a couple turns.",
+    "description": "Lose 5 speed for the duration.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "speed", "amount": -5 }]
   },
   {
     "id": "enfeebled",
     "name": "Enfeebled",
-    "description": "Plague Doctor's passive: lowers the target's attack for a couple turns.",
+    "description": "Lowers the target's attack for the duration.",
     "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": -15 }]
   }
 ]

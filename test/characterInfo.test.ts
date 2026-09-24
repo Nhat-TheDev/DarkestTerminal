@@ -22,7 +22,7 @@ describe("formatPassiveEffect", () => {
   test("Viking and Ninja text reflects the passive's own top-level fields, not a hand-typed number", () => {
     const viking = CLASSES.find((c) => c.id === "viking")!;
     const vikingRank1 = viking.passiveSkill.ranks.find((r) => r.rank === 1)!;
-    expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(`costs ${viking.passiveSkill.selfDamagePercent}%`);
+    expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(`costs ${viking.passiveSkill.selfDamagePerHitMaxHPPercent}%`);
 
     const ninja = CLASSES.find((c) => c.id === "ninja")!;
     const ninjaRank1 = ninja.passiveSkill.ranks.find((r) => r.rank === 1)!;

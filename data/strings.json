@@ -229,7 +229,7 @@
   "passive.roguePoisonBonus": "Hits on a poisoned target deal +{{percent}}% and +{{flat}} bonus poison damage.",
   "passive.acolyteHealBoost": "Own heals +{{percent}}% stronger.",
   "passive.acolyteDebuffResist": "+{{percent}}% resist to harmful status effects.",
-  "passive.vikingBloodFury": "Below {{threshold}}% HP, attacks deal +{{bonus}}% damage — costs {{selfDamage}}% max HP per hit landed.",
+  "passive.vikingBloodFury": "Below {{threshold}}% HP, attack is boosted +{{bonus}}% — costs {{selfDamage}}% max HP per hit landed.",
   "passive.plagueDoctorProc": "Each hit rolls twice for a {{percent}}% chance to inflict a random debuff.",
   "passive.archerCrit": "+{{chance}}% crit chance; crit damage raised to {{multiplier}}%.",
   "passive.ninjaDodge": "+{{percent}}% dodge chance.",

@@ -160,14 +160,13 @@ export interface PassiveRankDefinition {
   maxHpPercent?: number; // Vanguard
   defensePercent?: number; // Vanguard
   aggroFlat?: number; // Vanguard
-  shredFlat?: number; // Mage
-  shredPercent?: number; // Mage
+  onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
   bonusPercent?: number; // Rogue
   bonusFlat?: number; // Rogue
   healBoostPercent?: number; // Acolyte
   debuffResistPercent?: number; // Acolyte
   hpThresholdPercent?: number; // Viking
-  damageBonusPercent?: number; // Viking
+  attackBonusPercent?: number; // Viking — % attack granted by the "viking-blood-fury" status while below hpThresholdPercent
   procChancePercent?: number; // Plague Doctor
   critChancePercent?: number; // Archer
   critMultiplierPercent?: number; // Archer
@@ -183,7 +182,9 @@ export interface PassiveSkillDefinition {
   name: string;
   description: string;
   ranks: PassiveRankDefinition[]; // exactly 3
-  selfDamagePercent?: number; // Viking — fixed across ranks, not scaled
+  requiresTargetStatusId?: Id; // Rogue — bonus only fires while the target carries this status (or a rankOf variant of it)
+  bonusDamageType?: DamageType; // Rogue
+  selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
   maxClones?: number; // Ninja — fixed across ranks, not scaled
   debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }

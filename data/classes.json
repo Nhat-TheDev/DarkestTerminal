@@ -701,20 +701,17 @@
         {
           "rank": 1,
           "unlockLevel": 5,
-          "shredFlat": -5,
-          "shredPercent": -5
+          "onHitStatusEffectId": "mage-shred"
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "shredFlat": -8,
-          "shredPercent": -7
+          "onHitStatusEffectId": "mage-shred-ii"
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "shredFlat": -12,
-          "shredPercent": -10
+          "onHitStatusEffectId": "mage-shred-iii"
         }
       ]
     }
@@ -1068,7 +1065,9 @@
           "bonusPercent": 30,
           "bonusFlat": 20
         }
-      ]
+      ],
+      "requiresTargetStatusId": "poisoned",
+      "bonusDamageType": "poison"
     }
   },
   {
@@ -1796,22 +1795,22 @@
           "rank": 1,
           "unlockLevel": 5,
           "hpThresholdPercent": 40,
-          "damageBonusPercent": 20
+          "attackBonusPercent": 20
         },
         {
           "rank": 2,
           "unlockLevel": 20,
           "hpThresholdPercent": 45,
-          "damageBonusPercent": 30
+          "attackBonusPercent": 30
         },
         {
           "rank": 3,
           "unlockLevel": 35,
           "hpThresholdPercent": 50,
-          "damageBonusPercent": 40
+          "attackBonusPercent": 40
         }
       ],
-      "selfDamagePercent": 3
+      "selfDamagePerHitMaxHPPercent": 3
     }
   },
   {

@@ -55,7 +55,7 @@ describe("Mage passive: stacking defense shred on hit", () => {
     fireOnDamageDealt(mage, target, 10, ctx);
     // max(12, round(40 * 10 / 100)) = max(12, 4) = 12
     expect(target.defense).toBe(before - 12);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")?.stacks).toBe(1);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred-iii")?.stacks).toBe(1);
   });
 
   test("a 2nd hit adds another stack, up to maxStacks", () => {
@@ -66,7 +66,7 @@ describe("Mage passive: stacking defense shred on hit", () => {
     target.defense = 40;
     fireOnDamageDealt(mage, target, 10, ctx);
     fireOnDamageDealt(mage, target, 10, ctx);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")?.stacks).toBe(2);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred-iii")?.stacks).toBe(2);
     expect(target.defense).toBe(40 - 12 - 12);
   });
 

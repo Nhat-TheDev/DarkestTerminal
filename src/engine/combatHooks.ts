@@ -1,7 +1,7 @@
 import type { Character, LogEntry } from "../types";
 import { type Actor, isCharacter, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
-import { getStatusEffect } from "../data/statusEffects";
+import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
@@ -83,16 +83,21 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-const POISON_FAMILY_STATUS_IDS = ["poisoned", "poisoned-ii", "poisoned-iii"];
-
-/** Rogue's passive (§11 of the design spec) — bonus poison-type damage on a hit that lands
- *  against an already-poisoned target. The flat term is fixed, not attack-scaled (confirmed). */
+/** Rogue's passive (§11 of the design spec) — bonus damage (type + required target status both
+ *  driven by `passiveSkill.bonusDamageType`/`requiresTargetStatusId` in `data/classes.json`, not
+ *  hardcoded here) on a hit that lands against a target already carrying that status — or a
+ *  `rankOf` variant of it (`statusSatisfiesRequirement`, the same family-match Viking's own
+ *  `conditionalBonus` skills use for "storm-empowered", e.g. Frenzied Slash — see
+ *  `data/status-effects.json`'s "poisoned-ii"/"-iii" `rankOf: "poisoned"`). The flat term is fixed,
+ *  not attack-scaled (confirmed). */
 const roguePoisonBonusHook: SkillEffectHooks = {
   onDamageDealt(source, target, damage, _ctx, log) {
     if (!isCharacter(source) || source.classId !== "rogue") return;
-    const targetIsPoisoned = target.activeStatusEffects.some((s) => POISON_FAMILY_STATUS_IDS.includes(s.statusEffectId));
-    if (!targetIsPoisoned) return;
-    const rankDef = passiveRankDef(getClass("rogue").passiveSkill, source.level);
+    const passive = getClass("rogue").passiveSkill;
+    if (!passive.requiresTargetStatusId) return;
+    const targetHasRequiredStatus = target.activeStatusEffects.some((s) => statusSatisfiesRequirement(s.statusEffectId, passive.requiresTargetStatusId!));
+    if (!targetHasRequiredStatus) return;
+    const rankDef = passiveRankDef(passive, source.level);
     const percent = rankDef?.bonusPercent ?? 0;
     const flat = rankDef?.bonusFlat ?? 0;
     if (percent === 0 && flat === 0) return;
@@ -102,7 +107,7 @@ const roguePoisonBonusHook: SkillEffectHooks = {
     // bonusAmount (times race resist/weak and the source's fear-tier penalty, nothing else) — a
     // true flat bonus, not bonusAmount re-added to a full attack-vs-defense roll.
     resolveSkillEffect(
-      { kind: "damage", amount: bonusAmount, damageType: "poison", ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
+      { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,
       target,
       { log }
@@ -111,22 +116,16 @@ const roguePoisonBonusHook: SkillEffectHooks = {
 };
 
 /** Mage's passive (§11 of the design spec) — every hit the Mage lands stacks a defense-shredding
- *  status on the target (up to 3 stacks), magnitude scaling with the passive's unlocked rank. The
- *  same "mage-shred" status id is reused across ranks; amount/minPercent on the effect override its
- *  JSON-declared placeholder magnitude (see resolver.ts's "applyStatusEffect" case). */
+ *  status on the target (up to 3 stacks), magnitude scaling with the passive's unlocked rank. Each
+ *  rank names its own status id ("mage-shred"/"-ii"/"-iii", see `data/classes.json`) rather than 1
+ *  status id whose magnitude gets overridden at runtime — the same rank-to-status mapping Poison
+ *  Bomb (Rogue) uses for "poisoned"/"-ii"/"-iii". */
 const mageShredHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, _ctx, log) {
     if (!isCharacter(source) || source.classId !== "mage") return;
     const rankDef = passiveRankDef(getClass("mage").passiveSkill, source.level);
-    const flat = rankDef?.shredFlat ?? 0;
-    const percent = rankDef?.shredPercent ?? 0;
-    if (flat === 0 && percent === 0) return;
-    resolveSkillEffect(
-      { kind: "applyStatusEffect", statusEffectId: "mage-shred", amount: flat, minPercent: percent },
-      source,
-      target,
-      { log }
-    );
+    if (!rankDef?.onHitStatusEffectId) return;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.onHitStatusEffectId }, source, target, { log });
   },
 };
 

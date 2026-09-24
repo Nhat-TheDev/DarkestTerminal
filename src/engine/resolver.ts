@@ -249,8 +249,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       if (!effect.statusEffectId) return 0;
       // A status normally applies its own JSON-declared modifyCombatStat magnitude; passing
       // amount/minPercent on the *effect* here (unused by "applyStatusEffect" otherwise) overrides
-      // it — needed by a passive like Mage's shred, whose 1 status id must express 3 different
-      // rank magnitudes rather than needing a separate status per rank.
+      // it — needed by Totem Recall's buff and Viking's passive, each of which needs 1 status id
+      // to express 3 different rank magnitudes rather than needing a separate status per rank.
       const magnitudeOverride =
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;

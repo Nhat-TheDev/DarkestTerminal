@@ -61,8 +61,9 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   if (rankDef.maxHpPercent !== undefined) {
     parts.push(t("passive.vanguardBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
   }
-  if (rankDef.shredFlat !== undefined) {
-    parts.push(t("passive.mageShred", { flat: Math.abs(rankDef.shredFlat), percent: Math.abs(rankDef.shredPercent ?? 0) }));
+  if (rankDef.onHitStatusEffectId !== undefined) {
+    const shredStat = getStatusEffect(rankDef.onHitStatusEffectId).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === "defense");
+    parts.push(t("passive.mageShred", { flat: Math.abs(shredStat?.amount ?? 0), percent: Math.abs(shredStat?.minPercent ?? 0) }));
   }
   if (rankDef.bonusPercent !== undefined) {
     parts.push(t("passive.roguePoisonBonus", { percent: rankDef.bonusPercent, flat: rankDef.bonusFlat ?? 0 }));
@@ -75,7 +76,7 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   }
   if (rankDef.hpThresholdPercent !== undefined) {
     parts.push(
-      t("passive.vikingBloodFury", { threshold: rankDef.hpThresholdPercent, bonus: rankDef.damageBonusPercent ?? 0, selfDamage: passive.selfDamagePercent ?? 0 })
+      t("passive.vikingBloodFury", { threshold: rankDef.hpThresholdPercent, bonus: rankDef.attackBonusPercent ?? 0, selfDamage: passive.selfDamagePerHitMaxHPPercent ?? 0 })
     );
   }
   if (rankDef.procChancePercent !== undefined) {

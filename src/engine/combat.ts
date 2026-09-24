@@ -609,14 +609,33 @@ export function acolyteDebuffResistPercent(target: Character): number {
   return passiveRankDef(getClass("acolyte").passiveSkill, target.level)?.debuffResistPercent ?? 0;
 }
 
-/** Viking's passive (§11 of the design spec) — a below-a-HP-threshold outgoing damage buff, unlocked
- *  at level 5/20/35, that costs a fixed `selfDamagePercent` of maxHp on any attack that lands while
- *  it's active (harsher trade-off, deliberately not scaled by rank). Never triggers on a buff-only skill. */
-function vikingBloodFuryBonus(source: Actor): number {
-  if (!isCharacter(source) || source.classId !== "viking") return 0;
+/** Viking's passive (§11 of the design spec) — a below-a-HP-threshold attack buff, unlocked at level
+ *  5/20/35. Synced onto the "viking-blood-fury" status (a `modifyCombatStat` buff like any other,
+ *  magnitude overridden per rank — same mechanism Totem Recall's buff uses, see resolver.ts's
+ *  "applyStatusEffect" case) whenever a non-buff Viking skill resolves, so it stays applied/removed
+ *  exactly as long as the live HP ratio said it should the last time the Viking actually attacked.
+ *  The caller never syncs it for an `isBuff` skill (never triggers on a buff-only skill). Landing an
+ *  attack while it's active costs a fixed `selfDamagePerHitMaxHPPercent` of maxHp (harsher trade-off,
+ *  deliberately not scaled by rank), gated by `landedDamageHit`. */
+function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
+  if (!isCharacter(source) || source.classId !== "viking") return false;
   const rankDef = passiveRankDef(getClass("viking").passiveSkill, source.level);
-  if (!rankDef) return 0;
-  return source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100 ? rankDef.damageBonusPercent ?? 0 : 0;
+  const belowThreshold = rankDef !== null && source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100;
+  const alreadyActive = source.activeStatusEffects.some((s) => s.statusEffectId === "viking-blood-fury");
+  // Only apply/remove on an actual transition — re-resolving "applyStatusEffect" every turn while
+  // already active would just refresh turnsRemaining (viking-blood-fury isn't stackable, so no new
+  // delta lands) but still logs a spurious "refreshes the Blood Fury effect" line every single turn.
+  if (belowThreshold && !alreadyActive) {
+    resolveSkillEffect(
+      { kind: "applyStatusEffect", statusEffectId: "viking-blood-fury", durationTurns: 99, amount: 0, minPercent: rankDef!.attackBonusPercent ?? 0 },
+      source,
+      source,
+      { log }
+    );
+  } else if (!belowThreshold && alreadyActive) {
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: "viking-blood-fury" }, source, source, { log });
+  }
+  return belowThreshold;
 }
 
 /** Ninja's passive (§11 of the design spec) — a chance, on any hit the Ninja lands, to spawn a 2nd
@@ -956,10 +975,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
-  const vikingBonus = !skill.isBuff ? vikingBloodFuryBonus(source) : 0;
+  const vikingBuffActive = !skill.isBuff && syncVikingBloodFury(source, log);
   const stealthBreak = {
     guaranteedCrit: skill.slot === 0 ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
-    damageBonusPercent: (skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0) + vikingBonus,
+    damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
   };
   let brokeStealthThisCast = false;
 
@@ -1077,8 +1096,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && vikingBonus > 0) {
-    const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePercent ?? 0) / 100));
+  if (landedDamageHit && isCharacter(source) && vikingBuffActive) {
+    const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
   if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
