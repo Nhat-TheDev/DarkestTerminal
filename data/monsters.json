@@ -699,52 +699,6 @@
     "minFloor": 20
   },
   {
-    "id": "skeleton-guard",
-    "name": "Skeleton Guard",
-    "description": "It stands where it was put, by someone who is not anywhere now. It has not come off that spot for anything since. The floor around it is worn in a ring exactly as wide as its reach.",
-    "baseHp": 110,
-    "baseAttack": 18,
-    "baseDefense": 12,
-    "baseSpeed": 4,
-    "monsterType": "sentinel",
-    "aiPattern": "defensive",
-    "skillIds": [
-      "elite-strike-skeleton-guard",
-      "elite-cleave-skeleton-guard",
-      "boss-debuff-skeleton-guard"
-    ],
-    "expReward": 15,
-    "powerTier": "strong",
-    "actionWeights": {
-      "normal": {
-        "basicAttack": 100
-      },
-      "elite": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 35,
-        "elite-cleave-skeleton-guard": 25
-      },
-      "boss": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 20,
-        "elite-cleave-skeleton-guard": 15,
-        "boss-debuff-skeleton-guard": 25
-      }
-    },
-    "executeSkillId": "boss-execute-skeleton-guard",
-    "roles": [
-      "normal",
-      "elite",
-      "boss"
-    ],
-    "race": "undead",
-    "subRace": "skeletal",
-    "traitIds": [
-      "plated"
-    ],
-    "minFloor": 0
-  },
-  {
     "id": "orc-brute",
     "name": "Orc Brute",
     "description": "No feint, no footwork. Nothing it carries is sharp. It swings from the shoulder, and the second swing is already coming while the first is still landing.",
@@ -925,6 +879,52 @@
     "minFloor": 40
   },
   {
+    "id": "skeleton-guard",
+    "name": "Skeleton Guard",
+    "description": "It stands where it was put, by someone who is not anywhere now. It has not come off that spot for anything since. The floor around it is worn in a ring exactly as wide as its reach.",
+    "baseHp": 110,
+    "baseAttack": 18,
+    "baseDefense": 12,
+    "baseSpeed": 4,
+    "monsterType": "sentinel",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "elite-strike-skeleton-guard",
+      "elite-cleave-skeleton-guard",
+      "boss-debuff-skeleton-guard"
+    ],
+    "expReward": 15,
+    "powerTier": "strong",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 100
+      },
+      "elite": {
+        "basicAttack": 40,
+        "elite-strike-skeleton-guard": 35,
+        "elite-cleave-skeleton-guard": 25
+      },
+      "boss": {
+        "basicAttack": 40,
+        "elite-strike-skeleton-guard": 20,
+        "elite-cleave-skeleton-guard": 15,
+        "boss-debuff-skeleton-guard": 25
+      }
+    },
+    "executeSkillId": "boss-execute-skeleton-guard",
+    "roles": [
+      "normal",
+      "elite",
+      "boss"
+    ],
+    "race": "undead",
+    "subRace": "skeletal",
+    "traitIds": [
+      "plated"
+    ],
+    "minFloor": 0
+  },
+  {
     "id": "giant-spider",
     "name": "Giant Spider",
     "description": "The strands across the doorway are thick enough to lean on. What it has wrapped and set aside is overhead; enough of it has kept its shape that the limbs can be counted from where you are standing.",
@@ -1087,38 +1087,6 @@
       "plated"
     ],
     "minFloor": 60
-  },
-  {
-    "id": "the-founder",
-    "name": "What's Left of Him",
-    "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
-    "baseHp": 160,
-    "baseAttack": 37,
-    "baseDefense": 11,
-    "baseSpeed": 10,
-    "monsterType": "sentinel",
-    "aiPattern": "aggressive",
-    "skillIds": [
-      "elite-strike-the-founder",
-      "elite-cleave-the-founder",
-      "boss-debuff-the-founder"
-    ],
-    "expReward": 20,
-    "actionWeights": {
-      "boss": {
-        "basicAttack": 30,
-        "elite-strike-the-founder": 20,
-        "elite-cleave-the-founder": 15,
-        "boss-debuff-the-founder": 35
-      }
-    },
-    "executeSkillId": "boss-execute-the-founder",
-    "roles": [
-      "boss"
-    ],
-    "finalBoss": true,
-    "race": "undead",
-    "subRace": "rotting"
   },
   {
     "id": "orc-chieftain",
@@ -1315,5 +1283,37 @@
     "race": "undead",
     "subRace": "skeletal",
     "minFloor": 80
+  },
+  {
+    "id": "the-founder",
+    "name": "What's Left of Him",
+    "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
+    "baseHp": 160,
+    "baseAttack": 37,
+    "baseDefense": 11,
+    "baseSpeed": 10,
+    "monsterType": "sentinel",
+    "aiPattern": "aggressive",
+    "skillIds": [
+      "elite-strike-the-founder",
+      "elite-cleave-the-founder",
+      "boss-debuff-the-founder"
+    ],
+    "expReward": 20,
+    "actionWeights": {
+      "boss": {
+        "basicAttack": 30,
+        "elite-strike-the-founder": 20,
+        "elite-cleave-the-founder": 15,
+        "boss-debuff-the-founder": 35
+      }
+    },
+    "executeSkillId": "boss-execute-the-founder",
+    "roles": [
+      "boss"
+    ],
+    "finalBoss": true,
+    "race": "undead",
+    "subRace": "rotting"
   }
 ]

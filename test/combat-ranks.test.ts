@@ -300,6 +300,10 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
     ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    // Summon-casting skills no longer get the isBuff turn-priority bonus (they resolve in plain
+    // speed order — see turnOrderSortKey), so the cast must actually be the fastest action this
+    // round for the clone to exist before the 1-hp rat dies to someone else's queued attack.
+    ninja.speed = 999;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;
     rat.attack = 0;

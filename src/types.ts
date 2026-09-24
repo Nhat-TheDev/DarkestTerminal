@@ -32,7 +32,10 @@ export interface SkillEffect {
   lifestealPercent?: number;
   /** Scales the caster's offensive stat (attack/magicPower) before mitigation — e.g. 60 = the skill only uses 60% of it. Absent/100 = today's unscaled behavior. */
   offenseMultiplierPercent?: number;
-  /** DoT-tick-only: adds `target.maxHp * maxHpPercent / 100` on top of `amount` for a `damage` perTurnEffect, so DoTs keep pace with HP growth across levels. */
+  /** 2 different combining rules depending on `kind`, so it keeps pace with HP growth across levels either way:
+   *  for a `damage` DoT-tick perTurnEffect, adds `target.maxHp * maxHpPercent / 100` on top of `amount`; for a
+   *  `heal` effect, floors `amount` at `target.maxHp * maxHpPercent / 100` (whichever is larger — same idiom
+   *  `modifyCombatStat`'s `minPercent` uses), so a heal doesn't go stale as the healed actor's maxHp grows. */
   maxHpPercent?: number;
   /** Rolled independently of the accuracy roll, same pattern as `chance` on a proc effect — on a hit, the damage is multiplied by `critMultiplierPercent` (or the shared default). */
   critChance?: number;

@@ -68,7 +68,7 @@
     {
       "id": "rock-throw",
       "name": "Rock Throw",
-      "description": "Goblin Thrower's signature attack: a thrown rock at a single enemy.",
+      "description": "A thrown rock at a single enemy.",
       "mpCost": 0,
       "target": "singleEnemy",
       "effects": [
@@ -84,7 +84,7 @@
     {
       "id": "stomp",
       "name": "Stomp",
-      "description": "Stone Golem's signature attack: a ground slam hitting every enemy.",
+      "description": "A ground slam hitting every enemy.",
       "mpCost": 0,
       "target": "allEnemies",
       "effects": [
@@ -100,7 +100,7 @@
     {
       "id": "hellfire-strike",
       "name": "Hellfire Strike",
-      "description": "Hellfire Imp's signature attack: a burst of hellfire that scorches and cripples a single enemy.",
+      "description": "A burst of hellfire that scorches and cripples a single enemy.",
       "mpCost": 0,
       "target": "singleEnemy",
       "isMagic": true,
@@ -113,13 +113,9 @@
         {
           "kind": "applyStatusEffect",
           "statusEffectId": "agony",
-          "durationTurns": 3
-        },
-        {
-          "kind": "applyStatusEffect",
-          "statusEffectId": "burning",
           "chance": 0.6,
-          "durationTurns": 2
+          "durationTurns": 3
+
         }
       ],
       "slot": 0,
@@ -128,7 +124,7 @@
     {
       "id": "spirit-heal-single",
       "name": "Spirit Heal",
-      "description": "Healer Spirit's default action: mends the ally with the lowest %HP.",
+      "description": "Mends the ally with the lowest %HP.",
       "mpCost": 0,
       "target": "singleAlly",
       "isMagic": true,
@@ -145,7 +141,7 @@
     {
       "id": "spirit-heal-party",
       "name": "Spirit Blessing",
-      "description": "Healer Spirit's party-wide heal, cast in place of its default single-target heal.",
+      "description": "Party-wide heal, cast in place of its default single-target heal.",
       "mpCost": 0,
       "target": "allAllies",
       "isMagic": true,

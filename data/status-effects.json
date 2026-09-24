@@ -503,7 +503,8 @@
       {
         "kind": "damage",
         "amount": 6,
-        "maxHpPercent": 2
+        "maxHpPercent": 2,
+        "damageType": "fire"
       },
       {
         "kind": "modifyCombatStat",

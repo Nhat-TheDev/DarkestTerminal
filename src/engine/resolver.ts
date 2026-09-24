@@ -233,7 +233,12 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
           ? 1 + (passiveRankDef(getClass("acolyte").passiveSkill, source.level)?.healBoostPercent ?? 0) / 100
           : 1;
-      target.hp = Math.min(target.maxHp, target.hp + Math.round(((effect.amount ?? 0) + healPower) * acolyteBoost));
+      // Whichever is larger between the flat amount and maxHpPercent of the TARGET's current maxHp
+      // (same "floor" idiom modifyCombatStat's minPercent already uses) — a heal that should keep
+      // pace with the target's maxHp growth across levels/floors sets maxHpPercent instead of relying
+      // on a flat number that gets proportionally weaker every time maxHp grows.
+      const baseHeal = Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100);
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost));
       const healed = target.hp - before;
       ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
       return healed;

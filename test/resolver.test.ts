@@ -118,6 +118,32 @@ describe("resolver", () => {
     expect(log.some((l) => /recovers \d+ HP\./.test(l.text))).toBe(true);
   });
 
+  test("heal with maxHpPercent uses whichever is larger against the flat amount", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    // 20% of maxHp (e.g. 200) beats a flat 15
+    resolveSkillEffect({ kind: "heal", amount: 15, maxHpPercent: 20 }, target, target, { log: [] });
+    expect(target.hp).toBe(Math.min(target.maxHp, 1 + Math.round(target.maxHp * 0.2)));
+  });
+
+  test("heal with maxHpPercent falls back to the flat amount when it's larger", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    // 1% of a normal party member's maxHp is well under a flat 999
+    resolveSkillEffect({ kind: "heal", amount: 999, maxHpPercent: 1 }, target, target, { log: [] });
+    expect(target.hp).toBe(target.maxHp);
+  });
+
+  test("heal with no maxHpPercent behaves exactly as before", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    resolveSkillEffect({ kind: "heal", amount: 15 }, target, target, { log: [] });
+    expect(target.hp).toBe(16);
+  });
+
   test("modifyStat clamps fear/hunger/thirst to [0, 100]", () => {
     const { ctx } = makeCtx();
     const target = ctx.party[0]!;
