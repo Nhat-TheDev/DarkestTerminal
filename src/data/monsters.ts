@@ -2,7 +2,7 @@ import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "..
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import {
-  growthBonusForDepth,
+  monsterGrowthBonus,
   EXP_REWARD_DEPTH_RATE,
   ELITE_MULTIPLIER,
   BOSS_MULTIPLIER,
@@ -138,28 +138,28 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
   const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
   const depthBonus = monsterDepthBuffPercent(floorDepth);
 
-  const growthMaxHp = archetype.baseHp + growthBonusForDepth("maxHp", floorDepth);
-  const growthAttack = archetype.baseAttack + growthBonusForDepth("attack", floorDepth);
-  const growthDefense = archetype.baseDefense + growthBonusForDepth("defense", floorDepth);
+  // monsterType's multiplier scales only the depth-growth curve — same rule as a class's growth
+  // weight (classGrowthBonus) — so `baseX` itself never gets touched by it. Everything else
+  // (tier, depth buff, race/subRace/traits) still scales the whole base+growth total.
+  const weightedGrowthMaxHp = monsterGrowthBonus("maxHp", floorDepth, typeMultiplier.maxHp);
+  const weightedGrowthAttack = monsterGrowthBonus("attack", floorDepth, typeMultiplier.attack);
+  const weightedGrowthDefense = monsterGrowthBonus("defense", floorDepth, typeMultiplier.defense);
   const scaledExp = archetype.expReward + Math.floor(floorDepth * EXP_REWARD_DEPTH_RATE);
 
   const maxHp = Math.round(
-    growthMaxHp *
-      typeMultiplier.maxHp *
+    (archetype.baseHp + weightedGrowthMaxHp) *
       (tierMultiplier?.maxHp ?? 1) *
       (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.maxHp) / 100) *
       (1 + race.statBuff.maxHpPercent / 100)
   );
   const attack = Math.round(
-    growthAttack *
-      typeMultiplier.attack *
+    (archetype.baseAttack + weightedGrowthAttack) *
       (tierMultiplier?.attack ?? 1) *
       (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.attack) / 100) *
       (1 + race.statBuff.attackPercent / 100)
   );
   const defense = Math.round(
-    growthDefense *
-      typeMultiplier.defense *
+    (archetype.baseDefense + weightedGrowthDefense) *
       (tierMultiplier?.defense ?? 1) *
       (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.defense) / 100) *
       (1 + race.statBuff.defensePercent / 100)
