@@ -117,6 +117,11 @@
         "id": "toxic-ooze",
         "name": "Toxic Ooze",
         "profile": { "statBuff": { "defensePercent": 5 }, "resistPercent": { "poison": 100 } }
+      },
+      {
+        "id": "lava-ooze",
+        "name": "Lava Ooze",
+        "profile": { "statBuff": { "defensePercent": 5 }, "resistPercent": { "fire": 100 } }
       }
     ]
   },

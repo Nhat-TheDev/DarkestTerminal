@@ -14,12 +14,17 @@
     --text: #d8cbb0;
     --dim: #8a7d68;
     --title: #c9a227;
+    --title-rgb: 201, 162, 39;
+    --title-ink: #12100c;
+    --title-hover: #ddb32f;
     --danger: #c0392b;
+    --locked: #8a5acb;
     --ok: #5fa85f;
     --accent: #7aa2c9;
   }
   * { box-sizing: border-box; }
   html, body { overflow-x: clip; }
+  :focus-visible { outline: 2px solid var(--title); outline-offset: 2px; }
   body {
     margin: 0;
     background: var(--bg);
@@ -137,7 +142,7 @@
     margin-left: 4px;
   }
   .tag.magic { color: var(--accent); border-color: var(--accent); }
-  .tag.locked { color: var(--danger); border-color: var(--danger); }
+  .tag.locked { color: var(--locked); border-color: var(--locked); }
   .tag.boss { color: var(--danger); border-color: var(--danger); }
   .tag.elite { color: var(--title); border-color: var(--title); }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -154,6 +159,8 @@
   .stat-grid div { font-size: 11px; overflow-wrap: anywhere; }
   .stat-grid b { color: var(--text); font-variant-numeric: tabular-nums; display: block; font-size: 14px; }
   .hint { color: var(--dim); font-size: 11px; margin: 4px 0 10px; line-height: 1.5; }
+  .info-icon { display: inline-block; cursor: help; color: var(--dim); }
+  .info-icon:hover, .info-icon:focus-visible { color: var(--title); }
   .big { color: var(--title); font-size: 16px; }
   details summary { cursor: pointer; color: var(--accent); font-size: 13px; margin: 8px 0; padding: 4px 0; }
   details summary:hover { color: var(--text); }
@@ -165,8 +172,8 @@
   .save-status.ok { color: var(--ok); }
   .save-status.error { color: var(--danger); }
   .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px; }
-  button.action.primary { background: var(--title); color: #12100c; font-weight: bold; }
-  button.action.primary:hover { background: #ddb32f; }
+  button.action.primary { background: var(--title); color: var(--title-ink); font-weight: bold; }
+  button.action.primary:hover { background: var(--title-hover); }
 
   /* Sprite editor specific styles */
   #panel-sprites fieldset { margin-bottom: 0; }
@@ -192,7 +199,7 @@
   .cell:hover { outline: 1px solid var(--title); outline-offset: -1px; }
   #palette { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .swatch { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; }
-  .swatch.active { border-color: var(--title); background: rgba(201, 162, 39, 0.15); }
+  .swatch.active { border-color: var(--title); background: rgba(var(--title-rgb), 0.15); }
   .swatch .key { width: 18px; text-align: center; font-weight: bold; color: var(--dim); }
   .swatch input[type="color"] { width: 26px; height: 20px; border: 1px solid var(--border); background: none; padding: 0; border-radius: 2px; }
   .swatch .hex { flex: 1; color: var(--dim); font-size: 11px; }
@@ -358,23 +365,28 @@
   <div class="sprite-editor-col">
     <fieldset>
       <legend>Subject</legend>
-      <label>Type</label>
-      <select id="category">
-        <option value="classes">Characters (classes)</option>
-        <option value="monsters">Common monsters (monsters)</option>
-        <option value="elites">Elites (elites)</option>
-        <option value="bosses">Bosses (bosses)</option>
-        <option value="events">Event rooms (events)</option>
-        <option value="rest">Rest rooms (rest)</option>
-        <option value="treasure">Treasure rooms (treasure)</option>
-      </select>
+      <div class="field">
+        <label for="category">Type</label>
+        <select id="category">
+          <option value="classes">Characters (classes)</option>
+          <option value="monsters">Common monsters (monsters)</option>
+          <option value="elites">Elites (elites)</option>
+          <option value="bosses">Bosses (bosses)</option>
+          <option value="events">Event rooms (events)</option>
+          <option value="rest">Rest rooms (rest)</option>
+          <option value="treasure">Treasure rooms (treasure)</option>
+        </select>
+      </div>
 
-      <div id="idPickerWrap">
-        <label>Existing</label>
-        <select id="existingId"></select>
-        <label>ID (lowercase, digits, hyphens)</label>
-        <input type="text" id="idInput" placeholder="vd: skeleton-guard" />
-        <p class="hint" id="idHint"></p>
+      <div id="idPickerWrap" class="row">
+        <div class="field">
+          <label for="existingId">Existing</label>
+          <select id="existingId"></select>
+        </div>
+        <div class="field" style="flex: 1; min-width: 160px;">
+          <label for="idInput">ID (lowercase, digits, hyphens) <span class="info-icon" id="idHint" tabindex="0">ⓘ</span></label>
+          <input type="text" id="idInput" placeholder="vd: skeleton-guard" />
+        </div>
       </div>
 
       <div class="row">
@@ -386,12 +398,12 @@
     <fieldset>
       <legend>Size</legend>
       <div class="row">
-        <div>
-          <label>Width (max <span id="maxWidthLabel">20</span>)</label>
+        <div class="field">
+          <label for="widthInput">Width (max <span id="maxWidthLabel">20</span>)</label>
           <input type="number" id="widthInput" min="1" max="20" value="9" />
         </div>
-        <div>
-          <label>Height (max <span id="maxHeightLabel">10</span>)</label>
+        <div class="field">
+          <label for="heightInput">Height (max <span id="maxHeightLabel">10</span>)</label>
           <input type="number" id="heightInput" min="1" max="13" value="9" />
         </div>
       </div>
@@ -605,7 +617,7 @@ function el(tag, attrs, children) {
 }
 
 function editField(id, label, value) {
-  return el("div", { class: "field" }, [el("label", { text: label }), el("input", { type: "number", id, value: String(value), step: "any" })]);
+  return el("div", { class: "field" }, [el("label", { for: id, text: label }), el("input", { type: "number", id, value: String(value), step: "any" })]);
 }
 
 async function refreshMeta() {
@@ -820,6 +832,7 @@ function makePreviewButton(skillId, source, target, sourceIsCharacter, character
       const url =
         `/api/skill-preview?skillId=${encodeURIComponent(skillId)}&sourceAttack=${source.attack}` +
         (source.magicPower !== undefined ? `&sourceMagicPower=${source.magicPower}` : "") +
+        (source.maxHp !== undefined && source.maxHp !== null ? `&sourceMaxHp=${source.maxHp}` : "") +
         `&targetDefense=${target.defense}` +
         (target.maxHp !== undefined && target.maxHp !== null ? `&targetMaxHp=${target.maxHp}` : "") +
         `&fearTier=${fearTier()}&sourceIsCharacter=${sourceIsCharacter}` +
@@ -867,6 +880,13 @@ function previewTable(preview) {
   const total = el("p", { class: "hint" });
   total.innerHTML = `Total (all effects, weighted by proc chance): <b>${fmt(preview.totalFinalDamage, 1)}</b> dmg if everything procs · <b>${fmt(preview.totalExpectedDamage, 1)}</b> expected.`;
   const wrap = el("div", {}, [table, total]);
+  for (const s of preview.selfEffects || []) {
+    const killsText = s.killsSelf === null ? "" : s.killsSelf ? " — kills the caster" : " — caster survives";
+    const pctText = s.percentOfCasterMaxHp === null ? "" : ` (${pct(s.percentOfCasterMaxHp)} of the caster's own maxHp)`;
+    wrap.appendChild(
+      el("p", { class: "hint", html: `<span class="tag boss">self-damage</span> Deals <b>${fmt(s.finalDamage)}</b> to its own caster${pctText}${killsText}. Not mitigated by the enemy target's defense — never counted toward the totals above.` })
+    );
+  }
   return wrap;
 }
 
@@ -935,25 +955,53 @@ function buildOverviewCards(charData, monData, tier, avgBalancePoints, tierAvgIn
     ]),
   ]);
   const monDetails = el("details", {}, [el("summary", { text: "Base → depth/tier breakdown" })]);
-  const monTable = el("table", {}, [el("tr", {}, [el("th", { text: "Stat" }), el("th", { class: "num", text: "Base" }), el("th", { class: "num", text: "+depth growth" }), el("th", { class: "num", text: "×tier mult" }), el("th", { class: "num", text: "Final" })])]);
+  const monTable = el("table", {}, [
+    el("tr", {}, [
+      el("th", { text: "Stat" }), el("th", { class: "num", text: "Base" }), el("th", { class: "num", text: "Growth (curve)" }),
+      el("th", { class: "num", text: "Growth (weighted)" }), el("th", { class: "num", text: "×tier mult" }), el("th", { class: "num", text: "×depth buff" }),
+      el("th", { class: "num", text: "×race buff" }), el("th", { class: "num", text: "Final" }),
+    ]),
+  ]);
   for (const stat of ["attack", "defense", "maxHp"]) {
-    const growth = monData.growthBonus[stat] ?? 0;
+    const growthCurve = monData.growthBonus[stat] ?? 0;
+    const growthWeighted = monData.growthBonusWeighted[stat] ?? 0;
     const mult = monData.multiplier ? monData.multiplier[stat] : 1;
+    const depthBuffMult = 1 + (monData.depthBuffPercent * monData.depthBuffStatCoefficients[stat]) / 100;
+    const raceMult = 1 + monData.raceStatBuffPercent[stat] / 100;
     const finalKey = stat === "maxHp" ? "maxHp" : stat;
     const baseKey = stat === "maxHp" ? "hp" : stat;
     monTable.appendChild(
       el("tr", {}, [
         el("td", { text: stat }),
         el("td", { class: "num", text: fmt(monData.base[baseKey]) }),
-        el("td", { class: "num muted", text: "+" + fmt(growth) }),
+        el("td", { class: "num muted", text: "+" + fmt(growthCurve) }),
+        el("td", { class: "num", text: "+" + fmt(growthWeighted) }),
         el("td", { class: "num muted", text: mult === 1 ? "×1" : "×" + fmt(mult, 2) }),
+        el("td", { class: "num muted", text: depthBuffMult === 1 ? "×1" : "×" + fmt(depthBuffMult, 3) }),
+        el("td", { class: "num muted", text: raceMult === 1 ? "×1" : "×" + fmt(raceMult, 2) }),
         el("td", { class: "num big", text: fmt(monData.final[finalKey]) }),
       ])
     );
   }
-  monTable.appendChild(el("tr", {}, [el("td", { text: "speed" }), el("td", { class: "num", text: fmt(monData.base.speed) }), el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num big", text: fmt(monData.final.speed) })]));
+  monTable.appendChild(
+    el("tr", {}, [
+      el("td", { text: "speed" }), el("td", { class: "num", text: fmt(monData.base.speed) }), el("td", { class: "num muted", text: "n/a" }),
+      el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num muted", text: "n/a" }),
+      el("td", { class: "num muted", text: "n/a" }), el("td", { class: "num big", text: fmt(monData.final.speed) }),
+    ])
+  );
   monDetails.appendChild(monTable);
-  monDetails.appendChild(el("p", { class: "hint", text: "EXP reward on kill: " + monData.final.expReward + ". To edit base stats, exp reward, action weights or coin drop, use the Rebalance — Char & Monster tab." }));
+  monDetails.appendChild(
+    el("p", {
+      class: "hint",
+      text:
+        `Order applied (matches spawnMonster in src/data/monsters.ts): (Base + Growth weighted) × tier mult × depth buff × race buff, rounded once at the end — monsterType's weight scales only the growth curve, never Base, the same rule a class's growth weight follows for characters. ` +
+        `Type "${monData.monsterType}" weight: attack ×${fmt(monData.typeMultiplier.attack, 2)}, defense ×${fmt(monData.typeMultiplier.defense, 2)}, maxHp ×${fmt(monData.typeMultiplier.maxHp, 2)}. ` +
+        `Depth buff at floor ${monData.depth}: +${fmt(monData.depthBuffPercent)}% (attack ×${fmt(monData.depthBuffStatCoefficients.attack, 2)}, defense ×${fmt(monData.depthBuffStatCoefficients.defense, 2)}, maxHp ×${fmt(monData.depthBuffStatCoefficients.maxHp, 2)} coefficient — data/level-growth.json's monsterDepthBuff* fields). ` +
+        `Race/subRace/traits buff: attack ${signedPct(monData.raceStatBuffPercent.attack)}, defense ${signedPct(monData.raceStatBuffPercent.defense)}, maxHp ${signedPct(monData.raceStatBuffPercent.maxHp)} (data/monster-races.json + data/monster-traits.json). ` +
+        `EXP reward on kill: ${monData.final.expReward}. To edit base stats, exp reward, action weights or coin drop, use the Rebalance — Char & Monster tab.`,
+    })
+  );
   monCard.appendChild(monDetails);
 
   return [charCard, monCard];
@@ -969,7 +1017,7 @@ function buildCharSkillsCard(charData, monData) {
     el("tr", {}, [el("th", { text: "Slot" }), el("th", { text: "Name" }), el("th", { text: "Rank" }), el("th", { class: "num", text: "Unlock Lv" }), el("th", { class: "num", text: "MP" }), el("th", { text: "Target" }), el("th", { text: "Effects (at current rank)" }), el("th", { text: "" })]),
   ]);
   const target = { defense: monData.final.defense, maxHp: monData.final.maxHp };
-  const source = { attack: charData.final.attack, magicPower: charData.final.magicPower };
+  const source = { attack: charData.final.attack, magicPower: charData.final.magicPower, maxHp: charData.final.maxHp };
   for (const s of charData.skills) {
     const rankText = s.rankInfo ? s.rankInfo.current + "/" + s.rankInfo.total + (s.rankInfo.nextUnlockLevel ? " (next @ lv " + s.rankInfo.nextUnlockLevel + ")" : "") : "—";
     const btn = makePreviewButton(s.id, source, target, true, charData.level, "char-skills-preview-output");
@@ -1003,7 +1051,7 @@ function buildMonActionsCard(monData, charData, tier) {
   const weightTotal = weights ? Object.values(weights).reduce((a, b) => a + (b || 0), 0) : 0;
   const table = el("table", {}, [el("tr", {}, [el("th", { text: "Action" }), el("th", { class: "num", text: "Weight %" }), el("th", { text: "Skill" }), el("th", { text: "Effects" }), el("th", { text: "" })])]);
   const target = { defense: charData.final.defense, maxHp: charData.final.maxHp };
-  const source = { attack: monData.final.attack };
+  const source = { attack: monData.final.attack, maxHp: monData.final.maxHp };
 
   function row(label, wPct, skill) {
     const btn = makePreviewButton(skill ? skill.id : "basic-attack", source, target, false, undefined, "mon-actions-preview-output");
@@ -1813,17 +1861,18 @@ boot();
   }
 
   function updateIdHint() {
+    let text = "";
     if (category === "elites" || category === "bosses" || category === "monsters") {
-      idHintEl.textContent = `ID must match 1 archetype with the matching role in data/monsters.json to take effect in-game, e.g.: ${ROLE_SPRITE_IDS[category].join(", ")}.`;
+      text = `ID must match 1 archetype with the matching role in data/monsters.json to take effect in-game, e.g.: ${ROLE_SPRITE_IDS[category].join(", ")}.`;
     } else if (category === "events") {
-      idHintEl.textContent = `ID must match 1 event in data/events.json to take effect in-game: ${EVENT_IDS.join(", ")}.`;
+      text = `ID must match 1 event in data/events.json to take effect in-game: ${EVENT_IDS.join(", ")}.`;
     } else if (category === "treasure") {
-      idHintEl.textContent = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
+      text = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
     } else if (category === "rest") {
-      idHintEl.textContent = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
-    } else {
-      idHintEl.textContent = "";
+      text = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
     }
+    idHintEl.title = text;
+    idHintEl.style.display = text ? "" : "none";
   }
 
   async function loadSpritesData() {
@@ -2014,6 +2063,9 @@ boot();
         paintCellStyle(cell, grid[r][c]);
         cell.dataset.r = String(r);
         cell.dataset.c = String(c);
+        cell.tabIndex = 0;
+        cell.setAttribute("role", "gridcell");
+        cell.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
         cell.addEventListener("mousedown", (e) => {
           painting = true;
           applyPaint(r, c);
@@ -2021,6 +2073,19 @@ boot();
         });
         cell.addEventListener("mouseenter", () => {
           if (painting) applyPaint(r, c);
+        });
+        cell.addEventListener("keydown", (e) => {
+          const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+          if (moves[e.key]) {
+            e.preventDefault();
+            const [dr, dc] = moves[e.key];
+            const nr = Math.min(height - 1, Math.max(0, r + dr));
+            const nc = Math.min(width - 1, Math.max(0, c + dc));
+            gridEl.children[nr * width + nc]?.focus();
+          } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            applyPaint(r, c);
+          }
         });
         gridEl.appendChild(cell);
       }
@@ -2221,10 +2286,10 @@ boot();
   const COMBAT_STATS = ["attack", "defense", "aggro", "speed"];
   const SKILL_EFFECT_KINDS = ["damage", "heal", "restoreMp", "applyStatusEffect", "removeStatusEffect", "modifyStat", "modifyCombatStat", "summon"];
   const SKILL_EFFECT_FIELDS = {
-    damage: ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType"],
-    heal: ["amount", "chance", "target", "offenseMultiplierPercent"],
+    damage: ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent"],
+    heal: ["amount", "chance", "target", "offenseMultiplierPercent", "maxHpPercent"],
     restoreMp: ["amount", "chance", "target"],
-    applyStatusEffect: ["statusEffectId", "amount", "minPercent", "chance", "target", "durationTurns"],
+    applyStatusEffect: ["statusEffectId", "amount", "minPercent", "chance", "target", "durationTurns", "alsoApplyStatusEffectIds"],
     removeStatusEffect: ["statusEffectId", "chance", "target"],
     modifyStat: ["stat", "amount", "chance", "target"],
     modifyCombatStat: ["combatStat", "amount", "minPercent", "chance", "target"],
@@ -2275,6 +2340,7 @@ boot();
   let monsterTraits = [];
   let monsterSkillsCatalog = [];
   let statusEffectsCatalog = [];
+  let monsterArchetypesCatalog = [];
 
   function setDataStatus(text, kind) {
     dataStatusEl.textContent = text;
@@ -2283,8 +2349,10 @@ boot();
 
   // --- small field builders, matching the shared .field/.row vocabulary ---
 
+  let _fieldIdCounter = 0;
   function field(label, input, name) {
-    const wrap = el("div", { class: "field" }, [el("label", { text: label }), input]);
+    if (!input.id) input.id = "field-" + (++_fieldIdCounter);
+    const wrap = el("div", { class: "field" }, [el("label", { for: input.id, text: label }), input]);
     if (name) wrap.dataset.field = name;
     return wrap;
   }
@@ -2360,6 +2428,10 @@ boot();
     const combatStat = selectInput(["", ...COMBAT_STATS], effect.combatStat || "");
     const statusEffectId = textInput(effect.statusEffectId || "");
     const durationTurns = numberInput(effect.durationTurns, "1");
+    const ignoreDefensePercent = numberInput(effect.ignoreDefensePercent, "1");
+    const lifestealPercent = numberInput(effect.lifestealPercent, "1");
+    const maxHpPercent = numberInput(effect.maxHpPercent, "0.1");
+    const alsoApplyStatusEffectIds = textInput((effect.alsoApplyStatusEffectIds || []).join(", "));
 
     const row = el("div", { class: "effect-row" });
     const removeBtn = el("button", { class: "action", type: "button", text: "Remove" });
@@ -2376,6 +2448,10 @@ boot();
       field("Combat stat", combatStat, "combatStat"),
       field("Status effect id", statusEffectId, "statusEffectId"),
       field("Duration (turns)", durationTurns, "durationTurns"),
+      field("Ignore defense %", ignoreDefensePercent, "ignoreDefensePercent"),
+      field("Lifesteal %", lifestealPercent, "lifestealPercent"),
+      field("Max HP % bonus", maxHpPercent, "maxHpPercent"),
+      field("Also apply status ids (comma-separated)", alsoApplyStatusEffectIds, "alsoApplyStatusEffectIds"),
     ]);
     row.appendChild(body);
 
@@ -2396,6 +2472,13 @@ boot();
       if (visible.includes("combatStat") && combatStat.value) out.combatStat = combatStat.value;
       if (visible.includes("statusEffectId")) out.statusEffectId = strOrUndefined(statusEffectId);
       if (visible.includes("durationTurns")) out.durationTurns = numOrUndefined(durationTurns);
+      if (visible.includes("ignoreDefensePercent")) out.ignoreDefensePercent = numOrUndefined(ignoreDefensePercent);
+      if (visible.includes("lifestealPercent")) out.lifestealPercent = numOrUndefined(lifestealPercent);
+      if (visible.includes("maxHpPercent")) out.maxHpPercent = numOrUndefined(maxHpPercent);
+      if (visible.includes("alsoApplyStatusEffectIds")) {
+        const ids = alsoApplyStatusEffectIds.value.split(",").map((s) => s.trim()).filter(Boolean);
+        out.alsoApplyStatusEffectIds = ids.length ? ids : undefined;
+      }
       for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
       return out;
     };
@@ -2475,12 +2558,22 @@ boot();
     const baseDefense = numberInput(entry.baseDefense ?? 5);
     const baseSpeed = numberInput(entry.baseSpeed ?? 10);
     const expReward = numberInput(entry.expReward ?? 5);
-    const minFloor = numberInput(entry.minFloor, "10");
+    // Required (a non-negative multiple of 10) for every archetype except the final boss, which must
+    // NOT set it at all — see the loader check in src/data/monsters.ts. Defaults to 0 for a new,
+    // non-final-boss entry so it's never accidentally left blank.
+    const minFloor = numberInput(entry.finalBoss ? undefined : (entry.minFloor ?? 0), "10");
+    const minFloorHint = el("p", { class: "hint", text: "Required, non-negative multiple of 10 — leave empty only when Final boss is checked." });
     const monsterType = selectInput(MONSTER_TYPES, entry.monsterType || "balanced");
     const aiPattern = selectInput(AI_PATTERNS, entry.aiPattern || "aggressive");
     const powerTier = selectInput(POWER_TIERS, entry.powerTier || "");
     const roles = checkboxGroup(MONSTER_ROLES, entry.roles || ["normal"]);
     const finalBoss = checkboxField("Final boss (never rolled at random)", entry.finalBoss);
+    minFloor.disabled = !!entry.finalBoss;
+    finalBoss._checkbox.addEventListener("change", () => {
+      minFloor.disabled = finalBoss._checkbox.checked;
+      if (finalBoss._checkbox.checked) minFloor.value = "";
+      else if (minFloor.value === "") minFloor.value = "0";
+    });
     const raceOptions = monsterRaces.map((r) => [r.id, r.name]);
     const race = selectInput(raceOptions, entry.race || (monsterRaces[0] && monsterRaces[0].id) || "");
     const subRace = selectInput([""], entry.subRace || "");
@@ -2540,6 +2633,7 @@ boot();
       el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
       field("Description", description),
       el("div", { class: "row" }, [field("Base HP", baseHp), field("Base Attack", baseAttack), field("Base Defense", baseDefense), field("Base Speed", baseSpeed), field("EXP reward", expReward), field("Min floor", minFloor)]),
+      minFloorHint,
       el("div", { class: "row" }, [field("Monster type", monsterType), field("AI pattern", aiPattern), field("Power tier", powerTier)]),
       el("div", { class: "row" }, [field("Race", race), field("Sub-race", subRace)]),
       el("fieldset", {}, [el("legend", { text: "Roles" }), roles, finalBoss]),
@@ -2559,10 +2653,18 @@ boot();
         };
         if (subRace.value) out.subRace = subRace.value;
         if (traitIds._values().length) out.traitIds = traitIds._values();
-        if (finalBoss._checkbox.checked) out.finalBoss = true;
         if (powerTier.value) out.powerTier = powerTier.value;
         if (executeSkillId.value) out.executeSkillId = executeSkillId.value;
-        if (minFloor.value !== "") out.minFloor = Number(minFloor.value);
+        if (finalBoss._checkbox.checked) {
+          out.finalBoss = true;
+          if (minFloor.value !== "") throw new Error("Final boss archetypes must not set Min floor.");
+        } else {
+          const mf = minFloor.value === "" ? NaN : Number(minFloor.value);
+          if (!Number.isFinite(mf) || mf < 0 || mf % 10 !== 0) {
+            throw new Error("Min floor is required and must be a non-negative multiple of 10 (unless Final boss is checked).");
+          }
+          out.minFloor = mf;
+        }
         if (Object.keys(actionWeightsState).length) out.actionWeights = actionWeightsState;
         return out;
       },
@@ -2605,12 +2707,14 @@ boot();
     const target = selectInput(SKILL_TARGETS, entry.target || "self");
     const weight = numberInput(entry.weight ?? 1, "1");
     const combatUsable = checkboxField("Usable in combat", entry.combatUsable);
+    const archetypeIds = checkboxGroup(monsterArchetypesCatalog.map((m) => m.id).sort(), entry.archetypeIds || []);
     const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Target", target), field("Roll weight", weight)]),
       field("Description", description),
       el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable]),
+      el("fieldset", {}, [el("legend", { text: "Restrict drop to specific monster archetypes (optional — leave unchecked for a normal roll-table drop)" }), archetypeIds]),
       effectsEditor
     );
 
@@ -2619,6 +2723,7 @@ boot();
         const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), target: target.value, effects: effectsEditor._collect() };
         if (weight.value !== "") out.weight = Number(weight.value);
         if (combatUsable._checkbox.checked) out.combatUsable = true;
+        if (archetypeIds._values().length) out.archetypeIds = archetypeIds._values();
         return out;
       },
     };
@@ -2638,12 +2743,49 @@ boot();
     const accuracyPenaltyPercent = numberInput(entry.accuracyPenaltyPercent, "1");
     const onHitStatusEffectId = selectInput(["", ...statusEffectsCatalog.map((s) => s.id)], entry.onHitStatusEffectId || "");
     const effectsEditor = effectListEditor("Per-turn effects", entry.perTurnEffects, skillEffectRow);
+    const rankOf = textInput(entry.rankOf || "");
+    const rankLevel = numberInput(entry.rankLevel, "1");
+    const tickCategory = textInput(entry.tickCategory || "");
+    const vulnerableToId = textInput((entry.vulnerableTo && entry.vulnerableTo.statusEffectId) || "");
+    const vulnerableToMultiplier = numberInput(entry.vulnerableTo && entry.vulnerableTo.multiplier, "0.1");
+    const onHitAoeAmount = numberInput(entry.onHitAoeDamage && entry.onHitAoeDamage.amount, "any");
+    const onHitAoeIsMagic = checkboxField("Is magic", entry.onHitAoeDamage && entry.onHitAoeDamage.isMagic);
+    const onHitAoeIgnoreDefense = numberInput(entry.onHitAoeDamage && entry.onHitAoeDamage.ignoreDefensePercent, "1");
+    const onHitAoeOffenseMult = numberInput(entry.onHitAoeDamage && entry.onHitAoeDamage.offenseMultiplierPercent, "1");
+    const onHitAoeDamageType = textInput((entry.onHitAoeDamage && entry.onHitAoeDamage.damageType) || "");
+    const breakBonusCrit = checkboxField("Guaranteed crit on the breaking attack", entry.breakBonus && entry.breakBonus.basicAttackGuaranteedCrit);
+    const breakBonusSkillDmg = numberInput(entry.breakBonus && entry.breakBonus.skillDamageBonusPercent, "1");
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
       field("Description", description),
       el("fieldset", {}, [el("legend", { text: "Flags" }), stuns, triggersOverwatch, untargetable]),
       el("div", { class: "row" }, [field("Stackable", stackable), field("Max stacks", maxStacks), field("Per-stack bonus %", perStackBonusPercent), field("Accuracy penalty %", accuracyPenaltyPercent), field("On-hit status (optional)", onHitStatusEffectId)]),
+      el("fieldset", {}, [
+        el("legend", { text: "Rank (optional — for a status that's a higher-rank variant of another, e.g. \"poisoned-ii\" of \"poisoned\")" }),
+        el("div", { class: "row" }, [field("Rank of (status id)", rankOf), field("Rank level (2 or 3)", rankLevel)]),
+      ]),
+      el("fieldset", {}, [
+        el("legend", { text: "Tick category (optional — overrides inferred timing: dot, statMod, or special)" }),
+        field("Tick category", tickCategory),
+      ]),
+      el("fieldset", {}, [
+        el("legend", { text: "Vulnerable to (optional — extra damage multiplier from a specific incoming status)" }),
+        el("div", { class: "row" }, [field("Status effect id", vulnerableToId), field("Multiplier", vulnerableToMultiplier)]),
+      ]),
+      el("fieldset", {}, [
+        el("legend", { text: "On-hit AoE damage (optional — fires once when the bearer is hit; leave Amount empty to disable)" }),
+        el("div", { class: "row" }, [
+          field("Amount", onHitAoeAmount), field("Ignore defense %", onHitAoeIgnoreDefense),
+          field("Offense mult %", onHitAoeOffenseMult), field("Damage type (physical/magic/fire/ice/lightning/poison/bleed/holy)", onHitAoeDamageType),
+        ]),
+        onHitAoeIsMagic,
+      ]),
+      el("fieldset", {}, [
+        el("legend", { text: "Break bonus (optional — only meaningful alongside Untargetable; applies to the attack that breaks it)" }),
+        el("div", { class: "row" }, [field("Skill damage bonus %", breakBonusSkillDmg)]),
+        breakBonusCrit,
+      ]),
       effectsEditor
     );
 
@@ -2658,6 +2800,24 @@ boot();
         if (perStackBonusPercent.value !== "") out.perStackBonusPercent = Number(perStackBonusPercent.value);
         if (accuracyPenaltyPercent.value !== "") out.accuracyPenaltyPercent = Number(accuracyPenaltyPercent.value);
         if (onHitStatusEffectId.value) out.onHitStatusEffectId = onHitStatusEffectId.value;
+        if (rankOf.value.trim()) out.rankOf = rankOf.value.trim();
+        if (rankLevel.value !== "") out.rankLevel = Number(rankLevel.value);
+        if (tickCategory.value.trim()) out.tickCategory = tickCategory.value.trim();
+        if (vulnerableToId.value.trim()) out.vulnerableTo = { statusEffectId: vulnerableToId.value.trim(), multiplier: Number(vulnerableToMultiplier.value) || 0 };
+        if (onHitAoeAmount.value !== "") {
+          const onHitAoeDamage = { amount: Number(onHitAoeAmount.value) };
+          if (onHitAoeIsMagic._checkbox.checked) onHitAoeDamage.isMagic = true;
+          if (onHitAoeIgnoreDefense.value !== "") onHitAoeDamage.ignoreDefensePercent = Number(onHitAoeIgnoreDefense.value);
+          if (onHitAoeOffenseMult.value !== "") onHitAoeDamage.offenseMultiplierPercent = Number(onHitAoeOffenseMult.value);
+          if (onHitAoeDamageType.value.trim()) onHitAoeDamage.damageType = onHitAoeDamageType.value.trim();
+          out.onHitAoeDamage = onHitAoeDamage;
+        }
+        if (breakBonusCrit._checkbox.checked || breakBonusSkillDmg.value !== "") {
+          const breakBonus = {};
+          if (breakBonusCrit._checkbox.checked) breakBonus.basicAttackGuaranteedCrit = true;
+          if (breakBonusSkillDmg.value !== "") breakBonus.skillDamageBonusPercent = Number(breakBonusSkillDmg.value);
+          out.breakBonus = breakBonus;
+        }
         return out;
       },
     };
@@ -2732,11 +2892,12 @@ boot();
   }
 
   async function loadReferenceData() {
-    [monsterRaces, monsterTraits, monsterSkillsCatalog, statusEffectsCatalog] = await Promise.all([
+    [monsterRaces, monsterTraits, monsterSkillsCatalog, statusEffectsCatalog, monsterArchetypesCatalog] = await Promise.all([
       api("/api/monster-races"),
       api("/api/monster-traits"),
       api("/api/data/monster-skill"),
       api("/api/data/status"),
+      api("/api/data/monster"),
     ]);
   }
 

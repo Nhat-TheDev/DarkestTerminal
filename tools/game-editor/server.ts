@@ -140,6 +140,38 @@ function validateSprite(sprite: unknown, category: Category): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Auto sprite placeholders — a monster archetype with no sprite for one of its
+// roles fails assertMonsterSpritesConsistent() and takes the whole game/test
+// suite down with it (see src/ui/sprites.ts). Creating an archetype through
+// the Data Editor is exactly how that gap gets introduced, so a brand new
+// entry gets a blank, valid placeholder for every role it declares — never
+// overwrites a sprite that already exists.
+// ---------------------------------------------------------------------------
+
+const ROLE_TO_SPRITE_CATEGORY: Record<MonsterTier, Category> = { normal: "monsters", elite: "elites", boss: "bosses" };
+
+function emptySprite(category: Category): SpriteData {
+  const width = 9;
+  const height = Math.min(9, MAX_HEIGHT[category]);
+  return { rows: Array.from({ length: height }, () => ".".repeat(width)), palette: {} };
+}
+
+async function ensureMonsterSprites(entry: { id: string; roles?: MonsterTier[] }): Promise<void> {
+  const categories = [...new Set((entry.roles ?? []).map((r) => ROLE_TO_SPRITE_CATEGORY[r]))];
+  if (categories.length === 0) return;
+  const raw = await readFile(SPRITES_PATH, "utf8");
+  const data = JSON.parse(raw) as SpritesFile;
+  let changed = false;
+  for (const category of categories) {
+    if (!data[category][entry.id]) {
+      data[category][entry.id] = emptySprite(category);
+      changed = true;
+    }
+  }
+  if (changed) await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
+}
+
+// ---------------------------------------------------------------------------
 // Data Editor Logics — generic CRUD over any data/*.json file that's a flat
 // array of objects with a unique `id` (monsters, artifacts, items, status
 // effects, monster skills all share this shape).
@@ -255,6 +287,7 @@ Bun.serve({
       const skillId = url.searchParams.get("skillId") ?? "";
       const sourceAttack = Number(url.searchParams.get("sourceAttack") ?? "0");
       const sourceMagicPowerRaw = url.searchParams.get("sourceMagicPower");
+      const sourceMaxHpRaw = url.searchParams.get("sourceMaxHp");
       const targetDefense = Number(url.searchParams.get("targetDefense") ?? "0");
       const targetMaxHpRaw = url.searchParams.get("targetMaxHp");
       const fearTier = toFearTier(url.searchParams.get("fearTier"));
@@ -264,6 +297,7 @@ Bun.serve({
         skillId,
         sourceAttack,
         sourceMagicPower: sourceMagicPowerRaw !== null ? Number(sourceMagicPowerRaw) : undefined,
+        sourceMaxHp: sourceMaxHpRaw !== null && sourceMaxHpRaw !== "" ? Number(sourceMaxHpRaw) : undefined,
         targetDefense,
         targetMaxHp: targetMaxHpRaw !== null && targetMaxHpRaw !== "" ? Number(targetMaxHpRaw) : undefined,
         fearTier,
@@ -439,6 +473,11 @@ Bun.serve({
         const entries = (await readJsonFile(file)) as { id: string }[];
         if (entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
         entries.push(entry);
+        // Must run BEFORE writeJsonFile below: monsters.json is statically imported by src/data/monsters.ts,
+        // so writing it makes `bun --watch` restart this very process — any await placed after that write
+        // races the restart and can be cut off before it runs (sprites.json is never statically imported,
+        // so writing it here first doesn't trigger a restart of its own).
+        if (entityType === "monster") await ensureMonsterSprites(entry as { id: string; roles?: MonsterTier[] });
         await writeJsonFile(file, entries);
         return json({ ok: true });
       }

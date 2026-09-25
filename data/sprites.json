@@ -690,6 +690,21 @@
         "A": "#294922"
       }
     },
+    "lava-slime": {
+      "rows": [
+        "...........",
+        "...OOOOO...",
+        ".OOOEOEOOA.",
+        "OAOOOEOAOOA",
+        "OOAOAOOOAOO",
+        ".OOOOAOOOO."
+      ],
+      "palette": {
+        "E": "#700000",
+        "O": "#d27b19",
+        "A": "#9d3715"
+      }
+    },
     "armored-beetle": {
       "rows": [
         "..............",
@@ -851,6 +866,28 @@
         "A": "#000000",
         "B": "#d0c9b4",
         "C": "#44230d"
+      }
+    },
+    "lesser-vampire": {
+      "rows": [
+        "BB...CCC...BB",
+        "BBB.CPPPC.BBB",
+        ".BBBPRPRPBBB.",
+        ".BBAAPPPAABB.",
+        "..AAAAKAAAA..",
+        "..KBKKKKKBK..",
+        "..KBKKKKKBK..",
+        "..PBKKBKKBP..",
+        "..BBKKBKKBB..",
+        "..B.......B.."
+      ],
+      "palette": {
+        "P": "#d8cfc0",
+        "R": "#c41818",
+        "K": "#2a1a28",
+        "A": "#4a1830",
+        "B": "#492d3b",
+        "C": "#ababab"
       }
     }
   },
