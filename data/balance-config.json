@@ -1,7 +1,7 @@
 {
   "combat": {
-    "defenseMitigationX": 60,
-    "defenseMitigationY": 30,
+    "defenseMitigationX": 30,
+    "defenseMitigationY": 5,
     "executeCooldownTurns": 3,
     "defensiveLowHpSkillChance": 0.7,
     "defaultCritMultiplierPercent": 150

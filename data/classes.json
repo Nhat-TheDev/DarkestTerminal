@@ -20,7 +20,8 @@
       {
         "id": "vanguard-slash",
         "name": "Slash",
-        "description": "A sword slash — basic damage, free.",
+        "description": "A sword slash — basic damage.",
+        "shortDescription": "A sword slash — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -36,6 +37,7 @@
         "id": "vanguard-shield-guard",
         "name": "Shield Guard",
         "description": "Raises a defensive shield, boosting both defense and self-aggro for 1 turn.",
+        "shortDescription": "Raises a shield: defense, aggro up.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -98,6 +100,7 @@
         "id": "vanguard-shield-throw",
         "name": "Shield Throw",
         "description": "Throws the shield at an enemy, dealing ranged damage.",
+        "shortDescription": "Throws the shield for ranged damage.",
         "target": "singleEnemy",
         "slot": 2,
         "ranks": [
@@ -143,6 +146,7 @@
         "id": "vanguard-rally",
         "name": "Rally",
         "description": "Rallies the party, instantly lowering fear and boosting attack for 1 turn for the whole team.",
+        "shortDescription": "Lowers party fear, boosts team attack for 1 turn.",
         "target": "allAllies",
         "slot": 3,
         "isBuff": true,
@@ -205,6 +209,7 @@
         "id": "vanguard-heavy-charge",
         "name": "Heavy Charge",
         "description": "Charges straight into the enemy group, dealing area damage.",
+        "shortDescription": "Charges the enemy group for area damage.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -251,6 +256,7 @@
         "id": "vanguard-sword-judgment",
         "name": "Sword Judgment",
         "description": "A decisive sword strike, heavy damage. Always hits, effectiveness reduced by fear.",
+        "shortDescription": "A heavy sword strike. Always hits.",
         "target": "singleEnemy",
         "slot": 5,
         "isUltimate": true,
@@ -294,7 +300,35 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "vanguard-passive",
+      "name": "Bulwark",
+      "description": "Years on the front line have hardened more than just the shield arm.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "maxHpPercent": 5,
+          "defensePercent": 7,
+          "aggroFlat": 3
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "maxHpPercent": 10,
+          "defensePercent": 10,
+          "aggroFlat": 6
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "maxHpPercent": 15,
+          "defensePercent": 14,
+          "aggroFlat": 9
+        }
+      ]
+    }
   },
   {
     "id": "mage",
@@ -316,23 +350,27 @@
     "skills": [
       {
         "id": "mage-bludgeon",
-        "name": "Bludgeon",
-        "description": "Strikes with a staff — basic damage, free.",
+        "name": "Arcane Bolt",
+        "description": "A weak bolt of raw arcane force — basic damage.",
+        "shortDescription": "A weak arcane bolt — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "damageType": "magic"
           }
         ],
         "slot": 0,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "mage-fireball",
         "name": "Fireball",
         "description": "Summons a ball of fire dealing damage, may cause Burning.",
+        "shortDescription": "A fireball; may set the target Burning.",
         "target": "singleEnemy",
         "slot": 1,
         "isMagic": true,
@@ -345,7 +383,8 @@
               {
                 "kind": "damage",
                 "amount": 10,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -363,7 +402,8 @@
               {
                 "kind": "damage",
                 "amount": 13,
-                "offenseMultiplierPercent": 105
+                "offenseMultiplierPercent": 105,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -381,7 +421,8 @@
               {
                 "kind": "damage",
                 "amount": 16,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -397,6 +438,7 @@
         "id": "mage-lightning-bolt",
         "name": "Lightning Bolt",
         "description": "Fires a bolt of lightning for fast damage, may cause Stunned.",
+        "shortDescription": "A fast bolt; may cause Stunned.",
         "target": "singleEnemy",
         "slot": 2,
         "isMagic": true,
@@ -409,7 +451,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -427,7 +470,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -445,7 +489,8 @@
               {
                 "kind": "damage",
                 "amount": 19,
-                "offenseMultiplierPercent": 115
+                "offenseMultiplierPercent": 115,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -461,6 +506,7 @@
         "id": "mage-fire-pillar",
         "name": "Fire Pillar",
         "description": "Raises a pillar of fire burning the whole enemy group, high chance to cause Burning.",
+        "shortDescription": "Burns the group, high chance to Burn.",
         "target": "allEnemies",
         "slot": 3,
         "cooldownTurns": 2,
@@ -474,7 +520,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -492,7 +539,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 85
+                "offenseMultiplierPercent": 85,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -510,7 +558,8 @@
               {
                 "kind": "damage",
                 "amount": 19,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -526,6 +575,7 @@
         "id": "mage-lightning-storm",
         "name": "Lightning Storm",
         "description": "Calls down a lightning storm on all enemies, may cause Stunned.",
+        "shortDescription": "Storm hits all enemies, may cause Stunned.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -539,7 +589,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -557,7 +608,8 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -575,7 +627,8 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               },
               {
                 "kind": "applyStatusEffect",
@@ -591,6 +644,7 @@
         "id": "mage-ice-age",
         "name": "Ice Age",
         "description": "Blankets the whole battlefield in frost, wide-area damage. Always hits, effectiveness reduced by fear.",
+        "shortDescription": "Wide frost damage. Always hits.",
         "target": "allEnemies",
         "slot": 5,
         "isUltimate": true,
@@ -605,7 +659,8 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "damageType": "ice"
               }
             ]
           },
@@ -617,7 +672,8 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 120,
+                "damageType": "ice"
               }
             ]
           },
@@ -629,13 +685,36 @@
               {
                 "kind": "damage",
                 "amount": 35,
-                "offenseMultiplierPercent": 130
+                "offenseMultiplierPercent": 130,
+                "damageType": "ice"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "mage-passive",
+      "name": "Arcane Shred",
+      "description": "Every bolt that lands leaves the target's wards a little thinner than the last.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "onHitStatusEffectId": "mage-shred"
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "onHitStatusEffectId": "mage-shred-ii"
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "onHitStatusEffectId": "mage-shred-iii"
+        }
+      ]
+    }
   },
   {
     "id": "rogue",
@@ -658,7 +737,8 @@
       {
         "id": "rogue-stab",
         "name": "Stab",
-        "description": "Stabs with a dagger — basic damage, free.",
+        "description": "Stabs with a dagger — basic damage.",
+        "shortDescription": "Stabs with a dagger — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -674,6 +754,7 @@
         "id": "rogue-poison-coat",
         "name": "Poison Coat",
         "description": "Coats the blade with poison — while active, hits that land also inflict poison.",
+        "shortDescription": "Coats the blade: hits also poison.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -731,6 +812,7 @@
         "id": "rogue-knife-throw",
         "name": "Knife Throw",
         "description": "Throws a dagger, dealing ranged damage.",
+        "shortDescription": "Throws a dagger for ranged damage.",
         "target": "singleEnemy",
         "slot": 2,
         "ranks": [
@@ -776,6 +858,7 @@
         "id": "rogue-backstab",
         "name": "Backstab",
         "description": "A vicious stab from a blind spot, high damage.",
+        "shortDescription": "A vicious blind-spot stab, high damage.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 1,
@@ -822,6 +905,7 @@
         "id": "rogue-poison-bomb",
         "name": "Poison Bomb",
         "description": "Throws a poison bomb, poisoning every enemy.",
+        "shortDescription": "Poisons every enemy at once.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -883,6 +967,7 @@
         "id": "rogue-flurry-assault",
         "name": "Flurry Assault",
         "description": "Rushes in for 3 consecutive stabs. Always hits, effectiveness reduced by fear.",
+        "shortDescription": "3 rapid stabs. Always hits.",
         "target": "singleEnemy",
         "ranks": [
           {
@@ -956,7 +1041,34 @@
         "isUltimate": true,
         "cooldownTurns": 5
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "rogue-passive",
+      "name": "Venomcraft",
+      "description": "Knows exactly where the poison is already working, and where to add to it.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "bonusPercent": 15,
+          "bonusFlat": 5
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "bonusPercent": 20,
+          "bonusFlat": 10
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "bonusPercent": 30,
+          "bonusFlat": 20
+        }
+      ],
+      "requiresTargetStatusId": "poisoned",
+      "bonusDamageType": "poison"
+    }
   },
   {
     "id": "acolyte",
@@ -979,7 +1091,8 @@
       {
         "id": "acolyte-punch",
         "name": "Punch",
-        "description": "A bare-handed punch — basic damage, free.",
+        "description": "A bare-handed punch — basic damage.",
+        "shortDescription": "A bare-handed punch — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -995,6 +1108,7 @@
         "id": "acolyte-prayer",
         "name": "Prayer",
         "description": "A calming prayer, lowers fear for 1 ally.",
+        "shortDescription": "A calming prayer, lowers 1 ally's fear.",
         "target": "singleAlly",
         "slot": 1,
         "ranks": [
@@ -1040,6 +1154,7 @@
         "id": "acolyte-heal",
         "name": "Heal",
         "description": "Restores HP to 1 ally.",
+        "shortDescription": "Restores HP to 1 ally.",
         "target": "singleAlly",
         "slot": 2,
         "isMagic": true,
@@ -1086,6 +1201,7 @@
         "id": "acolyte-purify",
         "name": "Purify",
         "description": "Target an ally to remove 1 debuff, or target an enemy to deal purging damage.",
+        "shortDescription": "Cures an ally's debuff, or smites an enemy.",
         "target": "singleAllyOrEnemy",
         "slot": 3,
         "cooldownTurns": 1,
@@ -1104,7 +1220,8 @@
                 "kind": "damage",
                 "amount": 15,
                 "offenseMultiplierPercent": 100,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1121,7 +1238,8 @@
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 110,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1138,7 +1256,8 @@
                 "kind": "damage",
                 "amount": 27,
                 "offenseMultiplierPercent": 120,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           }
@@ -1148,6 +1267,7 @@
         "id": "acolyte-mass-heal",
         "name": "Mass Heal",
         "description": "Heals + lowers fear for the whole party.",
+        "shortDescription": "Heals and calms the whole party.",
         "target": "allAllies",
         "slot": 4,
         "cooldownTurns": 2,
@@ -1210,6 +1330,7 @@
         "id": "acolyte-divine-descent",
         "name": "Divine Descent",
         "description": "Holy light descends over the whole battlefield: heals + strongly lowers fear for allies, damages enemies. Always hits, effectiveness reduced by fear.",
+        "shortDescription": "Holy light: heals allies, smites foes.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
         "isUltimate": true,
@@ -1237,7 +1358,8 @@
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 80,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1262,7 +1384,8 @@
                 "kind": "damage",
                 "amount": 25,
                 "offenseMultiplierPercent": 85,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           },
@@ -1287,13 +1410,39 @@
                 "kind": "damage",
                 "amount": 30,
                 "offenseMultiplierPercent": 90,
-                "appliesToRelation": "enemy"
+                "appliesToRelation": "enemy",
+                "damageType": "holy"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "acolyte-passive",
+      "name": "Devotion",
+      "description": "Faith turns inward for protection, outward for grace.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "healBoostPercent": 10,
+          "debuffResistPercent": 30
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "healBoostPercent": 20,
+          "debuffResistPercent": 40
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "healBoostPercent": 25,
+          "debuffResistPercent": 50
+        }
+      ]
+    }
   },
   {
     "id": "viking",
@@ -1316,7 +1465,8 @@
       {
         "id": "viking-axe-slash",
         "name": "Axe Slash",
-        "description": "An axe slash — basic damage, free.",
+        "description": "An axe slash — basic damage.",
+        "shortDescription": "An axe slash — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -1332,6 +1482,7 @@
         "id": "viking-lightning-axe",
         "name": "Lightning Axe",
         "description": "Channels storm energy into the axe, empowering every hit with a lightning splash for a few turns, at the cost of defense and self-aggro.",
+        "shortDescription": "Lightning-charges the axe for a few turns.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -1394,6 +1545,7 @@
         "id": "viking-frenzied-slash",
         "name": "Frenzied Slash",
         "description": "A wild physical slash, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "shortDescription": "A wild slash, may cause Bleeding.",
         "target": "singleEnemy",
         "slot": 2,
         "conditionalBonus": {
@@ -1461,6 +1613,7 @@
         "id": "viking-throw-axe",
         "name": "Throw Axe",
         "description": "Throws the axe at an enemy, dealing ranged damage. Hits harder while Storm-Empowered.",
+        "shortDescription": "Throws the axe for ranged damage.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 2,
@@ -1511,6 +1664,7 @@
         "id": "viking-spin-axe",
         "name": "Spinning Axe",
         "description": "Spins the axe through the whole enemy group, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "shortDescription": "Spins the axe through the enemy group.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -1579,6 +1733,7 @@
         "id": "viking-thunder-god-fury",
         "name": "Thunder God's Fury",
         "description": "Unleashes the storm's full fury on every enemy. Always hits, effectiveness reduced by fear. Hits far harder and consumes Storm-Empowered.",
+        "shortDescription": "Unleashes the storm's full fury on all foes.",
         "target": "allEnemies",
         "slot": 5,
         "isUltimate": true,
@@ -1597,7 +1752,8 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 80
+                "offenseMultiplierPercent": 80,
+                "damageType": "lightning"
               }
             ]
           },
@@ -1609,7 +1765,8 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "lightning"
               }
             ]
           },
@@ -1621,13 +1778,40 @@
               {
                 "kind": "damage",
                 "amount": 50,
-                "offenseMultiplierPercent": 120
+                "offenseMultiplierPercent": 120,
+                "damageType": "lightning"
               }
             ]
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "viking-passive",
+      "name": "Blood Fury",
+      "description": "The closer death gets, the harder the swing.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "hpThresholdPercent": 40,
+          "attackBonusPercent": 20
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "hpThresholdPercent": 45,
+          "attackBonusPercent": 30
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "hpThresholdPercent": 50,
+          "attackBonusPercent": 40
+        }
+      ],
+      "selfDamagePerHitMaxHPPercent": 3
+    }
   },
   {
     "id": "plague-doctor",
@@ -1650,7 +1834,8 @@
       {
         "id": "plaguedoc-vial-toss",
         "name": "Vial Toss",
-        "description": "Tosses a crude vial — basic damage, free.",
+        "description": "Tosses a crude vial — basic damage.",
+        "shortDescription": "A crude vial toss — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -1667,6 +1852,7 @@
         "id": "plaguedoc-fire-vial",
         "name": "Fire Vial",
         "description": "Throws a vial of alchemical fire, dealing damage and possibly setting the target ablaze.",
+        "shortDescription": "Alchemical fire — possibly setting foe ablaze.",
         "target": "singleEnemy",
         "slot": 1,
         "isMagic": true,
@@ -1679,7 +1865,8 @@
               {
                 "kind": "damage",
                 "amount": 10,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1697,7 +1884,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 95
+                "offenseMultiplierPercent": 95,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1715,7 +1903,8 @@
               {
                 "kind": "damage",
                 "amount": 16,
-                "offenseMultiplierPercent": 105
+                "offenseMultiplierPercent": 105,
+                "damageType": "fire"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1731,6 +1920,7 @@
         "id": "plaguedoc-healing-draught",
         "name": "Healing Draught",
         "description": "A restorative draught for 1 ally.",
+        "shortDescription": "A restorative draught for 1 ally.",
         "target": "singleAlly",
         "slot": 2,
         "isMagic": true,
@@ -1777,6 +1967,7 @@
         "id": "plaguedoc-blinding-vial",
         "name": "Blinding Vial",
         "description": "A vial of caustic powder, dealing damage and possibly blinding the target — a blinded target's own attacks miss far more often.",
+        "shortDescription": "Caustic powder; possibly blinding the target.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 2,
@@ -1842,6 +2033,7 @@
         "id": "plaguedoc-toxic-fog",
         "name": "Spreading Toxic Fog",
         "description": "Spreads a toxic fog over the whole enemy group, dealing damage and possibly poisoning/weakening each of them.",
+        "shortDescription": "Toxic fog: possibly poisoning or weakening foes.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -1855,7 +2047,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 50
+                "offenseMultiplierPercent": 50,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1879,7 +2072,8 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 60,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1903,7 +2097,8 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 70,
+                "damageType": "poison"
               },
               {
                 "kind": "applyStatusEffect",
@@ -1925,6 +2120,7 @@
         "id": "plaguedoc-total-plague",
         "name": "Total Plague",
         "description": "Unleashes the full plague over the battlefield: heals + cures allies, damages and afflicts enemies with poison and fire. Always hits, effectiveness reduced by fear.",
+        "shortDescription": "Heals allies, poisons and burns foes.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
         "isUltimate": true,
@@ -2044,7 +2240,37 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "plaguedoc-passive",
+      "name": "Contagion",
+      "description": "Every touch carries something new — the body just hasn't noticed yet.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "procChancePercent": 30
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "procChancePercent": 40
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "procChancePercent": 50
+        }
+      ],
+      "debuffPool": [
+        "poisoned",
+        "burning",
+        "weakened",
+        "blinded",
+        "slowed",
+        "enfeebled"
+      ]
+    }
   },
   {
     "id": "archer",
@@ -2067,7 +2293,8 @@
       {
         "id": "archer-quick-shot",
         "name": "Quick Shot",
-        "description": "A bow shot — basic damage, free.",
+        "description": "A bow shot — basic damage.",
+        "shortDescription": "A bow shot — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -2083,6 +2310,7 @@
         "id": "archer-aimed-shot",
         "name": "Aimed Shot",
         "description": "A carefully aimed shot, prone to landing a critical hit.",
+        "shortDescription": "An aimed shot, likely to crit.",
         "target": "singleEnemy",
         "slot": 1,
         "ranks": [
@@ -2131,6 +2359,7 @@
         "id": "archer-overwatch",
         "name": "Overwatch",
         "description": "Draws a bead on the battlefield, ready to fire the instant an enemy moves.",
+        "shortDescription": "Fires the instant an enemy moves.",
         "target": "self",
         "slot": 2,
         "isBuff": true,
@@ -2178,6 +2407,7 @@
         "id": "archer-volley-shot",
         "name": "Volley Shot",
         "description": "Looses a volley of arrows over the whole enemy group.",
+        "shortDescription": "A volley of arrows over the enemy group.",
         "target": "allEnemies",
         "slot": 3,
         "cooldownTurns": 2,
@@ -2224,6 +2454,7 @@
         "id": "archer-crippling-shot",
         "name": "Crippling Shot",
         "description": "A shot aimed at the joints, may weaken the target's defense.",
+        "shortDescription": "Joint shot, may weaken defense.",
         "target": "singleEnemy",
         "slot": 4,
         "cooldownTurns": 2,
@@ -2306,6 +2537,7 @@
         "id": "archer-deadeye-shot",
         "name": "Deadeye Shot",
         "description": "A decisive, perfectly placed shot. Always hits, guaranteed critical, effectiveness reduced by fear.",
+        "shortDescription": "A perfect, guaranteed critical shot.",
         "target": "singleEnemy",
         "slot": 5,
         "isUltimate": true,
@@ -2352,7 +2584,32 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "archer-passive",
+      "name": "Deadly Precision",
+      "description": "Every shot is aimed like it's the one that matters.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "critChancePercent": 2,
+          "critMultiplierPercent": 160
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "critChancePercent": 5,
+          "critMultiplierPercent": 170
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "critChancePercent": 8,
+          "critMultiplierPercent": 180
+        }
+      ]
+    }
   },
   {
     "id": "ninja",
@@ -2375,7 +2632,8 @@
       {
         "id": "ninja-kunai-strike",
         "name": "Kunai Strike",
-        "description": "A kunai stab — basic damage, free.",
+        "description": "A kunai stab — basic damage.",
+        "shortDescription": "A kunai stab — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -2391,6 +2649,7 @@
         "id": "ninja-smoke-bomb",
         "name": "Smoke Bomb",
         "description": "Vanishes in a cloud of smoke, untargetable until the next attack breaks it.",
+        "shortDescription": "Vanishes, untargetable until it strikes.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -2438,6 +2697,7 @@
         "id": "ninja-shadow-clone",
         "name": "Shadow Clone",
         "description": "Splits off a shadow clone to draw enemy attacks alongside the party.",
+        "shortDescription": "Splits a clone to draw enemy attacks.",
         "target": "self",
         "slot": 2,
         "isBuff": true,
@@ -2482,6 +2742,7 @@
         "id": "ninja-throwing-knives",
         "name": "Throwing Knives",
         "description": "A quick flurry of thrown knives, may cause Bleeding, sometimes throws a 2nd knife.",
+        "shortDescription": "Thrown knives, may cause Bleeding.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 2,
@@ -2549,6 +2810,7 @@
         "id": "ninja-shuriken-storm",
         "name": "Shuriken Storm",
         "description": "Showers the whole enemy group with shuriken, may cause Bleeding.",
+        "shortDescription": "Showers foes with shuriken, may cause Bleeding.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
@@ -2625,6 +2887,7 @@
         "id": "ninja-death-mark",
         "name": "Death Mark",
         "description": "A precise strike aimed at a vital point. Always hits, effectiveness reduced by fear, hits far harder against a bleeding or low-HP target.",
+        "shortDescription": "A vital strike, harder vs a low-HP foe.",
         "target": "singleEnemy",
         "slot": 5,
         "isUltimate": true,
@@ -2699,7 +2962,33 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "ninja-passive",
+      "name": "Afterimage",
+      "description": "Never quite where the strike lands, and sometimes there's 2 to answer for it.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "dodgePercent": 5,
+          "secondCloneChancePercent": 20
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "dodgePercent": 10,
+          "secondCloneChancePercent": 25
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "dodgePercent": 15,
+          "secondCloneChancePercent": 30
+        }
+      ],
+      "maxClones": 2
+    }
   },
   {
     "id": "summoner",
@@ -2722,7 +3011,8 @@
       {
         "id": "summoner-totem-strike",
         "name": "Totem Strike",
-        "description": "A weak totem-staff jab — basic damage, free. The Summoner leans on its minions, not its own combat.",
+        "description": "A weak totem-staff jab — basic damage. The Summoner leans on its minions, not its own combat.",
+        "shortDescription": "A weak totem jab — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
@@ -2738,6 +3028,7 @@
         "id": "summoner-summon-goblin",
         "name": "Summon Goblin",
         "description": "Summons a Goblin Thrower — low HP and aggro, moderate ranged attack.",
+        "shortDescription": "Summons a ranged Goblin Thrower.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -2782,6 +3073,7 @@
         "id": "summoner-summon-spirit",
         "name": "Summon Spirit",
         "description": "Summons a Healer Spirit — low HP and aggro, heals the party.",
+        "shortDescription": "Summons a Healer Spirit for the party.",
         "target": "self",
         "slot": 2,
         "isBuff": true,
@@ -2826,6 +3118,7 @@
         "id": "summoner-summon-golem",
         "name": "Summon Golem",
         "description": "Summons a Stone Golem — high HP, moderate attack, high aggro (draws enemy attacks).",
+        "shortDescription": "Summons a high-HP, high-aggro Golem.",
         "target": "singleEnemy",
         "slot": 3,
         "isBuff": true,
@@ -2885,9 +3178,10 @@
         ]
       },
       {
-        "id": "summoner-mastery",
-        "name": "Mastery Summoner",
-        "description": "Empowers every minion currently active, and any summoned later this combat, with bonus max HP and attack. Reaching rank 2/3 also raises how many different-type minions you may have active at once, to 2/3, independent of whether Mastery has been cast this combat.",
+        "id": "summoner-totem-recall",
+        "name": "Totem Recall",
+        "description": "Plants a totem that channels strength into the whole party, until something breaks it.",
+        "shortDescription": "Plants a totem buffing the party.",
         "target": "self",
         "slot": 4,
         "isBuff": true,
@@ -2899,9 +3193,18 @@
             "mpCost": 10,
             "effects": [
               {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment",
-                "durationTurns": 99
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 8,
+                "minPercent": 10
               }
             ]
           },
@@ -2911,9 +3214,18 @@
             "mpCost": 11,
             "effects": [
               {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-ii",
-                "durationTurns": 99
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 14,
+                "minPercent": 15
               }
             ]
           },
@@ -2923,9 +3235,18 @@
             "mpCost": 12,
             "effects": [
               {
+                "kind": "summon",
+                "summonCastId": "summoner-totem-recall"
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "minion-empowerment-iii",
-                "durationTurns": 99
+                "statusEffectId": "totem-recall-buff",
+                "target": "allAllies",
+                "excludesSummonTargets": true,
+                "linksToCasterSummon": true,
+                "durationTurns": 99,
+                "amount": 20,
+                "minPercent": 20
               }
             ]
           }
@@ -2935,6 +3256,7 @@
         "id": "summoner-summon-imp",
         "name": "Summon Hellfire Imp",
         "description": "Summons a Hellfire Imp and immediately scorches every enemy with hellfire. Always hits; effectiveness reduced by fear.",
+        "shortDescription": "Summons an Imp, scorches every foe.",
         "target": "allEnemies",
         "isMagic": true,
         "slot": 5,
@@ -2994,6 +3316,34 @@
           }
         ]
       }
-    ]
+    ],
+    "passiveSkill": {
+      "id": "summoner-passive",
+      "name": "Bound Legion",
+      "description": "The pact strengthens on its own, and can hold more of them at once.",
+      "ranks": [
+        {
+          "rank": 1,
+          "unlockLevel": 5,
+          "minionMaxHpPercent": 20,
+          "minionAttackPercent": 10,
+          "maxActiveMinions": 1
+        },
+        {
+          "rank": 2,
+          "unlockLevel": 20,
+          "minionMaxHpPercent": 25,
+          "minionAttackPercent": 13,
+          "maxActiveMinions": 2
+        },
+        {
+          "rank": 3,
+          "unlockLevel": 35,
+          "minionMaxHpPercent": 30,
+          "minionAttackPercent": 17,
+          "maxActiveMinions": 3
+        }
+      ]
+    }
   }
 ]

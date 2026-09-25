@@ -14,6 +14,8 @@ export type SkillEffectKind =
   | "modifyCombatStat"
   | "summon";
 
+export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
+
 export type CombatStat = "attack" | "defense" | "aggro" | "speed";
 
 export interface SkillEffect {
@@ -30,7 +32,10 @@ export interface SkillEffect {
   lifestealPercent?: number;
   /** Scales the caster's offensive stat (attack/magicPower) before mitigation — e.g. 60 = the skill only uses 60% of it. Absent/100 = today's unscaled behavior. */
   offenseMultiplierPercent?: number;
-  /** DoT-tick-only: adds `target.maxHp * maxHpPercent / 100` on top of `amount` for a `damage` perTurnEffect, so DoTs keep pace with HP growth across levels. */
+  /** 2 different combining rules depending on `kind`, so it keeps pace with HP growth across levels either way:
+   *  for a `damage` DoT-tick perTurnEffect, adds `target.maxHp * maxHpPercent / 100` on top of `amount`; for a
+   *  `heal` effect, floors `amount` at `target.maxHp * maxHpPercent / 100` (whichever is larger — same idiom
+   *  `modifyCombatStat`'s `minPercent` uses), so a heal doesn't go stale as the healed actor's maxHp grows. */
   maxHpPercent?: number;
   /** Rolled independently of the accuracy roll, same pattern as `chance` on a proc effect — on a hit, the damage is multiplied by `critMultiplierPercent` (or the shared default). */
   critChance?: number;
@@ -52,6 +57,16 @@ export interface SkillEffect {
   appliesToRelation?: "ally" | "enemy";
   /** For `modifyCombatStat`: the applied delta is whichever has the larger magnitude of `amount` or `actorStat * minPercent / 100` (read from the actor's stat before this delta is applied), sign preserved — so a flat buff/debuff stays meaningful once the underlying stat has grown well past where `amount` alone would be negligible. Absent = today's flat-only behavior. */
   minPercent?: number;
+  /** Only meaningful when kind === "damage". Defaults to "physical" when absent — every existing
+   *  effect (monster skills, artifacts, abilities, items) stays untagged and keeps that default. */
+  damageType?: DamageType;
+  /** For `applyStatusEffect`: ties this status's expiry to the summon this same skill cast also
+   *  spawns via its own `summon` effect (resolved first — see `applySkillEffects` in combat.ts) —
+   *  Totem Recall's "the buff lasts until the totem dies" mechanism, instead of a fixed duration. */
+  linksToCasterSummon?: boolean;
+  /** Excludes `Summon` targets from this specific effect within an `allAllies`/`allAlliesAndEnemies`
+   *  resolution — Totem Recall's buff reaches party members but not the caster's own minions. */
+  excludesSummonTargets?: boolean;
 }
 
 /** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
@@ -121,6 +136,9 @@ export interface SkillDefinition {
   id: Id;
   name: string;
   description: string;
+  /** Terser version of `description`, sized to fit on the compact pickSkill list line without
+   *  wrapping/truncating — `description` itself stays full-length for the skillDetail screen. */
+  shortDescription?: string;
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
@@ -135,6 +153,43 @@ export interface SkillDefinition {
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
   /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. Distinct from the unrelated Boss "Execute" charge-up mechanic (`Monster.executeCooldownTurns`). */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+}
+
+/** One class's mechanic fields, all optional since a given class's passive only ever reads its
+ *  own handful — same "one shared shape, many optional fields" pattern as `SkillEffect`. */
+export interface PassiveRankDefinition {
+  rank: 1 | 2 | 3;
+  unlockLevel: number;
+  maxHpPercent?: number; // Vanguard
+  defensePercent?: number; // Vanguard
+  aggroFlat?: number; // Vanguard
+  onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
+  bonusPercent?: number; // Rogue
+  bonusFlat?: number; // Rogue
+  healBoostPercent?: number; // Acolyte
+  debuffResistPercent?: number; // Acolyte
+  hpThresholdPercent?: number; // Viking
+  attackBonusPercent?: number; // Viking — % attack granted by the "viking-blood-fury" status while below hpThresholdPercent
+  procChancePercent?: number; // Plague Doctor
+  critChancePercent?: number; // Archer
+  critMultiplierPercent?: number; // Archer
+  dodgePercent?: number; // Ninja
+  secondCloneChancePercent?: number; // Ninja
+  minionMaxHpPercent?: number; // Summoner
+  minionAttackPercent?: number; // Summoner
+  maxActiveMinions?: number; // Summoner
+}
+
+export interface PassiveSkillDefinition {
+  id: Id;
+  name: string;
+  description: string;
+  ranks: PassiveRankDefinition[]; // exactly 3
+  requiresTargetStatusId?: Id; // Rogue — bonus only fires while the target carries this status (or a rankOf variant of it)
+  bonusDamageType?: DamageType; // Rogue
+  selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
+  maxClones?: number; // Ninja — fixed across ranks, not scaled
+  debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }
 
 export interface GrowthWeights {
@@ -166,6 +221,7 @@ export interface CharacterClass {
   baseSpeed: number;
   baseMagicPower: number;
   skills: SkillDefinition[];
+  passiveSkill: PassiveSkillDefinition;
 }
 
 export interface Character {
@@ -199,7 +255,7 @@ export interface StatusEffectDefinition {
   description: string;
   perTurnEffects: SkillEffect[];
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number };
+  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -219,8 +275,6 @@ export interface StatusEffectDefinition {
   untargetable?: boolean;
   /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
-  /** While the bearer (a Character) carries this status, every `Summon` it owns gets these bonuses: applied once, retroactively, to every currently-active owned summon the moment this status lands, and applied again to any summon spawned later while it's still active (Summoner's Mastery, §1.11). */
-  empowersMinions?: { maxHpPercent: number; attackPercent: number };
 }
 
 export interface ItemDefinition {
@@ -422,6 +476,9 @@ export interface ActiveStatusEffect {
   stacks?: number;
   /** The exact combat-stat delta(s) actually applied for this status's `modifyCombatStat` perTurnEffects, keyed by stat — set once when the status is first applied (after resolving any `minPercent` floor against the actor's stat at that moment) and read back on expiry to undo precisely that amount, since recomputing from `amount`/`minPercent` at expiry could disagree if the actor's stat moved in between (e.g. a 2nd, unrelated buff/debuff on the same stat). Absent for a status with no `modifyCombatStat` perTurnEffects. */
   appliedAmounts?: Partial<Record<CombatStat, number>>;
+  /** If set, this status is force-expired the instant the named `Summon` (by id) leaves combat —
+   *  Totem Recall's "the buff lasts until the totem dies" mechanism (`SkillEffect.linksToCasterSummon`). */
+  linkedSummonId?: Id;
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";
@@ -453,6 +510,43 @@ export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
 
 /** Stat-budget archetype, mirroring how `classGrowthWeights` splits a character class's budget across stats — see `monsterGrowthWeights` (`data/growth-weights.json`). Multipliers sum to 3 (1 per stat) the same way `classGrowthWeights` sums to 5. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
+
+export interface RaceProfile {
+  // Recommended range for a single race/subRace/trait entry: 10-100. Final resolved value
+  // (after merging race -> subRace -> traits) is clamped to 0-100 regardless — summed
+  // trait+subRace contributions can legitimately land above what any single source declares.
+  resistPercent?: Partial<Record<DamageType, number>>;
+  // Recommended range for a single entry: 10-50. Final resolved value is clamped to 0-100, same
+  // reasoning as resistPercent.
+  weakPercent?: Partial<Record<DamageType, number>>;
+  statBuff?: {
+    maxHpPercent?: number;
+    attackPercent?: number;
+    defensePercent?: number;
+    speedFlat?: number; // flat add, not a percent — speed is never percent-scaled anywhere else
+  };
+}
+
+export interface SubRaceDefinition {
+  id: Id;
+  name: string;
+  /** Per-key override on top of the parent race's resistPercent/weakPercent; statBuff fields ADD
+   *  to the parent's instead (see resolveRaceProfile in src/data/monsterRaces.ts). */
+  profile: RaceProfile;
+}
+
+export interface RaceDefinition {
+  id: Id;
+  name: string;
+  profile: RaceProfile;
+  subRaces: SubRaceDefinition[]; // 1-3 entries
+}
+
+export interface TraitDefinition {
+  id: Id;
+  name: string;
+  profile: RaceProfile; // added on top of the resolved race+subRace profile
+}
 
 export interface MonsterArchetype {
   id: Id;
@@ -487,6 +581,12 @@ export interface MonsterArchetype {
    *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of
    *  silently leaving the monster with nothing but its basic attack. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
+  race: Id;           // data/monster-races.json race id
+  subRace?: Id;        // must belong to that race's subRaces if present
+  traitIds?: Id[];      // data/monster-traits.json ids, default []
+  /** Multiple of 10, undefined only for the finalBoss archetype — the depth below which floor.ts
+   *  will never pick this archetype at random. See §5 of the design spec. */
+  minFloor?: number;
 }
 
 export type MonsterTier = "normal" | "elite" | "boss";
@@ -503,6 +603,9 @@ export interface Monster {
   tier: MonsterTier;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  race: Id;
+  subRace?: Id;
+  traitIds?: Id[];
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;
   executeCooldownTurns?: number;
@@ -548,9 +651,18 @@ export interface Summon {
 export interface SummonArchetype {
   id: Id;
   name: string;
+  /** Fixed trait of this creature, independent of the owner's own `speed` — used for its turn-order
+   *  position every round it's out, and to decide whether it acts immediately the round it's cast
+   *  (faster than its owner) or waits for its first normal turn next round (see `runCharacterTurn`,
+   *  `src/engine/combat.ts`). */
+  speed: number;
   /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];
+  /** Never takes a turn — no skill, no basic-attack fallback, and `actionsTaken` never increments, so
+   *  it can't expire by running out of actions either. For a summon whose whole purpose is to just
+   *  stand there (Totem Recall) rather than fight, so its lifetime depends only on actually dying. */
+  passive?: boolean;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };
@@ -695,6 +807,10 @@ export interface GameState {
       Skipped if `pendingReflection` is currently set. Cleared once the player picks a response
       (`Game.pickCampReflectionChoice`). */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
+  /** Set by `Game.clearFinishedCombat()` on a boss-room victory at a floor depth that's a multiple
+      of 10 — one line randomly picked from a fixed pool, pinned so a re-render shows the same text.
+      Cleared by `Game.dismissFloorMilestoneMessage()`. */
+  pendingFloorMilestoneMessage?: string | null;
   /** Which option (0/1/2) was picked at each Camp Reflection tier — a genuine per-tier record,
       unlike `eventReflectionStances`, since each tier fires exactly once per run. */
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;

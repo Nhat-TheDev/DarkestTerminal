@@ -1,4 +1,4 @@
-import type { CharacterClass, SkillDefinition, SkillRankDefinition } from "../types";
+import type { CharacterClass, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 
 /**
@@ -21,6 +21,11 @@ for (const cls of CLASSES) {
     throw new Error(`data/classes.json: class "${cls.id}" must have exactly 6 skills (has ${cls.skills.length})`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
+
+  const passiveRanks = cls.passiveSkill.ranks.map((r) => r.rank);
+  if (passiveRanks.length !== 3 || ![1, 2, 3].every((rank) => passiveRanks.includes(rank as 1 | 2 | 3))) {
+    throw new Error(`data/classes.json: class "${cls.id}"'s passiveSkill must have exactly ranks 1, 2, and 3 (has ${JSON.stringify(passiveRanks)})`);
+  }
 }
 
 export function getClass(id: string): CharacterClass {
@@ -62,4 +67,23 @@ export function effectiveSkillRank(skill: SkillDefinition, level: number): numbe
     if (r.unlockLevel <= level && r.rank > rank) rank = r.rank;
   }
   return rank;
+}
+
+/** Rank derived purely from level, independent of anything being cast — a passive is never queued
+ *  or triggered by the player, so there's no "has this been cast" question the way a normal
+ *  skill's `effectiveSkillRank` implicitly assumes. */
+export function getUnlockedPassiveRank(passive: PassiveSkillDefinition, level: number): 0 | 1 | 2 | 3 {
+  let rank: 0 | 1 | 2 | 3 = 0;
+  for (const r of passive.ranks) {
+    if (r.unlockLevel <= level && r.rank > rank) rank = r.rank;
+  }
+  return rank;
+}
+
+/** The rank definition (mechanic fields) currently unlocked at `level`, or null below rank 1 —
+ *  the single lookup every passive's engine/UI code shares instead of each keeping its own table. */
+export function passiveRankDef(passive: PassiveSkillDefinition, level: number): PassiveRankDefinition | null {
+  const rank = getUnlockedPassiveRank(passive, level);
+  if (rank === 0) return null;
+  return passive.ranks.find((r) => r.rank === rank) ?? null;
 }

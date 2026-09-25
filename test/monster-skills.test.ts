@@ -202,22 +202,22 @@ describe("elite/boss skill kit", () => {
 
 describe("regular monster skills", () => {
   test("Black Bat's Blood Drain has lifestealPercent 50", () => {
-    expect(getMonsterSkill("blood-drain").effects).toEqual([{ kind: "damage", amount: 2, lifestealPercent: 50 }]);
+    expect(getMonsterSkill("blood-drain").effects).toEqual([{ kind: "damage", amount: 12, lifestealPercent: 50 }]);
   });
 
-  test("Zombie's Regeneration is a self-heal", () => {
+  test("Zombie's Regeneration is a self-heal that floors at 20% of its own maxHp", () => {
     const skill = getMonsterSkill("regeneration");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "heal", amount: 15 }]);
+    expect(skill.effects).toEqual([{ kind: "heal", amount: 15, maxHpPercent: 20 }]);
   });
 
   test("Slime's Acid Spit procs acid-burn and corroded together, Spider's Web Spit procs webbed", () => {
     expect(getMonsterSkill("acid-spit").effects).toEqual([
-      { kind: "damage", amount: 2 },
+      { kind: "damage", amount: 10 },
       { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5, durationTurns: 2 },
     ]);
     expect(getMonsterSkill("web-spit").effects).toEqual([
-      { kind: "damage", amount: 2 },
+      { kind: "damage", amount: 13 },
       { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5, durationTurns: 2 },
     ]);
   });
@@ -225,7 +225,7 @@ describe("regular monster skills", () => {
   test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
     const skill = getMonsterSkill("guard-stance");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }]);
+    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 2 }]);
   });
 
   test("actionWeights.normal is 70/30 for random archetypes, 100/0 for Zombie/Skeleton Warrior", () => {
@@ -254,10 +254,10 @@ describe("regular monster skills", () => {
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
     assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
 
-    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
 
-    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
+    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 

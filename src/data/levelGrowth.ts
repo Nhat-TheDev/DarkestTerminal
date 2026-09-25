@@ -24,6 +24,12 @@ interface TierMultiplier {
   exp: number;
 }
 
+interface DepthBuffStatCoefficients {
+  maxHp: number;
+  attack: number;
+  defense: number;
+}
+
 interface LevelGrowthFile {
   tiers: Tier[];
   expTiers: ExpTier[];
@@ -31,6 +37,9 @@ interface LevelGrowthFile {
   bossMultiplier: TierMultiplier;
   expRewardDepthRate: number;
   bossFloorInterval: number;
+  monsterDepthBuffBracketFloors: number;
+  monsterDepthBuffBracketIncrements: number[];
+  monsterDepthBuffStatCoefficients: DepthBuffStatCoefficients;
 }
 
 const DATA = levelGrowthJson as unknown as LevelGrowthFile;
@@ -40,6 +49,26 @@ export const ELITE_MULTIPLIER: TierMultiplier = DATA.eliteMultiplier;
 export const BOSS_MULTIPLIER: TierMultiplier = DATA.bossMultiplier;
 export const EXP_REWARD_DEPTH_RATE = DATA.expRewardDepthRate;
 export const BOSS_FLOOR_INTERVAL = DATA.bossFloorInterval;
+export const MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS: DepthBuffStatCoefficients = DATA.monsterDepthBuffStatCoefficients;
+
+/** Step function, not interpolated — a monster spawned right after crossing a bracket boundary
+ *  gets the full new bracket's bonus immediately (docs/superpowers/specs/2026-09-16-monster-race-
+ *  damage-scaling-design.md §4). Bonus is the cumulative sum of each bracket's increment; once
+ *  the configured increments run out, the last one keeps applying every subsequent bracket
+ *  forever — depth is uncapped, so the bonus never plateaus. */
+export function monsterDepthBuffPercent(floorDepth: number): number {
+  const bracketFloors = DATA.monsterDepthBuffBracketFloors;
+  const increments = DATA.monsterDepthBuffBracketIncrements;
+  const bracketIndex = Math.floor((floorDepth - 1) / bracketFloors);
+  if (bracketIndex <= 0) return 0;
+
+  if (bracketIndex <= increments.length) {
+    return increments.slice(0, bracketIndex).reduce((sum, inc) => sum + inc, 0);
+  }
+  const lastIncrement = increments[increments.length - 1]!;
+  const allIncrementsTotal = increments.reduce((sum, inc) => sum + inc, 0);
+  return allIncrementsTotal + (bracketIndex - increments.length) * lastIncrement;
+}
 
 function tierFor(level: number): Tier {
   return DATA.tiers.find((t) => level <= t.maxLevel) ?? DATA.tiers[DATA.tiers.length - 1]!;

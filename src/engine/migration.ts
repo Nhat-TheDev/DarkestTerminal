@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { GameState } from "../types";
+import type { GameState, Monster } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
 import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
+import { getArchetype } from "../data/monsters";
 
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
 export function migrateGameState(raw: unknown): GameState {
@@ -95,4 +96,19 @@ export function migrateGameState(raw: unknown): GameState {
   }
 
   return state;
+}
+
+/** Monsters saved before the race/trait system (feat/monster-race-damage-scaling) don't carry
+ *  `race`/`subRace`/`traitIds` — backfilled here from the archetype, the same source spawnMonster
+ *  reads them from. Without this, any damage effect against such a monster throws inside
+ *  `resolveRaceProfile` the instant it's targeted. */
+export function migrateMonsters(monsters: Monster[]): Monster[] {
+  for (const monster of monsters) {
+    if (monster.race !== undefined) continue;
+    const archetype = getArchetype(monster.archetypeId);
+    monster.race = archetype.race;
+    monster.subRace = archetype.subRace;
+    monster.traitIds = archetype.traitIds;
+  }
+  return monsters;
 }

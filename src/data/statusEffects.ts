@@ -57,6 +57,5 @@ export function formatStatusEffectMechanics(def: StatusEffectDefinition): string
   if (def.untargetable) parts.push(t("item.effectUntargetable"));
   if (def.breakBonus?.basicAttackGuaranteedCrit) parts.push(t("item.effectBreakBonusCrit"));
   if (def.breakBonus?.skillDamageBonusPercent) parts.push(t("item.effectBreakBonusSkillPercent", { percent: def.breakBonus.skillDamageBonusPercent }));
-  if (def.empowersMinions) parts.push(t("item.effectEmpowersMinions", { hp: def.empowersMinions.maxHpPercent, attack: def.empowersMinions.attackPercent }));
   return parts.length > 0 ? parts.join(", ") : t("item.effectNoPerTurn");
 }

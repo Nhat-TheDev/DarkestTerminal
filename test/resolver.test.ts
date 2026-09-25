@@ -1,9 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory } from "../src/engine/resolver";
-import type { LogEntry, CombatantRef, StatusEffectDefinition } from "../src/types";
+import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillEffect } from "../src/types";
 import { makeCtx } from "./helpers";
 import { Game } from "../src/engine/game";
-import { startCombat } from "../src/engine/combat";
+import { startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -116,6 +116,32 @@ describe("resolver", () => {
     expect(Number.isInteger(healed)).toBe(true);
     expect(target.hp - before).toBe(healed);
     expect(log.some((l) => /recovers \d+ HP\./.test(l.text))).toBe(true);
+  });
+
+  test("heal with maxHpPercent uses whichever is larger against the flat amount", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    // 20% of maxHp (e.g. 200) beats a flat 15
+    resolveSkillEffect({ kind: "heal", amount: 15, maxHpPercent: 20 }, target, target, { log: [] });
+    expect(target.hp).toBe(Math.min(target.maxHp, 1 + Math.round(target.maxHp * 0.2)));
+  });
+
+  test("heal with maxHpPercent falls back to the flat amount when it's larger", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    // 1% of a normal party member's maxHp is well under a flat 999
+    resolveSkillEffect({ kind: "heal", amount: 999, maxHpPercent: 1 }, target, target, { log: [] });
+    expect(target.hp).toBe(target.maxHp);
+  });
+
+  test("heal with no maxHpPercent behaves exactly as before", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.hp = 1;
+    resolveSkillEffect({ kind: "heal", amount: 15 }, target, target, { log: [] });
+    expect(target.hp).toBe(16);
   });
 
   test("modifyStat clamps fear/hunger/thirst to [0, 100]", () => {
@@ -254,8 +280,10 @@ describe("resolver", () => {
   });
 
   test("a status effect's own damage tick (DoT) is flat (amount + maxHpPercent), not attack-minus-defense", () => {
-    const { ctx } = makeCtx();
-    const victim = ctx.monsters[0]!;
+    // goblin (Demi-Human > Marauder) has no physical resist/weak, so this test's untyped
+    // (default "physical") DoT tick isn't perturbed by race resist/weak — unlike a random floor-1
+    // monster, which could land on a race with a physical weakness/resist by chance.
+    const victim = spawnMonster("goblin", 1);
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
     const before = victim.hp;
@@ -357,6 +385,171 @@ describe("room-clear status effect cleanup", () => {
     expect(weakened).toBeDefined();
     expect(weakened!.turnsRemaining).toBe(2);
     expect(vanguard.defense).toBe(baseDef - 6);
+  });
+});
+
+describe("SkillEffect.damageType", () => {
+  test("a damage effect with no damageType compiles and resolves exactly as before", () => {
+    const effect: SkillEffect = { kind: "damage", amount: 10 };
+    expect(effect.damageType).toBeUndefined();
+  });
+
+  test("a damage effect can declare an explicit damageType", () => {
+    const effect: SkillEffect = { kind: "damage", amount: 10, damageType: "fire" };
+    expect(effect.damageType).toBe("fire");
+  });
+});
+
+describe("race resist/weak in resolveSkillEffect", () => {
+  test("100% resist yields exactly 0 damage, not the usual floor-of-1", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    source.attack = 50;
+    const target = spawnMonster("swamp-slime", 1); // Toxic Ooze subRace: resistPercent.poison = 100
+    const effect: SkillEffect = { kind: "damage", amount: 10, damageType: "poison" };
+    const dealt = resolveSkillEffect(effect, source, target, { log: [] });
+    expect(dealt).toBe(0);
+    expect(target.hp).toBe(target.maxHp);
+  });
+
+  test("combined 100% resist and 100% weak still yields exactly 0 (resist dominates)", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    source.attack = 50;
+    const target = spawnMonster("fire-elemental", 1); // resistPercent.fire = 100
+    const effect: SkillEffect = { kind: "damage", amount: 10, damageType: "fire" };
+    const dealt = resolveSkillEffect(effect, source, target, { log: [] });
+    expect(dealt).toBe(0);
+  });
+
+  test("partial resist reduces damage but never to 0 (floor-of-1 still applies when resist < 100)", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    source.attack = 50;
+    const target = spawnMonster("slime", 1); // Ooze: resistPercent.poison = 50 (race-level)
+    const effect: SkillEffect = { kind: "damage", amount: 10, damageType: "poison" };
+    const dealt = resolveSkillEffect(effect, source, target, { log: [] });
+    expect(dealt).toBeGreaterThan(0);
+
+    const targetB = spawnMonster("slime", 1);
+    const physicalEffect: SkillEffect = { kind: "damage", amount: 10 };
+    const physicalDealt = resolveSkillEffect(physicalEffect, source, targetB, { log: [] });
+    expect(dealt).toBeLessThan(physicalDealt);
+  });
+
+  test("a Character target is never affected by race resist/weak lookups", () => {
+    const { ctx } = makeCtx();
+    const source = spawnMonster("skeleton", 1);
+    const target = ctx.party[1]!;
+    const before = target.hp;
+    const effect: SkillEffect = { kind: "damage", amount: 10, damageType: "bleed" };
+    const dealt = resolveSkillEffect(effect, source, target, { log: [] });
+    expect(dealt).toBeGreaterThan(0);
+    expect(target.hp).toBeLessThan(before);
+  });
+});
+
+describe("stackable modifyCombatStat re-application (Mage's shred)", () => {
+  test("re-applying a stackable modifyCombatStat status a 2nd time adds a fresh delta, not just a refreshed duration", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.defense = 40;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    // max(5, round(40 * 5 / 100)) = max(5, 2) = 5
+    expect(target.defense).toBe(35);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    // 2nd stack computed against the now-current defense (35): max(5, round(35 * 5 / 100)) = max(5, 2) = 5
+    expect(target.defense).toBe(30);
+  });
+
+  test("stacking caps at maxStacks — a 4th application on a maxStacks:3 status adds no further delta", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.defense = 40;
+    for (let i = 0; i < 3; i++) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    const afterThree = target.defense;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    expect(target.defense).toBe(afterThree);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")!.stacks).toBe(3);
+  });
+
+  test("expireStatusEffect undoes the full accumulated delta across all stacks, not just the last one applied", () => {
+    const { ctx } = makeCtx();
+    const source = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.defense = 40;
+    const before = target.defense;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    expect(target.defense).toBe(before);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")).toBeUndefined();
+  });
+});
+
+describe("Acolyte passive: own-healing-output boost", () => {
+  test("healing cast by an Acolyte via their own skill is boosted", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
+    acolyte.level = 35; // rank 3: +25%
+    const target = ctx.party[1]!;
+    target.hp = 1;
+    const healed = resolveSkillEffect({ kind: "heal", amount: 20 }, acolyte, target, { log: [], castByOwnClassSkill: true });
+    expect(healed).toBe(Math.round(20 * 1.25));
+  });
+
+  test("healing from an item the Acolyte uses (not their own class skill) is unaffected", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
+    acolyte.level = 35;
+    const target = ctx.party[1]!;
+    target.hp = 1;
+    const healed = resolveSkillEffect({ kind: "heal", amount: 20 }, acolyte, target, { log: [] });
+    expect(healed).toBe(20);
+  });
+
+  test("healing from a non-Acolyte source is unaffected even when castByOwnClassSkill is set", () => {
+    const { ctx } = makeCtx();
+    const nonAcolyte = ctx.party.find((p) => p.classId !== "acolyte")!;
+    const target = ctx.party[1]!;
+    target.hp = 1;
+    const healed = resolveSkillEffect({ kind: "heal", amount: 20 }, nonAcolyte, target, { log: [], castByOwnClassSkill: true });
+    expect(healed).toBe(20);
+  });
+
+  test("below level 5 (rank 0), no boost applies even via the Acolyte's own skill", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
+    acolyte.level = 1;
+    const target = ctx.party[1]!;
+    target.hp = 1;
+    const healed = resolveSkillEffect({ kind: "heal", amount: 20 }, acolyte, target, { log: [], castByOwnClassSkill: true });
+    expect(healed).toBe(20);
+  });
+});
+
+describe("Acolyte passive: acolyteDebuffResistPercent", () => {
+  test("scales with the unlocked passive rank: 0/30/40/50 at rank 0/1/2/3", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
+    for (const [level, expected] of [
+      [1, 0],
+      [5, 30],
+      [20, 40],
+      [35, 50],
+    ] as const) {
+      acolyte.level = level;
+      expect(acolyteDebuffResistPercent(acolyte)).toBe(expected);
+    }
+  });
+
+  test("is 0 for a non-Acolyte character", () => {
+    const { ctx } = makeCtx();
+    const nonAcolyte = ctx.party.find((p) => p.classId !== "acolyte")!;
+    nonAcolyte.level = 35;
+    expect(acolyteDebuffResistPercent(nonAcolyte)).toBe(0);
   });
 });
 

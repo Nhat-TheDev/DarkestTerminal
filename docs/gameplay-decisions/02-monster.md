@@ -27,6 +27,85 @@ Unlike `growthWeights` (which only weights the per-level growth increment, leavi
 
 Current per-archetype assignment: `data/monsters.json` field `monsterType` — check the JSON directly rather than trusting an enumeration here.
 
+### Race, subRace & traits
+
+Orthogonal to `monsterType` above — `monsterType` is *how* an archetype's stat budget is split;
+`race`/`subRace`/`traitIds` are *what it is and what hurts it*. Every archetype carries a `race`
+(one of 8: `undead`, `beast`, `shadow-creature`, `demi-human`, `human-like`, `slime`, `elemental`,
+`golem`), an optional `subRace` (1-3 per race), and optional `traitIds` (cross-cutting, stack
+additively across races: `flying`, `plated`, `venomous`, `swift`, `massive`) — `data/monster-races.json`
+and `data/monster-traits.json` are the source of truth, not this doc.
+
+Each race/subRace/trait carries a `RaceProfile`: `resistPercent`/`weakPercent` per `DamageType`
+(`physical`/`magic`/`fire`/`ice`/`lightning`/`poison`/`bleed`/`holy`) and a `statBuff`
+(`maxHpPercent`/`attackPercent`/`defensePercent`/`speedFlat`). Merge order:
+race → subRace **overrides** matching `resistPercent`/`weakPercent` keys per-key (unmentioned keys
+stay inherited) and **adds** to `statBuff`; every trait's whole profile then **adds** on top
+(sum, not override) — `src/data/monsterRaces.ts`'s `resolveRaceProfile`. Resolved `resistPercent`/
+`weakPercent` are clamped to `[0, 100]`.
+
+`statBuff` applies once, at spawn (`spawnMonster`, `src/data/monsters.ts`), alongside the existing
+`monsterType`/tier multipliers — `speed` is a flat add rather than a percent (nothing else in this
+game percent-scales speed), clamped to a minimum of 1 so a heavily-`speedFlat`-stacked archetype
+(e.g. Ancient Golem: Golem race `-5` + `massive` trait `-4`) never goes to 0 or negative.
+
+`resistPercent`/`weakPercent` apply per-hit, in `resolveSkillEffect`'s `"damage"` case
+(`src/engine/resolver.ts`): `finalMultiplier = (1 - resist/100) * (1 + weak/100)` for the
+effect's `damageType` (defaults to `"physical"` when the effect doesn't declare one). A 100%
+resist yields **exactly 0 damage** — not the usual floor-of-1 every other damage instance gets —
+this is what makes an undead Skeletal archetype (100% bleed resist) genuinely immune to bleeding
+out, instead of still losing 1 HP/turn. Resist/weak never applies to a `Character` target, only a
+`Monster`.
+
+### Floor-depth buff
+
+A universal, race-independent multiplier on top of the existing floor-depth growth curve
+(`growthBonusForDepth`) — 10-floor brackets, each adding a front-loaded then tapering increment
+(+10, +8, +7, +6, +5, +4.25, +3.5, +3, +2.5, +2) on top of the running total. `data/level-growth.json`'s
+`monsterDepthBuffBracketIncrements` (paired with `monsterDepthBuffBracketFloors`, the bracket size)
+is the source of truth for those increments; `monsterDepthBuffPercent` (`src/data/levelGrowth.ts`)
+sums them cumulatively as a **step function, not interpolated** — a monster spawned right after
+crossing a boundary (e.g. floor 11) gets the full new bracket's bonus immediately, no gradual ramp.
+Depth is uncapped: once the configured increments run out (floor 120+), the last one (+2%) keeps
+being added every subsequent bracket forever, so the bonus never plateaus — matching the game's
+infinite-floor roguelike design instead of stopping at a fixed cap.
+
+That base percent is scaled per-stat before being applied in `spawnMonster`
+(`monsterDepthBuffStatCoefficients`, same file): **HP ×1.5, attack ×1, defense ×0.75** — monsters
+get tankier faster than they hit harder or armor up as floors get deeper, widening the late-game's
+"HP sponge" shape rather than scaling all 3 stats uniformly. `speed` is untouched by floor depth,
+same as it always has been.
+
+Every time the player clears the boss/guard room of a floor whose depth is a multiple of 10, a
+dedicated screen (`src/ui/screens/floorMilestone.ts`) shows one line randomly picked from a
+5-line atmospheric pool, dismissed with Enter — deliberately never stating "monsters got
+stronger" outright, matching this game's flavor-text tone. `GameState.pendingFloorMilestoneMessage`
+/ `Game.clearFinishedCombat()` / `Game.dismissFloorMilestoneMessage()` drive it; it takes priority
+in `syncUiToGameState()` the same way `pendingReflection`/`pendingCampReflectionTier` do.
+
+### Min-floor gate
+
+Every archetype `floor.ts` can draw from at random (i.e. every archetype except the scripted
+`finalBoss`) carries a `minFloor` — a multiple of 10 below which it will never be picked, enforced
+by `assertMonsterDataConsistent` (`src/data/monsters.ts`) at load time. `data/monsters.json` is the
+source of truth for the actual values, not this doc.
+
+This gates 2 things, both in `src/data/floor.ts`: which **archetype** fills a tier slot
+(`ARCHETYPES_BY_TIER[tier].filter(a => (a.minFloor ?? 0) <= depth)`), and — more importantly —
+which **`ROOM_COMPOSITION_TEMPLATES` entry is even selectable** at a given depth
+(`eligibleTemplatesAtDepth`: a template is only eligible if *every* tier it lists has at least 1
+archetype available at that depth). This is deliberately not "fall back to the one low-`minFloor`
+archetype in that tier" — a template needing "strong" tier simply isn't rolled at all below
+whatever floor the earliest strong-tier archetype unlocks at, so early floors stop rolling
+strong-tier encounters entirely instead of always resolving to one repetitive stand-in.
+
+**Crash-safety invariant**, also enforced by the same validator: the weak tier, the medium tier,
+and the guard-room pool (`roles` including both `"elite"` and `"boss"`) must each have at least 1
+archetype at `minFloor: 0` — otherwise a room at floor 1 could have nothing eligible to spawn.
+Skeleton Guard (the roster's one triple-role archetype, in both the regular-combat and guard-room
+pools) is the one strong-tier/guard-eligible archetype that has to stay at `minFloor: 0` to satisfy
+the guard-room side of this invariant.
+
 ### Targeting by `aggro`
 
 Default rule (used by `aggressive` and `defensive`): **weighted random** over every living character in the party, weighted by the character's current `Character.aggro`. The higher a character's `aggro`, the more likely it is to be picked as the target. `opportunistic` mirrors this rule rather than ignoring it — see below.

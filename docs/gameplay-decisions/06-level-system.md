@@ -49,7 +49,7 @@ This document intentionally does **not** hand-maintain the resulting character-l
 **Known limitations** (still true regardless of the current numbers):
 - Any such simulation uses average values (number of combat rooms, monsters per room, random archetype among the regular combat archetypes) — it does not account for variance between specific seeds.
 - Guard-room archetypes other than the one used as a reference in a given simulation run don't automatically get their own table — their numbers vary proportionally to each archetype's different `baseAttack`/`baseHp`/`baseDefense` (`02-monster.md` section 2).
-- Skill-unlock milestones (`unlockLevel` per skill, `01-class-skill.md` section 1) are spread across the level range rather than being front-loaded into the first few levels — check `data/classes.json` for the current spacing.
+- Skill-unlock milestones (`unlockLevel` per skill, `01-class-skill.md` section 1) are spread across the level range rather than being front-loaded into the first few levels — check `data/classes.json` for the current spacing. The 1 passive skill per class (§1.13) is the exception: its 5/20/35 rank schedule is fixed and identical across every class, not spread per-skill like the active-skill table.
 
 ### 6.8 Class-dependent growth (`growthWeights`)
 
@@ -89,6 +89,8 @@ expReward(archetype, floorDepth) = archetype.expReward + floor(floorDepth × exp
 `expCostForLevel(level)` = the cumulative sum of the `expCost` of the bucket containing each level, from level 2 up to the level in question (the exact same cumulative-sum formula as `growthBonus` in §6.3, but reading from `expTiers[]` through a separate `expTierFor()` function, not sharing the stat table's `tierFor()` — `src/data/levelGrowth.ts`) — clamped at `MAX_LEVEL` (characters still have a cap, unlike monsters/floors).
 
 **Leveling up**: whenever `partyExp` exceeds the `expCostForLevel(nextLevel)` threshold, the whole party levels up together (still sharing a single level, only the trigger source differs) — `hp`/`mp` fully restore, skills unlock if `unlockLevel` matches, keeping the "leveling up = full recovery" rule from `05-character-stats.md` section 5.
+
+**Passive skill unlock schedule** (`01-class-skill.md` §1.13): every class's single passive skill unlocks its 3 ranks at a fixed **5 / 20 / 35**, the same for all 9 classes — a separate, uniform schedule from each class's own per-skill `unlockLevel` spacing above. Unlike an active skill, a passive's current rank is read directly off `Character.level` whenever it's needed (`getUnlockedPassiveRank`, `src/data/classes.ts`) rather than being unlocked once and cached — there's no `unlockedSkillIds`-style bookkeeping for it, since it's derived, not "learned."
 
 The number of monsters killable per floor is fixed by the generated layout (`technical-decisions.md` §1) — there's no mechanism to farm extra kills within a single floor. The event room (`08-events.md` §8) is an optional detour for Item/Artifact rewards, or the player can go straight through.
 

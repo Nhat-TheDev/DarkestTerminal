@@ -76,17 +76,27 @@ const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = [
 
 type RoomSpawnFn = (rng: Rng, depth: number) => Monster[];
 
+function eligibleAtDepth(pool: MonsterArchetype[], depth: number): MonsterArchetype[] {
+  return pool.filter((a) => (a.minFloor ?? 0) <= depth);
+}
+
+function eligibleTemplatesAtDepth(depth: number): PowerTier[][] {
+  return ROOM_COMPOSITION_TEMPLATES.filter((template) =>
+    template.every((tier) => eligibleAtDepth(ARCHETYPES_BY_TIER[tier], depth).length > 0)
+  );
+}
+
 function spawnCombatRoomMonsters(rng: Rng, depth: number): Monster[] {
-  const template = rng.pick(ROOM_COMPOSITION_TEMPLATES);
+  const template = rng.pick(eligibleTemplatesAtDepth(depth));
   return template.map((tier) => {
-    const archetype = rng.pick(ARCHETYPES_BY_TIER[tier]).id;
+    const archetype = rng.pick(eligibleAtDepth(ARCHETYPES_BY_TIER[tier], depth)).id;
     return spawnMonster(archetype, depth);
   });
 }
 
 function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
   const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
-  const archetype = rng.pick(GUARD_ROOM_ARCHETYPES).id;
+  const archetype = rng.pick(eligibleAtDepth(GUARD_ROOM_ARCHETYPES, depth)).id;
   return [spawnMonster(archetype, depth, { tier })];
 }
 
@@ -98,8 +108,9 @@ const EVENT_GUARDIAN_ARCHETYPES = [...ARCHETYPES_BY_TIER.medium, ...ARCHETYPES_B
 
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
   const count = rng.int(1, 2);
+  const eligible = eligibleAtDepth(EVENT_GUARDIAN_ARCHETYPES, depth);
   return Array.from({ length: count }, () => {
-    const archetype = rng.pick(EVENT_GUARDIAN_ARCHETYPES).id;
+    const archetype = rng.pick(eligible).id;
     const m = spawnMonster(archetype, depth);
     m.maxHp = Math.round(m.maxHp * EVENT_GUARDIAN_STAT_MULTIPLIER.maxHp);
     m.hp = m.maxHp;

@@ -21,7 +21,7 @@ import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
-import { spawnMonster } from "../src/data/monsters";
+import { spawnMonster, getArchetype } from "../src/data/monsters";
 import type { GameState, Summon } from "../src/types";
 
 const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
@@ -295,6 +295,33 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       const save = loadSave("slot1");
       save.state.coins = -1;
       expect(() => gameFromSave(save, "slot1")).toThrow();
+    });
+  });
+
+  test("gameFromSave backfills race/subRace/traitIds onto monsters saved before the race/trait system existed", () => {
+    withGame(12, (game) => {
+      const rat = spawnMonster("dungeon-rat", 1);
+      game.ctx.monsters.push(rat);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [rat.id];
+      room.cleared = false;
+      game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+
+      const save = loadSave("slot1");
+      const savedRat = save.monsters.find((m) => m.id === rat.id)! as unknown as Record<string, unknown>;
+      delete savedRat.race;
+      delete savedRat.subRace;
+      delete savedRat.traitIds;
+
+      const resumed = gameFromSave(save, "slot1");
+      const resumedRat = resumed.ctx.monsters.find((m) => m.id === rat.id)!;
+      const archetype = getArchetype("dungeon-rat");
+      expect(resumedRat.race).toBe(archetype.race);
+      expect(resumedRat.subRace).toBe(archetype.subRace);
+      expect(resumedRat.traitIds).toEqual(archetype.traitIds);
     });
   });
 });

@@ -4,7 +4,8 @@ import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
-import { getClass } from "../../data/classes";
+import { getClass, passiveRankDef } from "../../data/classes";
+import type { PassiveRankDefinition, PassiveSkillDefinition } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
@@ -45,6 +46,59 @@ const DETAIL_WIDTH = 32 - DETAIL_INDENT;
 /** The "what does this actually do" line under a list entry — wrapped, indented, dimmed. */
 const detailLines = (text: string): TextChunk[][] =>
   wrapText(text, DETAIL_WIDTH).map((line) => [colorChunk(t("ui.characterInfoDetailLine", { text: line }), PALETTE.dim)]);
+
+/**
+ * The passive's actual mechanical effect at its currently-unlocked rank, composed straight from
+ * `rankDef`'s fields — never a hand-typed number, so this can never drift from what the engine
+ * applies (`party.ts`/`resolver.ts`/`combat.ts`/`combatHooks.ts`/`artifacts.ts` all read the exact
+ * same `data/classes.json` fields). Driven by which fields are present, not by `classId` — same
+ * shape as `formatArtifactEffect`/`formatStatusEffectMechanics` switching on effect kind rather
+ * than on which artifact/status it came from, so a class needs no code change here unless it
+ * introduces a genuinely new field.
+ */
+export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
+  const parts: string[] = [];
+  if (rankDef.maxHpPercent !== undefined) {
+    parts.push(t("passive.vanguardBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
+  }
+  if (rankDef.onHitStatusEffectId !== undefined) {
+    const shredStat = getStatusEffect(rankDef.onHitStatusEffectId).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === "defense");
+    parts.push(t("passive.mageShred", { flat: Math.abs(shredStat?.amount ?? 0), percent: Math.abs(shredStat?.minPercent ?? 0) }));
+  }
+  if (rankDef.bonusPercent !== undefined) {
+    parts.push(t("passive.roguePoisonBonus", { percent: rankDef.bonusPercent, flat: rankDef.bonusFlat ?? 0 }));
+  }
+  if (rankDef.healBoostPercent !== undefined) {
+    parts.push(t("passive.acolyteHealBoost", { percent: rankDef.healBoostPercent }));
+  }
+  if (rankDef.debuffResistPercent !== undefined) {
+    parts.push(t("passive.acolyteDebuffResist", { percent: rankDef.debuffResistPercent }));
+  }
+  if (rankDef.hpThresholdPercent !== undefined) {
+    parts.push(
+      t("passive.vikingBloodFury", { threshold: rankDef.hpThresholdPercent, bonus: rankDef.attackBonusPercent ?? 0, selfDamage: passive.selfDamagePerHitMaxHPPercent ?? 0 })
+    );
+  }
+  if (rankDef.procChancePercent !== undefined) {
+    parts.push(t("passive.plagueDoctorProc", { percent: rankDef.procChancePercent }));
+  }
+  if (rankDef.critChancePercent !== undefined) {
+    parts.push(t("passive.archerCrit", { chance: rankDef.critChancePercent, multiplier: rankDef.critMultiplierPercent ?? 0 }));
+  }
+  if (rankDef.dodgePercent !== undefined) {
+    parts.push(t("passive.ninjaDodge", { percent: rankDef.dodgePercent }));
+  }
+  if (rankDef.secondCloneChancePercent !== undefined) {
+    parts.push(t("passive.ninjaSecondClone", { chance: rankDef.secondCloneChancePercent, max: passive.maxClones ?? 0 }));
+  }
+  if (rankDef.minionMaxHpPercent !== undefined) {
+    parts.push(t("passive.summonerMinionBuff", { hp: rankDef.minionMaxHpPercent, attack: rankDef.minionAttackPercent ?? 0 }));
+  }
+  if (rankDef.maxActiveMinions !== undefined) {
+    parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
+  }
+  return parts.join(" ");
+}
 
 /**
  * One stat as `Name  total`, then its sources on an indented line: the base value followed by one
@@ -181,8 +235,22 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       character.aggro
     ),
     [],
-    [colorChunk(t("ui.characterInfoArtifactsLabel"), PALETTE.title)],
+    [colorChunk(t("ui.characterInfoPassiveLabel"), PALETTE.title)],
   ];
+
+  const rankDef = passiveRankDef(cls.passiveSkill, character.level);
+  if (!rankDef) {
+    const firstUnlock = cls.passiveSkill.ranks[0]!.unlockLevel;
+    lines.push([colorChunk(t("ui.characterInfoPassiveItemLocked", { name: cls.passiveSkill.name, level: firstUnlock }), PALETTE.dim)]);
+  } else {
+    lines.push([colorChunk(t("ui.characterInfoPassiveItemRanked", { name: cls.passiveSkill.name, rank: rankDef.rank }), PALETTE.text)]);
+    lines.push(...detailLines(formatPassiveEffect(cls.passiveSkill, rankDef)));
+    const nextRank = cls.passiveSkill.ranks.find((r) => r.rank === rankDef.rank + 1);
+    if (nextRank) lines.push(...detailLines(t("ui.characterInfoPassiveNextRank", { level: nextRank.unlockLevel })));
+  }
+
+  lines.push([]);
+  lines.push([colorChunk(t("ui.characterInfoArtifactsLabel"), PALETTE.title)]);
 
   if (character.equippedArtifactIds.length === 0) {
     lines.push([colorChunk(t("ui.characterInfoNone"), PALETTE.dim)]);

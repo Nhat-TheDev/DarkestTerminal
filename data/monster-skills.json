@@ -1,5 +1,294 @@
 [
   {
+    "id": "bite",
+    "name": "Bite",
+    "description": "A gnawing bite, dealing slightly more damage than a plain scratch.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 14
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "blood-drain",
+    "name": "Blood Drain",
+    "description": "Drains blood from the target, dealing damage and healing itself for half of it.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 12,
+        "lifestealPercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "acid-spit",
+    "name": "Acid Spit",
+    "description": "Spits corrosive acid, damaging and possibly corroding the target's armor.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "acid-burn",
+        "alsoApplyStatusEffectIds": [
+          "corroded"
+        ],
+        "chance": 0.5,
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "whispered-name",
+    "name": "Whispered Name",
+    "description": "Says something under its breath that isn't meant for anyone living, and the air goes wrong where it lands.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 15
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "poison-bite",
+    "name": "Poison Bite",
+    "description": "A venomous bite, dealing damage and possibly poisoning the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 12
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned",
+        "chance": 0.5,
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "bone-throw",
+    "name": "Bone Throw",
+    "description": "Throws a sharpened bone at the target, ranged damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 12
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "regeneration",
+    "name": "Regeneration",
+    "description": "Rotting flesh knits back together, restoring HP.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 15,
+        "maxHpPercent": 20
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "quick-bite",
+    "name": "Quick Bite",
+    "description": "A fast snapping bite, dealing slightly more damage than a plain scratch.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "web-spit",
+    "name": "Web Spit",
+    "description": "Sprays sticky webbing at the target, damaging and possibly slowing it down.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 13
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "webbed",
+        "chance": 0.5,
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "grave-chill",
+    "name": "Grave Chill",
+    "description": "Reaches through cloth and mail alike, and leaves whatever it touched slower to close its guard again.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 13
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "chance": 0.5,
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "ember-lash",
+    "name": "Ember Lash",
+    "description": "Flicks a whip of live coal across the dark; whatever it catches keeps burning after it has gone.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 15
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning",
+        "chance": 0.5,
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "settle-into-stone",
+    "name": "Settle Into Stone",
+    "description": "Stops moving entirely, the way it must have stood for years before anyone came down this far.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "guard",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "arrow-shot",
+    "name": "Arrow Shot",
+    "description": "Fires an arrow at the target, ranged damage.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 15
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "guard-stance",
+    "name": "Guard Stance",
+    "description": "Raises its shield into a defensive stance, boosting its own defense.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "guard",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "bone-breaker",
+    "name": "Bone Breaker",
+    "description": "Brings its whole weight down through the shoulder, aiming for what holds a guard up rather than what it protects.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 14
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "chance": 0.5,
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "maul",
+    "name": "Maul",
+    "description": "Takes hold with both paws and worries at what it has caught until something opens and stays open.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 13
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bleeding",
+        "chance": 0.5,
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
     "id": "elite-strike-skeleton-guard",
     "name": "Cleaving Strike",
     "description": "A heavy weapon strike from an elite/boss Skeleton Guard, hitting far harder than its usual blows.",
@@ -8,7 +297,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -23,7 +312,27 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-skeleton-guard",
+    "name": "Crush",
+    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -46,26 +355,6 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-skeleton-guard",
-    "name": "Crush",
-    "description": "Moderate damage, also weakens the target's defense for a few turns.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
     "id": "elite-strike-giant-spider",
     "name": "Venomous Bite",
     "description": "A heavy fanged bite from an elite/boss Giant Spider, hitting far harder than its usual bites.",
@@ -74,7 +363,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -89,7 +378,27 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-giant-spider",
+    "name": "Web Trap",
+    "description": "Moderate damage, also poisons the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -112,26 +421,6 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-giant-spider",
-    "name": "Web Trap",
-    "description": "Moderate damage, also poisons the target.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "poisoned",
-        "durationTurns": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
     "id": "elite-strike-dragon",
     "name": "Claw Rake",
     "description": "A heavy claw strike from an elite/boss Dragon, hitting far harder than its usual attacks.",
@@ -140,7 +429,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -155,7 +444,27 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-dragon",
+    "name": "Scorching Breath",
+    "description": "Moderate damage, also sets the target on fire.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -178,26 +487,6 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-dragon",
-    "name": "Scorching Breath",
-    "description": "Moderate damage, also sets the target on fire.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "burning",
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
     "id": "elite-strike-zombie-knight",
     "name": "Rusted Blade",
     "description": "A heavy blade strike from an elite/boss Zombie Knight, hitting far harder than its usual swings.",
@@ -206,7 +495,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -221,7 +510,27 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-zombie-knight",
+    "name": "Diseased Strike",
+    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -244,26 +553,6 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-zombie-knight",
-    "name": "Diseased Strike",
-    "description": "Moderate damage, also weakens the target's defense for a few turns.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
     "id": "elite-strike-dark-knight",
     "name": "Shadow Slash",
     "description": "A heavy blade strike from an elite/boss Dark Knight, hitting far harder than its usual strikes.",
@@ -272,7 +561,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -287,7 +576,27 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-dark-knight",
+    "name": "Crushing Blow",
+    "description": "Moderate damage, also stuns the target.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -310,380 +619,6 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-dark-knight",
-    "name": "Crushing Blow",
-    "description": "Moderate damage, also stuns the target.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "stunned",
-        "durationTurns": 1
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "bite",
-    "name": "Bite",
-    "description": "A gnawing bite, dealing slightly more damage than a plain scratch.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "blood-drain",
-    "name": "Blood Drain",
-    "description": "Drains blood from the target, dealing damage and healing itself for half of it.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2,
-        "lifestealPercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "acid-spit",
-    "name": "Acid Spit",
-    "description": "Spits corrosive acid, damaging and possibly corroding the target's armor.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "acid-burn",
-        "alsoApplyStatusEffectIds": [
-          "corroded"
-        ],
-        "chance": 0.5,
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "bone-throw",
-    "name": "Bone Throw",
-    "description": "Throws a sharpened bone at the target, ranged damage.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "regeneration",
-    "name": "Regeneration",
-    "description": "Rotting flesh knits back together, restoring HP.",
-    "mpCost": 0,
-    "target": "self",
-    "effects": [
-      {
-        "kind": "heal",
-        "amount": 15
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "poison-bite",
-    "name": "Poison Bite",
-    "description": "A venomous bite, dealing damage and possibly poisoning the target.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "poisoned",
-        "chance": 0.5,
-        "durationTurns": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "quick-bite",
-    "name": "Quick Bite",
-    "description": "A fast snapping bite, dealing slightly more damage than a plain scratch.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "web-spit",
-    "name": "Web Spit",
-    "description": "Sprays sticky webbing at the target, damaging and possibly slowing it down.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "webbed",
-        "chance": 0.5,
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "arrow-shot",
-    "name": "Arrow Shot",
-    "description": "Fires an arrow at the target, ranged damage.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "guard-stance",
-    "name": "Guard Stance",
-    "description": "Raises its shield into a defensive stance, boosting its own defense.",
-    "mpCost": 0,
-    "target": "self",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "guard",
-        "durationTurns": 1
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-strike-the-founder",
-    "name": "Paid In Full",
-    "description": "A heavy single-target blow from the boss form of What's Left of Him, hitting far harder than its usual strikes.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 20
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-the-founder",
-    "name": "The Same Price",
-    "description": "Hits the whole party at once, spreading a lighter share of damage to each — whatever it charges, it charges everyone the same.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-execute-the-founder",
-    "name": "Everything You Asked For",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-the-founder",
-    "name": "What's Left Listening",
-    "description": "Moderate damage, also blinds the target — something in the room answers back, and it isn't the target's own eyes anymore.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 10
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "blinded",
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "whispered-name",
-    "name": "Whispered Name",
-    "description": "Says something under its breath that isn't meant for anyone living, and the air goes wrong where it lands.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "grave-chill",
-    "name": "Grave Chill",
-    "description": "Reaches through cloth and mail alike, and leaves whatever it touched slower to close its guard again.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
-        "chance": 0.5,
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "ember-lash",
-    "name": "Ember Lash",
-    "description": "Flicks a whip of live coal across the dark; whatever it catches keeps burning after it has gone.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 2
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "burning",
-        "chance": 0.5,
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "settle-into-stone",
-    "name": "Settle Into Stone",
-    "description": "Stops moving entirely, the way it must have stood for years before anyone came down this far.",
-    "mpCost": 0,
-    "target": "self",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "guard",
-        "durationTurns": 1
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "bone-breaker",
-    "name": "Bone Breaker",
-    "description": "Brings its whole weight down through the shoulder, aiming for what holds a guard up rather than what it protects.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 3
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
-        "chance": 0.5,
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "maul",
-    "name": "Maul",
-    "description": "Takes hold with both paws and worries at what it has caught until something opens and stays open.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 3
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "bleeding",
-        "chance": 0.5,
-        "durationTurns": 3
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
     "id": "elite-strike-orc-chieftain",
     "name": "Skullsplitter",
     "description": "Swings the heavy end of its weapon in a single downward arc, put where a helmet meets a neck.",
@@ -692,7 +627,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -707,7 +642,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
       }
     ],
     "slot": 0,
@@ -722,7 +657,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 24
       },
       {
         "kind": "applyStatusEffect",
@@ -758,7 +693,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -773,7 +708,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
       }
     ],
     "slot": 0,
@@ -788,7 +723,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 24
       },
       {
         "kind": "applyStatusEffect",
@@ -824,7 +759,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -839,7 +774,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
       }
     ],
     "slot": 0,
@@ -854,7 +789,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 24
       },
       {
         "kind": "applyStatusEffect",
@@ -890,7 +825,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -905,7 +840,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
       }
     ],
     "slot": 0,
@@ -920,7 +855,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 24
       },
       {
         "kind": "applyStatusEffect",
@@ -956,7 +891,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 26
       }
     ],
     "slot": 0,
@@ -971,7 +906,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 13
       }
     ],
     "slot": 0,
@@ -986,7 +921,7 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 24
       },
       {
         "kind": "applyStatusEffect",
@@ -1001,6 +936,72 @@
     "id": "boss-execute-lich",
     "name": "Name Struck Out",
     "description": "Regards one of them without moving, the way a clerk regards a line about to be crossed through.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-strike-the-founder",
+    "name": "Paid In Full",
+    "description": "A heavy single-target blow from the boss form of What's Left of Him, hitting far harder than its usual strikes.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 26
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "elite-cleave-the-founder",
+    "name": "The Same Price",
+    "description": "Hits the whole party at once, spreading a lighter share of damage to each — whatever it charges, it charges everyone the same.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 13
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-debuff-the-founder",
+    "name": "What's Left Listening",
+    "description": "Moderate damage, also blinds the target — something in the room answers back, and it isn't the target's own eyes anymore.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "blinded",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "boss-execute-the-founder",
+    "name": "Everything You Asked For",
+    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [

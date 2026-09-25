@@ -139,6 +139,18 @@ describe("artifacts", () => {
     expect(dodges / total).toBeLessThan(0.08);
   });
 
+  test("rollDodge sums the Ninja passive's dodge% alongside equipped artifact dodgeChance sources", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    ninja.level = 35; // rank 3: +15% dodge
+    const rng = new Rng(9);
+    let dodges = 0;
+    const total = 6000;
+    for (let i = 0; i < total; i++) if (rollDodge(ninja, rng)) dodges++;
+    expect(dodges / total).toBeGreaterThan(0.1);
+    expect(dodges / total).toBeLessThan(0.2);
+  });
+
   test("aggregation helpers sum correctly across multi-effect and stacked artifacts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;

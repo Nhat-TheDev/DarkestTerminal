@@ -1,8 +1,16 @@
 import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
-import { growthBonusForDepth, EXP_REWARD_DEPTH_RATE, ELITE_MULTIPLIER, BOSS_MULTIPLIER } from "./levelGrowth";
+import {
+  growthBonusForDepth,
+  EXP_REWARD_DEPTH_RATE,
+  ELITE_MULTIPLIER,
+  BOSS_MULTIPLIER,
+  monsterDepthBuffPercent,
+  MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS,
+} from "./levelGrowth";
 import { BALANCE } from "./balanceConfig";
+import { assertRaceDataConsistent, resolveRaceProfile } from "./monsterRaces";
 
 import { GROWTH_WEIGHTS } from "./growthWeights";
 
@@ -54,6 +62,13 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
       if (archetype.roles.length !== 1 || archetype.roles[0] !== "boss") {
         throw new Error(`data/monsters.json: "${archetype.id}" finalBoss must have roles ["boss"]`);
       }
+      if (archetype.minFloor !== undefined) {
+        throw new Error(`data/monsters.json: "${archetype.id}" is finalBoss and must not set "minFloor"`);
+      }
+    } else {
+      if (archetype.minFloor === undefined || archetype.minFloor < 0 || archetype.minFloor % 10 !== 0) {
+        throw new Error(`data/monsters.json: "${archetype.id}" needs a "minFloor" that is a non-negative multiple of 10`);
+      }
     }
     const weightTiers = new Set(Object.keys(archetype.actionWeights ?? {}));
     if (weightTiers.size !== roleSet.size || ![...roleSet].every((r) => weightTiers.has(r))) {
@@ -82,9 +97,16 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
   if (finalBossCount !== 1) {
     throw new Error(`data/monsters.json: catalog must define exactly 1 finalBoss, found ${finalBossCount}`);
   }
+  const weakAtZero = archetypes.some((a) => a.powerTier === "weak" && (a.minFloor ?? 0) === 0);
+  if (!weakAtZero) throw new Error("data/monsters.json: at least 1 weak-tier archetype must have minFloor 0");
+  const mediumAtZero = archetypes.some((a) => a.powerTier === "medium" && (a.minFloor ?? 0) === 0);
+  if (!mediumAtZero) throw new Error("data/monsters.json: at least 1 medium-tier archetype must have minFloor 0");
+  const guardAtZero = archetypes.some((a) => a.roles.includes("elite") && a.roles.includes("boss") && (a.minFloor ?? 0) === 0);
+  if (!guardAtZero) throw new Error("data/monsters.json: at least 1 elite+boss-role archetype must have minFloor 0");
 }
 
 assertMonsterDataConsistent(MONSTER_ARCHETYPES);
+assertRaceDataConsistent(MONSTER_ARCHETYPES);
 
 /** Ordinary combat rooms: every archetype with a normal kit. */
 export const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("normal"));
@@ -113,15 +135,36 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
   }
   const tierMultiplier = tier === "elite" || tier === "boss" ? TIER_MULTIPLIER[tier] : undefined;
   const typeMultiplier = MONSTER_TYPE_MULTIPLIER[archetype.monsterType];
+  const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
+  const depthBonus = monsterDepthBuffPercent(floorDepth);
 
   const growthMaxHp = archetype.baseHp + growthBonusForDepth("maxHp", floorDepth);
   const growthAttack = archetype.baseAttack + growthBonusForDepth("attack", floorDepth);
   const growthDefense = archetype.baseDefense + growthBonusForDepth("defense", floorDepth);
   const scaledExp = archetype.expReward + Math.floor(floorDepth * EXP_REWARD_DEPTH_RATE);
 
-  const maxHp = Math.round(growthMaxHp * typeMultiplier.maxHp * (tierMultiplier?.maxHp ?? 1));
-  const attack = Math.round(growthAttack * typeMultiplier.attack * (tierMultiplier?.attack ?? 1));
-  const defense = Math.round(growthDefense * typeMultiplier.defense * (tierMultiplier?.defense ?? 1));
+  const maxHp = Math.round(
+    growthMaxHp *
+      typeMultiplier.maxHp *
+      (tierMultiplier?.maxHp ?? 1) *
+      (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.maxHp) / 100) *
+      (1 + race.statBuff.maxHpPercent / 100)
+  );
+  const attack = Math.round(
+    growthAttack *
+      typeMultiplier.attack *
+      (tierMultiplier?.attack ?? 1) *
+      (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.attack) / 100) *
+      (1 + race.statBuff.attackPercent / 100)
+  );
+  const defense = Math.round(
+    growthDefense *
+      typeMultiplier.defense *
+      (tierMultiplier?.defense ?? 1) *
+      (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.defense) / 100) *
+      (1 + race.statBuff.defensePercent / 100)
+  );
+  const speed = Math.max(1, archetype.baseSpeed + race.statBuff.speedFlat);
 
   monsterCounter += 1;
   return {
@@ -132,10 +175,13 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     maxHp,
     attack,
     defense,
-    speed: archetype.baseSpeed,
+    speed,
     tier,
     monsterType: archetype.monsterType,
     aiPattern: archetype.aiPattern,
+    race: archetype.race,
+    subRace: archetype.subRace,
+    traitIds: archetype.traitIds,
     activeStatusEffects: [],
     expReward: tierMultiplier ? Math.round(scaledExp * tierMultiplier.exp) : scaledExp,
     executeCooldownTurns: tier === "boss" ? EXECUTE_COOLDOWN_TURNS : undefined,

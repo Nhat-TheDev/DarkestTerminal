@@ -70,6 +70,10 @@ of the code doesn't need to know the data comes from JSON.
 | `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI | `src/data/strings.ts` |
 
+**Class passives — 2 shapes, no hardcoded ids in engine code.** A passive's mechanic always reads its magnitude off `PassiveRankDefinition`/`PassiveSkillDefinition` fields in `data/classes.json` (see `src/types.ts`) — never a number typed into TypeScript. Beyond that, a passive is one of 2 shapes:
+- **Pure stat math** (Vanguard, Rogue's bonus%, Acolyte, Archer, Ninja's dodge/clone%, Summoner): no status effect involved at all — the hook/helper in `src/engine/combat.ts`/`combatHooks.ts` just reads the rank's numeric field(s) and computes directly.
+- **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank (Mage's `onHitStatusEffectId` — "mage-shred"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall, Viking's `viking-blood-fury` — see `docs/gameplay-decisions/01-class-skill.md` §11's `minPercent`-override note). A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
+
 ## 🗺️ Floor structure — generated at runtime
 
 Floors are generated directly by a runtime algorithm (`generateFloorLayout`,
@@ -253,6 +257,7 @@ screen contributes.
 | `eventHermitPickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
 | other `event*` | `[1-n] Choose` — n counts the options that event actually offers (a forced guardian fight drops to `[1]`) |
 | `campReflection` | `[1-3] Choose` |
+| `floorMilestone` | `[Enter] Continue` |
 | `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
 | `founderDialogue` | `[1] Continue` |
 | `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |

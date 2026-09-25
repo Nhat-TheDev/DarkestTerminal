@@ -32,6 +32,9 @@ export function getSummonCast(id: string): SummonCast {
  */
 export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts: SummonCast[]): void {
   for (const archetype of archetypes) {
+    if (typeof archetype.speed !== "number") {
+      throw new Error(`data/summons.json: archetype "${archetype.id}" is missing a numeric "speed"`);
+    }
     const declared = new Set(archetype.signatureSkillIds ?? []);
     for (const id of archetype.signatureSkillIds ?? []) getSummonSkill(id); // throws on an unknown id
     for (const key of Object.keys(archetype.actionWeights ?? {})) {

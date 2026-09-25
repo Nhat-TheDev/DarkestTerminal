@@ -17,12 +17,17 @@ import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
 import { Game } from "../src/engine/game";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
+import { getSummonCast } from "../src/data/summons";
+import { effectiveSkillRank, getSkill } from "../src/data/classes";
 
 describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
     const { ctx } = makeCtx();
 
-    const tanky = spawnInto(ctx, "skeleton-guard");
+    // lesser-golem (Golem race, 40% physical resist) rather than skeleton-guard (its Skeletal
+    // subRace is now 30% WEAK to physical) — this test is about turn order surviving to see both
+    // characters act, not about how many hits it takes to down the monster.
+    const tanky = spawnInto(ctx, "lesser-golem");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -56,6 +61,28 @@ describe("combat round structure", () => {
     expect(rogueLine).toBeGreaterThanOrEqual(0);
     expect(vanguardLine).toBeLessThan(rogueLine);
     expect(vanguard.speed).toBe(8);
+  });
+
+  test("a summon skill (isBuff: true, but has a summon effect) gets no +20 boost — normal speed order applies", () => {
+    const { ctx } = makeCtx();
+    const tanky = spawnInto(ctx, "skeleton-guard");
+    const combat = startCombat("r1", [tanky.id], ctx, false);
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rogue = ctx.party.find((p) => p.classId === "rogue")!;
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      if (ref.id === summoner.id) continue;
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+    resolveRound(combat, ctx);
+    const summonerLine = combat.log.findIndex((l) => l.text.includes("Summoner") && l.text.includes("uses"));
+    const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("uses"));
+    expect(summonerLine).toBeGreaterThanOrEqual(0);
+    expect(rogueLine).toBeGreaterThanOrEqual(0);
+    expect(rogueLine).toBeLessThan(summonerLine);
+    expect(summoner.speed).toBeLessThan(rogue.speed);
   });
 
   test("MP is deducted at resolution, not at queue time", () => {
@@ -273,6 +300,10 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
     ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    // Summon-casting skills no longer get the isBuff turn-priority bonus (they resolve in plain
+    // speed order — see turnOrderSortKey), so the cast must actually be the fastest action this
+    // round for the clone to exist before the 1-hp rat dies to someone else's queued attack.
+    ninja.speed = 999;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;
     rat.attack = 0;
@@ -384,6 +415,41 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(active[0]!.archetypeId).toBe("healer-spirit");
   });
 
+  test("a summon faster than its owner acts immediately, the same round it's cast", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+
+    // goblin-thrower's speed (12) > the Summoner's own speed (10).
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    resolveRound(combat, ctx);
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
+    expect(goblin.speed).toBeGreaterThan(summoner.speed);
+    expect(goblin.actionsTaken).toBe(1);
+  });
+
+  test("a summon slower than its owner waits for its own turn next round", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 10;
+    summoner.unlockedSkillIds.push("summoner-summon-golem");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const enemy: CombatantRef = { kind: "monster", id: rat.id };
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+
+    // stone-golem's speed (6) < the Summoner's own speed (10).
+    queueAction(combat, self, "summoner-summon-golem", [enemy], ctx);
+    resolveRound(combat, ctx);
+    const golem = ctx.summons.find((s) => s.archetypeId === "stone-golem")!;
+    expect(golem.speed).toBeLessThan(summoner.speed);
+    expect(golem.actionsTaken).toBe(0);
+  });
+
   test("recasting the same summon skill replaces only that minion, not a duplicate, and the surviving combatant ref resolves to the live one", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
@@ -422,10 +488,10 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
     queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
-    resolveRound(combat, ctx); // goblin spawns mid-round, doesn't act yet
-    resolveRound(combat, ctx); // action 1
+    resolveRound(combat, ctx); // action 1 — Goblin Thrower is faster than the Summoner, so it acts the moment it spawns
     resolveRound(combat, ctx); // action 2
     resolveRound(combat, ctx); // action 3 — goblin-thrower's maxActions, expires this round
+    resolveRound(combat, ctx); // no-op: goblin already expired and pruned
 
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
     expect(goblin.actionsTaken).toBe(3);
@@ -443,13 +509,18 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect((getActorByRef(activeMinions[0]!.ref, ctx) as Summon).archetypeId).toBe("healer-spirit");
   });
 
-  test("reaching Mastery rank 2 by level (without casting it) raises the cap to 2 different-type minions", () => {
+  test("reaching passive rank 2 by level (without casting anything) raises the cap to 2 different-type minions", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    summoner.level = 50;
+    summoner.level = 20; // passive rank 2: +1 cap
     summoner.unlockedSkillIds.push("summoner-summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
+    // Goblin Thrower is faster than the Summoner, so it now gets an extra immediate action the round
+    // it's cast (see `runCharacterTurn`'s summon-speed check) — high HP keeps that from ending combat
+    // early and skipping the Summoner's later turns, which is what this test is actually about.
+    rat.hp = 500;
+    rat.maxHp = 500;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
@@ -468,27 +539,29 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(active.map((s) => s.archetypeId).sort()).toEqual(["healer-spirit", "stone-golem"]);
   });
 
-  test("Mastery empowers every currently active minion, and any minion summoned afterward, with bonus max HP/attack", () => {
+  test("a level-35 Summoner's minions spawn with +17% attack, +30% maxHp from the passive, innately", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    summoner.level = 20;
-    summoner.unlockedSkillIds.push("summoner-mastery");
+    summoner.level = 35; // passive rank 3: +17% attack, +30% maxHp
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-
     queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
-    const unbuffedMaxHp = goblin.maxHp;
-    const unbuffedAttack = goblin.attack;
 
-    queueAction(combat, self, "summoner-mastery", [self], ctx);
-    resolveRound(combat, ctx);
-    expect(summoner.activeStatusEffects.some((s) => s.statusEffectId === "minion-empowerment")).toBe(true);
-    expect(goblin.maxHp).toBe(Math.round(unbuffedMaxHp * 1.15));
-    expect(goblin.attack).toBe(Math.round(unbuffedAttack * 1.15));
+    // Computed directly from the cast formula + the passive's rank-3 bonus, not by comparing against
+    // an unbuffed instance at a different level — the Summoner's own maxHp/magicPower (the formula's
+    // sourceStat) also grows with level, which would confound a simple before/after ratio.
+    const cast = getSummonCast("summoner-summon-goblin");
+    const skillRank = effectiveSkillRank(getSkill("summoner-summon-goblin"), summoner.level) || 1;
+    const maxHpPercent = cast.stat.maxHp.percent as number;
+    const attackPercent = Array.isArray(cast.stat.attack.percent) ? cast.stat.attack.percent[skillRank - 1]! : cast.stat.attack.percent;
+    const expectedMaxHp = Math.round(cast.stat.maxHp.base + (maxHpPercent / 100) * summoner.maxHp * 1.3);
+    const expectedAttack = Math.round(cast.stat.attack.base + (attackPercent / 100) * summoner.magicPower * 1.17);
+    expect(goblin.maxHp).toBe(expectedMaxHp);
+    expect(goblin.attack).toBe(expectedAttack);
   });
 
   test("Healer Spirit heals on its own turn regardless of which of its 2 heal skills is picked", () => {
