@@ -19,8 +19,7 @@ bun test test/combat-ranks.test.ts   # run a single test file
 bun test -t "some test name"         # run tests matching a name pattern
 bun run typecheck              # tsc --noEmit (strict mode)
 
-bun run sprite-editor       # dev tool: edit pixel-art sprites in the browser
-bun run rebalance-editor    # dev tool: inspect/compare character & monster stats, damage, level-by-depth projections
+bun run game-editor         # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills
 bun run dump-save           # dev tool: web UI to generate a save at any level/floor/room/event (dev-mode only)
 
 bun run build            # compile a standalone release binary (--define __DEV__=false)
@@ -42,14 +41,14 @@ Tests redirect `DARKEST_TERMINAL_SAVE_DIR` to a fresh temp directory (`test/setu
 
 **Key hints are generated, not hand-typed per screen.** Every screen's footer (`[1-n] Move   [i] Items`) follows a fixed grammar enforced by `test/keyHints.test.ts` and derived centrally in `src/ui/keyHints.ts` (`digitHint`, `globalHints`, `composeFooter`) — see the "Key hints" section of `docs/developer-guide.md` before adding a new screen or footer string.
 
-**`tools/`** holds standalone Bun-server dev tools (sprite editor, rebalance editor, dev save generator) — each is `server.ts` (Bun.serve, reads/writes the same `data/*.json` or engine code the game itself uses) + `index.html`, run independently of `src/main.ts`.
+**`tools/`** holds standalone Bun-server dev tools (`game-editor` — sprites, balance rebalancing, and CRUD for monsters/artifacts/items/status effects/monster skills; `dev-save-dump`) — each is `server.ts` (Bun.serve, reads/writes the same `data/*.json` or engine code the game itself uses) + `index.html`, run independently of `src/main.ts`.
 
 ## Conventions from working on this project
 
 These came out of actual friction/feedback while building this repo — keep them in mind, they aren't generic advice.
 
 - **When a UI text/format change is ambiguous, confirm the exact target render before implementing it.** Either ask (AskUserQuestion with concrete candidate strings using real data) or state the literal output you're about to produce and invite correction — don't ship a best-guess interpretation. A short token like "100%" can mean a trigger chance or a scaling percentage; guessing wrong burns a full iteration every time.
-- **Dev tool web UIs (`tools/*/server.ts` + `index.html`) load their catalogs by serving `data/*.json` directly** (same pattern as `sprite-editor`'s `/api/sprites`), not by hand-building a bespoke "meta"/summary object in TypeScript — keeps the tool honest to whatever the JSON actually contains, and the client reads whichever fields it needs.
+- **Dev tool web UIs (`tools/*/server.ts` + `index.html`) load their catalogs by serving `data/*.json` directly** (same pattern as `game-editor`'s `/api/sprites`), not by hand-building a bespoke "meta"/summary object in TypeScript — keeps the tool honest to whatever the JSON actually contains, and the client reads whichever fields it needs.
 - **Keep data and docs in sync.** Any change to `data/*.json` content or to engine behavior that a doc describes (`docs/developer-guide.md`, `docs/gameplay-decisions/*`, `docs/design-doc.md`, `docs/technical-decisions.md`) gets that doc updated in the same change, not as a follow-up.
 - **Keep tone consistent for any description or text you write, and check it for slop/cringe before calling the work done.** Match the dark, spare, unsentimental voice already established in `data/*.json` (item/artifact/ability/event text) — no generic AI phrasing, no forced whimsy, no cliché tension beats.
 - **Always run tests after any change to logic/engine code that affects gameplay systems or the player-facing experience.** `bun test` (and `bun run typecheck`) before considering the change finished — not just for the file you touched, the full suite.

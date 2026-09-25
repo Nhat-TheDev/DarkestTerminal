@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Darkest Terminal — Rebalance Editor</title>
+<title>Darkest Terminal — Game Editor</title>
 <style>
+
+  
   :root {
     --bg: #100d0a;
     --panel-bg: #171310;
@@ -163,12 +165,48 @@
   .save-status.ok { color: var(--ok); }
   .save-status.error { color: var(--danger); }
   .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  button.action.primary { background: var(--title); color: #12100c; font-weight: bold; }
+  button.action.primary:hover { background: #ddb32f; }
+
+  /* Sprite editor specific styles */
+  #panel-sprites fieldset { margin-bottom: 0; }
+  #panel-sprites .row { gap: 6px; }
+  .sprite-editor-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .sprite-editor-col { flex: 0 0 300px; }
+  .sprite-editor-col-palette { flex: 1 1 260px; min-width: 260px; }
+  #gridWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; display: inline-block; }
+
+  /* Data editor (CRUD) specific styles */
+  .data-editor-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .data-editor-col-list { flex: 0 0 260px; }
+  .data-editor-col-form { flex: 1 1 480px; min-width: 340px; }
+  #dataList { width: 100%; }
+  .effect-row { border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; background: var(--bg); }
+  .effect-row-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .effect-row-head .field { min-width: 160px; }
+  .checkbox-row { display: flex; align-items: center; gap: 6px; }
+  .checkbox-row label { color: var(--text); font-size: 12px; }
+  .checkbox-grid { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  #grid { display: grid; gap: 1px; background: var(--border); width: max-content; }
+  .cell { width: 22px; height: 44px; background: var(--bg); cursor: crosshair; }
+  .cell:hover { outline: 1px solid var(--title); outline-offset: -1px; }
+  #palette { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .swatch { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; }
+  .swatch.active { border-color: var(--title); background: rgba(201, 162, 39, 0.15); }
+  .swatch .key { width: 18px; text-align: center; font-weight: bold; color: var(--dim); }
+  .swatch input[type="color"] { width: 26px; height: 20px; border: 1px solid var(--border); background: none; padding: 0; border-radius: 2px; }
+  .swatch .hex { flex: 1; color: var(--dim); font-size: 11px; }
+  .swatch button { padding: 2px 6px; font-size: 11px; }
+  .swatch.eraser .key { color: var(--danger); }
+  #preview { background: var(--panel-bg); border: 1px solid var(--border); display: inline-block; padding: 8px; border-radius: 4px; }
+  #previewCanvas { display: block; image-rendering: pixelated; }
+
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⚖ Rebalance Editor</h1>
+  <h1>⚔ Game Editor</h1>
   <div class="field">
     <label for="global-fear-tier">Fear tier (for character-sourced damage)</label>
     <select id="global-fear-tier">
@@ -181,14 +219,21 @@
   <span id="status"></span>
 </header>
 
+
 <nav>
+  
   <button data-panel="testing" class="active">Testing</button>
   <button data-panel="rebalance">Rebalance — Char &amp; Monster</button>
   <button data-panel="defense">Defense Coefficient</button>
   <button data-panel="other">Other Balance</button>
+
+  <button data-panel="sprites">Sprite Editor</button>
+  <button data-panel="creator">Data Editor</button>
 </nav>
 
+
 <main>
+  
 
   <!-- ============================== TESTING (Simulator + Damage Calc + Floor <-> Level) ============================== -->
   <section class="panel active" id="panel-testing">
@@ -304,9 +349,149 @@
     <div id="other-output"></div>
   </section>
 
+
+  
+  <!-- ============================== SPRITE EDITOR ============================== -->
+  <section class="panel" id="panel-sprites">
+    
+  <div class="sprite-editor-layout">
+  <div class="sprite-editor-col">
+    <fieldset>
+      <legend>Subject</legend>
+      <label>Type</label>
+      <select id="category">
+        <option value="classes">Characters (classes)</option>
+        <option value="monsters">Common monsters (monsters)</option>
+        <option value="elites">Elites (elites)</option>
+        <option value="bosses">Bosses (bosses)</option>
+        <option value="events">Event rooms (events)</option>
+        <option value="rest">Rest rooms (rest)</option>
+        <option value="treasure">Treasure rooms (treasure)</option>
+      </select>
+
+      <div id="idPickerWrap">
+        <label>Existing</label>
+        <select id="existingId"></select>
+        <label>ID (lowercase, digits, hyphens)</label>
+        <input type="text" id="idInput" placeholder="vd: skeleton-guard" />
+        <p class="hint" id="idHint"></p>
+      </div>
+
+      <div class="row">
+        <button id="loadBtn" class="action">Load</button>
+        <button id="newBtn" class="action">New</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Size</legend>
+      <div class="row">
+        <div>
+          <label>Width (max <span id="maxWidthLabel">20</span>)</label>
+          <input type="number" id="widthInput" min="1" max="20" value="9" />
+        </div>
+        <div>
+          <label>Height (max <span id="maxHeightLabel">10</span>)</label>
+          <input type="number" id="heightInput" min="1" max="13" value="9" />
+        </div>
+      </div>
+      <div class="row">
+        <button id="resizeBtn" class="action" style="flex:1;">Resize</button>
+      </div>
+      <p class="hint">Resizing keeps pixels at the top-left; new cells start empty.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Tools</legend>
+      <div class="row">
+        <button id="copyBtn" class="action" style="flex:1;">Copy</button>
+        <button id="pasteBtn" class="action" style="flex:1;">Paste</button>
+      </div>
+      <label style="margin-top: 8px;">Move</label>
+      <div class="row">
+        <button id="moveLeftBtn" class="action" style="flex:1;">Left</button>
+        <button id="moveUpBtn" class="action" style="flex:1;">Up</button>
+        <button id="moveDownBtn" class="action" style="flex:1;">Down</button>
+        <button id="moveRightBtn" class="action" style="flex:1;">Right</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Preview (1:2 cell ratio like the terminal)</legend>
+      <div id="preview"><canvas id="previewCanvas"></canvas></div>
+    </fieldset>
+  </div>
+
+  <div class="sprite-editor-col">
+    <div id="gridWrap"><div id="grid"></div></div>
+    <p class="hint">Click or drag to paint. Pick "Erase" in the palette on the right to clear back to empty.</p>
+  </div>
+
+  <div class="sprite-editor-col sprite-editor-col-palette">
+    <fieldset>
+      <legend>Palette</legend>
+      <div id="palette"></div>
+      <div class="row">
+        <button id="addColorBtn" class="action" style="flex:1;">+ Add color</button>
+      </div>
+    </fieldset>
+    <div class="row" style="margin-top:12px;">
+      <button id="saveBtn" class="action primary" style="flex:1;">Save to data/sprites.json</button>
+    </div>
+  </div>
+  </div>
+
+  </section>
+
+  
+  <!-- ============================== DATA EDITOR (CRUD) ============================== -->
+  <section class="panel" id="panel-creator">
+    <h2 class="tab-section-title">Data Editor — create, edit, and delete game data</h2>
+    <div class="data-editor-layout">
+      <div class="data-editor-col-list">
+        <fieldset>
+          <legend>Entity</legend>
+          <div class="field">
+            <label for="dataType">Type</label>
+            <select id="dataType">
+              <option value="monster">Monster</option>
+              <option value="artifact">Artifact</option>
+              <option value="item">Item</option>
+              <option value="status">Status Effect</option>
+              <option value="monster-skill">Monster Skill</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="dataFilter">Filter</label>
+            <input type="text" id="dataFilter" placeholder="filter by id or name" />
+          </div>
+          <div class="field">
+            <label>Existing (<span id="dataListCount">0</span>)</label>
+            <select id="dataList" size="16"></select>
+          </div>
+          <div class="row">
+            <button class="action" id="dataNewBtn" style="flex:1;">+ New</button>
+          </div>
+        </fieldset>
+      </div>
+      <div class="data-editor-col-form">
+        <fieldset>
+          <legend id="dataFormLegend">Monster</legend>
+          <div id="dataForm"></div>
+          <div class="row" style="margin-top: 14px; align-items: center;">
+            <button class="action primary" id="dataSaveBtn">Save</button>
+            <button class="action" id="dataDeleteBtn" style="display:none; border-color: var(--danger);">Delete</button>
+            <span class="save-status" id="dataStatus"></span>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script>
+
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
@@ -1568,6 +1753,1075 @@ function renderOther() {
 }
 
 boot();
+
+
+// Wrap sprite script to avoid scope issues
+(() => {
+  
+(() => {
+  const CELL_W = 22, CELL_H = 44;
+  const ERASER = ".";
+
+  let spritesData = null;       // full file contents from the server
+  let category = "classes";
+  let width = 9, height = 9;
+  let grid = [];                // grid[row][col] = palette key or "."
+  let palette = {};             // key -> "#rrggbb"
+  let activeKey = null;         // currently selected paint key, or ERASER
+  let painting = false;
+
+  let clipboardGrid = null;
+  let clipboardPalette = null;
+
+  // Valid sprite ids per monster category, derived from `roles` in data/monsters.json (loadSpritesData):
+  // monsters = roles includes normal, elites = includes elite, bosses = includes boss.
+  let ROLE_SPRITE_IDS = { monsters: [], elites: [], bosses: [] };
+  // Event ids from data/events.json — for the "events" category, the ID must match one of these
+  // to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
+  const EVENT_IDS = [
+    "open-chest", "guardian-fight", "merchant", "desecrated-altar", "blood-altar",
+    "cursed-shrine", "twin-altars", "sacrificial-circle", "gambling-den", "wandering-hermit", "collapsed-floor",
+  ];
+  // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
+  // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
+  const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
+  // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+  // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
+  // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
+
+  const elId = (id) => $("#" + id);
+  const categoryEl = elId("category");
+  const existingIdEl = elId("existingId");
+  const idInputEl = elId("idInput");
+  const idHintEl = elId("idHint");
+  const widthInput = elId("widthInput");
+  const heightInput = elId("heightInput");
+  const maxHeightLabel = elId("maxHeightLabel");
+  const maxWidthLabel = elId("maxWidthLabel");
+  const gridEl = elId("grid");
+  const paletteEl = elId("palette");
+  const previewCanvas = elId("previewCanvas");
+
+  function maxHeight() {
+    return MAX_HEIGHT[category];
+  }
+
+  function maxWidth() {
+    return MAX_WIDTH[category];
+  }
+
+  function updateIdHint() {
+    if (category === "elites" || category === "bosses" || category === "monsters") {
+      idHintEl.textContent = `ID must match 1 archetype with the matching role in data/monsters.json to take effect in-game, e.g.: ${ROLE_SPRITE_IDS[category].join(", ")}.`;
+    } else if (category === "events") {
+      idHintEl.textContent = `ID must match 1 event in data/events.json to take effect in-game: ${EVENT_IDS.join(", ")}.`;
+    } else if (category === "treasure") {
+      idHintEl.textContent = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
+    } else if (category === "rest") {
+      idHintEl.textContent = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
+    } else {
+      idHintEl.textContent = "";
+    }
+  }
+
+  async function loadSpritesData() {
+    const res = await fetch("/api/sprites");
+    spritesData = await res.json();
+    const archetypes = await (await fetch("/api/monsters")).json();
+    const idsWithRole = (role) => archetypes.filter((a) => a.roles.includes(role)).map((a) => a.id).sort();
+    ROLE_SPRITE_IDS = { monsters: idsWithRole("normal"), elites: idsWithRole("elite"), bosses: idsWithRole("boss") };
+  }
+
+  function currentSection() {
+    return spritesData[category];
+  }
+
+  function populateExistingIds() {
+    existingIdEl.innerHTML = "";
+    updateIdHint();
+    const ids = Object.keys(currentSection()).sort();
+    for (const id of ids) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      existingIdEl.appendChild(opt);
+    }
+    if (ids.length > 0) idInputEl.value = ids[0];
+  }
+
+  function blankGrid(w, h) {
+    return Array.from({ length: h }, () => Array.from({ length: w }, () => ERASER));
+  }
+
+  function loadSpriteIntoEditor(sprite) {
+    height = sprite.rows.length;
+    width = sprite.rows[0].length;
+    grid = sprite.rows.map((row) => row.split(""));
+    palette = { ...sprite.palette };
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    activeKey = Object.keys(palette)[0] ?? ERASER;
+    renderPalette();
+    renderGrid();
+    renderPreview();
+  }
+
+  function nextFreeKey() {
+    const used = new Set(Object.keys(palette));
+    for (let code = 65; code <= 90; code++) {
+      const ch = String.fromCharCode(code);
+      if (!used.has(ch)) return ch;
+    }
+    for (let code = 97; code <= 122; code++) {
+      const ch = String.fromCharCode(code);
+      if (!used.has(ch)) return ch;
+    }
+    throw new Error("Out of palette characters.");
+  }
+
+  function loadBtnHandler() {
+    const id = existingIdEl.value;
+    const sprite = currentSection()[id];
+    if (!sprite) {
+      setStatus("No sprite with that id.", "error");
+      return;
+    }
+    idInputEl.value = id;
+    loadSpriteIntoEditor(sprite);
+    setStatus(`Loaded "${id}".`, "ok");
+  }
+
+  function newBtnHandler() {
+    width = Math.min(Number(widthInput.value) || 9, maxWidth());
+    height = Math.min(Number(heightInput.value) || 9, maxHeight());
+    grid = blankGrid(width, height);
+    palette = { A: "#8a5a2a" };
+    activeKey = "A";
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    if (category === "elites" || category === "bosses" || category === "monsters") {
+      const missing = ROLE_SPRITE_IDS[category].find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    } else if (category === "events") {
+      const missing = EVENT_IDS.find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    } else if (category === "rest" || category === "treasure") {
+      idInputEl.value = ROOM_SPRITE_ID[category];
+    }
+    renderPalette();
+    renderGrid();
+    renderPreview();
+    setStatus("Blank sprite — paint it, set an ID, then Save.", "ok");
+  }
+
+  function resizeBtnHandler() {
+    const newWidth = Math.max(1, Math.min(maxWidth(), Number(widthInput.value) || width));
+    const newHeight = Math.max(1, Math.min(maxHeight(), Number(heightInput.value) || height));
+    const next = blankGrid(newWidth, newHeight);
+    for (let r = 0; r < Math.min(height, newHeight); r++) {
+      for (let c = 0; c < Math.min(width, newWidth); c++) {
+        next[r][c] = grid[r][c];
+      }
+    }
+    grid = next;
+    width = newWidth;
+    height = newHeight;
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    renderGrid();
+    renderPreview();
+  }
+
+  function copyBtnHandler() {
+    clipboardGrid = grid.map(r => [...r]);
+    clipboardPalette = { ...palette };
+    setStatus("Copied sprite.", "ok");
+  }
+
+  function pasteBtnHandler() {
+    if (!clipboardGrid) {
+      setStatus("Nothing to paste.", "error");
+      return;
+    }
+    const newHeight = Math.min(maxHeight(), clipboardGrid.length);
+    const newWidth = Math.min(maxWidth(), clipboardGrid[0].length);
+    grid = blankGrid(newWidth, newHeight);
+    for (let r = 0; r < newHeight; r++) {
+      for (let c = 0; c < newWidth; c++) {
+        grid[r][c] = clipboardGrid[r][c];
+      }
+    }
+    palette = { ...clipboardPalette };
+    width = newWidth;
+    height = newHeight;
+    widthInput.value = String(width);
+    heightInput.value = String(height);
+    activeKey = Object.keys(palette)[0] ?? ERASER;
+    renderPalette();
+    renderGrid();
+    renderPreview();
+    setStatus("Pasted sprite.", "ok");
+  }
+
+  function canMove(dx, dy) {
+    if (dx === -1) {
+      for (let r = 0; r < height; r++) if (grid[r][0] !== ERASER) return false;
+    }
+    if (dx === 1) {
+      for (let r = 0; r < height; r++) if (grid[r][width - 1] !== ERASER) return false;
+    }
+    if (dy === -1) {
+      for (let c = 0; c < width; c++) if (grid[0][c] !== ERASER) return false;
+    }
+    if (dy === 1) {
+      for (let c = 0; c < width; c++) if (grid[height - 1][c] !== ERASER) return false;
+    }
+    return true;
+  }
+
+  function moveBtnHandler(dx, dy) {
+    if (!canMove(dx, dy)) {
+      setStatus("Can't move — painted cells would be clipped.", "error");
+      return;
+    }
+    const next = blankGrid(width, height);
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const nr = r + dy;
+        const nc = c + dx;
+        if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
+          next[nr][nc] = grid[r][c];
+        }
+      }
+    }
+    grid = next;
+    renderGrid();
+    renderPreview();
+    setStatus("Moved.", "ok");
+  }
+
+  function renderGrid() {
+    gridEl.style.gridTemplateColumns = `repeat(${width}, ${CELL_W}px)`;
+    gridEl.innerHTML = "";
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.style.width = CELL_W + "px";
+        cell.style.height = CELL_H + "px";
+        paintCellStyle(cell, grid[r][c]);
+        cell.dataset.r = String(r);
+        cell.dataset.c = String(c);
+        cell.addEventListener("mousedown", (e) => {
+          painting = true;
+          applyPaint(r, c);
+          e.preventDefault();
+        });
+        cell.addEventListener("mouseenter", () => {
+          if (painting) applyPaint(r, c);
+        });
+        gridEl.appendChild(cell);
+      }
+    }
+  }
+
+  function paintCellStyle(cellDiv, key) {
+    cellDiv.style.background = key === ERASER ? "var(--bg)" : (palette[key] ?? "#ff00ff");
+  }
+
+  function applyPaint(r, c) {
+    if (activeKey === null) return;
+    grid[r][c] = activeKey;
+    const cellDiv = gridEl.children[r * width + c];
+    if (cellDiv) paintCellStyle(cellDiv, activeKey);
+    renderPreview();
+  }
+
+  document.addEventListener("mouseup", () => { painting = false; });
+
+  function renderPalette() {
+    paletteEl.innerHTML = "";
+
+    const eraserRow = document.createElement("div");
+    eraserRow.className = "swatch eraser" + (activeKey === ERASER ? " active" : "");
+    eraserRow.innerHTML = `<span class="key">·</span><span class="hex">Erase (empty cell)</span>`;
+    eraserRow.addEventListener("click", () => { activeKey = ERASER; renderPalette(); });
+    paletteEl.appendChild(eraserRow);
+
+    for (const key of Object.keys(palette)) {
+      const row = document.createElement("div");
+      row.className = "swatch" + (activeKey === key ? " active" : "");
+
+      const keyLabel = document.createElement("span");
+      keyLabel.className = "key";
+      keyLabel.textContent = key;
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = palette[key];
+      colorInput.addEventListener("input", (e) => {
+        palette[key] = e.target.value;
+        hexLabel.textContent = e.target.value;
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            if (grid[r][c] === key) paintCellStyle(gridEl.children[r * width + c], key);
+          }
+        }
+        renderPreview();
+      });
+      colorInput.addEventListener("click", (e) => e.stopPropagation());
+
+      const hexLabel = document.createElement("span");
+      hexLabel.className = "hex";
+      hexLabel.textContent = palette[key];
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "×";
+      delBtn.title = "Delete this color (cells using it go empty)";
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            if (grid[r][c] === key) grid[r][c] = ERASER;
+          }
+        }
+        delete palette[key];
+        if (activeKey === key) activeKey = ERASER;
+        renderPalette();
+        renderGrid();
+        renderPreview();
+      });
+
+      row.appendChild(keyLabel);
+      row.appendChild(colorInput);
+      row.appendChild(hexLabel);
+      row.appendChild(delBtn);
+      row.addEventListener("click", () => { activeKey = key; renderPalette(); });
+      paletteEl.appendChild(row);
+    }
+  }
+
+  function addColorHandler() {
+    const key = nextFreeKey();
+    palette[key] = "#c9a227";
+    activeKey = key;
+    renderPalette();
+  }
+
+  function renderPreview() {
+    const scale = 6;
+    previewCanvas.width = width * scale;
+    previewCanvas.height = height * scale * 2;
+    const ctx = previewCanvas.getContext("2d");
+    ctx.fillStyle = "#171310";
+    ctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        const key = grid[r][c];
+        if (key === ERASER) continue;
+        ctx.fillStyle = palette[key] ?? "#ff00ff";
+        ctx.fillRect(c * scale, r * scale * 2, scale, scale * 2);
+      }
+    }
+  }
+
+  async function saveHandler() {
+    const rows = grid.map((r) => r.join(""));
+    const sprite = { rows, palette };
+
+    const id = idInputEl.value.trim();
+    if (!/^[a-z][a-z0-9-]*$/.test(id)) {
+      setStatus("ID must start with a lowercase letter and use only lowercase/digits/hyphens.", "error");
+      return;
+    }
+    const unusedIdWarning =
+      (category === "monsters" || category === "elites" || category === "bosses") && !ROLE_SPRITE_IDS[category].includes(id)
+        ? ` (Warning: "${id}" has no ${category === "monsters" ? "normal" : category === "elites" ? "elite" : "boss"} role in data/monsters.json — the game won't use this sprite.)`
+        : category === "events" && !EVENT_IDS.includes(id)
+          ? ` (Warning: "${id}" is not an event id in data/events.json — the game won't use this sprite.)`
+          : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
+            ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
+            : "";
+
+    try {
+      const res = await fetch("/api/sprites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ category, id, sprite }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setStatus("Error: " + data.error, "error");
+        return;
+      }
+      setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
+      await loadSpritesData();
+      populateExistingIds();
+      existingIdEl.value = id;
+      idInputEl.value = id;
+    } catch (e) {
+      setStatus("Connection error: " + e.message, "error");
+    }
+  }
+
+  categoryEl.addEventListener("change", () => {
+    category = categoryEl.value;
+    maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
+    populateExistingIds();
+    if (existingIdEl.value) {
+      loadSpriteIntoEditor(currentSection()[existingIdEl.value]);
+      idInputEl.value = existingIdEl.value;
+    } else {
+      newBtnHandler();
+    }
+  });
+  // Auto-load on selecting a different existing sprite — previously this only updated the ID
+  // text field, leaving the grid/palette showing the PREVIOUS sprite until "Load" was clicked
+  // separately, which read as "loading a new sprite keeps the old one's color pattern".
+  existingIdEl.addEventListener("change", loadBtnHandler);
+  elId("loadBtn").addEventListener("click", loadBtnHandler);
+  elId("newBtn").addEventListener("click", newBtnHandler);
+  elId("resizeBtn").addEventListener("click", resizeBtnHandler);
+  elId("copyBtn").addEventListener("click", copyBtnHandler);
+  elId("pasteBtn").addEventListener("click", pasteBtnHandler);
+  elId("moveLeftBtn").addEventListener("click", () => moveBtnHandler(-1, 0));
+  elId("moveUpBtn").addEventListener("click", () => moveBtnHandler(0, -1));
+  elId("moveDownBtn").addEventListener("click", () => moveBtnHandler(0, 1));
+  elId("moveRightBtn").addEventListener("click", () => moveBtnHandler(1, 0));
+  elId("addColorBtn").addEventListener("click", addColorHandler);
+  elId("saveBtn").addEventListener("click", saveHandler);
+
+  (async function init() {
+    maxHeightLabel.textContent = String(maxHeight());
+    maxWidthLabel.textContent = String(maxWidth());
+    heightInput.max = String(maxHeight());
+    widthInput.max = String(maxWidth());
+    await loadSpritesData();
+    populateExistingIds();
+    // Load whatever populateExistingIds actually left selected in the dropdown — hardcoding
+    // "vanguard" here regardless of dropdown order (it isn't always 1st alphabetically) is
+    // exactly the "dropdown says X but the grid shows Y" bug this tool had.
+    const firstId = existingIdEl.value;
+    loadSpriteIntoEditor((firstId && currentSection()[firstId]) || Object.values(currentSection())[0]);
+    setStatus("Ready.", "ok");
+  })();
+})();
+
+})();
+
+// ============================== DATA EDITOR (CRUD) ==============================
+(() => {
+  const SKILL_TARGETS = ["self", "singleAlly", "allAllies", "singleEnemy", "allEnemies", "singleAllyOrEnemy", "allAlliesAndEnemies"];
+  const DAMAGE_TYPES = ["physical", "magic", "fire", "ice", "lightning", "poison", "bleed", "holy"];
+  const COMBAT_STATS = ["attack", "defense", "aggro", "speed"];
+  const SKILL_EFFECT_KINDS = ["damage", "heal", "restoreMp", "applyStatusEffect", "removeStatusEffect", "modifyStat", "modifyCombatStat", "summon"];
+  const SKILL_EFFECT_FIELDS = {
+    damage: ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType"],
+    heal: ["amount", "chance", "target", "offenseMultiplierPercent"],
+    restoreMp: ["amount", "chance", "target"],
+    applyStatusEffect: ["statusEffectId", "amount", "minPercent", "chance", "target", "durationTurns"],
+    removeStatusEffect: ["statusEffectId", "chance", "target"],
+    modifyStat: ["stat", "amount", "chance", "target"],
+    modifyCombatStat: ["combatStat", "amount", "minPercent", "chance", "target"],
+    summon: ["target"],
+  };
+  const ARTIFACT_EFFECT_KINDS = [
+    "statBoost", "reflectDamage", "poisonOnHit", "lifesteal", "dodgeChance", "healOnKill",
+    "autoDamage", "expBoost", "fearResist", "cooldownReduction", "alwaysHit", "debuffResist", "curseAggroBoost",
+  ];
+  const ARTIFACT_EFFECT_FIELDS = {
+    statBoost: ["stat", "amount", "minPercent"],
+    reflectDamage: ["percent"],
+    poisonOnHit: ["chance"],
+    lifesteal: ["percent"],
+    dodgeChance: ["chance"],
+    healOnKill: ["amount", "minPercent"],
+    autoDamage: ["amount", "offenseMultiplierPercent", "isMagic"],
+    expBoost: ["percent"],
+    fearResist: ["percent"],
+    cooldownReduction: ["turns"],
+    alwaysHit: ["chance"],
+    debuffResist: ["percent"],
+    curseAggroBoost: ["amount"],
+  };
+  const STAT_BOOST_STATS = ["attack", "defense", "maxHp", "maxMp", "magicPower", "speed"];
+  const MONSTER_TYPES = ["balanced", "tanky", "armored", "striker", "glass", "bruiser", "sentinel"];
+  const AI_PATTERNS = ["aggressive", "defensive", "opportunistic"];
+  const POWER_TIERS = ["", "weak", "medium", "strong"];
+  const MONSTER_ROLES = ["normal", "elite", "boss"];
+
+  const typeEl = $("#dataType");
+  const filterEl = $("#dataFilter");
+  const listEl = $("#dataList");
+  const listCountEl = $("#dataListCount");
+  const newBtn = $("#dataNewBtn");
+  const formLegend = $("#dataFormLegend");
+  const formEl = $("#dataForm");
+  const saveBtn = $("#dataSaveBtn");
+  const deleteBtn = $("#dataDeleteBtn");
+  const dataStatusEl = $("#dataStatus");
+
+  const TYPE_LABELS = { monster: "Monster", artifact: "Artifact", item: "Item", status: "Status Effect", "monster-skill": "Monster Skill" };
+
+  let entries = [];
+  let currentEntry = null; // null = creating a new entry
+  let currentForm = null;  // { collect() }
+  let monsterRaces = [];
+  let monsterTraits = [];
+  let monsterSkillsCatalog = [];
+  let statusEffectsCatalog = [];
+
+  function setDataStatus(text, kind) {
+    dataStatusEl.textContent = text;
+    dataStatusEl.className = "save-status " + (kind || "");
+  }
+
+  // --- small field builders, matching the shared .field/.row vocabulary ---
+
+  function field(label, input, name) {
+    const wrap = el("div", { class: "field" }, [el("label", { text: label }), input]);
+    if (name) wrap.dataset.field = name;
+    return wrap;
+  }
+
+  function textInput(value) {
+    return el("input", { type: "text", value: value ?? "" });
+  }
+
+  function numberInput(value, step) {
+    return el("input", { type: "number", value: value === undefined || value === null ? "" : String(value), step: step || "1" });
+  }
+
+  function selectInput(options, value) {
+    // options: array of strings, or array of [value, label] pairs
+    const sel = el("select", {});
+    for (const opt of options) {
+      const [v, l] = Array.isArray(opt) ? opt : [opt, opt || "—"];
+      sel.appendChild(el("option", { value: v, text: l }));
+    }
+    sel.value = value ?? "";
+    return sel;
+  }
+
+  function checkboxInput(checked) {
+    return el("input", { type: "checkbox", ...(checked ? { checked: "checked" } : {}) });
+  }
+
+  function checkboxField(label, checked) {
+    const cb = checkboxInput(checked);
+    const wrap = el("label", { class: "checkbox-row" }, [cb, document.createTextNode(label)]);
+    wrap._checkbox = cb;
+    return wrap;
+  }
+
+  function checkboxGroup(options, selected) {
+    const selectedSet = new Set(selected || []);
+    const boxes = options.map((opt) => {
+      const cb = checkboxInput(selectedSet.has(opt));
+      cb.value = opt;
+      return el("label", { class: "checkbox-row" }, [cb, document.createTextNode(opt)]);
+    });
+    const wrap = el("div", { class: "checkbox-grid" }, boxes);
+    wrap._values = () => boxes.map((b) => b.firstChild).filter((cb) => cb.checked).map((cb) => cb.value);
+    return wrap;
+  }
+
+  function numOrUndefined(input) {
+    return input.value === "" ? undefined : Number(input.value);
+  }
+  function strOrUndefined(input) {
+    const v = input.value.trim();
+    return v === "" ? undefined : v;
+  }
+
+  function applyFieldVisibility(row, visibleNames) {
+    for (const el2 of row.querySelectorAll("[data-field]")) {
+      el2.style.display = visibleNames.includes(el2.dataset.field) ? "" : "none";
+    }
+  }
+
+  // --- SkillEffect row (used by Item.effects, Status.perTurnEffects, MonsterSkill.effects) ---
+
+  function skillEffectRow(effect) {
+    effect = effect || {};
+    const kind = selectInput(SKILL_EFFECT_KINDS, effect.kind || "damage");
+    const amount = numberInput(effect.amount, "any");
+    const chance = numberInput(effect.chance, "0.01");
+    const target = selectInput(["", ...SKILL_TARGETS], effect.target || "");
+    const offenseMultiplierPercent = numberInput(effect.offenseMultiplierPercent, "1");
+    const minPercent = numberInput(effect.minPercent, "1");
+    const damageType = selectInput(["", ...DAMAGE_TYPES], effect.damageType || "");
+    const stat = selectInput(["", "fear", "satiety"], effect.stat || "");
+    const combatStat = selectInput(["", ...COMBAT_STATS], effect.combatStat || "");
+    const statusEffectId = textInput(effect.statusEffectId || "");
+    const durationTurns = numberInput(effect.durationTurns, "1");
+
+    const row = el("div", { class: "effect-row" });
+    const removeBtn = el("button", { class: "action", type: "button", text: "Remove" });
+    removeBtn.addEventListener("click", () => row.remove());
+    row.appendChild(el("div", { class: "effect-row-head" }, [field("Kind", kind), removeBtn]));
+    const body = el("div", { class: "row" }, [
+      field("Amount", amount, "amount"),
+      field("Chance (0-1)", chance, "chance"),
+      field("Target override", target, "target"),
+      field("Offense mult %", offenseMultiplierPercent, "offenseMultiplierPercent"),
+      field("Min % (floor)", minPercent, "minPercent"),
+      field("Damage type", damageType, "damageType"),
+      field("Stat", stat, "stat"),
+      field("Combat stat", combatStat, "combatStat"),
+      field("Status effect id", statusEffectId, "statusEffectId"),
+      field("Duration (turns)", durationTurns, "durationTurns"),
+    ]);
+    row.appendChild(body);
+
+    const refresh = () => applyFieldVisibility(row, SKILL_EFFECT_FIELDS[kind.value] || []);
+    kind.addEventListener("change", refresh);
+    refresh();
+
+    row._collect = () => {
+      const out = { kind: kind.value };
+      const visible = SKILL_EFFECT_FIELDS[kind.value] || [];
+      if (visible.includes("amount")) out.amount = numOrUndefined(amount);
+      if (visible.includes("chance")) out.chance = numOrUndefined(chance);
+      if (visible.includes("target") && target.value) out.target = target.value;
+      if (visible.includes("offenseMultiplierPercent")) out.offenseMultiplierPercent = numOrUndefined(offenseMultiplierPercent);
+      if (visible.includes("minPercent")) out.minPercent = numOrUndefined(minPercent);
+      if (visible.includes("damageType") && damageType.value) out.damageType = damageType.value;
+      if (visible.includes("stat") && stat.value) out.stat = stat.value;
+      if (visible.includes("combatStat") && combatStat.value) out.combatStat = combatStat.value;
+      if (visible.includes("statusEffectId")) out.statusEffectId = strOrUndefined(statusEffectId);
+      if (visible.includes("durationTurns")) out.durationTurns = numOrUndefined(durationTurns);
+      for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
+      return out;
+    };
+    return row;
+  }
+
+  // --- ArtifactEffect row (Artifact.effects only — a 12-way tagged union) ---
+
+  function artifactEffectRow(effect) {
+    effect = effect || {};
+    const kind = selectInput(ARTIFACT_EFFECT_KINDS, effect.kind || "statBoost");
+    const stat = selectInput(STAT_BOOST_STATS, effect.stat || "attack");
+    const amount = numberInput(effect.amount, "any");
+    const percent = numberInput(effect.percent, "any");
+    const chance = numberInput(effect.chance, "0.01");
+    const turns = numberInput(effect.turns, "1");
+    const minPercent = numberInput(effect.minPercent, "1");
+    const offenseMultiplierPercent = numberInput(effect.offenseMultiplierPercent, "1");
+    const isMagic = checkboxField("Is magic", effect.isMagic);
+
+    const row = el("div", { class: "effect-row" });
+    const removeBtn = el("button", { class: "action", type: "button", text: "Remove" });
+    removeBtn.addEventListener("click", () => row.remove());
+    row.appendChild(el("div", { class: "effect-row-head" }, [field("Kind", kind), removeBtn]));
+    const body = el("div", { class: "row" }, [
+      field("Stat", stat, "stat"),
+      field("Amount", amount, "amount"),
+      field("Percent", percent, "percent"),
+      field("Chance (0-1)", chance, "chance"),
+      field("Turns", turns, "turns"),
+      field("Min % (floor)", minPercent, "minPercent"),
+      field("Offense mult %", offenseMultiplierPercent, "offenseMultiplierPercent"),
+      field("", isMagic, "isMagic"),
+    ]);
+    row.appendChild(body);
+
+    const refresh = () => applyFieldVisibility(row, ARTIFACT_EFFECT_FIELDS[kind.value] || []);
+    kind.addEventListener("change", refresh);
+    refresh();
+
+    row._collect = () => {
+      const out = { kind: kind.value };
+      const visible = ARTIFACT_EFFECT_FIELDS[kind.value] || [];
+      if (visible.includes("stat")) out.stat = stat.value;
+      if (visible.includes("amount")) out.amount = numOrUndefined(amount) ?? 0;
+      if (visible.includes("percent")) out.percent = numOrUndefined(percent) ?? 0;
+      if (visible.includes("chance")) out.chance = numOrUndefined(chance) ?? 0;
+      if (visible.includes("turns")) out.turns = numOrUndefined(turns) ?? 0;
+      if (visible.includes("minPercent")) { const v = numOrUndefined(minPercent); if (v !== undefined) out.minPercent = v; }
+      if (visible.includes("offenseMultiplierPercent")) { const v = numOrUndefined(offenseMultiplierPercent); if (v !== undefined) out.offenseMultiplierPercent = v; }
+      if (visible.includes("isMagic") && isMagic._checkbox.checked) out.isMagic = true;
+      return out;
+    };
+    return row;
+  }
+
+  /** A repeatable list of effect rows (SkillEffect or ArtifactEffect) with Add/Remove — shared by every form that has an `effects`/`perTurnEffects` array. */
+  function effectListEditor(legendText, effects, rowFactory) {
+    const rowsWrap = el("div", {});
+    for (const effect of effects || []) rowsWrap.appendChild(rowFactory(effect));
+    const addBtn = el("button", { class: "action", type: "button", text: "+ Add effect" });
+    addBtn.addEventListener("click", () => rowsWrap.appendChild(rowFactory(null)));
+    const wrap = el("fieldset", {}, [el("legend", { text: legendText }), rowsWrap, addBtn]);
+    wrap._collect = () => Array.from(rowsWrap.children).map((row) => row._collect());
+    return wrap;
+  }
+
+  // --- per-type form renderers ---
+
+  function renderMonsterForm(entry) {
+    entry = entry || {};
+    const id = textInput(entry.id);
+    const name = textInput(entry.name);
+    const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
+    const baseHp = numberInput(entry.baseHp ?? 20);
+    const baseAttack = numberInput(entry.baseAttack ?? 5);
+    const baseDefense = numberInput(entry.baseDefense ?? 5);
+    const baseSpeed = numberInput(entry.baseSpeed ?? 10);
+    const expReward = numberInput(entry.expReward ?? 5);
+    const minFloor = numberInput(entry.minFloor, "10");
+    const monsterType = selectInput(MONSTER_TYPES, entry.monsterType || "balanced");
+    const aiPattern = selectInput(AI_PATTERNS, entry.aiPattern || "aggressive");
+    const powerTier = selectInput(POWER_TIERS, entry.powerTier || "");
+    const roles = checkboxGroup(MONSTER_ROLES, entry.roles || ["normal"]);
+    const finalBoss = checkboxField("Final boss (never rolled at random)", entry.finalBoss);
+    const raceOptions = monsterRaces.map((r) => [r.id, r.name]);
+    const race = selectInput(raceOptions, entry.race || (monsterRaces[0] && monsterRaces[0].id) || "");
+    const subRace = selectInput([""], entry.subRace || "");
+    const traitIds = checkboxGroup(monsterTraits.map((t) => t.id), entry.traitIds || []);
+    const skillIds = checkboxGroup(monsterSkillsCatalog.map((s) => s.id), entry.skillIds || []);
+    const executeSkillId = selectInput(["", ...monsterSkillsCatalog.map((s) => s.id)], entry.executeSkillId || "");
+
+    function refreshSubRaces() {
+      const r = monsterRaces.find((r) => r.id === race.value);
+      const subs = (r && r.subRaces) || [];
+      subRace.innerHTML = "";
+      subRace.appendChild(el("option", { value: "", text: "—" }));
+      for (const s of subs) subRace.appendChild(el("option", { value: s.id, text: s.name }));
+      if (subs.some((s) => s.id === entry.subRace)) subRace.value = entry.subRace;
+    }
+    race.addEventListener("change", refreshSubRaces);
+    refreshSubRaces();
+
+    // actionWeights: 1 numeric input per (role tier x "basicAttack" + selected skillIds), regenerated
+    // whenever roles/skillIds change, preserving already-entered weights across regeneration.
+    const actionWeightsWrap = el("div", {});
+    let actionWeightsState = JSON.parse(JSON.stringify(entry.actionWeights || {}));
+    function renderActionWeights() {
+      actionWeightsWrap.innerHTML = "";
+      const selectedRoles = roles._values();
+      const selectedSkillIds = skillIds._values();
+      for (const tier of selectedRoles) {
+        const tierWeights = actionWeightsState[tier] || {};
+        const keys = ["basicAttack", ...selectedSkillIds];
+        const inputs = keys.map((k) => {
+          const input = numberInput(tierWeights[k], "1");
+          input.dataset.key = k;
+          return field(k, input);
+        });
+        const tierFieldset = el("fieldset", {}, [el("legend", { text: "Action weights — " + tier }), el("div", { class: "row" }, inputs)]);
+        tierFieldset.dataset.tier = tier;
+        actionWeightsWrap.appendChild(tierFieldset);
+      }
+    }
+    roles.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { collectActionWeights(); renderActionWeights(); }));
+    skillIds.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { collectActionWeights(); renderActionWeights(); }));
+    function collectActionWeights() {
+      const next = {};
+      for (const fieldset of actionWeightsWrap.children) {
+        const tier = fieldset.dataset.tier;
+        const tierOut = {};
+        for (const input of fieldset.querySelectorAll("input[data-key]")) {
+          if (input.value !== "") tierOut[input.dataset.key] = Number(input.value);
+        }
+        next[tier] = tierOut;
+      }
+      actionWeightsState = next;
+    }
+    renderActionWeights();
+
+    formEl.replaceChildren(
+      el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
+      field("Description", description),
+      el("div", { class: "row" }, [field("Base HP", baseHp), field("Base Attack", baseAttack), field("Base Defense", baseDefense), field("Base Speed", baseSpeed), field("EXP reward", expReward), field("Min floor", minFloor)]),
+      el("div", { class: "row" }, [field("Monster type", monsterType), field("AI pattern", aiPattern), field("Power tier", powerTier)]),
+      el("div", { class: "row" }, [field("Race", race), field("Sub-race", subRace)]),
+      el("fieldset", {}, [el("legend", { text: "Roles" }), roles, finalBoss]),
+      el("fieldset", {}, [el("legend", { text: "Traits" }), traitIds]),
+      el("fieldset", {}, [el("legend", { text: "Skills this monster can use" }), skillIds, field("Execute skill (charged finisher, optional)", executeSkillId)]),
+      actionWeightsWrap
+    );
+
+    return {
+      collect() {
+        collectActionWeights();
+        const out = {
+          id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
+          baseHp: Number(baseHp.value), baseAttack: Number(baseAttack.value), baseDefense: Number(baseDefense.value), baseSpeed: Number(baseSpeed.value),
+          monsterType: monsterType.value, aiPattern: aiPattern.value, roles: roles._values(), skillIds: skillIds._values(), expReward: Number(expReward.value),
+          race: race.value,
+        };
+        if (subRace.value) out.subRace = subRace.value;
+        if (traitIds._values().length) out.traitIds = traitIds._values();
+        if (finalBoss._checkbox.checked) out.finalBoss = true;
+        if (powerTier.value) out.powerTier = powerTier.value;
+        if (executeSkillId.value) out.executeSkillId = executeSkillId.value;
+        if (minFloor.value !== "") out.minFloor = Number(minFloor.value);
+        if (Object.keys(actionWeightsState).length) out.actionWeights = actionWeightsState;
+        return out;
+      },
+    };
+  }
+
+  function renderArtifactForm(entry) {
+    entry = entry || {};
+    const id = textInput(entry.id);
+    const name = textInput(entry.name);
+    const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
+    const rarity = selectInput(["common", "rare", "unique", "epic"], entry.rarity || "common");
+    const isCursed = checkboxField("Cursed", entry.isCursed);
+    const restrictedDropSources = checkboxGroup(["boss", "blood-altar"], entry.restrictedDropSources || []);
+    const effectsEditor = effectListEditor("Effects", entry.effects, artifactEffectRow);
+
+    formEl.replaceChildren(
+      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Rarity", rarity)]),
+      field("Description", description),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), isCursed]),
+      el("fieldset", {}, [el("legend", { text: "Restricted drop sources (optional — leave unchecked for a normal roll-table drop)" }), restrictedDropSources]),
+      effectsEditor
+    );
+
+    return {
+      collect() {
+        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), rarity: rarity.value, effects: effectsEditor._collect() };
+        if (isCursed._checkbox.checked) out.isCursed = true;
+        if (restrictedDropSources._values().length) out.restrictedDropSources = restrictedDropSources._values();
+        return out;
+      },
+    };
+  }
+
+  function renderItemForm(entry) {
+    entry = entry || {};
+    const id = textInput(entry.id);
+    const name = textInput(entry.name);
+    const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
+    const target = selectInput(SKILL_TARGETS, entry.target || "self");
+    const weight = numberInput(entry.weight ?? 1, "1");
+    const combatUsable = checkboxField("Usable in combat", entry.combatUsable);
+    const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
+
+    formEl.replaceChildren(
+      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Target", target), field("Roll weight", weight)]),
+      field("Description", description),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable]),
+      effectsEditor
+    );
+
+    return {
+      collect() {
+        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), target: target.value, effects: effectsEditor._collect() };
+        if (weight.value !== "") out.weight = Number(weight.value);
+        if (combatUsable._checkbox.checked) out.combatUsable = true;
+        return out;
+      },
+    };
+  }
+
+  function renderStatusForm(entry) {
+    entry = entry || {};
+    const id = textInput(entry.id);
+    const name = textInput(entry.name);
+    const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
+    const stuns = checkboxField("Stuns (skips the bearer's turn)", entry.stuns);
+    const triggersOverwatch = checkboxField("Triggers overwatch", entry.triggersOverwatch);
+    const untargetable = checkboxField("Untargetable while active", entry.untargetable);
+    const stackable = checkboxField("Stackable", entry.stackable);
+    const maxStacks = numberInput(entry.maxStacks, "1");
+    const perStackBonusPercent = numberInput(entry.perStackBonusPercent, "1");
+    const accuracyPenaltyPercent = numberInput(entry.accuracyPenaltyPercent, "1");
+    const onHitStatusEffectId = selectInput(["", ...statusEffectsCatalog.map((s) => s.id)], entry.onHitStatusEffectId || "");
+    const effectsEditor = effectListEditor("Per-turn effects", entry.perTurnEffects, skillEffectRow);
+
+    formEl.replaceChildren(
+      el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
+      field("Description", description),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), stuns, triggersOverwatch, untargetable]),
+      el("div", { class: "row" }, [field("Stackable", stackable), field("Max stacks", maxStacks), field("Per-stack bonus %", perStackBonusPercent), field("Accuracy penalty %", accuracyPenaltyPercent), field("On-hit status (optional)", onHitStatusEffectId)]),
+      effectsEditor
+    );
+
+    return {
+      collect() {
+        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), perTurnEffects: effectsEditor._collect() };
+        if (stuns._checkbox.checked) out.stuns = true;
+        if (triggersOverwatch._checkbox.checked) out.triggersOverwatch = true;
+        if (untargetable._checkbox.checked) out.untargetable = true;
+        if (stackable._checkbox.checked) out.stackable = true;
+        if (maxStacks.value !== "") out.maxStacks = Number(maxStacks.value);
+        if (perStackBonusPercent.value !== "") out.perStackBonusPercent = Number(perStackBonusPercent.value);
+        if (accuracyPenaltyPercent.value !== "") out.accuracyPenaltyPercent = Number(accuracyPenaltyPercent.value);
+        if (onHitStatusEffectId.value) out.onHitStatusEffectId = onHitStatusEffectId.value;
+        return out;
+      },
+    };
+  }
+
+  function renderMonsterSkillForm(entry) {
+    entry = entry || {};
+    const id = textInput(entry.id);
+    const name = textInput(entry.name);
+    const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
+    const shortDescription = textInput(entry.shortDescription || "");
+    const mpCost = numberInput(entry.mpCost ?? 0, "1");
+    const target = selectInput(SKILL_TARGETS, entry.target || "singleEnemy");
+    const slot = selectInput(["0", "1", "2", "3", "4", "5"], String(entry.slot ?? 0));
+    const unlockLevel = numberInput(entry.unlockLevel ?? 1, "1");
+    const usesPerCombat = numberInput(entry.usesPerCombat, "1");
+    const cooldownTurns = numberInput(entry.cooldownTurns, "1");
+    const isUltimate = checkboxField("Ultimate (always hits, no accuracy roll)", entry.isUltimate);
+    const isBuff = checkboxField("Buff (turn-priority)", entry.isBuff);
+    const isMagic = checkboxField("Magic (scales off magicPower)", entry.isMagic);
+    const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
+
+    formEl.replaceChildren(
+      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Short description", shortDescription)]),
+      field("Description", description),
+      el("div", { class: "row" }, [field("MP cost", mpCost), field("Target", target), field("Slot", slot), field("Unlock level", unlockLevel), field("Uses per combat (optional)", usesPerCombat), field("Cooldown turns (optional)", cooldownTurns)]),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), isUltimate, isBuff, isMagic]),
+      effectsEditor
+    );
+
+    return {
+      collect() {
+        const out = {
+          id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
+          mpCost: Number(mpCost.value), target: target.value, slot: Number(slot.value), unlockLevel: Number(unlockLevel.value),
+          effects: effectsEditor._collect(),
+        };
+        if (shortDescription.value.trim()) out.shortDescription = shortDescription.value.trim();
+        if (usesPerCombat.value !== "") out.usesPerCombat = Number(usesPerCombat.value);
+        if (cooldownTurns.value !== "") out.cooldownTurns = Number(cooldownTurns.value);
+        if (isUltimate._checkbox.checked) out.isUltimate = true;
+        if (isBuff._checkbox.checked) out.isBuff = true;
+        if (isMagic._checkbox.checked) out.isMagic = true;
+        return out;
+      },
+    };
+  }
+
+  const FORM_RENDERERS = { monster: renderMonsterForm, artifact: renderArtifactForm, item: renderItemForm, status: renderStatusForm, "monster-skill": renderMonsterSkillForm };
+
+  // --- list / load / save / delete plumbing ---
+
+  function renderList() {
+    const filter = filterEl.value.trim().toLowerCase();
+    const filtered = entries.filter((e) => !filter || e.id.toLowerCase().includes(filter) || (e.name || "").toLowerCase().includes(filter));
+    listEl.innerHTML = "";
+    for (const e of filtered) listEl.appendChild(el("option", { value: e.id, text: e.id + (e.name ? "  —  " + e.name : "") }));
+    listCountEl.textContent = String(filtered.length) + (filtered.length !== entries.length ? " / " + entries.length : "");
+  }
+
+  function showForm(entry) {
+    currentEntry = entry;
+    formLegend.textContent = TYPE_LABELS[typeEl.value] + (entry ? ": " + entry.id : " (new)");
+    currentForm = FORM_RENDERERS[typeEl.value](entry);
+    deleteBtn.style.display = entry ? "" : "none";
+    setDataStatus("");
+  }
+
+  async function loadList() {
+    entries = await api("/api/data/" + typeEl.value);
+    renderList();
+  }
+
+  async function loadReferenceData() {
+    [monsterRaces, monsterTraits, monsterSkillsCatalog, statusEffectsCatalog] = await Promise.all([
+      api("/api/monster-races"),
+      api("/api/monster-traits"),
+      api("/api/data/monster-skill"),
+      api("/api/data/status"),
+    ]);
+  }
+
+  typeEl.addEventListener("change", async () => {
+    await loadList();
+    showForm(null);
+  });
+  filterEl.addEventListener("input", renderList);
+  listEl.addEventListener("change", () => {
+    const entry = entries.find((e) => e.id === listEl.value);
+    if (entry) showForm(entry);
+  });
+  newBtn.addEventListener("click", () => { listEl.value = ""; showForm(null); });
+
+  saveBtn.addEventListener("click", async () => {
+    let body;
+    try {
+      body = currentForm.collect();
+    } catch (err) {
+      setDataStatus("Error building entry: " + err.message, "error");
+      return;
+    }
+    if (!body.id || !/^[a-z][a-z0-9-]*$/.test(body.id)) {
+      setDataStatus("ID must start with a lowercase letter and contain only lowercase letters/digits/hyphens.", "error");
+      return;
+    }
+    if (!body.name || !body.description) {
+      setDataStatus("Name and description are required.", "error");
+      return;
+    }
+    setDataStatus("Saving...");
+    try {
+      if (currentEntry) {
+        await fetch("/api/data/" + typeEl.value + "/" + currentEntry.id, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+          .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || ("HTTP " + res.status)); });
+      } else {
+        await apiPost("/api/data/" + typeEl.value, body);
+      }
+      setDataStatus("Saved — refreshing…", "ok");
+      await waitForServerRestart();
+      if (typeEl.value === "monster-skill" || typeEl.value === "status") await loadReferenceData();
+      await loadList();
+      const saved = entries.find((e) => e.id === body.id);
+      listEl.value = body.id;
+      showForm(saved || null);
+      setDataStatus("Saved.", "ok");
+    } catch (err) {
+      setDataStatus("Error: " + err.message, "error");
+    }
+  });
+
+  let deleteArmed = false;
+  deleteBtn.addEventListener("click", async () => {
+    if (!currentEntry) return;
+    if (!deleteArmed) {
+      deleteArmed = true;
+      deleteBtn.textContent = "Click again to confirm";
+      setTimeout(() => { deleteArmed = false; deleteBtn.textContent = "Delete"; }, 3000);
+      return;
+    }
+    deleteArmed = false;
+    deleteBtn.textContent = "Delete";
+    setDataStatus("Deleting...");
+    try {
+      const res = await fetch("/api/data/" + typeEl.value + "/" + currentEntry.id, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+      setDataStatus("Deleted — refreshing…", "ok");
+      await waitForServerRestart();
+      if (typeEl.value === "monster-skill" || typeEl.value === "status") await loadReferenceData();
+      await loadList();
+      showForm(null);
+      setDataStatus("Deleted.", "ok");
+    } catch (err) {
+      setDataStatus("Error: " + err.message, "error");
+    }
+  });
+
+  (async function init() {
+    await loadReferenceData();
+    await loadList();
+    showForm(null);
+  })();
+})();
+
 </script>
 </body>
 </html>

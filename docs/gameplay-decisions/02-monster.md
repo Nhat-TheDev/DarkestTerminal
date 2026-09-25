@@ -273,7 +273,7 @@ This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliber
 | strong | 14 | ±0.5 |
 | Elite/Boss (guard-room archetypes — `actionWeights` for both `elite` and `boss`) | 17 | ±1 |
 
-Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the rebalance-editor tool, `tools/rebalance-editor`, surfaces this number directly for both classes and monster archetypes).
+Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the game-editor tool, `tools/game-editor` — Rebalance tab — surfaces this number directly for both classes and monster archetypes).
 
 ### Balance verification
 
