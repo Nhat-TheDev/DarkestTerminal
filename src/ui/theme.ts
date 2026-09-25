@@ -76,6 +76,8 @@ export const MONSTER_STYLE: Record<string, { abbr: string; color: string }> = {
   "void-amalgamation": { abbr: "VOI", color: "#b060d8" },
   lich: { abbr: "LCH", color: "#7aa88a" },
   "the-founder": { abbr: "FDR", color: "#8a7690" },
+  "lava-slime": { abbr: "LSL", color: "#a8421c" },
+  "lesser-vampire": { abbr: "LVP", color: "#8a3548" },
 };
 
 export const BOSS_COLOR = "#8a1f1f";

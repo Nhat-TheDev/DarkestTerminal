@@ -42,8 +42,7 @@
     "build": "bun build ./src/main.ts --compile --define __DEV__=false --outfile dist/darkest-terminal",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "sprite-editor": "bun run tools/sprite-editor/server.ts",
-    "rebalance-editor": "bun --watch tools/rebalance-editor/server.ts",
+    "game-editor": "bun --watch tools/game-editor/server.ts",
     "dump-save": "bun run tools/dev-save-dump/server.ts"
   },
   "dependencies": {

@@ -26,9 +26,9 @@ EXP cost to level up is a separate table from the tier-growth table above — a 
 
 ### 6.4 Milestone bonus (additive, applies the same to every class before weighting)
 
-**Shared by both characters and monsters**: characters use this curve then multiply by `growthWeights` per class (§6.8); monsters use it directly, unweighted at the curve level (§6.6) — the `monsterType` weighting is applied afterward, to the scaled stat, not to this curve.
+**Shared by both characters and monsters, weighted the same way**: characters multiply this curve by `growthWeights` per class (§6.8); monsters multiply it by `monsterType`'s per-stat weight (§6.6) — in both cases the weighting scales only the growth curve itself, never the flat `base`/class-base stat, which is added back in afterward unscaled.
 
-This is exactly the cumulative-sum curve from §6.3, sampled at any level — **not a separately maintained table**. The real bonus per class = `round(growthBonus(stat, level) × growthWeights[class][stat])` (§6.8). Monster stats (§6.6) still use `growthBonus()` directly, unweighted, before the `monsterType` multiplier is layered on. Read current values by calling `growthBonus(stat, level)` (`src/data/levelGrowth.ts`) rather than a hand-copied table, since it drifts the moment `tiers[]` is retuned.
+This is exactly the cumulative-sum curve from §6.3, sampled at any level — **not a separately maintained table**. The real bonus per class = `round(growthBonus(stat, level) × growthWeights[class][stat])` (§6.8, `classGrowthBonus`). Monster stats (§6.6) use the same shape — `round(growthBonusForDepth(stat, floorDepth) × monsterType's weight)` (`monsterGrowthBonus`, `src/data/levelGrowth.ts`) — before `baseX` is added back in. Read current values by calling `growthBonus(stat, level)` (`src/data/levelGrowth.ts`) rather than a hand-copied table, since it drifts the moment `tiers[]` is retuned.
 
 ### 6.5 Elite/boss multipliers are split per-stat, not applied uniformly
 
@@ -38,7 +38,7 @@ Elite/boss multipliers are split per individual stat, skewed toward HP — see `
 
 Monsters have no separate `level` concept — monster stats scale with `floorDepth` using the exact same tier table as §6.3 (`growthBonusForDepth`, `src/data/monsters.ts`), preserving character/monster symmetry: both sides grow at the same rate, so the deeper the floor, the stronger the monster, proportionally.
 
-On top of this, every archetype has a fixed `monsterType` (`"balanced" | "tanky" | "armored" | "damage"`) whose per-stat multiplier (`data/balance-config.json` → `monsterTypes`) is applied to the fully-scaled `attack`/`defense`/`maxHp` in `spawnMonster()`, the same way `eliteMultiplier`/`bossMultiplier` are (§6.5) — and it stacks with them. This reshapes an archetype's stat *spread* without changing its base-stat Balance Points (`02-monster.md` "Monster type" / "Monster Balance Points"). Full details: `02-monster.md`.
+On top of this, every archetype has a fixed `monsterType` (see `02-monster.md` for the full list) whose per-stat weight (`data/growth-weights.json` → `monsterGrowthWeights`, loaded as `MONSTER_TYPE_MULTIPLIER`) scales **only the depth-growth curve** in `spawnMonster()` — mirroring how a class's `growthWeights` scale only `growthBonus`, never `baseX`/class-base stats (§6.4). `eliteMultiplier`/`bossMultiplier` (§6.5) and the depth-buff/race statBuff, by contrast, scale the *whole* `base + weighted growth` total, and stack with each other and with `monsterType`'s weighting. This reshapes an archetype's stat *spread* without changing its base-stat Balance Points (`02-monster.md` "Monster type" / "Monster Balance Points"). Full details: `02-monster.md`.
 
 ### 6.7 Balance verification (time-to-kill, TTK)
 

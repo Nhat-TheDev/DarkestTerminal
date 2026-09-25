@@ -21,8 +21,7 @@ bun run start   # run the game from source
 bun test        # unit tests for the engine (resolver, combat, aggro, level, floor pattern, ...) +
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
-bun run sprite-editor  # dev tool: edit pixel-art sprites in the browser (tools/sprite-editor/)
-bun run rebalance-editor  # dev tool: inspect/compare character & monster stats, damage, and level-by-depth projections (tools/rebalance-editor/)
+bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
 ```
 
 ## ✅ Implementation overview
@@ -119,8 +118,8 @@ of text (abbreviation + current HP) — full detail (long names, MP, effects...)
 lives in the "Expedition"/"Monsters" panels below. Sprite data lives in
 `src/ui/sprites.ts`, with its own tests (`test/sprites.test.ts`) that catch
 row/column misalignment or missing palette colors. Sprites are edited
-visually in the browser via `bun run sprite-editor` (`tools/sprite-editor/`)
-rather than by hand-editing the character grid in JSON.
+visually in the browser via `bun run game-editor` (`tools/game-editor/`,
+Sprite Editor tab) rather than by hand-editing the character grid in JSON.
 
 This panel needs quite a bit of vertical space (13 pixels + 3 label lines +
 border ≈ 18 lines), plus the other panels → so a terminal **at least ~45-50
@@ -349,8 +348,7 @@ src/
   ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
-  sprite-editor/        # dev tool: edit pixel-art sprites in the browser (bun run sprite-editor)
-  rebalance-editor/     # dev tool: inspect/compare character & monster stats, damage, and level-by-depth projections (bun run rebalance-editor)
+  game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless smoke test: boot + play a full run via simulated keyboard input, incl. a regression test for the post-victory artifact-decision/floor-advance ordering

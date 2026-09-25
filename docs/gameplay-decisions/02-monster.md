@@ -14,16 +14,19 @@ This is the archetype → instance formula, used when spawning monsters into `Ro
 
 ### Monster type (`MonsterType`) — stat-budget archetype
 
-Every `MonsterArchetype` carries a fixed `monsterType`, mirroring how a character class's `growthWeights` (§6.8) reshapes its stat budget: `"balanced" | "tanky" | "armored" | "damage"`. Each type has a per-stat multiplier `{ attack, defense, maxHp }` in `data/balance-config.json` → `monsterTypes` (loaded as `MONSTER_TYPE_MULTIPLIER`, `src/data/monsters.ts`), summing to **3** — the 3-stat equivalent of a class's budget summing to 5 across its 5 weighted stats:
+Every `MonsterArchetype` carries a fixed `monsterType`, mirroring how a character class's `growthWeights` (§6.8) reshapes its stat budget. Each type has a per-stat weight `{ attack, defense, maxHp }` in `data/growth-weights.json` → `monsterGrowthWeights` (loaded as `MONSTER_TYPE_MULTIPLIER`, `src/data/monsters.ts`), summing to **3** — the 3-stat equivalent of a class's budget summing to 5 across its 5 weighted stats. Check the JSON directly for the current type list and values rather than trusting a hand-copied table here — it drifts the moment `monsterGrowthWeights` is retuned.
 
 | Type | attack | defense | maxHp |
 |---|---|---|---|
-| `balanced` (balanced) | 1.0 | 1.0 | 1.0 |
-| `tanky` (high HP) | 0.8 | 0.9 | 1.3 |
-| `armored` (high defense) | 0.8 | 1.3 | 0.9 |
-| `damage` (high damage) | 1.3 | 0.9 | 0.8 |
+| `balanced` | 1.0 | 1.0 | 1.0 |
+| `tanky` (high HP) | 0.7 | 0.9 | 1.4 |
+| `armored` (high defense) | 0.8 | 1.2 | 1.0 |
+| `striker` (high attack, glass-lite) | 1.2 | 0.9 | 0.9 |
+| `glass` (high attack, fragile) | 1.4 | 0.7 | 0.9 |
+| `bruiser` (attack + HP, low defense) | 1.1 | 0.7 | 1.2 |
+| `sentinel` (defense + HP, low attack) | 0.7 | 1.1 | 1.2 |
 
-Unlike `growthWeights` (which only weights the per-level growth increment, leaving `baseX` untouched — §6.8), the type multiplier is applied to the *entire* floor-scaled stat (`base + growthBonusForDepth`) in `spawnMonster()`, the same way `eliteMultiplier`/`bossMultiplier` already work — and it stacks multiplicatively with the elite/boss tier multiplier when both apply. `speed` and `expReward` are unaffected by `monsterType`.
+Same rule as `growthWeights` for characters (§6.4/§6.8): the type weight scales **only the per-depth growth increment**, never `baseX` — `round(growthBonusForDepth(stat, floorDepth) × monsterType's weight)` (`monsterGrowthBonus`, `src/data/levelGrowth.ts`), added back onto `baseX` afterward. `eliteMultiplier`/`bossMultiplier` (§6.5), the depth-buff, and race/subRace/traits `statBuff` are the ones that scale the *entire* `base + weighted growth` total in `spawnMonster()`, and they stack multiplicatively with each other. `speed` and `expReward` are unaffected by `monsterType`.
 
 Current per-archetype assignment: `data/monsters.json` field `monsterType` — check the JSON directly rather than trusting an enumeration here.
 
@@ -273,7 +276,7 @@ This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliber
 | strong | 14 | ±0.5 |
 | Elite/Boss (guard-room archetypes — `actionWeights` for both `elite` and `boss`) | 17 | ±1 |
 
-Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the rebalance-editor tool, `tools/rebalance-editor`, surfaces this number directly for both classes and monster archetypes).
+Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the game-editor tool, `tools/game-editor` — Rebalance tab — surfaces this number directly for both classes and monster archetypes).
 
 ### Balance verification
 

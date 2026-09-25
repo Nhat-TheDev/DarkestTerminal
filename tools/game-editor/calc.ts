@@ -5,17 +5,21 @@
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
 import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
+import { resolveRaceProfile } from "../../src/data/monsterRaces";
 import {
   growthBonus,
   growthBonusForDepth,
   classGrowthBonus,
   expCostForLevel,
   levelForTotalExp,
+  monsterDepthBuffPercent,
+  monsterGrowthBonus,
   MAX_LEVEL,
   ELITE_MULTIPLIER,
   BOSS_MULTIPLIER,
   EXP_REWARD_DEPTH_RATE,
   BOSS_FLOOR_INTERVAL,
+  MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS,
   type GrowthStat,
 } from "../../src/data/levelGrowth";
 import { statsForLevel } from "../../src/engine/party";
@@ -192,10 +196,23 @@ export interface MonsterComputation {
   base: { hp: number; attack: number; defense: number; speed: number };
   /** Base-stat Balance Points — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
   balancePoints: number;
+  /** Raw depth-growth curve, before monsterType's weight — mirrors a character's growthBonusUnweighted. */
   growthBonus: { maxHp: number; attack: number; defense: number };
+  /** growthBonus × monsterType's weight (monsterGrowthBonus — mirrors classGrowthBonus for characters).
+   *  Added to `base` BEFORE tier/depth-buff/race scale the total — monsterType never touches `base` itself. */
+  growthBonusWeighted: { maxHp: number; attack: number; defense: number };
   monsterType: MonsterArchetype["monsterType"];
   typeMultiplier: { maxHp: number; attack: number; defense: number };
   multiplier: { maxHp: number; attack: number; defense: number; exp: number } | null;
+  /** Depth-bracket buff (level-growth.json's monsterDepthBuffBracket*) — applied by spawnMonster()
+   *  on top of growth/type/tier multipliers, per stat via depthBuffStatCoefficients. 0 before the
+   *  first bracket floor. */
+  depthBuffPercent: number;
+  depthBuffStatCoefficients: { maxHp: number; attack: number; defense: number };
+  /** Race+subRace+traits statBuff, resolved and summed (resolveRaceProfile) — the last multiplicative
+   *  factor spawnMonster applies, after type/tier/depth-buff. 0 for a race/subRace/trait combo with
+   *  no statBuff on that stat. */
+  raceStatBuffPercent: { maxHp: number; attack: number; defense: number };
   final: { hp: number; maxHp: number; attack: number; defense: number; speed: number; expReward: number };
   isBossFloor: boolean;
   skillKit: {
@@ -225,6 +242,7 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
 
   const monster = spawnMonster(archetypeId, depth, tier === "normal" ? undefined : { tier });
   const multiplier = tier === "elite" ? ELITE_MULTIPLIER : tier === "boss" ? BOSS_MULTIPLIER : null;
+  const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
 
   return {
     archetypeId,
@@ -233,9 +251,17 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     base: { hp: archetype.baseHp, attack: archetype.baseAttack, defense: archetype.baseDefense, speed: archetype.baseSpeed },
     balancePoints: monsterBalancePoints({ attack: archetype.baseAttack, defense: archetype.baseDefense, hp: archetype.baseHp, speed: archetype.baseSpeed }),
     growthBonus: { maxHp: growthBonusForDepth("maxHp", depth), attack: growthBonusForDepth("attack", depth), defense: growthBonusForDepth("defense", depth) },
+    growthBonusWeighted: {
+      maxHp: monsterGrowthBonus("maxHp", depth, MONSTER_TYPE_MULTIPLIER[archetype.monsterType].maxHp),
+      attack: monsterGrowthBonus("attack", depth, MONSTER_TYPE_MULTIPLIER[archetype.monsterType].attack),
+      defense: monsterGrowthBonus("defense", depth, MONSTER_TYPE_MULTIPLIER[archetype.monsterType].defense),
+    },
     monsterType: archetype.monsterType,
     typeMultiplier: MONSTER_TYPE_MULTIPLIER[archetype.monsterType],
     multiplier,
+    depthBuffPercent: monsterDepthBuffPercent(depth),
+    depthBuffStatCoefficients: MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS,
+    raceStatBuffPercent: { maxHp: race.statBuff.maxHpPercent, attack: race.statBuff.attackPercent, defense: race.statBuff.defensePercent },
     final: { hp: monster.hp, maxHp: monster.maxHp, attack: monster.attack, defense: monster.defense, speed: monster.speed, expReward: monster.expReward },
     isBossFloor: depth % BOSS_FLOOR_INTERVAL === 0,
     skillKit: {
@@ -322,6 +348,12 @@ export interface SkillDamagePreview {
   skillName: string;
   target: string;
   perEffect: (DamageBreakdown & { effectAmount: number; effectChancePercent: number | null; appliesStatusEffectId?: string })[];
+  /** `damage` effects that override their target to "self" (e.g. Self-Destruct) — resolved
+   *  against the CASTER, never the enemy target, mirroring resolveSkillEffect's `isSelfTick`
+   *  path (flat `amount`, no offense/defense/mitigation involved at all). Kept out of `perEffect`
+   *  and every total* below so a self-inflicted hit never gets folded into "damage dealt to the
+   *  enemy" or mitigated by the enemy's defense. */
+  selfEffects: { effectAmount: number; finalDamage: number; percentOfCasterMaxHp: number | null; killsSelf: boolean | null }[];
   totalUnmitigatedDamage: number;
   totalFinalDamage: number;
   totalExpectedDamage: number;
@@ -330,14 +362,23 @@ export interface SkillDamagePreview {
 /** Previews every `damage` effect of a skill against a single defense/maxHp target. Non-damage effects (heal/status/etc.) are omitted from the numeric preview but their status-effect ids are still attached where relevant so the caller can look them up. */
 export function previewSkillDamage(
   skill: SkillDefinition,
-  source: { attack: number; magicPower?: number },
+  source: { attack: number; magicPower?: number; maxHp?: number },
   target: { defense: number; maxHp?: number },
   fearTier: FearTier,
   sourceIsCharacter: boolean
 ): SkillDamagePreview {
-  const offense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
-  const damageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
+  const baseOffense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
+  const allDamageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
+  // Matches applySkillEffects' isOverrideEffect check in src/engine/combat.ts for a damage effect:
+  // a `target` that differs from the skill's own target resolves against a separate population —
+  // for "self" specifically, that population is just the caster.
+  const selfDamageEffects = allDamageEffects.filter((e) => e.target === "self" && e.target !== skill.target);
+  const damageEffects = allDamageEffects.filter((e) => !(e.target === "self" && e.target !== skill.target));
   const perEffect = damageEffects.map((e) => {
+    // Mirrors resolveSkillEffect's offenseMultiplier in src/engine/resolver.ts — an effect that
+    // scales the caster's offense before mitigation (e.g. Self-Destruct's 200%) must apply that
+    // scaling here too, or this preview understates/overstates the damage the real engine deals.
+    const offense = baseOffense * ((e.offenseMultiplierPercent ?? 100) / 100);
     const breakdown = computeDamage({
       offense,
       defense: target.defense,
@@ -350,11 +391,23 @@ export function previewSkillDamage(
     if ("error" in breakdown) throw new Error(breakdown.error);
     return { ...breakdown, effectAmount: e.amount ?? 0, effectChancePercent: e.chance !== undefined ? e.chance * 100 : null };
   });
+  const selfEffects = selfDamageEffects.map((e) => {
+    // isSelfTick in resolveSkillEffect: flat `amount`, no offense/defense/crit/mitigation at all
+    // (race resist/weak is skipped here too — this preview doesn't model race anywhere else either).
+    const finalDamage = Math.max(1, Math.round(e.amount ?? 0));
+    return {
+      effectAmount: e.amount ?? 0,
+      finalDamage,
+      percentOfCasterMaxHp: source.maxHp ? Number(((finalDamage / source.maxHp) * 100).toFixed(1)) : null,
+      killsSelf: source.maxHp !== undefined ? finalDamage >= source.maxHp : null,
+    };
+  });
   return {
     skillId: skill.id,
     skillName: skill.name,
     target: skill.target,
     perEffect,
+    selfEffects,
     totalUnmitigatedDamage: perEffect.reduce((sum, e) => sum + e.unmitigatedTotal * (e.effectChancePercent !== null ? e.effectChancePercent / 100 : 1), 0),
     totalFinalDamage: perEffect.reduce((sum, e) => sum + e.finalDamage * (e.effectChancePercent !== null ? e.effectChancePercent / 100 : 1), 0),
     totalExpectedDamage: perEffect.reduce((sum, e) => sum + (e.expectedDamage ?? 0) * (e.effectChancePercent !== null ? e.effectChancePercent / 100 : 1), 0),
@@ -382,6 +435,9 @@ export function computeSkillPreview(opts: {
   skillId: string;
   sourceAttack: number;
   sourceMagicPower?: number;
+  /** The caster's own maxHp — only needed to preview a self-targeting effect (e.g. Self-Destruct)
+   *  as "% of own maxHp" / "kills the caster". Omitted, those fields just come back null. */
+  sourceMaxHp?: number;
   targetDefense: number;
   targetMaxHp?: number;
   fearTier?: FearTier;
@@ -397,7 +453,7 @@ export function computeSkillPreview(opts: {
   }
   return previewSkillDamage(
     skill,
-    { attack: opts.sourceAttack, magicPower: opts.sourceMagicPower },
+    { attack: opts.sourceAttack, magicPower: opts.sourceMagicPower, maxHp: opts.sourceMaxHp },
     { defense: opts.targetDefense, maxHp: opts.targetMaxHp },
     opts.fearTier ?? 1,
     opts.sourceIsCharacter ?? true
@@ -415,13 +471,13 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
   if ("error" in monster) return monster;
   const fearTier = opts.fearTier ?? 1;
 
-  const characterOffense = { attack: character.final.attack, magicPower: character.final.magicPower };
+  const characterOffense = { attack: character.final.attack, magicPower: character.final.magicPower, maxHp: character.final.maxHp };
   const monsterTarget = { defense: monster.final.defense, maxHp: monster.final.maxHp };
   const outgoing = character.skills
     .filter((s) => s.unlocked && effectsOf(s).some((e) => e.kind === "damage") && (s.target === "singleEnemy" || s.target === "allEnemies" || s.target === "singleAllyOrEnemy" || s.target === "allAlliesAndEnemies"))
     .map((s) => previewSkillDamage(s, characterOffense, monsterTarget, fearTier, true));
 
-  const monsterOffense = { attack: monster.final.attack };
+  const monsterOffense = { attack: monster.final.attack, maxHp: monster.final.maxHp };
   const characterTarget = { defense: character.final.defense, maxHp: character.final.maxHp };
   const incoming: (SkillDamagePreview & { actionWeightPercent: number | null })[] = [];
 

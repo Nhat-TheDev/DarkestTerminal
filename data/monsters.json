@@ -556,6 +556,34 @@
     "minFloor": 20
   },
   {
+    "id": "lava-slime",
+    "name": "Lava Slime",
+    "description": "It hasn't moved since the room went quiet, and the stone within its reach has gone the same dull red as its own skin. Whatever holds it together was never asked to hold for long.",
+    "baseHp": 100,
+    "baseAttack": 23,
+    "baseDefense": 4,
+    "baseSpeed": 4,
+    "monsterType": "tanky",
+    "aiPattern": "defensive",
+    "skillIds": [
+      "self-destruct"
+    ],
+    "expReward": 10,
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "self-destruct": 30
+      }
+    },
+    "roles": [
+      "normal"
+    ],
+    "race": "slime",
+    "subRace": "lava-ooze",
+    "minFloor": 20
+  },
+  {
     "id": "fire-elemental",
     "name": "Fire Elemental",
     "description": "The stone here has never once been dry, and this has been burning on it far longer than that should allow. Where it stands longest, the floor has gone white and thin.",
@@ -641,6 +669,37 @@
       "flying"
     ],
     "minFloor": 30
+  },
+  {
+    "id": "lesser-vampire",
+    "name": "Lesser Vampire",
+    "description": "Whatever made it what it is didn't finish the job — it keeps to the air in short, uneven bursts, like something still learning the shape it's in. The hunger arrived first and finished forming; everything else is still catching up.",
+    "baseHp": 85,
+    "baseAttack": 26,
+    "baseDefense": 3,
+    "baseSpeed": 10,
+    "monsterType": "balanced",
+    "aiPattern": "aggressive",
+    "roles": [
+      "normal"
+    ],
+    "skillIds": [
+      "blood-drain"
+    ],
+    "expReward": 10,
+    "race": "undead",
+    "subRace": "vampiric",
+    "traitIds": [
+      "flying"
+    ],
+    "powerTier": "medium",
+    "actionWeights": {
+      "normal": {
+        "basicAttack": 70,
+        "blood-drain": 30
+      }
+    },
+    "minFloor": 40
   },
   {
     "id": "skeleton-archer",
@@ -1200,6 +1259,9 @@
     "roles": [
       "elite",
       "boss"
+    ],
+    "traitIds": [
+      "flying"
     ],
     "race": "shadow-creature",
     "subRace": "void",

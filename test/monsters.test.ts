@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { spawnMonster, MONSTER_ARCHETYPES, MONSTER_TYPE_MULTIPLIER } from "../src/data/monsters";
-import { growthBonusForDepth, monsterDepthBuffPercent, MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS } from "../src/data/levelGrowth";
+import { monsterGrowthBonus, monsterDepthBuffPercent, MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS } from "../src/data/levelGrowth";
 import { resolveRaceProfile } from "../src/data/monsterRaces";
 
 describe("spawnMonster applies race statBuff", () => {
@@ -126,20 +126,22 @@ describe("spawnMonster applies the floor-depth buff", () => {
     const archetype = MONSTER_ARCHETYPES.find((a) => a.id === "goblin")!;
     const depth = 25;
     const depthBonus = monsterDepthBuffPercent(depth);
-    const growthMaxHp = archetype.baseHp + growthBonusForDepth("maxHp", depth);
-    const growthAttack = archetype.baseAttack + growthBonusForDepth("attack", depth);
-    const growthDefense = archetype.baseDefense + growthBonusForDepth("defense", depth);
     const typeMultiplier = MONSTER_TYPE_MULTIPLIER[archetype.monsterType];
     const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
+    // monsterType's multiplier scales only the depth-growth curve (monsterGrowthBonus, mirroring
+    // classGrowthBonus for characters) — baseX is added back in unscaled before tier/depth-buff/race apply.
+    const weightedGrowthMaxHp = monsterGrowthBonus("maxHp", depth, typeMultiplier.maxHp);
+    const weightedGrowthAttack = monsterGrowthBonus("attack", depth, typeMultiplier.attack);
+    const weightedGrowthDefense = monsterGrowthBonus("defense", depth, typeMultiplier.defense);
 
     const expectedMaxHp = Math.round(
-      growthMaxHp * typeMultiplier.maxHp * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.maxHp) / 100) * (1 + race.statBuff.maxHpPercent / 100)
+      (archetype.baseHp + weightedGrowthMaxHp) * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.maxHp) / 100) * (1 + race.statBuff.maxHpPercent / 100)
     );
     const expectedAttack = Math.round(
-      growthAttack * typeMultiplier.attack * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.attack) / 100) * (1 + race.statBuff.attackPercent / 100)
+      (archetype.baseAttack + weightedGrowthAttack) * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.attack) / 100) * (1 + race.statBuff.attackPercent / 100)
     );
     const expectedDefense = Math.round(
-      growthDefense * typeMultiplier.defense * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.defense) / 100) * (1 + race.statBuff.defensePercent / 100)
+      (archetype.baseDefense + weightedGrowthDefense) * (1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.defense) / 100) * (1 + race.statBuff.defensePercent / 100)
     );
 
     const goblin = spawnMonster("goblin", depth);

@@ -102,6 +102,13 @@ export function classGrowthBonus(stat: GrowthStat, level: number, weights: Growt
   return Math.round(growthBonus(stat, level) * weights[stat]);
 }
 
+/** Monster-archetype equivalent of `classGrowthBonus` — `monsterType`'s multiplier
+ *  (`monsterGrowthWeights` in growth-weights.json) scales only the depth-growth curve, the same
+ *  way a class's growth weight scales only `growthBonus` and never touches `baseX`. */
+export function monsterGrowthBonus(stat: GrowthStat, floorDepth: number, typeWeight: number): number {
+  return Math.round(growthBonusForDepth(stat, floorDepth) * typeWeight);
+}
+
 export function expCostForLevel(level: number): number {
   const clamped = Math.max(1, Math.min(MAX_LEVEL, level));
   if (clamped <= 1) return 0;

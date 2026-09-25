@@ -726,12 +726,12 @@
       "Fastest",
       "Poison"
     ],
-    "baseMaxHp": 110,
+    "baseMaxHp": 100,
     "baseMaxMp": 40,
-    "baseAttack": 17,
+    "baseAttack": 18,
     "baseDefense": 6,
     "baseAggro": 10,
-    "baseSpeed": 17,
+    "baseSpeed": 20,
     "baseMagicPower": 0,
     "skills": [
       {
@@ -2282,9 +2282,9 @@
       "Critical Hits",
       "Crowd Control"
     ],
-    "baseMaxHp": 110,
-    "baseMaxMp": 40,
-    "baseAttack": 16,
+    "baseMaxHp": 90,
+    "baseMaxMp": 45,
+    "baseAttack": 17,
     "baseDefense": 8,
     "baseAggro": 9,
     "baseSpeed": 13,
@@ -2621,10 +2621,10 @@
       "Bleed",
       "Execute"
     ],
-    "baseMaxHp": 115,
-    "baseMaxMp": 42,
-    "baseAttack": 14,
-    "baseDefense": 7,
+    "baseMaxHp": 110,
+    "baseMaxMp": 45,
+    "baseAttack": 12,
+    "baseDefense": 8,
     "baseAggro": 8,
     "baseSpeed": 16,
     "baseMagicPower": 0,
@@ -3000,7 +3000,7 @@
       "Indirect Damage",
       "AoE"
     ],
-    "baseMaxHp": 90,
+    "baseMaxHp": 80,
     "baseMaxMp": 55,
     "baseAttack": 4,
     "baseDefense": 7,

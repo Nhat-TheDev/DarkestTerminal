@@ -1013,5 +1013,27 @@
     ],
     "slot": 0,
     "unlockLevel": 1
+  },
+  {
+    "id": "self-destruct",
+    "name": "Self-Destruct",
+    "description": "It stops trying to survive the fight and starts trying to end it — whatever's standing close doesn't get a say in the matter.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 30,
+        "offenseMultiplierPercent": 200,
+        "ignoreDefensePercent": 30
+      },
+      {
+        "kind": "damage",
+        "amount": 99999,
+        "target": "self"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
   }
 ]
