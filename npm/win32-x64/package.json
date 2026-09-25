@@ -1,6 +1,6 @@
 {
   "name": "darkest-terminal-win32-x64",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Windows (x64) binary for darkest-terminal",
   "license": "PolyForm-Noncommercial-1.0.0",
   "os": ["win32"],
