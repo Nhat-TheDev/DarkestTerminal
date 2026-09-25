@@ -20,11 +20,11 @@ Both are clamped to their range via `clamp(...)` wherever they're modified (`src
 
 ## Satiety
 
-Satiety replaced the earlier per-character hunger/thirst pair — 1 shared value for the whole party instead of 2 tracked separately on every character.
+Satiety is 1 shared value for the whole party (`GameState.satiety`), not tracked per character.
 
 ### Drain — once per room, amount depends on room type
 
-Satiety drains **exactly once per room the party resolves**, never per combat turn or per action within a fight — a fight can run arbitrarily long without draining satiety on its own. For a room that starts a fight, the drain applies on **victory** (`Game.resolve()`), not on the ambush itself, so a fight that's abandoned mid-way doesn't cost satiety.
+Satiety drains once per room the party resolves, never per combat turn or per action within a fight — a fight can run arbitrarily long without draining satiety on its own. For a room that starts a fight, the drain applies on **victory** (`Game.resolve()`), not on the ambush itself, so a fight that's abandoned mid-way doesn't cost satiety.
 
 | Room outcome | Drain |
 |---|---|
@@ -32,7 +32,9 @@ Satiety drains **exactly once per room the party resolves**, never per combat tu
 | Non-combat event (Open Chest, Merchant, Blood Altar, Cursed Shrine, Twin Altars, Sacrificial Circle, Gambling Den, Wandering Hermit, Collapsed Floor) | `survival.satietyDrainEvent` (5) |
 | Rest room | `0` — entering or using the Rest room never drains satiety |
 
-Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), called from `src/engine/dungeon.ts` (`moveToRoom`) for non-combat entries and from `src/engine/game.ts` (`Game.resolve()`, victory branch) for combat.
+Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), called from `src/engine/dungeon.ts`'s `enterRoom()` (the shared room-arrival dispatch that `moveToRoom` calls into) for non-combat entries and from `src/engine/game.ts` (`Game.resolve()`, victory branch) for combat.
+
+**Backtracking can drain satiety a second time for the same room.** `RoomType` is only `"combat" | "rest" | "boss" | "event"`, and `enterRoom`'s dispatch falls through to a catch-all branch (`dungeon.ts`, draining `SATIETY_DRAIN_COMBAT`) whenever the room isn't an uncleared combat/boss room with living monsters, isn't a rest room, and isn't an uncleared event room. An already-cleared combat or boss room matches none of those cases, so walking back into it hits the catch-all and drains `SATIETY_DRAIN_COMBAT` again — on top of the drain already applied at victory time by `Game.resolve()`. There's no dedicated "already visited, do nothing" case for a cleared combat/boss room.
 
 The drain/threshold numbers are sized against the existing floor-generation guarantee: every path already passes through `floorGeneration.minRestRoomsPerPath`–`maxRestRoomsPerPath` (1–2, `src/data/floorPatterns.ts`) Rest rooms, and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following the critical path is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
 
@@ -132,8 +134,8 @@ pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
 campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
 ```
 
-Tier thresholds against `loreExposureCount` (proposed, a balance decision pending playtesting real
-run lengths, not a lore one): **tier 1 at 3, tier 2 at 8, tier 3 at 15, tier 4 at 25.**
+Tier thresholds against `loreExposureCount` (a balance decision, not a lore one): **tier 1 at 3,
+tier 2 at 8, tier 3 at 15, tier 4 at 25.**
 
 **Skip-to-highest, not sequential**: if the party jumps straight from tier 0 to tier 3 between 2
 rest visits (event rooms aren't evenly spaced with rest rooms), only tier 3's content shows — tiers
@@ -217,7 +219,7 @@ plausible to notice it in someone else before they notice it in themselves:
 > look up right away this time. When he finally does, it isn't your face he's checking first — it's
 > your hands, like he's counting something you've stopped counting yourself."
 
-**Caught during implementation, not before**: `pickEventText()`'s existing priority order makes
+`pickEventText()`'s existing priority order makes
 `returnDescription` win over `crossEventVariants` on any visit after the party's 1st meeting with a
 recurring NPC (confirmed by an already-passing test asserting exactly that, for a different pairing).
 Since Unawareness is a late-run state almost always reached *after* a party's first hermit visit,
@@ -238,20 +240,7 @@ them. Resolves nothing on §11.9's open list — entirely about the party's own 
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
 "Sleeper," "Covenant," or "the Balance."
 
-**Implemented.** `src/types.ts` (3 new `GameState` fields, plus `EventDefinition.campReflectionUnawareEcho`),
-`src/data/loreExposure.ts` (new — `LORE_EXPOSURE_EVENT_IDS`, `campReflectionTier()`,
-`highestAnsweredCampReflectionTier()`, and the 4 tiers' finalized content), `src/data/balanceConfig.ts`
-+ `data/balance-config.json` (the 4 thresholds, under `survival`), `src/engine/events/shared.ts`
-(`closeEvent()`'s new increment), `src/engine/game.ts` (`Game.resolve()`'s combat-victory block also
-increments it — that path never reaches `closeEvent()`, same reason it has its own `eventOutcomes`
-write; new field init; `pickCampReflectionChoice()`), `src/engine/dungeon.ts` (`moveToRoom`'s
-rest-room branch — tier check, `pendingCampReflectionTier` set; `pickEventText()`'s
-`campReflectionUnawareEcho` append), `src/engine/migration.ts` (migration guards for the 3 fields),
-`src/ui/state.ts` (new `"campReflection"` `UiState` kind), `src/ui/screens/campReflection.ts` (new),
-`src/ui/app.ts` (wired into `syncUiToGameState`/`handleKey`/`renderMain`/`renderFooter`),
-`data/events.json` (`wandering-hermit`'s `crossEventVariants` entry + `campReflectionUnawareEcho`),
-`test/campReflection.test.ts` (new — 19 tests: tiering, skip-to-highest, rest-entry gating, choice
-recording, the hermit bridge's both forms, migration defaults).
+**Implemented.** Tier/content logic lives in `src/data/loreExposure.ts`; UI in `src/ui/screens/campReflection.ts`.
 
 ### Fear tiers (shared with `04-fear-combat.md` section 4 below)
 

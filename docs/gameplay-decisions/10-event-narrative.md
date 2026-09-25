@@ -3,14 +3,13 @@
 *(item 10 of `00-index.md`)*
 
 **Status**: the shared worldview, recurring characters, event chains, and post-event reflection
-originally proposed here are built and documented in `08-events.md` §8.13-§8.16. The hidden
-ground-truth worldview behind that player-facing text (what the Sleeper/Covenant actually are,
-never told to the player) lives in `11-world-bible.md`. Part C (variant pool, cross-event
-continuity, chain tier 3, and the 8 new events) is now fully implemented — see Part A. This file's
-remaining live content is the relationship graph (Part B, reference material for anyone extending
-it) and the implemented mechanisms' data models and rationale (Part C, kept as the design record —
-not a to-do list). Every quote below has already passed a craft review (cringe/slop/craft) and a
-compliance check against `11-world-bible.md`.
+proposed here are built and documented in `08-events.md` §8.13-§8.16. The hidden ground-truth
+worldview behind that player-facing text (what the Sleeper/Covenant actually are, never told to the
+player) lives in `11-world-bible.md`. Part C covers the variant pool, cross-event continuity, chain
+tier 3, and the 8 new events — see Part A for what's built. This file's remaining live content is
+the relationship graph (Part B, reference material for anyone extending it) and the implemented
+mechanisms' data models and rationale (Part C, the design record). Every quote below has already
+passed a craft review (cringe/slop/craft) and a compliance check against `11-world-bible.md`.
 
 ---
 
@@ -22,9 +21,8 @@ escalates twice, not once. Gated by `circleRemembersThreshold2`/`bloodDebtThresh
 tier 2 on counter alone. Live in `src/engine/dungeon.ts`, `src/engine/events/guardianFight.ts`,
 `src/engine/events/shared.ts`; tested in `test/events.test.ts`.
 
-**Framing narrative superseded**: this file used to record a deliberate choice not to give the
-party a single reason for descending. `11-world-bible.md` §11.5 ("the Call") reversed that — still
-never told to the player, but internally no longer an open question.
+**Framing narrative**: the party has a single reason for descending, per `11-world-bible.md` §11.5
+("the Call") — still never told to the player, and internally settled, not an open question.
 
 **Description variant pool, cross-event continuity, chain tier 3, and 8 new events** (Part C.1-C.5
 below): all built. `data/events.json` carries every `crossEventVariants`/`descriptionVariants`/
@@ -56,10 +54,9 @@ widened from `attempted`/`declined` to `rescued`/`failed`/`declined` to match.
 `half-a-warning` → `worn-chalk-stub` — all 4 items live in `data/artifacts.json` alongside the rest
 of the 48-item catalog rewrite (34 rewritten + 14 new, including `waystone-shard`, Part F.4).
 
-**`the-delay` now `noArtifactReward: true`**: previously granted a free artifact like every other
-common `instantReward` event, contributing to commons reading as an unbroken loot piñata. Converted
-to the purest "no cost, no reward, information only" case — consistent with its own established
-role as the template for events that need no lore/institution baggage at all (Part C.5).
+**`the-delay` is `noArtifactReward: true`**: the purest "no cost, no reward, information only" case
+among the common `instantReward` events — consistent with its established role as the template for
+events that need no lore/institution baggage at all (Part C.5).
 
 ---
 
@@ -290,9 +287,8 @@ rule.
    independent entry on the same field; if both this and #7 match, #7 wins (array order, "first
    match wins," no new rule): *"An old man sits meditating amid the rubble, a spiral mark scarred
    into his forearm. Something about you carries the same mark the guardians carry. He doesn't ask
-   what you did to it."* (Implementation note: `"resolved"` — the win path's outcome tag,
-   `game.ts`'s combat-victory block — not `"entered"`, which is never a value written anywhere;
-   this doc previously said `entered` in error.)
+   what you did to it."* (`"resolved"` is the win path's outcome tag, written from `game.ts`'s
+   combat-victory block.)
 9. `gambling-den` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A stranger
    shuffles 3 overturned cups, sneering in the dark, no brand on his skin, no altar in sight. You're
    already doing the math on what you can afford to lose before he's finished explaining the
@@ -613,32 +609,6 @@ C.1, entry 11.
 
 ---
 
-## Part D — Build status
-
-All 4 pieces are live, built in the order originally planned here (variant pool, then cross-event
-continuity, then chain tier 3, then the 8 new events).
-
-**Touched**: `src/types.ts` (`CrossEventVariant`/`EventOutcomeCondition`, `descriptionVariants`,
-`onceLifetime`/`minFloorDepth`/`noArtifactReward`/`instantRewardActionLabel`, tier-3 fields,
-`GameState.eventOutcomes`/`firedOnceEventIds`, `Room.descriptionVariantIndex`/`chainVariant`
-extended), `data/events.json` (every `crossEventVariants`/`descriptionVariants` entry, tier-3
-fields, 8 new event entries), `data/balance-config.json` + `src/data/balanceConfig.ts`
-(`circleRemembersThreshold3`, `bloodDebtThreshold3`, `chainTier3MinFloorDepth` — the 3 proposed
-event-level depth-gate fields were dropped, see Part C's header note), `src/data/events.ts`
-(`rollEvent()` depth + once-lifetime filtering), `src/engine/dungeon.ts` (`resolveEventEntry`'s
-variant-index roll and depth/once-lifetime-aware roll, tier-3 checks and `crossEventVariants`
-resolution in `pickEventText`), `src/engine/events/guardianFight.ts` (tier-3 `chainVariant`
-branch), `src/engine/events/shared.ts` (`isTier3Escalated`, `pickReflectionPrompt`'s tier-3 check,
-`closeEvent`'s generic-outcome and `firedOnceEventIds` marking, `REFLECTION_EVENT_IDS` extended),
-`src/engine/events/bloodAltar.ts` + `collapsedFloor.ts` + `sacrifice.ts` (outcome-tag writes),
-`src/engine/events/openChest.ts` (`noArtifactReward` branch), `src/engine/game.ts` (new
-`GameState` field init, and the win-path outcome-tag write for guardian-fight/desecrated-altar,
-since their combat-victory path never calls `closeEvent()`), `src/engine/migration.ts` (save
-migration guards), `src/ui/screens/events.ts` (Skip-visibility for `forced3`, action-label
-override), `test/events.test.ts`, `docs/gameplay-decisions/08-events.md` §8.1/§8.13/§8.15 (sync).
-
----
-
 ## Part E — The Wanderer
 
 A rare, no-reward encounter — 1 of 3 lore-delivery channels outside the event system proper (the
@@ -765,10 +735,10 @@ reaching its 1 escalation — the party has taken from 12+ of the 7 zero-cost re
 own counter, which §8.15 specifies in full.
 
 **Why 2 triggers instead of 1**: they're deliberately 2 different roads to the same absence, not 2
-unrelated mechanics bolted together. An earlier draft of this gate used Camp Reflection's Untouched
-tier alone — a party that barely engaged with anything. Dropped because it's nearly unreachable by
-floor 100 (resolving almost any event increments `loreExposureCount`) and because it collapsed 2
-genuinely different stories into 1 vague "didn't do enough" reading. Trigger 1 is a party that engaged
+unrelated mechanics bolted together. A single Camp Reflection Untouched-tier gate (a party that
+barely engaged with anything) is nearly unreachable by floor 100 (resolving almost any event
+increments `loreExposureCount`) and collapses 2 genuinely different stories into 1 vague "didn't do
+enough" reading. Trigger 1 is a party that engaged
 *the most* with 1 specific reciprocal exchange — enough to live through the stone's most corroded
 text — and then, on some later visit, didn't pay. Trigger 2 is a party that was never in a reciprocal
 exchange with anything down here to begin with, only ever on the receiving end. Nothing here decides
@@ -779,8 +749,7 @@ someone worth keeping. For trigger 1, whether the decline was chosen (enough HP 
 text — deliberately; the significant fact is only that the pattern broke, not why. §F.4's actual
 wording never specifies which trigger fired, on purpose — the ending reads identically either way.
 
-**Why Continue's condition, specifically** (flagging for confirmation — the 1 open design parameter
-in this spec): reusing `loreExposureCount`/`campReflectionTier` needs no new tracking at all, and
+**Why Continue's condition, specifically**: reusing `loreExposureCount`/`campReflectionTier` needs no new tracking at all, and
 it's thematically exact — the true ending is "keep going despite total terror," and the 1 existing
 mechanism that measures a party's *capacity to stop registering fear as a reason to stop* is Camp
 Reflection's Unawareness tier. A party able to take this choice isn't brave in the ordinary sense;
@@ -1124,9 +1093,8 @@ designed ending competing for the same weight as §F.2-F.5 above.
 
 ### F.7 Implementation status
 
-**Implemented, all of it**, including the 2 pieces this spec originally flagged as needing their own
-separate design pass (the floor-100/120 trigger mechanism and Ending 1's cross-run persistence
-layer) and the boss kit it flagged as undesigned:
+**Implemented, all of it**, including the floor-100/120 trigger mechanism, Ending 1's cross-run
+persistence layer, and the boss kit:
 
 - **Floor-100/120 triggers**: `Game.advanceToNextFloor()` (`src/engine/game.ts`) checks the new
   depth against `ENDING_CHECKPOINT_FLOOR_DEPTH`/`FOUNDER_FLOOR_DEPTH` (`src/data/endings.ts`) and
@@ -1134,14 +1102,14 @@ layer) and the boss kit it flagged as undesigned:
   ambush check — both block every other screen via `syncUiToGameState()` (`src/ui/app.ts`), same
   "guaranteed, non-rolled" priority the spec called for.
 - **`GameState.gameOver`**: extended to `"stay" | "letGo" | "leaveAmbushed" | "leaveEscaped"`
-  alongside the existing `"victory" | "defeat"` — reused the existing gameover screen/deletion
-  machinery entirely (`src/ui/screens/gameover.ts`, `deleteSavesForRun`) rather than inventing a
-  parallel resolution-screen concept; Continue sets none of these, matching the spec exactly.
-- **`waystone-shard`'s `restrictedDropSources`**: built as spec'd — `ArtifactDefinition` field,
-  `rollArtifact()`'s opt-in `allowRestrictedSource` param, `bloodAltarPay()`'s threshold check. Caught
-  during implementation: Collapsed Floor rolls the same `"boss"` rarity table without being a Boss
-  kill, so the mechanism had to be an explicit per-call-site opt-in, never inferred from the rarity
-  table name alone — confirmed with a dedicated test.
+  alongside the existing `"victory" | "defeat"` — reuses the existing gameover screen/deletion
+  machinery entirely (`src/ui/screens/gameover.ts`, `deleteSavesForRun`) rather than a parallel
+  resolution-screen concept; Continue sets none of these.
+- **`waystone-shard`'s `restrictedDropSources`**: `ArtifactDefinition` field,
+  `rollArtifact()`'s opt-in `allowRestrictedSource` param, `bloodAltarPay()`'s threshold check.
+  Collapsed Floor rolls the same `"boss"` rarity table without being a Boss kill, so the mechanism
+  is an explicit per-call-site opt-in, never inferred from the rarity table name alone — confirmed
+  with a dedicated test.
 - **Floor 120's boss**, `the-founder` (`data/monsters.json`, `data/monster-skills.json`,
   `data/sprites.json`): `roles: ["boss"]` plus `finalBoss: true`, so it's excluded from every
   normal Elite/Boss-room roll and only ever spawned directly by `Game.enterFounderFight()`. The
@@ -1159,23 +1127,18 @@ layer) and the boss kit it flagged as undesigned:
   single run's save. A fresh `Game` reads it once at construction and pre-seeds
   `firedOnceEventIds`/`retiredCharacterClassId` accordingly — `the-one-who-stayed`'s eligibility is
   entirely encoded that way, with zero changes needed to `rollEvent()` itself.
-  - **Adaptation, not a deviation** — flagged here rather than made silently: the spec's text names
-    "the specific character who stayed" by a personal name, but this game has no personal-name
-    system at all — `Character.name` is always just the class's display name
-    (`createCharacter(id, cls.name, cls)`). The payoff event therefore names the retired *class*
-    only ("It's the {{class}} who never came back up"), substituted at read time from
-    `retiredCharacterClassId`. This isn't a shortcut around the spec's intent — it's the same
-    "nobody down here exchanges names" principle (11-world-bible.md) the rest of this whole session
-    has been holding to, just noticed one implementation step later than it should have been.
-  - Caught a real bug while wiring this in: `profile.json` living in the same directory `save.ts`
-    scans for per-run saves made `deleteSavesForRun`/`listSaves` crash on it (no `.meta` field to
-    read). Fixed by having `forEachSaveFile` skip `PROFILE_FILENAME` by name — caught by running the
-    full test suite, not by the new tests themselves, which is exactly why that step matters.
-- Whether/how any of the floor-100 gating conditions should be hinted to the player: left silent, as
-  the spec leaned toward — no UI anywhere surfaces a threshold or "condition met" notice.
+  - This game has no personal-name system — `Character.name` is always just the class's display
+    name (`createCharacter(id, cls.name, cls)`). The payoff event names the retired *class* only
+    ("It's the {{class}} who never came back up"), substituted at read time from
+    `retiredCharacterClassId`, matching the "nobody down here exchanges names" principle
+    (`11-world-bible.md`).
+  - `profile.json` lives in the same directory `save.ts` scans for per-run saves; `forEachSaveFile`
+    skips `PROFILE_FILENAME` by name so `deleteSavesForRun`/`listSaves` don't crash on it (it has no
+    `.meta` field).
+- No UI anywhere surfaces a threshold or "condition met" notice for the floor-100 gating conditions
+  — they stay silent to the player.
 
 **Test coverage**: `test/endings.test.ts` (all 3 stages — checkpoint triggers, all 4 immediate
 endings, the mode-rejection matrix in both directions, the founder fight and its event-removal
 bulk-insert, the full persistence-layer round trip) and `test/profile.test.ts` (the on-disk store in
-isolation, including a corrupt-file case). Full suite green, run 3 times to rule out order-dependent
-flakiness from the shared test save directory.
+isolation, including a corrupt-file case).

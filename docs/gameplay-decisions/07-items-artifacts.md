@@ -46,7 +46,7 @@ Drops randomly when killing **any monster** (regular/Elite/Boss), gated by `data
 
 When the drop roll succeeds (gated by `items.itemDropChance`, `data/balance-config.json`), the specific item is chosen from a **combined pool** = the common-item catalog (below) + the item(s) specific to the exact `archetypeId` just killed (the "monster-specific items" table below). The pool splits into 2 groups, **not an even split within each group** — `ItemDefinition.weight` (`data/items.json`, default `1` when unset) weights each item inside its group (`rollItemDrop`, `src/data/items.ts`):
 
-- One share of the total goes to that monster type's specific item(s), split proportionally to `weight` across the applicable items (not evenly). **1 monster can belong to multiple groups at once** (e.g. Zombie Knight belongs to both the Zombie group and the Knight/Warrior group). Every archetype in `data/monsters.json` already has at least 1 specific item (no fallback case).
+- One share of the total goes to that monster type's specific item(s), split proportionally to `weight` across the applicable items (not evenly). **1 monster can belong to multiple groups at once** (e.g. Zombie Knight belongs to both the Zombie group and the Knight/Warrior group). Coverage is partial: only some archetypes in `data/monsters.json` have a dedicated specific item (15 of 43 as of writing) — everything else falls through to the common-pool share below.
 - The remaining share is split proportionally to `weight` across the common-pool items — **not evenly**. Some common items carry a `weight` below the default `1` (`data/items.json`) — those get a smaller share at low floor depth than the unweighted ones.
 - **Weight scales up with floor depth**: any item with `weight < 1` grows via `effectiveWeight = min(1, weight + itemWeightDepthGrowth × (floorDepth − 1))` (`items.itemWeightDepthGrowth`, `data/balance-config.json`). Once a half-weighted item's `effectiveWeight` reaches `1`, the split among the common items becomes even — the skew described above is specific to early floors. The same growth applies to weighted monster-specific items. Read `data/items.json`/`data/balance-config.json` directly for the current split rather than trusting a hand-copied percentage here, since it drifts the moment weights are retuned.
 
@@ -213,30 +213,23 @@ Full list (id, name, rarity, effects): `data/artifacts.json`. Loosely, higher ra
 
 ### Lore-bearing descriptions
 
-**Superseded approach**: an earlier pass tried appending a single "observable trace" sentence to a
-curated subset of Rare+ artifacts, tying each one back to an existing thread/event by name. Cut
-entirely — it read as connecting dots, not writing, and left the plain majority of the catalog
-(all of Common tier, most of Rare+) exactly as thin as before. Replaced with the approach below:
-**every** artifact in the catalog (all 34 existing, Common included, plus 10 new + 3 event-tied
-below) gets its `description` rewritten as a genuine short story — a specific, implied character
+**Every** artifact in the catalog (all 34 existing, Common included, plus 10 new + 3 event-tied
+below) gets its `description` written as a genuine short story — a specific, implied character
 and moment, not a static image plus 1 appended detail. None of these are required to connect back
 to an existing event or thread; where one does, it's because the story wanted it, not because the
 catalog needed coverage.
 
 **Craft discipline carried over from the event-writing side of this project**: no names (nobody
 down here exchanges them, matching the established pattern), no resolved motive, no confirmed fact
-that would settle anything on §11.9's open list. The 1 thing genuinely new here: vary the *sentence
-opening* hard across the whole batch. An early draft of this pass leaned on "Whoever..." as an
-opener for nearly every entry — thematically defensible (nobody has a name to use instead) but
-mechanically a stamped template read back to back. Final pass below opens with the object itself,
-a fact, a number, or embedded dialogue far more often than with "Whoever," which is now used only
-mid-sentence, never as the first word.
+that would settle anything on §11.9's open list. Sentence openings vary hard across the whole
+batch — entries open with the object itself, a fact, a number, or embedded dialogue far more often
+than with "Whoever," which appears only mid-sentence, never as the first word.
 
-**Compliance, all 47**: none name "Sleeper," "Covenant," or "the Balance"; none resolve anything on
-§11.9's open list (who anyone was, whether a bargain paid off, what a Guardian actually is, whether
-either side of a broken schism was right); no item is written with its own will or intent — every
-"it doesn't stop," "it's still waiting," "it hasn't gone off yet" describes a fact about the object,
-never the object choosing anything.
+No entry names "Sleeper," "Covenant," or "the Balance," or resolves anything on §11.9's open list
+(who anyone was, whether a bargain paid off, what a Guardian actually is, whether either side of a
+broken schism was right). No item is written with its own will or intent — phrasing like "it
+doesn't stop" or "it's still waiting" describes a fact about the object, never the object choosing
+anything.
 
 #### Common (10 of 10 — every 1 rewritten)
 
@@ -294,12 +287,12 @@ never the object choosing anything.
 |---|---|
 | `crown-of-destruction` | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask." |
 | `immortal-heart` | "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor." |
-| `reapers-covenant` | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." *(kept deliberately free of any spiral/ritual imagery — its name already contains the word "covenant," coincidentally, `11-world-bible.md` §11.6; the story stays a generic pact-with-death, not compounding the coincidence)* |
+| `reapers-covenant` | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." |
 | `eternal-scholars-tome` | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
 
-### New catalog entries — 4 categories, 10 items
+### New catalog entries — 4 categories, 11 items
 
-10 wholly new `ArtifactDefinition` entries, grouped into 4 named categories for design purposes only
+11 wholly new `ArtifactDefinition` entries, grouped into 4 named categories for design purposes only
 — mechanically, plain artifacts rolled through the same rarity tables as everything else in §7.2, no
 collection mechanic, no tracked set, no special drop source.
 
@@ -345,9 +338,7 @@ collection mechanic, no tracked set, no special drop source.
 - **Fused Twin Coins** (Epic, `statBoost attack +10` + `statBoost defense +10`): "2 coins from 2
   different people, melted together by something neither of them chose. One face stays closed in
   on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear
-  either owner would have wanted them to." *(the containment/communion duality of §11.6, embodied
-  in a single found object, predating the Covenant's own version of the split — never stated, only
-  shown)*
+  either owner would have wanted them to."
 - **Waystone Shard** (Unique, no `statBoost` — its purpose is entirely the check in
   `10-event-narrative.md` §F.4, so it carries only a token effect, e.g. `statBoost maxHp +10`):
   "A shard of something that was never carved, only grown that way — smooth on every broken edge
@@ -379,13 +370,13 @@ Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `spe
 
 **Calibration.** `magicPower` and `attack` are interchangeable stats (`11-abilities.md`, Common), so `magicPower` reuses the `attack` ladder: `+3` Common (`iron-gauntlet`), `+8` Rare (`ancient-sword`), `+15` Epic (`snapped-ritual-blade`); Unique `+12` is interpolated between Rare and Epic, the way `executioners-instinct` is in the Ability catalog. `speed` is deliberately small (`+2` Rare, `+4` Unique): it never grows with level and only spans `8`–`17` across the classes, and three equipped Artifacts stack, so a Rare-tier `+8` would be absurd. `alwaysHit` and `debuffResist` values (`8%`; `6% / 10% / 15% / 20%`) sit below the Ability rungs (`10 / 15 / 20`; `10 / 16 / 24 / 32`) because up to three of them stack. None of these numbers is derived from an expected-value model; they are first-pass and meant to be tuned in play.
 
-### Event-tied artifacts — mechanism implemented, 3 items still spec-only
+### Event-tied artifacts
 
-Per request: some items should be tied to a specific event, especially the once-lifetime ones.
-`still-breathing` stays `noArtifactReward: true` (a locked decision, `10-event-narrative.md` Part
-C.4 — "the reveal is the reward, no mechanical effect of any kind").
+Some items are tied to a specific event, especially the once-lifetime ones. `still-breathing` stays
+`noArtifactReward: true` (a locked decision, `10-event-narrative.md` Part C.4 — "the reveal is the
+reward, no mechanical effect of any kind").
 
-**Mechanism — built**:
+**Mechanism**:
 
 ```ts
 // EventDefinition, instantReward only
@@ -402,12 +393,9 @@ if (!event.noArtifactReward) {
 }
 ```
 
-**Wired so far**: `waiting-supplies` → `travelers-ration` (an artifact that already exists in
-`data/artifacts.json` — `10-event-narrative.md` Part A, addressing the "too many free common
-rewards" finding). The 3 once-lifetime events below still roll the standard table — their dedicated
-items are written here but not yet added to `data/artifacts.json`, and pointing
-`guaranteedArtifactId` at an id that doesn't exist in the real catalog would throw at runtime. Wire
-these once the 47-item catalog rewrite (this file, above) actually lands in `data/artifacts.json`:
+**Wired**: `waiting-supplies` → `travelers-ration` (`10-event-narrative.md` Part A, addressing the
+"too many free common rewards" finding), plus the 3 once-lifetime events below, each pointing
+`guaranteedArtifactId` at its own dedicated Unique artifact in `data/artifacts.json`:
 
 - **Vigil Cloth** (`vigil-candle`'s guaranteed drop, Unique, `fearResist 15%`): "Folded before it
   was ever set down, the way you'd fold something you meant to come back for. It got folded the
@@ -418,13 +406,6 @@ these once the 47-item catalog rewrite (this file, above) actually lands in `dat
 - **Worn Chalk Stub** (`half-a-warning`'s guaranteed drop, Unique, `cooldownReduction 1 turn`):
   "Worn down to a nub, carving something into stone that should have taken half as long. Whatever
   hand held it needed to stay steady right up until it didn't."
-
-**Remaining build**: `data/artifacts.json` (all 34 existing `description` fields rewritten in
-place — no id/rarity/effect changes — plus 13 new entries: 10 category items + 3 event-tied above),
-`data/events.json` (`guaranteedArtifactId` set on `vigil-candle`/`broken-seal`/`half-a-warning`
-once their items exist). `test/` already covers the mechanism itself (`guaranteedArtifactId` always
-grants that exact id, never a roll, via `waiting-supplies`); the 34+13 new/changed descriptions
-don't need test coverage beyond the JSON parsing.
 
 ### `autoDamage` trigger mechanism
 
