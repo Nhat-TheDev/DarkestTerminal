@@ -209,6 +209,11 @@ AbilityProfile {
 }
 ```
 
+Note: `profile.json` (`Profile`, `src/engine/profile.ts`) also stores
+`retiredCharacters` and `shownRetiredCharacterEvent`, used by the Ending
+system's cross-run narrative state — not part of Abilities, not shown
+above.
+
 - Every `common`-rarity ability in the catalog is **always** selectable —
   it never needs to appear in `unlockedAbilityIds`.
 - A `rare`/`unique`/`epic` ability is only selectable at character select
@@ -334,8 +339,7 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
 
 1. **Guaranteed loss, no roll.** For every character whose
    `equippedAbilityId` resolves to a non-`common` ability, immediately
-   remove that id from `unlockedAbilityIds`. This is unconditional — the
-   old probability-by-rarity roll is gone. Since §11.1 "Character-select
+   remove that id from `unlockedAbilityIds`. Since §11.1 "Character-select
    flow" now forbids 2 characters sharing an id, every character with a
    non-common ability equipped is necessarily losing a *distinct* one —
    there's no "shared id, split outcome" case left to reconcile.
@@ -357,8 +361,7 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
      `unlockedAbilityIds`. Since every lost-set entry is for a distinct id
      (no-duplicate-in-party, §11.1 "Character-select flow"), reclaiming
      one entry can never collide with another — there's no shared-resource
-     contention to sequence or resolve, unlike an earlier draft of this
-     spec that included a swap-to-something-new option.
+     contention to sequence or resolve.
    - Spending stops once `runStardust` can no longer afford anything left
      to reclaim.
 4. **Persist** — write the updated `AbilityProfile` to `profile.json`
@@ -382,18 +385,12 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
    behind "after replaying, players get more abilities to choose from" — more choices next time is simply a byproduct of the pool
    having grown, not a separate reward screen.
 
-Why this replaces the old probabilistic system entirely: guaranteed loss
-is a harsher baseline than the old 25/45/65% roll, but the player is now
-given real agency and a resource (Stardust) to fight back with instead of
-hoping a die roll goes their way — and the resource is self-limiting in
-exactly the way the old system needed an artificial
-`maxInsurancePerDeath` cap to fake. A typical death at depth 15-25 yields
-2-5 Stardust (1 per Boss every 5 floors) — enough to reclaim 1, maybe 2,
-of a full loadout's losses, not all of them; only a genuinely deep run
-(each Epic reclaim alone costs 4 Stardust, i.e. 4 Boss kills / 20 floors)
-can afford to recover most or all of a 4-ability loadout. The risk still
-scales down exactly where it should — shallow, lower-investment runs —
-without needing a hand-picked cap bolted on top.
+A typical death at depth 15-25 yields 2-5 Stardust (1 per Boss every 5
+floors) — enough to reclaim 1, maybe 2, of a full loadout's losses, not
+all of them; only a genuinely deep run (each Epic reclaim alone costs 4
+Stardust, i.e. 4 Boss kills / 20 floors) can afford to recover most or all
+of a 4-ability loadout. The risk scales down exactly where it should —
+shallow, lower-investment runs.
 
 ### Edge cases & clarifications
 
@@ -425,15 +422,6 @@ without needing a hand-picked cap bolted on top.
   known follow-up (e.g. a future move to seed the roll off the room's own
   seed rather than the live RNG stream would close it, but that's an RNG-
   architecture change out of scope here).
-- **Save-file integrity checks need new branches when this is
-  implemented.** `isSaveStateValid` and `migrateGameState`
-  (`src/engine/save.ts`) already validate/backfill `equippedArtifactIds`
-  against the Artifact catalog for old or malformed saves — the same
-  pattern will need equivalent branches for `Character.equippedAbilityId`
-  and `GameState.runStardust` against `data/abilities.json` once that
-  catalog exists, plus a migration default (`null`/`0`/absent) for saves
-  written before this feature existed. Noted now so it isn't missed when
-  coding starts.
 - **No-duplicate enforcement only ever needs to check the party's current
   4 `equippedAbilityId`s**, at character select only — the Stardust
   buyback can't create a duplicate in the first place, since every
@@ -444,7 +432,7 @@ without needing a hand-picked cap bolted on top.
   id "available" to more than one future pick — the exclusivity is only
   about what's simultaneously equipped, never about what's unlocked.
 - **Catalog exhaustion is a real, reachable end state**, not a
-  theoretical one — 16 non-common abilities total (§11.2) is a small
+  theoretical one — 25 non-common abilities total (§11.2) is a small
   enough catalog that a dedicated player could plausibly unlock all of
   them across enough runs. From that point on, Elite/Boss ability rolls
   permanently yield nothing (the roll's exclusion rule has nothing left to
@@ -484,9 +472,7 @@ for the whole run. If 2 same-tier Abilities buffed the same axis at
 different magnitudes, the smaller one would be strictly worse with no
 compensating upside, and no rational player would ever pick it — dead
 catalog space, not a real choice. Every tier below is built so each
-ability owns a distinct axis; see `.hermes/features/abilities/
-BRAINSTORM.md` D11 for the pairs an earlier draft got wrong and how each
-was fixed.
+ability owns a distinct axis.
 
 ### Common — always selectable
 
@@ -522,8 +508,9 @@ judgment call is needed at all.
 
 **Why `dodgeChance`/`lifesteal` are 3%/4%, not a flat 3% for both**: these
 2 effect kinds have no Common-tier Artifact to mirror (they only start
-appearing on Rare Artifacts), so an earlier draft of this doc just halved
-each one's Rare-tier % uniformly. That's a category error — halving the
+appearing on Rare Artifacts), so their Common values can't be derived by
+halving a Common Artifact's number the way the other 7 axes are. Halving
+each one's Rare-tier % uniformly would be a category error — halving the
 *percentage* only produces equal *value* if a % point means the same
 thing for both effects, and it doesn't, because `dodgeChance` avoids what
 a monster would have dealt to the wearer (the *bigger* number in this
@@ -589,8 +576,7 @@ interchangeable, see Common); `wellspring` doubles `deep-reserves`'s `+10`.
 ### Why `poisonOnHit` was removed from the Ability catalog entirely
 
 Not a rebalance — a removal, at every tier that had it (`toxic-touch`
-here, the old Common 8th slot, and half of the Epic `lodestone`
-below, at the time still named `storm-within`).
+here, the old Common 8th slot, and half of the Epic `lodestone` below).
 The `poisoned` status effect it procs deals a flat `4` damage/turn for `3`
 turns (`data/status-effects.json`) — a fixed `12`-damage payout that never
 scales with anything, while monster HP keeps climbing with floor depth on
@@ -635,7 +621,7 @@ grow with level at all** (`docs/gameplay-decisions/05-character-stats.md`)
 the entire run, never diluted. Matching a decaying stat's day-1 magnitude
 with a never-decaying one's day-1 magnitude systematically overpays the
 one that never decays. `+5` was chosen directly against `speed`'s own
-real spread instead: it closes roughly half of the entire 6-class gap, a
+real spread instead: it closes roughly half of the roster's entire speed gap, a
 permanent, always-relevant nudge without redefining the turn order on its
 own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 
@@ -684,14 +670,12 @@ Epic-tier artifact counterparts exactly (`immortal-heart`'s
 occupy 1 slot and don't need to match an Artifact's full effect count to
 match its per-effect magnitude.
 
-`lodestone` (originally `storm-within` — see `.hermes/features/abilities/BRAINSTORM.md` D15) used to
-mirror `crown-of-destruction` exactly too (`autoDamage 12` +
-`poisonOnHit 8%`) — its `poisonOnHit` half is now `statBoost aggro +15`
-instead ("Why `poisonOnHit` was removed" under the Rare table has the
-full reasoning; it doesn't scale-decay the way poison does, and pairs
-naturally with `autoDamage`'s new flavor — everyone's eyes are drawn to
-it, while something near it is struck by no visible hand). `+15` was
-calibrated against `aggro`'s own targeting-weight formula
+`lodestone` mirrors `crown-of-destruction`'s `autoDamage` half; its
+`statBoost aggro +15` half has no Artifact counterpart to copy (see "Why
+`poisonOnHit` was removed" under the Rare table for why this axis exists
+at all) — it pairs naturally with `autoDamage`'s flavor: everyone's eyes
+are drawn to it, while something near it is struck by no visible hand.
+`+15` was calibrated against `aggro`'s own targeting-weight formula
 (`P(target = X) = X.aggro / total party aggro)`,
 `docs/gameplay-decisions/02-monster.md`), not `BalancePoints` — the game's
 own docs explicitly exclude `aggro` from that formula, since it's a
@@ -745,7 +729,7 @@ already causes.
 - **Catalog size vs. the free instant-unlock rate**: since both Elite and
   Boss kills hand out permanent unlocks for free the moment they roll (no
   Stardust, no death gate — Stardust only ever buys back losses), the
-  16-ability non-common catalog could get exhausted faster than originally
+  25-ability non-common catalog could get exhausted faster than originally
   modeled when this doc still gated *all* acquisition behind the death
   flow. Worth simulating once implemented — either drop rate or catalog
   size may need adjusting sooner than the Stardust-side numbers.

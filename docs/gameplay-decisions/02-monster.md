@@ -116,12 +116,10 @@ Default rule (used by `aggressive` and `defensive`): **weighted random** over ev
 Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
 ### AI patterns (`MonsterAiPattern`)
-- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/combat.ts`).
-- **`defensive`**: **Status: implemented.** `runMonsterTurn` (`src/engine/combat.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/combat.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
+- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/monsterAI.ts`).
+- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
 
   This only takes effect for archetypes that (a) are `aiPattern: "defensive"` and (b) have at least 1 entry in `skillIds` — that's Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The branch looks for a skill whose `target` is `self`, not for the first entry in `skillIds` — since `skillIds` holds every skill an archetype can roll at any tier, a positional pick would have a normal-tier Skeleton Guard swinging its own Cleaving Strike at itself. The other `defensive` archetypes (Zombie Knight, Dark Knight, Skeleton Guard) own no self-targeted skill, so it's a no-op for them.
-
-  *Prior state, for context: before this was implemented, `pickMonsterTarget` only special-cased the pattern now called `"opportunistic"` (then named `"erratic"`) — both `"aggressive"` and `"defensive"` fell through to the same weighted-random call, with no HP-check or skill-priority branch anywhere in `src/` for `"defensive"`, even though this section already documented it as the intended design.*
 - **`opportunistic`**: the **mirror** of the default rule. Every living character's `aggro` is reflected across the party's own current range — `weight = max(1, (highest aggro + lowest aggro) - X.aggro)` — so the quietest character is picked as often as the loudest would otherwise have been. `pickInverseAggroWeighted`, `src/engine/monsterAI.ts`.
 
   Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
@@ -129,8 +127,6 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
   **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard is +40 `aggro` on a Vanguard whose base is 20; against an `opportunistic` monster that pushes the Vanguard almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
 
   Same mechanism, opposite direction: `distracted` (−20 `aggro`) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
-
-  *This pattern was called `erratic` and picked a uniformly random target. The name stopped describing it once the behaviour became a deliberate, reversed priority rather than an absence of one.*
 
 **Which pattern an archetype gets** (`data/monsters.json` field `aiPattern`) follows one rule, so the roster stays predictable as it grows:
 
@@ -155,32 +151,34 @@ Every guard-room randomly picks among the guard-room archetypes each time the ro
 
 ### Regular combat archetypes
 
-The full roster (id, name, base stats, AI pattern, `expReward`) lives in `data/monsters.json`; the loader is `src/data/monsters.ts`. As of writing this covers a set of low/mid-tier archetypes including Dungeon Rat, Black Bat, Slime, Skeleton, Zombie, Snake, Lizard, Spider, Skeleton Archer, Skeleton Warrior, and Skeleton Guard (also a guard-room archetype — see below) — check the JSON directly for the current list rather than trusting an enumeration here, since new archetypes can be added without a doc update.
+The full roster (id, name, base stats, AI pattern, `expReward`) lives in `data/monsters.json`; the loader is `src/data/monsters.ts`. `COMBAT_ROOM_ARCHETYPES` (`src/data/monsters.ts`) is every archetype with `"normal"` in `roles` — currently **33 total**: 32 `roles: ["normal"]`-only archetypes plus Skeleton Guard, the roster's one triple-role archetype (also a guard-room archetype — see below). Check the JSON directly for the current list rather than trusting an enumeration here, since new archetypes can be added without a doc update.
 
-10 of these 11 archetypes now carry a `skillIds` entry (see "Regular monster skill kits" below) — Skeleton Guard is the deliberate exception, since it already has a full Elite/Boss kit for its guard-room role.
+Every one of the 32 `roles: ["normal"]`-only archetypes carries a `skillIds` entry (see "Regular monster skill kits" below). Skeleton Guard is the one exception, since it already has a full Elite/Boss kit for its guard-room role and doesn't need a separate normal-tier skill.
 
 ### Regular monster skill kits
 
-**Status: implemented.** Previously all 11 regular-combat archetypes had `skillIds: []` and never used anything but a plain basic attack. This adds exactly **1 flavor skill per archetype** for 10 of the 11 (Skeleton Guard deliberately excluded — see above, since a 3rd "normal-tier" skill on top of its existing Elite/Boss kit risks overlapping with Skeleton Warrior's flavor, both being melee skeleton archetypes, and isn't needed for the goal of giving every *skill-less* archetype an identity), each thematically distinct, reusing existing status effects where the theme matches and introducing 2 new ones where it doesn't.
+Every regular-combat archetype (except Skeleton Guard, see above) carries at least **1 flavor skill**, each thematically distinct, reusing existing status effects where the theme matches and introducing new ones where it doesn't (`corroded`, `webbed` — see below).
 
-**Usage rate**: for 8 of the 10 archetypes, `actionWeights.normal` (`data/monsters.json`) gives the flavor skill a real per-turn chance alongside the basic attack. The other 2 (Zombie, Skeleton Warrior) keep their skill listed at weight 0 — present so it can still be tuned in the rebalance editor, which only accepts keys an archetype already has, but never rolled — their skill is exclusively triggered by the `aiPattern: "defensive"` low-HP logic above, not by the normal weighted roll (a Zombie randomly self-healing at full HP would waste turns; a self-heal should only ever fire when it's actually needed). Current weights: `data/monsters.json`.
+**Usage rate**: for most archetypes, `actionWeights.normal` (`data/monsters.json`) gives the flavor skill a real per-turn chance alongside the basic attack. A handful (e.g. Zombie, Skeleton Warrior) keep their skill listed at weight 0 — present so it can still be tuned in the rebalance editor, which only accepts keys an archetype already has, but never rolled by the normal weighted roll; their skill is exclusively triggered by the `aiPattern: "defensive"` low-HP logic above (a Zombie randomly self-healing at full HP would waste turns; a self-heal should only ever fire when it's actually needed). Current weights: `data/monsters.json`.
 
-#### Skill table
+#### Skill table (representative sample)
+
+The full set spans all 32 skill-bearing archetypes in `data/monsters.json`/`data/monster-skills.json`; this table is not exhaustive — it shows a representative slice, including the two `defensive`-only kits, to illustrate the shape each archetype's kit takes:
 
 | Archetype | Skill id | Name | Target | Effect (shape) | AI pattern | Trigger |
 |---|---|---|---|---|---|---|
 | Dungeon Rat | `bite` | Bite | singleEnemy | `damage` | opportunistic | `actionWeights.normal.skill` |
-| Black Bat | `blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (new field, see below) | aggressive | `actionWeights.normal.skill` |
-| Slime | `acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` (new status) | opportunistic | `actionWeights.normal.skill` |
+| Black Bat | `blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (see below) | aggressive | `actionWeights.normal.skill` |
+| Slime | `acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` | opportunistic | `actionWeights.normal.skill` |
 | Skeleton | `bone-throw` | Bone Throw | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
 | **Zombie** | `regeneration` | Regeneration | self | `heal` | defensive | **only** via the `defensive` low-HP logic above |
 | Snake | `poison-bite` | Poison Bite | singleEnemy | `damage` + chance to `applyStatusEffect "poisoned"` (existing — `01-class-skill.md` §1.7) | opportunistic | `actionWeights.normal.skill` |
 | Lizard | `quick-bite` | Quick Bite | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
-| Spider | `web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` (new status) | aggressive | `actionWeights.normal.skill` |
+| Spider | `web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` | aggressive | `actionWeights.normal.skill` |
 | Skeleton Archer | `arrow-shot` | Arrow Shot | singleEnemy | `damage` | opportunistic | `actionWeights.normal.skill` |
 | **Skeleton Warrior** | `guard-stance` | Guard Stance | self | `applyStatusEffect "guard"` (existing — `01-class-skill.md` §1.7) | defensive | **only** via the `defensive` low-HP logic above |
 
-Current damage/heal amounts and proc chances: `data/monster-skills.json`. *Snake keeps plain `poisoned` (already its established theme) while Spider gets the new `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 "erratic/aggressive poison-flavored" archetypes rather than having them share an identical proc.*
+Current damage/heal amounts and proc chances for every archetype: `data/monster-skills.json`. *Snake keeps plain `poisoned` (already its established theme) while Spider gets `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 poison-adjacent archetypes rather than having them share an identical proc.*
 
 #### New status effects — 2
 
@@ -222,12 +220,7 @@ SkillEffect (kind: "damage") {
 }
 ```
 
-This required a resolver change (`resolver.ts`): after computing final mitigated damage for a `damage` effect that carries `lifestealPercent`, apply a `heal` to the source actor for `round(finalDamage * lifestealPercent / 100)`, clamped to `maxHp`. This is the only new resolver mechanic the monster skill kits introduced, besides the `aiPattern: "defensive"` fix above.
-
-#### Engine/data summary
-
-- **Data**: `data/monsters.json` — `skillIds` populated for 10 archetypes, `actionWeights.normal` updated for 8 of them (Zombie/Skeleton Warrior unchanged, per "Usage rate" above); `data/monster-skills.json` — the 10 new monster skill entries (same file/shape already used for Elite/Boss skills); `data/status-effects.json` — `corroded`, `webbed`.
-- **Code** (`src/types.ts` + `src/engine/resolver.ts`/`combat.ts`): `SkillEffect.lifestealPercent` + resolver handling; the `aiPattern: "defensive"` branch in `runMonsterTurn` (see "AI patterns" above).
+This required a resolver change (`resolver.ts`): after computing final mitigated damage for a `damage` effect that carries `lifestealPercent`, apply a `heal` to the source actor for `round(finalDamage * lifestealPercent / 100)`, clamped to `maxHp`. Monster skill kits live in `data/monsters.json` (`skillIds`, `actionWeights.normal`) and `data/monster-skills.json` (skill entries, same file/shape already used for Elite/Boss skills), with the 2 new status effects in `data/status-effects.json`; on the code side, `SkillEffect.lifestealPercent` (`src/types.ts` + `src/engine/resolver.ts`) and the `aiPattern: "defensive"` branch in `runMonsterTurn` (`src/engine/monsterAI.ts`, see "AI patterns" above) are the only additions.
 
 ### Writing `description` text (monster archetypes, monster skills, class skills)
 
@@ -251,7 +244,7 @@ player will actually read.
 
 ### Guard-room archetypes (elite/boss)
 
-Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — as of writing this includes Giant Spider, Dragon, Zombie Knight, and Dark Knight, each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
+Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — currently 9: Giant Spider, Dragon, Zombie Knight, Dark Knight, Orc Chieftain, Vampire Lord, Void Amalgamation, Ancient Golem, and Lich — each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
 
 ### Monster Balance Points
 

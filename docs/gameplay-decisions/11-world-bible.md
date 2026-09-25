@@ -443,5 +443,7 @@ stance quietly reads as the "wrong" one to pick:
 No stance should consistently point toward only the frightening reading or only the sympathetic
 one. If a future implementation ever makes one stance reliably "the bad one," that asymmetry is a
 bug in the writing, not a reflection of anything true about curiosity, wariness, or dismissal. The
-trigger mechanics (reading an aggregate over `GameState.eventReflectionStances`, when/where to
-apply it) are unimplemented — deferred to whoever builds this.
+trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the
+party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
+`EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
+Part A for the full mechanical writeup.
