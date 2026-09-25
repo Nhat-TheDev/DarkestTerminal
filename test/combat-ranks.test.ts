@@ -581,6 +581,38 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(combat.log.some((l) => l.kind === "heal")).toBe(true);
   });
 
+  test("Healer Spirit's heal skills only ever target party characters, never another summon or itself", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 20; // passive rank 2: +1 cap, lets Goblin Thrower and Healer Spirit coexist
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = 500; // survives the goblin/party's attacks long enough for the Spirit to get its own turn
+    rat.maxHp = 500;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+
+    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    resolveRound(combat, ctx);
+    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    resolveRound(combat, ctx); // spirit spawns mid-round, doesn't act yet
+
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
+    goblin.hp = 1; // far lower HP% than any character — before the fix this was a valid (and often winning) heal target
+    goblin.actionsTaken = 0; // keep it from expiring (unrelated to this test) before the Spirit's turn below
+    vanguard.hp = Math.max(1, Math.round(vanguard.maxHp * 0.5));
+
+    const logLengthBeforeSpiritTurn = combat.log.length;
+    resolveRound(combat, ctx); // spirit's own turn, whichever of its 2 heal skills is rolled
+    const newLogEntries = combat.log.slice(logLengthBeforeSpiritTurn);
+    const healEntries = newLogEntries.filter((l) => l.kind === "heal");
+    expect(healEntries.length).toBeGreaterThan(0);
+    // Checked by log target name, not goblin.hp — attack=0 doesn't make the rat harmless (damage
+    // floors at 1), so a heal-unrelated hit landing on the goblin the same round must not fail this.
+    expect(healEntries.some((l) => l.text.includes(goblin.name))).toBe(false);
+  });
+
   test("Summon Hellfire Imp spawns exactly 1 imp and damages every enemy exactly once", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;

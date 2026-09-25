@@ -908,12 +908,12 @@ function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry
   }
 }
 
-/** Living player-side actor (character or summon) with the lowest current HP% — Healer Spirit's default heal target. */
-function pickLowestHpAlly(combat: CombatState, ctx: EngineContext): CombatantRef | null {
-  const allies = livingPlayerSideRefs(combat, ctx);
+/** Living character (never a summon/clone) with the lowest current HP% — Healer Spirit's default heal target. */
+function pickLowestHpCharacter(combat: CombatState, ctx: EngineContext): CombatantRef | null {
+  const characters = livingCharacterRefs(combat, ctx);
   let best: CombatantRef | null = null;
   let bestRatio = Infinity;
-  for (const ref of allies) {
+  for (const ref of characters) {
     const a = getActorByRef(ref, ctx);
     const ratio = a.maxHp > 0 ? a.hp / a.maxHp : 0;
     if (ratio < bestRatio) {
@@ -924,15 +924,22 @@ function pickLowestHpAlly(combat: CombatState, ctx: EngineContext): CombatantRef
   return best;
 }
 
+function isHealSkill(skill: SkillDefinition): boolean {
+  return (skill.effects ?? []).some((e) => e.kind === "heal");
+}
+
 function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, combat: CombatState, ctx: EngineContext): CombatantRef[] {
   const auto = autoResolveTargets(skill.target, ref, combat, ctx);
-  if (auto) return auto;
+  if (auto) {
+    // Healer Spirit's heals (and any future summon heal) must land on real characters only — never itself or another clone/summon.
+    return isHealSkill(skill) ? auto.filter((r) => r.kind === "character") : auto;
+  }
   if (skill.target === "singleEnemy") {
     const enemies = livingMonsterRefs(combat, ctx);
     return enemies.length > 0 ? [ctx.rng.pick(enemies)] : [];
   }
   if (skill.target === "singleAlly") {
-    const ally = pickLowestHpAlly(combat, ctx);
+    const ally = pickLowestHpCharacter(combat, ctx);
     return ally ? [ally] : [];
   }
   return [];
