@@ -114,6 +114,9 @@ just how deep you can push before your party doesn't make it back.
 - **Cursed Coins** — a currency to spend, gamble, or trade away.
 - **Event rooms with real narrative** — random encounters, some of them tied
   to faces you'll see again.
+
+  ![Event room — a treasure chest encounter offering a choice before the party moves on](./docs/images/event-room.svg)
+
 - **Save & continue** — pick up a run later from a list of your saves.
 - **Pixel art rendered directly in the terminal** — every character and
   monster is hand-drawn pixel art, composited straight into your terminal
