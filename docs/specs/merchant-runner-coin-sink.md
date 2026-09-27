@@ -179,6 +179,41 @@ no individual item.
 | `weathered-keystone` | Weathered Keystone | Legendary | Ancient Golem | new |
 | `phylactery-shard` | Phylactery Shard | Legendary | Lich | new |
 
+## Non-trophy item tiers
+
+Separate from trophies, the player also asked for the existing non-trophy
+items in `data/items.json` to be classified using the low end of the same
+ladder — **Common through Rare only** (Unique/Epic/Legendary stay reserved for
+trophies and artifacts). This covers the 8 plain consumables plus the 5
+pre-existing `archetypeIds` items that were *not* folded into the trophy list
+above (`exploration-kit`, `grave-dust`, `broken-blade-fragment`,
+`rotten-flesh`, `venom-gland`).
+
+Tier assigned from each item's `weight` in `data/items.json` (lower weight =
+rarer in the loot table) as the primary signal, with effect strength as a
+tie-break:
+
+| id | weight | effect | tier |
+|---|---|---|---|
+| `small-health-potion` | 1 | heal 30 | Common |
+| `small-mana-potion` | 1 | restoreMp 20 | Common |
+| `calming-draught` | 1 | fear -25 | Common |
+| `rotten-flesh` | 1 | debuff distracted, 1 turn | Common |
+| `large-health-potion` | 0.5 | heal 70 | Uncommon |
+| `large-mana-potion` | 0.5 | restoreMp 45 | Uncommon |
+| `antidote` | 0.5 | cleanse status effect | Uncommon |
+| `whetstone` | 0.5 | empower, 2 turns | Uncommon |
+| `temporary-ward` | 0.5 | fortify, 2 turns | Uncommon |
+| `grave-dust` | 0.5 | fortify, 2 turns (archetype-locked) | Uncommon |
+| `broken-blade-fragment` | 0.5 | empower, 2 turns (archetype-locked) | Uncommon |
+| `venom-gland` | 0.5 | poison-coat, 3 turns, 3-monster lock | Rare |
+| `exploration-kit` | 0.15 | satiety +30, party-wide, 7-monster lock | Rare |
+
+This needs the same `trophyTier`-style field added to `ItemDefinition` noted
+below (or a shared, more neutrally-named `tier` field covering both trophies
+and regular items, rather than two separate fields — worth deciding during
+implementation rather than here).
+
 ## Engine/UI work required
 
 - **Rest room**: currently `Game.restAction` (`src/engine/game.ts:274`) offers
