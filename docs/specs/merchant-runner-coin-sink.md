@@ -110,6 +110,34 @@ of the two (its own lower-tier individual item, or a rarer chance at the shared
 group item) — not both from a single kill. Drop-weight split between the two
 is not yet decided — **open TODO**.
 
+### Loot-table weight by tier
+
+Every trophy also gets an `ItemDefinition.weight` (same field the existing
+loot system already reads in `rollItemDrop`, `src/data/items.ts:75`) derived
+purely from its tier, rarer tiers weighted down:
+
+| Tier | Weight |
+|---|---|
+| Common | 1 |
+| Uncommon | 0.9 |
+| Rare | 0.7 |
+| Unique | 0.5 |
+| Epic | 0.2 |
+| Legendary | 0.1 |
+
+### Trophy effects
+
+Like regular items, every trophy has its own `effects` entry (reusing
+`SkillEffectKind`: `heal` / `restoreMp` / `applyStatusEffect` /
+`removeStatusEffect` / `modifyStat`, `src/types.ts:7-15`) — not just a barter
+token. The effect is chosen to match the source monster's theme
+(`monsterType`/`race`/flavor), reusing existing `data/status-effects.json`
+entries where one already fits rather than inventing new statuses. Where a
+monster has both an individual and a group item, the individual item is
+written as a smaller/narrower-scope version of the same theme (self-only,
+shorter duration, or smaller amount) and the group item as the stronger/wider
+version — see the per-item tables below.
+
 ### Final item list (31 items, covering 42 of 43 monster archetypes)
 
 Two monsters intentionally have **no trophy at all**: **Lesser Vampire** (minor
@@ -122,19 +150,19 @@ from race/subRace group items.
 
 #### Group items (11) — `archetypeIds` lists every monster that can drop it
 
-| id | name | tier | archetypeIds |
-|---|---|---|---|
-| `vermin-hide` | Vermin Hide | Uncommon | `dungeon-rat`, `black-bat`, `vampire-bat`, `toxic-toad` |
-| `predator-sinew` | Predator Sinew | Unique | `dire-wolf`, `cave-bear` |
-| `chitin-shard` | Chitin Shard | Rare | `snake`, `lizard`, `spider`, `armored-beetle` |
-| `cult-rag` | Cult Rag | Rare | `cultist-initiate`, `cultist-zealot` |
-| `grave-cloth` | Grave Cloth | Rare | `ghoulish-crawler`, `zombie` |
-| `old-bone` | Old Bone | Unique | `skeleton`, `skeleton-mage`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard` |
-| `ooze-residue` | Ooze Residue | Rare | `slime`, `swamp-slime`, `lava-slime` |
-| `warband-trophy` | Warband Trophy | Rare | `goblin`, `goblin-shaman`, `orc-brute` |
-| `elemental-core` | Elemental Core | Unique | `fire-elemental`, `water-elemental` |
-| `wraith-essence` | Wraith Essence | Epic | `ghost`, `wraith` |
-| `stone-core` | Stone Core | Epic | `gargoyle`, `lesser-golem`, `mimic` |
+| id | name | tier | weight | effect | target | archetypeIds |
+|---|---|---|---|---|---|---|
+| `vermin-hide` | Vermin Hide | Uncommon | 0.9 | applyStatusEffect `guard` (2t) | self | `dungeon-rat`, `black-bat`, `vampire-bat`, `toxic-toad` |
+| `predator-sinew` | Predator Sinew | Unique | 0.5 | applyStatusEffect `empower` (2t) | singleAlly | `dire-wolf`, `cave-bear` |
+| `chitin-shard` | Chitin Shard | Rare | 0.7 | applyStatusEffect `guard-ii` (2t) | self | `snake`, `lizard`, `spider`, `armored-beetle` |
+| `cult-rag` | Cult Rag | Rare | 0.7 | modifyStat fear -20 | self | `cultist-initiate`, `cultist-zealot` |
+| `grave-cloth` | Grave Cloth | Rare | 0.7 | applyStatusEffect `fortify` (2t) | singleAlly | `ghoulish-crawler`, `zombie` |
+| `old-bone` | Old Bone | Unique | 0.5 | removeStatusEffect | self | `skeleton`, `skeleton-mage`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard` |
+| `ooze-residue` | Ooze Residue | Rare | 0.7 | applyStatusEffect `corroded` (2t) | singleEnemy | `slime`, `swamp-slime`, `lava-slime` |
+| `warband-trophy` | Warband Trophy | Rare | 0.7 | applyStatusEffect `rally` (2t) | allAllies | `goblin`, `goblin-shaman`, `orc-brute` |
+| `elemental-core` | Elemental Core | Unique | 0.5 | restoreMp 35 | self | `fire-elemental`, `water-elemental` |
+| `wraith-essence` | Wraith Essence | Epic | 0.2 | applyStatusEffect `stealthed` (1t) | singleAlly | `ghost`, `wraith` |
+| `stone-core` | Stone Core | Epic | 0.2 | applyStatusEffect `guard-iii` (2t) | singleAlly | `gargoyle`, `lesser-golem`, `mimic` |
 
 Flavor descriptions for all 11 (in the established spare/sensory tone) were
 drafted in the design discussion and still need to be finalized and copied
@@ -147,19 +175,19 @@ One representative monster per group above also keeps its own lower-tier
 individual item (dual drop pool: its own item, or a rarer shot at the group
 item):
 
-| id | name | tier | monster | existing item? |
-|---|---|---|---|---|
-| `bat-blood` | Bat Blood | Common | Black Bat | yes, reuse as-is |
-| `bear-claw` | Bear Claw | Rare | Cave Bear | new |
-| `silk-gland` | Silk Gland | Uncommon | Spider | new |
-| `prayer-beads` | Prayer Beads | Uncommon | Cultist Zealot | new |
-| `rotten-bandage` | Rotten Bandage | Uncommon | Zombie | new |
-| `bone-shield-fragment` | Bone Shield Fragment | Rare | Skeleton Warrior | new |
-| `slime-solution` | Slime Solution | Common | Slime | yes, reuse as-is |
-| `knuckle-guard` | Knuckle Guard | Rare | Orc Brute | new |
-| `ember` | Ember | Rare | Fire Elemental | new |
-| `hollow-plate` | Hollow Plate | Unique | Wraith | new |
-| `core-fragment` | Core Fragment | Unique | Lesser Golem | new |
+| id | name | tier | weight | effect | target | monster | existing item? |
+|---|---|---|---|---|---|---|---|
+| `bat-blood` | Bat Blood | Common | 1 | heal 20 | self | Black Bat | yes, reuse as-is |
+| `bear-claw` | Bear Claw | Rare | 0.7 | applyStatusEffect `empower` (1t) | self | Cave Bear | new |
+| `silk-gland` | Silk Gland | Uncommon | 0.9 | applyStatusEffect `webbed` (2t) | singleEnemy | Spider | new |
+| `prayer-beads` | Prayer Beads | Uncommon | 0.9 | modifyStat fear -10 | self | Cultist Zealot | new |
+| `rotten-bandage` | Rotten Bandage | Uncommon | 0.9 | heal 15 | self | Zombie | new |
+| `bone-shield-fragment` | Bone Shield Fragment | Rare | 0.7 | applyStatusEffect `guard` (2t) | self | Skeleton Warrior | new |
+| `slime-solution` | Slime Solution | Common | 1 | restoreMp 20 | self | Slime | yes, reuse as-is |
+| `knuckle-guard` | Knuckle Guard | Rare | 0.7 | applyStatusEffect `empower` (1t) | self | Orc Brute | new |
+| `ember` | Ember | Rare | 0.7 | restoreMp 15 | self | Fire Elemental | new |
+| `hollow-plate` | Hollow Plate | Unique | 0.5 | applyStatusEffect `fortify` (1t) | self | Wraith | new |
+| `core-fragment` | Core Fragment | Unique | 0.5 | applyStatusEffect `guard-ii` (2t) | self | Lesser Golem | new |
 
 Every other monster inside a group (e.g. Dungeon Rat, Vampire Bat, Toxic Toad,
 Snake, Lizard, Armored Beetle, ...) drops **only** the shared group item —
@@ -167,17 +195,17 @@ no individual item.
 
 #### Elite/boss standalone items (9)
 
-| id | name | tier | monster | existing item? |
-|---|---|---|---|---|
-| `venom-thorn` | Venom Thorn | Epic | Giant Spider | yes, reuse as-is |
-| `warped-vambrace` | Warped Vambrace | Epic | Zombie Knight | new |
-| `broken-oath-sigil` | Broken Oath Sigil | Epic | Dark Knight | new |
-| `warlords-trophy-chain` | Warlord's Trophy Chain | Epic | Orc Chieftain | new |
-| `nobles-signet` | Noble's Signet | Epic | Vampire Lord | new |
-| `dragon-scale` | Dragon Scale | Legendary | Dragon | yes, reuse as-is |
-| `unraveled-fragment` | Unraveled Fragment | Legendary | Void Amalgamation | new |
-| `weathered-keystone` | Weathered Keystone | Legendary | Ancient Golem | new |
-| `phylactery-shard` | Phylactery Shard | Legendary | Lich | new |
+| id | name | tier | weight | effect | target | monster | existing item? |
+|---|---|---|---|---|---|---|---|
+| `venom-thorn` | Venom Thorn | Epic | 0.2 | applyStatusEffect `poison-vulnerable` (2t) | singleEnemy | Giant Spider | yes, reuse as-is |
+| `warped-vambrace` | Warped Vambrace | Epic | 0.2 | applyStatusEffect `fortify` (3t) | singleAlly | Zombie Knight | new |
+| `broken-oath-sigil` | Broken Oath Sigil | Epic | 0.2 | applyStatusEffect `empower` (3t) | singleAlly | Dark Knight | new |
+| `warlords-trophy-chain` | Warlord's Trophy Chain | Epic | 0.2 | applyStatusEffect `rally-ii` (2t) | allAllies | Orc Chieftain | new |
+| `nobles-signet` | Noble's Signet | Epic | 0.2 | applyStatusEffect `regeneration` (3t) | self | Vampire Lord | new |
+| `dragon-scale` | Dragon Scale | Legendary | 0.1 | applyStatusEffect `fortify` (2t) | allAllies | Dragon | yes, reuse as-is |
+| `unraveled-fragment` | Unraveled Fragment | Legendary | 0.1 | applyStatusEffect `weakened` (3t) | singleEnemy | Void Amalgamation | new |
+| `weathered-keystone` | Weathered Keystone | Legendary | 0.1 | applyStatusEffect `guard-iii` (2t) | allAllies | Ancient Golem | new |
+| `phylactery-shard` | Phylactery Shard | Legendary | 0.1 | applyStatusEffect `enfeebled` (3t) | singleEnemy | Lich | new |
 
 ## Non-trophy item tiers
 
@@ -189,30 +217,35 @@ pre-existing `archetypeIds` items that were *not* folded into the trophy list
 above (`exploration-kit`, `grave-dust`, `broken-blade-fragment`,
 `rotten-flesh`, `venom-gland`).
 
-Tier assigned from each item's `weight` in `data/items.json` (lower weight =
-rarer in the loot table) as the primary signal, with effect strength as a
-tie-break:
+Tier assigned from each item's *current* `weight` in `data/items.json` (lower
+weight = rarer in the loot table today) as the primary signal, with effect
+strength as a tie-break. The **new weight** column re-derives `weight` from
+the tier-weight table above, for consistency with trophies once both share
+one tier concept:
 
-| id | weight | effect | tier |
-|---|---|---|---|
-| `small-health-potion` | 1 | heal 30 | Common |
-| `small-mana-potion` | 1 | restoreMp 20 | Common |
-| `calming-draught` | 1 | fear -25 | Common |
-| `rotten-flesh` | 1 | debuff distracted, 1 turn | Common |
-| `large-health-potion` | 0.5 | heal 70 | Uncommon |
-| `large-mana-potion` | 0.5 | restoreMp 45 | Uncommon |
-| `antidote` | 0.5 | cleanse status effect | Uncommon |
-| `whetstone` | 0.5 | empower, 2 turns | Uncommon |
-| `temporary-ward` | 0.5 | fortify, 2 turns | Uncommon |
-| `grave-dust` | 0.5 | fortify, 2 turns (archetype-locked) | Uncommon |
-| `broken-blade-fragment` | 0.5 | empower, 2 turns (archetype-locked) | Uncommon |
-| `venom-gland` | 0.5 | poison-coat, 3 turns, 3-monster lock | Rare |
-| `exploration-kit` | 0.15 | satiety +30, party-wide, 7-monster lock | Rare |
+| id | old weight | new weight | effect | tier |
+|---|---|---|---|---|
+| `small-health-potion` | 1 | 1 | heal 30 | Common |
+| `small-mana-potion` | 1 | 1 | restoreMp 20 | Common |
+| `calming-draught` | 1 | 1 | fear -25 | Common |
+| `rotten-flesh` | 1 | 1 | debuff distracted, 1 turn | Common |
+| `large-health-potion` | 0.5 | 0.9 | heal 70 | Uncommon |
+| `large-mana-potion` | 0.5 | 0.9 | restoreMp 45 | Uncommon |
+| `antidote` | 0.5 | 0.9 | cleanse status effect | Uncommon |
+| `whetstone` | 0.5 | 0.9 | empower, 2 turns | Uncommon |
+| `temporary-ward` | 0.5 | 0.9 | fortify, 2 turns | Uncommon |
+| `grave-dust` | 0.5 | 0.9 | fortify, 2 turns (archetype-locked) | Uncommon |
+| `broken-blade-fragment` | 0.5 | 0.9 | empower, 2 turns (archetype-locked) | Uncommon |
+| `venom-gland` | 0.5 | 0.7 | poison-coat, 3 turns, 3-monster lock | Rare |
+| `exploration-kit` | 0.15 | 0.7 | satiety +30, party-wide, 7-monster lock | Rare |
 
 This needs the same `trophyTier`-style field added to `ItemDefinition` noted
 below (or a shared, more neutrally-named `tier` field covering both trophies
 and regular items, rather than two separate fields — worth deciding during
-implementation rather than here).
+implementation rather than here). Once that field exists, `weight` no longer
+needs to be hand-set per item — it can be derived from `tier` at load time via
+the same table, though that's an implementation-time call, not a spec
+decision.
 
 ## Engine/UI work required
 
@@ -244,6 +277,8 @@ implementation rather than here).
    stat/race effect), since group items have no single source monster.
 4. Drop-weight split for monsters that have both an individual and a group
    item available.
-5. Flavor descriptions for all 20 new items (11 group + 9 elite/boss, minus
-   the 3 reused existing ones already worded) — drafted in conversation, not
-   yet finalized or written into `data/items.json`.
+5. Flavor descriptions (the `description` string, distinct from the `effects`
+   now specified per item above) for all 28 new items — drafted in the design
+   discussion, not yet finalized or written into `data/items.json`.
+6. Whether `weight` should be a hand-set field per item or derived at load
+   time from `tier` via the tier-weight table (see Non-trophy item tiers).
