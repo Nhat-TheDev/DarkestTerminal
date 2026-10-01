@@ -23,7 +23,7 @@ Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below)
 
 #### The `magicPower` stat and the `isMagic` flag
 
-Any skill whose `damage`/`heal` is "magical" in nature (Mage's fire/lightning/ice elements, Acolyte's holy heal/purge, all of Plague Doctor's skills) is flagged `isMagic: true` in `data/classes.json`. When the resolver computes damage/healing for an `isMagic` skill, it uses the caster's `source.magicPower` in place of `source.attack` — only the offense side of the formula changes; how defense is subtracted stays the same (full mitigation formula details: `docs/technical-decisions.md`, section "Handling by `effect.kind`"). Skills not flagged `isMagic` (every class's basic attack except Plague Doctor's, all of Vanguard's/Rogue's/Viking's skills, Purify's damage — enemy branch only) use `attack` as normal. Which skills carry `isMagic: true` for each class: `data/classes.json`.
+Any skill whose `damage`/`heal` is "magical" in nature (Mage's fire/lightning/ice elements, Acolyte's holy heal/purge, all of Plague Doctor's skills, and the Mage/Acolyte/Summoner basic attacks) is flagged `isMagic: true` in `data/classes.json`. When the resolver computes damage/healing for an `isMagic` skill, it uses the caster's `source.magicPower` in place of `source.attack` — only the offense side of the formula changes; how defense is subtracted stays the same (full mitigation formula details: `docs/technical-decisions.md`, section "Handling by `effect.kind`"). Skills not flagged `isMagic` (the Vanguard/Rogue/Viking/Archer/Ninja basic attacks, all of Vanguard's/Rogue's/Viking's skills, Purify's damage — enemy branch only) use `attack` as normal. Which skills carry `isMagic: true` for each class: `data/classes.json`.
 
 `magicPower` grows by level along the same tapered curve shared with `attack`/`defense`/`maxHp`/`maxMp` (`06-level-system.md` §6.3), multiplied by a class-specific `growthWeights.magicPower` — see `06-level-system.md` §6.8.
 
@@ -41,7 +41,7 @@ Pillar (`fire`), Lightning Bolt/Lightning Storm (`lightning`), Ice Age (`ice`), 
 `acid-burn`), as does `onHitAoeDamage` (`storm-empowered`'s lightning splash) — `damageType` is a
 property of any `damage`-shaped effect, not something scoped to `perTurnEffects` specifically.
 
-**Mage's basic attack, Arcane Bolt** (`mage-bludgeon`), is `isMagic: true` (scales off
+**Mage's basic attack, Arcane Bolt** (`mage-arcane-bolt`), is `isMagic: true` (scales off
 `magicPower`), consistent with its `damageType: "magic"` tag.
 
 The first class-specific skills are unlocked at level 1 (on top of the always-available basic attack), the rest unlock gradually via each skill's `unlockLevel` field. `slot`/`unlockLevel`/`cooldownTurns` match the field of the same name in `SkillDefinition` (see `docs/technical-decisions.md` §4) — `usesPerCombat` is not used for character skills (section 1.7, last bullet, "Design notes").
@@ -114,17 +114,17 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | Class | Skill id | Name | Damage stat |
 |---|---|---|---|
 | Vanguard | `vanguard-slash` | Slash | attack |
-| Mage | `mage-bludgeon` | Arcane Bolt | magicPower |
+| Mage | `mage-arcane-bolt` | Arcane Bolt | magicPower |
 | Rogue | `rogue-stab` | Stab | attack |
-| Acolyte | `acolyte-punch` | Punch | attack |
+| Acolyte | `acolyte-smite` | Smite | magicPower |
 | Viking | `viking-axe-slash` | Axe Slash | attack |
 | Plague Doctor | `plaguedoc-vial-toss` | Vial Toss | magicPower |
 | Archer | `archer-quick-shot` | Quick Shot | attack |
 | Ninja | `ninja-kunai-strike` | Kunai Strike | attack |
-| Summoner | `summoner-totem-strike` | Totem Strike | attack |
+| Summoner | `summoner-hollow-pulse` | Hollow Pulse | magicPower |
 <!-- docs:end -->
 
-*The Damage stat column says where a basic attack's baseline damage comes from: `attack`, or `magicPower` for a magic skill (`isMagic: true`), as for a class whose kit is entirely magical (sections 1.2 and 1.6).*
+*Most basic attacks are physical and scale off their full `attack`. The exceptions: the **magic basics** — Mage's Arcane Bolt, Acolyte's Smite, Summoner's Hollow Pulse (`isMagic: true` + `damageType: "magic"`, each with a reduced `offenseMultiplierPercent`) and Plague Doctor's Vial Toss (`isMagic: true` only, full multiplier) — draw their baseline damage from `magicPower` instead of `attack`; and the **ranged basics** — Archer's Quick Shot and Ninja's Kunai Strike — which stay physical but carry a reduced `offenseMultiplierPercent` because they attack from range, while the melee basics keep the full multiplier. Exact values: `data/classes.json`.*
 
 ### 1.1 Vanguard — tank, damage sponge, holds monster attention
 
@@ -176,7 +176,7 @@ How each skill works:
 
 *All of Mage's skills are `isMagic: true`, so the engine substitutes `magicPower` for `attack` in the same formula (`amount + mitigatedOffense(magicPower * offenseMultiplier, defense)`) — see the "Reading the Effects column" note under section 1.1 for how `offenseMultiplier` is read per skill/rank from `data/classes.json`.*
 
-*Mage is purely fire/lightning/ice, with a kit focused on damage plus burn/stun procs. Bludgeon (slot 0) covers the "free action when out of mana" role. MP costs, damage amounts, and proc chances: `data/classes.json`.*
+*Mage is purely fire/lightning/ice, with a kit focused on damage plus burn/stun procs. Arcane Bolt (slot 0) covers the "free action when out of mana" role. MP costs, damage amounts, and proc chances: `data/classes.json`.*
 
 ### 1.3 Rogue — single-target burst, highest speed in the party
 
@@ -228,7 +228,7 @@ How each skill works:
 
 *None of Acolyte's skills carry the buff flag — `modifyStat fear` is an instant adjustment, not routed through `applyStatusEffect`/`durationTurns`.*
 
-*Acolyte does have real damage options (Purify targeting an enemy, Divine Descent, and the Punch basic attack) alongside its primary healer role. MP costs, heal/damage amounts, and cooldowns: `data/classes.json`.*
+*Acolyte does have real damage options (Purify targeting an enemy, Divine Descent, and the Smite basic attack) alongside its primary healer role. MP costs, heal/damage amounts, and cooldowns: `data/classes.json`.*
 
 ### 1.5 Viking — hybrid physical/lightning berserker, high risk/extremely high damage
 
@@ -547,7 +547,7 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 9)
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — between Vanguard and Rogue on attack, reflecting a single-target physical striker. Confirmed against the roster's `BalancePoints` formula (section 1's "Base stats balancing formula").
 
-Basic attack (slot 0): **Quick Shot** (`archer-quick-shot`), physical, bow.
+Basic attack (slot 0): **Quick Shot** (`archer-quick-shot`), physical, bow, sub-100% offense (ranged — see the footnote under section 1.0).
 
 <!-- docs:begin classSkills class=archer -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -590,7 +590,7 @@ This needs a new hook in the round-resolution loop (`src/engine/combat.ts`'s `re
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — deliberately below both Archer and Rogue on attack, matching the brief ("weaker than Archer and Rogue"). Confirmed against `BalancePoints`, same as Archer above.
 
-Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai.
+Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai, sub-100% offense (ranged — see the footnote under section 1.0).
 
 <!-- docs:begin classSkills class=ninja -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -630,7 +630,7 @@ The breaking attack itself carries a bonus, via a new `StatusEffectDefinition` f
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — low attack/high magicPower like Acolyte/Plague Doctor, since Summoner's own combat output is secondary to its minions; low `aggro` since its minions (especially Stone Golem) are meant to draw enemy attacks instead. See the Balance Points table in section 1 for how it compares with the roster. Minion stat-derivation ratios off these numbers: `base + (percent/100) * owner[sourceStat]` per stat at cast time (`SkillEffect.summonCastId` → `data/summons.json`'s `casts`), the same mechanism Ninja's clone uses — see the implementation note at the end of 1.11.1 for how the table below maps onto that.
 
-Basic attack (slot 0): **Totem Strike** (`summoner-totem-strike`), physical, weak — Summoner leans on its minions, not its own combat.
+Basic attack (slot 0): **Hollow Pulse** (`summoner-hollow-pulse`), magic (`isMagic`, scales off `magicPower`), weak — Summoner leans on its minions, not its own combat.
 
 <!-- docs:begin classSkills class=summoner -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*

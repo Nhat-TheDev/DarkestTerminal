@@ -64,6 +64,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
+| `data/floor-milestones.json` | The floor-milestone omen lines (one per milestone floor, banded by `maxFloor`): `id`, `maxFloor`, `text`, plus the milestone `interval` | `src/data/floorMilestones.ts` |
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
@@ -341,6 +342,7 @@ data/                  # design data as JSON — see "Design data" above
   items.json
   artifacts.json
   events.json
+  floor-milestones.json
   level-growth.json
   balance-config.json
   sprites.json
@@ -352,6 +354,7 @@ src/
     monsters.ts          # data/monsters.json + data/monster-skills.json loader — spawnMonster, getArchetype, getMonsterSkill
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
+    floorMilestones.ts   # data/floor-milestones.json loader — pickFloorMilestoneOmen (depth bands, no repeats, each line shown by its maxFloor)
     barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
     shopStock.ts         # rollShopOffers/rollBarterOffers — the Runner's stock and barter offers, tier odds by floor depth
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)

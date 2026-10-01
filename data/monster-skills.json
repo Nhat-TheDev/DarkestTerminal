@@ -2,7 +2,7 @@
   {
     "id": "bite",
     "name": "Bite",
-    "description": "A gnawing bite, dealing slightly more damage than a plain scratch.",
+    "description": "Teeth go in through the skin and hold a moment past the point of letting go.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -17,7 +17,7 @@
   {
     "id": "blood-drain",
     "name": "Blood Drain",
-    "description": "Drains blood from the target, dealing damage and healing itself for half of it.",
+    "description": "Fastens to an open wound and drinks; the colour comes back into it as it goes.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -33,7 +33,7 @@
   {
     "id": "acid-spit",
     "name": "Acid Spit",
-    "description": "Spits corrosive acid, damaging and possibly corroding the target's armor.",
+    "description": "Spits something that eats through leather and keeps eating once the leather is gone.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -72,7 +72,7 @@
   {
     "id": "poison-bite",
     "name": "Poison Bite",
-    "description": "A venomous bite, dealing damage and possibly poisoning the target.",
+    "description": "A shallow bite, and the wound goes dark around the edges within the minute.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -93,7 +93,7 @@
   {
     "id": "bone-throw",
     "name": "Bone Throw",
-    "description": "Throws a sharpened bone at the target, ranged damage.",
+    "description": "A bone splintered to a point and thrown from further off than a bone should carry.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -108,7 +108,7 @@
   {
     "id": "regeneration",
     "name": "Regeneration",
-    "description": "Rotting flesh knits back together, restoring HP.",
+    "description": "The flesh knits itself shut, slowly, and not quite in the shape it had before.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -124,7 +124,7 @@
   {
     "id": "quick-bite",
     "name": "Quick Bite",
-    "description": "A fast snapping bite, dealing slightly more damage than a plain scratch.",
+    "description": "Two teeth, one snap, and the jaw is already open for the next.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -139,7 +139,7 @@
   {
     "id": "web-spit",
     "name": "Web Spit",
-    "description": "Sprays sticky webbing at the target, damaging and possibly slowing it down.",
+    "description": "Spits a rope of web that sets as it lands, and every step after has to be pulled free.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -218,7 +218,7 @@
   {
     "id": "arrow-shot",
     "name": "Arrow Shot",
-    "description": "Fires an arrow at the target, ranged damage.",
+    "description": "One arrow, nocked and loosed with no sign of aiming.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -233,7 +233,7 @@
   {
     "id": "guard-stance",
     "name": "Guard Stance",
-    "description": "Raises its shield into a defensive stance, boosting its own defense.",
+    "description": "Brings the shield across and sets its feet, and stops giving ground.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -291,7 +291,7 @@
   {
     "id": "elite-strike-skeleton-guard",
     "name": "Cleaving Strike",
-    "description": "A heavy weapon strike from an elite/boss Skeleton Guard, hitting far harder than its usual blows.",
+    "description": "Brings the weapon straight down from full height, with the whole length of the arm behind it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -306,7 +306,7 @@
   {
     "id": "elite-cleave-skeleton-guard",
     "name": "Sweeping Cleave",
-    "description": "Swings its weapon across the whole party, spreading the damage thin across every target.",
+    "description": "Sweeps the weapon level across the whole line at once, at the height of the hip.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -321,7 +321,7 @@
   {
     "id": "boss-debuff-skeleton-guard",
     "name": "Crush",
-    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "description": "A blow to the shoulder that knocks the guard out of true and leaves the arm slow to come back.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -341,7 +341,7 @@
   {
     "id": "boss-execute-skeleton-guard",
     "name": "Finishing Blow",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
+    "description": "Plants its feet and raises the weapon to full stretch, and holds it there over a single head.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -357,7 +357,7 @@
   {
     "id": "elite-strike-giant-spider",
     "name": "Venomous Bite",
-    "description": "A heavy fanged bite from an elite/boss Giant Spider, hitting far harder than its usual bites.",
+    "description": "Fangs in to the root, and held there a moment longer than it takes.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -372,7 +372,7 @@
   {
     "id": "elite-cleave-giant-spider",
     "name": "Web Barrage",
-    "description": "Sprays webbing across the whole party, spreading the damage thin across every target.",
+    "description": "Throws a fan of web across the room and catches every one of you in some part of it.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -387,7 +387,7 @@
   {
     "id": "boss-debuff-giant-spider",
     "name": "Web Trap",
-    "description": "Moderate damage, also poisons the target.",
+    "description": "A bite shallow enough to miss, and a dark line that starts up the limb from it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -407,7 +407,7 @@
   {
     "id": "boss-execute-giant-spider",
     "name": "Death Bite",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating bite meant to fell all but the sturdiest fighters.",
+    "description": "Rears onto its hind legs, fangs spread, and fixes on a single throat.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -423,7 +423,7 @@
   {
     "id": "elite-strike-dragon",
     "name": "Claw Rake",
-    "description": "A heavy claw strike from an elite/boss Dragon, hitting far harder than its usual attacks.",
+    "description": "A claw brought down like a roof coming in.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -438,7 +438,7 @@
   {
     "id": "elite-cleave-dragon",
     "name": "Fire Breath",
-    "description": "Breathes fire across the whole party, spreading the damage thin across every target.",
+    "description": "The breath comes out in one long sweep and reaches the walls on either side.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -453,7 +453,7 @@
   {
     "id": "boss-debuff-dragon",
     "name": "Scorching Breath",
-    "description": "Moderate damage, also sets the target on fire.",
+    "description": "Catches a single fighter at the edge of the flame, and the fire goes on burning there after the breath is gone.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -473,7 +473,7 @@
   {
     "id": "boss-execute-dragon",
     "name": "Inferno Bite",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating bite meant to fell all but the sturdiest fighters.",
+    "description": "Lowers the head, slowly, until the open jaw is level with one chosen fighter.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -489,7 +489,7 @@
   {
     "id": "elite-strike-zombie-knight",
     "name": "Rusted Blade",
-    "description": "A heavy blade strike from an elite/boss Zombie Knight, hitting far harder than its usual swings.",
+    "description": "A straight cut with the blade, correct in every detail and slow to arrive.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -504,7 +504,7 @@
   {
     "id": "elite-cleave-zombie-knight",
     "name": "Rotting Swing",
-    "description": "Swings its blade across the whole party, spreading the damage thin across every target.",
+    "description": "Swings the blade through the whole line in one sweeping step, as the drill has it.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -519,7 +519,7 @@
   {
     "id": "boss-debuff-zombie-knight",
     "name": "Diseased Strike",
-    "description": "Moderate damage, also weakens the target's defense for a few turns.",
+    "description": "A cut aimed at the buckles, where the armour was fitted for a body that no longer fills it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -539,7 +539,7 @@
   {
     "id": "boss-execute-zombie-knight",
     "name": "Grave Judgment",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
+    "description": "Draws the blade back and holds it there, level with a single neck, while the armour creaks to a stop.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -555,7 +555,7 @@
   {
     "id": "elite-strike-dark-knight",
     "name": "Shadow Slash",
-    "description": "A heavy blade strike from an elite/boss Dark Knight, hitting far harder than its usual strikes.",
+    "description": "One downward stroke, drilled until it carries no wasted motion.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -570,7 +570,7 @@
   {
     "id": "elite-cleave-dark-knight",
     "name": "Dark Wave",
-    "description": "Unleashes a wave of dark energy across the whole party, spreading the damage thin across every target.",
+    "description": "The blade comes round and the dark comes with it, in a flat arc that takes the whole line at the knee.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -585,7 +585,7 @@
   {
     "id": "boss-debuff-dark-knight",
     "name": "Crushing Blow",
-    "description": "Moderate damage, also stuns the target.",
+    "description": "A pommel to the temple, short and unceremonious after all the ceremony.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -605,7 +605,7 @@
   {
     "id": "boss-execute-dark-knight",
     "name": "Abyssal Judgment",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
+    "description": "Returns the blade to the salute, and the point of it settles on one of you.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -951,7 +951,7 @@
   {
     "id": "elite-strike-the-founder",
     "name": "Paid In Full",
-    "description": "A heavy single-target blow from the boss form of What's Left of Him, hitting far harder than its usual strikes.",
+    "description": "A rope of tissue snaps out of the dark and lands once, flat and heavy.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -966,7 +966,7 @@
   {
     "id": "elite-cleave-the-founder",
     "name": "The Same Price",
-    "description": "Hits the whole party at once, spreading a lighter share of damage to each — whatever it charges, it charges everyone the same.",
+    "description": "Every rope lashes out at once, and every one of you is struck, none harder than the rest.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -981,7 +981,7 @@
   {
     "id": "boss-debuff-the-founder",
     "name": "What's Left Listening",
-    "description": "Moderate damage, also blinds the target — something in the room answers back, and it isn't the target's own eyes anymore.",
+    "description": "Something in the dark looks back at one of you, and afterwards the eyes are slow to answer.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -1001,7 +1001,7 @@
   {
     "id": "boss-execute-the-founder",
     "name": "Everything You Asked For",
-    "description": "Charges for 1 turn, telegraphing its target, then delivers a devastating strike meant to fell all but the sturdiest fighters.",
+    "description": "Draws every rope in toward a single spot on the floor, and waits for someone to be standing on it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [

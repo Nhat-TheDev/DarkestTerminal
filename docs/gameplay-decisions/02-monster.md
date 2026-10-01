@@ -92,12 +92,22 @@ get tankier faster than they hit harder or armor up as floors get deeper, wideni
 "HP sponge" shape rather than scaling all 3 stats uniformly. `speed` is untouched by floor depth,
 same as it always has been.
 
-Every time the player clears the boss/guard room of a floor whose depth is a multiple of 10, a
-dedicated screen (`src/ui/screens/floorMilestone.ts`) shows one line randomly picked from a
-5-line atmospheric pool, dismissed with Enter — deliberately never stating "monsters got
-stronger" outright, matching this game's flavor-text tone. `GameState.pendingFloorMilestoneMessage`
+Every time the player clears the boss/guard room of a floor whose depth is a multiple of
+`data/floor-milestones.json`'s `interval`, a dedicated screen (`src/ui/screens/floorMilestone.ts`)
+shows one atmospheric line, dismissed with Enter — deliberately never stating "monsters got
+stronger" outright, matching this game's flavor-text tone. `GameState.pendingFloorMilestoneOmenId`
 / `Game.clearFinishedCombat()` / `Game.dismissFloorMilestoneMessage()` drive it; it takes priority
 in `syncUiToGameState()` the same way `pendingReflection`/`pendingCampReflectionTier` do.
+
+The lines live in `data/floor-milestones.json`, each with an `id`, a `maxFloor` and its `text`, and are
+banded by depth (each band shares one `maxFloor`, in order: mild physical oddities first, then
+repetition and space, then body and time). `pickFloorMilestoneOmen` (`src/data/floorMilestones.ts`)
+takes the lines not yet shown this run (`GameState.shownFloorMilestoneIds`) whose `maxFloor` has not
+passed, finds the lowest `maxFloor` among them (the current band) and picks one at random inside it.
+A line still unshown at its own `maxFloor` is the only one left in its band, so it always comes up at
+that floor. The loader refuses data where that could fail (more lines due by a floor than milestone
+floors up to it). Past the last `maxFloor` any line but the one shown last is picked, so repeats happen
+only there. A milestone whose boss room is never cleared is not made up later.
 
 ### Min-floor gate
 

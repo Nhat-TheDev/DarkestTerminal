@@ -847,10 +847,13 @@ export interface GameState {
       Skipped if `pendingReflection` is currently set. Cleared once the player picks a response
       (`Game.pickCampReflectionChoice`). */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
-  /** Set by `Game.clearFinishedCombat()` on a boss-room victory at a floor depth that's a multiple
-      of 10 — one line randomly picked from a fixed pool, pinned so a re-render shows the same text.
-      Cleared by `Game.dismissFloorMilestoneMessage()`. */
-  pendingFloorMilestoneMessage?: string | null;
+  /** Set by `Game.clearFinishedCombat()` on a boss-room victory at a milestone floor (a multiple of
+      `data/floor-milestones.json`'s `interval`) to the id of the omen picked for it; the floorMilestone
+      screen resolves the text from that id. Cleared by `Game.dismissFloorMilestoneMessage()`. */
+  pendingFloorMilestoneOmenId?: Id | null;
+  /** Ids of the floor-milestone omens (`data/floor-milestones.json`) already shown this run, in order —
+      what keeps an omen from repeating and lets one held back to its `maxFloor` be shown there. */
+  shownFloorMilestoneIds: Id[];
   /** Which option (0/1/2) was picked at each Camp Reflection tier — a genuine per-tier record,
       unlike `eventReflectionStances`, since each tier fires exactly once per run. */
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;

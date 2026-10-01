@@ -148,7 +148,7 @@
   {
     "id": "ghoulish-crawler",
     "name": "Ghoulish Crawler",
-    "description": "Whatever it used to walk on, elbows and jaw do all the work now. The elbows are worn flat; the jaw is in worse condition.",
+    "description": "It drags itself along on elbows and jaw. The elbows have gone flat; the jaw is in worse condition.",
     "baseHp": 50,
     "baseAttack": 25,
     "baseDefense": 2,
@@ -238,7 +238,7 @@
   {
     "id": "skeleton",
     "name": "Skeleton",
-    "description": "Whatever held it together in life is still holding, without needing the rest of the body for it, and it moves as though carrying a weight that has been gone a long while.",
+    "description": "The bones keep their order without the body that arranged them. It carries itself as if under a weight that was lifted long ago.",
     "baseHp": 90,
     "baseAttack": 21,
     "baseDefense": 6,
@@ -558,7 +558,7 @@
   {
     "id": "lava-slime",
     "name": "Lava Slime",
-    "description": "It hasn't moved since the room went quiet, and the stone within its reach has gone the same dull red as its own skin. Whatever holds it together was never asked to hold for long.",
+    "description": "It hasn't moved since the room went quiet, and the stone within its reach has gone the same dull red as its own skin. Nothing holding it together was ever asked to hold for long.",
     "baseHp": 100,
     "baseAttack": 23,
     "baseDefense": 4,
@@ -673,7 +673,7 @@
   {
     "id": "lesser-vampire",
     "name": "Lesser Vampire",
-    "description": "Whatever made it what it is didn't finish the job — it keeps to the air in short, uneven bursts, like something still learning the shape it's in. The hunger arrived first and finished forming; everything else is still catching up.",
+    "description": "It keeps to the air in short, uneven bursts, like something still learning the shape it's in. The hunger arrived first and finished forming; everything else is still catching up.",
     "baseHp": 85,
     "baseAttack": 26,
     "baseDefense": 3,
@@ -704,7 +704,7 @@
   {
     "id": "skeleton-archer",
     "name": "Skeleton Archer",
-    "description": "It shoots from the back, at whoever is standing on their own. The drawing hand is worn smooth exactly where a living archer's calluses would sit — a great many years of doing it correctly, none of them recent.",
+    "description": "It shoots from the back, at whoever is standing on their own. The fingertips of the drawing hand are polished smooth where an archer's calluses would sit — a great many years of doing it correctly, none of them recent.",
     "baseHp": 80,
     "baseAttack": 30,
     "baseDefense": 7,
@@ -732,7 +732,7 @@
   {
     "id": "skeleton-warrior",
     "name": "Skeleton Warrior",
-    "description": "It still fights as though the shield is on its arm. The bone is worn where the straps would have sat, and it gives ground in measured steps somebody once drilled into it — the same order every time.",
+    "description": "It still fights as though the shield is on its arm. The bone is scored where the straps would have sat, and it gives ground in measured steps somebody once drilled into it — the same order every time.",
     "baseHp": 95,
     "baseAttack": 20,
     "baseDefense": 12,
@@ -940,7 +940,7 @@
   {
     "id": "skeleton-guard",
     "name": "Skeleton Guard",
-    "description": "It stands where it was put, by someone who is not anywhere now. It has not come off that spot for anything since. The floor around it is worn in a ring exactly as wide as its reach.",
+    "description": "It stands where it was put, by someone who is not anywhere now. It has not come off that spot for anything since. The floor around it is scuffed bare in a ring as wide as its reach.",
     "baseHp": 110,
     "baseAttack": 18,
     "baseDefense": 12,

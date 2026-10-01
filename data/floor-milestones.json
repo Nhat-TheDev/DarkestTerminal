@@ -1,0 +1,17 @@
+{
+  "interval": 10,
+  "omens": [
+    { "id": "torches-low", "maxFloor": 30, "text": "Your torches burn lower here, with no draft to explain it." },
+    { "id": "warm-floor", "maxFloor": 30, "text": "The floor ahead is warmer underfoot than the one behind." },
+    { "id": "smell-of-rain", "maxFloor": 30, "text": "The air smells faintly of rain, a long way from any weather." },
+    { "id": "late-echo", "maxFloor": 60, "text": "A sound from the room you just cleared comes back once, a fraction late." },
+    { "id": "walls-close-in", "maxFloor": 60, "text": "The corridor ahead is no narrower than the last. Your shoulders find the walls anyway." },
+    { "id": "chalk-higher", "maxFloor": 60, "text": "The chalk marks you left on the way down are a hand's width higher than you remember making them." },
+    { "id": "dust-grooves", "maxFloor": 90, "text": "Dust lies in the grooves of the stone, every one of them pointing the way you are going." },
+    { "id": "light-ahead", "maxFloor": 90, "text": "The torchlight reaches farther ahead than it does behind you." },
+    { "id": "shadows-lean", "maxFloor": 90, "text": "Your shadows lean toward the way down, whatever the light says." },
+    { "id": "breathe-in-time", "maxFloor": 120, "text": "For a moment, all of you breathe in time." },
+    { "id": "slow-pulse", "maxFloor": 120, "text": "A slow pulse rises through the stone, slower than your own." },
+    { "id": "room-smaller", "maxFloor": 120, "text": "When you look back, the room you cleared is smaller than you remember." }
+  ]
+}

@@ -488,7 +488,7 @@ ability owns a distinct axis.
 | `iron-skin` | Iron Skin | Enough hits taken that the flinch stopped coming. | +4 defense, or 5% of base defense if higher. |
 | `hardy-constitution` | Hardy Constitution | Takes the same hits as everyone else and gets up from more of them. | +20 max HP, or 5% of base max HP if higher. |
 | `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | +10 max MP, or 5% of base max MP if higher. |
-| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | -10% fear accumulated. |
+| `unshaken-resolve` | Unshaken Resolve | A mind that has met the dark before and is no longer surprised by it. | -10% fear accumulated. |
 | `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | 2% chance to fully dodge an attack. |
 | `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | Heals 5% of damage dealt. |
 | `arcane-aptitude` | Arcane Aptitude | Spells take shape before the words are finished. | +5 magic power, or 5% of base magic power if higher. |

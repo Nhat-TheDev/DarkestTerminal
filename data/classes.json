@@ -2,7 +2,7 @@
   {
     "id": "vanguard",
     "name": "Vanguard",
-    "description": "Stand in front, take the hits, and keep the enemy looking at you instead of your healer. That's the whole job.",
+    "description": "Stands in front, takes the hits, and keeps the enemy's attention off the healer.",
     "roleTags": [
       "Tank",
       "Taunt",
@@ -36,7 +36,7 @@
       {
         "id": "vanguard-shield-guard",
         "name": "Shield Guard",
-        "description": "Raises a defensive shield, boosting both defense and self-aggro for 1 turn.",
+        "description": "Sets the shield square to the front and plants the feet behind it, and every eye in the room finds it.",
         "shortDescription": "Raises a shield: defense, aggro up.",
         "target": "self",
         "slot": 1,
@@ -99,7 +99,7 @@
       {
         "id": "vanguard-shield-throw",
         "name": "Shield Throw",
-        "description": "Throws the shield at an enemy, dealing ranged damage.",
+        "description": "Hurls the shield flat across the room, edge first.",
         "shortDescription": "Throws the shield for ranged damage.",
         "target": "singleEnemy",
         "slot": 2,
@@ -145,7 +145,7 @@
       {
         "id": "vanguard-rally",
         "name": "Rally",
-        "description": "Rallies the party, instantly lowering fear and boosting attack for 1 turn for the whole team.",
+        "description": "A shout that carries to the back of the line, and the line closes up behind it.",
         "shortDescription": "Lowers party fear, boosts team attack for 1 turn.",
         "target": "allAllies",
         "slot": 3,
@@ -208,7 +208,7 @@
       {
         "id": "vanguard-heavy-charge",
         "name": "Heavy Charge",
-        "description": "Charges straight into the enemy group, dealing area damage.",
+        "description": "Lowers the shoulder and goes through the enemy line as though it were a door.",
         "shortDescription": "Charges the enemy group for area damage.",
         "target": "allEnemies",
         "slot": 4,
@@ -255,7 +255,7 @@
       {
         "id": "vanguard-sword-judgment",
         "name": "Sword Judgment",
-        "description": "A decisive sword strike, heavy damage. Always hits, effectiveness reduced by fear.",
+        "description": "A single stroke with the whole weight of the blade behind it, and no thought of a second.",
         "shortDescription": "A heavy sword strike. Always hits.",
         "target": "singleEnemy",
         "slot": 5,
@@ -333,7 +333,7 @@
   {
     "id": "mage",
     "name": "Mage",
-    "description": "Bring the Mage to end a fight fast — fire, lightning, and ice hit like a truck. Just keep something between it and the enemy, because it won't survive many hits back.",
+    "description": "Ends a fight quickly with fire, lightning and ice, and cannot take a hit in return. Keep something solid in front of it.",
     "roleTags": [
       "Nuker",
       "AoE",
@@ -349,7 +349,7 @@
     "baseMagicPower": 16,
     "skills": [
       {
-        "id": "mage-bludgeon",
+        "id": "mage-arcane-bolt",
         "name": "Arcane Bolt",
         "description": "A weak bolt of raw arcane force — basic damage.",
         "shortDescription": "A weak arcane bolt — basic damage.",
@@ -359,7 +359,8 @@
           {
             "kind": "damage",
             "amount": 0,
-            "damageType": "magic"
+            "damageType": "magic",
+            "offenseMultiplierPercent": 70
           }
         ],
         "slot": 0,
@@ -369,7 +370,7 @@
       {
         "id": "mage-fireball",
         "name": "Fireball",
-        "description": "Summons a ball of fire dealing damage, may cause Burning.",
+        "description": "A ball of fire thrown from the palm, still turning as it goes.",
         "shortDescription": "A fireball; may set the target Burning.",
         "target": "singleEnemy",
         "slot": 1,
@@ -437,7 +438,7 @@
       {
         "id": "mage-lightning-bolt",
         "name": "Lightning Bolt",
-        "description": "Fires a bolt of lightning for fast damage, may cause Stunned.",
+        "description": "A bolt of lightning out of a clear patch of ceiling, and the smell of it arrives after.",
         "shortDescription": "A fast bolt; may cause Stunned.",
         "target": "singleEnemy",
         "slot": 2,
@@ -505,7 +506,7 @@
       {
         "id": "mage-fire-pillar",
         "name": "Fire Pillar",
-        "description": "Raises a pillar of fire burning the whole enemy group, high chance to cause Burning.",
+        "description": "Raises a pillar of fire from the floor, and the enemy line stands in it.",
         "shortDescription": "Burns the group, high chance to Burn.",
         "target": "allEnemies",
         "slot": 3,
@@ -574,7 +575,7 @@
       {
         "id": "mage-lightning-storm",
         "name": "Lightning Storm",
-        "description": "Calls down a lightning storm on all enemies, may cause Stunned.",
+        "description": "Draws a storm in under the ceiling, and every enemy in the room hears it before it breaks.",
         "shortDescription": "Storm hits all enemies, may cause Stunned.",
         "target": "allEnemies",
         "slot": 4,
@@ -643,7 +644,7 @@
       {
         "id": "mage-ice-age",
         "name": "Ice Age",
-        "description": "Blankets the whole battlefield in frost, wide-area damage. Always hits, effectiveness reduced by fear.",
+        "description": "Frost crosses the floor and climbs every wall, and the torch flames lean away from it.",
         "shortDescription": "Wide frost damage. Always hits.",
         "target": "allEnemies",
         "slot": 5,
@@ -753,7 +754,7 @@
       {
         "id": "rogue-poison-coat",
         "name": "Poison Coat",
-        "description": "Coats the blade with poison — while active, hits that land also inflict poison.",
+        "description": "Draws the blade through a poisoned rag and does not wipe it clean.",
         "shortDescription": "Coats the blade: hits also poison.",
         "target": "self",
         "slot": 1,
@@ -811,7 +812,7 @@
       {
         "id": "rogue-knife-throw",
         "name": "Knife Throw",
-        "description": "Throws a dagger, dealing ranged damage.",
+        "description": "A knife thrown underhand, from the hip, with no wind-up to warn anyone.",
         "shortDescription": "Throws a dagger for ranged damage.",
         "target": "singleEnemy",
         "slot": 2,
@@ -857,7 +858,7 @@
       {
         "id": "rogue-backstab",
         "name": "Backstab",
-        "description": "A vicious stab from a blind spot, high damage.",
+        "description": "A stab from the one place the target is not looking.",
         "shortDescription": "A vicious blind-spot stab, high damage.",
         "target": "singleEnemy",
         "slot": 3,
@@ -904,7 +905,7 @@
       {
         "id": "rogue-poison-bomb",
         "name": "Poison Bomb",
-        "description": "Throws a poison bomb, poisoning every enemy.",
+        "description": "A clay bomb thrown into the middle of the enemy, and the smoke goes where it likes.",
         "shortDescription": "Poisons every enemy at once.",
         "target": "allEnemies",
         "slot": 4,
@@ -966,7 +967,7 @@
       {
         "id": "rogue-flurry-assault",
         "name": "Flurry Assault",
-        "description": "Rushes in for 3 consecutive stabs. Always hits, effectiveness reduced by fear.",
+        "description": "Cut after cut, too close together to count, and the dagger is back at the hip.",
         "shortDescription": "3 rapid stabs. Always hits.",
         "target": "singleEnemy",
         "ranks": [
@@ -1073,7 +1074,7 @@
   {
     "id": "acolyte",
     "name": "Acolyte",
-    "description": "Why your run doesn't end on floor two — keeps HP topped up and nerves steady when things get ugly.",
+    "description": "Keeps the party's wounds closed and its nerve steady when the floors turn ugly.",
     "roleTags": [
       "Healer",
       "Cleanser",
@@ -1089,25 +1090,28 @@
     "baseMagicPower": 10,
     "skills": [
       {
-        "id": "acolyte-punch",
-        "name": "Punch",
-        "description": "A bare-handed punch — basic damage.",
-        "shortDescription": "A bare-handed punch — basic damage.",
+        "id": "acolyte-smite",
+        "name": "Smite",
+        "description": "A flicker of borrowed light — basic damage.",
+        "shortDescription": "A flicker of borrowed light — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "damageType": "magic",
+            "offenseMultiplierPercent": 60
           }
         ],
         "slot": 0,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "acolyte-prayer",
         "name": "Prayer",
-        "description": "A calming prayer, lowers fear for 1 ally.",
+        "description": "A short prayer, spoken low, and the shaking in the hands stops.",
         "shortDescription": "A calming prayer, lowers 1 ally's fear.",
         "target": "singleAlly",
         "slot": 1,
@@ -1153,7 +1157,7 @@
       {
         "id": "acolyte-heal",
         "name": "Heal",
-        "description": "Restores HP to 1 ally.",
+        "description": "A hand laid on the wound until it closes.",
         "shortDescription": "Restores HP to 1 ally.",
         "target": "singleAlly",
         "slot": 2,
@@ -1200,7 +1204,7 @@
       {
         "id": "acolyte-purify",
         "name": "Purify",
-        "description": "Target an ally to remove 1 debuff, or target an enemy to deal purging damage.",
+        "description": "Holy light that lifts the rot from a friend and burns through an enemy.",
         "shortDescription": "Cures an ally's debuff, or smites an enemy.",
         "target": "singleAllyOrEnemy",
         "slot": 3,
@@ -1266,7 +1270,7 @@
       {
         "id": "acolyte-mass-heal",
         "name": "Mass Heal",
-        "description": "Heals + lowers fear for the whole party.",
+        "description": "A blessing spoken over the whole party; wounds close and breathing slows.",
         "shortDescription": "Heals and calms the whole party.",
         "target": "allAllies",
         "slot": 4,
@@ -1329,7 +1333,7 @@
       {
         "id": "acolyte-divine-descent",
         "name": "Divine Descent",
-        "description": "Holy light descends over the whole battlefield: heals + strongly lowers fear for allies, damages enemies. Always hits, effectiveness reduced by fear.",
+        "description": "Light comes down through a ceiling that was never open, and wounds on one side of the room close while the other side goes white.",
         "shortDescription": "Holy light: heals allies, smites foes.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
@@ -1421,7 +1425,7 @@
     "passiveSkill": {
       "id": "acolyte-passive",
       "name": "Devotion",
-      "description": "Faith turns inward for protection, outward for grace.",
+      "description": "Curses slide off it, and its blessings land heavier.",
       "ranks": [
         {
           "rank": 1,
@@ -1481,7 +1485,7 @@
       {
         "id": "viking-lightning-axe",
         "name": "Lightning Axe",
-        "description": "Channels storm energy into the axe, empowering every hit with a lightning splash for a few turns, at the cost of defense and self-aggro.",
+        "description": "Holds the axe up to the storm, and the storm answers through the handle.",
         "shortDescription": "Lightning-charges the axe for a few turns.",
         "target": "self",
         "slot": 1,
@@ -1544,7 +1548,7 @@
       {
         "id": "viking-frenzied-slash",
         "name": "Frenzied Slash",
-        "description": "A wild physical slash, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "description": "A slash with no guard behind it, thrown wide and wild.",
         "shortDescription": "A wild slash, may cause Bleeding.",
         "target": "singleEnemy",
         "slot": 2,
@@ -1612,7 +1616,7 @@
       {
         "id": "viking-throw-axe",
         "name": "Throw Axe",
-        "description": "Throws the axe at an enemy, dealing ranged damage. Hits harder while Storm-Empowered.",
+        "description": "The axe leaves the hand end over end and does not slow down.",
         "shortDescription": "Throws the axe for ranged damage.",
         "target": "singleEnemy",
         "slot": 3,
@@ -1663,7 +1667,7 @@
       {
         "id": "viking-spin-axe",
         "name": "Spinning Axe",
-        "description": "Spins the axe through the whole enemy group, may cause Bleeding. Hits harder while Storm-Empowered.",
+        "description": "Turns on the spot with the axe at arm's length, and the whole enemy line is in reach.",
         "shortDescription": "Spins the axe through the enemy group.",
         "target": "allEnemies",
         "slot": 4,
@@ -1732,7 +1736,7 @@
       {
         "id": "viking-thunder-god-fury",
         "name": "Thunder God's Fury",
-        "description": "Unleashes the storm's full fury on every enemy. Always hits, effectiveness reduced by fear. Hits far harder and consumes Storm-Empowered.",
+        "description": "Calls the storm in through the roof and lets it find every enemy in the room.",
         "shortDescription": "Unleashes the storm's full fury on all foes.",
         "target": "allEnemies",
         "slot": 5,
@@ -1851,7 +1855,7 @@
       {
         "id": "plaguedoc-fire-vial",
         "name": "Fire Vial",
-        "description": "Throws a vial of alchemical fire, dealing damage and possibly setting the target ablaze.",
+        "description": "A vial of alchemist's fire, thrown with the cork still smoking.",
         "shortDescription": "Alchemical fire — possibly setting foe ablaze.",
         "target": "singleEnemy",
         "slot": 1,
@@ -1919,7 +1923,7 @@
       {
         "id": "plaguedoc-healing-draught",
         "name": "Healing Draught",
-        "description": "A restorative draught for 1 ally.",
+        "description": "A draught held to the lips of the wounded, bitter all the way down.",
         "shortDescription": "A restorative draught for 1 ally.",
         "target": "singleAlly",
         "slot": 2,
@@ -1966,7 +1970,7 @@
       {
         "id": "plaguedoc-blinding-vial",
         "name": "Blinding Vial",
-        "description": "A vial of caustic powder, dealing damage and possibly blinding the target — a blinded target's own attacks miss far more often.",
+        "description": "Caustic powder broken at the enemy's feet, and it rises to the eyes.",
         "shortDescription": "Caustic powder; possibly blinding the target.",
         "target": "singleEnemy",
         "slot": 3,
@@ -2032,7 +2036,7 @@
       {
         "id": "plaguedoc-toxic-fog",
         "name": "Spreading Toxic Fog",
-        "description": "Spreads a toxic fog over the whole enemy group, dealing damage and possibly poisoning/weakening each of them.",
+        "description": "A fog that rolls out of the flask thick and low, and finds every enemy in the group.",
         "shortDescription": "Toxic fog: possibly poisoning or weakening foes.",
         "target": "allEnemies",
         "slot": 4,
@@ -2119,7 +2123,7 @@
       {
         "id": "plaguedoc-total-plague",
         "name": "Total Plague",
-        "description": "Unleashes the full plague over the battlefield: heals + cures allies, damages and afflicts enemies with poison and fire. Always hits, effectiveness reduced by fear.",
+        "description": "Breaks every vial at once and stands in the cloud it makes, untouched.",
         "shortDescription": "Heals allies, poisons and burns foes.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
@@ -2300,7 +2304,8 @@
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "offenseMultiplierPercent": 85
           }
         ],
         "slot": 0,
@@ -2309,7 +2314,7 @@
       {
         "id": "archer-aimed-shot",
         "name": "Aimed Shot",
-        "description": "A carefully aimed shot, prone to landing a critical hit.",
+        "description": "A shot taken slowly, with the string held and the breath held with it.",
         "shortDescription": "An aimed shot, likely to crit.",
         "target": "singleEnemy",
         "slot": 1,
@@ -2358,7 +2363,7 @@
       {
         "id": "archer-overwatch",
         "name": "Overwatch",
-        "description": "Draws a bead on the battlefield, ready to fire the instant an enemy moves.",
+        "description": "Settles the bow on the room and stays still, string drawn, until something moves.",
         "shortDescription": "Fires the instant an enemy moves.",
         "target": "self",
         "slot": 2,
@@ -2406,7 +2411,7 @@
       {
         "id": "archer-volley-shot",
         "name": "Volley Shot",
-        "description": "Looses a volley of arrows over the whole enemy group.",
+        "description": "Arrows loosed in a high arc, and they come down on the whole enemy group.",
         "shortDescription": "A volley of arrows over the enemy group.",
         "target": "allEnemies",
         "slot": 3,
@@ -2453,7 +2458,7 @@
       {
         "id": "archer-crippling-shot",
         "name": "Crippling Shot",
-        "description": "A shot aimed at the joints, may weaken the target's defense.",
+        "description": "A shot placed through the joint, where the armour is only strap.",
         "shortDescription": "Joint shot, may weaken defense.",
         "target": "singleEnemy",
         "slot": 4,
@@ -2536,7 +2541,7 @@
       {
         "id": "archer-deadeye-shot",
         "name": "Deadeye Shot",
-        "description": "A decisive, perfectly placed shot. Always hits, guaranteed critical, effectiveness reduced by fear.",
+        "description": "Holds the string a breath longer than any other shot, then lets it go.",
         "shortDescription": "A perfect, guaranteed critical shot.",
         "target": "singleEnemy",
         "slot": 5,
@@ -2588,7 +2593,7 @@
     "passiveSkill": {
       "id": "archer-passive",
       "name": "Deadly Precision",
-      "description": "Every shot is aimed like it's the one that matters.",
+      "description": "A breath held before every release, however small the target.",
       "ranks": [
         {
           "rank": 1,
@@ -2639,7 +2644,8 @@
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "offenseMultiplierPercent": 80
           }
         ],
         "slot": 0,
@@ -2648,7 +2654,7 @@
       {
         "id": "ninja-smoke-bomb",
         "name": "Smoke Bomb",
-        "description": "Vanishes in a cloud of smoke, untargetable until the next attack breaks it.",
+        "description": "A pellet cracked underfoot, and by the time the smoke clears there is no one to look at.",
         "shortDescription": "Vanishes, untargetable until it strikes.",
         "target": "self",
         "slot": 1,
@@ -2696,7 +2702,7 @@
       {
         "id": "ninja-shadow-clone",
         "name": "Shadow Clone",
-        "description": "Splits off a shadow clone to draw enemy attacks alongside the party.",
+        "description": "Steps out of its own shadow and leaves it standing in the way.",
         "shortDescription": "Splits a clone to draw enemy attacks.",
         "target": "self",
         "slot": 2,
@@ -2741,7 +2747,7 @@
       {
         "id": "ninja-throwing-knives",
         "name": "Throwing Knives",
-        "description": "A quick flurry of thrown knives, may cause Bleeding, sometimes throws a 2nd knife.",
+        "description": "Knives thrown in a quick spread, small enough to be missed until they land.",
         "shortDescription": "Thrown knives, may cause Bleeding.",
         "target": "singleEnemy",
         "slot": 3,
@@ -2809,7 +2815,7 @@
       {
         "id": "ninja-shuriken-storm",
         "name": "Shuriken Storm",
-        "description": "Showers the whole enemy group with shuriken, may cause Bleeding.",
+        "description": "A handful of shuriken thrown into the air all at once, and they come down on the whole group.",
         "shortDescription": "Showers foes with shuriken, may cause Bleeding.",
         "target": "allEnemies",
         "slot": 4,
@@ -2886,7 +2892,7 @@
       {
         "id": "ninja-death-mark",
         "name": "Death Mark",
-        "description": "A precise strike aimed at a vital point. Always hits, effectiveness reduced by fear, hits far harder against a bleeding or low-HP target.",
+        "description": "Finds the place where a body is already coming apart, and puts the blade there.",
         "shortDescription": "A vital strike, harder vs a low-HP foe.",
         "target": "singleEnemy",
         "slot": 5,
@@ -2966,7 +2972,7 @@
     "passiveSkill": {
       "id": "ninja-passive",
       "name": "Afterimage",
-      "description": "Never quite where the strike lands, and sometimes there's 2 to answer for it.",
+      "description": "Never quite where the strike lands, and sometimes a second shadow stands up to answer for it.",
       "ranks": [
         {
           "rank": 1,
@@ -3009,25 +3015,28 @@
     "baseMagicPower": 12,
     "skills": [
       {
-        "id": "summoner-totem-strike",
-        "name": "Totem Strike",
-        "description": "A weak totem-staff jab — basic damage. The Summoner leans on its minions, not its own combat.",
-        "shortDescription": "A weak totem jab — basic damage.",
+        "id": "summoner-hollow-pulse",
+        "name": "Hollow Pulse",
+        "description": "A dull pulse drawn from the totem's hollow — basic damage. The Summoner leans on its minions, not its own combat.",
+        "shortDescription": "A dull pulse from the totem — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
         "effects": [
           {
             "kind": "damage",
-            "amount": 0
+            "amount": 0,
+            "damageType": "magic",
+            "offenseMultiplierPercent": 70
           }
         ],
         "slot": 0,
-        "unlockLevel": 1
+        "unlockLevel": 1,
+        "isMagic": true
       },
       {
         "id": "summoner-summon-goblin",
         "name": "Summon Goblin",
-        "description": "Summons a Goblin Thrower — low HP and aggro, moderate ranged attack.",
+        "description": "A goblin steps out of the totem's shadow, thin and fast, a stone already in its hand.",
         "shortDescription": "Summons a ranged Goblin Thrower.",
         "target": "self",
         "slot": 1,
@@ -3072,7 +3081,7 @@
       {
         "id": "summoner-summon-spirit",
         "name": "Summon Spirit",
-        "description": "Summons a Healer Spirit — low HP and aggro, heals the party.",
+        "description": "Calls a pale spirit out of the air, and it goes to whoever is bleeding.",
         "shortDescription": "Summons a Healer Spirit for the party.",
         "target": "self",
         "slot": 2,
@@ -3117,7 +3126,7 @@
       {
         "id": "summoner-summon-golem",
         "name": "Summon Golem",
-        "description": "Summons a Stone Golem — high HP, moderate attack, high aggro (draws enemy attacks).",
+        "description": "Pulls a golem up out of the floor, slow and heavy, and every enemy in the room turns to look at it.",
         "shortDescription": "Summons a high-HP, high-aggro Golem.",
         "target": "singleEnemy",
         "slot": 3,
@@ -3255,7 +3264,7 @@
       {
         "id": "summoner-summon-imp",
         "name": "Summon Hellfire Imp",
-        "description": "Summons a Hellfire Imp and immediately scorches every enemy with hellfire. Always hits; effectiveness reduced by fear.",
+        "description": "Pulls an imp up out of some other hearth, and it arrives already burning everything in sight.",
         "shortDescription": "Summons an Imp, scorches every foe.",
         "target": "allEnemies",
         "isMagic": true,
@@ -3320,7 +3329,7 @@
     "passiveSkill": {
       "id": "summoner-passive",
       "name": "Bound Legion",
-      "description": "The pact strengthens on its own, and can hold more of them at once.",
+      "description": "The pact deepens on its own, and makes room for more minions at the Summoner's side.",
       "ranks": [
         {
           "rank": 1,

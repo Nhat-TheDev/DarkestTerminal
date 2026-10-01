@@ -278,14 +278,14 @@ anything.
 | id | Rarity | Effect | Story |
 |---|---|---|---|
 | `iron-gauntlet` | Common | +3 attack. | "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest." |
-| `worn-wooden-shield` | Common | +3 defense. | "Every scar on it came from a blow meant for someone standing behind the one holding it — nobody's kept count of how many times that worked." |
-| `charm-of-life` | Common | +20 max HP. | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled. Nobody who's held it since has cared about the difference." |
-| `small-mana-gem` | Common | +10 max MP. | "'Guard it with your life,' a spellcaster told their apprentice. The apprentice took the instruction more literally than anyone expected." |
-| `sharp-claw` | Common | +4 attack. | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Mounting it was somebody else's job entirely — bringing it down was somebody else's again." |
+| `worn-wooden-shield` | Common | +3 defense. | "Every scar on it came from a blow meant for someone standing behind the one holding it." |
+| `charm-of-life` | Common | +20 max HP. | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled." |
+| `small-mana-gem` | Common | +10 max MP. | "'Guard it with your life,' a spellcaster told their apprentice. It was found afterward in a closed fist, and the fist was not easy to open." |
+| `sharp-claw` | Common | +4 attack. | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. One person pulled it, another mounted it, and a third swung it." |
 | `stone-of-endurance` | Common | +30 max HP. | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
 | `ring-of-focus` | Common | +15 max MP. | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
 | `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
-| `pendant-of-calm` | Common | -10% fear accumulated. | "'I won't need calm where I'm headed,' they said, handing it back before they left. Nobody who was there wanted to ask what they meant." |
+| `pendant-of-calm` | Common | -10% fear accumulated. | "'I won't need calm where I'm headed,' they said, handing it back before they left. The cord was still knotted to fit their neck." |
 | `travelers-ration` | Common | +15 max HP. | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
 <!-- docs:end -->
 
@@ -297,12 +297,12 @@ anything.
 | id | Rarity | Effect | Story |
 |---|---|---|---|
 | `ancient-sword` | Rare | +8 attack. | "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. They never finished. The blade outlived the theory." |
-| `heart-of-stone` | Rare | +8 defense. | "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. They were very convincing about it, right up until they weren't." |
+| `heart-of-stone` | Rare | +8 defense. | "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. The carving is deep and even everywhere except at the center, where the hand lifted." |
 | `eternal-vial` | Rare | +50 max HP. | "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands." |
 | `arcane-core` | Rare | +25 max MP. | "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess." |
 | `thorned-armor` | Rare | Reflects 5% of damage taken back to the attacker. | "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain." |
 | `venomous-dagger-relic` | Rare | 6% chance to inflict Poisoned on hit. | "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling." |
-| `vampiric-fang` | Rare | Heals 5% of damage dealt. | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. Everyone who heard it agreed, mostly just to end the conversation." |
+| `vampiric-fang` | Rare | Heals 5% of damage dealt. | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. It leaves a faint warmth in the hand that does not come from the hand." |
 | `featherweight-boots` | Rare | 6% chance to fully dodge an attack. | "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down." |
 | `quickcharge-rune` | Rare | -1 turn skill cooldown. | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
 <!-- docs:end -->
@@ -314,7 +314,7 @@ anything.
 
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The photo got burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
+| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The portrait was burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
 | `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
 | `unstable-core` | Rare | +25 aggro. +30 max MP. | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
 | `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
@@ -330,9 +330,9 @@ anything.
 | `spiked-cloak` | Unique | Reflects 10% of damage taken back to the attacker. | "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders." |
 | `serpent-ring` | Unique | 12% chance to inflict Poisoned on hit. | "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect." |
 | `thunder-totem` | Unique | Deals 6 + 25% base magic power damage to 1 random enemy at the start of each round. | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut." |
-| `armor-of-wholeness` | Unique | +6 attack. +6 defense. +40 max HP. | "Made for someone who never got the chance to wear it into anything worth calling a battle. It still fits like it's waiting for them to come back and finish that first one." |
+| `armor-of-wholeness` | Unique | +6 attack. +6 defense. +40 max HP. | "Made for someone who never got the chance to wear it into anything worth calling a battle. The lining has no sweat in it, and the buckles have never been moved off the first hole." |
 | `bloodthirsty-blade` | Unique | Heals 10% of damage dealt. | "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it." |
-| `phantom-step` | Unique | 12% chance to fully dodge an attack. | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. They got exactly what they asked for. Nobody's sure they were glad they did." |
+| `phantom-step` | Unique | 12% chance to fully dodge an attack. | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. The soles are worn through at the toe and nowhere else." |
 | `scholars-insight` | Unique | +15% EXP gained for the party. | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
 <!-- docs:end -->
 
