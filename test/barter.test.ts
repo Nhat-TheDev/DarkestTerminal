@@ -3,7 +3,12 @@ import { Game } from "../src/engine/game";
 import { enterRoom, getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { tickDotEffects } from "../src/engine/resolver";
-import { barterBuffFor } from "../src/engine/events/barter";
+import { barterBuffFor, barterCost } from "../src/engine/events/barter";
+import { rollRestRunner } from "../src/engine/events/runner";
+import { rollBarterOffers } from "../src/data/shopStock";
+import { getArchetype } from "../src/data/monsters";
+import { getItem } from "../src/data/items";
+import { Rng } from "../src/engine/rng";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getStatusEffect } from "../src/data/statusEffects";
 import type { ItemTier } from "../src/types";
@@ -132,5 +137,118 @@ describe("applying pending barter buffs", () => {
     game.state.pendingBarterBuffs = ["chitin-shard"];
     game.advanceToNextFloor();
     expect(game.state.pendingBarterBuffs).toEqual([]);
+  });
+});
+
+describe("barter offers and trade", () => {
+  function runnerGame(seed: number) {
+    const game = new Game(seed);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "rest";
+    room.cleared = false;
+    game.state.restRunner = {
+      roomId: room.id,
+      noticeShown: true,
+      noticeVariant: 0,
+      offers: [],
+      refreshCount: 0,
+      barterOffers: [{ itemId: "rat-tail" }, { itemId: "warped-vambrace" }],
+    };
+    return { game, room };
+  }
+
+  test("2 different trophy kinds that can drop at this depth are offered", () => {
+    for (let seed = 1; seed <= 300; seed++) {
+      for (const depth of [1, 40, 120]) {
+        const offers = rollBarterOffers(new Rng(seed), depth);
+        expect(offers.length).toBe(BALANCE.barter.offerCount);
+        expect(new Set(offers.map((o) => o.itemId)).size).toBe(offers.length);
+        for (const { itemId } of offers) {
+          const item = getItem(itemId);
+          expect(item.archetypeIds?.length).toBeGreaterThan(0);
+          expect(item.archetypeIds!.some((id) => (getArchetype(id).minFloor ?? 0) <= depth)).toBe(true);
+        }
+      }
+    }
+  });
+
+  test("Legendary trophies are offered once their monsters can appear", () => {
+    let sawLegendary = false;
+    for (let seed = 1; seed <= 400; seed++) {
+      if (rollBarterOffers(new Rng(seed), 120).some((o) => getItem(o.itemId).tier === "legendary")) sawLegendary = true;
+      for (const o of rollBarterOffers(new Rng(seed), 1)) expect(getItem(o.itemId).tier).not.toBe("legendary");
+    }
+    expect(sawLegendary).toBe(true);
+  });
+
+  test("a trade costs 5 trophies, 3 for Epic and 1 for Legendary", () => {
+    expect(barterCost("common")).toBe(5);
+    expect(barterCost("unique")).toBe(5);
+    expect(barterCost("epic")).toBe(3);
+    expect(barterCost("legendary")).toBe(1);
+  });
+
+  test("trading takes the trophies, queues the buff and marks the floor's barter as used", () => {
+    const { game } = runnerGame(1);
+    game.state.inventory["rat-tail"] = 6;
+    expect(game.runnerBarter(0)).toBeNull();
+    expect(game.state.inventory["rat-tail"]).toBe(1);
+    expect(game.state.pendingBarterBuffs).toEqual(["rat-tail"]);
+    expect(game.state.barterUsedDepth).toBe(game.state.floor.depth);
+    expect(game.state.restRunner?.barterOffers?.[0]?.done).toBe(true);
+    expect(game.state.message).toBe("The runner takes 5 Rat Tail. The bargain is struck.");
+    expect(game.runnerBarter(0)).not.toBeNull(); // each offer is made once
+  });
+
+  test("too few trophies is refused and nothing changes", () => {
+    const { game } = runnerGame(2);
+    game.state.inventory["rat-tail"] = 4;
+    expect(game.runnerBarter(0)).not.toBeNull();
+    expect(game.state.inventory["rat-tail"]).toBe(4);
+    expect(game.state.pendingBarterBuffs).toEqual([]);
+    expect(game.state.barterUsedDepth).toBeNull();
+  });
+
+  test("both offers can be traded in one visit, and the buffs queue in order", () => {
+    const { game } = runnerGame(3);
+    game.state.inventory["rat-tail"] = 5;
+    game.state.inventory["warped-vambrace"] = 3;
+    expect(game.runnerBarter(0)).toBeNull();
+    expect(game.runnerBarter(1)).toBeNull();
+    expect(game.state.pendingBarterBuffs).toEqual(["rat-tail", "warped-vambrace"]);
+    expect(game.state.inventory["warped-vambrace"]).toBe(0);
+  });
+
+  test("with no runner there is nothing to trade", () => {
+    const game = new Game(4);
+    game.state.restRunner = null;
+    expect(game.runnerBarter(0)).not.toBeNull();
+  });
+
+  test("later Rest rooms on the same floor have no barter, and the next floor has it again", () => {
+    const { game } = runnerGame(5);
+    game.state.barterUsedDepth = game.state.floor.depth;
+    const secondRoom = getRoom(game.state.floor, game.state.currentRoomId);
+    const runnerNow = () => game.state.restRunner; // read through a function so the assignments below don't narrow it to null
+    let withRunner = 0;
+    for (let i = 0; i < 200 && withRunner < 5; i++) {
+      game.state.restRunner = null;
+      rollRestRunner(game.state, secondRoom, game.ctx);
+      const runner = runnerNow();
+      if (runner) {
+        withRunner++;
+        expect(runner.barterOffers).toEqual([]);
+      }
+    }
+    expect(withRunner).toBeGreaterThan(0);
+
+    game.state.barterUsedDepth = game.state.floor.depth - 1; // used on an earlier floor
+    let sawOffers = false;
+    for (let i = 0; i < 200 && !sawOffers; i++) {
+      game.state.restRunner = null;
+      rollRestRunner(game.state, secondRoom, game.ctx);
+      if (runnerNow()?.barterOffers?.length) sawOffers = true;
+    }
+    expect(sawOffers).toBe(true);
   });
 });

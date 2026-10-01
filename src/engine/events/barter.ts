@@ -1,5 +1,6 @@
 import type { Character, GameState, Id, ItemTier, LogEntry } from "../../types";
 import type { EngineContext } from "../combat";
+import type { PartyActionError } from "../party";
 import { resolveSkillEffect } from "../resolver";
 import { BALANCE } from "../../data/balanceConfig";
 import { getItem } from "../../data/items";
@@ -85,4 +86,29 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
 
   log.push({ text: t("combat.barterBuffs", { items: pending.map((id) => getItem(id).name).join(", ") }), kind: "buff" });
   state.pendingBarterBuffs = [];
+}
+
+export function barterCost(tier: ItemTier): number {
+  return BALANCE.barter.costByTier[tier];
+}
+
+/**
+ * Trades the Runner's `offerIndex`-th trophy kind for a buff: takes `barterCost` of that trophy from
+ * the inventory and queues the buff for this floor's elite/boss room. The buff is not described
+ * here — it stays hidden until that fight (`applyPendingBarterBuffs`).
+ */
+export function runnerBarter(state: GameState, offerIndex: number): PartyActionError | null {
+  const runner = state.restRunner;
+  if (!runner) return { reason: t("errors.noRunner") };
+  const offer = runner.barterOffers?.[offerIndex];
+  if (!offer || offer.done) return { reason: t("errors.noSuchOffer") };
+  const item = getItem(offer.itemId);
+  const cost = barterCost(item.tier);
+  if ((state.inventory[item.id] ?? 0) < cost) return { reason: t("errors.notEnoughTrophies") };
+  state.inventory[item.id] = (state.inventory[item.id] ?? 0) - cost;
+  state.pendingBarterBuffs = [...(state.pendingBarterBuffs ?? []), item.id];
+  state.barterUsedDepth = state.floor.depth;
+  offer.done = true;
+  state.message = t("game.barterMade", { count: cost, item: item.name });
+  return null;
 }

@@ -150,6 +150,8 @@
   },
   "barter": {
     "magnitudePercentByTier": { "common": 5, "uncommon": 8, "rare": 12, "unique": 15, "epic": 18, "legendary": 22 },
+    "offerCount": 2,
+    "costByTier": { "common": 5, "uncommon": 5, "rare": 5, "unique": 5, "epic": 3, "legendary": 1 },
     "secondaryShare": 0.5,
     "activeDurationTurns": 999,
     "primaryStatByMonsterType": {

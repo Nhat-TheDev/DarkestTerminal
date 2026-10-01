@@ -497,6 +497,12 @@ export interface ShopOffer {
   sold?: boolean;
 }
 
+export interface BarterOffer {
+  itemId: Id;
+  /** Already traded this visit. */
+  done?: boolean;
+}
+
 export interface RestRunner {
   roomId: Id;
   /** The appearance notice has been dismissed. */
@@ -505,6 +511,8 @@ export interface RestRunner {
   noticeVariant: number;
   offers: ShopOffer[];
   refreshCount: number;
+  /** Trophies he will trade for a buff this visit; empty once the floor's barter has been used. */
+  barterOffers?: BarterOffer[];
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";

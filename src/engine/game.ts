@@ -44,6 +44,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { openChest } from "./events/openChest";
 import { runnerBuy, runnerRefresh, runnerSell } from "./events/runner";
+import { runnerBarter } from "./events/barter";
 import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
@@ -303,6 +304,10 @@ export class Game {
 
   runnerSell(itemId: Id): PartyActionError | null {
     return runnerSell(this.state, itemId);
+  }
+
+  runnerBarter(offerIndex: number): PartyActionError | null {
+    return runnerBarter(this.state, offerIndex);
   }
 
   dismissRunnerNotice(): void {

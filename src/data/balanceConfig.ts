@@ -147,6 +147,10 @@ interface BalanceConfig {
   };
   /** Trophy-for-buff barter at the Runner — `docs/specs/merchant-runner-coin-sink.md`, "Buff formula". */
   barter: {
+    /** Trophy kinds the Runner offers to trade each visit. */
+    offerCount: number;
+    /** How many of one trophy a trade costs. */
+    costByTier: Record<ItemTier, number>;
     /** The buff's strength (P, a percent of the stat's effect) by the trophy's tier. */
     magnitudePercentByTier: Record<ItemTier, number>;
     /** A race's secondary effect is this share of P. */

@@ -3,7 +3,7 @@ import type { PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
 import { BALANCE } from "../../data/balanceConfig";
 import { getItem } from "../../data/items";
-import { rollShopOffers } from "../../data/shopStock";
+import { rollBarterOffers, rollShopOffers } from "../../data/shopStock";
 import { t } from "../../data/strings";
 
 /** Rolls the Merchant's Runner for a Rest room the party just entered; a room that already has one keeps it. */
@@ -19,6 +19,7 @@ export function rollRestRunner(state: GameState, room: Room, ctx: EngineContext)
     noticeVariant: ctx.rng.int(0, BALANCE.runner.noticeVariantCount - 1),
     offers: rollShopOffers(ctx.rng, state.floor.depth),
     refreshCount: 0,
+    barterOffers: state.barterUsedDepth === state.floor.depth ? [] : rollBarterOffers(ctx.rng, state.floor.depth),
   };
 }
 
