@@ -517,32 +517,31 @@ a monster would have dealt to the wearer (the *bigger* number in this
 game — monsters hit harder than a level-1 character does) while
 `lifesteal` is a cut of what the wearer deals out (the *smaller* number).
 Computed directly from the game's own damage formula (`mitigatedOffense`,
-`src/engine/resolver.ts`, `combat.defenseMitigationX/Y = 60/30`) against a
-representative early fight — a depth-2 Dungeon Rat (atk 19, def 3) vs. the
+`src/engine/resolver.ts`, `combat.defenseMitigationX/Y = 40/10`) against a
+representative early fight — a depth-2 Dungeon Rat (atk 25, def 7) vs. the
 level-1 party-average character (atk 10, def 7, from `data/classes.json`),
 over a ~4-round fight (the game's own "quick victory" benchmark is 3
 rounds, `03-survival-stats.md`, so 4 is a typical, non-quick regular
 fight) with roughly 1 attack thrown and taken per round:
 
-- damage taken per hit ≈ 16.8, damage dealt per hit ≈ 9.4
-- at a flat 3%, expected value per fight was **2.01** for dodge but only
-  **1.13** for lifesteal — lifesteal was quietly worth barely half of
-  dodge for the "same" number, exactly the kind of imbalance this catalog
-  is supposed to rule out
+- damage taken per hit ≈ 20.6, damage dealt per hit ≈ 7.8
+- at a flat 3%, expected value per fight is **2.47** for dodge but only
+  **0.94** for lifesteal — lifesteal is worth well under half of dodge for
+  the "same" number, exactly the kind of imbalance this catalog is
+  supposed to rule out
 - solving each effect's % for a shared ~2.0-per-fight target instead:
-  dodge ≈2.98% (rounds to the same 3%, so that one was fine by
-  coincidence), lifesteal ≈5.3%
+  dodge ≈2.4%, lifesteal ≈6.4%
 
-Lifesteal's solved value (≈5.3%) would tie or pass Rare's own
-`bloodletting` (5%), breaking the one pattern every other shared axis in
-this catalog follows (Rare is strictly higher than Common on the same
-axis: attack 5<10, defense 4<8, maxHp 20<50, dodge 3<6). Rounded down to
-**4%** instead — still a real correction from the original 3% (EV 1.51
-vs. 1.13, ≈33% higher) and closer to dodge's 2.01, while keeping Common
-strictly below Rare on every shared axis. None of this is exact — it
-rests on one assumed fight length and hit-rate — but it's grounded in the
-game's real numbers and internally consistent with itself, not a borrowed
-ratio from a different tier that was never checked against what these
+Lifesteal's solved value (≈6.4%) would pass Rare's own `bloodletting`
+(5%), breaking the one pattern every other shared axis in this catalog
+follows (Rare is strictly higher than Common on the same axis: attack
+5<10, defense 4<8, maxHp 20<50, dodge 3<6). Common lifesteal is **4%**
+instead — a correction from a flat 3% (EV 1.25 vs. 0.94, ≈33% higher)
+that keeps Common strictly below Rare on every shared axis. The catalog
+keeps dodge at 3% (EV 2.47, above the ~2.0 target) and lifesteal at 4%
+(EV 1.25, below it). None of this is exact — it rests on one assumed
+fight length and hit-rate — but it's grounded in the game's real numbers,
+not a borrowed ratio from a different tier that was never checked against what these
 specific abilities are actually worth to the character holding them.
 
 ### Rare — must be unlocked
