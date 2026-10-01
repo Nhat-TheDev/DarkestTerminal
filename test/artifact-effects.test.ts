@@ -361,12 +361,13 @@ describe("artifacts", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: mage.id };
-    queueAction(combat, self, "mage-bludgeon", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "mage-arcane-bolt", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     const firstAutoHit = combat.log.findIndex((l) => l.text.includes("Thunder Totem"));
-    const firstAction = combat.log.findIndex((l) => l.text.includes("Bludgeon"));
+    const firstAction = combat.log.findIndex((l) => l.text.includes("Arcane Bolt"));
     expect(firstAutoHit).toBeGreaterThanOrEqual(0);
-    expect(firstAutoHit).toBeLessThan(firstAction === -1 ? Infinity : firstAction);
+    expect(firstAction).toBeGreaterThanOrEqual(0);
+    expect(firstAutoHit).toBeLessThan(firstAction);
   });
 
   test("autoDamage artifacts hit one target and scale off base magicPower or base attack", () => {

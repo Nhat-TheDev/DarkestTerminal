@@ -482,7 +482,7 @@ ability owns a distinct axis.
 | `iron-skin` | Iron Skin | Enough hits taken that the flinch stopped coming. | `statBoost defense +4` (min 5% base) |
 | `hardy-constitution` | Hardy Constitution | Takes the same hits as everyone else and gets up from more of them. | `statBoost maxHp +20` (min 5% base) |
 | `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | `statBoost maxMp +10` (min 5% base) |
-| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
+| `unshaken-resolve` | Unshaken Resolve | A mind that has met the dark before and is no longer surprised by it. | `fearResist 10%` |
 | `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | `dodgeChance 2%` |
 | `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | `lifesteal 5%` |
 | `arcane-aptitude` | Arcane Aptitude | Spells take shape before the words are finished. | `statBoost magicPower +5` (min 5% base) |

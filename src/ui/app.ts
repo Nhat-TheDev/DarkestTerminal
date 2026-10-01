@@ -289,7 +289,7 @@ export class App implements ScreenContext {
         this.ui = { kind: "campReflection" };
         return;
       }
-      if (this.game.state.pendingFloorMilestoneMessage) {
+      if (this.game.state.pendingFloorMilestoneOmenId) {
         this.ui = { kind: "floorMilestone" };
         return;
       }

@@ -1,7 +1,7 @@
 import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { t } from "../../data/strings";
-import { CAMP_REFLECTION_CONTENT } from "../../data/loreExposure";
+import { campReflectionContent } from "../../data/loreExposure";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
 
@@ -20,7 +20,7 @@ export function handleKey(ctx: ScreenContext, _ui: CampReflectionUiState, _key: 
 export function renderMain(game: Game, _ui: CampReflectionUiState): string {
   const tier = game.state.pendingCampReflectionTier;
   if (tier === null) return "";
-  const { prompt, options } = CAMP_REFLECTION_CONTENT[tier];
+  const { prompt, options } = campReflectionContent(tier);
   return [prompt, "", `  [1] ${options[0]}`, `  [2] ${options[1]}`, `  [3] ${options[2]}`].join("\n");
 }
 

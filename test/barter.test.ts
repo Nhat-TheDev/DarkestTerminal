@@ -220,7 +220,7 @@ describe("barter offers and trade", () => {
     expect(game.state.pendingBarterBuffs).toEqual(["rat-tail"]);
     expect(game.state.barterUsedDepth).toBe(game.state.floor.depth);
     expect(game.state.restRunner?.barterOffers?.[0]?.done).toBe(true);
-    expect(game.state.message).toBe(`The runner takes ${cost} Rat Tail. The bargain is struck.`);
+    expect(game.state.message).toBe(`The runner takes ${cost} Rat Tail and bows.`);
     expect(game.runnerBarter(0)).not.toBeNull(); // each offer is made once
   });
 

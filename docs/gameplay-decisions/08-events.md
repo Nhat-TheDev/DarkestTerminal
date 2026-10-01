@@ -88,8 +88,8 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 - Lose the fight → no Artifact, the game's existing combat-loss consequences apply as normal (no special rules for the Event room).
 
 **The only difference between the two ids**: flavor text.
-- `guardian-fight`: "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and closed, is scratched into the wall beside it. Something is guarding the treasure in this room, and it just caught your scent."
-- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot. Touching it will surely wake whatever sleeps beneath."
+- `guardian-fight`: "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and closed, is scratched into the wall beside it. Something is guarding the treasure in this room, and the scraping has stopped."
+- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot."
 
 **Chain escalation**: repeatedly choosing "Leave without fighting" builds toward a forced encounter — see §8.15 Chain 1, "The Guardian's Grudge." **Reflection**: see §8.16.
 
@@ -97,7 +97,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 ## 8.4 Merchant Encounter (`merchant`) — *Common*
 
-> "A trembling oil lamp casts light on a cloth spread with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer."
+> "A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
 
 No combat. On entering the room:
 
@@ -115,7 +115,7 @@ Implementation: `merchantPurchase`/`merchantRefresh`/`merchantLeave` (`src/engin
 
 ## 8.5 Trade HP for an Artifact (`blood-altar`) — *Rare*
 
-> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. It demands a price paid in blood, nothing more, nothing less."
+> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it."
 
 No combat. On entering the room, the player may:
 
@@ -156,7 +156,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.7 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "A statue with 3 eyes. One of them is open. It wasn't the same one a moment ago."
+> "A statue with three eyes. One of them is open. It wasn't the same one a moment ago."
 
 **No combat** (`kind: "choiceReveal"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.6, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
@@ -170,7 +170,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.8 Twin Altars (`twin-altars`) — *Rare*
 
-> "Two stone pedestals face each other, each carved with a spiral, open at the center. Choose 1: the other shatters the instant you touch its twin."
+> "Two stone pedestals face each other, each carved with a spiral, open at the center. A hairline crack already runs between them."
 
 **No combat** (`kind: "choiceReveal"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
 
@@ -185,7 +185,7 @@ A Cursed Artifact **occupies a normal equipment slot** (costs 1 of the character
 
 ## 8.9 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted."
+> "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident."
 
 **No combat** (`kind: "artifactExchange"`). Sacrifice 1 **currently-equipped** artifact (nothing sits unequipped anymore — every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
@@ -197,7 +197,7 @@ Choose the artifact to sacrifice from anywhere across the party, confirm → it'
 
 ## 8.10 Wandering Gambling Den (`gambling-den`) — *Rare*
 
-> "A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'"
+> "A stranger shuffles three overturned cups in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'"
 
 **No combat** (`kind: "coinGamble"`). A pure Cursed-Coin escalating gamble, up to 4 rounds, the stake carrying forward as long as the player keeps winning and choosing to continue — it **never wagers an Artifact**.
 
@@ -233,7 +233,7 @@ Implementation: `src/engine/events/gamblingDen.ts`.
 
 ## 8.11 Wandering Hermit (`wandering-hermit`) — *Rare*
 
-> "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'"
+> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. 'Put down what you want rid of. I'll name the price.'"
 
 **No combat** (`kind: "artifactExchange"`), doesn't create a new Artifact from nothing — it's a paid service that interacts with an artifact the party already has. **Exchange fortune is the room's only service** (there's no free "remove curse" service):
 
@@ -254,7 +254,7 @@ explaining what you want. Fair's fair, either way."` (dismissive).
 
 ## 8.12 Collapsed Floor (`collapsed-floor`) — *Rare*
 
-> "One wrong step and you fall through to the floor below. A weak groan echoes up from the crack — someone else is still trapped down there."
+> "A section of floor has dropped away along a long crack. A weak groan echoes up from below."
 
 A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the outcome determines whether you get a reward. Still HP-only, same reasoning as Blood Altar.
 
@@ -294,7 +294,7 @@ Darkest Terminal runs entirely on a TUI — no cutscene, no character portrait, 
 | `merchant` | Covenant | a pilgrim trading relics scavenged from deeper floors |
 | `desecrated-altar` | Covenant, containment-leaning | a Sleeper shrine, disturbed — spiral cut into the base, closed like a knot (§11.6) |
 | `blood-altar` | Covenant, communion-leaning | a pact-altar, blood is literally the toll — spiral unwound and open at its center (§11.6) |
-| `cursed-shrine` | Covenant | the Covenant's idol — the "3 eyes" watch how deep the party has gone |
+| `cursed-shrine` | Covenant | the Covenant's idol — the three eyes watch how deep the party has gone |
 | `twin-altars` | Covenant, communion-leaning | a Covenant rite that tests a pilgrim by forcing an irreversible choice — spiral carved open at the center (§11.6) |
 | `sacrificial-circle` | Covenant, communion-leaning | Covenant ritual ground — trades enchanted-for-enchanted only; spiral traced in blood, open at one end (§11.6) |
 | `wandering-hermit` | ex-Covenant (apostate) | the only source that can strip a curse |
@@ -357,7 +357,7 @@ Chains 1-3 each also have a **tier-2 escalation** (`11-world-bible.md` §11.13) 
 
 Reuses the "Leave without fighting" choice from §8.3. **This counter is shared across both event ids** — `guardianFightSkip()` (`src/engine/events/guardianFight.ts`) is the same function for both `guardian-fight` and `desecrated-altar`, so skipping 1 of each counts as 2 toward the same total, not 1 toward 2 separate counters.
 
-- **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail added to the description (e.g. guardian-fight's "just caught your scent" becomes "doesn't look away").
+- **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail added to the description (e.g. guardian-fight's "the scraping has stopped" becomes "doesn't look away").
 - **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` (per-id — guardian-fight's and desecrated-altar's differ) and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventGuardianFight` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
 - The counter **resets to 0** after that forced encounter fires, so the whole cycle (quiet buildup → forced fight) can happen again later in a long run rather than exactly once. `guardianGrudgeFiredCount` increments alongside the reset and never resets itself — it's how a later firing can tell it isn't the first.
 - **Tier 2**: once `guardianGrudgeFiredCount >= 1` (this chain has fired before) and floor depth is past `events.chainTier2MinFloorDepth`, the next forced encounter shows `chainForced2Description` instead — deliberately **shared verbatim** between guardian-fight and desecrated-altar, unlike tier 1's per-id text (tier 2 is written to read as losing that specificity, not keeping it). Skip is rejected exactly as at tier 1.
@@ -398,8 +398,7 @@ closing line, verbatim — the same shared-across-ids approach Chain 1/2/3's tie
 uses, just at a single tier instead of 3 (a party this one-sided doesn't need 3 separate gradations to
 land the point):
 
-> "By now, none of you wonder why walking away from something like this always seems to leave you
-> holding more than you walked in with. It stopped feeling like luck somewhere back there."
+> "Everything you carry down here, you simply picked up. Nothing has asked for anything back."
 
 No mechanical change — same artifact roll, same grant, same everything; flavor only, exactly like
 Chains 1-3.
@@ -440,12 +439,12 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`merchant`**
 - Prompt: "The hooded figure never once lifted the hood, not even to count your coin."
-- curious: "You find yourself wondering what's under there." · wary: "You don't ask. Some things are better left covered." · dismissive: "Not your business. You got what you came for."
+- curious: "The hood holds your eye a moment too long." · wary: "Your eyes stay off the hood the whole time." · dismissive: "You came for the wares, not the man."
 
 **`desecrated-altar`**
 - Prompt: "The glow hasn't fully died down, even now. It's like the stone remembers being touched."
 - Escalated (Chain 1 forced): "This time you just ran out of room to keep avoiding it."
-- curious: "Worth coming back for, once you know what you're looking for." · wary: "Whatever's under there, you'd rather it stayed asleep." · dismissive: "The glow's already fading. You've still got a floor left to clear."
+- curious: "Worth coming back for, once you know what you're looking for." · wary: "Whatever's under there, you'd rather it stayed asleep." · dismissive: "The glow's already fading. The way down is still ahead."
 
 **`blood-altar`**
 - Prompt: "The wound closes faster than it should. Whatever's owed here, it's always exactly the same amount, never more."
@@ -454,30 +453,30 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`cursed-shrine`**
 - Prompt: "The open eye hasn't blinked once. You'd swear it's still watching, even from here."
-- curious: "Three eyes, one open — you find yourself counting the shut ones on your way out." · wary: "One open eye is already 1 too many for your taste." · dismissive: "It's carved stone. Nothing's actually watching you."
+- curious: "Three eyes, one open — you find yourself counting the shut ones on your way out." · wary: "One open eye is already one too many for your taste." · dismissive: "It's carved stone. You turn your back on it to prove the point."
 
 **`twin-altars`**
 - Prompt: "The shattered pedestal's dust hasn't settled. You didn't choose it, but it still feels like you broke something."
-- curious: "What was on that one, you'll never know now." · wary: "Some choices aren't worth revisiting." · dismissive: "Rigged either way — not like you had a real choice."
+- curious: "What was on that one, you'll never know now." · wary: "You don't go back to look at the other pedestal." · dismissive: "Rigged either way. There was never a real choice."
 
 **`sacrificial-circle`**
 - Prompt: "The circle goes quiet again, the pattern in the blood no less deliberate than before. Nobody said anything about it, walking away. There wasn't anything that needed saying."
 - Escalated (Chain 2, 5+ sacrifices): "You knelt before you'd even finished deciding to."
-- curious: "That pattern wasn't drawn by accident, and you'd like to know by what." · wary: "Not a place you'd want to visit more than you have to." · dismissive: "A fair trade, and a better artifact for it. That's all it needs to be."
+- curious: "The gap in the pattern keeps drawing your eye." · wary: "Not a place you'd want to visit more than you have to." · dismissive: "A fair trade, and a better artifact for it. That's all it needs to be."
 
 **`wandering-hermit`**
-- Prompt: "His eyes never opened again after the trade closed. You're not sure he needed them to."
-- curious: "Whoever he used to be, before this — he's not telling, and you find yourself wanting to know." · wary: "Some pasts are better left buried, not traded for." · dismissive: "Strange old man, but he held up his end of it."
+- Prompt: "His eyes stayed shut for the whole trade. You're not sure he needed them open at all."
+- curious: "You look at the mark on his forearm until he turns the arm over." · wary: "You don't ask about his past. He doesn't ask about yours." · dismissive: "Strange old man, but he held up his end of it."
 
 **`gambling-den`**
 - Prompt: "The stranger's already shuffling for the next mark before you've finished walking away."
-- curious: "You'd bet he's been doing this longer than the dungeon's been here." · wary: "Not worth sticking around to find out what a 2nd losing streak costs you." · dismissive: "A hustler's a hustler — nothing more mysterious than that."
+- curious: "You'd bet he's been doing this longer than the dungeon's been here." · wary: "Not worth sticking around to find out what a second losing streak costs you." · dismissive: "Quick hands and a loud mouth. You've met his kind above."
 
 ---
 
 ## 8.17 Old Count (`old-count`) — *Common*
 
-> "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops in the middle, mid-stroke."
+> "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops mid-stroke."
 
 No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Chest (§8.2): the flavor text shows first, a single confirm action grants the artifact. The confirm option reads **[1] Move on** (`EventDefinition.instantRewardActionLabel`) rather than "Open the chest" — there's nothing here shaped like a container. Confirming (`Game.openChest()`) grants 1 Artifact rolled on the standard rarity table, through the normal decision flow.
 
@@ -489,7 +488,7 @@ No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Ches
 
 ## 8.18 Doubled Back (`doubled-back`) — *Common*
 
-> "Footprints lead into this room and stop. None lead back out. The room is empty, and there's nowhere else they could have gone."
+> "Footprints lead into this room and stop. None lead back out. The room is empty."
 
 Same shape as §8.17 — **[1] Move on**, 1 Artifact on the standard table.
 
@@ -513,7 +512,7 @@ Same shape as §8.17/§8.18 — **[1] Move on** — but **`noArtifactReward: tru
 
 ## 8.20 Waiting Supplies (`waiting-supplies`) — *Common*
 
-> "A bundle sits wrapped and tied at the base of the wall, exactly where someone would leave it to come back for later. The rope is knotted tight, in a careful, deliberate pattern. Nobody's coming back for this."
+> "A bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The rope is knotted tight, every turn laid the same way. Nobody's coming back for this."
 
 Same shape as §8.17-8.19 — **[1] Move on** — but `guaranteedArtifactId: "travelers-ration"` rather than a standard-table roll: the reward is specifically the bundle described in the scene, not an unrelated artifact pulled from nowhere (10-event-narrative.md Part A).
 
@@ -527,7 +526,7 @@ The bundle also holds supplies: `guaranteedItems` adds **3 Exploration Kits** to
 
 ## 8.21 Vigil (`vigil-candle`) — *Rare*
 
-> "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it: folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left it there isn't coming back for it."
+> "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. A cloth lies folded beside it."
 
 No combat. Same **[1] Move on** confirm as §8.17-8.20, but gated: `minFloorDepth: 15` (never rolled before floor 15) and `onceLifetime: true` (excluded from the roll pool for the rest of the run once it fires, tracked in `GameState.firedOnceEventIds`). The Artifact sits *in* the scene — mechanically identical to Open Chest's grant, framed as an offering left beside the candle rather than a separate loot beat.
 
@@ -568,7 +567,7 @@ The first non-institutional evidence of the containment/communion schism (§8.13
 
 ## 8.24 Still Breathing (`still-breathing`) — *Rare*
 
-> "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it the exact same way as every mark you've traded for this whole run."
+> "Ribs, not walls. Something has grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it, the same mark as on everything you've traded for."
 
 `minFloorDepth: 70`, `onceLifetime: true` — the deepest-gated event in the game and, by design, the rarest a player will ever actually see. **`noArtifactReward: true`** — confirming (**[1] Move on**) grants nothing at all, no artifact, no stat effect of any kind. 2 mechanical rewards were tried and cut during design (a guaranteed Epic, then a fear-relief effect): a reveal this strong doesn't need one, and needing one would itself be a sign the reveal wasn't landing.
 

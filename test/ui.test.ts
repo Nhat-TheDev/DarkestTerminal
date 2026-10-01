@@ -3,15 +3,17 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { getSkill } from "../src/data/classes";
-import type { Character, SkillEffect } from "../src/types";
+import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
-import { skillEffectLine } from "../src/ui/screens/combat";
+import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
+import { formatStatusEffectMechanics, getStatusEffect } from "../src/data/statusEffects";
+import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 
 describe("headless UI smoke test", () => {
   test("plays a scripted run via keypresses without crashing", async () => {
@@ -289,6 +291,130 @@ describe("skillEffectLine: per-effect target overrides (replaces the old effects
     const skill = getSkill("mage-fireball"); // any allEnemies-less singleEnemy skill works as a stand-in host
     const overriddenEffect: SkillEffect = { kind: "damage", amount: 5, target: "self" };
     expect(skillEffectLine(overriddenEffect, skill)).toContain("to yourself");
+  });
+});
+
+describe("skillMechanicLines: skill-level mechanics derived from the skill's own data", () => {
+  test("an ultimate shows the always-hit / fear rule", () => {
+    expect(skillMechanicLines(getSkill("vanguard-sword-judgment"))).toEqual(["  • Always hits; effectiveness is reduced by fear"]);
+  });
+
+  test("executeBonus shows its bonus and HP threshold", () => {
+    const { hpPercentThreshold, bonusDamageFlat } = getSkill("ninja-death-mark").executeBonus!;
+    expect(skillMechanicLines(getSkill("ninja-death-mark"))).toContain(`  • +${bonusDamageFlat} damage against targets below ${hpPercentThreshold}% HP`);
+  });
+
+  test("conditionalBonus shows the defense ignored, and a consumed status gets its own line", () => {
+    const frenzied = getSkill("viking-frenzied-slash");
+    expect(skillMechanicLines(frenzied)).toEqual([`  • Ignores ${frenzied.conditionalBonus!.ignoreDefensePercentBonus}% more defense while Storm-Empowered`]);
+    expect(skillMechanicLines(getSkill("viking-thunder-god-fury"))).toContain("  • Consumes Storm-Empowered");
+  });
+
+  test("a damage effect's critChance is shown as a percent", () => {
+    const { critChance } = getSkill("archer-deadeye-shot").effects!.find((e) => e.kind === "damage")!;
+    expect(skillMechanicLines(getSkill("archer-deadeye-shot"))).toContain(`  • Critical chance: ${Math.round(critChance! * 100)}%`);
+  });
+
+  test("a skill with none of these mechanics yields no lines", () => {
+    expect(skillMechanicLines(getSkill("vanguard-slash"))).toEqual([]);
+  });
+});
+
+describe("skillEffectLine: summon effects show their minion", () => {
+  const summonLine = (skillId: string) => {
+    const skill = getSkill(skillId);
+    return skillEffectLine(skill.effects!.find((e) => e.kind === "summon")!, skill);
+  };
+
+  const minion = (castId: string) => {
+    const cast = getSummonCast(castId);
+    const archetype = getSummonArchetype(cast.archetypeId);
+    return { cast, archetype, skills: (archetype.signatureSkillIds ?? []).map((id) => getSummonSkill(id).name) };
+  };
+
+  test("a minion with signature skills lists them under its bullet", () => {
+    for (const id of ["summoner-summon-goblin", "summoner-summon-spirit"]) {
+      const { cast, archetype, skills } = minion(id);
+      expect(skills.length).toBeGreaterThan(0);
+      expect(summonLine(id)).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}\n      Skills: ${skills.join(", ")}`);
+    }
+  });
+
+  test("a minion with no signature skills gets a single line", () => {
+    const { cast, archetype, skills } = minion("ninja-shadow-clone");
+    expect(skills).toEqual([]);
+    expect(summonLine("ninja-shadow-clone")).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}`);
+  });
+
+  test("a passive minion has no action count", () => {
+    const { cast, archetype } = minion("summoner-totem-recall");
+    expect(archetype.passive).toBe(true);
+    expect(summonLine("summoner-totem-recall")).toBe(`  • Summons ${archetype.name}: aggro ${cast.aggro}`);
+  });
+});
+
+describe("skillEffectLine: an applied status shows what it does", () => {
+  test("every status a class skill applies carries its derived text on the line under the bullet", () => {
+    for (const cls of CLASSES) {
+      for (const base of cls.skills) {
+        const skill = getSkill(base.id);
+        for (const e of skill.effects ?? []) {
+          if (e.kind !== "applyStatusEffect" || !e.statusEffectId) continue;
+          const mechanics = formatStatusEffectMechanics(getStatusEffect(e.statusEffectId));
+          expect(mechanics, e.statusEffectId).not.toBe("");
+          expect(skillEffectLine(e, skill), `${base.id} → ${e.statusEffectId}`).toContain(`\n      ${mechanics}`);
+        }
+      }
+    }
+  });
+
+  test("Poison Coat says that its hits also poison", () => {
+    const skill = getSkill("rogue-poison-coat");
+    const line = skillEffectLine(skill.effects!.find((e) => e.kind === "applyStatusEffect")!, skill);
+    expect(line).toContain("every landed hit also applies Poisoned");
+  });
+});
+
+describe("skill detail screen", () => {
+  function detail(skill: SkillDefinition, setUp?: (actor: Character) => void): string {
+    const game = new Game(1);
+    const actor = game.state.party[0]!;
+    setUp?.(actor);
+    return renderCombat(game, { kind: "skillDetail", actorRef: { kind: "character", id: actor.id }, skill }) as string;
+  }
+
+  test("every class skill shows at least one Effects line", () => {
+    for (const cls of CLASSES) {
+      for (const base of cls.skills) {
+        const skill = getSkill(base.id);
+        const lines = [...(skill.effects ?? []).map((e) => skillEffectLine(e, skill)).filter((l) => l !== null), ...skillMechanicLines(skill)];
+        expect(lines.length, base.id).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("lists the mechanic lines under Effects", () => {
+    const text = detail(getSkill("vanguard-sword-judgment"));
+    expect(text).toContain("Effects:");
+    expect(text).toContain("  • Always hits; effectiveness is reduced by fear");
+  });
+
+  test("estimated damage follows the effect's offenseMultiplierPercent", () => {
+    const check = (skillId: string, stat: "attack" | "magicPower", value: number) => {
+      const skill = getSkill(skillId);
+      const effect = skill.effects!.find((e) => e.kind === "damage")!;
+      const expected = Math.round((effect.amount ?? 0) + value * ((effect.offenseMultiplierPercent ?? 100) / 100));
+      expect(detail(skill, (a) => (a[stat] = value))).toContain(`Estimated damage: ~${expected}`);
+    };
+    check("archer-quick-shot", "attack", 20);
+    check("summoner-hollow-pulse", "magicPower", 30);
+  });
+
+  test("an executeBonus shows a percent bonus, both bonuses, and nothing when it carries no bonus", () => {
+    const withBonus = (executeBonus: NonNullable<SkillDefinition["executeBonus"]>) => ({ ...getSkill("ninja-death-mark"), executeBonus });
+    expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25, bonusDamagePercent: 20 }))).toContain("  • +20% damage against targets below 25% HP");
+    expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25, bonusDamageFlat: 10, bonusDamagePercent: 20 }))).toContain("  • +10 and +20% damage against targets below 25% HP");
+    expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25 })).some((l) => l.includes("damage against"))).toBe(false);
   });
 });
 

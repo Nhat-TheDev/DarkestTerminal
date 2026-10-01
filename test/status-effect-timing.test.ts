@@ -29,7 +29,7 @@ describe("status effect turn-countdown timing, per category", () => {
       expect(burning.turnsRemaining).toBe(2);
       const hpAfterRound1 = rat1.hp;
 
-      queueAction(combat, mageRef, "mage-bludgeon", [rat2Ref], ctx);
+      queueAction(combat, mageRef, "mage-arcane-bolt", [rat2Ref], ctx);
       resolveRound(combat, ctx);
       // Burning: 6 flat + 3% of rat1's 200 maxHp = 12.
       expect(rat1.hp).toBe(hpAfterRound1 - 12);

@@ -1,12 +1,14 @@
 import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { t } from "../../data/strings";
+import { getFloorMilestoneOmen } from "../../data/floorMilestones";
 import type { UiState } from "../state";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
-/** §4 of the design spec — shown right after clearing a floor-10-multiple's boss/guard room,
-    before the normal post-victory sequence (artifact decision -> camp offer -> floor advance)
-    resumes. Purely atmospheric, no mechanical effect of its own. */
+/** §4 of the design spec — an atmospheric line shown after a milestone floor's boss/guard room is
+    cleared, once any pending artifact decision, event reflection and camp reflection are dealt with
+    (the order in `syncUiToGameState`). Enter dismisses it and continues with `proceedAfterVictory`.
+    No mechanical effect of its own. */
 export type FloorMilestoneUiState = Extract<UiState, { kind: "floorMilestone" }>;
 
 export function handleKey(ctx: ScreenContext, _ui: FloorMilestoneUiState, key: KeyEvent, _digit: number | null): void {
@@ -16,7 +18,8 @@ export function handleKey(ctx: ScreenContext, _ui: FloorMilestoneUiState, key: K
 }
 
 export function renderMain(game: Game, _ui: FloorMilestoneUiState): string {
-  return game.state.pendingFloorMilestoneMessage ?? "";
+  const id = game.state.pendingFloorMilestoneOmenId;
+  return (id && getFloorMilestoneOmen(id)?.text) || "";
 }
 
 export function renderFooter(_ui: FloorMilestoneUiState): string {
