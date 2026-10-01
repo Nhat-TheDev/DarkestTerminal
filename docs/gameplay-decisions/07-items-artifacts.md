@@ -54,7 +54,7 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
-> **Planned, not implemented:** the Merchant's Runner buys and sells items, and trophies become barter tokens. The rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+> **Planned, not implemented:** trophies become barter tokens at the Merchant's Runner, who already buys and sells items (`03-survival-stats.md`). See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
 
 ### Catalog — general pool
 

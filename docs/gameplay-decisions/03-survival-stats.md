@@ -104,7 +104,17 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
 
-> **Planned, not implemented:** a 50% chance of the Merchant's Runner appearing adds a notice screen first and a fourth option, Trade, which replaces the rest action for that room. The 3 options below describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+### The Merchant's Runner
+
+On entering an uncleared Rest room there is a `runner.appearChance` (50%) chance the Merchant's Runner is there (`rollRestRunner`, `src/engine/events/runner.ts`, called from `enterRoom`). He is kept in `GameState.restRunner` with his stock, so a save keeps him. With him present:
+
+1. A **notice screen** (`runnerNotice`) comes first, one of 3 appearance texts (`runner.notice0`-`2`, `data/strings.json`); `[Enter]` continues.
+2. The Rest screen offers a **fourth option, `[3] Trade`**, next to Eat, Chat and Skip. Trade opens the shop (`runnerShop`) and leaving it ends the room (`Game.leaveRunner`), so **trading replaces the room's rest action**.
+3. **Camp Reflection** shows after that choice.
+
+The shop sells 5 distinct items (`rollShopOffers`, `src/data/shopStock.ts`), each listed with a line saying what it does, refreshable like the Merchant (`events.merchantRefreshCostCoins`, `events.merchantMaxRefreshes`), and buys consumables and trophies back at a fifth of the single price. Prices, odds and the offer mix are in `data/balance-config.json` (`runner`, `shop`); item rules in `07-items-artifacts.md`, the coin side in `09-currency.md`.
+
+> **Planned, not implemented:** trading trophies for a combat buff against the floor's elite/boss room. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
 
 ### Camp Reflection
 
@@ -113,7 +123,7 @@ independent of `08-events.md` §8.16's post-event reflection — no shared data,
 logic, deliberately, since the register is different: §8.16 is a short in-the-moment dialogue beat
 reacting to 1 room; Camp Reflection is the party looking back at its own *accumulated* pattern of
 exchanges across the whole run so far, fires at most 4 times ever, and is meant to land each time
-rather than repeat.
+rather than repeat. It is armed on entering the Rest room but shown only once the room's own choice has been made (including Trade).
 
 **Tracking** — entirely new `GameState` fields, none of them touching `narrativeCounters`,
 `eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:

@@ -11,6 +11,7 @@ import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
 import { skillEffectLine } from "../src/ui/screens/combat";
+import * as runnerScreen from "../src/ui/screens/runner";
 
 describe("headless UI smoke test", () => {
   test("plays a scripted run via keypresses without crashing", async () => {
@@ -27,7 +28,7 @@ describe("headless UI smoke test", () => {
       guard++;
       const ui = app.debugUiState;
 
-      if (ui.kind === "roomReward" || ui.kind === "skillDetail") {
+      if (ui.kind === "roomReward" || ui.kind === "skillDetail" || ui.kind === "runnerNotice" || ui.kind === "runnerShop") {
         mockInput.pressKey("RETURN");
         await renderOnce();
         continue;
@@ -288,5 +289,112 @@ describe("skillEffectLine: per-effect target overrides (replaces the old effects
     const skill = getSkill("mage-fireball"); // any allEnemies-less singleEnemy skill works as a stand-in host
     const overriddenEffect: SkillEffect = { kind: "damage", amount: 5, target: "self" };
     expect(skillEffectLine(overriddenEffect, skill)).toContain("to yourself");
+  });
+});
+
+describe("Rest room runner screens", () => {
+  async function restApp(opts: { runner: boolean; campReflection?: boolean }) {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
+    const game = new Game(7);
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "rest";
+    room.cleared = false;
+    if (opts.runner) {
+      game.state.restRunner = {
+        roomId: room.id,
+        noticeShown: false,
+        noticeVariant: 1,
+        offers: [{ itemId: "small-health-potion", lot: false }, { itemId: "antidote", lot: true }],
+        refreshCount: 0,
+      };
+    }
+    if (opts.campReflection) game.state.pendingCampReflectionTier = 1;
+    const app = new App(renderer, game);
+    await renderOnce();
+    return { app, game, room, mockInput, renderOnce };
+  }
+
+  test("the notice comes first, then the Rest choices with Trade, then the shop closes the room on leaving", async () => {
+    const { app, game, room, mockInput, renderOnce } = await restApp({ runner: true, campReflection: true });
+    expect(app.debugUiState.kind).toBe("runnerNotice");
+
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("rest");
+
+    game.state.coins = 100;
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+
+    mockInput.pressKey("1"); // buy the single Small Health Potion for 15
+    await renderOnce();
+    expect(game.state.coins).toBe(85);
+    expect(app.debugUiState.kind).toBe("runnerShop"); // buying doesn't throw the player back to the Rest screen
+    expect(game.state.restRunner?.offers[0]?.sold).toBe(true);
+
+    mockInput.pressKey("r"); // refresh costs 10
+    await renderOnce();
+    expect(game.state.coins).toBe(75);
+    expect(app.debugUiState.kind).toBe("runnerShop");
+
+    mockInput.pressKey("RETURN"); // leave: trading replaces the rest action
+    await renderOnce();
+    expect(room.cleared).toBe(true);
+    expect(game.state.restRunner).toBeNull();
+    expect(app.debugUiState.kind).toBe("campReflection"); // the reflection comes after the choice
+  });
+
+  test("each shop offer shows what the item does", async () => {
+    const { game } = await restApp({ runner: true });
+    const text = runnerScreen.renderMain(game, { kind: "runnerShop" });
+    expect(text).toContain("Small Health Potion — costs 15 coins");
+    expect(text).toContain("Instantly restores 60 HP.");
+    expect(text).toContain("Antidote ×3 — costs 40 coins");
+    expect(text).toContain("Removes Poisoned.");
+  });
+
+  test("selling lists what the runner buys, pays out, and returns to the shop", async () => {
+    const { app, game, mockInput, renderOnce } = await restApp({ runner: true });
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    game.state.inventory = { "rat-tail": 1 };
+    game.state.coins = 0;
+    mockInput.pressKey("3");
+    await renderOnce();
+    mockInput.pressKey("x");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerSell");
+
+    mockInput.pressEscape(); // back to the shop without selling
+    await new Promise((resolve) => setTimeout(resolve, 100)); // a lone Esc is held back briefly to tell it from an escape sequence
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+    expect(game.state.inventory["rat-tail"]).toBe(1);
+    mockInput.pressKey("x");
+    await renderOnce();
+
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(game.state.coins).toBe(5);
+    expect(game.state.inventory["rat-tail"]).toBe(0);
+    expect(app.debugUiState.kind).toBe("runnerShop"); // nothing left to sell
+  });
+
+  test("a Rest room without the runner keeps its two choices, and Camp Reflection waits for the choice", async () => {
+    const { app, game, room, mockInput, renderOnce } = await restApp({ runner: false, campReflection: true });
+    expect(app.debugUiState.kind).toBe("rest");
+
+    mockInput.pressKey("3"); // no Trade option here
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("rest");
+    expect(room.cleared).toBe(false);
+
+    mockInput.pressKey("RETURN"); // skip
+    await renderOnce();
+    expect(room.cleared).toBe(true);
+    expect(game.state.restRunner ?? null).toBeNull();
+    expect(app.debugUiState.kind).toBe("campReflection");
   });
 });

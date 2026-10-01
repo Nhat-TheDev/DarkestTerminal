@@ -61,9 +61,15 @@ const TARGET_NOTE: Record<string, string> = {
   allEnemies: t("item.targetNoteAllEnemies"),
 };
 
+/** What the item does, without who it can be used on. */
+export function describeItemEffects(item: ItemDefinition): string {
+  if (item.effects.length === 0) return t("item.effectNone");
+  return item.effects.map(itemEffectSummary).join(". ") + ".";
+}
+
 export function formatItemEffect(item: ItemDefinition): string {
   if (item.effects.length === 0) return t("item.effectNone");
-  return item.effects.map(itemEffectSummary).join(". ") + "." + (TARGET_NOTE[item.target] ?? "");
+  return describeItemEffects(item) + (TARGET_NOTE[item.target] ?? "");
 }
 
 const TIER_WEIGHTS = BALANCE.items.tierWeights;
