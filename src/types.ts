@@ -16,7 +16,7 @@ export type SkillEffectKind =
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
-export type CombatStat = "attack" | "defense" | "aggro" | "speed";
+export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower";
 
 export interface SkillEffect {
   kind: SkillEffectKind;

@@ -35,7 +35,11 @@ function itemEffectSummary(effect: SkillEffect): string {
       return t("effect.signedStat", { amount: signed(effect.amount ?? 0), stat: label });
     }
     case "removeStatusEffect":
-      return t("item.effectRemoveStatus");
+      return effect.statusEffectId
+        ? t("item.effectRemoveNamedStatus", { status: getStatusEffect(effect.statusEffectId).name })
+        : t("item.effectRemoveStatus");
+    case "damage":
+      return t("item.effectDamage", { amount: effect.amount ?? 0, type: effect.damageType ?? "physical" });
     case "applyStatusEffect":
       return effect.statusEffectId
         ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId, effect.durationTurns) })
@@ -54,6 +58,7 @@ const TARGET_NOTE: Record<string, string> = {
   singleAlly: t("item.targetNoteSingleAlly"),
   allAllies: t("item.targetNoteAllAllies"),
   singleEnemy: t("item.targetNoteSingleEnemy"),
+  allEnemies: t("item.targetNoteAllEnemies"),
 };
 
 export function formatItemEffect(item: ItemDefinition): string {

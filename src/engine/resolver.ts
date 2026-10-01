@@ -1,5 +1,5 @@
 import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
-import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
@@ -30,13 +30,6 @@ export function statusCategory(def: StatusEffectDefinition): StatusCategory {
 
 const SURVIVAL_STAT_LABEL: Record<keyof SurvivalStats, string> = {
   fear: t("resolver.statLabelFear"),
-};
-
-const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
-  attack: t("resolver.statLabelAttack"),
-  defense: t("resolver.statLabelDefense"),
-  aggro: t("resolver.statLabelAggro"),
-  speed: t("resolver.statLabelSpeed"),
 };
 
 export type Actor = Character | Monster | Summon;
@@ -111,11 +104,17 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
     if (isCharacter(actor) || isSummon(actor)) actor.aggro += amount;
     return;
   }
+  if (stat === "magicPower") {
+    // Monster has no `magicPower` field either.
+    if (isCharacter(actor) || isSummon(actor)) actor.magicPower += amount;
+    return;
+  }
   actor[stat] += amount;
 }
 
 function getCombatStatValue(actor: Actor, stat: CombatStat): number {
   if (stat === "aggro") return isCharacter(actor) || isSummon(actor) ? actor.aggro : 0;
+  if (stat === "magicPower") return isCharacter(actor) || isSummon(actor) ? actor.magicPower : 0;
   return actor[stat];
 }
 

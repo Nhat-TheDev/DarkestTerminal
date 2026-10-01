@@ -1,12 +1,13 @@
 import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
-import { startCombat, queueItemAction, checkItemUsable, resolveRound } from "../src/engine/combat";
-import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
+import { startCombat, queueItemAction, checkItemUsable, resolveRound, autoResolveTargets } from "../src/engine/combat";
+import { resolveSkillEffect, tickDotEffects, expireStatusEffect } from "../src/engine/resolver";
+import { recomputeCharacterStats } from "../src/engine/party";
 import { rollItemDrop, getItem, ITEMS, formatItemEffect } from "../src/data/items";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getArchetype } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
-import type { CombatantRef, ItemDefinition } from "../src/types";
+import type { CombatantRef, ItemDefinition, StatusEffectDefinition } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 import { STATUS_EFFECTS, formatStatusEffectMechanics } from "../src/data/statusEffects";
 
@@ -186,6 +187,80 @@ describe("items", () => {
     game.state.inventory["exploration-kit"] = 1;
     expect(game.useItemOutOfCombat("exploration-kit")).toBeNull();
     expect(game.state.satiety).toBe(70);
+  });
+
+  test("a magic power status raises magicPower, survives a stat recompute and is undone on expiry", () => {
+    const { ctx } = makeCtx();
+    const mage = ctx.party.find((c) => c.classId === "mage")!;
+    recomputeCharacterStats(mage, 100);
+    const base = mage.magicPower;
+    const focus: StatusEffectDefinition = {
+      id: "test-focus",
+      name: "Test Focus",
+      description: "",
+      perTurnEffects: [{ kind: "modifyCombatStat", combatStat: "magicPower", amount: 7 }],
+    };
+    STATUS_EFFECTS.push(focus);
+    try {
+      const log: never[] = [];
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: focus.id, durationTurns: 2 }, mage, mage, { log });
+      expect(mage.magicPower).toBe(base + 7);
+      recomputeCharacterStats(mage, 100);
+      expect(mage.magicPower).toBe(base + 7);
+      expireStatusEffect(mage, mage.activeStatusEffects[0]!, { log });
+      expect(mage.magicPower).toBe(base);
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.indexOf(focus), 1);
+    }
+  });
+
+  test("a magic power effect leaves a Monster untouched", () => {
+    const { ctx } = makeCtx();
+    const rat = spawnInto(ctx, "dungeon-rat");
+    resolveSkillEffect({ kind: "modifyCombatStat", combatStat: "magicPower", amount: 5 }, ctx.party[0]!, rat, { log: [] });
+    expect("magicPower" in rat).toBe(false);
+  });
+
+  test("item text names a damage amount and type, a named cure, and the allEnemies note", () => {
+    const base = { name: "Test", description: "", tier: "common" } as const;
+    const bomb: ItemDefinition = { ...base, id: "test-bomb", target: "allEnemies", effects: [{ kind: "damage", amount: 68, damageType: "fire", offenseMultiplierPercent: 0 }] };
+    const cure: ItemDefinition = { ...base, id: "test-cure", target: "singleAlly", effects: [{ kind: "removeStatusEffect", statusEffectId: "poisoned" }] };
+    expect(formatItemEffect(bomb)).toBe("Deals 68 fire damage. (all enemies — combat only)");
+    expect(formatItemEffect(cure)).toBe("Removes Poisoned. (choose 1 ally)");
+  });
+
+  test("an allEnemies item is rejected outside combat and damages every enemy in combat", () => {
+    const bomb: ItemDefinition = {
+      id: "test-bomb",
+      name: "Test Bomb",
+      description: "",
+      target: "allEnemies",
+      effects: [{ kind: "damage", amount: 30, damageType: "fire", offenseMultiplierPercent: 0 }],
+      tier: "common",
+    };
+    ITEMS.push(bomb);
+    try {
+      const game = new Game(6);
+      game.state.inventory[bomb.id] = 1;
+      expect(game.useItemOutOfCombat(bomb.id)).not.toBeNull();
+      expect(game.state.inventory[bomb.id]).toBe(1);
+
+      const { ctx } = makeCtx();
+      const ratA = spawnInto(ctx, "dungeon-rat");
+      const ratB = spawnInto(ctx, "dungeon-rat");
+      ratA.attack = 0;
+      ratB.attack = 0;
+      ctx.inventory[bomb.id] = 1;
+      const combat = startCombat("r1", [ratA.id, ratB.id], ctx, false);
+      const self: CombatantRef = { kind: "character", id: ctx.party[0]!.id };
+      const targets = autoResolveTargets("allEnemies", self, combat, ctx)!;
+      expect(queueItemAction(combat, self, bomb.id, targets, ctx)).toBeNull();
+      resolveRound(combat, ctx);
+      expect(ratA.hp).toBeLessThan(ratA.maxHp);
+      expect(ratB.hp).toBeLessThan(ratB.maxHp);
+    } finally {
+      ITEMS.splice(ITEMS.indexOf(bomb), 1);
+    }
   });
 });
 

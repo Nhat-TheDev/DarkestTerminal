@@ -329,7 +329,7 @@ export class Game {
   useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
     const item = getItem(itemId);
     if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
-    if (item.target === "singleEnemy") return { reason: t("errors.itemNotUsableOutOfCombat") };
+    if (item.target === "singleEnemy" || item.target === "allEnemies") return { reason: t("errors.itemNotUsableOutOfCombat") };
 
     const log: LogEntry[] = [];
     // `satiety` effects are party-wide (GameState-scoped, not per-character) — for an "allAllies" item,
