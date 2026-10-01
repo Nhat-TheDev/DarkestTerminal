@@ -7,7 +7,7 @@
     "effects": [
       {
         "kind": "heal",
-        "amount": 30
+        "amount": 60
       }
     ],
     "tier": "common"
@@ -20,7 +20,7 @@
     "effects": [
       {
         "kind": "heal",
-        "amount": 70
+        "amount": 120
       }
     ],
     "tier": "uncommon"
@@ -33,7 +33,7 @@
     "effects": [
       {
         "kind": "restoreMp",
-        "amount": 20
+        "amount": 30
       }
     ],
     "tier": "common"
@@ -46,7 +46,7 @@
     "effects": [
       {
         "kind": "restoreMp",
-        "amount": 45
+        "amount": 55
       }
     ],
     "tier": "uncommon"
@@ -84,10 +84,11 @@
     "id": "antidote",
     "name": "Antidote",
     "description": "A bitter white pill, trusted by dungeon healers.",
-    "target": "self",
+    "target": "singleAlly",
     "effects": [
       {
-        "kind": "removeStatusEffect"
+        "kind": "removeStatusEffect",
+        "statusEffectId": "poisoned"
       }
     ],
     "tier": "common"
@@ -100,7 +101,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "empower",
+        "statusEffectId": "whetstone",
         "durationTurns": 2
       }
     ],
@@ -114,11 +115,513 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
+        "statusEffectId": "temporary-ward",
         "durationTurns": 2
       }
     ],
     "tier": "uncommon"
+  },
+  {
+    "id": "cracker-string",
+    "name": "Cracker String",
+    "description": "A string of paper-wrapped charges, each the size of a thumb. Pull the end and they go off in order.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 37,
+        "damageType": "physical",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "pitch-bomb",
+    "name": "Pitch Bomb",
+    "description": "Pitch and lamp oil in a fired jar, fuse of twisted rag.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "damageType": "fire",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "frost-flask",
+    "name": "Frost Flask",
+    "description": "A flask of brine frozen solid, white with frost on the outside. It does not thaw in the hand.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "damageType": "ice",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "thunder-charge",
+    "name": "Thunder Charge",
+    "description": "A copper tube sealed at both ends with wax, heavy for its size. It hums when nothing is touching it.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 94,
+        "damageType": "lightning",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "blister-bomb",
+    "name": "Blister Bomb",
+    "description": "Quicklime and sulphur packed into a clay shell that is thin on purpose.",
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 68,
+        "damageType": "fire",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "rot-bomb",
+    "name": "Rot Bomb",
+    "description": "Matter scraped from the bottom of a grave pit and sealed in clay before it had finished rotting.",
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 68,
+        "damageType": "poison",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "honing-oil",
+    "name": "Honing Oil",
+    "description": "A flask of thin oil that smells of hot iron. The smell stays on the cloth for days.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "honing-oil",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "marrow-broth",
+    "name": "Marrow Broth",
+    "description": "A flask of marrow boiled down until it sets cold. Warmed in the hands, it pours.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "marrow-broth",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "serpent-oil",
+    "name": "Serpent Oil",
+    "description": "Thick yellow-green oil drawn from something that bit. A blade wiped with it stays wet for the length of a fight.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poison-coat",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "tar-flask",
+    "name": "Tar Flask",
+    "description": "Black tar in a clay flask, thick enough to hold a thumbprint.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "tar-flask",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "smoke-pellet",
+    "name": "Smoke Pellet",
+    "description": "A pinch of powder that goes to grey smoke when crushed.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "smoke-pellet",
+        "durationTurns": 1
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "bandage-roll",
+    "name": "Bandage Roll",
+    "description": "Boiled linen, rolled tight and still stiff. It has been boiled more than once.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bandage-roll",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "resin-wrap",
+    "name": "Resin Wrap",
+    "description": "Pine resin over cloth, wound tight around the forearm.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "resin-wrap",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "repelling-smoke-powder",
+    "name": "Repelling Smoke Powder",
+    "description": "A pinch of grey powder in a twist of paper. Burned at someone's feet, it gives off a sour smoke that nothing hunting wants to walk into.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "repelling-smoke-powder",
+        "durationTurns": 1
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "acid-vial",
+    "name": "Acid Vial",
+    "description": "Green-stained glass, stoppered with wax, the inside of the glass etched cloudy.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "acid-vial",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "war-paint",
+    "name": "War Paint",
+    "description": "Ochre and ash, kept in a tin lid and thumbed across the cheek before a fight.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "war-paint",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "fracture-charge",
+    "name": "Fracture Charge",
+    "description": "A shaped charge in a brass cup, made to be set against a plate.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fracture-charge",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "deafening-charge",
+    "name": "Deafening Charge",
+    "description": "A charge packed for noise and not fire, wrapped in wet leather so it does not go off in the pack.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "deafening-charge",
+        "durationTurns": 1
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "rally-standard",
+    "name": "Rally Standard",
+    "description": "A torn banner on a broken haft, the colours faded to the same brown as everything else.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "rally-standard",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "bulwark-draught",
+    "name": "Bulwark Draught",
+    "description": "Iron filings in wine. The skin goes grey and holds.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bulwark-draught",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "field-tonic",
+    "name": "Field Tonic",
+    "description": "A stoneware bottle meant to be split four ways, with four notches cut in the neck to show where.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 90
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "spark-salt",
+    "name": "Spark Salt",
+    "description": "Coarse grey salt that crackles faintly when held near a mage's hand.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "spark-salt",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "scholars-candle",
+    "name": "Scholar's Candle",
+    "description": "A candle stub scored with fine lines at even intervals. Lit, it gives a steady light that does not move in a draught.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "scholars-candle",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "hushed-bell",
+    "name": "Hushed Bell",
+    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the room goes quiet around it.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "hushed-bell",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "etched-lens",
+    "name": "Etched Lens",
+    "description": "A disc of ground glass with a ring etched into one face. Held up, it makes edges look sharper than they are.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "etched-lens",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "pitch-pipe",
+    "name": "Pitch Pipe",
+    "description": "A short reed pipe that gives one note and no other. Blown once in a room, everyone in it begins to hum the same pitch.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "pitch-pipe",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "burn-salve",
+    "name": "Burn Salve",
+    "description": "A tin of grease and crushed aloe gone grey. It stings going on, and then it does not.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "burning"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "styptic-powder",
+    "name": "Styptic Powder",
+    "description": "Alum ground fine and kept dry in waxed paper. Packed into a cut, it closes the edges.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "bleeding"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "eyewash",
+    "name": "Eyewash",
+    "description": "A small bottle of boiled fennel and salt water, with a dropper made from a quill.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "blinded"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "thread-knife",
+    "name": "Thread Knife",
+    "description": "A curved blade no longer than a finger, made for cutting thread. Webbing parts along its edge like wet paper.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "webbed"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "lye-wash",
+    "name": "Lye Wash",
+    "description": "Thinned lye in a stoppered flask, for washing off what eats metal. It is rough on the hands.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "acid-burn"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "smelling-salts",
+    "name": "Smelling Salts",
+    "description": "Pale crystals in a brass case. One sniff and the eyes water, and whoever was down gets up.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "stunned"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "mending-paste",
+    "name": "Mending Paste",
+    "description": "Tallow and clay worked into a grey paste. Smeared on armour, it fills the pits and stays.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "weakened"
+      },
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "corroded"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "purge-draught",
+    "name": "Purge Draught",
+    "description": "A cloudy draught that tastes of ash and river water. Whoever drinks it is sick within the minute, and better after.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "removeStatusEffect"
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "greater-health-potion",
+    "name": "Greater Health Potion",
+    "description": "A dark red draught so thick it moves slowly when the bottle is tilted. It smells of iron before it smells of herbs.",
+    "target": "self",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 220
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "greater-mana-potion",
+    "name": "Greater Mana Potion",
+    "description": "A blue so deep it is nearly black in the flask. The glass is cold to hold.",
+    "target": "self",
+    "effects": [
+      {
+        "kind": "restoreMp",
+        "amount": 90
+      }
+    ],
+    "tier": "rare"
   },
   {
     "id": "vermin-hide",

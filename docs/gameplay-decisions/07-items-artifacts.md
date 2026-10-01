@@ -54,11 +54,21 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
-> **Planned, not implemented:** about 36 new consumables enter the general pool (with potion amounts rescaled), the Merchant's Runner buys and sells items, and trophies become barter tokens. The rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+> **Planned, not implemented:** the Merchant's Runner buys and sells items, and trophies become barter tokens. The rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
 
 ### Catalog — general pool
 
-Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, a fear-calming item, a debuff-cure (`Antidote`), 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source) — and the `exploration-kit` (Unique, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
+Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
+
+By kind:
+
+- **Healing and mana potions** in 3 tiers each (heal 60 / 120 / 220 HP, restore 30 / 55 / 90 MP), plus `field-tonic` (heals the whole party) and `calming-draught` (fear).
+- **Buffs** — `whetstone`, `honing-oil`, `war-paint`, `rally-standard` (attack), `temporary-ward`, `resin-wrap`, `bulwark-draught` (defense), `spark-salt`, `scholars-candle`, `hushed-bell`, `etched-lens`, `pitch-pipe` (magic power, for casters), `repelling-smoke-powder` (aggro down), `bandage-roll`, `marrow-broth` (heal each turn), `serpent-oil` (an on-hit poison rider, reusing `poison-coat`).
+- **Damage bombs** — flat damage on use, from the item alone (`offenseMultiplierPercent: 0`), so every class deals the same: `cracker-string`, `pitch-bomb`, `frost-flask`, `thunder-charge` (one enemy) and `blister-bomb`, `rot-bomb` (every enemy). Race resistances still apply.
+- **Debuff bombs** — `tar-flask` (speed), `smoke-pellet` (accuracy), `acid-vial`, `fracture-charge` (defense), `deafening-charge` (stun).
+- **Cures** — each removes one status: `antidote` (Poisoned), `burn-salve`, `styptic-powder`, `eyewash`, `thread-knife`, `lye-wash`, `smelling-salts`, `mending-paste`, and `purge-draught` (one harmful status from each ally).
+
+Each buff or debuff item has its own status in `data/status-effects.json` (id = item id, flat values), so check that file for the numbers. Check `data/items.json` for the exact effects.
 
 ### Trophies
 

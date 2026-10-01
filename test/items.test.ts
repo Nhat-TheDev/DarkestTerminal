@@ -168,7 +168,7 @@ describe("items", () => {
     c.hp = 1;
     game.state.inventory["small-health-potion"] = 1;
     expect(game.useItemOutOfCombat("small-health-potion", c.id)).toBeNull();
-    expect(c.hp).toBe(31);
+    expect(c.hp).toBe(61);
     expect(game.state.inventory["small-health-potion"]).toBe(0);
 
     const bomb: ItemDefinition = { id: "test-enemy-item", name: "Test", description: "", target: "singleEnemy", effects: [], tier: "common" };
@@ -261,6 +261,78 @@ describe("items", () => {
     } finally {
       ITEMS.splice(ITEMS.indexOf(bomb), 1);
     }
+  });
+});
+
+describe("consumable catalog data", () => {
+  const general = ITEMS.filter((i) => !i.archetypeIds?.length);
+
+  test("the general pool has the spec'd number of items per tier", () => {
+    const counts: Record<string, number> = {};
+    for (const item of general) counts[item.tier] = (counts[item.tier] ?? 0) + 1;
+    expect(counts).toEqual({ common: 15, uncommon: 14, rare: 15, unique: 1 });
+  });
+
+  test("every status an item applies or removes exists", () => {
+    const known = new Set(STATUS_EFFECTS.map((s) => s.id));
+    for (const item of ITEMS) {
+      for (const effect of item.effects) {
+        if ((effect.kind === "applyStatusEffect" || effect.kind === "removeStatusEffect") && effect.statusEffectId) {
+          expect(known.has(effect.statusEffectId)).toBe(true);
+        }
+      }
+    }
+  });
+
+  test("a damage item ignores the thrower's offense, so every class deals the same damage", () => {
+    const damageItems = ITEMS.filter((i) => i.effects.some((e) => e.kind === "damage"));
+    expect(damageItems.length).toBe(6);
+    for (const item of damageItems) {
+      for (const effect of item.effects) expect(effect.offenseMultiplierPercent).toBe(0);
+    }
+    const hpLost = (classId: string) => {
+      const { ctx } = makeCtx(1);
+      const thrower = ctx.party.find((c) => c.classId === classId)!;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      rat.attack = 0;
+      const before = rat.hp;
+      ctx.inventory["pitch-bomb"] = 1;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const self: CombatantRef = { kind: "character", id: thrower.id };
+      const target: CombatantRef = { kind: "monster", id: rat.id };
+      expect(queueItemAction(combat, self, "pitch-bomb", [target], ctx)).toBeNull();
+      resolveRound(combat, ctx);
+      return before - rat.hp;
+    };
+    expect(hpLost("mage")).toBe(hpLost("vanguard"));
+    expect(hpLost("vanguard")).toBeGreaterThan(0);
+  });
+
+  test("Antidote removes Poisoned only", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 }, { statusEffectId: "burning", turnsRemaining: 3 });
+    for (const effect of getItem("antidote").effects) resolveSkillEffect(effect, target, target, { log: [] });
+    expect(target.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["burning"]);
+  });
+
+  test("every harmful status a monster can inflict has an item that removes it", () => {
+    const removable = new Set<string>();
+    for (const item of ITEMS) {
+      for (const effect of item.effects) if (effect.kind === "removeStatusEffect" && effect.statusEffectId) removable.add(effect.statusEffectId);
+    }
+    for (const id of ["poisoned", "burning", "bleeding", "acid-burn", "stunned", "blinded", "webbed", "weakened", "corroded"]) {
+      expect(removable.has(id)).toBe(true);
+    }
+  });
+
+  test("a magic power item raises the user's magicPower when used outside combat", () => {
+    const game = new Game(8);
+    const c = game.state.party[0]!;
+    const before = c.magicPower;
+    game.state.inventory["spark-salt"] = 1;
+    expect(game.useItemOutOfCombat("spark-salt", c.id)).toBeNull();
+    expect(c.magicPower).toBe(before + 5);
   });
 });
 

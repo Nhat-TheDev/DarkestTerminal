@@ -518,19 +518,40 @@
     "id": "totem-recall-buff",
     "name": "Totem's Strength",
     "description": "Channeled by Totem Recall — boosts attack until the totem falls.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 0 }]
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 0,
+        "minPercent": 0
+      }
+    ]
   },
   {
     "id": "viking-blood-fury",
     "name": "Bloodrage",
     "description": "Attack sharpens as the blood runs low.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 0 }]
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 0,
+        "minPercent": 0
+      }
+    ]
   },
   {
     "id": "mage-shred",
     "name": "Shredded",
     "description": "Wards fray with every landed hit.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -5, "minPercent": -5 }],
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -5,
+        "minPercent": -5
+      }
+    ],
     "stackable": true,
     "maxStacks": 3
   },
@@ -538,7 +559,14 @@
     "id": "mage-shred-ii",
     "name": "Shredded II",
     "description": "Wards fray faster with every landed hit.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -8, "minPercent": -7 }],
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -8,
+        "minPercent": -7
+      }
+    ],
     "stackable": true,
     "maxStacks": 3
   },
@@ -546,7 +574,14 @@
     "id": "mage-shred-iii",
     "name": "Shredded III",
     "description": "Wards collapse with every landed hit.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": -12, "minPercent": -10 }],
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -12,
+        "minPercent": -10
+      }
+    ],
     "stackable": true,
     "maxStacks": 3
   },
@@ -554,12 +589,253 @@
     "id": "slowed",
     "name": "Slowed",
     "description": "Lose 5 speed for the duration.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "speed", "amount": -5 }]
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": -5
+      }
+    ]
   },
   {
     "id": "enfeebled",
     "name": "Enfeebled",
     "description": "Lowers the target's attack for the duration.",
-    "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": -15 }]
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 0,
+        "minPercent": -15
+      }
+    ]
+  },
+  {
+    "id": "whetstone",
+    "name": "Whetstone",
+    "description": "Raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 15
+      }
+    ]
+  },
+  {
+    "id": "temporary-ward",
+    "name": "Temporary Ward",
+    "description": "Raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 12
+      }
+    ]
+  },
+  {
+    "id": "honing-oil",
+    "name": "Honing Oil",
+    "description": "Raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 27
+      }
+    ]
+  },
+  {
+    "id": "marrow-broth",
+    "name": "Marrow Broth",
+    "description": "Restores HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 23
+      }
+    ]
+  },
+  {
+    "id": "tar-flask",
+    "name": "Tar Flask",
+    "description": "Lowers speed for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": -6
+      }
+    ]
+  },
+  {
+    "id": "smoke-pellet",
+    "name": "Smoke Pellet",
+    "description": "The bearer's own attacks/skills miss more often for the duration.",
+    "perTurnEffects": [],
+    "accuracyPenaltyPercent": 40
+  },
+  {
+    "id": "bandage-roll",
+    "name": "Bandage Roll",
+    "description": "Restores HP per turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 12
+      }
+    ]
+  },
+  {
+    "id": "resin-wrap",
+    "name": "Resin Wrap",
+    "description": "Raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "repelling-smoke-powder",
+    "name": "Repelling Smoke Powder",
+    "description": "Lowers aggro for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": -20
+      }
+    ]
+  },
+  {
+    "id": "acid-vial",
+    "name": "Acid Vial",
+    "description": "Lowers defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -12
+      }
+    ]
+  },
+  {
+    "id": "war-paint",
+    "name": "War Paint",
+    "description": "Raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "fracture-charge",
+    "name": "Fracture Charge",
+    "description": "Lowers defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -25
+      }
+    ]
+  },
+  {
+    "id": "deafening-charge",
+    "name": "Deafening Charge",
+    "description": "Skips the turn entirely while active.",
+    "perTurnEffects": [],
+    "stuns": true
+  },
+  {
+    "id": "rally-standard",
+    "name": "Rally Standard",
+    "description": "Raises attack for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 16
+      }
+    ]
+  },
+  {
+    "id": "bulwark-draught",
+    "name": "Bulwark Draught",
+    "description": "Raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 22
+      }
+    ]
+  },
+  {
+    "id": "spark-salt",
+    "name": "Spark Salt",
+    "description": "Raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 5
+      }
+    ]
+  },
+  {
+    "id": "scholars-candle",
+    "name": "Scholar's Candle",
+    "description": "Raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 13
+      }
+    ]
+  },
+  {
+    "id": "hushed-bell",
+    "name": "Hushed Bell",
+    "description": "Raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 10
+      }
+    ]
+  },
+  {
+    "id": "etched-lens",
+    "name": "Etched Lens",
+    "description": "Raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 23
+      }
+    ]
+  },
+  {
+    "id": "pitch-pipe",
+    "name": "Pitch Pipe",
+    "description": "Raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 17
+      }
+    ]
   }
 ]
