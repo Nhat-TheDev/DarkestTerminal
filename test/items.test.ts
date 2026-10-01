@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { startCombat, queueItemAction, checkItemUsable, resolveRound } from "../src/engine/combat";
 import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
-import { rollItemDrop, getItem, ITEMS } from "../src/data/items";
+import { rollItemDrop, getItem, ITEMS, formatItemEffect } from "../src/data/items";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getArchetype } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
@@ -103,6 +103,33 @@ describe("items", () => {
     expect(ctx.inventory["small-health-potion"]).toBe(0);
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("recovers 30 HP"))).toBe(true);
+  });
+
+  test("a trophy shows 'No effect.' in item text", () => {
+    expect(formatItemEffect(getItem("rat-tail"))).toBe("No effect.");
+    expect(formatItemEffect(getItem("small-health-potion"))).not.toBe("No effect.");
+  });
+
+  test("using a trophy in combat spends it and logs that it has no effect", () => {
+    const { ctx } = makeCtx();
+    const vanguard = ctx.party[0]!;
+    ctx.inventory["rat-tail"] = 1;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    expect(queueItemAction(combat, self, "rat-tail", [self], ctx)).toBeNull();
+    expect(ctx.inventory["rat-tail"]).toBe(0);
+    resolveRound(combat, ctx);
+    expect(combat.log.some((l) => l.text === "It has no effect at all. Strange.")).toBe(true);
+  });
+
+  test("using a trophy outside combat spends it and says it has no effect", () => {
+    const game = new Game(4);
+    game.state.inventory["rat-tail"] = 1;
+    expect(game.useItemOutOfCombat("rat-tail", game.state.party[0]!.id)).toBeNull();
+    expect(game.state.inventory["rat-tail"]).toBe(0);
+    expect(game.state.message).toBe("It has no effect at all. Strange.");
   });
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {

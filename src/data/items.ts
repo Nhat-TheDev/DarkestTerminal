@@ -57,6 +57,7 @@ const TARGET_NOTE: Record<string, string> = {
 };
 
 export function formatItemEffect(item: ItemDefinition): string {
+  if (item.effects.length === 0) return t("item.effectNone");
   return item.effects.map(itemEffectSummary).join(". ") + "." + (TARGET_NOTE[item.target] ?? "");
 }
 
@@ -78,7 +79,7 @@ function dropWeight(item: ItemDefinition): number {
   return TIER_WEIGHTS[item.tier] * (item.groupItem ? BALANCE.items.groupDropMultiplier : 1);
 }
 
-export function rollItemDrop(archetypeId: Id, rng: Rng, _floorDepth = 1): Id | null {
+export function rollItemDrop(archetypeId: Id, rng: Rng): Id | null {
   if (!rng.chance(ITEM_DROP_CHANCE)) return null;
 
   const trophies = TROPHIES.filter((i) => i.archetypeIds?.includes(archetypeId));

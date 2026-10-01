@@ -62,7 +62,7 @@ Full list (id, name, effect, tier): `data/items.json`, filtered to entries witho
 
 ### Trophies
 
-A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it, and its purpose is to be traded later. Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
+A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it and shows "It has no effect at all. Strange." (in a combat log or as the room message), and its purpose is to be traded later. The inventory and reward screens list its effect as "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
 
 - **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss.
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.

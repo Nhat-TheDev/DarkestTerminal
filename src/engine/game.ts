@@ -353,7 +353,7 @@ export class Game {
     }
 
     this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
-    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t("game.usedItem", { item: item.name });
+    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t(item.effects.length === 0 ? "game.itemNoEffect" : "game.usedItem", { item: item.name });
     return null;
   }
 
@@ -534,7 +534,7 @@ export class Game {
           const monster = this.ctx.monsters.find((m) => m.id === id);
           if (!monster) continue;
           coinsGained += rollCoinDrop(monster, this.ctx.rng);
-          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng, this.state.floor.depth);
+          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng);
           if (itemId) {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
             droppedItemIds.push(itemId);
