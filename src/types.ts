@@ -793,6 +793,10 @@ export interface GameState {
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
   /** The Merchant's Runner in the current uncleared Rest room, rolled once on entering it. `null`/absent when no Runner is there. */
   restRunner?: RestRunner | null;
+  /** Trophies traded to the Runner for a buff, waiting for this floor's elite/boss room; applied when its combat starts, dropped if the floor ends first. */
+  pendingBarterBuffs?: Id[];
+  /** Floor depth on which a buff was last bartered, so later Rest rooms on that floor offer no barter. */
+  barterUsedDepth?: number | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] } | null;
   /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
       drives the "return" flavor text in 10-event-narrative.md §10.2. */

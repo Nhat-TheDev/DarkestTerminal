@@ -148,6 +148,30 @@
       "epic": { "single": 150, "lot": 420 }
     }
   },
+  "barter": {
+    "magnitudePercentByTier": { "common": 5, "uncommon": 8, "rare": 12, "unique": 15, "epic": 18, "legendary": 22 },
+    "secondaryShare": 0.5,
+    "activeDurationTurns": 999,
+    "primaryStatByMonsterType": {
+      "armored": "defense",
+      "tanky": "defense",
+      "sentinel": "defense",
+      "bruiser": "attack",
+      "striker": "attack",
+      "glass": "attack",
+      "balanced": "balanced"
+    },
+    "secondaryByRace": {
+      "beast": "speed",
+      "slime": "regen",
+      "golem": "defense",
+      "undead": "regen",
+      "elemental": "attack",
+      "demi-human": "attack",
+      "human-like": "attack",
+      "shadow-creature": "speed"
+    }
+  },
   "shop": {
     "floorsPerStep": 10,
     "anchorFirstFloor": 51,

@@ -138,6 +138,8 @@ export class Game {
       loreExposureCount: 0,
       pendingCampReflectionTier: null,
       restRunner: null,
+      pendingBarterBuffs: [],
+      barterUsedDepth: null,
       pendingFloorMilestoneMessage: null,
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
@@ -651,6 +653,7 @@ export class Game {
       return;
     }
     const nextDepth = this.state.floor.depth + 1;
+    this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;

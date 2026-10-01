@@ -837,5 +837,125 @@
         "amount": 17
       }
     ]
+  },
+  {
+    "id": "barter-attack",
+    "name": "Runner's Bargain: Attack",
+    "description": "Raises attack for the whole fight.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 0
+      }
+    ]
+  },
+  {
+    "id": "barter-magic-power",
+    "name": "Runner's Bargain: Magic Power",
+    "description": "Raises magic power for the whole fight.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 0
+      }
+    ]
+  },
+  {
+    "id": "barter-defense",
+    "name": "Runner's Bargain: Defense",
+    "description": "Raises defense for the whole fight.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 0
+      }
+    ]
+  },
+  {
+    "id": "barter-speed",
+    "name": "Runner's Bargain: Speed",
+    "description": "Raises speed for the whole fight.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": 0
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-common",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 2.5
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-uncommon",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 4.0
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-rare",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 6.0
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-unique",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 7.5
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-epic",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 9.0
+      }
+    ]
+  },
+  {
+    "id": "barter-regen-legendary",
+    "name": "Runner's Bargain: Regeneration",
+    "description": "Restores HP each turn of the fight.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 11.0
+      }
+    ]
   }
 ]

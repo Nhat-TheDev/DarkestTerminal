@@ -34,6 +34,8 @@ export function migrateGameState(raw: unknown): GameState {
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;
   if (state.pendingCampReflectionTier === undefined) state.pendingCampReflectionTier = null;
   if (state.restRunner === undefined) state.restRunner = null;
+  if (!Array.isArray(state.pendingBarterBuffs)) state.pendingBarterBuffs = [];
+  if (state.barterUsedDepth === undefined) state.barterUsedDepth = null;
   if (!state.campReflectionChoices) state.campReflectionChoices = {};
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;

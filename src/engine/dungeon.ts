@@ -10,6 +10,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { campReflectionTier, highestAnsweredCampReflectionTier } from "../data/loreExposure";
 import { getClass } from "../data/classes";
 import { rollRestRunner } from "./events/runner";
+import { applyPendingBarterBuffs } from "./events/barter";
 
 /** §8.15 Chain 4, "Taken, Never Given" — same 7 ids `closeEvent()` (events/shared.ts) counts;
     duplicated here rather than imported to avoid a circular import (shared.ts already imports
@@ -51,6 +52,7 @@ export function enterRoom(state: GameState, room: Room, ctx: EngineContext): voi
   // A room that starts a fight drains satiety on victory, not on the ambush itself.
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");
+    if (room.type === "boss") applyPendingBarterBuffs(state, ctx, state.combat.log);
     state.message = t("dungeon.ambush", { room: room.name });
     return;
   }
