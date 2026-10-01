@@ -34,3 +34,5 @@ Exactly 3 events accept coins; Blood Altar and Collapsed Floor stay HP-only (`08
 | Wandering Hermit — Exchange fortune | `events.wanderingHermitExchangeCostCoins` (50) |
 
 An offer/action is locked (not just hidden) if the party can't afford it — coins can't go negative, unlike the HP-payment events, so this is a hard block rather than a per-character safety check.
+
+> **Planned, not implemented:** a Rest-room NPC, the Merchant's Runner, will add a fourth coin sink (a shop with refreshable stock) and a coin source (junk buyback). The "exactly 3 events accept coins" rule above describes the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).

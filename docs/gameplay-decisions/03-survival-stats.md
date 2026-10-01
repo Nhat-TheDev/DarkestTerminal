@@ -104,6 +104,8 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
 
+> **Planned, not implemented:** a 50% chance of the Merchant's Runner appearing adds a notice screen first and a fourth option, Trade, which replaces the rest action for that room. The 3 options below describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+
 ### Camp Reflection
 
 A 4th piece of content at Rest rooms, independent of which of the 3 options above is picked and

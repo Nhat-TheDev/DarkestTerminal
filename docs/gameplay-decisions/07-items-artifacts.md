@@ -52,6 +52,8 @@ When the drop roll succeeds (gated by `items.itemDropChance`, `data/balance-conf
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
+> **Planned, not implemented:** every item gains a `tier` (Common–Legendary) that replaces the hand-set `weight`, monster trophies become effect-less barter tokens, `items.itemDropChance` rises to 0.9, and about 36 new consumables enter the general pool. The drop rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+
 ### Catalog — common items
 
 Full list (id, name, effect, notes): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, a fear-calming item, a debuff-cure (`Antidote`), and 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare monster-specific Exploration Kit drop described there.

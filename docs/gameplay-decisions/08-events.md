@@ -520,6 +520,8 @@ Same shape as §8.17-8.19 — **[1] Move on** — but `guaranteedArtifactId: "tr
 
 **No recurring NPC, no chain.** **Reflection**: see §8.16.
 
+> **Planned, not implemented:** the bundle will also give 3 `exploration-kit` items, which will stop being sold. The reward described above is the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+
 ---
 
 ## 8.21 Vigil (`vigil-candle`) — *Rare*
