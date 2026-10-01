@@ -30,7 +30,8 @@ for (const entry of BARTER_ENTRIES) {
   if (seen.has(entry.itemId)) throw new Error(`data/barter.json: "${entry.itemId}" appears twice`);
   seen.add(entry.itemId);
   if (!Number.isInteger(entry.cost) || entry.cost < 1) throw new Error(`data/barter.json: "${entry.itemId}" needs a whole "cost" of at least 1`);
-  if (entry.effects.length === 0) throw new Error(`data/barter.json: "${entry.itemId}" has no effects`);
+  if (!Array.isArray(entry.effects) || entry.effects.length === 0) throw new Error(`data/barter.json: "${entry.itemId}" has no effects`);
+  if (entry.effects.filter((e) => e.kind === "healOverTime").length > 1) throw new Error(`data/barter.json: "${entry.itemId}" has more than one healOverTime effect`);
   for (const effect of entry.effects) {
     if (effect.kind === "statBoost") {
       if (!BOOST_STATS.includes(effect.stat)) throw new Error(`data/barter.json: "${entry.itemId}" has an unknown stat "${effect.stat}"`);

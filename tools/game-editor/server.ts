@@ -203,6 +203,18 @@ function validateEntry(entry: unknown): string | null {
   return null;
 }
 
+type ItemEntry = { id: string; tier?: string; archetypeIds?: string[]; effects?: unknown[] };
+
+const isTrophy = (item: ItemEntry | undefined): boolean => !!item?.archetypeIds?.length;
+
+/** A trophy is paired with an entry in data/barter.json, which this editor doesn't write; refuses edits that would leave the two files out of step (the game won't load them). */
+function trophyPairingError(before: ItemEntry | undefined, after: ItemEntry | undefined): string | null {
+  if (!isTrophy(before) && !isTrophy(after)) return null;
+  if (isTrophy(after) && after!.effects?.length) return "A trophy must have no effects.";
+  const samePairing = isTrophy(before) && isTrophy(after) && before!.id === after!.id && before!.tier === after!.tier;
+  return samePairing ? null : "Creating, deleting, renaming, re-tiering or converting a trophy needs a matching change in data/barter.json — edit items.json and barter.json together by hand.";
+}
+
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
@@ -472,6 +484,8 @@ Bun.serve({
         const entry = body as { id: string };
         const entries = (await readJsonFile(file)) as { id: string }[];
         if (entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
+        const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
+        if (pairingError) return badRequest(pairingError);
         entries.push(entry);
         // Must run BEFORE writeJsonFile below: monsters.json is statically imported by src/data/monsters.ts,
         // so writing it makes `bun --watch` restart this very process — any await placed after that write
@@ -492,6 +506,8 @@ Bun.serve({
         const index = entries.findIndex((e) => e.id === id);
         if (index === -1) return badRequest(`"${id}" does not exist.`);
         if (entry.id !== id && entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
+        const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
+        if (pairingError) return badRequest(pairingError);
         entries[index] = entry;
         await writeJsonFile(file, entries);
         return json({ ok: true });
@@ -501,6 +517,8 @@ Bun.serve({
         const entries = (await readJsonFile(file)) as { id: string }[];
         const index = entries.findIndex((e) => e.id === id);
         if (index === -1) return badRequest(`"${id}" does not exist.`);
+        const pairingError = entityType === "item" ? trophyPairingError(entries[index], undefined) : null;
+        if (pairingError) return badRequest(pairingError);
         entries.splice(index, 1);
         await writeJsonFile(file, entries);
         return json({ ok: true });

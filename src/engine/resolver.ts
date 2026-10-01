@@ -472,8 +472,8 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
           if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= 0.8;
           amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
         }
-        if (e.kind === "heal" && e.maxHpPercent) amount = Math.max(amount, (actor.maxHp * e.maxHpPercent) / 100);
-        const effectToApply = { ...e, amount, maxHpPercent: undefined };
+        // A heal keeps its maxHpPercent: the heal branch of resolveSkillEffect already takes the larger of the two.
+        const effectToApply = e.kind === "heal" ? e : { ...e, amount, maxHpPercent: undefined };
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
       if (!isActorAlive(actor)) continue;

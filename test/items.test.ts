@@ -326,13 +326,35 @@ describe("consumable catalog data", () => {
     }
   });
 
-  test("a magic power item raises the user's magicPower when used outside combat", () => {
+  test("a magic power item raises the user's magicPower in combat and is refused outside it", () => {
     const game = new Game(8);
-    const c = game.state.party[0]!;
-    const before = c.magicPower;
+    const outside = game.state.party[0]!;
     game.state.inventory["spark-salt"] = 1;
-    expect(game.useItemOutOfCombat("spark-salt", c.id)).toBeNull();
-    expect(c.magicPower).toBe(before + 5);
+    expect(game.useItemOutOfCombat("spark-salt", outside.id)).not.toBeNull();
+    expect(game.state.inventory["spark-salt"]).toBe(1);
+
+    const { ctx } = makeCtx();
+    const mage = ctx.party.find((c) => c.classId === "mage")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    ctx.inventory["spark-salt"] = 1;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: mage.id };
+    const before = mage.magicPower;
+    expect(queueItemAction(combat, self, "spark-salt", [self], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(mage.magicPower).toBe(before + 5);
+  });
+
+  test("every item that applies a status is refused outside combat", () => {
+    const game = new Game(9);
+    const statusItems = ITEMS.filter((i) => i.effects.some((e) => e.kind === "applyStatusEffect"));
+    expect(statusItems.length).toBeGreaterThan(0);
+    for (const item of statusItems) {
+      game.state.inventory[item.id] = 1;
+      expect(game.useItemOutOfCombat(item.id, game.state.party[0]!.id)).not.toBeNull();
+      expect(game.state.inventory[item.id]).toBe(1);
+    }
   });
 });
 

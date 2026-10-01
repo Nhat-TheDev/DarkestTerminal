@@ -8,6 +8,7 @@ import { rollShopOffers } from "../src/data/shopStock";
 import { getItem } from "../src/data/items";
 import { getArchetype } from "../src/data/monsters";
 import { BALANCE } from "../src/data/balanceConfig";
+import { STRINGS } from "../src/data/strings";
 import type { GameState } from "../src/types";
 
 function restGame(seed = 1) {
@@ -65,6 +66,21 @@ describe("Rest room runner", () => {
     traded.game.leaveRunner();
     expect(traded.game.state.restRunner).toBeNull();
     expect(traded.room.cleared).toBe(true);
+  });
+});
+
+describe("Rest room runner bookkeeping", () => {
+  test("a runner left over from one floor is gone on the next, where room ids repeat", () => {
+    const { game } = restGame(8);
+    withRunner(game, [{ itemId: "small-health-potion", lot: false }]);
+    game.advanceToNextFloor();
+    expect(game.state.restRunner).toBeNull();
+  });
+
+  test("there is an appearance text for every variant the config can roll, and no spare ones", () => {
+    const count = BALANCE.runner.noticeVariantCount;
+    for (let i = 0; i < count; i++) expect(STRINGS[`runner.notice${i}`]).toBeTruthy();
+    expect(STRINGS[`runner.notice${count}`]).toBeUndefined();
   });
 });
 

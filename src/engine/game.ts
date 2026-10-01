@@ -364,7 +364,8 @@ export class Game {
   useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
     const item = getItem(itemId);
     if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
-    if (item.target === "singleEnemy" || item.target === "allEnemies") return { reason: t("errors.itemNotUsableOutOfCombat") };
+    // Enemy-targeted items and status effects that count down in combat turns exist only for a fight; used beforehand they would be a free pre-buff.
+    if (item.target === "singleEnemy" || item.target === "allEnemies" || item.effects.some((e) => e.kind === "applyStatusEffect")) return { reason: t("errors.itemNotUsableOutOfCombat") };
 
     const log: LogEntry[] = [];
     // `satiety` effects are party-wide (GameState-scoped, not per-character) — for an "allAllies" item,
@@ -659,6 +660,7 @@ export class Game {
     }
     const nextDepth = this.state.floor.depth + 1;
     this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
+    this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;

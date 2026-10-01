@@ -17,6 +17,11 @@ function applyStatus(character: Character, statusEffectId: string, amount?: numb
   resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns: BALANCE.barter.activeDurationTurns, amount }, character, character, { log: quiet });
 }
 
+/** `percent` of `base`, rounded, but never less than 1 for a stat the buff raises: at low stats a small percent would round away to nothing. */
+export function statBonus(percent: number, base: number): number {
+  return percent > 0 && base > 0 ? Math.max(1, Math.round((percent / 100) * base)) : 0;
+}
+
 /**
  * Applies every pending barter buff to the living party as the elite/boss room's fight begins. A stat
  * that several buffs raise is applied once with their percents added (a status already active would
@@ -40,10 +45,10 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
   for (const character of ctx.party) {
     if (!character.isAlive) continue;
     // Computed from the stats before any buff lands, so one buff never inflates another's base.
-    const attackBonus = Math.round((percentByStat.attack / 100) * character.attack);
-    const magicBonus = Math.round((percentByStat.attack / 100) * character.magicPower);
-    const defenseBonus = Math.round((percentByStat.defense / 100) * (defenseMitigationX + character.defense));
-    const speedBonus = Math.round((percentByStat.speed / 100) * character.speed);
+    const attackBonus = statBonus(percentByStat.attack, character.attack);
+    const magicBonus = statBonus(percentByStat.attack, character.magicPower);
+    const defenseBonus = statBonus(percentByStat.defense, defenseMitigationX + character.defense);
+    const speedBonus = statBonus(percentByStat.speed, character.speed);
     if (attackBonus > 0) applyStatus(character, "barter-attack", attackBonus);
     if (magicBonus > 0) applyStatus(character, "barter-magic-power", magicBonus);
     if (defenseBonus > 0) applyStatus(character, "barter-defense", defenseBonus);

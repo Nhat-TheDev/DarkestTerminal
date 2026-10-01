@@ -3,7 +3,7 @@ import { Game } from "../src/engine/game";
 import { enterRoom, getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { tickDotEffects } from "../src/engine/resolver";
-import { barterBuffFor, barterCost } from "../src/engine/events/barter";
+import { barterBuffFor, barterCost, statBonus } from "../src/engine/events/barter";
 import { rollRestRunner } from "../src/engine/events/runner";
 import { rollBarterOffers } from "../src/data/shopStock";
 import { getArchetype } from "../src/data/monsters";
@@ -65,9 +65,9 @@ describe("applying pending barter buffs", () => {
     game.state.party.forEach((c, i) => {
       const defensePercent = percentOf(["chitin-shard"], "defense");
       const speedPercent = percentOf(["chitin-shard"], "speed");
-      expect(c.defense).toBe(before[i]!.defense + Math.round((defensePercent / 100) * (BALANCE.combat.defenseMitigationX + before[i]!.defense)));
-      expect(c.speed).toBe(before[i]!.speed + Math.round((speedPercent / 100) * before[i]!.speed));
-      expect(c.attack).toBe(before[i]!.attack + Math.round((percentOf(["chitin-shard"], "attack") / 100) * before[i]!.attack));
+      expect(c.defense).toBe(before[i]!.defense + statBonus(defensePercent, BALANCE.combat.defenseMitigationX + before[i]!.defense));
+      expect(c.speed).toBe(before[i]!.speed + statBonus(speedPercent, before[i]!.speed));
+      expect(c.attack).toBe(before[i]!.attack + statBonus(percentOf(["chitin-shard"], "attack"), before[i]!.attack));
     });
     expect(game.state.pendingBarterBuffs).toEqual([]);
     expect(game.state.combat?.log.some((l) => l.text === "The runner's bargains take hold: Chitin Shard.")).toBe(true);
@@ -90,7 +90,7 @@ describe("applying pending barter buffs", () => {
     enterRoom(game.state, room, game.ctx);
     const percent = percentOf(picked, "attack");
     expect(percent).toBeGreaterThan(percentOf(["warband-trophy"], "attack")); // both buffs raise attack
-    game.state.party.forEach((c, i) => expect(c.attack).toBe(attacks[i]! + Math.round((percent / 100) * attacks[i]!)));
+    game.state.party.forEach((c, i) => expect(c.attack).toBe(attacks[i]! + statBonus(percent, attacks[i]!)));
   });
 
   test("an attack buff also raises a caster's magic power", () => {
@@ -99,7 +99,26 @@ describe("applying pending barter buffs", () => {
     game.state.pendingBarterBuffs = ["warband-trophy"];
     const magic = mage.magicPower;
     enterRoom(game.state, room, game.ctx);
-    expect(mage.magicPower).toBe(magic + Math.round((percentOf(["warband-trophy"], "attack") / 100) * magic));
+    expect(mage.magicPower).toBe(magic + statBonus(percentOf(["warband-trophy"], "attack"), magic));
+  });
+
+  test("a small percent still gives at least +1, and a stat the buff doesn't raise gets nothing", () => {
+    expect(statBonus(4, 3)).toBe(1);
+    expect(statBonus(4, 100)).toBe(4);
+    expect(statBonus(4, 0)).toBe(0);
+    expect(statBonus(0, 100)).toBe(0);
+  });
+
+  test("a 4% buff raises every stat of a low-level party by at least 1", () => {
+    const { game, room } = bossRoomGame(8);
+    game.state.pendingBarterBuffs = ["vermin-hide"];
+    const before = game.state.party.map((c) => ({ attack: c.attack, speed: c.speed, defense: c.defense }));
+    enterRoom(game.state, room, game.ctx);
+    game.state.party.forEach((c, i) => {
+      expect(c.attack).toBeGreaterThan(before[i]!.attack);
+      expect(c.speed).toBeGreaterThan(before[i]!.speed);
+      expect(c.defense).toBeGreaterThan(before[i]!.defense);
+    });
   });
 
   test("a regeneration buff heals its share of max HP each turn", () => {
@@ -124,6 +143,22 @@ describe("applying pending barter buffs", () => {
     game.state.party.forEach((c, i) => {
       expect(c.defense).toBe(defenses[i]!);
       expect(c.activeStatusEffects.some((s) => s.statusEffectId.startsWith("barter-"))).toBe(false);
+    });
+  });
+
+  test("regeneration and magic power buffs end with the fight too", () => {
+    const { game, room, monster } = bossRoomGame(9);
+    game.state.pendingBarterBuffs = ["slime-solution", "warband-trophy"];
+    const magic = game.state.party.map((c) => c.magicPower);
+    enterRoom(game.state, room, game.ctx);
+    expect(game.state.party[0]!.activeStatusEffects.some((s) => s.statusEffectId.startsWith("barter-regen-"))).toBe(true);
+    const attacker = game.state.party[0]!;
+    game.queue({ kind: "character", id: attacker.id }, attacker.unlockedSkillIds[0]!, [{ kind: "monster", id: monster.id }]);
+    game.resolve();
+    expect(game.state.combat?.outcome).toBe("victory");
+    game.state.party.forEach((c, i) => {
+      expect(c.activeStatusEffects).toEqual([]);
+      expect(c.magicPower).toBe(magic[i]!);
     });
   });
 
