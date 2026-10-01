@@ -12,6 +12,7 @@ import { Game } from "../src/engine/game";
 import { maybeTriggerReflection, pickReflectionPrompt } from "../src/engine/events/shared";
 import { makeCtx } from "./helpers";
 import { BALANCE } from "../src/data/balanceConfig";
+import { getItem } from "../src/data/items";
 
 function forceEventRoom(game: Game, eventId: string) {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -1183,6 +1184,33 @@ describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative
       forceEventRoom(game, "waiting-supplies");
       expect(game.openChest()).toBeNull();
       expect(game.state.pendingArtifactDecision?.artifactId).toBe("travelers-ration");
+    }
+  });
+
+  test("waiting-supplies also adds its guaranteedItems to the inventory and says so", () => {
+    const game = new Game(118);
+    const kitsBefore = game.state.inventory["exploration-kit"] ?? 0;
+    forceEventRoom(game, "waiting-supplies");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.inventory["exploration-kit"]).toBe(kitsBefore + 3);
+    expect(game.state.message).toBe("Received Exploration Kit ×3.");
+  });
+
+  test("an instantReward event without guaranteedItems leaves the inventory alone", () => {
+    const game = new Game(119);
+    const inventoryBefore = { ...game.state.inventory };
+    forceEventRoom(game, "open-chest");
+    expect(game.openChest()).toBeNull();
+    expect(game.state.inventory).toEqual(inventoryBefore);
+  });
+
+  test("every guaranteedItems entry names a real item with a positive whole count, on an instantReward event", () => {
+    for (const event of EVENTS) {
+      for (const entry of event.guaranteedItems ?? []) {
+        expect(event.kind).toBe("instantReward");
+        expect(() => getItem(entry.itemId)).not.toThrow();
+        expect(Number.isInteger(entry.count) && entry.count >= 1).toBe(true);
+      }
     }
   });
 });

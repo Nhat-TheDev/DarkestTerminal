@@ -34,6 +34,7 @@ EventDefinition {
   onceLifetime?: boolean     // rollEvent() excludes it once fired — the same 4 events above
   noArtifactReward?: boolean // instantReward only — still-breathing/the-delay skip the usual artifact grant
   guaranteedArtifactId?: Id  // instantReward only — grants this exact artifact instead of rolling; waiting-supplies only so far
+  guaranteedItems?: { itemId: Id, count: number }[]  // instantReward only — items added to the inventory on top of the artifact; waiting-supplies only so far
 
   // Narrative layer fields (§8.13-§8.16) — optional, never change an event's underlying mechanic,
   // only what description/prompt text is shown and when.
@@ -516,11 +517,11 @@ Same shape as §8.17/§8.18 — **[1] Move on** — but **`noArtifactReward: tru
 
 Same shape as §8.17-8.19 — **[1] Move on** — but `guaranteedArtifactId: "travelers-ration"` rather than a standard-table roll: the reward is specifically the bundle described in the scene, not an unrelated artifact pulled from nowhere (10-event-narrative.md Part A).
 
+The bundle also holds supplies: `guaranteedItems` adds **3 Exploration Kits** to the inventory (`openChest`, `src/engine/events/openChest.ts`) and the result message lists them. The kit is not sold anywhere, so this event is one of its two sources, with the Unique-tier monster drop (§7.1).
+
 **Cross-event variant**: once the party has resolved `merchant` this run (any outcome), the rope's knot reads as "the same careful knot you've started to recognize" — the only tie between this event and the Merchant's spiral motif (Part C.1 pair 11). Without that prior visit, the base line above carries no such recognition.
 
 **No recurring NPC, no chain.** **Reflection**: see §8.16.
-
-> **Planned, not implemented:** the bundle will also give 3 `exploration-kit` items, which will stop being sold. The reward described above is the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
 
 ---
 

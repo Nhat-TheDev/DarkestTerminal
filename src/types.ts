@@ -402,6 +402,9 @@ export interface EventDefinition {
       table — for a scene whose reward is a specific object described in the text itself, not a
       generic loot beat (e.g. waiting-supplies' bundle). Ignored if `noArtifactReward` is set. */
   guaranteedArtifactId?: Id;
+  /** `instantReward` only: items added to the inventory on top of the artifact reward — for a scene
+      whose bundle also holds consumables (e.g. waiting-supplies' Exploration Kits). */
+  guaranteedItems?: { itemId: Id; count: number }[];
   /** Overrides the generic "Open the chest" confirm-option text in the `eventOpenChest` UI screen
       for `instantReward` events whose scene isn't a chest. */
   instantRewardActionLabel?: string;

@@ -37,6 +37,7 @@
   "game.leftEmptyHanded": "Left empty-handed.",
   "game.leftWithoutPaying": "Left without paying the price.",
   "game.receivedArtifact": "Received the artifact {{artifact}}.",
+  "game.receivedItems": "Received {{items}}.",
   "game.declinedLeft": "Declined and left.",
   "game.sacrificeResult": "Sacrificed {{old}}, received {{new}}.",
   "game.leftRitual": "Left the ritual circle.",

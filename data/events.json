@@ -371,6 +371,7 @@
     "chainEscalatedDescription": "By now, none of you wonder why walking away from something like this always seems to leave you holding more than you walked in with. It stopped feeling like luck somewhere back there.",
     "instantRewardActionLabel": "  [1] Move on",
     "guaranteedArtifactId": "travelers-ration",
+    "guaranteedItems": [{ "itemId": "exploration-kit", "count": 3 }],
     "reflection": {
       "prompt": "You didn't take the whole bundle. Something about leaving part of it felt right.",
       "options": { "curious": "You wonder how long it's been sitting there, waiting for someone who isn't coming.", "wary": "Taking a dead stranger's supplies doesn't sit easy, whatever the reason they're still here.", "dismissive": "Supplies are supplies. Nobody's using them now." }

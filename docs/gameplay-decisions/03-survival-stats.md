@@ -65,7 +65,7 @@ A choice offered **after winning any combat room** (regular/Elite/Boss, not just
 
 Implementation: `Game.camp()` → `campAction` (`src/engine/survival.ts`); UI flow in `src/ui/screens/camp.ts`, wired in after `roomReward` via `proceedAfterVictory`/`finishVictorySequence` (`src/ui/screens/context.ts`).
 
-**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction.
+**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction. The `waiting-supplies` event (`08-events.md` §8.20) is the other source: it adds 3 kits.
 
 Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]`, usable out of combat like any other item (`combatUsable: false` only blocks it from the in-combat item list) — `modifyStat` targeting `"satiety"` reads/writes `GameState.satiety` directly (needs a `gameState` reference in `ResolveContext`, since satiety isn't on `Character`), distinct from `modifyStat` targeting `fear` which stays per-character.
 
