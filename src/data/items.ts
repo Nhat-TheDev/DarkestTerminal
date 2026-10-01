@@ -60,29 +60,28 @@ export function formatItemEffect(item: ItemDefinition): string {
   return item.effects.map(itemEffectSummary).join(". ") + "." + (TARGET_NOTE[item.target] ?? "");
 }
 
-const BASE_ITEM_IDS = ITEMS.filter((i) => !i.archetypeIds || i.archetypeIds.length === 0).map((i) => i.id);
+const TIER_WEIGHTS = BALANCE.items.tierWeights;
 
-const ITEM_DROP_CHANCE = BALANCE.items.itemDropChance;
-
-const ITEM_WEIGHT_DEPTH_GROWTH = BALANCE.items.itemWeightDepthGrowth;
-
-function effectiveWeight(item: ItemDefinition, floorDepth: number): number {
-  const base = item.weight ?? 1;
-  if (base >= 1) return base;
-  return Math.min(1, base + ITEM_WEIGHT_DEPTH_GROWTH * (floorDepth - 1));
+for (const item of ITEMS) {
+  if (!(item.tier in TIER_WEIGHTS)) throw new Error(`data/items.json: "${item.id}" has an unknown tier "${item.tier}"`);
+  if (item.archetypeIds?.length && item.effects.length > 0) throw new Error(`data/items.json: trophy "${item.id}" must have no effects`);
 }
 
-export function rollItemDrop(archetypeId: Id, rng: Rng, floorDepth = 1): Id | null {
+/** Trophies (items with `archetypeIds`) drop only from their own monsters; everything else is the general pool. */
+const TROPHIES = ITEMS.filter((i) => i.archetypeIds?.length);
+const GENERAL_ITEMS = ITEMS.filter((i) => !i.archetypeIds?.length);
+
+const ITEM_DROP_CHANCE = BALANCE.items.itemDropChance;
+const TROPHY_DROP_SHARE = BALANCE.items.trophyDropShare;
+
+function dropWeight(item: ItemDefinition): number {
+  return TIER_WEIGHTS[item.tier] * (item.groupItem ? BALANCE.items.groupDropMultiplier : 1);
+}
+
+export function rollItemDrop(archetypeId: Id, rng: Rng, _floorDepth = 1): Id | null {
   if (!rng.chance(ITEM_DROP_CHANCE)) return null;
 
-  const signatureIds = ITEMS.filter((i) => i.archetypeIds?.includes(archetypeId)).map((i) => i.id);
-  const weighted: { id: Id; weight: number }[] = [];
-  if (signatureIds.length > 0) {
-    const signatureTotal = signatureIds.reduce((sum, id) => sum + effectiveWeight(getItem(id), floorDepth), 0);
-    for (const id of signatureIds) weighted.push({ id, weight: (effectiveWeight(getItem(id), floorDepth) / signatureTotal) * 50 });
-  }
-  const baseTotal = BASE_ITEM_IDS.reduce((sum, id) => sum + effectiveWeight(getItem(id), floorDepth), 0);
-  for (const id of BASE_ITEM_IDS) weighted.push({ id, weight: (effectiveWeight(getItem(id), floorDepth) / baseTotal) * 50 });
-
-  return rng.weightedPick(weighted, (w) => w.weight).id;
+  const trophies = TROPHIES.filter((i) => i.archetypeIds?.includes(archetypeId));
+  const pool = trophies.length > 0 && rng.chance(TROPHY_DROP_SHARE) ? trophies : GENERAL_ITEMS;
+  return rng.weightedPick(pool, dropWeight).id;
 }

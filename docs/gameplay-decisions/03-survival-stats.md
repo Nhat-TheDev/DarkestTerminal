@@ -65,7 +65,7 @@ A choice offered **after winning any combat room** (regular/Elite/Boss, not just
 
 Implementation: `Game.camp()` → `campAction` (`src/engine/survival.ts`); UI flow in `src/ui/screens/camp.ts`, wired in after `roomReward` via `proceedAfterVictory`/`finishVictorySequence` (`src/ui/screens/context.ts`).
 
-**Drop source**: a low-weight, monster-specific drop (same mechanic as any other monster-specific item, §7.1) from humanoid archetypes: `zombie`, `zombie-knight`, `skeleton`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard`, `dark-knight`. Weight `0.15` — deliberately lower than any other monster-specific item weight (which range `0.5`–`1`) — still grows toward `1` with floor depth via the standard `itemWeightDepthGrowth` mechanic (§7.1).
+**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction.
 
 Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]`, usable out of combat like any other item (`combatUsable: false` only blocks it from the in-combat item list) — `modifyStat` targeting `"satiety"` reads/writes `GameState.satiety` directly (needs a `gameState` reference in `ResolveContext`, since satiety isn't on `Character`), distinct from `modifyStat` targeting `fear` which stays per-character.
 

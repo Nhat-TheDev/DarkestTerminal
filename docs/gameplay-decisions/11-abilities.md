@@ -283,7 +283,7 @@ The ability roll shares the same drop-chance/rarity mechanics for both
 sources:
 
 - **Drop chance**: `abilities.dropChance = 0.35` (35%) per eligible kill —
-  deliberately below `items.itemDropChance` (0.6) since an Ability
+  deliberately below `items.itemDropChance` (0.9) since an Ability
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
 - **The roll excludes any ability id already in `unlockedAbilityIds`.**
@@ -299,8 +299,8 @@ sources:
 - **Rarity depends on both source (Elite vs. Boss) and current floor
   depth** — "the deeper you are, the better the ability," implemented as
   a linear interpolation between a depth-1 table and a depth-cap table
-  (mirrors how `items.itemWeightDepthGrowth` already scales item weights
-  by depth, just applied per-rarity instead of per-item):
+  (the same idea as the artifact rarity schedule in `07-items-artifacts.md`,
+  just applied per-rarity with a plain interpolation):
 
 ```
 // data/balance-config.json, new "abilities" block

@@ -277,14 +277,20 @@ export interface StatusEffectDefinition {
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
 }
 
+export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
+
 export interface ItemDefinition {
   id: Id;
   name: string;
   description: string;
   target: SkillTarget;
   effects: SkillEffect[];
+  /** Drives the item's drop weight (`BALANCE.items.tierWeights`). */
+  tier: ItemTier;
+  /** A trophy: an effect-less barter token dropped only by these monsters. */
   archetypeIds?: Id[];
-  weight?: number;
+  /** A trophy shared by several monsters of one race; its drop weight is scaled by `BALANCE.items.groupDropMultiplier`. */
+  groupItem?: boolean;
   combatUsable?: boolean;
 }
 

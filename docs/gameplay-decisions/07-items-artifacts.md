@@ -31,9 +31,11 @@ ItemDefinition {
   id: Id
   name: string
   description: string
+  target: SkillTarget
   effects: SkillEffect[]     // reuses the exact same existing resolver — no new effect kind needed for items
-  weight?: number            // drop weight (default 1), see "Drop source" below
-  archetypeIds?: Id[]        // monster-specific items only, see "Monster-specific items" below
+  tier: ItemTier             // common | uncommon | rare | unique | epic | legendary — sets the drop weight, see "Drop source" below
+  archetypeIds?: Id[]        // a trophy: drops only from these monsters, see "Trophies" below
+  groupItem?: boolean        // a trophy shared by several monsters of one race: its drop weight is scaled down
   combatUsable?: boolean     // default true; false hides it from the in-combat "use item" list (e.g. Exploration Kit, §3)
 }
 ```
@@ -42,25 +44,29 @@ Used in combat: during the command phase, a character chooses "use item" instead
 
 ### Drop source
 
-Drops randomly when killing **any monster** (regular/Elite/Boss), gated by `data/balance-config.json` field `items.itemDropChance` (`ITEM_DROP_CHANCE`, `src/data/items.ts`). Doesn't drop from Treasure/Event rooms (those 2 rooms are reserved for Artifacts — section 7.2, also see `08-events.md`).
+Drops randomly when killing **any monster** (regular/Elite/Boss), gated by `data/balance-config.json` field `items.itemDropChance` (0.9, `ITEM_DROP_CHANCE`, `src/data/items.ts`). Doesn't drop from Treasure/Event rooms (those 2 rooms are reserved for Artifacts — section 7.2, also see `08-events.md`).
 
-When the drop roll succeeds (gated by `items.itemDropChance`, `data/balance-config.json`), the specific item is chosen from a **combined pool** = the common-item catalog (below) + the item(s) specific to the exact `archetypeId` just killed (the "monster-specific items" table below). The pool splits into 2 groups, **not an even split within each group** — `ItemDefinition.weight` (`data/items.json`, default `1` when unset) weights each item inside its group (`rollItemDrop`, `src/data/items.ts`):
+When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a bucket, then an item inside it:
 
-- One share of the total goes to that monster type's specific item(s), split proportionally to `weight` across the applicable items (not evenly). **1 monster can belong to multiple groups at once** (e.g. Zombie Knight belongs to both the Zombie group and the Knight/Warrior group). Coverage is partial: only some archetypes in `data/monsters.json` have a dedicated specific item (15 of 43 as of writing) — everything else falls through to the common-pool share below.
-- The remaining share is split proportionally to `weight` across the common-pool items — **not evenly**. Some common items carry a `weight` below the default `1` (`data/items.json`) — those get a smaller share at low floor depth than the unweighted ones.
-- **Weight scales up with floor depth**: any item with `weight < 1` grows via `effectiveWeight = min(1, weight + itemWeightDepthGrowth × (floorDepth − 1))` (`items.itemWeightDepthGrowth`, `data/balance-config.json`). Once a half-weighted item's `effectiveWeight` reaches `1`, the split among the common items becomes even — the skew described above is specific to early floors. The same growth applies to weighted monster-specific items. Read `data/items.json`/`data/balance-config.json` directly for the current split rather than trusting a hand-copied percentage here, since it drifts the moment weights are retuned.
+- **Trophy bucket** — chosen with probability `items.trophyDropShare` (0.4), only for a monster that has trophies (`archetypeIds` containing its archetype). A monster with no trophy (Lesser Vampire, The Founder) skips this step.
+- **General pool** — every other drop: the items with no `archetypeIds`.
+- **Weight inside a bucket** = `items.tierWeights[tier]` (common 1, uncommon 0.8, rare 0.5, unique 0.3, epic 0.1, legendary 0.05), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight no longer scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
-> **Planned, not implemented:** every item gains a `tier` (Common–Legendary) that replaces the hand-set `weight`, monster trophies become effect-less barter tokens, `items.itemDropChance` rises to 0.9, and about 36 new consumables enter the general pool. The drop rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+> **Planned, not implemented:** about 36 new consumables enter the general pool (with potion amounts rescaled), the Merchant's Runner buys and sells items, and trophies become barter tokens. The rules above describe the current game. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
 
-### Catalog — common items
+### Catalog — general pool
 
-Full list (id, name, effect, notes): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, a fear-calming item, a debuff-cure (`Antidote`), and 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare monster-specific Exploration Kit drop described there.
+Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction. As of writing this covers healing/mana potions in two sizes, a fear-calming item, a debuff-cure (`Antidote`), 2 temporary-buff items (`Whetstone`/`Temporary Ward`) that apply new statuses — check `data/status-effects.json` for any status introduced solely for an item (same shape as skill-granted buffs, differing only in trigger source) — and the `exploration-kit` (Unique, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
 
-### Monster-specific items
+### Trophies
 
-Assigned by **monster group by name/tag** (1 monster can belong to multiple groups — see the multi-group roll mechanic above). Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`. Reuses `effects: SkillEffect[]` and the existing resolver as much as possible; a few entries introduce new status effects (check `data/status-effects.json` for any status referenced by an item that doesn't already exist from the skill kits). The Exploration Kit (§3, Camp) is one of these — a humanoid-archetype-only drop with a deliberately low weight (`0.15`) and `combatUsable: false`.
+A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it, and its purpose is to be traded later. Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
+
+- **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss.
+- **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.
+- A handful of older items (Grave Dust, Rotten Flesh, Broken Blade Fragment, Rat Tail, Venom Gland) are trophies with a tier set by hand.
 
 ---
 

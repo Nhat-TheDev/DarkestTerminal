@@ -63,7 +63,7 @@ const BALANCE_SURVIVAL_FIELDS = [
   "fearEliteOrBossQuickVictoryRoundThreshold",
 ] as const;
 const BALANCE_PARTY_FIELDS = ["maxEquippedArtifacts", "startingExplorationKits"] as const;
-const BALANCE_ITEMS_FIELDS = ["itemDropChance", "itemWeightDepthGrowth"] as const;
+const BALANCE_ITEMS_FIELDS = ["itemDropChance", "trophyDropShare", "groupDropMultiplier"] as const;
 const BALANCE_FLOOR_GENERATION_FIELDS = ["minPathRooms", "maxPathRooms", "maxBranches", "minBranchStartStage", "minBranchSpacing", "maxEventRoomsPerPath", "minRestRoomsPerPath", "maxRestRoomsPerPath"] as const;
 const BALANCE_EVENTS_FIELDS = ["commonTierWeight", "rareTierWeight", "merchantOfferCount", "merchantRefreshCostCoins", "merchantMaxRefreshes", "bloodAltarHpPercent", "collapsedFloorHpPercent", "collapsedFloorSuccessChance", "eventGuardianStatMultiplier", "wanderingHermitExchangeCostCoins"] as const;
 const COIN_DROP_TIERS = ["weak", "medium", "strong", "elite", "boss"] as const;

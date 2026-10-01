@@ -1689,7 +1689,16 @@ function renderOther() {
   out.appendChild(el("p", { class: "hint", text: "merchantPriceCoins (per-rarity) and gamblingDenRounds (per-round stake/odds) are nested structures not editable here — edit data/balance-config.json directly for those." }));
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Items" }));
-  out.appendChild(buildBalanceEditCard("Items", "data/balance-config.json", "items", Object.entries(b.items).map(([key, value]) => ({ key, value })), renderOther));
+  out.appendChild(
+    buildBalanceEditCard(
+      "Items",
+      "data/balance-config.json",
+      "items",
+      ["itemDropChance", "trophyDropShare", "groupDropMultiplier"].map((key) => ({ key, value: b.items[key] })),
+      renderOther
+    )
+  );
+  out.appendChild(el("p", { class: "hint", text: "tierWeights (per-tier drop weight) is a nested structure not editable here — edit data/balance-config.json directly." }));
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Floor generation" }));
   out.appendChild(buildBalanceEditCard("Floor generation", "data/balance-config.json", "floorGeneration", Object.entries(b.floorGeneration).map(([key, value]) => ({ key, value })), renderOther));
@@ -2282,6 +2291,7 @@ boot();
 // ============================== DATA EDITOR (CRUD) ==============================
 (() => {
   const SKILL_TARGETS = ["self", "singleAlly", "allAllies", "singleEnemy", "allEnemies", "singleAllyOrEnemy", "allAlliesAndEnemies"];
+  const ITEM_TIERS = ["common", "uncommon", "rare", "unique", "epic", "legendary"];
   const DAMAGE_TYPES = ["physical", "magic", "fire", "ice", "lightning", "poison", "bleed", "holy"];
   const COMBAT_STATS = ["attack", "defense", "aggro", "speed"];
   const SKILL_EFFECT_KINDS = ["damage", "heal", "restoreMp", "applyStatusEffect", "removeStatusEffect", "modifyStat", "modifyCombatStat", "summon"];
@@ -2705,23 +2715,24 @@ boot();
     const name = textInput(entry.name);
     const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
     const target = selectInput(SKILL_TARGETS, entry.target || "self");
-    const weight = numberInput(entry.weight ?? 1, "1");
+    const tier = selectInput(ITEM_TIERS, entry.tier || "common");
+    const groupItem = checkboxField("Group trophy (drop weight scaled by groupDropMultiplier)", entry.groupItem);
     const combatUsable = checkboxField("Usable in combat", entry.combatUsable);
     const archetypeIds = checkboxGroup(monsterArchetypesCatalog.map((m) => m.id).sort(), entry.archetypeIds || []);
     const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
 
     formEl.replaceChildren(
-      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Target", target), field("Roll weight", weight)]),
+      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Target", target), field("Tier", tier)]),
       field("Description", description),
-      el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable]),
-      el("fieldset", {}, [el("legend", { text: "Restrict drop to specific monster archetypes (optional — leave unchecked for a normal roll-table drop)" }), archetypeIds]),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable, groupItem]),
+      el("fieldset", {}, [el("legend", { text: "Trophy: drops only from these monster archetypes (leave unchecked for a general-pool item)" }), archetypeIds]),
       effectsEditor
     );
 
     return {
       collect() {
-        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), target: target.value, effects: effectsEditor._collect() };
-        if (weight.value !== "") out.weight = Number(weight.value);
+        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), target: target.value, effects: effectsEditor._collect(), tier: tier.value };
+        if (groupItem._checkbox.checked) out.groupItem = true;
         if (combatUsable._checkbox.checked) out.combatUsable = true;
         if (archetypeIds._values().length) out.archetypeIds = archetypeIds._values();
         return out;

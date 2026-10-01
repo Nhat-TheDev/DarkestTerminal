@@ -120,8 +120,17 @@
     "wanderingHermitExchangeCostCoins": 50
   },
   "items": {
-    "itemDropChance": 0.6,
-    "itemWeightDepthGrowth": 0.1
+    "itemDropChance": 0.9,
+    "trophyDropShare": 0.4,
+    "groupDropMultiplier": 0.6,
+    "tierWeights": {
+      "common": 1,
+      "uncommon": 0.8,
+      "rare": 0.5,
+      "unique": 0.3,
+      "epic": 0.1,
+      "legendary": 0.05
+    }
   },
   "artifacts": {
     "floorsPerStep": 10,

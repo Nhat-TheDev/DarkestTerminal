@@ -1,5 +1,5 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity } from "../types";
+import type { ArtifactRarity, ItemTier } from "../types";
 
 interface BalanceConfig {
   combat: {
@@ -116,7 +116,11 @@ interface BalanceConfig {
   };
   items: {
     itemDropChance: number;
-    itemWeightDepthGrowth: number;
+    /** Share of a trophy monster's drops that come from its trophies. */
+    trophyDropShare: number;
+    /** Multiplier on a group trophy's drop weight. */
+    groupDropMultiplier: number;
+    tierWeights: Record<ItemTier, number>;
   };
   /** Artifact rarity odds by floor depth — `docs/gameplay-decisions/07-items-artifacts.md`, "Level bands & drop schedule". Each source's `anchorWeights` are its odds on the step containing `anchorFirstFloor`; every other step scales rarity `i` (common = 0 … epic = 3) by `tilt ^ (i × stepsFromAnchor)` and renormalizes. */
   artifacts: {

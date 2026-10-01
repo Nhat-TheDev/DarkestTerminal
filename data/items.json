@@ -10,7 +10,7 @@
         "amount": 30
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "large-health-potion",
@@ -23,7 +23,7 @@
         "amount": 70
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "small-mana-potion",
@@ -36,7 +36,7 @@
         "amount": 20
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "large-mana-potion",
@@ -49,7 +49,7 @@
         "amount": 45
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "exploration-kit",
@@ -63,17 +63,8 @@
         "amount": 30
       }
     ],
-    "weight": 0.15,
-    "combatUsable": false,
-    "archetypeIds": [
-      "zombie",
-      "zombie-knight",
-      "skeleton",
-      "skeleton-archer",
-      "skeleton-warrior",
-      "skeleton-guard",
-      "dark-knight"
-    ]
+    "tier": "unique",
+    "combatUsable": false
   },
   {
     "id": "calming-draught",
@@ -87,7 +78,7 @@
         "amount": -25
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "antidote",
@@ -99,7 +90,7 @@
         "kind": "removeStatusEffect"
       }
     ],
-    "weight": 0.5
+    "tier": "common"
   },
   {
     "id": "whetstone",
@@ -113,7 +104,7 @@
         "durationTurns": 2
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "temporary-ward",
@@ -127,164 +118,441 @@
         "durationTurns": 2
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
-    "id": "grave-dust",
-    "name": "Grave Dust",
-    "description": "Finely ground bone dust from an old grave — rubbed on skin, it sets the flesh like old bone.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
-        "durationTurns": 2
-      }
-    ],
+    "id": "vermin-hide",
+    "name": "Vermin Hide",
+    "description": "Strips of hide peeled from the small things that live under the floors. Some of it is fur, some of it is skin, and it has all dried to the same grey.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "groupItem": true,
     "archetypeIds": [
-      "skeleton",
-      "skeleton-archer",
-      "skeleton-guard"
-    ],
-    "weight": 0.5
+      "dungeon-rat",
+      "black-bat",
+      "vampire-bat",
+      "toxic-toad"
+    ]
   },
   {
-    "id": "broken-blade-fragment",
-    "name": "Broken Blade Fragment",
-    "description": "A broken weapon fragment, still sharp, stripped down to be reforged into a new blade.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "empower",
-        "durationTurns": 2
-      }
-    ],
+    "id": "predator-sinew",
+    "name": "Predator Sinew",
+    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat on any surface.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
     "archetypeIds": [
-      "skeleton-warrior",
-      "zombie-knight",
-      "dark-knight"
-    ],
-    "weight": 0.5
+      "dire-wolf",
+      "cave-bear"
+    ]
   },
   {
-    "id": "rotten-flesh",
-    "name": "Rotten Flesh",
-    "description": "A piece of rotting flesh reeking with a foul stench — other monsters would rather steer clear.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "distracted",
-        "durationTurns": 1
-      }
-    ],
-    "archetypeIds": [
-      "zombie",
-      "zombie-knight"
-    ],
-    "weight": 1
-  },
-  {
-    "id": "venom-gland",
-    "name": "Venom Gland",
-    "description": "A still-fresh venom gland, used to coat a weapon before a long encounter.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "poison-coat",
-        "durationTurns": 3
-      }
-    ],
+    "id": "chitin-shard",
+    "name": "Chitin Shard",
+    "description": "A curved shard of scale or plate; it is hard to say which. One edge is a seam that came apart clean, the other was broken off.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
     "archetypeIds": [
       "snake",
       "lizard",
-      "spider"
-    ],
-    "weight": 0.5
+      "spider",
+      "armored-beetle"
+    ]
   },
   {
-    "id": "venom-thorn",
-    "name": "Venom Thorn",
-    "description": "A thorn as thick as a finger — piercing a target makes the venom already in their body take hold many times faster.",
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "poison-vulnerable",
-        "durationTurns": 2
-      }
-    ],
+    "id": "cult-rag",
+    "name": "Cult Rag",
+    "description": "A strip of coarse robe cloth, dyed a dark red-brown that may not be the original colour. The hem has been cut off all the way round.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
     "archetypeIds": [
-      "giant-spider"
-    ],
-    "weight": 1
+      "cultist-initiate",
+      "cultist-zealot"
+    ]
   },
   {
-    "id": "rat-meat",
-    "name": "Rat Meat",
-    "description": "Dungeon rat meat, tough but strangely nutritious — the body visibly recovers after eating it.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "regeneration",
-        "durationTurns": 3
-      }
-    ],
+    "id": "grave-cloth",
+    "name": "Grave Cloth",
+    "description": "Burial linen, brown at the folds and stiff where it was wet. It has been wrapped round something and unwrapped since, and the creases have not given.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
     "archetypeIds": [
-      "dungeon-rat"
-    ],
-    "weight": 0.5
+      "ghoulish-crawler",
+      "zombie"
+    ]
+  },
+  {
+    "id": "old-bone",
+    "name": "Old Bone",
+    "description": "A short bone polished on two faces where it slid against the next one. The third face is still rough.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
+    "archetypeIds": [
+      "skeleton",
+      "skeleton-mage",
+      "skeleton-archer",
+      "skeleton-warrior",
+      "skeleton-guard"
+    ]
+  },
+  {
+    "id": "ooze-residue",
+    "name": "Ooze Residue",
+    "description": "Dried ooze, cracked into flakes like river mud. Something small is still set into one of them, too small to name.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "slime",
+      "swamp-slime",
+      "lava-slime"
+    ]
+  },
+  {
+    "id": "warband-trophy",
+    "name": "Warband Trophy",
+    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who wanted them counted. It hangs heavier at one end.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "goblin",
+      "goblin-shaman",
+      "orc-brute"
+    ]
+  },
+  {
+    "id": "elemental-core",
+    "name": "Elemental Core",
+    "description": "A fist-sized stone that is a different temperature every time it is picked up. Wherever it is set down it leaves a ring, damp or scorched, never the same twice.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
+    "archetypeIds": [
+      "fire-elemental",
+      "water-elemental"
+    ]
+  },
+  {
+    "id": "wraith-essence",
+    "name": "Wraith Essence",
+    "description": "A vial that looks empty. The inside of the stopper is cold, and stays cold.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "groupItem": true,
+    "archetypeIds": [
+      "ghost",
+      "wraith"
+    ]
+  },
+  {
+    "id": "stone-core",
+    "name": "Stone Core",
+    "description": "A rough grey lump with one flat face, cut level by something that does not draw a straight line by eye. Tapped, it answers a little late.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "groupItem": true,
+    "archetypeIds": [
+      "gargoyle",
+      "lesser-golem",
+      "mimic"
+    ]
   },
   {
     "id": "bat-blood",
     "name": "Bat Blood",
-    "description": "Still-warm bat blood, gulped down mid-battle to stay standing.",
+    "description": "A stoppered vial of dark, thin blood that took several bats to fill. It smells of copper.",
     "target": "self",
-    "effects": [
-      {
-        "kind": "heal",
-        "amount": 20
-      }
-    ],
+    "effects": [],
+    "tier": "common",
     "archetypeIds": [
       "black-bat"
-    ],
-    "weight": 1
+    ]
+  },
+  {
+    "id": "bear-claw",
+    "name": "Bear Claw",
+    "description": "A claw as long as a hand, blunted at the tip from years of being dragged along stone. Three grooves run down the flat side, deep as a thumbnail.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "cave-bear"
+    ]
+  },
+  {
+    "id": "silk-gland",
+    "name": "Silk Gland",
+    "description": "A dried sac no bigger than a thumbnail, one end still trailing a fine thread. Pulled gently, it comes out a hand's length and stops.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "spider"
+    ]
+  },
+  {
+    "id": "prayer-beads",
+    "name": "Prayer Beads",
+    "description": "A short string of dark beads, worn shiny along about a dozen and left rough elsewhere. Someone always held it in the same place.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "cultist-zealot"
+    ]
+  },
+  {
+    "id": "rotten-bandage",
+    "name": "Rotten Bandage",
+    "description": "A bandage still wound in its last shape, stiff with something brown. The knot is neat.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "zombie"
+    ]
+  },
+  {
+    "id": "bone-shield-fragment",
+    "name": "Bone Shield Fragment",
+    "description": "A curved slice of bone from a rim. Two small holes run through the inside, worn oval by the strap that used to pass through them.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "skeleton-warrior"
+    ]
   },
   {
     "id": "slime-solution",
     "name": "Slime Solution",
-    "description": "The translucent ooze of a slime monster, strangely able to unclog the flow of magic.",
+    "description": "A jar of translucent ooze that has settled clear at the top. Whatever the slime had not finished dissolving is still in the jar.",
     "target": "self",
-    "effects": [
-      {
-        "kind": "restoreMp",
-        "amount": 20
-      }
-    ],
+    "effects": [],
+    "tier": "common",
     "archetypeIds": [
       "slime"
-    ],
-    "weight": 1
+    ]
+  },
+  {
+    "id": "knuckle-guard",
+    "name": "Knuckle Guard",
+    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it was made for was larger than yours.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "orc-brute"
+    ]
+  },
+  {
+    "id": "ember",
+    "name": "Ember",
+    "description": "A lump of charcoal that kept the grain of the wood it came from, and the knot where a branch left it.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "fire-elemental"
+    ]
+  },
+  {
+    "id": "hollow-plate",
+    "name": "Hollow Plate",
+    "description": "A shoulder plate, rusted through on the inside and bright on the outside.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "archetypeIds": [
+      "wraith"
+    ]
+  },
+  {
+    "id": "core-fragment",
+    "name": "Core Fragment",
+    "description": "A chip of dressed stone with one groove across it, ruled as straight as any mason could. The groove goes on past the edge, where the rest of the stone was.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "archetypeIds": [
+      "lesser-golem"
+    ]
+  },
+  {
+    "id": "venom-thorn",
+    "name": "Venom Thorn",
+    "description": "A thorn as thick as a finger, the tip stained yellow-green. The stain is wet.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "giant-spider"
+    ]
+  },
+  {
+    "id": "warped-vambrace",
+    "name": "Warped Vambrace",
+    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are fastened and the leather is whole. It was never taken off.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "zombie-knight"
+    ]
+  },
+  {
+    "id": "broken-oath-sigil",
+    "name": "Broken Oath Sigil",
+    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and its edges are worn as smooth as the face.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "dark-knight"
+    ]
+  },
+  {
+    "id": "warlords-trophy-chain",
+    "name": "Warlord's Trophy Chain",
+    "description": "A length of chain hung with pieces of other people's armour: a buckle, a hinge, a spur, part of a rank badge. Each link was forged for weight.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "orc-chieftain"
+    ]
+  },
+  {
+    "id": "nobles-signet",
+    "name": "Noble's Signet",
+    "description": "A gold signet ring, the crest worn nearly flat from years of pressing into wax. It is always clean when the pouch is opened.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "vampire-lord"
+    ]
   },
   {
     "id": "dragon-scale",
     "name": "Dragon Scale",
-    "description": "A heavy dragon scale, its metallic sheen still warm from fire — enough to forge a shield for the whole party.",
-    "target": "allAllies",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
-        "durationTurns": 2
-      }
-    ],
+    "description": "A scale as wide as a shield, still warm, with a metallic sheen. The edges are rounded from a lifetime of sliding against the others.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
     "archetypeIds": [
       "dragon"
-    ],
-    "weight": 0.5
+    ]
+  },
+  {
+    "id": "unraveled-fragment",
+    "name": "Unraveled Fragment",
+    "description": "A thumb of grey matter with a hinge at one end and a row of small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "void-amalgamation"
+    ]
+  },
+  {
+    "id": "weathered-keystone",
+    "name": "Weathered Keystone",
+    "description": "A wedge of stone that once locked an arch in place. The curve of the arch is still cut into both faces, though nothing has curved above it for a long time.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "ancient-golem"
+    ]
+  },
+  {
+    "id": "phylactery-shard",
+    "name": "Phylactery Shard",
+    "description": "A curved sliver of black glass, thin as a fingernail. Held to the light, it shows the room with the door still shut.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "lich"
+    ]
+  },
+  {
+    "id": "grave-dust",
+    "name": "Grave Dust",
+    "description": "Bone ground to a fine grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "skeleton",
+      "skeleton-archer",
+      "skeleton-guard"
+    ]
+  },
+  {
+    "id": "rotten-flesh",
+    "name": "Rotten Flesh",
+    "description": "A palm-sized piece of flesh gone soft and dark, wrapped in a leaf that has stopped helping.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "zombie",
+      "zombie-knight"
+    ]
+  },
+  {
+    "id": "broken-blade-fragment",
+    "name": "Broken Blade Fragment",
+    "description": "A length of broken blade, snapped clean across with the edge still keen. The maker's mark is on the part that is missing.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "skeleton-warrior",
+      "zombie-knight",
+      "dark-knight"
+    ]
+  },
+  {
+    "id": "rat-tail",
+    "name": "Rat Tail",
+    "description": "A rat's tail dried hard as cord, still curled the way it dried.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "dungeon-rat"
+    ]
+  },
+  {
+    "id": "venom-gland",
+    "name": "Venom Gland",
+    "description": "A venom gland the size of a bean, taut as a grape and yellow at the stalk.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "snake",
+      "lizard",
+      "spider"
+    ]
   }
 ]

@@ -1,45 +1,66 @@
 import { describe, test, expect } from "bun:test";
-import { getClass } from "../src/data/classes";
 import { Rng } from "../src/engine/rng";
 import { startCombat, queueItemAction, checkItemUsable, resolveRound } from "../src/engine/combat";
 import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
-import { rollItemDrop, getItem } from "../src/data/items";
+import { rollItemDrop, getItem, ITEMS } from "../src/data/items";
+import { BALANCE } from "../src/data/balanceConfig";
+import { getArchetype } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
-import type { CombatantRef } from "../src/types";
+import type { CombatantRef, ItemDefinition } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 import { STATUS_EFFECTS, formatStatusEffectMechanics } from "../src/data/statusEffects";
 
 describe("items", () => {
-  test("rollItemDrop fires close to the spec'd 60% of the time", () => {
+  test("rollItemDrop fires close to the configured 90% of the time", () => {
     const rng = new Rng(42);
     let drops = 0;
     const total = 4000;
     for (let i = 0; i < total; i++) {
       if (rollItemDrop("dungeon-rat", rng)) drops++;
     }
-    expect(drops / total).toBeGreaterThan(0.55);
-    expect(drops / total).toBeLessThan(0.65);
+    expect(drops / total).toBeGreaterThan(0.86);
+    expect(drops / total).toBeLessThan(0.94);
   });
 
-  test("on a successful roll, roughly half go to the archetype's own signature item", () => {
+  test("every item has a known tier, and a trophy (an item with archetypeIds) has no effects", () => {
+    for (const item of ITEMS) {
+      expect(Object.keys(BALANCE.items.tierWeights)).toContain(item.tier);
+      if (item.archetypeIds?.length) expect(item.effects).toEqual([]);
+      if (item.groupItem) expect(item.archetypeIds?.length ?? 0).toBeGreaterThan(1);
+      for (const archetypeId of item.archetypeIds ?? []) expect(() => getArchetype(archetypeId)).not.toThrow();
+    }
+  });
+
+  test("a trophy monster spends about trophyDropShare of its drops on its trophies", () => {
     const rng = new Rng(7);
-    let signatureHits = 0;
+    let trophyDrops = 0;
     let totalDrops = 0;
     for (let i = 0; i < 8000; i++) {
       const id = rollItemDrop("dungeon-rat", rng);
       if (!id) continue;
       totalDrops++;
-      if (id === "rat-meat") signatureHits++;
+      if (getItem(id).archetypeIds?.length) trophyDrops++;
     }
-    expect(totalDrops).toBeGreaterThan(0);
-    expect(signatureHits / totalDrops).toBeGreaterThan(0.4);
-    expect(signatureHits / totalDrops).toBeLessThan(0.6);
+    expect(trophyDrops / totalDrops).toBeGreaterThan(BALANCE.items.trophyDropShare - 0.04);
+    expect(trophyDrops / totalDrops).toBeLessThan(BALANCE.items.trophyDropShare + 0.04);
   });
 
-  test("an archetype in 3 groups (Zombie Knight) splits the signature share by weight, not evenly", () => {
-    // Zombie Knight's signature pool is now rotten-flesh (weight 1), broken-blade-fragment (weight 0.5),
-    // and the low-weight Exploration Kit (weight 0.15, shared across several humanoid archetypes) — so
-    // the 50% signature share splits ~30/15/5 by weight rather than evenly across "both" items.
+  test("within a monster's trophies the drop weight follows the tier, and a group trophy is scaled down", () => {
+    // Dungeon Rat: rat-tail (uncommon, 0.8) vs the vermin-hide group trophy (uncommon, 0.8 x 0.6 = 0.48).
+    const rng = new Rng(3);
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 20000; i++) {
+      const id = rollItemDrop("dungeon-rat", rng);
+      if (id === "rat-tail" || id === "vermin-hide") counts[id] = (counts[id] ?? 0) + 1;
+    }
+    const ratTailShare = (counts["rat-tail"] ?? 0) / ((counts["rat-tail"] ?? 0) + (counts["vermin-hide"] ?? 0));
+    expect(ratTailShare).toBeGreaterThan(0.58);
+    expect(ratTailShare).toBeLessThan(0.67);
+  });
+
+  test("an archetype with 3 trophies (Zombie Knight) splits its trophy share by tier weight, not evenly", () => {
+    // rotten-flesh (common 1), broken-blade-fragment (uncommon 0.8), warped-vambrace (epic 0.1) share
+    // the 40% trophy bucket roughly 1 : 0.8 : 0.1.
     const rng = new Rng(11);
     const counts: Record<string, number> = {};
     let totalDrops = 0;
@@ -49,22 +70,23 @@ describe("items", () => {
       totalDrops++;
       counts[id] = (counts[id] ?? 0) + 1;
     }
-    const rottenFleshRatio = (counts["rotten-flesh"] ?? 0) / totalDrops;
-    const bladeFragmentRatio = (counts["broken-blade-fragment"] ?? 0) / totalDrops;
-    expect(rottenFleshRatio).toBeGreaterThan(0.25);
-    expect(rottenFleshRatio).toBeLessThan(0.37);
-    expect(bladeFragmentRatio).toBeGreaterThan(0.1);
-    expect(bladeFragmentRatio).toBeLessThan(0.2);
+    expect((counts["rotten-flesh"] ?? 0) / totalDrops).toBeGreaterThan(0.18);
+    expect((counts["rotten-flesh"] ?? 0) / totalDrops).toBeLessThan(0.24);
+    expect((counts["broken-blade-fragment"] ?? 0) / totalDrops).toBeGreaterThan(0.14);
+    expect((counts["broken-blade-fragment"] ?? 0) / totalDrops).toBeLessThan(0.2);
+    expect((counts["warped-vambrace"] ?? 0) / totalDrops).toBeLessThan(0.05);
   });
 
-  test("a base-pool item is still reachable for an archetype that also has a signature item", () => {
-    const rng = new Rng(3);
-    let sawBaseItem = false;
-    for (let i = 0; i < 4000 && !sawBaseItem; i++) {
-      const id = rollItemDrop("dungeon-rat", rng);
-      if (id && !getItem(id).archetypeIds) sawBaseItem = true;
+  test("a monster with no trophy (Lesser Vampire) only drops general-pool items, Exploration Kit included", () => {
+    const rng = new Rng(5);
+    let sawKit = false;
+    for (let i = 0; i < 4000; i++) {
+      const id = rollItemDrop("lesser-vampire", rng);
+      if (!id) continue;
+      expect(getItem(id).archetypeIds?.length ?? 0).toBe(0);
+      if (id === "exploration-kit") sawKit = true;
     }
-    expect(sawBaseItem).toBe(true);
+    expect(sawKit).toBe(true);
   });
 
   test("queueItemAction deducts inventory at queue time and applies the item's effect on resolve", () => {
@@ -121,17 +143,22 @@ describe("items", () => {
     expect(c.hp).toBe(31);
     expect(game.state.inventory["small-health-potion"]).toBe(0);
 
-    game.state.inventory["venom-thorn"] = 1;
-    expect(game.useItemOutOfCombat("venom-thorn", c.id)).not.toBeNull();
+    const bomb: ItemDefinition = { id: "test-enemy-item", name: "Test", description: "", target: "singleEnemy", effects: [], tier: "common" };
+    ITEMS.push(bomb);
+    try {
+      game.state.inventory[bomb.id] = 1;
+      expect(game.useItemOutOfCombat(bomb.id, c.id)).not.toBeNull();
+    } finally {
+      ITEMS.splice(ITEMS.indexOf(bomb), 1);
+    }
   });
 
-  test("Dragon Scale (allAllies) buffs every living party member at once outside combat", () => {
+  test("Exploration Kit (allAllies satiety) is applied once outside combat, not once per party member", () => {
     const game = new Game(2);
-    game.state.inventory["dragon-scale"] = 1;
-    expect(game.useItemOutOfCombat("dragon-scale")).toBeNull();
-    for (const c of game.state.party) {
-      if (c.isAlive) expect(c.defense).toBeGreaterThan(getClass(c.classId).baseDefense);
-    }
+    game.state.satiety = 40;
+    game.state.inventory["exploration-kit"] = 1;
+    expect(game.useItemOutOfCombat("exploration-kit")).toBeNull();
+    expect(game.state.satiety).toBe(70);
   });
 });
 

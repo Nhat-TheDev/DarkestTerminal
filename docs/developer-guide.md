@@ -61,7 +61,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
-| `data/items.json` | Consumable items (shared items + archetype-specific items, incl. the combat-unusable Exploration Kit) | `src/data/items.ts` |
+| `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
