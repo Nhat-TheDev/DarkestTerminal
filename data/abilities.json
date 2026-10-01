@@ -75,7 +75,7 @@
     "effects": [
       {
         "kind": "dodgeChance",
-        "chance": 3
+        "chance": 2
       }
     ]
   },
@@ -87,7 +87,7 @@
     "effects": [
       {
         "kind": "lifesteal",
-        "percent": 4
+        "percent": 5
       }
     ]
   },
@@ -167,7 +167,7 @@
     "effects": [
       {
         "kind": "lifesteal",
-        "percent": 5
+        "percent": 8
       }
     ]
   },
@@ -283,7 +283,7 @@
     "effects": [
       {
         "kind": "lifesteal",
-        "percent": 10
+        "percent": 12
       }
     ]
   },

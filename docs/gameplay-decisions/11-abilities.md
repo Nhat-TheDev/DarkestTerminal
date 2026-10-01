@@ -483,8 +483,8 @@ ability owns a distinct axis.
 | `hardy-constitution` | Hardy Constitution | Takes the same hits as everyone else and gets up from more of them. | `statBoost maxHp +20` (min 5% base) |
 | `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | `statBoost maxMp +10` (min 5% base) |
 | `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
-| `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | `dodgeChance 3%` |
-| `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | `lifesteal 4%` |
+| `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | `dodgeChance 2%` |
+| `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | `lifesteal 5%` |
 | `arcane-aptitude` | Arcane Aptitude | Spells take shape before the words are finished. | `statBoost magicPower +5` (min 5% base) |
 | `stubborn-blood` | Stubborn Blood | Poison, hexes, whatever the dark drips into the wound — sometimes the body just refuses it. | `debuffResist 10%` |
 
@@ -506,7 +506,7 @@ for the same-numbered `magicPower` bonus — the cleanest calibration
 available for any pair of stats in this catalog, since no EV estimate or
 judgment call is needed at all.
 
-**Why `dodgeChance`/`lifesteal` are 3%/4%, not a flat 3% for both**: these
+**Why `dodgeChance`/`lifesteal` are 2%/5%, not the same % for both**: these
 2 effect kinds have no Common-tier Artifact to mirror (they only start
 appearing on Rare Artifacts), so their Common values can't be derived by
 halving a Common Artifact's number the way the other 7 axes are. Halving
@@ -532,16 +532,18 @@ fight) with roughly 1 attack thrown and taken per round:
 - solving each effect's % for a shared ~2.0-per-fight target instead:
   dodge ≈2.4%, lifesteal ≈6.4%
 
-Lifesteal's solved value (≈6.4%) would pass Rare's own `bloodletting`
-(5%), breaking the one pattern every other shared axis in this catalog
-follows (Rare is strictly higher than Common on the same axis: attack
-5<10, defense 4<8, maxHp 20<50, dodge 3<6). Common lifesteal is **4%**
-instead — a correction from a flat 3% (EV 1.25 vs. 0.94, ≈33% higher)
-that keeps Common strictly below Rare on every shared axis. The catalog
-keeps dodge at 3% (EV 2.47, above the ~2.0 target) and lifesteal at 4%
-(EV 1.25, below it). None of this is exact — it rests on one assumed
-fight length and hit-rate — but it's grounded in the game's real numbers,
-not a borrowed ratio from a different tier that was never checked against what these
+Common dodge is **2%** (EV 1.65) and Common lifesteal **5%** (EV 1.56),
+within about 6% of each other. Rare `bloodletting` is **8%** (EV 2.50),
+above lifesteal's solved ≈6.4% and still strictly higher than Common on
+every shared axis (attack 5<10, defense 4<8, maxHp 20<50, dodge 2<6,
+lifesteal 5<8). It ties Epic `reapers-instinct`'s 8% lifesteal, which
+also carries `healOnKill`; Unique `vampiric-discipline` (12%) sits above
+both. Rare `featherstep-training` (dodge 6%, EV 4.94) stays about twice
+`bloodletting` in value: a lifesteal point is worth about 0.38 of a dodge
+point, so the 2 axes cannot be matched in every tier without lifesteal
+values above the ladder the other axes follow. None of this is exact — it rests on one assumed fight length and
+hit-rate — but it's grounded in the game's real numbers, not a borrowed
+ratio from a different tier that was never checked against what these
 specific abilities are actually worth to the character holding them.
 
 ### Rare — must be unlocked
@@ -551,7 +553,7 @@ specific abilities are actually worth to the character holding them.
 | `predators-edge` | Predator's Edge | Finds the gap in a guard before the enemy knows it's open. | `statBoost attack +10` (min 10% base) |
 | `bulwark-stance` | Bulwark Stance | Feet set, weight behind the shield. Blows arrive at something already braced for them. | `statBoost defense +8` (min 10% base) |
 | `second-wind` | Second Wind | Past the point where the body should have quit, there turns out to be a little more. | `statBoost maxHp +50` (min 10% base) |
-| `bloodletting` | Bloodletting | Every wound it opens gives a little back. | `lifesteal 5%` |
+| `bloodletting` | Bloodletting | Every wound it opens gives a little back. | `lifesteal 8%` |
 | `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | `dodgeChance 6%` |
 | `restless-vigor` | Restless Vigor | Never quite at rest, even in camp, and first to move whenever anything starts. | `statBoost speed +5` |
 | `deepened-channel` | Deepened Channel | The spell leaves with more behind it than the caster meant to give. | `statBoost magicPower +10` (min 10% base) |
@@ -560,8 +562,9 @@ specific abilities are actually worth to the character holding them.
 | `warded-flesh` | Warded Flesh | Old marks under the skin turn curses aside before they settle. | `debuffResist 16%` |
 
 The first 5 mirror their Rare-tier artifact counterparts
-(`ancient-sword`/`heart-of-stone`/`eternal-vial`, `vampiric-fang`,
-`featherweight-boots`) — `restless-vigor` replaces the original
+(`ancient-sword`/`heart-of-stone`/`eternal-vial`, `featherweight-boots`), except
+`bloodletting`: 8% against `vampiric-fang`'s 5%, per the dodge/lifesteal
+calibration above. `restless-vigor` replaces the original
 `poisonOnHit`-based `toxic-touch` and is calibrated directly against
 `speed`'s own spread (see below), not against an Artifact.
 
@@ -630,16 +633,17 @@ own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 |---|---|---|---|
 | `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | `healOnKill 20` (min 3% max HP) |
 | `thunderous-aura` | Thunderous Aura | Lightning gathers on its own and strikes something every round, no weapon raised. | `autoDamage 20 + 40% magic power` |
-| `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | `lifesteal 10%` |
+| `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | `lifesteal 12%` |
 | `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | `dodgeChance 12%` |
 | `battle-scholar` | Battle Scholar | Writes down what nearly killed it after every fight, and reads it back before the next. | `expBoost 15%` |
 | `hexbinder` | Hexbinder | Says the target's name aloud. The curse takes it as an order. | `alwaysHit 15%` |
 | `quickened-pulse` | Quickened Pulse | A pulse that runs a beat ahead of everyone else's, and the body follows it. | `statBoost speed +8` |
 | `bitter-marrow` | Bitter Marrow | What the enemy tries to put in the blood fails to take more often than it should. Something in the bone won't have it. | `debuffResist 24%` |
 
-`thunderous-aura`/`vampiric-discipline`/`phantom-reflexes`/`battle-scholar`
-exactly mirror their Unique-tier artifact counterparts (`thunder-totem`,
-`bloodthirsty-blade`, `phantom-step`, `scholars-insight`).
+`thunderous-aura`/`phantom-reflexes`/`battle-scholar` exactly mirror their
+Unique-tier artifact counterparts (`thunder-totem`, `phantom-step`,
+`scholars-insight`). `vampiric-discipline` is 12% against
+`bloodthirsty-blade`'s 10%, per the dodge/lifesteal calibration above.
 **`executioners-instinct` is the one exception** — `data/artifacts.json`
 has no Unique-tier `healOnKill` artifact to copy (only the Epic
 `reapers-covenant` at `25`), so `20` is a deliberately interpolated value:
