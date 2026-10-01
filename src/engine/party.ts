@@ -98,7 +98,7 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   character.attack = exhaustedAttack + boost.attack + activeStatusCombatStatSum(character, "attack");
   character.defense = exhaustedDefense + boost.defense + activeStatusCombatStatSum(character, "defense");
   if (vanguardPassive) character.defense = Math.round(character.defense * (1 + (vanguardPassive.defensePercent ?? 0) / 100));
-  character.magicPower = exhaustedMagicPower + boost.magicPower;
+  character.magicPower = exhaustedMagicPower + boost.magicPower + activeStatusCombatStatSum(character, "magicPower");
   character.maxHp = base.maxHp + boost.maxHp;
   if (vanguardPassive) character.maxHp = Math.round(character.maxHp * (1 + (vanguardPassive.maxHpPercent ?? 0) / 100));
   character.maxMp = base.maxMp + boost.maxMp;

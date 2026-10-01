@@ -7,10 +7,10 @@
     "effects": [
       {
         "kind": "heal",
-        "amount": 30
+        "amount": 60
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "large-health-potion",
@@ -20,10 +20,10 @@
     "effects": [
       {
         "kind": "heal",
-        "amount": 70
+        "amount": 120
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "small-mana-potion",
@@ -33,10 +33,10 @@
     "effects": [
       {
         "kind": "restoreMp",
-        "amount": 20
+        "amount": 30
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "large-mana-potion",
@@ -46,10 +46,10 @@
     "effects": [
       {
         "kind": "restoreMp",
-        "amount": 45
+        "amount": 55
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "exploration-kit",
@@ -63,17 +63,8 @@
         "amount": 30
       }
     ],
-    "weight": 0.15,
-    "combatUsable": false,
-    "archetypeIds": [
-      "zombie",
-      "zombie-knight",
-      "skeleton",
-      "skeleton-archer",
-      "skeleton-warrior",
-      "skeleton-guard",
-      "dark-knight"
-    ]
+    "tier": "unique",
+    "combatUsable": false
   },
   {
     "id": "calming-draught",
@@ -87,19 +78,20 @@
         "amount": -25
       }
     ],
-    "weight": 1
+    "tier": "common"
   },
   {
     "id": "antidote",
     "name": "Antidote",
     "description": "A bitter white pill, trusted by dungeon healers.",
-    "target": "self",
+    "target": "singleAlly",
     "effects": [
       {
-        "kind": "removeStatusEffect"
+        "kind": "removeStatusEffect",
+        "statusEffectId": "poisoned"
       }
     ],
-    "weight": 0.5
+    "tier": "common"
   },
   {
     "id": "whetstone",
@@ -109,11 +101,11 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "empower",
+        "statusEffectId": "whetstone",
         "durationTurns": 2
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
     "id": "temporary-ward",
@@ -123,72 +115,134 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
+        "statusEffectId": "temporary-ward",
         "durationTurns": 2
       }
     ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
-    "id": "grave-dust",
-    "name": "Grave Dust",
-    "description": "Finely ground bone dust from an old grave — rubbed on skin, it sets the flesh like old bone.",
+    "id": "cracker-string",
+    "name": "Cracker String",
+    "description": "A string of paper-wrapped charges, each the size of a thumb. Pull the end and they go off in order.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 37,
+        "damageType": "physical",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "pitch-bomb",
+    "name": "Pitch Bomb",
+    "description": "Pitch and lamp oil in a fired jar, fuse of twisted rag.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "damageType": "fire",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "frost-flask",
+    "name": "Frost Flask",
+    "description": "A flask of brine frozen solid, white with frost on the outside. It does not thaw in the hand.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 71,
+        "damageType": "ice",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "thunder-charge",
+    "name": "Thunder Charge",
+    "description": "A copper tube sealed at both ends with wax, heavy for its size. It hums when nothing is touching it.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 94,
+        "damageType": "lightning",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "blister-bomb",
+    "name": "Blister Bomb",
+    "description": "Quicklime and sulphur packed into a clay shell that is thin on purpose.",
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 68,
+        "damageType": "fire",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "rot-bomb",
+    "name": "Rot Bomb",
+    "description": "Matter scraped from the bottom of a grave pit and sealed in clay before it had finished rotting.",
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 68,
+        "damageType": "poison",
+        "offenseMultiplierPercent": 0
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "honing-oil",
+    "name": "Honing Oil",
+    "description": "A flask of thin oil that smells of hot iron. The smell stays on the cloth for days.",
     "target": "singleAlly",
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
-        "durationTurns": 2
+        "statusEffectId": "honing-oil",
+        "durationTurns": 3
       }
     ],
-    "archetypeIds": [
-      "skeleton",
-      "skeleton-archer",
-      "skeleton-guard"
-    ],
-    "weight": 0.5
+    "tier": "rare"
   },
   {
-    "id": "broken-blade-fragment",
-    "name": "Broken Blade Fragment",
-    "description": "A broken weapon fragment, still sharp, stripped down to be reforged into a new blade.",
+    "id": "marrow-broth",
+    "name": "Marrow Broth",
+    "description": "A flask of marrow boiled down until it sets cold. Warmed in the hands, it pours.",
     "target": "singleAlly",
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "empower",
-        "durationTurns": 2
+        "statusEffectId": "marrow-broth",
+        "durationTurns": 3
       }
     ],
-    "archetypeIds": [
-      "skeleton-warrior",
-      "zombie-knight",
-      "dark-knight"
-    ],
-    "weight": 0.5
+    "tier": "uncommon"
   },
   {
-    "id": "rotten-flesh",
-    "name": "Rotten Flesh",
-    "description": "A piece of rotting flesh reeking with a foul stench — other monsters would rather steer clear.",
-    "target": "singleAlly",
-    "effects": [
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "distracted",
-        "durationTurns": 1
-      }
-    ],
-    "archetypeIds": [
-      "zombie",
-      "zombie-knight"
-    ],
-    "weight": 1
-  },
-  {
-    "id": "venom-gland",
-    "name": "Venom Gland",
-    "description": "A still-fresh venom gland, used to coat a weapon before a long encounter.",
+    "id": "serpent-oil",
+    "name": "Serpent Oil",
+    "description": "Thick yellow-green oil drawn from something that bit. A blade wiped with it stays wet for the length of a fight.",
     "target": "singleAlly",
     "effects": [
       {
@@ -197,94 +251,811 @@
         "durationTurns": 3
       }
     ],
-    "archetypeIds": [
-      "snake",
-      "lizard",
-      "spider"
-    ],
-    "weight": 0.5
+    "tier": "rare"
   },
   {
-    "id": "venom-thorn",
-    "name": "Venom Thorn",
-    "description": "A thorn as thick as a finger — piercing a target makes the venom already in their body take hold many times faster.",
+    "id": "tar-flask",
+    "name": "Tar Flask",
+    "description": "Black tar in a clay flask, thick enough to hold a thumbprint.",
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "poison-vulnerable",
+        "statusEffectId": "tar-flask",
         "durationTurns": 2
       }
     ],
-    "archetypeIds": [
-      "giant-spider"
-    ],
-    "weight": 1
+    "tier": "common"
   },
   {
-    "id": "rat-meat",
-    "name": "Rat Meat",
-    "description": "Dungeon rat meat, tough but strangely nutritious — the body visibly recovers after eating it.",
+    "id": "smoke-pellet",
+    "name": "Smoke Pellet",
+    "description": "A pinch of powder that goes to grey smoke when crushed.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "smoke-pellet",
+        "durationTurns": 1
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "bandage-roll",
+    "name": "Bandage Roll",
+    "description": "Boiled linen, rolled tight and still stiff. It has been boiled more than once.",
     "target": "singleAlly",
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "regeneration",
+        "statusEffectId": "bandage-roll",
         "durationTurns": 3
       }
     ],
-    "archetypeIds": [
-      "dungeon-rat"
-    ],
-    "weight": 0.5
+    "tier": "common"
   },
   {
-    "id": "bat-blood",
-    "name": "Bat Blood",
-    "description": "Still-warm bat blood, gulped down mid-battle to stay standing.",
-    "target": "self",
+    "id": "resin-wrap",
+    "name": "Resin Wrap",
+    "description": "Pine resin over cloth, wound tight around the forearm.",
+    "target": "singleAlly",
     "effects": [
       {
-        "kind": "heal",
-        "amount": 20
+        "kind": "applyStatusEffect",
+        "statusEffectId": "resin-wrap",
+        "durationTurns": 2
       }
     ],
-    "archetypeIds": [
-      "black-bat"
-    ],
-    "weight": 1
+    "tier": "common"
   },
   {
-    "id": "slime-solution",
-    "name": "Slime Solution",
-    "description": "The translucent ooze of a slime monster, strangely able to unclog the flow of magic.",
-    "target": "self",
+    "id": "repelling-smoke-powder",
+    "name": "Repelling Smoke Powder",
+    "description": "A pinch of grey powder in a twist of paper. Burned at someone's feet, it gives off a sour smoke that nothing hunting wants to walk into.",
+    "target": "singleAlly",
     "effects": [
       {
-        "kind": "restoreMp",
-        "amount": 20
+        "kind": "applyStatusEffect",
+        "statusEffectId": "repelling-smoke-powder",
+        "durationTurns": 1
       }
     ],
-    "archetypeIds": [
-      "slime"
-    ],
-    "weight": 1
+    "tier": "common"
   },
   {
-    "id": "dragon-scale",
-    "name": "Dragon Scale",
-    "description": "A heavy dragon scale, its metallic sheen still warm from fire — enough to forge a shield for the whole party.",
+    "id": "acid-vial",
+    "name": "Acid Vial",
+    "description": "Green-stained glass, stoppered with wax, the inside of the glass etched cloudy.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "acid-vial",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "war-paint",
+    "name": "War Paint",
+    "description": "Ochre and ash, kept in a tin lid and thumbed across the cheek before a fight.",
     "target": "allAllies",
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "fortify",
+        "statusEffectId": "war-paint",
         "durationTurns": 2
       }
     ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "fracture-charge",
+    "name": "Fracture Charge",
+    "description": "A shaped charge in a brass cup, made to be set against a plate.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fracture-charge",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "deafening-charge",
+    "name": "Deafening Charge",
+    "description": "A charge packed for noise and not fire, wrapped in wet leather so it does not go off in the pack.",
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "deafening-charge",
+        "durationTurns": 1
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "rally-standard",
+    "name": "Rally Standard",
+    "description": "A torn banner on a broken haft, the colours faded to the same brown as everything else.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "rally-standard",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "bulwark-draught",
+    "name": "Bulwark Draught",
+    "description": "Iron filings in wine. The skin goes grey and holds.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "bulwark-draught",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "field-tonic",
+    "name": "Field Tonic",
+    "description": "A stoneware bottle meant to be split four ways, with four notches cut in the neck to show where.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 90
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "spark-salt",
+    "name": "Spark Salt",
+    "description": "Coarse grey salt that crackles faintly when held near a mage's hand.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "spark-salt",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "scholars-candle",
+    "name": "Scholar's Candle",
+    "description": "A candle stub scored with fine lines at even intervals. Lit, it gives a steady light that does not move in a draught.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "scholars-candle",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "hushed-bell",
+    "name": "Hushed Bell",
+    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the room goes quiet around it.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "hushed-bell",
+        "durationTurns": 2
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "etched-lens",
+    "name": "Etched Lens",
+    "description": "A disc of ground glass with a ring etched into one face. Held up, it makes edges look sharper than they are.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "etched-lens",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "pitch-pipe",
+    "name": "Pitch Pipe",
+    "description": "A short reed pipe that gives one note and no other. Blown once in a room, everyone in it begins to hum the same pitch.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "pitch-pipe",
+        "durationTurns": 3
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "burn-salve",
+    "name": "Burn Salve",
+    "description": "A tin of grease and crushed aloe gone grey. It stings going on, and then it does not.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "burning"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "styptic-powder",
+    "name": "Styptic Powder",
+    "description": "Alum ground fine and kept dry in waxed paper. Packed into a cut, it closes the edges.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "bleeding"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "eyewash",
+    "name": "Eyewash",
+    "description": "A small bottle of boiled fennel and salt water, with a dropper made from a quill.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "blinded"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "thread-knife",
+    "name": "Thread Knife",
+    "description": "A curved blade no longer than a finger, made for cutting thread. Webbing parts along its edge like wet paper.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "webbed"
+      }
+    ],
+    "tier": "common"
+  },
+  {
+    "id": "lye-wash",
+    "name": "Lye Wash",
+    "description": "Thinned lye in a stoppered flask, for washing off what eats metal. It is rough on the hands.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "acid-burn"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "smelling-salts",
+    "name": "Smelling Salts",
+    "description": "Pale crystals in a brass case. One sniff and the eyes water, and whoever was down gets up.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "stunned"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "mending-paste",
+    "name": "Mending Paste",
+    "description": "Tallow and clay worked into a grey paste. Smeared on armour, it fills the pits and stays.",
+    "target": "singleAlly",
+    "effects": [
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "weakened"
+      },
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "corroded"
+      }
+    ],
+    "tier": "uncommon"
+  },
+  {
+    "id": "purge-draught",
+    "name": "Purge Draught",
+    "description": "A cloudy draught that tastes of ash and river water. Whoever drinks it is sick within the minute, and better after.",
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "removeStatusEffect"
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "greater-health-potion",
+    "name": "Greater Health Potion",
+    "description": "A dark red draught so thick it moves slowly when the bottle is tilted. It smells of iron before it smells of herbs.",
+    "target": "self",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 220
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "greater-mana-potion",
+    "name": "Greater Mana Potion",
+    "description": "A blue so deep it is nearly black in the flask. The glass is cold to hold.",
+    "target": "self",
+    "effects": [
+      {
+        "kind": "restoreMp",
+        "amount": 90
+      }
+    ],
+    "tier": "rare"
+  },
+  {
+    "id": "vermin-hide",
+    "name": "Vermin Hide",
+    "description": "Strips of hide peeled from the small things that live under the floors. Some of it is fur, some of it is skin, and it has all dried to the same grey.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "groupItem": true,
+    "archetypeIds": [
+      "dungeon-rat",
+      "black-bat",
+      "vampire-bat",
+      "toxic-toad"
+    ]
+  },
+  {
+    "id": "predator-sinew",
+    "name": "Predator Sinew",
+    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat on any surface.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
+    "archetypeIds": [
+      "dire-wolf",
+      "cave-bear"
+    ]
+  },
+  {
+    "id": "chitin-shard",
+    "name": "Chitin Shard",
+    "description": "A curved shard of scale or plate; it is hard to say which. One edge is a seam that came apart clean, the other was broken off.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "snake",
+      "lizard",
+      "spider",
+      "armored-beetle"
+    ]
+  },
+  {
+    "id": "cult-rag",
+    "name": "Cult Rag",
+    "description": "A strip of coarse robe cloth, dyed a dark red-brown that may not be the original colour. The hem has been cut off all the way round.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "cultist-initiate",
+      "cultist-zealot"
+    ]
+  },
+  {
+    "id": "grave-cloth",
+    "name": "Grave Cloth",
+    "description": "Burial linen, brown at the folds and stiff where it was wet. It has been wrapped round something and unwrapped since, and the creases have not given.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "ghoulish-crawler",
+      "zombie"
+    ]
+  },
+  {
+    "id": "old-bone",
+    "name": "Old Bone",
+    "description": "A short bone polished on two faces where it slid against the next one. The third face is still rough.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
+    "archetypeIds": [
+      "skeleton",
+      "skeleton-mage",
+      "skeleton-archer",
+      "skeleton-warrior",
+      "skeleton-guard"
+    ]
+  },
+  {
+    "id": "ooze-residue",
+    "name": "Ooze Residue",
+    "description": "Dried ooze, cracked into flakes like river mud. Something small is still set into one of them, too small to name.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "slime",
+      "swamp-slime",
+      "lava-slime"
+    ]
+  },
+  {
+    "id": "warband-trophy",
+    "name": "Warband Trophy",
+    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who wanted them counted. It hangs heavier at one end.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "groupItem": true,
+    "archetypeIds": [
+      "goblin",
+      "goblin-shaman",
+      "orc-brute"
+    ]
+  },
+  {
+    "id": "elemental-core",
+    "name": "Elemental Core",
+    "description": "A fist-sized stone that is a different temperature every time it is picked up. Wherever it is set down it leaves a ring, damp or scorched, never the same twice.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "groupItem": true,
+    "archetypeIds": [
+      "fire-elemental",
+      "water-elemental"
+    ]
+  },
+  {
+    "id": "wraith-essence",
+    "name": "Wraith Essence",
+    "description": "A vial that looks empty. The inside of the stopper is cold, and stays cold.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "groupItem": true,
+    "archetypeIds": [
+      "ghost",
+      "wraith"
+    ]
+  },
+  {
+    "id": "stone-core",
+    "name": "Stone Core",
+    "description": "A rough grey lump with one flat face, cut level by something that does not draw a straight line by eye. Tapped, it answers a little late.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "groupItem": true,
+    "archetypeIds": [
+      "gargoyle",
+      "lesser-golem",
+      "mimic"
+    ]
+  },
+  {
+    "id": "bat-blood",
+    "name": "Bat Blood",
+    "description": "A stoppered vial of dark, thin blood that took several bats to fill. It smells of copper.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "black-bat"
+    ]
+  },
+  {
+    "id": "bear-claw",
+    "name": "Bear Claw",
+    "description": "A claw as long as a hand, blunted at the tip from years of being dragged along stone. Three grooves run down the flat side, deep as a thumbnail.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "cave-bear"
+    ]
+  },
+  {
+    "id": "silk-gland",
+    "name": "Silk Gland",
+    "description": "A dried sac no bigger than a thumbnail, one end still trailing a fine thread. Pulled gently, it comes out a hand's length and stops.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "spider"
+    ]
+  },
+  {
+    "id": "prayer-beads",
+    "name": "Prayer Beads",
+    "description": "A short string of dark beads, worn shiny along about a dozen and left rough elsewhere. Someone always held it in the same place.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "cultist-zealot"
+    ]
+  },
+  {
+    "id": "rotten-bandage",
+    "name": "Rotten Bandage",
+    "description": "A bandage still wound in its last shape, stiff with something brown. The knot is neat.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "zombie"
+    ]
+  },
+  {
+    "id": "bone-shield-fragment",
+    "name": "Bone Shield Fragment",
+    "description": "A curved slice of bone from a rim. Two small holes run through the inside, worn oval by the strap that used to pass through them.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "skeleton-warrior"
+    ]
+  },
+  {
+    "id": "slime-solution",
+    "name": "Slime Solution",
+    "description": "A jar of translucent ooze that has settled clear at the top. Whatever the slime had not finished dissolving is still in the jar.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "slime"
+    ]
+  },
+  {
+    "id": "knuckle-guard",
+    "name": "Knuckle Guard",
+    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it was made for was larger than yours.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "orc-brute"
+    ]
+  },
+  {
+    "id": "ember",
+    "name": "Ember",
+    "description": "A lump of charcoal that kept the grain of the wood it came from, and the knot where a branch left it.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "fire-elemental"
+    ]
+  },
+  {
+    "id": "hollow-plate",
+    "name": "Hollow Plate",
+    "description": "A shoulder plate, rusted through on the inside and bright on the outside.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "archetypeIds": [
+      "wraith"
+    ]
+  },
+  {
+    "id": "core-fragment",
+    "name": "Core Fragment",
+    "description": "A chip of dressed stone with one groove across it, ruled as straight as any mason could. The groove goes on past the edge, where the rest of the stone was.",
+    "target": "self",
+    "effects": [],
+    "tier": "unique",
+    "archetypeIds": [
+      "lesser-golem"
+    ]
+  },
+  {
+    "id": "venom-thorn",
+    "name": "Venom Thorn",
+    "description": "A thorn as thick as a finger, the tip stained yellow-green. The stain is wet.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "giant-spider"
+    ]
+  },
+  {
+    "id": "warped-vambrace",
+    "name": "Warped Vambrace",
+    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are fastened and the leather is whole. It was never taken off.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "zombie-knight"
+    ]
+  },
+  {
+    "id": "broken-oath-sigil",
+    "name": "Broken Oath Sigil",
+    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and its edges are worn as smooth as the face.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "dark-knight"
+    ]
+  },
+  {
+    "id": "warlords-trophy-chain",
+    "name": "Warlord's Trophy Chain",
+    "description": "A length of chain hung with pieces of other people's armour: a buckle, a hinge, a spur, part of a rank badge. Each link was forged for weight.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "orc-chieftain"
+    ]
+  },
+  {
+    "id": "nobles-signet",
+    "name": "Noble's Signet",
+    "description": "A gold signet ring, the crest worn nearly flat from years of pressing into wax. It is always clean when the pouch is opened.",
+    "target": "self",
+    "effects": [],
+    "tier": "epic",
+    "archetypeIds": [
+      "vampire-lord"
+    ]
+  },
+  {
+    "id": "dragon-scale",
+    "name": "Dragon Scale",
+    "description": "A scale as wide as a shield, still warm, with a metallic sheen. The edges are rounded from a lifetime of sliding against the others.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
     "archetypeIds": [
       "dragon"
-    ],
-    "weight": 0.5
+    ]
+  },
+  {
+    "id": "unraveled-fragment",
+    "name": "Unraveled Fragment",
+    "description": "A thumb of grey matter with a hinge at one end and a row of small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "void-amalgamation"
+    ]
+  },
+  {
+    "id": "weathered-keystone",
+    "name": "Weathered Keystone",
+    "description": "A wedge of stone that once locked an arch in place. The curve of the arch is still cut into both faces, though nothing has curved above it for a long time.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "ancient-golem"
+    ]
+  },
+  {
+    "id": "phylactery-shard",
+    "name": "Phylactery Shard",
+    "description": "A curved sliver of black glass, thin as a fingernail. Held to the light, it shows the room with the door still shut.",
+    "target": "self",
+    "effects": [],
+    "tier": "legendary",
+    "archetypeIds": [
+      "lich"
+    ]
+  },
+  {
+    "id": "grave-dust",
+    "name": "Grave Dust",
+    "description": "Bone ground to a fine grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "skeleton",
+      "skeleton-archer",
+      "skeleton-guard"
+    ]
+  },
+  {
+    "id": "rotten-flesh",
+    "name": "Rotten Flesh",
+    "description": "A palm-sized piece of flesh gone soft and dark, wrapped in a leaf that has stopped helping.",
+    "target": "self",
+    "effects": [],
+    "tier": "common",
+    "archetypeIds": [
+      "zombie",
+      "zombie-knight"
+    ]
+  },
+  {
+    "id": "broken-blade-fragment",
+    "name": "Broken Blade Fragment",
+    "description": "A length of broken blade, snapped clean across with the edge still keen. The maker's mark is on the part that is missing.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "skeleton-warrior",
+      "zombie-knight",
+      "dark-knight"
+    ]
+  },
+  {
+    "id": "rat-tail",
+    "name": "Rat Tail",
+    "description": "A rat's tail dried hard as cord, still curled the way it dried.",
+    "target": "self",
+    "effects": [],
+    "tier": "uncommon",
+    "archetypeIds": [
+      "dungeon-rat"
+    ]
+  },
+  {
+    "id": "venom-gland",
+    "name": "Venom Gland",
+    "description": "A venom gland the size of a bean, taut as a grape and yellow at the stalk.",
+    "target": "self",
+    "effects": [],
+    "tier": "rare",
+    "archetypeIds": [
+      "snake",
+      "lizard",
+      "spider"
+    ]
   }
 ]

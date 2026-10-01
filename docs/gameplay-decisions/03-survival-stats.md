@@ -65,7 +65,7 @@ A choice offered **after winning any combat room** (regular/Elite/Boss, not just
 
 Implementation: `Game.camp()` → `campAction` (`src/engine/survival.ts`); UI flow in `src/ui/screens/camp.ts`, wired in after `roomReward` via `proceedAfterVictory`/`finishVictorySequence` (`src/ui/screens/context.ts`).
 
-**Drop source**: a low-weight, monster-specific drop (same mechanic as any other monster-specific item, §7.1) from humanoid archetypes: `zombie`, `zombie-knight`, `skeleton`, `skeleton-archer`, `skeleton-warrior`, `skeleton-guard`, `dark-knight`. Weight `0.15` — deliberately lower than any other monster-specific item weight (which range `0.5`–`1`) — still grows toward `1` with floor depth via the standard `itemWeightDepthGrowth` mechanic (§7.1).
+**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction. The `waiting-supplies` event (`08-events.md` §8.20) is the other source: it adds 3 kits.
 
 Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]`, usable out of combat like any other item (`combatUsable: false` only blocks it from the in-combat item list) — `modifyStat` targeting `"satiety"` reads/writes `GameState.satiety` directly (needs a `gameState` reference in `ResolveContext`, since satiety isn't on `Character`), distinct from `modifyStat` targeting `fear` which stays per-character.
 
@@ -104,6 +104,26 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
 
+### The Merchant's Runner
+
+On entering an uncleared Rest room there is a `runner.appearChance` (50%) chance the Merchant's Runner is there (`rollRestRunner`, `src/engine/events/runner.ts`, called from `enterRoom`). He is kept in `GameState.restRunner` with his stock, so a save keeps him. With him present:
+
+1. A **notice screen** (`runnerNotice`) comes first, one of 3 appearance texts (`runner.notice0`-`2`, `data/strings.json`); `[Enter]` continues.
+2. The Rest screen offers a **fourth option, `[3] Trade`**, next to Eat, Chat and Skip. Trade opens the shop (`runnerShop`) and leaving it ends the room (`Game.leaveRunner`), so **trading replaces the room's rest action**.
+3. **Camp Reflection** shows after that choice.
+
+The shop sells 5 distinct items (`rollShopOffers`, `src/data/shopStock.ts`), each listed with a line saying what it does, refreshable like the Merchant (`events.merchantRefreshCostCoins`, `events.merchantMaxRefreshes`), and buys consumables and trophies back at a fifth of the single price. Prices, odds and the offer mix are in `data/balance-config.json` (`runner`, `shop`); item rules in `07-items-artifacts.md`, the coin side in `09-currency.md`.
+
+**Barter.** The Trade screen's `[t] Barter` lists 2 trophy kinds the Runner will take (`barter.offerCount`), drawn from those that can drop on the current floor, Legendary included. Each offer is made once, both in the same visit if the party can pay. The offer shows what it buys; once traded the buff waits, hidden, for **this floor's elite/boss room**: when that fight starts it applies to the whole party, and it ends with the fight. A buff still waiting when the floor ends is lost.
+
+- **What each trophy costs and buys** is its entry in `data/barter.json` (loaded by `src/data/barter.ts`): `cost`, the number of that trophy a trade takes, and `effects`, a list of effects of two kinds: `{ "kind": "statBoost", "stat", "percent" }` and `{ "kind": "healOverTime", "maxHpPercentPerTurn" }`. Every trophy must have exactly one entry; the loader refuses the file otherwise.
+- **`statBoost`** adds `percent` of the stat's effect to the party's stat when the fight starts: `attack` (which also raises magic power), `defense` (a share of effective HP, `defenseMitigationX + defense`) or `speed`. The bonus is rounded but never below 1 for a stat the buff raises (`statBonus`), so a small percent still does something at low stats; a stat of 0 (a non-caster's magic power) gets nothing.
+- **`healOverTime`** heals `maxHpPercentPerTurn` percent of max HP each turn; it must equal that tier's `barter-regen-<tier>` status `maxHpPercent` in `data/status-effects.json`. An entry may hold at most one; the loader refuses more.
+- **The shipped values** follow a pattern: the trophy's tier sets the strength P (5 / 8 / 12 / 15 / 18 / 22%) and the cost (5, or 3 for Epic and 1 for Legendary); the most common `monsterType` among the monsters that drop it sets the main stat (armored, tanky, sentinel → defense; bruiser, striker, glass → attack; balanced → attack and defense at half each) and their most common `race` adds a second effect at half of P. That pattern is only how the file was written; the game reads the file.
+- **Once per floor.** After a barter on a floor, the Runner of a later Rest room on that floor offers no barter (`GameState.barterUsedDepth`).
+
+Code: `src/engine/events/barter.ts`.
+
 ### Camp Reflection
 
 A 4th piece of content at Rest rooms, independent of which of the 3 options above is picked and
@@ -111,7 +131,7 @@ independent of `08-events.md` §8.16's post-event reflection — no shared data,
 logic, deliberately, since the register is different: §8.16 is a short in-the-moment dialogue beat
 reacting to 1 room; Camp Reflection is the party looking back at its own *accumulated* pattern of
 exchanges across the whole run so far, fires at most 4 times ever, and is meant to land each time
-rather than repeat.
+rather than repeat. It is armed on entering the Rest room but shown only once the room's own choice has been made (including Trade).
 
 **Tracking** — entirely new `GameState` fields, none of them touching `narrativeCounters`,
 `eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:

@@ -61,7 +61,8 @@ of the code doesn't need to know the data comes from JSON.
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
-| `data/items.json` | Consumable items (shared items + archetype-specific items, incl. the combat-unusable Exploration Kit) | `src/data/items.ts` |
+| `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
+| `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
@@ -242,7 +243,11 @@ screen contributes.
 | `ui.kind` | Contextual footer |
 | --- | --- |
 | `room` | `[1-n] Move   [i] Items   [a] Artifacts` — n = exits from this room |
-| `rest` | `[1-2] Choose   [Enter] Skip` |
+| `rest` | `[1-2] Choose   [Enter] Skip` — `[1-3]` when the Merchant's Runner is there (Trade) |
+| `runnerNotice` | `[Enter] Continue` |
+| `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [t] Barter   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable, `[t]` when no trophy trade is left |
+| `runnerBarter` | `[1-n] Trade   [Esc] Back` — n = trophy trades left |
+| `runnerSell` | `[1-n] Sell   [Esc] Back` — n = items on this page |
 | `pickAction` | `[1-2] Action` — "Use item" stays listed (tagged) even with an empty bag |
 | `pickSkill` | `[1-n] Skill   [Esc] Back` — n = the actor's skills |
 | `skillDetail` | `[Enter] Use   [Esc] Back` |
@@ -330,6 +335,7 @@ src/
     monsters.ts          # data/monsters.json + data/monster-skills.json loader — spawnMonster, getArchetype, getMonsterSkill
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
+    barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
     events.ts            # data/events.json loader — getEvent, rollEvent
     floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters

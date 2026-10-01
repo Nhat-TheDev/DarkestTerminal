@@ -14,6 +14,10 @@ export type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artif
 export type UiState =
   | { kind: "room" }
   | { kind: "rest" }
+  | { kind: "runnerNotice" }
+  | { kind: "runnerShop" }
+  | { kind: "runnerSell" }
+  | { kind: "runnerBarter" }
   | { kind: "pickAction"; actorRef: CombatantRef }
   | { kind: "pickSkill"; actorRef: CombatantRef }
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }

@@ -275,7 +275,7 @@ Exact magnitudes/durations/proc chances for every row above: `data/status-effect
 
 ### 1.7.1 DoT rework — `maxHpPercent`, Elite/Boss dampening, and "weak against X" vulnerability
 
-**Status: implemented.** Every DoT (`perTurnEffects` with `kind: "damage"`) ticks for a flat `amount` plus a percentage of the target's `maxHp`, via an optional field on `SkillEffect`, `maxHpPercent?: number`, on the DoT's `perTurnEffects` damage entry — the tick formula in `tickCategoryUnconditionally` (`src/engine/resolver.ts`) folds `target.maxHp * (effect.maxHpPercent ?? 0) / 100` into the flat `amount` before the Elite/Boss dampening and vulnerability multiplier below are applied. This keeps DoTs relevant late-run, since character/monster `maxHp` keeps growing with level across the game's infinite dungeon floors (`06-level-system.md`).
+**Status: implemented.** Every DoT (`perTurnEffects` with `kind: "damage"`) ticks for a flat `amount` plus a percentage of the target's `maxHp`, via an optional field on `SkillEffect`, `maxHpPercent?: number`, on the DoT's `perTurnEffects` damage entry — the tick formula in `tickCategoryUnconditionally` (`src/engine/resolver.ts`) folds `target.maxHp * (effect.maxHpPercent ?? 0) / 100` into the flat `amount` before the Elite/Boss dampening and vulnerability multiplier below are applied. This keeps DoTs relevant late-run, since character/monster `maxHp` keeps growing with level across the game's infinite dungeon floors (`06-level-system.md`). A `heal` entry in `perTurnEffects` (a heal over time) with a `maxHpPercent` heals at least that share of the bearer's `maxHp` each tick, taking the larger of the flat `amount` and the percentage; it is not reduced for Elite/Boss targets.
 
 **All 6 existing DoTs (`data/status-effects.json`)**:
 

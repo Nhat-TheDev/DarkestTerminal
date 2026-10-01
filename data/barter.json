@@ -1,0 +1,286 @@
+[
+  {
+    "itemId": "vermin-hide",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 4 },
+      { "kind": "statBoost", "stat": "defense", "percent": 4 },
+      { "kind": "statBoost", "stat": "speed", "percent": 4 }
+    ]
+  },
+  {
+    "itemId": "predator-sinew",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 15 },
+      { "kind": "statBoost", "stat": "speed", "percent": 7.5 }
+    ]
+  },
+  {
+    "itemId": "chitin-shard",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 12 },
+      { "kind": "statBoost", "stat": "speed", "percent": 6 }
+    ]
+  },
+  {
+    "itemId": "cult-rag",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 12 },
+      { "kind": "statBoost", "stat": "defense", "percent": 6 }
+    ]
+  },
+  {
+    "itemId": "grave-cloth",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 6 },
+      { "kind": "statBoost", "stat": "defense", "percent": 6 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 6 }
+    ]
+  },
+  {
+    "itemId": "old-bone",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 15 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 7.5 }
+    ]
+  },
+  {
+    "itemId": "ooze-residue",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 12 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 6 }
+    ]
+  },
+  {
+    "itemId": "warband-trophy",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 }
+    ]
+  },
+  {
+    "itemId": "elemental-core",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 22.5 }
+    ]
+  },
+  {
+    "itemId": "wraith-essence",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 },
+      { "kind": "statBoost", "stat": "speed", "percent": 9 }
+    ]
+  },
+  {
+    "itemId": "stone-core",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 27 }
+    ]
+  },
+  {
+    "itemId": "bat-blood",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 5 },
+      { "kind": "statBoost", "stat": "speed", "percent": 2.5 }
+    ]
+  },
+  {
+    "itemId": "bear-claw",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 12 },
+      { "kind": "statBoost", "stat": "speed", "percent": 6 }
+    ]
+  },
+  {
+    "itemId": "silk-gland",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 8 },
+      { "kind": "statBoost", "stat": "speed", "percent": 4 }
+    ]
+  },
+  {
+    "itemId": "prayer-beads",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 12 }
+    ]
+  },
+  {
+    "itemId": "rotten-bandage",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 8 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 4 }
+    ]
+  },
+  {
+    "itemId": "bone-shield-fragment",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 12 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 6 }
+    ]
+  },
+  {
+    "itemId": "slime-solution",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 5 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 2.5 }
+    ]
+  },
+  {
+    "itemId": "knuckle-guard",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 }
+    ]
+  },
+  {
+    "itemId": "ember",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 }
+    ]
+  },
+  {
+    "itemId": "hollow-plate",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 15 },
+      { "kind": "statBoost", "stat": "speed", "percent": 7.5 }
+    ]
+  },
+  {
+    "itemId": "core-fragment",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 22.5 }
+    ]
+  },
+  {
+    "itemId": "venom-thorn",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 },
+      { "kind": "statBoost", "stat": "speed", "percent": 9 }
+    ]
+  },
+  {
+    "itemId": "warped-vambrace",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 18 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 9 }
+    ]
+  },
+  {
+    "itemId": "broken-oath-sigil",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 },
+      { "kind": "statBoost", "stat": "defense", "percent": 9 }
+    ]
+  },
+  {
+    "itemId": "warlords-trophy-chain",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 27 }
+    ]
+  },
+  {
+    "itemId": "nobles-signet",
+    "cost": 3,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 18 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 9 }
+    ]
+  },
+  {
+    "itemId": "dragon-scale",
+    "cost": 1,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 22 },
+      { "kind": "statBoost", "stat": "speed", "percent": 11 }
+    ]
+  },
+  {
+    "itemId": "unraveled-fragment",
+    "cost": 1,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 11 },
+      { "kind": "statBoost", "stat": "defense", "percent": 11 },
+      { "kind": "statBoost", "stat": "speed", "percent": 11 }
+    ]
+  },
+  {
+    "itemId": "weathered-keystone",
+    "cost": 1,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 33 }
+    ]
+  },
+  {
+    "itemId": "phylactery-shard",
+    "cost": 1,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 22 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 11 }
+    ]
+  },
+  {
+    "itemId": "grave-dust",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 2.5 },
+      { "kind": "statBoost", "stat": "defense", "percent": 2.5 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 2.5 }
+    ]
+  },
+  {
+    "itemId": "rotten-flesh",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 5 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 2.5 }
+    ]
+  },
+  {
+    "itemId": "broken-blade-fragment",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "defense", "percent": 8 },
+      { "kind": "healOverTime", "maxHpPercentPerTurn": 4 }
+    ]
+  },
+  {
+    "itemId": "rat-tail",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 4 },
+      { "kind": "statBoost", "stat": "defense", "percent": 4 },
+      { "kind": "statBoost", "stat": "speed", "percent": 4 }
+    ]
+  },
+  {
+    "itemId": "venom-gland",
+    "cost": 5,
+    "effects": [
+      { "kind": "statBoost", "stat": "attack", "percent": 12 },
+      { "kind": "statBoost", "stat": "speed", "percent": 6 }
+    ]
+  }
+]

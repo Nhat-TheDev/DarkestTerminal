@@ -59,6 +59,7 @@ import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 import * as abilityBuybackScreen from "./screens/abilityBuyback";
 import * as characterInfoScreen from "./screens/characterInfo";
+import * as runnerScreen from "./screens/runner";
 
 const LOG_HISTORY_SIZE = 20;
 const LOG_REVEAL_INTERVAL_MS = 800;
@@ -227,6 +228,8 @@ export class App implements ScreenContext {
       case "eventArtifactPick":
       case "eventHermitPickArtifact":
         return ownedArtifactEntries(this.game.state.party).length;
+      case "runnerSell":
+        return runnerScreen.sellableEntries(this.game).length;
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
       default:
@@ -279,7 +282,10 @@ export class App implements ScreenContext {
         this.ui = { kind: "eventReflection" };
         return;
       }
-      if (this.game.state.pendingCampReflectionTier !== null) {
+      const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
+      const restOpen = room.type === "rest" && !room.cleared;
+      // Camp Reflection is armed on entering a Rest room but waits until the room's own choice is made.
+      if (this.game.state.pendingCampReflectionTier !== null && !restOpen) {
         this.ui = { kind: "campReflection" };
         return;
       }
@@ -287,9 +293,13 @@ export class App implements ScreenContext {
         this.ui = { kind: "floorMilestone" };
         return;
       }
-      const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
-      if (room.type === "rest" && !room.cleared) {
-        this.ui = { kind: "rest" };
+      if (restOpen) {
+        const runner = this.game.state.restRunner;
+        if (runner && !runner.noticeShown) {
+          this.ui = { kind: "runnerNotice" };
+        } else if (!runner || (this.ui.kind !== "runnerShop" && this.ui.kind !== "runnerSell" && this.ui.kind !== "runnerBarter")) {
+          this.ui = { kind: "rest" };
+        }
         return;
       }
       if (room.type === "event" && !room.cleared && room.rolledEventId) {
@@ -370,6 +380,12 @@ export class App implements ScreenContext {
       case "room":
       case "rest":
         roomScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "runnerNotice":
+      case "runnerShop":
+      case "runnerSell":
+      case "runnerBarter":
+        runnerScreen.handleKey(this, this.ui, key, digit);
         break;
       case "pickAction":
       case "pickSkill":
@@ -454,6 +470,10 @@ export class App implements ScreenContext {
         return true;
       case "pickItemOutOfCombat":
         this.ui = { kind: "room" };
+        return true;
+      case "runnerSell":
+      case "runnerBarter":
+        this.ui = { kind: "runnerShop" };
         return true;
       case "itemDetail":
         this.ui = this.ui.origin.kind === "combat" ? { kind: "pickItemInCombat", actorRef: this.ui.origin.actorRef } : { kind: "pickItemOutOfCombat" };
@@ -892,6 +912,12 @@ export class App implements ScreenContext {
       case "rest":
         return roomScreen.renderMain(this.game, this.ui);
 
+      case "runnerNotice":
+      case "runnerShop":
+      case "runnerSell":
+      case "runnerBarter":
+        return runnerScreen.renderMain(this.game, this.ui, this.listPage);
+
       case "artifactMenu":
       case "artifactDetail":
         return artifactsScreen.renderMain(this.game, this.ui, this.listPage);
@@ -970,6 +996,11 @@ export class App implements ScreenContext {
       case "room":
       case "rest":
         return roomScreen.renderFooter(this.ui, this.game);
+      case "runnerNotice":
+      case "runnerShop":
+      case "runnerSell":
+      case "runnerBarter":
+        return runnerScreen.renderFooter(this.ui, this.game, this.listPage);
       case "pickAction":
       case "pickSkill":
       case "skillDetail":

@@ -16,7 +16,7 @@ export type SkillEffectKind =
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
-export type CombatStat = "attack" | "defense" | "aggro" | "speed";
+export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower";
 
 export interface SkillEffect {
   kind: SkillEffectKind;
@@ -277,14 +277,20 @@ export interface StatusEffectDefinition {
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
 }
 
+export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
+
 export interface ItemDefinition {
   id: Id;
   name: string;
   description: string;
   target: SkillTarget;
   effects: SkillEffect[];
+  /** Drives the item's drop weight (`BALANCE.items.tierWeights`). */
+  tier: ItemTier;
+  /** A trophy: an effect-less barter token dropped only by these monsters. */
   archetypeIds?: Id[];
-  weight?: number;
+  /** A trophy shared by several monsters of one race; its drop weight is scaled by `BALANCE.items.groupDropMultiplier`. */
+  groupItem?: boolean;
   combatUsable?: boolean;
 }
 
@@ -396,6 +402,9 @@ export interface EventDefinition {
       table — for a scene whose reward is a specific object described in the text itself, not a
       generic loot beat (e.g. waiting-supplies' bundle). Ignored if `noArtifactReward` is set. */
   guaranteedArtifactId?: Id;
+  /** `instantReward` only: items added to the inventory on top of the artifact reward — for a scene
+      whose bundle also holds consumables (e.g. waiting-supplies' Exploration Kits). */
+  guaranteedItems?: { itemId: Id; count: number }[];
   /** Overrides the generic "Open the chest" confirm-option text in the `eventOpenChest` UI screen
       for `instantReward` events whose scene isn't a chest. */
   instantRewardActionLabel?: string;
@@ -479,6 +488,31 @@ export interface ActiveStatusEffect {
   /** If set, this status is force-expired the instant the named `Summon` (by id) leaves combat —
    *  Totem Recall's "the buff lasts until the totem dies" mechanism (`SkillEffect.linksToCasterSummon`). */
   linkedSummonId?: Id;
+}
+
+export interface ShopOffer {
+  itemId: Id;
+  /** A lot of `BALANCE.runner.lotSize` of the same item instead of a single one. */
+  lot: boolean;
+  sold?: boolean;
+}
+
+export interface BarterOffer {
+  itemId: Id;
+  /** Already traded this visit. */
+  done?: boolean;
+}
+
+export interface RestRunner {
+  roomId: Id;
+  /** The appearance notice has been dismissed. */
+  noticeShown: boolean;
+  /** Which appearance text this visit uses, so it stays the same across save/load. */
+  noticeVariant: number;
+  offers: ShopOffer[];
+  refreshCount: number;
+  /** Trophies he will trade for a buff this visit; empty once the floor's barter has been used. */
+  barterOffers?: BarterOffer[];
 }
 
 export type RoomType = "combat" | "rest" | "boss" | "event";
@@ -765,6 +799,12 @@ export interface GameState {
   /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
+  /** The Merchant's Runner in the current uncleared Rest room, rolled once on entering it. `null`/absent when no Runner is there. */
+  restRunner?: RestRunner | null;
+  /** Trophies traded to the Runner for a buff, waiting for this floor's elite/boss room; applied when its combat starts, dropped if the floor ends first. */
+  pendingBarterBuffs?: Id[];
+  /** Floor depth on which a buff was last bartered, so later Rest rooms on that floor offer no barter. */
+  barterUsedDepth?: number | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] } | null;
   /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
       drives the "return" flavor text in 10-event-narrative.md §10.2. */

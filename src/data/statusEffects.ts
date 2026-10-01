@@ -28,6 +28,7 @@ export const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   defense: t("resolver.statLabelDefense"),
   aggro: t("resolver.statLabelAggro"),
   speed: t("resolver.statLabelSpeed"),
+  magicPower: t("resolver.statLabelMagicPower"),
 };
 
 // `items.ts` owns the exported `signed`, but importing it here would close a cycle

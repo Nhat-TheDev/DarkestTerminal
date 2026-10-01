@@ -43,6 +43,8 @@ import { getEvent } from "../data/events";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { openChest } from "./events/openChest";
+import { runnerBuy, runnerRefresh, runnerSell } from "./events/runner";
+import { runnerBarter } from "./events/barter";
 import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
@@ -136,6 +138,9 @@ export class Game {
       firedOnceEventIds: retiredCharacterEventEligible ? [] : ["the-one-who-stayed"],
       loreExposureCount: 0,
       pendingCampReflectionTier: null,
+      restRunner: null,
+      pendingBarterBuffs: [],
+      barterUsedDepth: null,
       pendingFloorMilestoneMessage: null,
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
@@ -286,6 +291,36 @@ export class Game {
       this.state.message = t("game.restSkip");
     }
     room.cleared = true;
+    this.state.restRunner = null;
+  }
+
+  runnerBuy(offerIndex: number): PartyActionError | null {
+    return runnerBuy(this.state, offerIndex);
+  }
+
+  runnerRefresh(): PartyActionError | null {
+    return runnerRefresh(this.state, this.ctx);
+  }
+
+  runnerSell(itemId: Id): PartyActionError | null {
+    return runnerSell(this.state, itemId);
+  }
+
+  runnerBarter(offerIndex: number): PartyActionError | null {
+    return runnerBarter(this.state, offerIndex);
+  }
+
+  dismissRunnerNotice(): void {
+    if (this.state.restRunner) this.state.restRunner.noticeShown = true;
+  }
+
+  /** Ends the Rest room after trading: the Trade choice replaces the room's rest action. */
+  leaveRunner(): void {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    if (room.type !== "rest" || room.cleared || !this.state.restRunner) return;
+    room.cleared = true;
+    this.state.restRunner = null;
+    this.state.message = t("game.leftRunner");
   }
 
   camp(): PartyActionError | null {
@@ -329,7 +364,8 @@ export class Game {
   useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
     const item = getItem(itemId);
     if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
-    if (item.target === "singleEnemy") return { reason: t("errors.itemNotUsableOutOfCombat") };
+    // Enemy-targeted items and status effects that count down in combat turns exist only for a fight; used beforehand they would be a free pre-buff.
+    if (item.target === "singleEnemy" || item.target === "allEnemies" || item.effects.some((e) => e.kind === "applyStatusEffect")) return { reason: t("errors.itemNotUsableOutOfCombat") };
 
     const log: LogEntry[] = [];
     // `satiety` effects are party-wide (GameState-scoped, not per-character) — for an "allAllies" item,
@@ -353,7 +389,7 @@ export class Game {
     }
 
     this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
-    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t("game.usedItem", { item: item.name });
+    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t(item.effects.length === 0 ? "game.itemNoEffect" : "game.usedItem", { item: item.name });
     return null;
   }
 
@@ -534,7 +570,7 @@ export class Game {
           const monster = this.ctx.monsters.find((m) => m.id === id);
           if (!monster) continue;
           coinsGained += rollCoinDrop(monster, this.ctx.rng);
-          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng, this.state.floor.depth);
+          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng);
           if (itemId) {
             this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
             droppedItemIds.push(itemId);
@@ -623,6 +659,8 @@ export class Game {
       return;
     }
     const nextDepth = this.state.floor.depth + 1;
+    this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
+    this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;

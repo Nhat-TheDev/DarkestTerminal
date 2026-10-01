@@ -473,6 +473,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
       : t("combat.useSkillPlain", { actor: actor.name, skill: skill.name }),
     kind: announceKind,
   });
+  if (queued.source.kind === "item" && getItem(queued.source.itemId).effects.length === 0) combat.log.push({ text: t("game.itemNoEffect"), kind: "item" });
   const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
   // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed) — it
   // would otherwise sit idle until next round regardless of speed. A summon faster than its owner

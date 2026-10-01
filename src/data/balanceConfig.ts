@@ -1,5 +1,5 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity } from "../types";
+import type { ArtifactRarity, ItemTier } from "../types";
 
 interface BalanceConfig {
   combat: {
@@ -116,7 +116,11 @@ interface BalanceConfig {
   };
   items: {
     itemDropChance: number;
-    itemWeightDepthGrowth: number;
+    /** Share of a trophy monster's drops that come from its trophies. */
+    trophyDropShare: number;
+    /** Multiplier on a group trophy's drop weight. */
+    groupDropMultiplier: number;
+    tierWeights: Record<ItemTier, number>;
   };
   /** Artifact rarity odds by floor depth — `docs/gameplay-decisions/07-items-artifacts.md`, "Level bands & drop schedule". Each source's `anchorWeights` are its odds on the step containing `anchorFirstFloor`; every other step scales rarity `i` (common = 0 … epic = 3) by `tilt ^ (i × stepsFromAnchor)` and renormalizes. */
   artifacts: {
@@ -126,6 +130,35 @@ interface BalanceConfig {
     /** Steps away from the anchor beyond which the odds stop changing. */
     maxStepsFromAnchor: number;
     anchorWeights: Record<"elite" | "boss" | "treasureOrEvent", Record<ArtifactRarity, number>>;
+  };
+  /** The Merchant's Runner in Rest rooms — `docs/specs/merchant-runner-coin-sink.md`. */
+  runner: {
+    appearChance: number;
+    noticeVariantCount: number;
+    offerCount: number;
+    /** Chance an offer is a single item rather than a lot. */
+    singleChance: number;
+    /** Chance an offer is a trophy rather than a consumable. */
+    trophyOfferChance: number;
+    lotSize: number;
+    /** Buyback pays the single price divided by this. */
+    buybackDivisor: number;
+    priceByTier: Partial<Record<ItemTier, { single: number; lot: number }>>;
+  };
+  /** Trophy-for-buff barter at the Runner. What each trophy costs and buys is in `data/barter.json`. */
+  barter: {
+    /** Trophy kinds the Runner offers to trade each visit. */
+    offerCount: number;
+    /** How long the buff lasts once active: effectively the whole combat, since it expires on victory. */
+    activeDurationTurns: number;
+  };
+  /** Shop tier odds by floor depth — same method as `artifacts`: each step away from the anchor scales tier `i` by `tilt ^ (i × steps)`. */
+  shop: {
+    floorsPerStep: number;
+    anchorFirstFloor: number;
+    tilt: number;
+    maxStepsFromAnchor: number;
+    anchorWeights: { consumable: Partial<Record<ItemTier, number>>; trophy: Partial<Record<ItemTier, number>> };
   };
   abilities: {
     dropChance: number;

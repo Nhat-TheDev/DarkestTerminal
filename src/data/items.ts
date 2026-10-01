@@ -35,7 +35,11 @@ function itemEffectSummary(effect: SkillEffect): string {
       return t("effect.signedStat", { amount: signed(effect.amount ?? 0), stat: label });
     }
     case "removeStatusEffect":
-      return t("item.effectRemoveStatus");
+      return effect.statusEffectId
+        ? t("item.effectRemoveNamedStatus", { status: getStatusEffect(effect.statusEffectId).name })
+        : t("item.effectRemoveStatus");
+    case "damage":
+      return t("item.effectDamage", { amount: effect.amount ?? 0, type: effect.damageType ?? "physical" });
     case "applyStatusEffect":
       return effect.statusEffectId
         ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId, effect.durationTurns) })
@@ -54,35 +58,42 @@ const TARGET_NOTE: Record<string, string> = {
   singleAlly: t("item.targetNoteSingleAlly"),
   allAllies: t("item.targetNoteAllAllies"),
   singleEnemy: t("item.targetNoteSingleEnemy"),
+  allEnemies: t("item.targetNoteAllEnemies"),
 };
 
-export function formatItemEffect(item: ItemDefinition): string {
-  return item.effects.map(itemEffectSummary).join(". ") + "." + (TARGET_NOTE[item.target] ?? "");
+/** What the item does, without who it can be used on. */
+export function describeItemEffects(item: ItemDefinition): string {
+  if (item.effects.length === 0) return t("item.effectNone");
+  return item.effects.map(itemEffectSummary).join(". ") + ".";
 }
 
-const BASE_ITEM_IDS = ITEMS.filter((i) => !i.archetypeIds || i.archetypeIds.length === 0).map((i) => i.id);
+export function formatItemEffect(item: ItemDefinition): string {
+  if (item.effects.length === 0) return t("item.effectNone");
+  return describeItemEffects(item) + (TARGET_NOTE[item.target] ?? "");
+}
+
+const TIER_WEIGHTS = BALANCE.items.tierWeights;
+
+for (const item of ITEMS) {
+  if (!(item.tier in TIER_WEIGHTS)) throw new Error(`data/items.json: "${item.id}" has an unknown tier "${item.tier}"`);
+  if (item.archetypeIds?.length && item.effects.length > 0) throw new Error(`data/items.json: trophy "${item.id}" must have no effects`);
+}
+
+/** Trophies (items with `archetypeIds`) drop only from their own monsters; everything else is the general pool. */
+const TROPHIES = ITEMS.filter((i) => i.archetypeIds?.length);
+const GENERAL_ITEMS = ITEMS.filter((i) => !i.archetypeIds?.length);
 
 const ITEM_DROP_CHANCE = BALANCE.items.itemDropChance;
+const TROPHY_DROP_SHARE = BALANCE.items.trophyDropShare;
 
-const ITEM_WEIGHT_DEPTH_GROWTH = BALANCE.items.itemWeightDepthGrowth;
-
-function effectiveWeight(item: ItemDefinition, floorDepth: number): number {
-  const base = item.weight ?? 1;
-  if (base >= 1) return base;
-  return Math.min(1, base + ITEM_WEIGHT_DEPTH_GROWTH * (floorDepth - 1));
+function dropWeight(item: ItemDefinition): number {
+  return TIER_WEIGHTS[item.tier] * (item.groupItem ? BALANCE.items.groupDropMultiplier : 1);
 }
 
-export function rollItemDrop(archetypeId: Id, rng: Rng, floorDepth = 1): Id | null {
+export function rollItemDrop(archetypeId: Id, rng: Rng): Id | null {
   if (!rng.chance(ITEM_DROP_CHANCE)) return null;
 
-  const signatureIds = ITEMS.filter((i) => i.archetypeIds?.includes(archetypeId)).map((i) => i.id);
-  const weighted: { id: Id; weight: number }[] = [];
-  if (signatureIds.length > 0) {
-    const signatureTotal = signatureIds.reduce((sum, id) => sum + effectiveWeight(getItem(id), floorDepth), 0);
-    for (const id of signatureIds) weighted.push({ id, weight: (effectiveWeight(getItem(id), floorDepth) / signatureTotal) * 50 });
-  }
-  const baseTotal = BASE_ITEM_IDS.reduce((sum, id) => sum + effectiveWeight(getItem(id), floorDepth), 0);
-  for (const id of BASE_ITEM_IDS) weighted.push({ id, weight: (effectiveWeight(getItem(id), floorDepth) / baseTotal) * 50 });
-
-  return rng.weightedPick(weighted, (w) => w.weight).id;
+  const trophies = TROPHIES.filter((i) => i.archetypeIds?.includes(archetypeId));
+  const pool = trophies.length > 0 && rng.chance(TROPHY_DROP_SHARE) ? trophies : GENERAL_ITEMS;
+  return rng.weightedPick(pool, dropWeight).id;
 }

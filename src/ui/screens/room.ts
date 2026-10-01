@@ -32,6 +32,10 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
       break;
     }
     case "rest": {
+      if (digit === 3 && ctx.game.state.restRunner) {
+        ctx.setUi({ kind: "runnerShop" });
+        break;
+      }
       const choice = key.name === "return" ? "skip" : digit === 1 ? "eat" : digit === 2 ? "chat" : null;
       if (choice === null) break;
       ctx.game.restAction(choice);
@@ -58,7 +62,8 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
 
     case "rest": {
       const room = getRoom(s.floor, s.currentRoomId);
-      return [t("dungeon.restEnter", { room: room.name }), "", t("ui.restOptEat"), t("ui.restOptChat"), t("ui.restOptSkip")].join("\n");
+      const trade = s.restRunner ? [t("ui.restOptTrade")] : [];
+      return [t("dungeon.restEnter", { room: room.name }), "", t("ui.restOptEat"), t("ui.restOptChat"), ...trade, t("ui.restOptSkip")].join("\n");
     }
   }
 }
@@ -71,6 +76,6 @@ export function renderFooter(ui: RoomUiState, game: Game): string {
       return digitHint(itemsKey, game.connectedRoomChoices().length);
     }
     case "rest":
-      return t("ui.footerChooseActivity");
+      return digitHint("ui.footerRest", game.state.restRunner ? 3 : 2);
   }
 }
