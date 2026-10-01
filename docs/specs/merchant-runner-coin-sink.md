@@ -1,10 +1,9 @@
 # Spec: Merchant's Runner (Rest Room coin sink)
 
-Status: **proposed, not implemented.** This is an implementation spec, not a decision
-doc. When the mechanic is built, move its finalized rules into
-`docs/gameplay-decisions/` and update the docs that describe what it changes
-(`09-currency.md`, `07-items-artifacts.md`, `docs/developer-guide.md`), per the "keep data and
-docs in sync" rule in `CLAUDE.md`.
+Status: **implemented.** This spec is the design record. The rules as built live in
+`docs/gameplay-decisions/` (`03-survival-stats.md` for the Runner and barter,
+`07-items-artifacts.md` for tiers, trophies and drops, `09-currency.md` for coins) and
+`docs/developer-guide.md` for the screens.
 
 ## Problem this solves
 
@@ -37,16 +36,17 @@ He offers three interactions inside one visit (see "Rest room flow"):
 
 The buff is granted immediately on trade and persists, inactive and hidden, until
 the party enters that floor's elite/boss room, where it activates for that
-combat and is then consumed. It is not shown anywhere before that room: only the elite/boss
-room displays it. If the floor ends without the party reaching an
-elite/boss room, the buff is lost unused.
+combat and is then consumed. The barter screen describes what each offer buys, but once
+bought the buff is not shown anywhere until that room's fight starts. If the floor ends
+without the party reaching an elite/boss room, the buff is lost unused.
 
-This does not fit the current `ActiveStatusEffect` model
-(`src/types.ts:472-483`), which only expires by `turnsRemaining` or
-`linkedSummonId`. **New plumbing required:** a room-scoped expiry mode on
-`ActiveStatusEffect` (e.g. a `scopedToRoomType: "eliteOrBoss"` flag) that is
-checked/consumed at combat start instead of decremented per turn, rather than
-a duration-based effect.
+How it is built: the bought trophy waits in `GameState.pendingBarterBuffs`
+(`src/engine/events/barter.ts`). Entering the elite/boss room (`enterRoom`) applies it to the
+living party as ordinary statuses with a duration longer than any fight, with the strength
+computed per character and passed in with `StatusMagnitudeOverride`. The existing rule that
+removes helpful statuses once a room is won (`Game.resolve`) ends it, and
+`advanceToNextFloor` drops what is still waiting. No new `ActiveStatusEffect` field is
+needed.
 
 ### Buff formula
 
@@ -704,10 +704,11 @@ The old descriptions promised an effect. Ids are kept.
   monsters have no `magicPower`, so a magic power effect must never target one. Whether
   `recomputeAllPartyStats` (`src/engine/party.ts`) preserves an applied magic power delta the
   way it does attack is to be checked when building it.
-- **Status effects**: extend `ActiveStatusEffect` (`src/types.ts:472-483`) with a
-  room-scoped expiry mode (see "Buff scope") instead of the turn-count / linked-summon
-  model, and add the new statuses' data. Barter buffs beyond attack, defense, speed and
-  regen are out of scope for the first version.
+- **Status effects**: the barter buffs are statuses in `data/status-effects.json`
+  (`barter-attack`, `barter-magic-power`, `barter-defense`, `barter-speed`, and one
+  `barter-regen-<tier>` per tier); a heal over time with `maxHpPercent` heals that share of max
+  HP each tick. Barter buffs beyond attack, defense, speed and regen are out of scope for the
+  first version.
 - **Items**: add a `tier` field to `ItemDefinition` for every item, remove `weight` from
   `data/items.json`, derive weight from the tier and retire `effectiveWeight`'s depth
   growth, make the trophy share config in `rollItemDrop`, and drop `exploration-kit`'s

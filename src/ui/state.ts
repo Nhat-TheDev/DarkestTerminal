@@ -17,6 +17,7 @@ export type UiState =
   | { kind: "runnerNotice" }
   | { kind: "runnerShop" }
   | { kind: "runnerSell" }
+  | { kind: "runnerBarter" }
   | { kind: "pickAction"; actorRef: CombatantRef }
   | { kind: "pickSkill"; actorRef: CombatantRef }
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }

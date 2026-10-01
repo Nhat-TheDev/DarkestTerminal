@@ -382,6 +382,45 @@ describe("Rest room runner screens", () => {
     expect(app.debugUiState.kind).toBe("runnerShop"); // nothing left to sell
   });
 
+  test("bartering lists each offer with the buff it buys, trades it, and hides [t] once none are left", async () => {
+    const { app, game, mockInput, renderOnce } = await restApp({ runner: true });
+    game.state.restRunner!.barterOffers = [{ itemId: "rat-tail" }, { itemId: "warped-vambrace" }];
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(runnerScreen.renderFooter({ kind: "runnerShop" }, game)).toContain("[t] Barter");
+
+    mockInput.pressKey("t");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerBarter");
+    const text = runnerScreen.renderMain(game, { kind: "runnerBarter" });
+    expect(text).toContain("Rat Tail ×5 (you have 0)");
+    expect(text).toContain("attack and magic power +4%, defense +4%, speed +4%");
+    expect(text).toContain("Warped Vambrace ×3");
+
+    game.state.inventory["rat-tail"] = 5;
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(game.state.inventory["rat-tail"]).toBe(0);
+    expect(game.state.pendingBarterBuffs).toEqual(["rat-tail"]);
+    expect(app.debugUiState.kind).toBe("runnerBarter");
+    expect(runnerScreen.renderMain(game, { kind: "runnerBarter" })).not.toContain("Rat Tail");
+
+    mockInput.pressEscape();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+
+    game.state.inventory["warped-vambrace"] = 3;
+    mockInput.pressKey("t");
+    await renderOnce();
+    mockInput.pressKey("1"); // the one offer left
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop"); // nothing left to trade
+    expect(runnerScreen.renderFooter({ kind: "runnerShop" }, game)).not.toContain("[t] Barter");
+  });
+
   test("a Rest room without the runner keeps its two choices, and Camp Reflection waits for the choice", async () => {
     const { app, game, room, mockInput, renderOnce } = await restApp({ runner: false, campReflection: true });
     expect(app.debugUiState.kind).toBe("rest");

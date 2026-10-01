@@ -297,7 +297,7 @@ export class App implements ScreenContext {
         const runner = this.game.state.restRunner;
         if (runner && !runner.noticeShown) {
           this.ui = { kind: "runnerNotice" };
-        } else if (!runner || (this.ui.kind !== "runnerShop" && this.ui.kind !== "runnerSell")) {
+        } else if (!runner || (this.ui.kind !== "runnerShop" && this.ui.kind !== "runnerSell" && this.ui.kind !== "runnerBarter")) {
           this.ui = { kind: "rest" };
         }
         return;
@@ -384,6 +384,7 @@ export class App implements ScreenContext {
       case "runnerNotice":
       case "runnerShop":
       case "runnerSell":
+      case "runnerBarter":
         runnerScreen.handleKey(this, this.ui, key, digit);
         break;
       case "pickAction":
@@ -471,6 +472,7 @@ export class App implements ScreenContext {
         this.ui = { kind: "room" };
         return true;
       case "runnerSell":
+      case "runnerBarter":
         this.ui = { kind: "runnerShop" };
         return true;
       case "itemDetail":
@@ -913,6 +915,7 @@ export class App implements ScreenContext {
       case "runnerNotice":
       case "runnerShop":
       case "runnerSell":
+      case "runnerBarter":
         return runnerScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "artifactMenu":
@@ -996,6 +999,7 @@ export class App implements ScreenContext {
       case "runnerNotice":
       case "runnerShop":
       case "runnerSell":
+      case "runnerBarter":
         return runnerScreen.renderFooter(this.ui, this.game, this.listPage);
       case "pickAction":
       case "pickSkill":

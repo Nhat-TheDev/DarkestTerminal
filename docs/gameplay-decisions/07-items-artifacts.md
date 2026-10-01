@@ -54,8 +54,6 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
-> **Planned, not implemented:** trophies become barter tokens at the Merchant's Runner, who already buys and sells items (`03-survival-stats.md`). See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
-
 ### Catalog — general pool
 
 Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
@@ -72,7 +70,7 @@ Each buff or debuff item has its own status in `data/status-effects.json` (id = 
 
 ### Trophies
 
-A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it and shows "It has no effect at all. Strange." (in a combat log or as the room message), and its purpose is to be traded later. The inventory and reward screens list its effect as "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
+A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it and shows "It has no effect at all. Strange." (in a combat log or as the room message), and its purpose is to be traded to the Merchant's Runner: sold for coins or bartered for a combat buff (`03-survival-stats.md`). The inventory and reward screens list its effect as "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
 
 - **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss.
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.

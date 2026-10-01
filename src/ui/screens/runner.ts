@@ -1,6 +1,7 @@
 import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import type { ShopOffer } from "../../types";
+import { barterBuffFor, barterCost } from "../../engine/events/barter";
 import { BALANCE } from "../../data/balanceConfig";
 import { describeItemEffects, getItem } from "../../data/items";
 import { t } from "../../data/strings";
@@ -12,7 +13,7 @@ import { truncateText } from "../layout";
 import { paginate } from "../pagination";
 import type { ScreenContext } from "./context";
 
-export type RunnerUiState = Extract<UiState, { kind: "runnerNotice" } | { kind: "runnerShop" } | { kind: "runnerSell" }>;
+export type RunnerUiState = Extract<UiState, { kind: "runnerNotice" } | { kind: "runnerShop" } | { kind: "runnerSell" } | { kind: "runnerBarter" }>;
 
 /** Offers still on the cloth, numbered on screen in order; `index` is the offer's place in the runner's stock. */
 function unsoldOffers(game: Game): { offer: ShopOffer; index: number }[] {
@@ -22,6 +23,18 @@ function unsoldOffers(game: Game): { offer: ShopOffer; index: number }[] {
 /** Inventory items the runner will buy. */
 export function sellableEntries(game: Game) {
   return inventoryEntries(game.state.inventory).filter(({ item }) => buybackPrice(item) !== null);
+}
+
+/** Barter offers still open, numbered on screen in order; `index` is the offer's place in the runner's list. */
+function openBarterOffers(game: Game): { itemId: string; index: number }[] {
+  return (game.state.restRunner?.barterOffers ?? []).map((offer, index) => ({ itemId: offer.itemId, index, done: offer.done })).filter((offer) => !offer.done);
+}
+
+function describeBarterBuff(itemId: string): string {
+  const labels = { attack: t("ui.barterStatAttack"), defense: t("ui.barterStatDefense"), speed: t("ui.barterStatSpeed") };
+  return barterBuffFor(itemId)
+    .map(({ stat, percent }) => (stat === "regen" ? t("ui.barterRegen", { percent }) : t("ui.barterStat", { stat: labels[stat], percent })))
+    .join(", ");
 }
 
 function offerName(offer: ShopOffer): string {
@@ -56,12 +69,23 @@ export function handleKey(ctx: ScreenContext, ui: RunnerUiState, key: KeyEvent, 
         ctx.syncUiToGameState();
       } else if (key.name === "x") {
         if (sellableEntries(ctx.game).length > 0) ctx.setUi({ kind: "runnerSell" });
+      } else if (key.name === "t") {
+        if (openBarterOffers(ctx.game).length > 0) ctx.setUi({ kind: "runnerBarter" });
       } else if (digit !== null) {
         const picked = unsoldOffers(ctx.game)[digit - 1];
         if (!picked) break;
         report(ctx, ctx.game.runnerBuy(picked.index));
         ctx.syncUiToGameState();
       }
+      break;
+    }
+    case "runnerBarter": {
+      if (digit === null) break;
+      const picked = openBarterOffers(ctx.game)[digit - 1];
+      if (!picked) break;
+      report(ctx, ctx.game.runnerBarter(picked.index));
+      if (openBarterOffers(ctx.game).length === 0) ctx.setUi({ kind: "runnerShop" });
+      ctx.syncUiToGameState();
       break;
     }
     case "runnerSell": {
@@ -98,7 +122,17 @@ export function renderMain(game: Game, ui: RunnerUiState, page = 0): string {
           : t("ui.runnerRefreshNone")
       );
       if (sellableEntries(game).length > 0) lines.push(t("ui.runnerSellOption"));
+      if (openBarterOffers(game).length > 0) lines.push(t("ui.runnerBarterOption"));
       lines.push(t("ui.runnerLeaveOption"));
+      return lines.join("\n");
+    }
+    case "runnerBarter": {
+      const lines = [t("ui.runnerBarterTitle")];
+      openBarterOffers(game).forEach(({ itemId }, i) => {
+        const item = getItem(itemId);
+        lines.push(t("ui.runnerBarterLine", { i: i + 1, name: item.name, cost: barterCost(item.tier), have: s.inventory[itemId] ?? 0 }));
+        lines.push(t("ui.runnerBarterEffect", { effect: describeBarterBuff(itemId) }));
+      });
       return lines.join("\n");
     }
     case "runnerSell": {
@@ -121,9 +155,12 @@ export function renderFooter(ui: RunnerUiState, game: Game, page = 0): string {
         buy > 0 ? t("ui.footerRunnerBuy", { keys: digitRange(buy)! }) : null,
         refreshesLeft(game) > 0 ? t("ui.footerRunnerRefresh") : null,
         sellableEntries(game).length > 0 ? t("ui.footerRunnerSell") : null,
+        openBarterOffers(game).length > 0 ? t("ui.footerRunnerBarter") : null,
         t("ui.footerRunnerLeave")
       );
     }
+    case "runnerBarter":
+      return joinHints(t("ui.footerRunnerTrade", { keys: digitRange(openBarterOffers(game).length) ?? "1" }), t("ui.footerBackOnly"));
     case "runnerSell": {
       const { pageItems } = paginate(sellableEntries(game), page);
       return joinHints(digitHint("ui.footerRunnerSellPick", pageItems.length, "ui.footerBackOnly"), pageItems.length > 0 ? t("ui.footerBackOnly") : null);

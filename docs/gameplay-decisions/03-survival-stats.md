@@ -114,7 +114,13 @@ On entering an uncleared Rest room there is a `runner.appearChance` (50%) chance
 
 The shop sells 5 distinct items (`rollShopOffers`, `src/data/shopStock.ts`), each listed with a line saying what it does, refreshable like the Merchant (`events.merchantRefreshCostCoins`, `events.merchantMaxRefreshes`), and buys consumables and trophies back at a fifth of the single price. Prices, odds and the offer mix are in `data/balance-config.json` (`runner`, `shop`); item rules in `07-items-artifacts.md`, the coin side in `09-currency.md`.
 
-> **Planned, not implemented:** trading trophies for a combat buff against the floor's elite/boss room. See [`../specs/merchant-runner-coin-sink.md`](../specs/merchant-runner-coin-sink.md).
+**Barter.** The Trade screen's `[t] Barter` lists 2 trophy kinds the Runner will take (`barter.offerCount`), drawn from those that can drop on the current floor, Legendary included. An offer costs 5 of the trophy (3 for Epic, 1 for Legendary; `barter.costByTier`) and each is made once, both in the same visit if the party can pay. The offer shows what it buys; once traded the buff waits, hidden, for **this floor's elite/boss room**: when that fight starts it applies to the whole party, and it ends with the fight. A buff still waiting when the floor ends is lost.
+
+- **Strength** is a percent of the stat's effect set by the trophy's tier (5 / 8 / 12 / 15 / 18 / 22%, `barter.magnitudePercentByTier`), added to the party's stat when the fight starts: attack (which also raises magic power), defense (a share of effective HP, `defenseMitigationX + defense`), speed, or regeneration.
+- **Which stat** comes from the most common `monsterType` among the monsters that drop the trophy (armored, tanky, sentinel → defense; bruiser, striker, glass → attack; balanced → attack and defense at half each) and a secondary from their most common `race` at half the strength (`barter.primaryStatByMonsterType`, `barter.secondaryByRace`). A tie goes to the first monster listed.
+- **Once per floor.** After a barter on a floor, the Runner of a later Rest room on that floor offers no barter (`GameState.barterUsedDepth`).
+
+Code: `src/engine/events/barter.ts`.
 
 ### Camp Reflection
 

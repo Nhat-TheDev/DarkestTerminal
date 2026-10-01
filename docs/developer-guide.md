@@ -244,7 +244,8 @@ screen contributes.
 | `room` | `[1-n] Move   [i] Items   [a] Artifacts` — n = exits from this room |
 | `rest` | `[1-2] Choose   [Enter] Skip` — `[1-3]` when the Merchant's Runner is there (Trade) |
 | `runnerNotice` | `[Enter] Continue` |
-| `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable |
+| `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [t] Barter   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable, `[t]` when no trophy trade is left |
+| `runnerBarter` | `[1-n] Trade   [Esc] Back` — n = trophy trades left |
 | `runnerSell` | `[1-n] Sell   [Esc] Back` — n = items on this page |
 | `pickAction` | `[1-2] Action` — "Use item" stays listed (tagged) even with an empty bag |
 | `pickSkill` | `[1-n] Skill   [Esc] Back` — n = the actor's skills |
