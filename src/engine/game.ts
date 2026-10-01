@@ -43,6 +43,7 @@ import { getEvent } from "../data/events";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { openChest } from "./events/openChest";
+import { runnerBuy, runnerRefresh, runnerSell } from "./events/runner";
 import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
@@ -136,6 +137,7 @@ export class Game {
       firedOnceEventIds: retiredCharacterEventEligible ? [] : ["the-one-who-stayed"],
       loreExposureCount: 0,
       pendingCampReflectionTier: null,
+      restRunner: null,
       pendingFloorMilestoneMessage: null,
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
@@ -286,6 +288,32 @@ export class Game {
       this.state.message = t("game.restSkip");
     }
     room.cleared = true;
+    this.state.restRunner = null;
+  }
+
+  runnerBuy(offerIndex: number): PartyActionError | null {
+    return runnerBuy(this.state, offerIndex);
+  }
+
+  runnerRefresh(): PartyActionError | null {
+    return runnerRefresh(this.state, this.ctx);
+  }
+
+  runnerSell(itemId: Id): PartyActionError | null {
+    return runnerSell(this.state, itemId);
+  }
+
+  dismissRunnerNotice(): void {
+    if (this.state.restRunner) this.state.restRunner.noticeShown = true;
+  }
+
+  /** Ends the Rest room after trading: the Trade choice replaces the room's rest action. */
+  leaveRunner(): void {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    if (room.type !== "rest" || room.cleared || !this.state.restRunner) return;
+    room.cleared = true;
+    this.state.restRunner = null;
+    this.state.message = t("game.leftRunner");
   }
 
   camp(): PartyActionError | null {

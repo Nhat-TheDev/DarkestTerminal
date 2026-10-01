@@ -33,6 +33,7 @@ export function migrateGameState(raw: unknown): GameState {
   if (!Array.isArray(state.firedOnceEventIds)) state.firedOnceEventIds = [];
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;
   if (state.pendingCampReflectionTier === undefined) state.pendingCampReflectionTier = null;
+  if (state.restRunner === undefined) state.restRunner = null;
   if (!state.campReflectionChoices) state.campReflectionChoices = {};
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;

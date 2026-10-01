@@ -131,6 +131,28 @@ interface BalanceConfig {
     maxStepsFromAnchor: number;
     anchorWeights: Record<"elite" | "boss" | "treasureOrEvent", Record<ArtifactRarity, number>>;
   };
+  /** The Merchant's Runner in Rest rooms — `docs/specs/merchant-runner-coin-sink.md`. */
+  runner: {
+    appearChance: number;
+    noticeVariantCount: number;
+    offerCount: number;
+    /** Chance an offer is a single item rather than a lot. */
+    singleChance: number;
+    /** Chance an offer is a trophy rather than a consumable. */
+    trophyOfferChance: number;
+    lotSize: number;
+    /** Buyback pays the single price divided by this. */
+    buybackDivisor: number;
+    priceByTier: Partial<Record<ItemTier, { single: number; lot: number }>>;
+  };
+  /** Shop tier odds by floor depth — same method as `artifacts`: each step away from the anchor scales tier `i` by `tilt ^ (i × steps)`. */
+  shop: {
+    floorsPerStep: number;
+    anchorFirstFloor: number;
+    tilt: number;
+    maxStepsFromAnchor: number;
+    anchorWeights: { consumable: Partial<Record<ItemTier, number>>; trophy: Partial<Record<ItemTier, number>> };
+  };
   abilities: {
     dropChance: number;
     depthCap: number;

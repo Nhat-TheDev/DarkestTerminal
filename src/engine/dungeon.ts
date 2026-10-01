@@ -9,6 +9,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { campReflectionTier, highestAnsweredCampReflectionTier } from "../data/loreExposure";
 import { getClass } from "../data/classes";
+import { rollRestRunner } from "./events/runner";
 
 /** §8.15 Chain 4, "Taken, Never Given" — same 7 ids `closeEvent()` (events/shared.ts) counts;
     duplicated here rather than imported to avoid a circular import (shared.ts already imports
@@ -63,6 +64,7 @@ export function enterRoom(state: GameState, room: Room, ctx: EngineContext): voi
         state.pendingCampReflectionTier = tier;
       }
     }
+    rollRestRunner(state, room, ctx);
     // Rest room: no satiety drain at all.
     state.message = t("dungeon.restEnter", { room: room.name });
     return;

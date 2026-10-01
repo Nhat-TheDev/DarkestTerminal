@@ -64,21 +64,34 @@ export type ArtifactSource = "elite" | "boss" | "treasureOrEvent";
 
 const RARITY_ORDER: ArtifactRarity[] = ["common", "rare", "unique", "epic"];
 
+export interface DepthTierCurve {
+  floorsPerStep: number;
+  anchorFirstFloor: number;
+  tilt: number;
+  maxStepsFromAnchor: number;
+}
+
 /**
- * Rarity odds (weights summing to 100) for `source` at floor `depth`. The step containing
- * `anchorFirstFloor` uses the configured `anchorWeights`; each step away from it scales rarity `i`
- * (common 0 … epic 3) by `tilt ^ (i × stepsFromAnchor)`, then the result is renormalized — deeper
- * floors shift weight toward the higher rarities, shallower ones toward Common. A rarity anchored at
- * 0 (Elite's Epic) stays 0 at every depth. `maxStepsFromAnchor` freezes the odds beyond that many steps
- * either way, which also keeps `tilt ** exponent` finite for very deep floors.
+ * Tier odds (weights summing to 100) at floor `depth`, for tiers listed lowest to highest in `order`.
+ * The step containing `anchorFirstFloor` uses `anchor`; each step away from it scales tier `i`
+ * (lowest 0 …) by `tilt ^ (i × stepsFromAnchor)`, then the result is renormalized — deeper floors
+ * shift weight toward the higher tiers, shallower ones toward the lowest. A tier anchored at 0 stays
+ * 0 at every depth. `maxStepsFromAnchor` freezes the odds beyond that many steps either way, which
+ * also keeps `tilt ** exponent` finite for very deep floors.
  */
-export function artifactRarityWeights(source: ArtifactSource, depth: number): Record<ArtifactRarity, number> {
-  const { floorsPerStep, anchorFirstFloor, tilt, maxStepsFromAnchor, anchorWeights } = BALANCE.artifacts;
+export function tierWeightsByDepth<T extends string>(order: readonly T[], anchor: Partial<Record<T, number>>, depth: number, curve: DepthTierCurve): Record<T, number> {
+  const { floorsPerStep, anchorFirstFloor, tilt, maxStepsFromAnchor } = curve;
   const rawSteps = Math.floor((depth - 1) / floorsPerStep) - Math.floor((anchorFirstFloor - 1) / floorsPerStep);
   const stepsFromAnchor = Math.max(-maxStepsFromAnchor, Math.min(maxStepsFromAnchor, rawSteps));
-  const scaled = RARITY_ORDER.map((rarity, i) => anchorWeights[source][rarity] * tilt ** (i * stepsFromAnchor));
+  const scaled = order.map((tier, i) => (anchor[tier] ?? 0) * tilt ** (i * stepsFromAnchor));
   const total = scaled.reduce((sum, w) => sum + w, 0);
-  return Object.fromEntries(RARITY_ORDER.map((rarity, i) => [rarity, (100 * scaled[i]!) / total])) as Record<ArtifactRarity, number>;
+  return Object.fromEntries(order.map((tier, i) => [tier, (100 * scaled[i]!) / total])) as Record<T, number>;
+}
+
+/** Rarity odds (weights summing to 100) for `source` at floor `depth`; see `tierWeightsByDepth`. Elite's Epic is anchored at 0, so it never rolls. */
+export function artifactRarityWeights(source: ArtifactSource, depth: number): Record<ArtifactRarity, number> {
+  const { anchorWeights, ...curve } = BALANCE.artifacts;
+  return tierWeightsByDepth(RARITY_ORDER, anchorWeights[source], depth, curve);
 }
 
 /** Fixed odds for the exchange events (Sacrificial Circle, Wandering Hermit) — deliberately not depth-scaled. */

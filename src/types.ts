@@ -490,6 +490,23 @@ export interface ActiveStatusEffect {
   linkedSummonId?: Id;
 }
 
+export interface ShopOffer {
+  itemId: Id;
+  /** A lot of `BALANCE.runner.lotSize` of the same item instead of a single one. */
+  lot: boolean;
+  sold?: boolean;
+}
+
+export interface RestRunner {
+  roomId: Id;
+  /** The appearance notice has been dismissed. */
+  noticeShown: boolean;
+  /** Which appearance text this visit uses, so it stays the same across save/load. */
+  noticeVariant: number;
+  offers: ShopOffer[];
+  refreshCount: number;
+}
+
 export type RoomType = "combat" | "rest" | "boss" | "event";
 
 export interface Room {
@@ -774,6 +791,8 @@ export interface GameState {
   /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
+  /** The Merchant's Runner in the current uncleared Rest room, rolled once on entering it. `null`/absent when no Runner is there. */
+  restRunner?: RestRunner | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] } | null;
   /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
       drives the "return" flavor text in 10-event-narrative.md §10.2. */

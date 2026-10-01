@@ -132,6 +132,32 @@
       "legendary": 0.05
     }
   },
+  "runner": {
+    "appearChance": 0.5,
+    "noticeVariantCount": 3,
+    "offerCount": 5,
+    "singleChance": 0.3,
+    "trophyOfferChance": 0.05,
+    "lotSize": 3,
+    "buybackDivisor": 5,
+    "priceByTier": {
+      "common": { "single": 15, "lot": 40 },
+      "uncommon": { "single": 25, "lot": 65 },
+      "rare": { "single": 50, "lot": 135 },
+      "unique": { "single": 80, "lot": 220 },
+      "epic": { "single": 150, "lot": 420 }
+    }
+  },
+  "shop": {
+    "floorsPerStep": 10,
+    "anchorFirstFloor": 51,
+    "tilt": 2,
+    "maxStepsFromAnchor": 10,
+    "anchorWeights": {
+      "consumable": { "common": 25, "uncommon": 35, "rare": 40 },
+      "trophy": { "common": 10, "uncommon": 20, "rare": 30, "unique": 25, "epic": 15 }
+    }
+  },
   "artifacts": {
     "floorsPerStep": 10,
     "anchorFirstFloor": 31,
