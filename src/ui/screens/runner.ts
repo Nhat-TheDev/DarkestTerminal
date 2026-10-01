@@ -33,7 +33,7 @@ function openBarterOffers(game: Game): { itemId: string; index: number }[] {
 function describeBarterBuff(itemId: string): string {
   const labels = { attack: t("ui.barterStatAttack"), defense: t("ui.barterStatDefense"), speed: t("ui.barterStatSpeed") };
   return barterBuffFor(itemId)
-    .map(({ stat, percent }) => (stat === "regen" ? t("ui.barterRegen", { percent }) : t("ui.barterStat", { stat: labels[stat], percent })))
+    .map((effect) => (effect.kind === "healOverTime" ? t("ui.barterRegen", { percent: effect.maxHpPercentPerTurn }) : t("ui.barterStat", { stat: labels[effect.stat], percent: effect.percent })))
     .join(", ");
 }
 
@@ -130,7 +130,7 @@ export function renderMain(game: Game, ui: RunnerUiState, page = 0): string {
       const lines = [t("ui.runnerBarterTitle")];
       openBarterOffers(game).forEach(({ itemId }, i) => {
         const item = getItem(itemId);
-        lines.push(t("ui.runnerBarterLine", { i: i + 1, name: item.name, cost: barterCost(item.tier), have: s.inventory[itemId] ?? 0 }));
+        lines.push(t("ui.runnerBarterLine", { i: i + 1, name: item.name, cost: barterCost(itemId), have: s.inventory[itemId] ?? 0 }));
         lines.push(t("ui.runnerBarterEffect", { effect: describeBarterBuff(itemId) }));
       });
       return lines.join("\n");

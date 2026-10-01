@@ -145,20 +145,12 @@ interface BalanceConfig {
     buybackDivisor: number;
     priceByTier: Partial<Record<ItemTier, { single: number; lot: number }>>;
   };
-  /** Trophy-for-buff barter at the Runner — `docs/specs/merchant-runner-coin-sink.md`, "Buff formula". */
+  /** Trophy-for-buff barter at the Runner. What each trophy costs and buys is in `data/barter.json`. */
   barter: {
     /** Trophy kinds the Runner offers to trade each visit. */
     offerCount: number;
-    /** How many of one trophy a trade costs. */
-    costByTier: Record<ItemTier, number>;
-    /** The buff's strength (P, a percent of the stat's effect) by the trophy's tier. */
-    magnitudePercentByTier: Record<ItemTier, number>;
-    /** A race's secondary effect is this share of P. */
-    secondaryShare: number;
     /** How long the buff lasts once active: effectively the whole combat, since it expires on victory. */
     activeDurationTurns: number;
-    primaryStatByMonsterType: Record<string, "attack" | "defense" | "balanced">;
-    secondaryByRace: Record<string, "attack" | "defense" | "speed" | "regen">;
   };
   /** Shop tier odds by floor depth — same method as `artifacts`: each step away from the anchor scales tier `i` by `tilt ^ (i × steps)`. */
   shop: {

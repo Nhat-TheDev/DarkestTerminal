@@ -149,30 +149,8 @@
     }
   },
   "barter": {
-    "magnitudePercentByTier": { "common": 5, "uncommon": 8, "rare": 12, "unique": 15, "epic": 18, "legendary": 22 },
     "offerCount": 2,
-    "costByTier": { "common": 5, "uncommon": 5, "rare": 5, "unique": 5, "epic": 3, "legendary": 1 },
-    "secondaryShare": 0.5,
-    "activeDurationTurns": 999,
-    "primaryStatByMonsterType": {
-      "armored": "defense",
-      "tanky": "defense",
-      "sentinel": "defense",
-      "bruiser": "attack",
-      "striker": "attack",
-      "glass": "attack",
-      "balanced": "balanced"
-    },
-    "secondaryByRace": {
-      "beast": "speed",
-      "slime": "regen",
-      "golem": "defense",
-      "undead": "regen",
-      "elemental": "attack",
-      "demi-human": "attack",
-      "human-like": "attack",
-      "shadow-creature": "speed"
-    }
+    "activeDurationTurns": 999
   },
   "shop": {
     "floorsPerStep": 10,

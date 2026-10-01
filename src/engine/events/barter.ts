@@ -4,45 +4,12 @@ import type { PartyActionError } from "../party";
 import { resolveSkillEffect } from "../resolver";
 import { BALANCE } from "../../data/balanceConfig";
 import { getItem } from "../../data/items";
-import { getArchetype } from "../../data/monsters";
+import { getBarterEntry, type BarterEffect } from "../../data/barter";
 import { t } from "../../data/strings";
 
-export type BarterStat = "attack" | "defense" | "speed" | "regen";
-
-export interface BarterComponent {
-  stat: BarterStat;
-  /** A percent of the stat's effect (for regen: percent of max HP per turn). */
-  percent: number;
-}
-
-/** The value that appears most often; on a tie, the one that appears first. */
-function mostCommon(values: string[]): string {
-  const counts = new Map<string, number>();
-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
-  const top = Math.max(...counts.values());
-  return values.find((value) => counts.get(value) === top)!;
-}
-
-/**
- * What a trophy buys: its tier sets the strength P, the most common `monsterType` among the monsters
- * that drop it sets the primary stat, and the most common `race` adds a secondary effect at
- * `secondaryShare` of P. Stats that come out twice are added together.
- */
-export function barterBuffFor(itemId: Id): BarterComponent[] {
-  const item = getItem(itemId);
-  const archetypes = (item.archetypeIds ?? []).map(getArchetype);
-  if (archetypes.length === 0) throw new Error(`"${itemId}" is not a trophy`);
-  const { magnitudePercentByTier, secondaryShare, primaryStatByMonsterType, secondaryByRace } = BALANCE.barter;
-  const power = magnitudePercentByTier[item.tier];
-  const primary = primaryStatByMonsterType[mostCommon(archetypes.map((a) => a.monsterType))]!;
-  const secondary = secondaryByRace[mostCommon(archetypes.map((a) => a.race))]!;
-
-  const components: BarterComponent[] = primary === "balanced" ? [{ stat: "attack", percent: power / 2 }, { stat: "defense", percent: power / 2 }] : [{ stat: primary, percent: power }];
-  const extra = power * secondaryShare;
-  const existing = components.find((c) => c.stat === secondary);
-  if (existing) existing.percent += extra;
-  else components.push({ stat: secondary, percent: extra });
-  return components;
+/** The buff a trophy buys, from `data/barter.json`. */
+export function barterBuffFor(itemId: Id): BarterEffect[] {
+  return getBarterEntry(itemId).effects;
 }
 
 function applyStatus(character: Character, statusEffectId: string, amount?: number): void {
@@ -63,9 +30,9 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
   const regenTiers = new Set<ItemTier>();
   for (const itemId of pending) {
     const tier = getItem(itemId).tier;
-    for (const { stat, percent } of barterBuffFor(itemId)) {
-      if (stat === "regen") regenTiers.add(tier);
-      else percentByStat[stat] += percent;
+    for (const effect of barterBuffFor(itemId)) {
+      if (effect.kind === "healOverTime") regenTiers.add(tier);
+      else percentByStat[effect.stat] += effect.percent;
     }
   }
 
@@ -88,8 +55,9 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
   state.pendingBarterBuffs = [];
 }
 
-export function barterCost(tier: ItemTier): number {
-  return BALANCE.barter.costByTier[tier];
+/** How many of the trophy a trade takes, from `data/barter.json`. */
+export function barterCost(itemId: Id): number {
+  return getBarterEntry(itemId).cost;
 }
 
 /**
@@ -103,7 +71,7 @@ export function runnerBarter(state: GameState, offerIndex: number): PartyActionE
   const offer = runner.barterOffers?.[offerIndex];
   if (!offer || offer.done) return { reason: t("errors.noSuchOffer") };
   const item = getItem(offer.itemId);
-  const cost = barterCost(item.tier);
+  const cost = barterCost(item.id);
   if ((state.inventory[item.id] ?? 0) < cost) return { reason: t("errors.notEnoughTrophies") };
   state.inventory[item.id] = (state.inventory[item.id] ?? 0) - cost;
   state.pendingBarterBuffs = [...(state.pendingBarterBuffs ?? []), item.id];

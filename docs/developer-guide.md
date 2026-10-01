@@ -62,6 +62,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
+| `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
@@ -334,6 +335,7 @@ src/
     monsters.ts          # data/monsters.json + data/monster-skills.json loader — spawnMonster, getArchetype, getMonsterSkill
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
+    barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
     events.ts            # data/events.json loader — getEvent, rollEvent
     floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters

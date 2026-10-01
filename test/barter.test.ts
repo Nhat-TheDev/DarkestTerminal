@@ -7,11 +7,11 @@ import { barterBuffFor, barterCost } from "../src/engine/events/barter";
 import { rollRestRunner } from "../src/engine/events/runner";
 import { rollBarterOffers } from "../src/data/shopStock";
 import { getArchetype } from "../src/data/monsters";
+import { BARTER_ENTRIES } from "../src/data/barter";
 import { getItem } from "../src/data/items";
 import { Rng } from "../src/engine/rng";
 import { BALANCE } from "../src/data/balanceConfig";
-import { getStatusEffect } from "../src/data/statusEffects";
-import type { ItemTier } from "../src/types";
+import { ITEMS } from "../src/data/items";
 
 function bossRoomGame(seed: number, type: "boss" | "combat" = "boss") {
   const game = new Game(seed);
@@ -26,43 +26,33 @@ function bossRoomGame(seed: number, type: "boss" | "combat" = "boss") {
   return { game, room, monster };
 }
 
-describe("barterBuffFor", () => {
-  test("a balanced individual trophy splits its strength between attack and defense, and its race adds a secondary", () => {
-    // rat-tail: uncommon (P = 8); Dungeon Rat is a balanced beast, so attack 4 + defense 4, beast adds speed at half of P.
-    expect(barterBuffFor("rat-tail")).toEqual([
-      { stat: "attack", percent: 4 },
-      { stat: "defense", percent: 4 },
-      { stat: "speed", percent: 4 },
-    ]);
-  });
+/** Total percent the given trophies' buffs give a stat, read from `data/barter.json` so the tests follow the data. */
+function percentOf(itemIds: string[], stat: "attack" | "defense" | "speed" | "regen"): number {
+  let total = 0;
+  for (const effect of itemIds.flatMap((id) => barterBuffFor(id))) {
+    if (effect.kind === "healOverTime") {
+      if (stat === "regen") total += effect.maxHpPercentPerTurn;
+    } else if (effect.stat === stat) total += effect.percent;
+  }
+  return total;
+}
 
-  test("a group trophy uses the most common monster type among its monsters", () => {
-    // chitin-shard: rare (P = 12); snake/lizard/spider/armored-beetle are 2 armored, 1 glass, 1 bruiser.
-    expect(barterBuffFor("chitin-shard")).toEqual([
-      { stat: "defense", percent: 12 },
-      { stat: "speed", percent: 6 },
-    ]);
-  });
-
-  test("a tie goes to the first monster, and a secondary on the same stat is added to the primary", () => {
-    // warband-trophy: striker, glass, bruiser tie so the first (striker, attack) wins; demi-human adds attack at half of P.
-    expect(barterBuffFor("warband-trophy")).toEqual([{ stat: "attack", percent: 18 }]);
-    // venom-gland: glass, armored, bruiser tie so the first (glass, attack) wins; beast adds speed.
-    expect(barterBuffFor("venom-gland")).toEqual([
-      { stat: "attack", percent: 12 },
-      { stat: "speed", percent: 6 },
-    ]);
+describe("data/barter.json", () => {
+  test("every trophy has exactly one entry, with a whole cost and a buff", () => {
+    const trophyIds = ITEMS.filter((i) => i.archetypeIds?.length).map((i) => i.id);
+    expect(BARTER_ENTRIES.map((e) => e.itemId).sort()).toEqual(trophyIds.sort());
+    for (const entry of BARTER_ENTRIES) {
+      expect(Number.isInteger(entry.cost) && entry.cost >= 1).toBe(true);
+      expect(entry.effects.length).toBeGreaterThan(0);
+    }
   });
 
   test("an item that isn't a trophy has no buff", () => {
     expect(() => barterBuffFor("small-health-potion")).toThrow();
   });
 
-  test("each regen status heals the tier's secondary share of max HP", () => {
-    for (const [tier, percent] of Object.entries(BALANCE.barter.magnitudePercentByTier) as [ItemTier, number][]) {
-      const heal = getStatusEffect(`barter-regen-${tier}`).perTurnEffects[0]!;
-      expect(heal.maxHpPercent).toBe(percent * BALANCE.barter.secondaryShare);
-    }
+  test("a trade costs what the entry says", () => {
+    for (const entry of BARTER_ENTRIES) expect(barterCost(entry.itemId)).toBe(entry.cost);
   });
 });
 
@@ -73,9 +63,11 @@ describe("applying pending barter buffs", () => {
     const before = game.state.party.map((c) => ({ defense: c.defense, speed: c.speed, attack: c.attack }));
     enterRoom(game.state, room, game.ctx);
     game.state.party.forEach((c, i) => {
-      expect(c.defense).toBe(before[i]!.defense + Math.round(0.12 * (BALANCE.combat.defenseMitigationX + before[i]!.defense)));
-      expect(c.speed).toBe(before[i]!.speed + Math.round(0.06 * before[i]!.speed));
-      expect(c.attack).toBe(before[i]!.attack);
+      const defensePercent = percentOf(["chitin-shard"], "defense");
+      const speedPercent = percentOf(["chitin-shard"], "speed");
+      expect(c.defense).toBe(before[i]!.defense + Math.round((defensePercent / 100) * (BALANCE.combat.defenseMitigationX + before[i]!.defense)));
+      expect(c.speed).toBe(before[i]!.speed + Math.round((speedPercent / 100) * before[i]!.speed));
+      expect(c.attack).toBe(before[i]!.attack + Math.round((percentOf(["chitin-shard"], "attack") / 100) * before[i]!.attack));
     });
     expect(game.state.pendingBarterBuffs).toEqual([]);
     expect(game.state.combat?.log.some((l) => l.text === "The runner's bargains take hold: Chitin Shard.")).toBe(true);
@@ -92,10 +84,13 @@ describe("applying pending barter buffs", () => {
 
   test("buffs raising the same stat add up", () => {
     const { game, room } = bossRoomGame(3);
-    game.state.pendingBarterBuffs = ["warband-trophy", "rat-tail"]; // attack 18% + attack 4%
+    const picked = ["warband-trophy", "rat-tail"];
+    game.state.pendingBarterBuffs = picked;
     const attacks = game.state.party.map((c) => c.attack);
     enterRoom(game.state, room, game.ctx);
-    game.state.party.forEach((c, i) => expect(c.attack).toBe(attacks[i]! + Math.round(0.22 * attacks[i]!)));
+    const percent = percentOf(picked, "attack");
+    expect(percent).toBeGreaterThan(percentOf(["warband-trophy"], "attack")); // both buffs raise attack
+    game.state.party.forEach((c, i) => expect(c.attack).toBe(attacks[i]! + Math.round((percent / 100) * attacks[i]!)));
   });
 
   test("an attack buff also raises a caster's magic power", () => {
@@ -104,17 +99,17 @@ describe("applying pending barter buffs", () => {
     game.state.pendingBarterBuffs = ["warband-trophy"];
     const magic = mage.magicPower;
     enterRoom(game.state, room, game.ctx);
-    expect(mage.magicPower).toBe(magic + Math.round(0.18 * magic));
+    expect(mage.magicPower).toBe(magic + Math.round((percentOf(["warband-trophy"], "attack") / 100) * magic));
   });
 
   test("a regeneration buff heals its share of max HP each turn", () => {
     const { game, room } = bossRoomGame(5);
-    game.state.pendingBarterBuffs = ["slime-solution"]; // common, slime race: regen at 2.5% of max HP
+    game.state.pendingBarterBuffs = ["slime-solution"];
     enterRoom(game.state, room, game.ctx);
     const c = game.state.party[0]!;
     c.hp = 1;
     tickDotEffects(c, { log: [] });
-    expect(c.hp).toBe(1 + Math.round(c.maxHp * 0.025));
+    expect(c.hp).toBe(1 + Math.round((c.maxHp * percentOf(["slime-solution"], "regen")) / 100));
   });
 
   test("the buffs end with the fight", () => {
@@ -181,38 +176,33 @@ describe("barter offers and trade", () => {
     expect(sawLegendary).toBe(true);
   });
 
-  test("a trade costs 5 trophies, 3 for Epic and 1 for Legendary", () => {
-    expect(barterCost("common")).toBe(5);
-    expect(barterCost("unique")).toBe(5);
-    expect(barterCost("epic")).toBe(3);
-    expect(barterCost("legendary")).toBe(1);
-  });
-
   test("trading takes the trophies, queues the buff and marks the floor's barter as used", () => {
     const { game } = runnerGame(1);
-    game.state.inventory["rat-tail"] = 6;
+    const cost = barterCost("rat-tail");
+    game.state.inventory["rat-tail"] = cost + 1;
     expect(game.runnerBarter(0)).toBeNull();
     expect(game.state.inventory["rat-tail"]).toBe(1);
     expect(game.state.pendingBarterBuffs).toEqual(["rat-tail"]);
     expect(game.state.barterUsedDepth).toBe(game.state.floor.depth);
     expect(game.state.restRunner?.barterOffers?.[0]?.done).toBe(true);
-    expect(game.state.message).toBe("The runner takes 5 Rat Tail. The bargain is struck.");
+    expect(game.state.message).toBe(`The runner takes ${cost} Rat Tail. The bargain is struck.`);
     expect(game.runnerBarter(0)).not.toBeNull(); // each offer is made once
   });
 
   test("too few trophies is refused and nothing changes", () => {
     const { game } = runnerGame(2);
-    game.state.inventory["rat-tail"] = 4;
+    const short = barterCost("rat-tail") - 1;
+    game.state.inventory["rat-tail"] = short;
     expect(game.runnerBarter(0)).not.toBeNull();
-    expect(game.state.inventory["rat-tail"]).toBe(4);
+    expect(game.state.inventory["rat-tail"]).toBe(short);
     expect(game.state.pendingBarterBuffs).toEqual([]);
     expect(game.state.barterUsedDepth).toBeNull();
   });
 
   test("both offers can be traded in one visit, and the buffs queue in order", () => {
     const { game } = runnerGame(3);
-    game.state.inventory["rat-tail"] = 5;
-    game.state.inventory["warped-vambrace"] = 3;
+    game.state.inventory["rat-tail"] = barterCost("rat-tail");
+    game.state.inventory["warped-vambrace"] = barterCost("warped-vambrace");
     expect(game.runnerBarter(0)).toBeNull();
     expect(game.runnerBarter(1)).toBeNull();
     expect(game.state.pendingBarterBuffs).toEqual(["rat-tail", "warped-vambrace"]);

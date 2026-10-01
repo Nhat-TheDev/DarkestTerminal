@@ -2,7 +2,8 @@ import type { BarterOffer, ItemDefinition, ItemTier, ShopOffer } from "../types"
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import { tierWeightsByDepth } from "./artifacts";
-import { ITEMS } from "./items";
+import { BARTER_ENTRIES } from "./barter";
+import { ITEMS, getItem } from "./items";
 import { getArchetype } from "./monsters";
 
 const CONSUMABLE_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare"];
@@ -24,7 +25,7 @@ function pickByTier(pool: ItemDefinition[], tiers: readonly ItemTier[], anchor: 
 
 /** The trophy kinds the Runner will trade for a buff: `barter.offerCount` different ones that can drop at `depth`, Legendary included. */
 export function rollBarterOffers(rng: Rng, depth: number): BarterOffer[] {
-  const pool = ITEMS.filter((i) => i.archetypeIds?.length && trophyAvailableAt(i, depth));
+  const pool = BARTER_ENTRIES.map((entry) => getItem(entry.itemId)).filter((item) => trophyAvailableAt(item, depth));
   const offers: BarterOffer[] = [];
   while (offers.length < BALANCE.barter.offerCount && pool.length > 0) {
     const [item] = pool.splice(rng.int(0, pool.length - 1), 1);
