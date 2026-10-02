@@ -292,8 +292,9 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
         ),
       ]);
       // Composed from the status's own mechanical fields (not `description`), so what the player
-      // reads here and what the engine applies can never disagree.
-      lines.push(...detailLines(formatStatusEffectMechanics(def)));
+      // reads here and what the engine applies can never disagree. `appliedAmounts` carries a stat
+      // delta a casting skill set (Totem Recall) or a floor resolved at cast time.
+      lines.push(...detailLines(formatStatusEffectMechanics(def, { applied: active.appliedAmounts })));
     }
   }
 

@@ -1,6 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { formatPassiveEffect } from "../src/ui/screens/characterInfo";
+import { formatPassiveEffect, renderMain } from "../src/ui/screens/characterInfo";
 import { CLASSES } from "../src/data/classes";
+import { Game } from "../src/engine/game";
+import type { UiState } from "../src/ui/state";
 
 describe("formatPassiveEffect", () => {
   test("every class's rank-3 passive has a formatter line", () => {
@@ -36,5 +38,15 @@ describe("formatPassiveEffect", () => {
     expect(text).toContain("poisoned target");
     expect(text).not.toContain("max HP");
     expect(text).not.toContain("dodge chance");
+  });
+});
+
+describe("renderMain: active statuses", () => {
+  test("a status shows the stat delta it applied, not the status's own value", () => {
+    const game = new Game(7);
+    game.state.party[0]!.activeStatusEffects.push({ statusEffectId: "totem-recall-buff", turnsRemaining: 2, appliedAmounts: { attack: 8 } });
+    const out = renderMain(game, { kind: "characterInfo", characterIndex: 0, previousUi: { kind: "room" } as UiState });
+    const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("\n");
+    expect(text).toContain("+8 attack");
   });
 });

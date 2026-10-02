@@ -12,7 +12,7 @@ import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
-import { formatStatusEffectMechanics, getStatusEffect } from "../src/data/statusEffects";
+import { getStatusEffect } from "../src/data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 
 describe("headless UI smoke test", () => {
@@ -354,18 +354,34 @@ describe("skillEffectLine: summon effects show their minion", () => {
 });
 
 describe("skillEffectLine: an applied status shows what it does", () => {
-  test("every status a class skill applies carries its derived text on the line under the bullet", () => {
+  test("every status a class skill applies, at every rank, has a derived line under its bullet", () => {
     for (const cls of CLASSES) {
       for (const base of cls.skills) {
-        const skill = getSkill(base.id);
-        for (const e of skill.effects ?? []) {
+        const effects = [...(base.effects ?? []), ...(base.ranks ?? []).flatMap((r) => r.effects ?? [])];
+        for (const e of effects) {
           if (e.kind !== "applyStatusEffect" || !e.statusEffectId) continue;
-          const mechanics = formatStatusEffectMechanics(getStatusEffect(e.statusEffectId));
-          expect(mechanics, e.statusEffectId).not.toBe("");
-          expect(skillEffectLine(e, skill), `${base.id} → ${e.statusEffectId}`).toContain(`\n      ${mechanics}`);
+          const detail = skillEffectLine(e, base)!.split("\n")[1];
+          expect(detail, `${base.id} → ${e.statusEffectId}`).toBeDefined();
+          expect(detail!.trim(), `${base.id} → ${e.statusEffectId}`).not.toBe("");
+          expect(detail, `${base.id} → ${e.statusEffectId}`).not.toContain("no per-turn effect");
         }
       }
     }
+  });
+
+  test("a status whose magnitude the skill sets shows that magnitude and its floor, not the status's own 0", () => {
+    const skill = getSkill("summoner-totem-recall");
+    const effect = skill.effects!.find((e) => e.kind === "applyStatusEffect")!;
+    expect(skillEffectLine(effect, skill)).toContain(`\n      +${effect.amount} attack (or ${effect.minPercent}% of the bearer's attack if larger)`);
+  });
+
+  test("Storm-Empowered shows its splash with the multiplier and the defense it ignores", () => {
+    const skill = getSkill("viking-lightning-axe");
+    const effect = skill.effects!.find((e) => e.kind === "applyStatusEffect" && e.statusEffectId?.startsWith("storm-empowered"))!;
+    const aoe = getStatusEffect(effect.statusEffectId!).onHitAoeDamage!;
+    expect(skillEffectLine(effect, skill)).toContain(
+      `splashes ${aoe.amount} damage plus ${aoe.offenseMultiplierPercent}% of the bearer's magic power to all enemies, ignoring ${aoe.ignoreDefensePercent}% of their defense`
+    );
   });
 
   test("Poison Coat says that its hits also poison", () => {
