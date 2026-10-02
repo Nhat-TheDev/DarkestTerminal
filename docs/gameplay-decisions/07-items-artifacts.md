@@ -40,7 +40,7 @@ ItemDefinition {
 }
 ```
 
-Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
+Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters; monsters have no `magicPower`, so such an effect only ever lands on characters and summons. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
 
 ### Drop source
 
@@ -51,6 +51,8 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 - **Trophy bucket** — chosen with probability `items.trophyDropShare` (0.4), only for a monster that has trophies (`archetypeIds` containing its archetype). A monster with no trophy (Lesser Vampire, The Founder) skips this step.
 - **General pool** — every other drop: the items with no `archetypeIds`.
 - **Weight inside a bucket** = `items.tierWeights[tier]` (common 1, uncommon 0.8, rare 0.5, unique 0.3, epic 0.1, legendary 0.05), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight no longer scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
+
+With every consumable in the general pool, a given potion drops far less often than when the pool held a handful of items, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
@@ -64,9 +66,16 @@ By kind:
 - **Buffs** — `whetstone`, `honing-oil`, `war-paint`, `rally-standard` (attack), `temporary-ward`, `resin-wrap`, `bulwark-draught` (defense), `spark-salt`, `scholars-candle`, `hushed-bell`, `etched-lens`, `pitch-pipe` (magic power, for casters), `repelling-smoke-powder` (aggro down), `bandage-roll`, `marrow-broth` (heal each turn), `serpent-oil` (an on-hit poison rider, reusing `poison-coat`).
 - **Damage bombs** — flat damage on use, from the item alone (`offenseMultiplierPercent: 0`), so every class deals the same: `cracker-string`, `pitch-bomb`, `frost-flask`, `thunder-charge` (one enemy) and `blister-bomb`, `rot-bomb` (every enemy). Race resistances still apply.
 - **Debuff bombs** — `tar-flask` (speed), `smoke-pellet` (accuracy), `acid-vial`, `fracture-charge` (defense), `deafening-charge` (stun).
-- **Cures** — each removes one status: `antidote` (Poisoned), `burn-salve`, `styptic-powder`, `eyewash`, `thread-knife`, `lye-wash`, `smelling-salts`, `mending-paste`, and `purge-draught` (one harmful status from each ally).
+- **Cures** — each removes one status: `antidote` (Poisoned), `burn-salve`, `styptic-powder`, `eyewash`, `thread-knife`, `lye-wash`, `smelling-salts`, `mending-paste`, and `purge-draught` (one harmful status from each ally). Together they cover exactly the statuses monsters apply to the party (Poisoned, Burning, Bleeding, Acid Burn, Stunned, Blinded, Webbed, Weakened, Corroded). A cure used on an ally who does not carry the status does nothing and is still consumed. Acolyte's Purify is the general cleanse of any one debuff.
 
 Each buff or debuff item has its own status in `data/status-effects.json` (id = item id, flat values), so check that file for the numbers. Check `data/items.json` for the exact effects.
+
+**How the shipped values were set.** This is a record of the method, not a rule the engine checks; all values live in the JSON. Every amount is flat, never a share of max HP, so each tier is sized for the floor band the tier odds put it in (`03-survival-stats.md`, "Shop tier odds"): Common for floors 1–10, Uncommon 11–25, Rare 26–50.
+
+- **Potions** restore roughly 30% (Common), 35% (Uncommon) and 40% (Rare) of the average party max HP or MP at their band.
+- **Buffs and debuffs from a status** are a share of a reference stat, 30% (Common), 33% (Uncommon) or 36% (Rare), scaled by 0.75 when the target is `allAllies`. The reference stat is the party average (buffs; magic power for the magic power items) or the normal-monster average (debuffs), taken at the middle of the tier's band. Aggro is already flat and is not scaled.
+- **Damage bombs** deal a multiple of one basic physical hit against the average monster at the middle of the band: ×1.5 (Common), ×1.7 (Uncommon), ×2.0 (Rare) for one enemy, ×1.6 per enemy for the two area bombs. Using an item costs a turn, so a bomb has to beat an attack to be worth carrying. Their flat amounts already add back the small defense term (`defense / defenseMitigationY`) at the reference defense.
+- **Cures** name the status they remove and have no number to size.
 
 ### Trophies
 
@@ -75,6 +84,8 @@ A trophy is a monster remnant with `effects: []`: it can be used, which only con
 - **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss.
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.
 - A handful of older items (Grave Dust, Rotten Flesh, Broken Blade Fragment, Rat Tail, Venom Gland) are trophies with a tier set by hand.
+
+How the catalog is laid out: in each race group, one representative monster also keeps its own lower-tier individual trophy, and every other member drops only the group trophy. An archetype whose roles are exactly elite and boss has its own trophy and belongs to no group. A trophy's description must never promise an effect, since it has none. Two monsters have no trophy: Lesser Vampire and The Founder, the scripted final boss.
 
 ---
 

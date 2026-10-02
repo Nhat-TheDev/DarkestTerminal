@@ -131,7 +131,7 @@ interface BalanceConfig {
     maxStepsFromAnchor: number;
     anchorWeights: Record<"elite" | "boss" | "treasureOrEvent", Record<ArtifactRarity, number>>;
   };
-  /** The Merchant's Runner in Rest rooms — `docs/specs/merchant-runner-coin-sink.md`. */
+  /** The Merchant's Runner in Rest rooms — `docs/gameplay-decisions/03-survival-stats.md`, "The Merchant's Runner". */
   runner: {
     appearChance: number;
     noticeVariantCount: number;

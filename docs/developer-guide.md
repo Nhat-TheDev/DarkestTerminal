@@ -36,7 +36,8 @@ bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damag
 - **Fear + Satiety survival stats**, HP=0 → true permadeath, fear affects combat back through 4 tiers — `src/engine/survival.ts`, `src/engine/resolver.ts`. Satiety is party-wide, draining once per room resolved (amount depends on room type); low satiety escalates through **Exhausted** (stats reduced) and **Dying** (a recurring HP tick on top of Exhausted). The rest room offers 3 recovery choices, and **Camp** — a post-victory option paid for with an Exploration Kit item — restores satiety outside the rest room. Details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)
 - **Level 1-100 system**: `attack`/`defense`/`maxHp`/`maxMp` grow through tapered tiers via `growthBonus()`, shared between characters (by `level`) and monsters (by `floorDepth`). Characters additionally apply their own class-specific `growthWeights` so the 9 classes don't converge to look the same at high levels. Character level (shared across the party, capped at 100, gained through EXP from killing monsters) is completely separate from dungeon floor level (`Floor.depth`, uncapped) — details in [`gameplay-decisions/06-level-system.md`](./gameplay-decisions/06-level-system.md)
 - **Consumable items + permanent, one-shot-decision Artifacts** — items dropped by monsters, usable in/out of combat unless flagged combat-only-off; artifacts are equipped on one specific character (max 3 per character) the instant they're picked up — the player decides equip-or-discard right then, with no free reassignment afterward (3 narrow exceptions) — effects only counting for whoever has it equipped — `src/data/items.ts`, `src/data/artifacts.ts`, `src/engine/artifacts.ts`, `src/engine/party.ts`, details in [`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)
-- **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), and the Wandering Hermit's Exchange Fortune service — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
+- **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), the Wandering Hermit's Exchange Fortune service, and the Merchant's Runner's shop (selling items back to him is a small coin source) — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
+- **Merchant's Runner** — a 50% chance on entering a Rest room: a notice screen, then a fourth **Trade** option that replaces the room's rest action. He runs a coin shop of consumables (5 rotating offers, singly or as lots of 3, refreshable, with tier odds that climb with floor depth), buys consumables and trophies back at a fifth of the single price, and takes a number of one effect-less monster trophy kind for a buff that waits for the floor's elite/boss fight — `src/engine/events/runner.ts`, `src/engine/events/barter.ts`, `src/data/shopStock.ts`, `src/ui/screens/runner.ts`, details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md) (flow, shop odds, barter), [`09-currency.md`](./gameplay-decisions/09-currency.md) and [`07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md) (tiers, trophies)
 - **Event room** — a random event room rolling 1 of several event types when entered, split into 2 rarity tiers — `src/data/events.ts`, details in [`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)
 - **Title (splash) screen** before entering the game — built with a hand-written block font (`src/ui/bigText.ts`, `test/bigText.test.ts`) — `src/ui/mainMenu.ts`, `src/main.ts`
 
@@ -336,6 +337,7 @@ src/
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
     barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
+    shopStock.ts         # rollShopOffers/rollBarterOffers — the Runner's stock and barter offers, tier odds by floor depth
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
     events.ts            # data/events.json loader — getEvent, rollEvent
     floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters
@@ -347,8 +349,10 @@ src/
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear + satiety mechanics: room-entry drain, Exhausted/Dying, Camp, rest room actions
-    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts)
+    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). Only saves of the current app version load (`ALLOWED_LEGACY_SAVE_VERSIONS` is empty), so item renames such as `rat-meat` → `rat-tail` need no remap; if an older version is ever allowed, remap renamed item ids here first, because the loop that drops inventory counts for items no longer in the catalog would delete them silently
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
+    events/runner.ts      # the Rest-room Merchant's Runner (not an event room): rollRestRunner, shop purchase/refresh, buyback
+    events/barter.ts      # his trophy-for-buff barter: runnerBarter, and applyPendingBarterBuffs when the floor's elite/boss fight begins
     combatHooks.ts        # passive/on-hit hook helpers read by combat.ts (class passives that don't apply a status effect)
     monsterAI.ts           # monster action/target selection (pickMonsterAction, resolveMonsterSkillTargets, Execute charge state machine)
     paths.ts                # save-directory/file path resolution
@@ -363,7 +367,7 @@ src/
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
