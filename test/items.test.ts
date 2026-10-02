@@ -9,7 +9,7 @@ import { getArchetype } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
 import type { CombatantRef, ItemDefinition, StatusEffectDefinition } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
-import { STATUS_EFFECTS, formatStatusEffectMechanics } from "../src/data/statusEffects";
+import { STATUS_EFFECTS, COMBAT_STAT_LABEL, formatStatusEffectMechanics, statusMechanicsParts } from "../src/data/statusEffects";
 
 describe("items", () => {
   test("rollItemDrop fires close to the configured 90% of the time", () => {
@@ -359,13 +359,60 @@ describe("consumable catalog data", () => {
 });
 
 describe("status effect mechanics text", () => {
-  // A status that gains a new mechanical field without a branch in formatStatusEffectMechanics
-  // must fail here rather than quietly rendering "no per-turn effect" to the player.
-  test("every status effect describes itself from its own data", () => {
+  // What formatStatusEffectMechanics reads, and the fields that are only bookkeeping. A status that
+  // gains a field in neither list fails the first test until someone decides which it is.
+  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "triggersOverwatch", "stackable", "maxStacks", "perStackBonusPercent"];
+  const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "tickCategory"];
+  const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent"];
+  const PER_TURN_BOOKKEEPING = ["damageType"];
+  const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
+  const AOE_BOOKKEEPING = ["damageType"];
+  const BREAK_SHOWN = ["basicAttackGuaranteedCrit", "skillDamageBonusPercent"];
+
+  test("every field a status carries is either shown in its text or known to be bookkeeping", () => {
+    const known = (keys: string[], ...lists: string[][]) => keys.every((k) => lists.some((l) => l.includes(k)));
+    for (const def of STATUS_EFFECTS) {
+      expect(known(Object.keys(def), SHOWN, BOOKKEEPING), `${def.id}: ${Object.keys(def).join(",")}`).toBe(true);
+      for (const e of def.perTurnEffects) expect(known(Object.keys(e), PER_TURN_SHOWN, PER_TURN_BOOKKEEPING), `${def.id}.perTurnEffects`).toBe(true);
+      if (def.onHitAoeDamage) expect(known(Object.keys(def.onHitAoeDamage), AOE_SHOWN, AOE_BOOKKEEPING), `${def.id}.onHitAoeDamage`).toBe(true);
+      if (def.breakBonus) expect(known(Object.keys(def.breakBonus), BREAK_SHOWN), `${def.id}.breakBonus`).toBe(true);
+    }
+  });
+
+  test("every number and rule a status carries appears in its text", () => {
     for (const def of STATUS_EFFECTS) {
       const text = formatStatusEffectMechanics(def);
-      expect(text.length).toBeGreaterThan(0);
-      expect(text).not.toBe("no per-turn effect");
+      // Not preceded by a digit, so "5 " cannot be satisfied by "15 ".
+      const has = (needle: string) => expect(text, `${def.id}: ${needle}`).toMatch(new RegExp(`(?<!\\d)${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+      expect(text, def.id).not.toBe("no per-turn effect");
+      for (const e of def.perTurnEffects) {
+        if (e.kind === "modifyCombatStat" && e.minPercent) has(`${Math.abs(e.minPercent)}%`);
+        if ((e.kind === "damage" || e.kind === "heal") && e.maxHpPercent) has(`${e.maxHpPercent}% of max HP`);
+        if (e.kind === "damage") has("less on Elites and Bosses");
+        if (e.amount) has(`${Math.abs(e.amount)} `);
+      }
+      if (def.onHitAoeDamage) has(`${def.onHitAoeDamage.amount} damage plus ${def.onHitAoeDamage.offenseMultiplierPercent ?? 100}%`);
+      if (def.onHitAoeDamage?.ignoreDefensePercent) has(`ignoring ${def.onHitAoeDamage.ignoreDefensePercent}%`);
+      if (def.accuracyPenaltyPercent) has(`${def.accuracyPenaltyPercent}%`);
+      if (def.vulnerableTo) has(`${Math.round((def.vulnerableTo.multiplier - 1) * 100)}% more damage`);
+      if (def.stuns) has("skips the turn");
+      if (def.untargetable) has("untargetable");
+      if (def.triggersOverwatch) has("next monster");
+      if (def.stackable && (def.maxStacks ?? 1) > 1) has(`stacks up to ${def.maxStacks} times`);
+      if (def.stackable && def.perStackBonusPercent) has(`adds ${def.perStackBonusPercent}% to its damage`);
     }
+  });
+
+  test("a stat modifier is held until the status ends, so its text has no per-turn rate", () => {
+    for (const def of STATUS_EFFECTS) {
+      if (!def.perTurnEffects.some((e) => e.kind === "modifyCombatStat")) continue;
+      for (const part of statusMechanicsParts(def)) for (const label of Object.values(COMBAT_STAT_LABEL)) expect(part, def.id).not.toContain(`${label}/turn`);
+    }
+  });
+
+  test("an active status shows the stat delta it actually applied, not the status's own value", () => {
+    const totem = STATUS_EFFECTS.find((d) => d.id === "totem-recall-buff")!;
+    expect(formatStatusEffectMechanics(totem, { applied: { attack: 8 } })).toBe("+8 attack");
+    expect(formatStatusEffectMechanics(totem)).toBe("+0 attack");
   });
 });

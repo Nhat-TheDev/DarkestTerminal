@@ -5,7 +5,7 @@ import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/c
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
 import { signed } from "../../data/items";
-import { formatStatusEffectMechanics, getStatusEffect, statusDisplayName } from "../../data/statusEffects";
+import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
@@ -82,8 +82,8 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       const def = getStatusEffect(e.statusEffectId);
       const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })} (${e.durationTurns ?? 1}t)`;
       const bullet = t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
-      const mechanics = formatStatusEffectMechanics(def);
-      return mechanics === "" ? bullet : `${bullet}\n${t("ui.skillEffectStatusDetail", { mechanics })}`;
+      const parts = statusMechanicsParts(def, { amount: e.amount, minPercent: e.minPercent });
+      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics }))].join("\n");
     }
     case "removeStatusEffect":
       body = t("ui.skillEffectRemoveStatus");
