@@ -1723,6 +1723,329 @@
         "K": "#2f2d2d",
         "A": "#253c29"
       }
+    },
+    "open-chest": {
+      "rows": [
+        "..................................",
+        "..................................",
+        "..........IMMMMMMMMMMMMMMMI.......",
+        ".........IWWWWwWWWWWWwWWWWI.......",
+        ".........IWWWWwWWWWWWwWWWWI.......",
+        ".........IMMMMMMMMMMMMMMMMI.......",
+        "........IKKKGKKMMMMMMMMMMI........",
+        "........IWWWwWWWCWWwWWWWWI........",
+        "........IWWWwWWWWCWwWWWWWI........",
+        "......rRrWWWwWWWCWWwWWWWWI........",
+        ".....rRRRRrRMMMMMMMMMMMMMIrRr.....",
+        "..rRRqRRRRqRRRRRRRRRRRRqRRRRRRRrW.",
+        "qqRqqRRqqqqRqqqqqRqqqqRqqqRqqqqRqq"
+      ],
+      "palette": {
+        "W": "#8a5c34",
+        "w": "#6b4426",
+        "M": "#4a3018",
+        "I": "#4a4744",
+        "K": "#0e0a07",
+        "C": "#120c08",
+        "G": "#c9a227",
+        "R": "#3a3632",
+        "r": "#5a544c",
+        "q": "#26231f"
+      }
+    },
+    "old-count": {
+      "rows": [
+        "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSTSTSSS",
+        "SSSTTTTTTTSSTTTTTTTSSTTTTTTTSSTTTTTTTSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSTSTSSS",
+        "SSSSsSSSSSSSSsSSSSSSSSSsSSSSSSSSSSSsSSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSTSTSSS",
+        "SSSTTTTTTTSSTTTTTTTSSTTTTTTTSSTTTTTTTSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSTSTSSS",
+        "SSSSSSSSsSSSSSSSSSSSSSsSSSSSSSsSSSSSSSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSTSSSSS",
+        "SSSTTTTTTTSSTTTTTTTSSTTTTTTTSSTSTSTSSSSS",
+        "SSSTSTSTSTSSTSTSTSTSSTSTSTSTSSTSTSSSSSSS",
+        "SSSSsSSSSSSSSsSSSSSSSSSsSSSSSSSSSSSsSSSS",
+        "ssssssssssssssssssssssssssssssssssssssss",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+      ],
+      "palette": {
+        "S": "#38352f",
+        "s": "#2a2723",
+        "T": "#cdbf9b",
+        "G": "#1a1815"
+      }
+    },
+    "doubled-back": {
+      "rows": [
+        "..AAAAAA................................",
+        ".AAAAAAAA...............................",
+        ".AAKKKKAA...............................",
+        ".AAKKKKAA...............................",
+        ".AAKKKKAA...............................",
+        ".AAKKKKAA...............................",
+        ".AAKKKKAA...............................",
+        "fAAAAAAAAAffffffffffffffffffffffffffffff",
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "FFFFFFFFPPPFFFFFFFPPPFFFFFFFPPPFFFFFFFFF",
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "FFFFFFFFFFFFFPPPFFFFFFFPPPFFFFFFFFFFFFFF",
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        "ffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "palette": {
+        "A": "#3b3935",
+        "K": "#0b0908",
+        "F": "#2b2621",
+        "f": "#1e1a16",
+        "P": "#6a5f4c"
+      }
+    },
+    "the-delay": {
+      "rows": [
+        "..................Y.............",
+        ".................OYO............",
+        ".............fFFf.B.............",
+        ".............FkkFfB.............",
+        "............FFFFFf..............",
+        "............FFFFFF..............",
+        "............FFFFFF..............",
+        ".............FF.FF..............",
+        "WWWWWWWWWWSSSSSSSSSSSWWWWWWWWWWW",
+        "WWWLLWWWWWWWWRRWRRWWWWWWWWWWWWWW",
+        "WWWWWWWWWLLWRRRRRRoWLLWWWLLWWWWW",
+        "WWWWWWWLLWWWRRRRRroyWWWWWWWWWWWW",
+        "WWWWWWWWWWWWRRRRRRWyWWWWWWWLLWWW",
+        "WWLLWWWWWLLWWRRRRWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWrRRrWWWWWLLWWWWWWWW"
+      ],
+      "palette": {
+        "F": "#4d4a5a",
+        "f": "#7a7088",
+        "k": "#1c1b22",
+        "Y": "#f2c14e",
+        "O": "#c8702a",
+        "B": "#4a3420",
+        "S": "#4a4640",
+        "W": "#121e26",
+        "L": "#223a47",
+        "R": "#34405a",
+        "r": "#4a5578",
+        "y": "#a06a28",
+        "o": "#5a3818"
+      }
+    },
+    "waiting-supplies": {
+      "rows": [
+        "....BB..BBBB...BB.....BBB.....",
+        "..BBBBbBBBBBbBBBBBbBBBBBbBBB..",
+        "..bbbbbbbbbbbbbbbbbbbbbbbbbb..",
+        "..BbBBBBBbsLLCCCCCcsBbBBBBBb..",
+        "..bbbbbbsLLCCCCRCCCCcsbbbbbb..",
+        "..BBBBbsLLCCCKKRKKCCCcsBbBBB..",
+        "..bbbbbsRRRRRRRKRRRRRRsbbbbb..",
+        "..BbBBBsLCCCCCrCrCCCCcsBBBBb..",
+        "..bbbbbsLCCCCCCRCCCCCcsbbbbb..",
+        "..BBBBbsRRRRRRRRRRRRRRsBbBBB..",
+        "..bbbbbbssCCCCCRCCCCssbbbbbb..",
+        "..BbBBBBBssssssRsssssbBBBBBb..",
+        "ffffffffffffffffffffffffffffff",
+        "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+      ],
+      "palette": {
+        "B": "#2f2b27",
+        "b": "#1e1b18",
+        "f": "#1a1714",
+        "q": "#141210",
+        "C": "#6b5d45",
+        "c": "#4a402f",
+        "L": "#857356",
+        "s": "#2a241c",
+        "R": "#b49b66",
+        "r": "#7a6640",
+        "K": "#d7bf84"
+      }
+    },
+    "vigil-candle": {
+      "rows": [
+        "..........................",
+        "..........................",
+        ".....h...........gggg.....",
+        "....hYh.........gGGGGg....",
+        "....OYO.........gGkkGg....",
+        "....OYO..........gGGg.....",
+        ".....k.........ggGGGGgg...",
+        "....PPP.......gGGGGGGGGg..",
+        "....PpP.......gGGGHHGGGg..",
+        "....PpP......gGGGGHHGGGGg.",
+        "...pPPPp.GGGGgGGGGGGGGGGg.",
+        "..pppppppgggggggggggggggg.",
+        "dddddddddddddddddddddddddd"
+      ],
+      "palette": {
+        "Y": "#f2c14e",
+        "O": "#c8702a",
+        "h": "#3a2a14",
+        "k": "#1a1816",
+        "P": "#d8d0b8",
+        "p": "#9a927e",
+        "G": "#6b675f",
+        "g": "#4a4740",
+        "H": "#a89880",
+        "d": "#2a2622"
+      }
+    },
+    "broken-seal": {
+      "rows": [
+        "..........................",
+        ".MMMMMMMMMMMMMMMMMMMMKKKM.",
+        ".MSSSSSSSSSSSSSSSSSSKKKKM.",
+        ".MSSSSSSSSSSSSSSSSSSSSKKM.",
+        ".MSSSSSSSSSLLLLKSSSSSSSSM.",
+        ".MSSSSSSSSLlKKKKKSSSSSSSM.",
+        ".MCcCcCcCcLlKLLKKCcCCSSSM.",
+        ".MCcCcCcCcLlKLllKSSCcSSSM.",
+        ".MSSSSSSSSLlKKKKKSSCcSSSM.",
+        ".MSSSSSSSSSLLLLKSSScCSSSM.",
+        ".MSSSSSSSSSSSSSSSSSSSSSSM.",
+        ".MSSSSSSSSSSSSSSSSSSSSSSM.",
+        ".MMMMMMMMMMMMMMMMMMMMMMMM.",
+        ".ssssssssssssssssssssssss."
+      ],
+      "palette": {
+        "S": "#4b4843",
+        "s": "#2f2d29",
+        "M": "#6e695f",
+        "C": "#7d7d7a",
+        "c": "#4a4a48",
+        "L": "#5a4a2a",
+        "l": "#8a7340",
+        "K": "#0d0b09"
+      }
+    },
+    "half-a-warning": {
+      "rows": [
+        "sSSSSSSSSSSSSSSSSsSSSSSSSS",
+        "SSSSSSSSSsSSSSSSSSSSSSSSSS",
+        "SsSGSGGSGSSGGGSGSGsGGSGSSS",
+        "SSSGGGSGGSGSGSSGGGSGSGGSSS",
+        "SSsSSSSSSSSSSSSSSSSsSSSSSS",
+        "SSSGGSGSGGGsGSSGSGGSGSSSSS",
+        "SSSGSGGSGSGGSGGSGSGSGSSSSS",
+        "SSSSSSSSSSSSsSSSSSSSSSSSSS",
+        "SSSGsGSGGSGSSGGSGGGSSsSSSS",
+        "SSSGGSGSGSGGGsGSSGSSSSSSSS",
+        "SSSGSGGSGSGSGGGSSSSSSSsSSS",
+        "SSSSSSSSSSSSSSGGBBBBHHHSSS",
+        "ssssssssssssssssssssssssss",
+        "dddddddddddddddddddddddddd"
+      ],
+      "palette": {
+        "S": "#3a3733",
+        "s": "#2a2723",
+        "d": "#15120f",
+        "G": "#14110e",
+        "B": "#9a9aa2",
+        "H": "#5a3a22"
+      }
+    },
+    "still-breathing": {
+      "rows": [
+        "KKKKKKKKKBBBBBBBBBBKKKKKKKKK",
+        "KKKKKKKBBbMMeBBeeebBBKKKKKKK",
+        "KKKKKBBbMMMMeAATTTeMbBBKKKKK",
+        "KKKBBbMMMMMBBBBBBTeMMMbBBKKK",
+        "KKBbMMMMMBBbbBBbbBBMMMMMbBKK",
+        "KBbMMMMBBbMMeAATeebBBMMMMbBK",
+        "BbMMMMBbMMMMBBBBeMMMbBMMMMbB",
+        "BbMMMBbMMMMBbBBbBMMMMbBMMMbB",
+        "BbMMMBbMMMBbMAAMbBMMMbBMMMbB",
+        "BMMMMBbMMMBbMBBMbBMMMbBMMMMB",
+        "MMMMMBbMMMBbMBBMbBMMMbBMMMMM",
+        "MMMMMBMMMMBbMAAMbBMMMMBMMMMM",
+        "MMMMMMMMMMBbMBBMbBMMMMMMMMMM",
+        "MMMMMMMMMMBbMBBMbBMMMMMMMMMM"
+      ],
+      "palette": {
+        "B": "#b8ae96",
+        "b": "#7d745f",
+        "K": "#0e0808",
+        "M": "#2a0c0c",
+        "T": "#6a2a22",
+        "E": "#d0601c",
+        "e": "#5a2208",
+        "A": "#a9a289"
+      }
+    },
+    "the-wanderer": {
+      "rows": [
+        "WWWWwWe...................",
+        "WWWWwWe..cCCC.............",
+        "wwwwwwe.cCCCFF............",
+        "WwWWWWe.cCCCFF............",
+        "WwWWWWe..cCCC.............",
+        "wwwwwwe.cCCCCCCC..........",
+        "WWWWwWe.cCCCCcccccH.......",
+        "WWWWwWe.cCCCCCCCCHgH......",
+        "wwwwwwe.cCCCCCCCCHOH......",
+        "WwWWWWe.cCCCCCCCCCk.......",
+        "WwWWWWe.CCCCCCCCCCk.......",
+        "wwwwwwe.kkkkkkkCCCk.......",
+        "dddddddddddddddBBBBBdddddd",
+        "qqqqqqqqqqqqqqqqqqqqqqqqqq"
+      ],
+      "palette": {
+        "W": "#2f2c28",
+        "w": "#1f1d1a",
+        "e": "#3d3934",
+        "d": "#1f1c18",
+        "q": "#171512",
+        "C": "#3b3a47",
+        "c": "#55546a",
+        "k": "#25242d",
+        "F": "#121117",
+        "H": "#8a7a66",
+        "O": "#2e2e34",
+        "g": "#b0a890",
+        "B": "#1d1c22"
+      }
+    },
+    "the-one-who-stayed": {
+      "rows": [
+        ".......hhHHHh..........g...",
+        "......hHHHHHHh........sgs..",
+        ".....hHHHHHHHHh........s...",
+        ".....hSSkkHHHHHt.......s...",
+        ".....hSEkkHHHHHtt......s...",
+        "......SSkHHHHHttt......s...",
+        "......AAAAmmmmaTttt....s...",
+        "...AAAAAAAAmmmaaTttt...s...",
+        "..SAAAAmmmmmmmaaTttt...s...",
+        "..SAAAmmmmmmmaaaaTttt..s...",
+        "...AAAm....aaaaaaTttt..s...",
+        "...AAAm....aaaaaaTtttt.s...",
+        "...AAAm...aaaaaaTtTtt..s...",
+        "..BBBBBB..BBBBBB.t.t.t.s...",
+        "ddddddddddddddddddddddddddd"
+      ],
+      "palette": {
+        "H": "#5e594d",
+        "h": "#3a372f",
+        "k": "#1a1816",
+        "S": "#cfb08a",
+        "E": "#1a1512",
+        "A": "#7a7468",
+        "m": "#5f5a50",
+        "a": "#3f3c35",
+        "T": "#4a3a2c",
+        "t": "#2e241b",
+        "B": "#2a2520",
+        "s": "#6e6e74",
+        "g": "#5a4028",
+        "d": "#1c1916"
+      }
     }
   },
   "rest": {
