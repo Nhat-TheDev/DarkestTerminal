@@ -22,6 +22,7 @@ bun test        # unit tests for the engine (resolver, combat, aggro, level, flo
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
 bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
+bun run docs:sync    # rewrite the doc numbers that mirror data/balance-config.json (--check only verifies; bun test runs the check)
 ```
 
 ## ✅ Implementation overview
@@ -36,7 +37,8 @@ bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damag
 - **Fear + Satiety survival stats**, HP=0 → true permadeath, fear affects combat back through 4 tiers — `src/engine/survival.ts`, `src/engine/resolver.ts`. Satiety is party-wide, draining once per room resolved (amount depends on room type); low satiety escalates through **Exhausted** (stats reduced) and **Dying** (a recurring HP tick on top of Exhausted). The rest room offers 3 recovery choices, and **Camp** — a post-victory option paid for with an Exploration Kit item — restores satiety outside the rest room. Details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)
 - **Level 1-100 system**: `attack`/`defense`/`maxHp`/`maxMp` grow through tapered tiers via `growthBonus()`, shared between characters (by `level`) and monsters (by `floorDepth`). Characters additionally apply their own class-specific `growthWeights` so the 9 classes don't converge to look the same at high levels. Character level (shared across the party, capped at 100, gained through EXP from killing monsters) is completely separate from dungeon floor level (`Floor.depth`, uncapped) — details in [`gameplay-decisions/06-level-system.md`](./gameplay-decisions/06-level-system.md)
 - **Consumable items + permanent, one-shot-decision Artifacts** — items dropped by monsters, usable in/out of combat unless flagged combat-only-off; artifacts are equipped on one specific character (max 3 per character) the instant they're picked up — the player decides equip-or-discard right then, with no free reassignment afterward (3 narrow exceptions) — effects only counting for whoever has it equipped — `src/data/items.ts`, `src/data/artifacts.ts`, `src/engine/artifacts.ts`, `src/engine/party.ts`, details in [`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)
-- **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), and the Wandering Hermit's Exchange Fortune service — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
+- **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), the Wandering Hermit's Exchange Fortune service, and the Merchant's Runner's shop (selling items back to him is a small coin source) — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
+- **Merchant's Runner** — a 50% chance on entering a Rest room: a notice screen, then a fourth **Trade** option that replaces the room's rest action. He runs a coin shop of consumables (5 rotating offers, singly or as lots of 3, refreshable, with tier odds that climb with floor depth), buys consumables and trophies back at a fifth of the single price, and takes a number of one effect-less monster trophy kind for a buff that waits for the floor's elite/boss fight — `src/engine/events/runner.ts`, `src/engine/events/barter.ts`, `src/data/shopStock.ts`, `src/ui/screens/runner.ts`, details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md) (flow, shop odds, barter), [`09-currency.md`](./gameplay-decisions/09-currency.md) and [`07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md) (tiers, trophies)
 - **Event room** — a random event room rolling 1 of several event types when entered, split into 2 rarity tiers — `src/data/events.ts`, details in [`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)
 - **Title (splash) screen** before entering the game — built with a hand-written block font (`src/ui/bigText.ts`, `test/bigText.test.ts`) — `src/ui/mainMenu.ts`, `src/main.ts`
 
@@ -313,6 +315,21 @@ It also drives a whole run headless and asserts no frame ever shows an unresolve
 `{{keys}}` or an empty `[]` bracket — the two ways a missed `digitHint` call would
 surface.
 
+## 🔄 Docs sync
+
+Docs under `docs/` quote numbers that live in `data/balance-config.json`. Nobody keeps those copies in step by hand: `bun run docs:sync` does, and `bun test` fails (`test/docsSync.test.ts`) when a doc is out of step, so a rebalance cannot slip through. After editing the JSON, run it and commit what it rewrites.
+
+It checks four things:
+
+- **Pairs.** A backticked field path followed by parentheses that open with a number, such as `` `section.field` (value) ``, is compared with the config, and the number is rewritten when it differs. Only a number the parentheses open with counts, after an optional `≈`; one inside a sentence is not a value. A percentage may have a space before the sign. A percentage is read by the field's name: a `…Percent` field stores whole percents and is written as that number with a percent sign, any other field stores a fraction and is written as its percentage. Name a new config field to match, and call a stored fraction `…Fraction` or `…Chance`, never `…Percent`; `test/docsSync.test.ts` fails when a `…Percent` field holds a fraction. The path starts at a top-level key of `data/balance-config.json`; prose that quotes a value writes the whole path, and a bare field name with a value is not checked. A pair on a field that holds an object or a list cannot be compared and is listed as `unchecked`.
+- **Generated blocks.** A table between `<!-- docs:begin NAME key=value -->` and `<!-- docs:end -->` is written by the generator `NAME` (`tools/docs-sync/generators/`) from the data and the game's own helpers. Never edit between the markers, and keep explanation outside them: a block holds data only, so a table that mixes data with prose is split.
+- **References.** Every `docs/<name>.md` path, and every bare `NN-name.md` name, written in `src/`, `test/`, `tools/`, `CLAUDE.md`, `README.md` or the docs must name a file that exists. This one is reported, not fixed.
+- **Coverage.** A number in prose that equals a value in `data/*.json`, and is neither a pair nor inside a block, may be a hand-kept copy. `bun run docs:sync --coverage` lists them and changes nothing. A decimal or a number above 100 always counts; a whole number up to 100 counts only when a field name or entry id that holds that value is within a few words of it. The count per doc is recorded in `tools/docs-sync/coverage-baseline.json`: a doc that gains one fails the check, and one that loses one asks for the baseline to be lowered, which `bun run docs:sync` does. A doc missing from the file, or the file itself, counts as zero; a file that is not valid JSON, or not an object of counts, is reported as a finding and never overwritten. Fix a hit by writing it as a pair, generating it, or describing it in words. A line that ends with `<!-- docs:intent -->`, and a section between `<!-- docs:intent-begin -->` and `<!-- docs:intent-end -->`, are left out: use them for a record of reasoning, whose numbers are as of the decision, or for a figure that is not a copy of the data. A begin without its end would exempt the rest of the doc, so an unpaired marker fails the check.
+
+A code fence that is never closed is reported too, because everything after it would count as code and go unchecked.
+
+The generators live in `tools/docs-sync/generators/`; `generators/index.ts` lists them. A generator that shows an effect, an ability, an artifact or a status uses the game's own text for it where one exists. To add a generator: write a `GeneratorSpec` in `tools/docs-sync/generators/` that returns a `DocTable` (columns and rows; `format.ts` prints a value from the data with `formatNumber`, a computed one such as an odds weight with `formatRounded`, and a field that may hold an object or a list with `showValue`), register it in `generators/index.ts`, add what it reads to `DocsData` and `loadDocsData`, test it on made-up data in `test/docsSyncTool.test.ts`, then put the marker in the doc and run `bun run docs:sync`. The tool's own tests carry no real balance numbers, and a test that needs the name of a doc that does not exist builds it from two strings, because the reference check also reads `test/`. If a merge conflict lands inside a block, take either side and run `bun run docs:sync`.
+
 ## 📁 Code structure
 
 ```
@@ -336,6 +353,7 @@ src/
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
     barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
+    shopStock.ts         # rollShopOffers/rollBarterOffers — the Runner's stock and barter offers, tier odds by floor depth
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
     events.ts            # data/events.json loader — getEvent, rollEvent
     floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters
@@ -347,8 +365,10 @@ src/
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear + satiety mechanics: room-entry drain, Exhausted/Dying, Camp, rest room actions
-    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts)
+    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). Only saves of the current app version load (`ALLOWED_LEGACY_SAVE_VERSIONS` is empty), so item renames such as `rat-meat` → `rat-tail` need no remap; if an older version is ever allowed, remap renamed item ids here first, because the loop that drops inventory counts for items no longer in the catalog would delete them silently
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
+    events/runner.ts      # the Rest-room Merchant's Runner (not an event room): rollRestRunner, shop purchase/refresh, buyback
+    events/barter.ts      # his trophy-for-buff barter: runnerBarter, and applyPendingBarterBuffs when the floor's elite/boss fight begins
     combatHooks.ts        # passive/on-hit hook helpers read by combat.ts (class passives that don't apply a status effect)
     monsterAI.ts           # monster action/target selection (pickMonsterAction, resolveMonsterSkillTargets, Execute charge state machine)
     paths.ts                # save-directory/file path resolution
@@ -363,10 +383,11 @@ src/
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
+  docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless smoke test: boot + play a full run via simulated keyboard input, incl. a regression test for the post-victory artifact-decision/floor-advance ordering
@@ -384,4 +405,6 @@ test/
   bigText.test.ts      # block font: every glyph has consistent width per row
   floorPatterns.test.ts # property-based test for generateFloorLayout: branching rules, reachability, validator
   levelGrowth.test.ts  # 1-100 milestone table matches the docs, regression test for the "near-immortal" elite boss bug
+  docsSync.test.ts     # the real docs against the real data: red after a rebalance until `bun run docs:sync` has rewritten them
+  docsSyncTool.test.ts # the docs-sync tool itself (pairs, blocks, references, the shop-odds generator) on made-up data
 ```

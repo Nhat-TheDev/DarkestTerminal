@@ -16,15 +16,28 @@ This is the archetype → instance formula, used when spawning monsters into `Ro
 
 Every `MonsterArchetype` carries a fixed `monsterType`, mirroring how a character class's `growthWeights` (§6.8) reshapes its stat budget. Each type has a per-stat weight `{ attack, defense, maxHp }` in `data/growth-weights.json` → `monsterGrowthWeights` (loaded as `MONSTER_TYPE_MULTIPLIER`, `src/data/monsters.ts`), summing to **3** — the 3-stat equivalent of a class's budget summing to 5 across its 5 weighted stats. Check the JSON directly for the current type list and values rather than trusting a hand-copied table here — it drifts the moment `monsterGrowthWeights` is retuned.
 
+<!-- docs:begin monsterTypeWeights -->
+*Generated from `data/growth-weights.json` (`monsterGrowthWeights`) by `bun run docs:sync`. Do not edit.*
+
 | Type | attack | defense | maxHp |
 |---|---|---|---|
-| `balanced` | 1.0 | 1.0 | 1.0 |
-| `tanky` (high HP) | 0.7 | 0.9 | 1.4 |
-| `armored` (high defense) | 0.8 | 1.2 | 1.0 |
-| `striker` (high attack, glass-lite) | 1.2 | 0.9 | 0.9 |
-| `glass` (high attack, fragile) | 1.4 | 0.7 | 0.9 |
-| `bruiser` (attack + HP, low defense) | 1.1 | 0.7 | 1.2 |
-| `sentinel` (defense + HP, low attack) | 0.7 | 1.1 | 1.2 |
+| `balanced` | 1 | 1 | 1 |
+| `tanky` | 0.7 | 0.9 | 1.4 |
+| `armored` | 0.8 | 1.2 | 1 |
+| `striker` | 1.2 | 0.9 | 0.9 |
+| `glass` | 1.4 | 0.7 | 0.9 |
+| `bruiser` | 1.1 | 0.7 | 1.2 |
+| `sentinel` | 0.7 | 1.1 | 1.2 |
+<!-- docs:end -->
+
+What each type is for:
+
+- `tanky` — high HP
+- `armored` — high defense
+- `striker` — high attack, glass-lite
+- `glass` — high attack, fragile
+- `bruiser` — attack + HP, low defense
+- `sentinel` — defense + HP, low attack
 
 Same rule as `growthWeights` for characters (§6.4/§6.8): the type weight scales **only the per-depth growth increment**, never `baseX` — `round(growthBonusForDepth(stat, floorDepth) × monsterType's weight)` (`monsterGrowthBonus`, `src/data/levelGrowth.ts`), added back onto `baseX` afterward. `eliteMultiplier`/`bossMultiplier` (§6.5), the depth-buff, and race/subRace/traits `statBuff` are the ones that scale the *entire* `base + weighted growth` total in `spawnMonster()`, and they stack multiplicatively with each other. `speed` and `expReward` are unaffected by `monsterType`.
 
@@ -56,25 +69,25 @@ game percent-scales speed), clamped to a minimum of 1 so a heavily-`speedFlat`-s
 (`src/engine/resolver.ts`): `finalMultiplier = (1 - resist/100) * (1 + weak/100)` for the
 effect's `damageType` (defaults to `"physical"` when the effect doesn't declare one). A 100%
 resist yields **exactly 0 damage** — not the usual floor-of-1 every other damage instance gets —
-this is what makes an undead Skeletal archetype (100% bleed resist) genuinely immune to bleeding
+this is what makes an undead Skeletal archetype (full bleed resist) genuinely immune to bleeding
 out, instead of still losing 1 HP/turn. Resist/weak never applies to a `Character` target, only a
 `Monster`.
 
 ### Floor-depth buff
 
 A universal, race-independent multiplier on top of the existing floor-depth growth curve
-(`growthBonusForDepth`) — 10-floor brackets, each adding a front-loaded then tapering increment
-(+10, +8, +7, +6, +5, +4.25, +3.5, +3, +2.5, +2) on top of the running total. `data/level-growth.json`'s
+(`growthBonusForDepth`) — fixed-size brackets of floors, each adding a front-loaded then tapering increment
+on top of the running total. `data/level-growth.json`'s
 `monsterDepthBuffBracketIncrements` (paired with `monsterDepthBuffBracketFloors`, the bracket size)
 is the source of truth for those increments; `monsterDepthBuffPercent` (`src/data/levelGrowth.ts`)
 sums them cumulatively as a **step function, not interpolated** — a monster spawned right after
-crossing a boundary (e.g. floor 11) gets the full new bracket's bonus immediately, no gradual ramp.
-Depth is uncapped: once the configured increments run out (floor 120+), the last one (+2%) keeps
+crossing a bracket boundary gets the full new bracket's bonus immediately, no gradual ramp.
+Depth is uncapped: once the configured increments run out, the last one keeps
 being added every subsequent bracket forever, so the bonus never plateaus — matching the game's
 infinite-floor roguelike design instead of stopping at a fixed cap.
 
 That base percent is scaled per-stat before being applied in `spawnMonster`
-(`monsterDepthBuffStatCoefficients`, same file): **HP ×1.5, attack ×1, defense ×0.75** — monsters
+(`monsterDepthBuffStatCoefficients`, same file): one coefficient each for HP, attack and defense — monsters
 get tankier faster than they hit harder or armor up as floors get deeper, widening the late-game's
 "HP sponge" shape rather than scaling all 3 stats uniformly. `speed` is untouched by floor depth,
 same as it always has been.
@@ -89,7 +102,7 @@ in `syncUiToGameState()` the same way `pendingReflection`/`pendingCampReflection
 ### Min-floor gate
 
 Every archetype `floor.ts` can draw from at random (i.e. every archetype except the scripted
-`finalBoss`) carries a `minFloor` — a multiple of 10 below which it will never be picked, enforced
+`finalBoss`) carries a `minFloor` — a floor below which it will never be picked, enforced
 by `assertMonsterDataConsistent` (`src/data/monsters.ts`) at load time. `data/monsters.json` is the
 source of truth for the actual values, not this doc.
 
@@ -124,9 +137,9 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
   Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
 
-  **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard is +40 `aggro` on a Vanguard whose base is 20; against an `opportunistic` monster that pushes the Vanguard almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
+  **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard adds a large `aggro` bonus to a Vanguard whose base is already high; against an `opportunistic` monster that pushes the Vanguard almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
 
-  Same mechanism, opposite direction: `distracted` (−20 `aggro`) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
+  Same mechanism, opposite direction: `distracted` (a negative `aggro` modifier) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
 
 **Which pattern an archetype gets** (`data/monsters.json` field `aiPattern`) follows one rule, so the roster stays predictable as it grows:
 
@@ -161,24 +174,88 @@ Every regular-combat archetype (except Skeleton Guard, see above) carries at lea
 
 **Usage rate**: for most archetypes, `actionWeights.normal` (`data/monsters.json`) gives the flavor skill a real per-turn chance alongside the basic attack. A handful (e.g. Zombie, Skeleton Warrior) keep their skill listed at weight 0 — present so it can still be tuned in the rebalance editor, which only accepts keys an archetype already has, but never rolled by the normal weighted roll; their skill is exclusively triggered by the `aiPattern: "defensive"` low-HP logic above (a Zombie randomly self-healing at full HP would waste turns; a self-heal should only ever fire when it's actually needed). Current weights: `data/monsters.json`.
 
-#### Skill table (representative sample)
+#### Skill table
 
-The full set spans all 32 skill-bearing archetypes in `data/monsters.json`/`data/monster-skills.json`; this table is not exhaustive — it shows a representative slice, including the two `defensive`-only kits, to illustrate the shape each archetype's kit takes:
+Every monster skill in `data/monster-skills.json`, with the archetypes that carry it and their AI pattern (generated):
 
-| Archetype | Skill id | Name | Target | Effect (shape) | AI pattern | Trigger |
-|---|---|---|---|---|---|---|
-| Dungeon Rat | `bite` | Bite | singleEnemy | `damage` | opportunistic | `actionWeights.normal.skill` |
-| Black Bat | `blood-drain` | Blood Drain | singleEnemy | `damage` + `lifestealPercent` (see below) | aggressive | `actionWeights.normal.skill` |
-| Slime | `acid-spit` | Acid Spit | singleEnemy | `damage` + chance to `applyStatusEffect "corroded"` | opportunistic | `actionWeights.normal.skill` |
-| Skeleton | `bone-throw` | Bone Throw | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
-| **Zombie** | `regeneration` | Regeneration | self | `heal` | defensive | **only** via the `defensive` low-HP logic above |
-| Snake | `poison-bite` | Poison Bite | singleEnemy | `damage` + chance to `applyStatusEffect "poisoned"` (existing — `01-class-skill.md` §1.7) | opportunistic | `actionWeights.normal.skill` |
-| Lizard | `quick-bite` | Quick Bite | singleEnemy | `damage` | aggressive | `actionWeights.normal.skill` |
-| Spider | `web-spit` | Web Spit | singleEnemy | `damage` + chance to `applyStatusEffect "webbed"` | aggressive | `actionWeights.normal.skill` |
-| Skeleton Archer | `arrow-shot` | Arrow Shot | singleEnemy | `damage` | opportunistic | `actionWeights.normal.skill` |
-| **Skeleton Warrior** | `guard-stance` | Guard Stance | self | `applyStatusEffect "guard"` (existing — `01-class-skill.md` §1.7) | defensive | **only** via the `defensive` low-HP logic above |
+<!-- docs:begin monsterSkills -->
+*Generated from `data/monster-skills.json` and `data/monsters.json` by `bun run docs:sync`. Do not edit.*
 
-Current damage/heal amounts and proc chances for every archetype: `data/monster-skills.json`. *Snake keeps plain `poisoned` (already its established theme) while Spider gets `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 poison-adjacent archetypes rather than having them share an identical proc.*
+| Skill id | Name | Target | Effects | Used by |
+|---|---|---|---|---|
+| `bite` | Bite | singleEnemy | damage 14 + 100% ATK | Dungeon Rat (opportunistic), Goblin (opportunistic), Ghoulish Crawler (opportunistic), Mimic (aggressive) |
+| `blood-drain` | Blood Drain | singleEnemy | damage 12 + 100% ATK (50% lifesteal) | Black Bat (opportunistic), Vampire Bat (opportunistic), Cultist Zealot (aggressive), Lesser Vampire (aggressive), Wraith (opportunistic) |
+| `acid-spit` | Acid Spit | singleEnemy | damage 10 + 100% ATK; status acid-burn + corroded (2 turns, 50% chance) | Slime (aggressive), Goblin Shaman (defensive), Swamp Slime (aggressive) |
+| `whispered-name` | Whispered Name | singleEnemy | damage 15 + 100% ATK | Cultist Initiate (aggressive) |
+| `poison-bite` | Poison Bite | singleEnemy | damage 12 + 100% ATK; status poisoned (3 turns, 50% chance) | Toxic Toad (defensive), Snake (opportunistic) |
+| `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (defensive) |
+| `regeneration` | Regeneration | self | heal 15 + 100% MAG (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
+| `quick-bite` | Quick Bite | singleEnemy | damage 13 + 100% ATK | Lizard (aggressive), Dire Wolf (aggressive) |
+| `web-spit` | Web Spit | singleEnemy | damage 13 + 100% ATK; status webbed (2 turns, 50% chance) | Spider (aggressive) |
+| `grave-chill` | Grave Chill | singleEnemy | damage 13 + 100% ATK; status weakened (2 turns, 50% chance) | Ghost (opportunistic) |
+| `ember-lash` | Ember Lash | singleEnemy | damage 15 + 100% ATK; status burning (2 turns, 50% chance) | Fire Elemental (aggressive) |
+| `settle-into-stone` | Settle Into Stone | self | status guard (2 turns) | Gargoyle (defensive) |
+| `arrow-shot` | Arrow Shot | singleEnemy | damage 15 + 100% ATK | Skeleton Archer (opportunistic) |
+| `guard-stance` | Guard Stance | self | status guard (2 turns) | Skeleton Warrior (defensive), Armored Beetle (defensive), Lesser Golem (defensive) |
+| `bone-breaker` | Bone Breaker | singleEnemy | damage 14 + 100% ATK; status weakened (2 turns, 50% chance) | Orc Brute (aggressive) |
+| `maul` | Maul | singleEnemy | damage 13 + 100% ATK; status bleeding (3 turns, 50% chance) | Cave Bear (aggressive) |
+| `elite-strike-skeleton-guard` | Cleaving Strike | singleEnemy | damage 26 + 100% ATK | Skeleton Guard (defensive) |
+| `elite-cleave-skeleton-guard` | Sweeping Cleave | allEnemies | damage 13 + 100% ATK | Skeleton Guard (defensive) |
+| `boss-debuff-skeleton-guard` | Crush | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Skeleton Guard (defensive) |
+| `boss-execute-skeleton-guard` | Finishing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-giant-spider` | Venomous Bite | singleEnemy | damage 26 + 100% ATK | Giant Spider (aggressive) |
+| `elite-cleave-giant-spider` | Web Barrage | allEnemies | damage 13 + 100% ATK | Giant Spider (aggressive) |
+| `boss-debuff-giant-spider` | Web Trap | singleEnemy | damage 24 + 100% ATK; status poisoned (3 turns) | Giant Spider (aggressive) |
+| `boss-execute-giant-spider` | Death Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-dragon` | Claw Rake | singleEnemy | damage 26 + 100% ATK | Dragon (aggressive) |
+| `elite-cleave-dragon` | Fire Breath | allEnemies | damage 13 + 100% ATK | Dragon (aggressive) |
+| `boss-debuff-dragon` | Scorching Breath | singleEnemy | damage 24 + 100% ATK; status burning (2 turns) | Dragon (aggressive) |
+| `boss-execute-dragon` | Inferno Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-zombie-knight` | Rusted Blade | singleEnemy | damage 26 + 100% ATK | Zombie Knight (defensive) |
+| `elite-cleave-zombie-knight` | Rotting Swing | allEnemies | damage 13 + 100% ATK | Zombie Knight (defensive) |
+| `boss-debuff-zombie-knight` | Diseased Strike | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Zombie Knight (defensive) |
+| `boss-execute-zombie-knight` | Grave Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-dark-knight` | Shadow Slash | singleEnemy | damage 26 + 100% ATK | Dark Knight (defensive) |
+| `elite-cleave-dark-knight` | Dark Wave | allEnemies | damage 13 + 100% ATK | Dark Knight (defensive) |
+| `boss-debuff-dark-knight` | Crushing Blow | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Dark Knight (defensive) |
+| `boss-execute-dark-knight` | Abyssal Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-orc-chieftain` | Skullsplitter | singleEnemy | damage 26 + 100% ATK | Orc Chieftain (aggressive) |
+| `elite-cleave-orc-chieftain` | Rout | allEnemies | damage 13 + 100% ATK | Orc Chieftain (aggressive) |
+| `boss-debuff-orc-chieftain` | Helm Crusher | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Orc Chieftain (aggressive) |
+| `boss-execute-orc-chieftain` | The Last Trophy | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-vampire-lord` | Crimson Talon | singleEnemy | damage 26 + 100% ATK | Vampire Lord (opportunistic) |
+| `elite-cleave-vampire-lord` | Scarlet Mist | allEnemies | damage 13 + 100% ATK | Vampire Lord (opportunistic) |
+| `boss-debuff-vampire-lord` | Opened Vein | singleEnemy | damage 24 + 100% ATK; status bleeding (3 turns) | Vampire Lord (opportunistic) |
+| `boss-execute-vampire-lord` | Final Draught | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-void` | Grasping Remnant | singleEnemy | damage 26 + 100% ATK | Void Amalgamation (aggressive) |
+| `elite-cleave-void` | Unravelling Tide | allEnemies | damage 13 + 100% ATK | Void Amalgamation (aggressive) |
+| `boss-debuff-void` | Dissolution | singleEnemy | damage 24 + 100% ATK; status corroded (2 turns) | Void Amalgamation (aggressive) |
+| `boss-execute-void` | Subsumed | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-ancient-golem` | Stoneshear | singleEnemy | damage 26 + 100% ATK | Ancient Golem (defensive) |
+| `elite-cleave-ancient-golem` | Tremor | allEnemies | damage 13 + 100% ATK | Ancient Golem (defensive) |
+| `boss-debuff-ancient-golem` | Grinding Weight | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Ancient Golem (defensive) |
+| `boss-execute-ancient-golem` | Sealing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-lich` | Withering Touch | singleEnemy | damage 26 + 100% ATK | Lich (opportunistic) |
+| `elite-cleave-lich` | Grave Wind | allEnemies | damage 13 + 100% ATK | Lich (opportunistic) |
+| `boss-debuff-lich` | Hollow Sight | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | Lich (opportunistic) |
+| `boss-execute-lich` | Name Struck Out | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `elite-strike-the-founder` | Paid In Full | singleEnemy | damage 26 + 100% ATK | What's Left of Him (aggressive) |
+| `elite-cleave-the-founder` | The Same Price | allEnemies | damage 13 + 100% ATK | What's Left of Him (aggressive) |
+| `boss-debuff-the-founder` | What's Left Listening | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | What's Left of Him (aggressive) |
+| `boss-execute-the-founder` | Everything You Asked For | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `self-destruct` | Self-Destruct | allEnemies | damage 30 + 200% ATK (ignores 30% defense); damage 99999 + 100% ATK (target self) | Lava Slime (defensive) |
+<!-- docs:end -->
+
+Notes on some of them:
+
+- `blood-drain` (Black Bat) — `damage` + `lifestealPercent` (see below).
+- `acid-spit` (Slime) — `damage` + chance to `applyStatusEffect "corroded"`.
+- `regeneration` (Zombie) — `heal`. Trigger: **only** via the `defensive` low-HP logic above.
+- `poison-bite` (Snake) — `damage` + chance to `applyStatusEffect "poisoned"` (existing — `01-class-skill.md` §1.7).
+- `web-spit` (Spider) — `damage` + chance to `applyStatusEffect "webbed"`.
+- `guard-stance` (Skeleton Warrior) — `applyStatusEffect "guard"` (existing — `01-class-skill.md` §1.7). Trigger: **only** via the `defensive` low-HP logic above.
+
+*Snake keeps plain `poisoned` (already its established theme) while Spider gets `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 poison-adjacent archetypes rather than having them share an identical proc.*
 
 #### New status effects — 2
 
@@ -256,7 +333,7 @@ Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skil
 MonsterBalancePoints = baseAttack/tier1.attack + baseDefense/tier1.defense + baseHp/tier1.maxHp + baseSpeed/speedRate
 ```
 
-using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`: `attack=3, defense=2, maxHp=14`), plus `speedRate = 12` — a hand-picked constant (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). Starting point was the pooled average `baseSpeed` across every monster archetype and character class (~10.4), nudged up during tuning. `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
+using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`), plus `speedRate`, a hand-picked constant in `tools/game-editor/calc.ts` (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). Starting point was the pooled average `baseSpeed` across every monster archetype and character class (~10.4), nudged up during tuning. `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
 
 This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliberately ignores `monsterType` — the type multiplier only reshapes the *scaled instance* (see "Monster type" above), so it doesn't shift an archetype's base-stat BalancePoints or its tier band.
 
@@ -264,10 +341,12 @@ This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliber
 
 | Tier | Target BalancePoints | Tolerance |
 |---|---|---|
-| weak | 10 | ±0.3 |
-| medium | 12 | ±0.4 |
-| strong | 14 | ±0.5 |
-| Elite/Boss (guard-room archetypes — `actionWeights` for both `elite` and `boss`) | 17 | ±1 |
+| weak | 14 | ±0.3 <!-- docs:intent --> |
+| medium | 17 | ±0.4 <!-- docs:intent --> |
+| strong | 20 | ±0.5 <!-- docs:intent --> |
+| Elite/Boss (archetypes with no `normal` role) | 24 | ±1 <!-- docs:intent --> |
+
+An archetype with the `normal` role is judged against its own `powerTier` band, so Skeleton Guard — the triple-role archetype shared with regular combat — sits in the strong band, not the Elite/Boss one; the game editor's Rebalance tab groups its tier averages the same way. The final boss (`finalBoss: true`) is outside the Elite/Boss band: its base stats sit well above it.
 
 Same caveat as "Balance verification" below: don't hand-maintain a per-archetype BalancePoints table here — `baseAttack`/`baseDefense`/`baseHp`/`baseSpeed` drift independently as tuning continues. Recompute `MonsterBalancePoints` against the current `data/monsters.json` whenever this needs re-checking (the game-editor tool, `tools/game-editor` — Rebalance tab — surfaces this number directly for both classes and monster archetypes).
 

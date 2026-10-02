@@ -43,7 +43,8 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "game-editor": "bun --watch tools/game-editor/server.ts",
-    "dump-save": "bun run tools/dev-save-dump/server.ts"
+    "dump-save": "bun run tools/dev-save-dump/server.ts",
+    "docs:sync": "bun run tools/docs-sync/index.ts"
   },
   "dependencies": {
     "@opentui/core": "^0.5.3"

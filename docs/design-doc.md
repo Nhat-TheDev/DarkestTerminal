@@ -1,6 +1,6 @@
 # Darkest Terminal — Design Doc
 
-**Document version**: 0.1
+**Document version**: 0.1 <!-- docs:intent -->
 **Project type**: Personal side project / for fun — not a serious product intended for release
 
 This document describes the game's current design, matching exactly what has

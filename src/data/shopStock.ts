@@ -6,8 +6,8 @@ import { BARTER_ENTRIES } from "./barter";
 import { ITEMS, getItem } from "./items";
 import { getArchetype } from "./monsters";
 
-const CONSUMABLE_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare"];
-const TROPHY_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare", "unique", "epic"];
+export const CONSUMABLE_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare"];
+export const TROPHY_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare", "unique", "epic"];
 
 /** A trophy can be offered once at least one monster that drops it can appear at `depth`. */
 function trophyAvailableAt(item: ItemDefinition, depth: number): boolean {

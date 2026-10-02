@@ -40,7 +40,7 @@ ItemDefinition {
 }
 ```
 
-Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
+Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters; monsters have no `magicPower`, so such an effect only ever lands on characters and summons. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
 
 ### Drop source
 
@@ -50,7 +50,9 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 
 - **Trophy bucket** — chosen with probability `items.trophyDropShare` (0.4), only for a monster that has trophies (`archetypeIds` containing its archetype). A monster with no trophy (Lesser Vampire, The Founder) skips this step.
 - **General pool** — every other drop: the items with no `archetypeIds`.
-- **Weight inside a bucket** = `items.tierWeights[tier]` (common 1, uncommon 0.8, rare 0.5, unique 0.3, epic 0.1, legendary 0.05), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight no longer scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
+- **Weight inside a bucket** = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight no longer scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
+
+With every consumable in the general pool, a given potion drops far less often than when the pool held a handful of items, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
 
 Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
@@ -60,21 +62,32 @@ Full list (id, name, effect, tier): `data/items.json`, filtered to entries witho
 
 By kind:
 
-- **Healing and mana potions** in 3 tiers each (heal 60 / 120 / 220 HP, restore 30 / 55 / 90 MP), plus `field-tonic` (heals the whole party) and `calming-draught` (fear).
+- **Healing and mana potions** in 3 tiers each (the amounts are in `data/items.json`), plus `field-tonic` (heals the whole party) and `calming-draught` (fear).
 - **Buffs** — `whetstone`, `honing-oil`, `war-paint`, `rally-standard` (attack), `temporary-ward`, `resin-wrap`, `bulwark-draught` (defense), `spark-salt`, `scholars-candle`, `hushed-bell`, `etched-lens`, `pitch-pipe` (magic power, for casters), `repelling-smoke-powder` (aggro down), `bandage-roll`, `marrow-broth` (heal each turn), `serpent-oil` (an on-hit poison rider, reusing `poison-coat`).
 - **Damage bombs** — flat damage on use, from the item alone (`offenseMultiplierPercent: 0`), so every class deals the same: `cracker-string`, `pitch-bomb`, `frost-flask`, `thunder-charge` (one enemy) and `blister-bomb`, `rot-bomb` (every enemy). Race resistances still apply.
 - **Debuff bombs** — `tar-flask` (speed), `smoke-pellet` (accuracy), `acid-vial`, `fracture-charge` (defense), `deafening-charge` (stun).
-- **Cures** — each removes one status: `antidote` (Poisoned), `burn-salve`, `styptic-powder`, `eyewash`, `thread-knife`, `lye-wash`, `smelling-salts`, `mending-paste`, and `purge-draught` (one harmful status from each ally).
+- **Cures** — each removes one status: `antidote` (Poisoned), `burn-salve`, `styptic-powder`, `eyewash`, `thread-knife`, `lye-wash`, `smelling-salts`, `mending-paste`, and `purge-draught` (one harmful status from each ally). Together they cover exactly the statuses monsters apply to the party (Poisoned, Burning, Bleeding, Acid Burn, Stunned, Blinded, Webbed, Weakened, Corroded). A cure used on an ally who does not carry the status does nothing and is still consumed. Acolyte's Purify is the general cleanse of any one debuff.
 
 Each buff or debuff item has its own status in `data/status-effects.json` (id = item id, flat values), so check that file for the numbers. Check `data/items.json` for the exact effects.
+
+<!-- docs:intent-begin -->
+**How the shipped values were set.** This is a record of the method, not a rule the engine checks; all values live in the JSON. Every amount is flat, never a share of max HP, so each tier is sized for the floor band the tier odds put it in (`03-survival-stats.md`, "Shop tier odds"): Common for floors 1–10, Uncommon 11–25, Rare 26–50.
+
+- **Potions** restore roughly 30% (Common), 35% (Uncommon) and 40% (Rare) of the average party max HP or MP at their band.
+- **Buffs and debuffs from a status** are a share of a reference stat, 30% (Common), 33% (Uncommon) or 36% (Rare), scaled by 0.75 when the target is `allAllies`. The reference stat is the party average (buffs; magic power for the magic power items) or the normal-monster average (debuffs), taken at the middle of the tier's band. Aggro is already flat and is not scaled.
+- **Damage bombs** deal a multiple of one basic physical hit against the average monster at the middle of the band: ×1.5 (Common), ×1.7 (Uncommon), ×2.0 (Rare) for one enemy, ×1.6 per enemy for the two area bombs. Using an item costs a turn, so a bomb has to beat an attack to be worth carrying. Their flat amounts already add back the small defense term (`defense / defenseMitigationY`) at the reference defense.
+- **Cures** name the status they remove and have no number to size.
+<!-- docs:intent-end -->
 
 ### Trophies
 
 A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it and shows "It has no effect at all. Strange." (in a combat log or as the room message), and its purpose is to be traded to the Merchant's Runner: sold for coins or bartered for a combat buff (`03-survival-stats.md`). The inventory and reward screens list its effect as "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
 
-- **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss.
+- **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss. <!-- docs:intent -->
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.
 - A handful of older items (Grave Dust, Rotten Flesh, Broken Blade Fragment, Rat Tail, Venom Gland) are trophies with a tier set by hand.
+
+How the catalog is laid out: in each race group, one representative monster also keeps its own lower-tier individual trophy, and every other member drops only the group trophy. An archetype whose roles are exactly elite and boss has its own trophy and belongs to no group. A trophy's description must never promise an effect, since it has none. Two monsters have no trophy: Lesser Vampire and The Founder, the scripted final boss.
 
 ---
 
@@ -97,9 +110,9 @@ There is **no shared "unequipped pool"** — an Artifact either ends up equipped
 2. **Decision**:
    - **Ordinary artifact**: **Equip** (choose any character — including one already at 3/3, which becomes a voluntary *replacement*: pick 1 of that character's own currently-equipped *ordinary*, non-Cursed artifacts to permanently discard, freeing the slot) or **Discard** (gone for good, never offered for a Cursed artifact).
    - **Cursed artifact** (`isCursed: true`) or an event marked `forceEquip: true` (Twin Altars, §8.8): **no Discard option** — the player must designate a character, including one at 3/3 (same forced-replacement rule as above, still restricted to discarding an *ordinary* artifact on that character).
-3. Equipping consumes 1 of that character's 3 personal slots (1 of the party's 12 total), **permanently** — see "Ways an Artifact can leave a character" below for the only 3 exceptions.
+3. Equipping consumes 1 of that character's `party.maxEquippedArtifacts` (3) personal slots, **permanently** — see "Ways an Artifact can leave a character" below for the only 3 exceptions.
 
-- **Capped Artifacts per character** (`party.maxEquippedArtifacts`, `data/balance-config.json`) — multiplied by party size gives the total equip-slot budget for a run (3 × 4 = 12).
+- **Capped Artifacts per character** (`party.maxEquippedArtifacts`, `data/balance-config.json`) — multiplied by the party size, `party.size` (4), gives the total equip-slot budget for a run.
 - **Effects only apply to the exact character wearing it** (except `expBoost`, an exception because EXP is shared — see the "Who it applies to" note below).
 
 Implementation: `grantArtifact`/`resolveArtifactEquip`/`discardPendingArtifact`/`removeArtifactFromCharacter` (`src/engine/party.ts`); UI flow in `src/ui/screens/artifactDecision.ts`, given top priority by `App.syncUiToGameState()` and `finishVictorySequence` (`src/ui/screens/context.ts`) — a pending decision is always resolved before the player can act on anything else, including a fresh floor's entry-room ambush.
@@ -191,37 +204,47 @@ Each rarity is tuned for a character level band, and floor depth stands in for l
 | Unique | 31–45 |
 | Epic | 46+ |
 
+<!-- docs:intent-begin -->
 **Stat budget for pure-stat artifacts.** One artifact should improve its stat's *effect* by about **6% (Common), 8% (Rare), 10% (Unique), 12% (Epic)** at the middle of its band, measured against the mean stat of the classes that actually use it (level 8 / 23 / 38 / 60). For `attack`, `magicPower`, `maxHp` and `maxMp` that is a plain share of the stat. For `defense` the share is of effective HP, `bonus / (defenseMitigationX + defense)` (`defenseMitigationX` is 40 in `data/balance-config.json`), because of the mitigation curve (`mitigatedOffense`, `resolver.ts`); a defense point buys far less than its share of the stat suggests. An artifact with two stats counts each at 0.7, one with three at 0.5. Catalog values at or above the budget stay as they are, so it is a floor for new items rather than a cap; `cracked-spiral-stone` (`maxMp +22`) and `fused-twin-coins` (`attack +13`) sit on it.
 
 **Stats stay flat; `autoDamage` scales.** Artifacts are swapped during a run, so their stat bonuses are flat numbers, not shares of the bearer's base stats (Abilities, which last the whole run, use `minPercent` instead). The exception is `autoDamage`, whose fixed damage falls to 1–2% of a monster's HP at its level band. `thunder-totem` deals `6 + 25%` of the bearer's base `magicPower` and `crown-of-destruction` deals `12 + 30%` of base `attack` (plus its `poisonOnHit`), resolved as a normal `damage` hit against defense on 1 random living monster per round. That is about 4.3% of a floor-38 monster's HP for the totem and 5.2% of a floor-60 monster's for the crown (1.4% and 2.1% before scaling), roughly half of `thunderous-aura` and `lodestone` at the same tier. A class with none of the scaling stat (a Rogue with the totem, a Mage with the crown) gets a weaker tick than the old fixed one, since the flat part is now mitigated too.
+<!-- docs:intent-end -->
 
-**Rarity odds by depth.** Depth is grouped into steps of `floorsPerStep` floors (10), so floors 1–10 share one set of odds, 11–20 the next, and so on. The step containing `anchorFirstFloor` (31) uses the source's `anchorWeights`; every other step follows
+**Rarity odds by depth.** Depth is grouped into steps of `artifacts.floorsPerStep` (10) floors, so every floor in a step shares one set of odds. The step containing `artifacts.anchorFirstFloor` (31) uses the source's `anchorWeights`; every other step follows
 
 ```
 w_r   = anchor_r × tilt ^ ( i_r × (step − anchorStep) )     i = 0, 1, 2, 3 for common, rare, unique, epic
 odds  = 100 × w_r / Σ w
 ```
 
-Going deeper multiplies rare by `tilt`, unique by `tilt²` and epic by `tilt³` relative to common; going shallower divides. `tilt` is 2.5. Anchors (common / rare / unique / epic):
+Going deeper multiplies rare by `tilt`, unique by `tilt²` and epic by `tilt³` relative to common; going shallower divides. The tilt is `artifacts.tilt` (2.5). Anchors, in the order of the legend:
 
-| Source | Anchor at floors 31–40 |
+<!-- docs:begin rarityOdds part=anchors -->
+*Generated from `data/balance-config.json` (`artifacts`) by `bun run docs:sync`. Do not edit.*
+
+| Source | Anchor at floors 31–40 (C / R / U / E) |
 |---|---|
 | Elite | 15 / 40 / 45 / 0 |
 | Boss | 5 / 25 / 55 / 15 |
 | Treasure / Event / Merchant | 15 / 35 / 40 / 10 |
+<!-- docs:end -->
 
 Resulting odds (%):
 
+<!-- docs:begin rarityOdds part=odds bands=1,11,21,31,41,51 -->
+*Generated from `data/balance-config.json` (`artifacts`) by `bun run docs:sync`. Do not edit.*
+
 | Floors | Elite | Boss | Treasure / Event |
 |---|---|---|---|
-| 1–10 | 84.5 / 14.4 / 1.0 / 0 | 73.2 / 23.4 / 3.3 / 0.1 | 86.2 / 12.9 / 0.9 / 0 |
+| 1–10 | 84.5 / 14.4 / 1.0 / 0 | 73.2 / 23.4 / 3.3 / 0.1 | 86.2 / 12.9 / 0.9 / 0.0 |
 | 11–20 | 66.5 / 28.4 / 5.1 / 0 | 47.8 / 38.2 / 13.4 / 0.6 | 69.2 / 25.8 / 4.7 / 0.2 |
 | 21–30 | 39.3 / 41.9 / 18.8 / 0 | 20.2 / 40.4 / 35.5 / 3.9 | 41.6 / 38.8 / 17.8 / 1.8 |
 | 31–40 | 15 / 40 / 45 / 0 | 5 / 25 / 55 / 15 | 15 / 35 / 40 / 10 |
 | 41–50 | 3.8 / 25.2 / 71.0 / 0 | 0.8 / 9.7 / 53.2 / 36.3 | 2.9 / 17.2 / 49.1 / 30.7 |
 | 51–60 | 0.7 / 12.4 / 86.9 / 0 | 0.1 / 2.6 / 36.0 / 61.3 | 0.4 / 5.2 / 36.9 / 57.6 |
+<!-- docs:end -->
 
-The first ten floors almost never drop a Unique or Epic (about 1% from Elite and events, 3.4% from a Boss), which is the point of the schedule. The exponential shape also means that from about floor 70 only Unique and Epic still drop. From floor 141 on (`maxStepsFromAnchor`, 10 steps from the anchor) the odds stop changing. Anchors and `tilt` are first-pass numbers; the whole schedule is tuned from `balance-config.json` without touching code. Collapsed Floor rolls the Boss odds at the current depth, so on shallow floors its reward is a Common or Rare rather than a guaranteed Unique/Epic.
+The first band of floors almost never drops a Unique or Epic, which is the point of the schedule. The exponential shape also means that, deep enough, only Unique and Epic still drop. Past `artifacts.maxStepsFromAnchor` (10) steps from the anchor the odds stop changing. Anchors and `tilt` are first-pass numbers; the whole schedule is tuned from `balance-config.json` without touching code. Collapsed Floor rolls the Boss odds at the current depth, so on shallow floors its reward is a Common or Rare rather than a guaranteed Unique/Epic.
 
 ### Catalog
 
@@ -249,62 +272,82 @@ anything.
 
 #### Common (10 of 10 — every 1 rewritten)
 
-| id | Story |
-|---|---|
-| `iron-gauntlet` | "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest." |
-| `worn-wooden-shield` | "Every scar on it came from a blow meant for someone standing behind the one holding it — nobody's kept count of how many times that worked." |
-| `charm-of-life` | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled. Nobody who's held it since has cared about the difference." |
-| `small-mana-gem` | "'Guard it with your life,' a spellcaster told their apprentice. The apprentice took the instruction more literally than anyone expected." |
-| `sharp-claw` | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Mounting it was somebody else's job entirely — bringing it down was somebody else's again." |
-| `stone-of-endurance` | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
-| `ring-of-focus` | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
-| `warriors-necklace` | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
-| `pendant-of-calm` | "'I won't need calm where I'm headed,' they said, handing it back before they left. Nobody who was there wanted to ask what they meant." |
-| `travelers-ration` | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
+<!-- docs:begin artifacts ids=iron-gauntlet,worn-wooden-shield,charm-of-life,small-mana-gem,sharp-claw,stone-of-endurance,ring-of-focus,warriors-necklace,pendant-of-calm,travelers-ration -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `iron-gauntlet` | Common | +3 attack. | "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest." |
+| `worn-wooden-shield` | Common | +3 defense. | "Every scar on it came from a blow meant for someone standing behind the one holding it — nobody's kept count of how many times that worked." |
+| `charm-of-life` | Common | +20 max HP. | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled. Nobody who's held it since has cared about the difference." |
+| `small-mana-gem` | Common | +10 max MP. | "'Guard it with your life,' a spellcaster told their apprentice. The apprentice took the instruction more literally than anyone expected." |
+| `sharp-claw` | Common | +4 attack. | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. Mounting it was somebody else's job entirely — bringing it down was somebody else's again." |
+| `stone-of-endurance` | Common | +30 max HP. | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
+| `ring-of-focus` | Common | +15 max MP. | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
+| `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
+| `pendant-of-calm` | Common | -10% fear accumulated. | "'I won't need calm where I'm headed,' they said, handing it back before they left. Nobody who was there wanted to ask what they meant." |
+| `travelers-ration` | Common | +15 max HP. | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
+<!-- docs:end -->
 
 #### Rare, non-Cursed (9 of 9)
 
-| id | Story |
-|---|---|
-| `ancient-sword` | "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. They never finished. The blade outlived the theory." |
-| `heart-of-stone` | "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. They were very convincing about it, right up until they weren't." |
-| `eternal-vial` | "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands." |
-| `arcane-core` | "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess." |
-| `thorned-armor` | "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain." |
-| `venomous-dagger-relic` | "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling." |
-| `vampiric-fang` | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. Everyone who heard it agreed, mostly just to end the conversation." |
-| `featherweight-boots` | "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down." |
-| `quickcharge-rune` | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
+<!-- docs:begin artifacts ids=ancient-sword,heart-of-stone,eternal-vial,arcane-core,thorned-armor,venomous-dagger-relic,vampiric-fang,featherweight-boots,quickcharge-rune -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `ancient-sword` | Rare | +8 attack. | "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. They never finished. The blade outlived the theory." |
+| `heart-of-stone` | Rare | +8 defense. | "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. They were very convincing about it, right up until they weren't." |
+| `eternal-vial` | Rare | +50 max HP. | "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands." |
+| `arcane-core` | Rare | +25 max MP. | "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess." |
+| `thorned-armor` | Rare | Reflects 5% of damage taken back to the attacker. | "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain." |
+| `venomous-dagger-relic` | Rare | 6% chance to inflict Poisoned on hit. | "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling." |
+| `vampiric-fang` | Rare | Heals 5% of damage dealt. | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. Everyone who heard it agreed, mostly just to end the conversation." |
+| `featherweight-boots` | Rare | 6% chance to fully dodge an attack. | "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down." |
+| `quickcharge-rune` | Rare | -1 turn skill cooldown. | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
+<!-- docs:end -->
 
 #### Rare, Cursed (4 of 4)
 
-| id | Story |
-|---|---|
-| `blackened-locket` | "It used to hold a portrait. The photo got burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
-| `shackle-of-hunger` | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
-| `unstable-core` | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
-| `heavy-guilt` | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
+<!-- docs:begin artifacts ids=blackened-locket,shackle-of-hunger,unstable-core,heavy-guilt -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The photo got burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
+| `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
+| `unstable-core` | Rare | +25 aggro. +30 max MP. | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
+| `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
+<!-- docs:end -->
 
 #### Unique (7 of 7)
 
-| id | Story |
-|---|---|
-| `spiked-cloak` | "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders." |
-| `serpent-ring` | "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect." |
-| `thunder-totem` | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut." |
-| `armor-of-wholeness` | "Made for someone who never got the chance to wear it into anything worth calling a battle. It still fits like it's waiting for them to come back and finish that first one." |
-| `bloodthirsty-blade` | "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it." |
-| `phantom-step` | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. They got exactly what they asked for. Nobody's sure they were glad they did." |
-| `scholars-insight` | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
+<!-- docs:begin artifacts ids=spiked-cloak,serpent-ring,thunder-totem,armor-of-wholeness,bloodthirsty-blade,phantom-step,scholars-insight -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `spiked-cloak` | Unique | Reflects 10% of damage taken back to the attacker. | "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders." |
+| `serpent-ring` | Unique | 12% chance to inflict Poisoned on hit. | "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect." |
+| `thunder-totem` | Unique | Deals 6 + 25% base magic power damage to 1 random enemy at the start of each round. | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut." |
+| `armor-of-wholeness` | Unique | +6 attack. +6 defense. +40 max HP. | "Made for someone who never got the chance to wear it into anything worth calling a battle. It still fits like it's waiting for them to come back and finish that first one." |
+| `bloodthirsty-blade` | Unique | Heals 10% of damage dealt. | "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it." |
+| `phantom-step` | Unique | 12% chance to fully dodge an attack. | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. They got exactly what they asked for. Nobody's sure they were glad they did." |
+| `scholars-insight` | Unique | +15% EXP gained for the party. | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
+<!-- docs:end -->
 
 #### Epic (4 of 4)
 
-| id | Story |
-|---|---|
-| `crown-of-destruction` | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask." |
-| `immortal-heart` | "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor." |
-| `reapers-covenant` | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." |
-| `eternal-scholars-tome` | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
+<!-- docs:begin artifacts ids=crown-of-destruction,immortal-heart,reapers-covenant,eternal-scholars-tome -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `crown-of-destruction` | Epic | Deals 12 + 30% base attack damage to 1 random enemy at the start of each round. 8% chance to inflict Poisoned on hit. | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask." |
+| `immortal-heart` | Epic | Reflects 15% of damage taken back to the attacker. +10 defense. +60 max HP. | "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor." |
+| `reapers-covenant` | Epic | Heals 25 HP on defeating a target. Heals 8% of damage dealt. | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." |
+| `eternal-scholars-tome` | Epic | +25% EXP gained for the party. -1 turn skill cooldown. | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
+<!-- docs:end -->
 
 ### New catalog entries — 4 categories, 11 items
 
@@ -356,7 +399,7 @@ collection mechanic, no tracked set, no special drop source.
   on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear
   either owner would have wanted them to."
 - **Waystone Shard** (Unique, no `statBoost` — its purpose is entirely the check in
-  `10-event-narrative.md` §F.4, so it carries only a token effect, e.g. `statBoost maxHp +10`):
+  `10-event-narrative.md` §F.4, so it carries only a token effect, e.g. a small `statBoost maxHp`):
   "A shard of something that was never carved, only grown that way — smooth on every broken edge
   except where it snapped. This was already broken long before anyone started marking these walls
   with a spiral." *(the floor-100 "Leave" ending's escape condition — §F.4)* **Restricted drop
@@ -370,21 +413,25 @@ collection mechanic, no tracked set, no special drop source.
 
 Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `speed`, and can carry `alwaysHit` and `debuffResist` (introduced for Abilities, `11-abilities.md`). `aggro` stays Ability-only. `magicPower` also lifts every `isMagic` heal (`resolver.ts`), so these serve healers as much as nukers. Descriptions follow the rules in "Lore-bearing descriptions" above.
 
+<!-- docs:begin artifacts ids=cracked-scrying-glass,knotted-red-thread,resonant-tuning-fork,runners-ankle-cord,bitter-root-charm,hunters-tally-stick,censer-of-ash,signal-whistle,threshold-salt-pouch,stormglass-orb,unbroken-seal -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `cracked-scrying-glass` | Common | `magicPower +3` | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
-| `knotted-red-thread` | Common | `debuffResist 6%` | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
-| `resonant-tuning-fork` | Rare | `magicPower +8` | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
-| `runners-ankle-cord` | Rare | `speed +2` | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
-| `bitter-root-charm` | Rare | `debuffResist 10%` | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
-| `hunters-tally-stick` | Rare | `alwaysHit 8%` | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
-| `censer-of-ash` | Unique | `magicPower +12` | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
-| `signal-whistle` | Unique | `speed +4` | "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look." |
-| `threshold-salt-pouch` | Unique | `debuffResist 15%` | "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one." |
-| `stormglass-orb` | Epic | `magicPower +15` + `cooldownReduction 1` | "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again." |
-| `unbroken-seal` | Epic | `debuffResist 20%` + `fearResist 15%` | "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside." |
+| `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
+| `knotted-red-thread` | Common | Harmful statuses enemies apply are 6% less likely to land. | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
+| `resonant-tuning-fork` | Rare | +8 magic power. | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
+| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
+| `bitter-root-charm` | Rare | Harmful statuses enemies apply are 10% less likely to land. | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
+| `hunters-tally-stick` | Rare | 8% chance to bypass a hit or debuff-chance roll entirely. | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
+| `censer-of-ash` | Unique | +12 magic power. | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
+| `signal-whistle` | Unique | +4 speed. | "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look." |
+| `threshold-salt-pouch` | Unique | Harmful statuses enemies apply are 15% less likely to land. | "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one." |
+| `stormglass-orb` | Epic | +15 magic power. -1 turn skill cooldown. | "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again." |
+| `unbroken-seal` | Epic | Harmful statuses enemies apply are 20% less likely to land. -15% fear accumulated. | "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside." |
+<!-- docs:end -->
 
-**Calibration.** `magicPower` and `attack` are interchangeable stats (`11-abilities.md`, Common), so `magicPower` reuses the `attack` ladder: `+3` Common (`iron-gauntlet`), `+8` Rare (`ancient-sword`), `+15` Epic (`snapped-ritual-blade`); Unique `+12` is interpolated between Rare and Epic, the way `executioners-instinct` is in the Ability catalog. `speed` is deliberately small (`+2` Rare, `+4` Unique): it never grows with level and only spans `8`–`17` across the classes, and three equipped Artifacts stack, so a Rare-tier `+8` would be absurd. `alwaysHit` and `debuffResist` values (`8%`; `6% / 10% / 15% / 20%`) sit below the Ability rungs (`10 / 15 / 20`; `10 / 16 / 24 / 32`) because up to three of them stack. None of these numbers is derived from an expected-value model; they are first-pass and meant to be tuned in play.
+**Calibration.** `magicPower` and `attack` are interchangeable stats (`11-abilities.md`, Common), so `magicPower` reuses the `attack` ladder: `+3` Common (`iron-gauntlet`), `+8` Rare (`ancient-sword`), `+15` Epic (`snapped-ritual-blade`); Unique `+12` is interpolated between Rare and Epic, the way `executioners-instinct` is in the Ability catalog. `speed` is deliberately small (`+2` Rare, `+4` Unique): it never grows with level and only spans `8`–`17` across the classes, and three equipped Artifacts stack, so a Rare-tier `+8` would be absurd. `alwaysHit` and `debuffResist` values (`8%`; `6% / 10% / 15% / 20%`) sit below the Ability rungs (`10 / 15 / 20`; `10 / 16 / 24 / 32`) because up to three of them stack. None of these numbers is derived from an expected-value model; they are first-pass and meant to be tuned in play. <!-- docs:intent -->
 
 ### Event-tied artifacts
 

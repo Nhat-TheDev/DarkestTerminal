@@ -20,9 +20,9 @@ interface BalanceConfig {
     dyingThreshold: number;
     dyingDamagePerRound: number;
     campSatietyRestore: number;
-    eatDrinkRestorePercent: number;
+    eatDrinkRestoreFraction: number;
     eatDrinkSatietyRestore: number;
-    chatRestorePercent: number;
+    chatRestoreFraction: number;
     chatFearRelief: number;
     /** 03-survival-stats.md's Camp Reflection — `loreExposureCount` thresholds for tiers 1-4.
         Balance-tunable, not a lore decision; pending playtesting of real run lengths. */
@@ -35,7 +35,7 @@ interface BalanceConfig {
     fearPerRoundBaseCap: number;
     fearPerRoundLowHpCap: number;
     fearPerRoundDepthGrowth: number;
-    fearLowHpThresholdPercent: number;
+    fearLowHpThresholdFraction: number;
     fearVictoryRelief: number;
     fearVictoryReliefQuick: number;
     fearQuickVictoryRoundThreshold: number;
@@ -131,7 +131,7 @@ interface BalanceConfig {
     maxStepsFromAnchor: number;
     anchorWeights: Record<"elite" | "boss" | "treasureOrEvent", Record<ArtifactRarity, number>>;
   };
-  /** The Merchant's Runner in Rest rooms — `docs/specs/merchant-runner-coin-sink.md`. */
+  /** The Merchant's Runner in Rest rooms — `docs/gameplay-decisions/03-survival-stats.md`, "The Merchant's Runner". */
   runner: {
     appearChance: number;
     noticeVariantCount: number;

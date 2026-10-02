@@ -14,12 +14,19 @@ Event room logic lives in `src/engine/dungeon.ts`, `src/engine/game.ts`, `src/en
 
 Every time the party steps into a room with `RoomType === "event"`, the system rolls 1 event id via `rollEvent(rng, depth, firedOnceEventIds)` (`src/data/events.ts`), split across 2 tiers with an even roll within each tier:
 
+<!-- docs:begin eventTiers -->
+*Generated from `data/events.json` and `data/balance-config.json` (`events`) by `bun run docs:sync`. Do not edit.*
+
 | Tier | Total weight | Includes |
 |---|---|---|
-| **Common** (light, familiar, few branches) | `events.commonTierWeight` (`data/balance-config.json`) | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar`, `old-count`, `doubled-back`, `the-delay`, `waiting-supplies` |
-| **Rare** (heavier, with deeper risk/trade-offs) | `events.rareTierWeight` | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor`, `vigil-candle`, `broken-seal`, `half-a-warning`, `still-breathing` |
+| Common | 65 | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar`, `old-count`, `doubled-back`, `the-delay`, `waiting-supplies` |
+| Rare | 35 | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor`, `vigil-candle` (from floor 15, once per run), `broken-seal` (from floor 15, once per run), `half-a-warning` (from floor 35, once per run), `still-breathing` (from floor 70, once per run), `the-wanderer` (from floor 10), `the-one-who-stayed` (once per run) |
+<!-- docs:end -->
 
-The roll is otherwise independent of party state, but 4 rare events carry a `minFloorDepth` gate (`vigil-candle`/`broken-seal` at 15, `half-a-warning` at 35, `still-breathing` at 70) and are also `onceLifetime` — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
+- **Common** — light, familiar events with few branches. Weight: `events.commonTierWeight` (`data/balance-config.json`).
+- **Rare** — heavier events with deeper risk and trade-offs. Weight: `events.rareTierWeight`.
+
+The roll is otherwise independent of party state, but some rare events carry a `minFloorDepth` gate and are also `onceLifetime` (both are shown in the table above) — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
 
 All Artifact rewards in §8 share the same depth-scaled `treasureOrEvent` rarity odds (`artifactRarityWeights`, `src/data/artifacts.ts`) defined in `07-items-artifacts.md` §7.2 "Level bands & drop schedule", **unless an event states its own table** (e.g. `collapsed-floor` rolls the Boss odds, `sacrificial-circle` and `wandering-hermit` use a fixed table with a minimum tier floor).
 
@@ -201,25 +208,29 @@ Choose the artifact to sacrifice from anywhere across the party, confirm → it'
 
 **No combat** (`kind: "coinGamble"`). A pure Cursed-Coin escalating gamble, up to 4 rounds, the stake carrying forward as long as the player keeps winning and choosing to continue — it **never wagers an Artifact**.
 
-| Round | Stake (= the pot so far) | Win chance | On win | Reachable only by |
-|---|---|---|---|---|
-| 1 | 20 coins | 70% | pot → 40 coins | Entry (costs 20 coins up front, requires ≥ 20 on hand) |
-| 2 | 40 coins | 50% | pot → 80 coins | Choosing **Continue** after winning round 1 |
-| 3 | 80 coins | 40% | pot → 160 coins | Choosing **Continue** after winning round 2 |
-| 4 | 160 coins | 30% | **2 Epic Artifacts** — the pot converts into the jackpot reward instead of doubling again | Choosing **Continue** after winning round 3; the event ends here either way |
+<!-- docs:begin gamblingRounds -->
+*Generated from `data/balance-config.json` (`events.gamblingDenRounds`) by `bun run docs:sync`. Do not edit.*
 
-**Balance note**: round 1's odds are deliberately favorable (a welcoming entry point — expected value
-of continuing is positive, `0.7 × 40 = 28` against the `20` staked). Rounds 2 (was 60%) and 3 (was
-50%) were tightened so genuine risk starts right after the first double instead of only at round 3 —
-under the old numbers, continuing through round 2 was unconditionally the correct play by expected
-value alone (`0.6 × 80 = 48` against `40`), leaving no real tension until the very end. Round 4 stays
-unchanged — its negative coin EV is the point, since the player isn't gambling for coins there, they're
-gambling for the jackpot.
+| Round | Stake (= the pot so far) | Win chance | On win |
+|---|---|---|---|
+| 1 | 20 coins | 70% | pot → 40 coins |
+| 2 | 40 coins | 50% | pot → 80 coins |
+| 3 | 80 coins | 40% | pot → 160 coins |
+| 4 | 160 coins | 30% | **2 Epic Artifacts** — the pot converts into the jackpot reward instead of doubling again |
+<!-- docs:end -->
+
+How each round is reached:
+
+- Round 1: entry. It costs the stake up front (`events.gamblingDenRounds[0].stake` (20) coins) and needs at least that many on hand.
+- Every later round: choosing **Continue** after winning the round before it.
+- The last round: the event ends there either way. A win pays the jackpot, a loss loses the pot.
+
+**Balance note**: round 1's odds are deliberately favorable, a welcoming entry point whose expected value is positive. Rounds 2 and 3 are tight so that genuine risk starts right after the first double instead of only at the last round: continuing through round 2 is never the automatically correct play by expected value alone. The last round's coin expected value is negative on purpose, since the player isn't gambling for coins there, they're gambling for the jackpot.
 
 Config: `events.gamblingDenRounds` (`data/balance-config.json`).
 
 Flow:
-1. Entering the room: play Round 1 (pay 20 coins, `gamblingDenEnter`) or leave (no cost, no reward).
+1. Entering the room: play Round 1 (pay `events.gamblingDenRounds[0].stake` (20) coins, `gamblingDenEnter`) or leave (no cost, no reward).
 2. Roll that round's win chance.
    - **Lose**: the entire current pot is lost outright, event ends, nothing gained.
    - **Win, rounds 1–3**: pot doubles, then a fresh choice — **Stop** (`gamblingDenStop`, bank the current pot as coins, event ends) or **Continue** (`gamblingDenContinue`, restake the *whole* pot on the next round — no partial cash-out).
@@ -351,7 +362,7 @@ narrativeCounters: {
 }
 ```
 
-Chains 1-3 each also have a **tier-2 escalation** (`11-world-bible.md` §11.13) past its original single threshold, gated by floor depth (`events.chainTier2MinFloorDepth`, 15) in addition to the counter, and a **tier-3 escalation** (`10-event-narrative.md` Part C.3) one gate deeper still (`events.chainTier3MinFloorDepth`, 35), so an early/lucky/rich run can't reach either tier on the counter alone. Chain 4 (below) is deliberately single-tier, not 3 — see its own entry for why.
+Chains 1-3 each also have a **tier-2 escalation** (`11-world-bible.md` §11.13) past its original single threshold, gated by floor depth (`events.chainTier2MinFloorDepth` (15)) in addition to the counter, and a **tier-3 escalation** (`10-event-narrative.md` Part C.3) one gate deeper still (`events.chainTier3MinFloorDepth` (35)), so an early/lucky/rich run can't reach either tier on the counter alone. Chain 4 (below) is deliberately single-tier, not 3 — see its own entry for why.
 
 ### Chain 1 — "The Guardian's Grudge" (`guardianFightsSkipped`, `guardianGrudgeFiredCount`)
 
@@ -391,7 +402,7 @@ never fed even once). A party that's paid either cost, however rarely, no longer
 how many free rewards it's also picked up alongside that — this chain is specifically about parties
 that have never given anything back to anything, not just parties that happen to favor free rooms.
 
-Once `freeRewardsTakenCount >= events.freeTakenThreshold` (proposed **12** — flagged as
+Once `freeRewardsTakenCount >= events.freeTakenThreshold` (proposed **12** <!-- docs:intent --> — flagged as
 balance-tunable, like every other chain threshold, pending real run-length data) **and** both paid
 counters above are still 0, every subsequent resolution of any of the 7 ids above appends 1 shared
 closing line, verbatim — the same shared-across-ids approach Chain 1/2/3's tier-2/3 text already
@@ -421,7 +432,7 @@ absence (§11.4) — nothing here ever had a stake in this party either way.
 
 **Frequency**: always shown the 1st time the player resolves a given event id in a run; a `events.reflectionRepeatChance` (50%) chance every time after that (`maybeTriggerReflection`, `src/engine/events/shared.ts`).
 
-**Engagement gate**: 5 of the 17 — `blood-altar`, `sacrificial-circle`, `wandering-hermit`, `guardian-fight`, `desecrated-altar` — write reflection text that describes their core action having happened (a payment taken, a trade struck, a fight won). `maybeTriggerReflection()`'s `REQUIRES_ENGAGEMENT` map checks each one's `GameState.eventOutcomes` tag and skips reflection entirely if the party merely left — declined, or couldn't meet the cost — same reasoning as excluding open-chest/collapsed-floor outright: nothing happened, nothing to reflect on. Concretely: `bloodAltarLeave()` (declined/couldn't pay) and `sacrificeLeave()`-without-ever-sacrificing skip reflection; so does `guardianFightSkip()`, which now writes an explicit `"skipped"` outcome tag (distinct from the win path's `"resolved"`, written in `game.ts`'s combat-victory block) so a skip can never be mistaken for a won fight — this also tightens `broken-seal`'s containment-reading cross-event variant (Part C.1 pair 15), which previously could fire off a mere skip.
+**Engagement gate**: some events — `blood-altar`, `sacrificial-circle`, `wandering-hermit`, `guardian-fight`, `desecrated-altar` — write reflection text that describes their core action having happened (a payment taken, a trade struck, a fight won). `maybeTriggerReflection()`'s `REQUIRES_ENGAGEMENT` map checks each one's `GameState.eventOutcomes` tag and skips reflection entirely if the party merely left — declined, or couldn't meet the cost — same reasoning as excluding open-chest/collapsed-floor outright: nothing happened, nothing to reflect on. Concretely: `bloodAltarLeave()` (declined/couldn't pay) and `sacrificeLeave()`-without-ever-sacrificing skip reflection; so does `guardianFightSkip()`, which now writes an explicit `"skipped"` outcome tag (distinct from the win path's `"resolved"`, written in `game.ts`'s combat-victory block) so a skip can never be mistaken for a won fight — this also tightens `broken-seal`'s containment-reading cross-event variant (Part C.1, the `broken-seal` pair), which previously could fire off a mere skip.
 
 **Response options** are a shared 3-way stance — `curious` / `wary` / `dismissive` — reused across all 17 events rather than bespoke per-event choice sets; only the flavor text is bespoke, the meaning of picking each stance is shared. Recorded in `GameState.eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>` (overwritten on each re-trigger, not a history log).
 
@@ -529,7 +540,7 @@ The bundle also holds supplies: `guaranteedItems` adds **3 Exploration Kits** to
 
 > "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it: folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left it there isn't coming back for it."
 
-No combat. Same **[1] Move on** confirm as §8.17-8.20, but gated: `minFloorDepth: 15` (never rolled before floor 15) and `onceLifetime: true` (excluded from the roll pool for the rest of the run once it fires, tracked in `GameState.firedOnceEventIds`). The Artifact sits *in* the scene — mechanically identical to Open Chest's grant, framed as an offering left beside the candle rather than a separate loot beat.
+No combat. Same **[1] Move on** confirm as §8.17-8.20, but gated: `minFloorDepth` (never rolled before that floor; the gate is in the event table at the top of this doc) and `onceLifetime: true` (excluded from the roll pool for the rest of the run once it fires, tracked in `GameState.firedOnceEventIds`). The Artifact sits *in* the scene — mechanically identical to Open Chest's grant, framed as an offering left beside the candle rather than a separate loot beat.
 
 **No cross-event variant, deliberately unconnected** — the first depth-gated event a run can reach, kept as pure atmosphere rather than evidence (10-event-narrative.md Part B.2, Thread 5).
 
@@ -541,7 +552,7 @@ No combat. Same **[1] Move on** confirm as §8.17-8.20, but gated: `minFloorDept
 
 > "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
 
-Same shape as §8.21 — **[1] Move on**, `minFloorDepth: 15`, `onceLifetime: true`, 1 Artifact on the standard table.
+Same shape as §8.21 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact on the standard table.
 
 **Cross-event variant, 2 independent readings of the same base scene** (Part C.1 pairs 14/15 — array order matters, 1st match wins):
 - If the party has resolved `blood-altar` (paid) or `sacrificial-circle` (sacrificed) this run: "...The chain wasn't unlocked. It was torn from the outside, by something that wanted in."
@@ -558,7 +569,7 @@ The 2 readings are opposite on purpose — identical physical evidence, read thr
 
 > "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
 
-Same shape as §8.21/§8.22 — **[1] Move on**, `minFloorDepth: 35`, `onceLifetime: true`, 1 Artifact on the standard table.
+Same shape as §8.21/§8.22 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact on the standard table.
 
 The first non-institutional evidence of the containment/communion schism (§8.13) the party can find — a personal testimony, not a ritual object or a Covenant ward. Echoes forward once resolved: `blood-altar` (§8.5) gains a closing line on the party's next visit — "You hesitate half a step longer than you used to, before your hand decides for you." The warning doesn't stop the drift described in §8.15's chain escalations; it only adds a beat of resistance before the same reflex wins anyway.
 
@@ -570,7 +581,7 @@ The first non-institutional evidence of the containment/communion schism (§8.13
 
 > "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it the exact same way as every mark you've traded for this whole run."
 
-`minFloorDepth: 70`, `onceLifetime: true` — the deepest-gated event in the game and, by design, the rarest a player will ever actually see. **`noArtifactReward: true`** — confirming (**[1] Move on**) grants nothing at all, no artifact, no stat effect of any kind. 2 mechanical rewards were tried and cut during design (a guaranteed Epic, then a fear-relief effect): a reveal this strong doesn't need one, and needing one would itself be a sign the reveal wasn't landing.
+`minFloorDepth` (see the event table at the top), `onceLifetime: true` — the deepest-gated event in the game and, by design, the rarest a player will ever actually see. **`noArtifactReward: true`** — confirming (**[1] Move on**) grants nothing at all, no artifact, no stat effect of any kind. 2 mechanical rewards were tried and cut during design (a guaranteed Epic, then a fear-relief effect): a reveal this strong doesn't need one, and needing one would itself be a sign the reveal wasn't landing.
 
 The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.4) gains a closing line on the party's next visit — "You don't look at the cloth the way you used to."
 
