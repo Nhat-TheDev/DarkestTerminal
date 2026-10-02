@@ -231,7 +231,7 @@ describe("room footer tracks what the room can actually do", () => {
     await renderOnce();
     await reachRoom(mockInput, renderOnce, app);
 
-    app.debugGame.state.inventory = { "small-potion": 1 };
+    app.debugGame.state.inventory = { "small-health-potion": 1 };
     mockInput.pressKey("9");
     await renderOnce();
 
