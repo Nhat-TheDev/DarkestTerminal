@@ -8,6 +8,7 @@ const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
 const SPRITES_PATH = path.join(DATA_DIR, "sprites.json");
 const MONSTERS_PATH = path.join(DATA_DIR, "monsters.json");
+const EVENTS_PATH = path.join(DATA_DIR, "events.json");
 const PORT = 4592;
 
 function json(data: unknown, status = 200): Response {
@@ -110,7 +111,7 @@ function isCategory(value: unknown): value is Category {
 }
 
 const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
-const MAX_WIDTH: Partial<Record<Category, number>> = { events: 30, rest: 30, treasure: 30 };
+const MAX_WIDTH: Partial<Record<Category, number>> = { events: 40, rest: 30, treasure: 30 };
 
 function validateSprite(sprite: unknown, category: Category): string | null {
   if (typeof sprite !== "object" || sprite === null) return "Missing sprite data.";
@@ -240,6 +241,11 @@ Bun.serve({
 
     if (req.method === "GET" && url.pathname === "/api/monsters") {
       const data = await readFile(MONSTERS_PATH, "utf8");
+      return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/events") {
+      const data = await readFile(EVENTS_PATH, "utf8");
       return new Response(data, { headers: { "content-type": "application/json" } });
     }
 

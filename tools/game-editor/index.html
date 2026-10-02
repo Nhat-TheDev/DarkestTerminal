@@ -1835,18 +1835,15 @@ boot();
   let ROLE_SPRITE_IDS = { monsters: [], elites: [], bosses: [] };
   // Event ids from data/events.json — for the "events" category, the ID must match one of these
   // to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
-  const EVENT_IDS = [
-    "open-chest", "guardian-fight", "merchant", "desecrated-altar", "blood-altar",
-    "cursed-shrine", "twin-altars", "sacrificial-circle", "gambling-den", "wandering-hermit", "collapsed-floor",
-  ];
+  let EVENT_IDS = [];
   // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
   // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
   const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
   // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
   const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
   // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
-  // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
-  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
+  // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a terminal under ~110 cols.
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 40, rest: 30, treasure: 30 };
 
   const elId = (id) => $("#" + id);
   const categoryEl = elId("category");
@@ -1890,6 +1887,7 @@ boot();
     const archetypes = await (await fetch("/api/monsters")).json();
     const idsWithRole = (role) => archetypes.filter((a) => a.roles.includes(role)).map((a) => a.id).sort();
     ROLE_SPRITE_IDS = { monsters: idsWithRole("normal"), elites: idsWithRole("elite"), bosses: idsWithRole("boss") };
+    EVENT_IDS = (await (await fetch("/api/events")).json()).map((e) => e.id);
   }
 
   function currentSection() {
@@ -1899,11 +1897,12 @@ boot();
   function populateExistingIds() {
     existingIdEl.innerHTML = "";
     updateIdHint();
-    const ids = Object.keys(currentSection()).sort();
+    const section = currentSection();
+    const ids = [...new Set([...Object.keys(section), ...(category === "events" ? EVENT_IDS : [])])].sort();
     for (const id of ids) {
       const opt = document.createElement("option");
       opt.value = id;
-      opt.textContent = id;
+      opt.textContent = section[id] ? id : `${id} (no sprite)`;
       existingIdEl.appendChild(opt);
     }
     if (ids.length > 0) idInputEl.value = ids[0];
@@ -1942,6 +1941,12 @@ boot();
   function loadBtnHandler() {
     const id = existingIdEl.value;
     const sprite = currentSection()[id];
+    if (!sprite && category === "events" && EVENT_IDS.includes(id)) {
+      newBtnHandler();
+      idInputEl.value = id;
+      setStatus(`"${id}" has no sprite yet — blank sprite ready, paint it, then Save.`, "ok");
+      return;
+    }
     if (!sprite) {
       setStatus("No sprite with that id.", "error");
       return;
