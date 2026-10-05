@@ -1,6 +1,6 @@
 {
   "name": "darkest-terminal-darwin-arm64",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "macOS (Apple Silicon) binary for darkest-terminal",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {

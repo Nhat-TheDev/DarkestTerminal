@@ -12,9 +12,9 @@
         "typescript": "^7.0.2",
       },
       "optionalDependencies": {
-        "darkest-terminal-darwin-arm64": "1.0.0",
-        "darkest-terminal-darwin-x64": "1.0.0",
-        "darkest-terminal-win32-x64": "1.0.0"
+        "darkest-terminal-darwin-arm64": "1.0.1",
+        "darkest-terminal-darwin-x64": "1.0.1",
+        "darkest-terminal-win32-x64": "1.0.1"
       }
     }
   },
