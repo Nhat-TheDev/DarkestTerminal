@@ -52,8 +52,8 @@ export const BOSS_FLOOR_INTERVAL = DATA.bossFloorInterval;
 export const MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS: DepthBuffStatCoefficients = DATA.monsterDepthBuffStatCoefficients;
 
 /** Step function, not interpolated — a monster spawned right after crossing a bracket boundary
- *  gets the full new bracket's bonus immediately (docs/superpowers/specs/2026-09-16-monster-race-
- *  damage-scaling-design.md §4). Bonus is the cumulative sum of each bracket's increment; once
+ *  gets the full new bracket's bonus immediately (02-monster.md, "Floor-depth buff"). Bonus is the
+ *  cumulative sum of each bracket's increment; once
  *  the configured increments run out, the last one keeps applying every subsequent bracket
  *  forever — depth is uncapped, so the bonus never plateaus. */
 export function monsterDepthBuffPercent(floorDepth: number): number {

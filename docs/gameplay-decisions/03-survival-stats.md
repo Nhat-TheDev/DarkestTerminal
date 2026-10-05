@@ -40,7 +40,7 @@ The drain/threshold numbers are sized against the existing floor-generation guar
 
 ### Exhausted — satiety ≤ 30
 
-While `satiety ≤ survival.exhaustedThreshold` (30), the **whole party** is Exhausted:
+While satiety ≤ `survival.exhaustedThreshold` (30), the **whole party** is Exhausted:
 
 - Every character's **own** `attack`, `defense`, `magicPower`, `aggro`, `speed` is multiplied by `survival.exhaustedStatMultiplier` (≈ 2/3) — `maxHp`/`maxMp` are never touched.
 - **Artifact `statBoost` bonuses are not reduced** — only the character's own base/leveled stat shrinks. Example: a character with 30 `attack` + 6 `attack` from an equipped artifact, while Exhausted: `round(30 × 2/3) = 20`, plus the untouched `+6` from the artifact → effective `attack = 26`.
@@ -49,7 +49,7 @@ Modeled as a **live-computed condition, not a stored status effect** — mirrors
 
 ### Dying — satiety ≤ 10
 
-While `satiety ≤ survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses a fixed amount of HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status already uses.
+While satiety ≤ `survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses a fixed amount of HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status already uses.
 
 Per-round damage equals **Poisoned II**'s tick amount (`poisoned-ii`, `data/status-effects.json`) — `survival.dyingDamagePerRound` is sourced from that same value, so retuning Poisoned II automatically retunes Dying too. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — 10 ≤ 30, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
 
@@ -74,7 +74,7 @@ Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiet
 ## Fear
 
 - **Per combat round**: at the end of each round where the fight has **not yet ended**, every living character gains additional fear via `fearGainForRound`/`applyRoundFear` (`src/engine/survival.ts`), called from `resolveRound` (`src/engine/combat.ts`):
-  - A base amount (`survival.fearPerRoundBase`), or a higher amount instead (`survival.fearPerRoundLowHp`, not additive with the base) if the character is below a low-HP threshold (`survival.fearLowHpThresholdPercent` of `maxHp`).
+  - A base amount (`survival.fearPerRoundBase`), or a higher amount instead (`survival.fearPerRoundLowHp`, not additive with the base) if the character is below a low-HP threshold (`survival.fearLowHpThresholdFraction` of `maxHp`).
   - Both amounts scale up with floor depth (`survival.fearPerRoundDepthGrowth`), each with its own cap (`survival.fearPerRoundBaseCap`/`fearPerRoundLowHpCap`).
   - Reduced by the `fearResist` artifact — see `07-items-artifacts.md` §7.2.
 - **Winning a fight** — relief now also depends on how fast the fight was won (`CombatState.roundNumber` at the moment `outcome === "victory"` is set):
@@ -98,8 +98,8 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 | Option | Effect |
 |---|---|
-| **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestorePercent` (30%) of max, **plus** `+survival.eatDrinkSatietyRestore` (30) satiety, all in 1 action |
-| **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestorePercent` of max, plus `fear` reduced by `survival.chatFearRelief` — unchanged, still doesn't touch satiety (satiety recovery stays tied to "eating") |
+| **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (30) satiety, all in 1 action |
+| **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — unchanged, still doesn't touch satiety (satiety recovery stays tied to "eating") |
 | **Skip** | No effect at all, just marks the room as cleared (`room.cleared = true`) and moves on |
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
@@ -114,13 +114,42 @@ On entering an uncleared Rest room there is a `runner.appearChance` (50%) chance
 
 The shop sells 5 distinct items (`rollShopOffers`, `src/data/shopStock.ts`), each listed with a line saying what it does, refreshable like the Merchant (`events.merchantRefreshCostCoins`, `events.merchantMaxRefreshes`), and buys consumables and trophies back at a fifth of the single price. Prices, odds and the offer mix are in `data/balance-config.json` (`runner`, `shop`); item rules in `07-items-artifacts.md`, the coin side in `09-currency.md`.
 
+**Shop tier odds.** Each offer's tier is rolled with the method artifact rarity uses (`07-items-artifacts.md` §7.2, "Rarity odds by depth"): `tierWeightsByDepth` (`src/data/artifacts.ts`) fed with the `shop` block. Floors are grouped in steps of `shop.floorsPerStep`, the step holding `shop.anchorFirstFloor` (51) uses the anchor weights, and every step away multiplies tier `i` (Common = 0, Uncommon = 1, ...) by `tilt ^ (i × steps)` before the weights are renormalized. Prices are flat per tier, so depth changes what a visit's coins buy, not what a tier costs. Two anchor tables, because the shop sells different tiers of each kind:
+
+<!-- docs:begin shopOdds part=anchors -->
+*Generated from `data/balance-config.json` (`shop`) by `bun run docs:sync`. Do not edit.*
+
+| Offer kind | Tiers rolled | Anchor at floors 51–60 (C / U / R / Un / E) |
+|---|---|---|
+| Consumable | Common to Rare | 25 / 35 / 40 |
+| Trophy | Common to Epic | 10 / 20 / 30 / 25 / 15 |
+<!-- docs:end -->
+
+Resulting odds at `shop.tilt` (2), in percent:
+
+<!-- docs:begin shopOdds part=odds bands=1,21,41,51,71,91 -->
+*Generated from `data/balance-config.json` (`shop`) by `bun run docs:sync`. Do not edit.*
+
+| Floors | Consumable C / U / R | Trophy C / U / R / Un / E |
+|---|---|---|
+| 1–10 | 95.7 / 4.2 / 0.1 | 93.9 / 5.9 / 0.3 / 0.0 / 0.0 |
+| 21–30 | 83.3 / 14.6 / 2.1 | 76.8 / 19.2 / 3.6 / 0.4 / 0.0 |
+| 41–50 | 47.6 / 33.3 / 19.0 | 31.7 / 31.7 / 23.8 / 9.9 / 3.0 |
+| 51–60 | 25 / 35 / 40 | 10 / 20 / 30 / 25 / 15 |
+| 71–80 | 3.1 / 17.4 / 79.5 | 0.2 / 1.3 / 8.0 / 26.6 / 63.9 |
+| 91–100 | 0.2 / 5.2 / 94.6 | 0.0 / 0.0 / 0.7 / 9.4 / 89.9 |
+<!-- docs:end -->
+
+A tier is rolled first, then an item of that tier. A trophy must be one that can drop at this depth (`trophyAvailableAt`: a monster in its `archetypeIds` has `minFloor` at or below the floor), and an item already in this visit's stock is skipped; a tier left with nothing to offer is dropped and the roll repeats over the rest. A trophy offer that finds no trophy falls back to a consumable. Legendary trophies and Exploration Kit are never offered. Code: `rollShopOffers`, `src/data/shopStock.ts`.
+
 **Barter.** The Trade screen's `[t] Barter` lists 2 trophy kinds the Runner will take (`barter.offerCount`), drawn from those that can drop on the current floor, Legendary included. Each offer is made once, both in the same visit if the party can pay. The offer shows what it buys; once traded the buff waits, hidden, for **this floor's elite/boss room**: when that fight starts it applies to the whole party, and it ends with the fight. A buff still waiting when the floor ends is lost.
 
 - **What each trophy costs and buys** is its entry in `data/barter.json` (loaded by `src/data/barter.ts`): `cost`, the number of that trophy a trade takes, and `effects`, a list of effects of two kinds: `{ "kind": "statBoost", "stat", "percent" }` and `{ "kind": "healOverTime", "maxHpPercentPerTurn" }`. Every trophy must have exactly one entry; the loader refuses the file otherwise.
-- **`statBoost`** adds `percent` of the stat's effect to the party's stat when the fight starts: `attack` (which also raises magic power), `defense` (a share of effective HP, `defenseMitigationX + defense`) or `speed`. The bonus is rounded but never below 1 for a stat the buff raises (`statBonus`), so a small percent still does something at low stats; a stat of 0 (a non-caster's magic power) gets nothing.
+- **`statBoost`** adds `percent` of the stat's effect to the party's stat when the fight starts: `attack` (which also raises magic power), `defense` (a share of effective HP, `defenseMitigationX + defense`) or `speed`. Defense takes that form on purpose: damage taken scales with `defenseMitigationX / (defenseMitigationX + defense)`, so +P% of the defense stat alone would deliver only `defense / (defenseMitigationX + defense)` of the effect +P% of effective HP does, roughly half at a defense of 47. The bonus is rounded but never below 1 for a stat the buff raises (`statBonus`), so a small percent still does something at low stats; a stat of 0 (a non-caster's magic power) gets nothing.
 - **`healOverTime`** heals `maxHpPercentPerTurn` percent of max HP each turn; it must equal that tier's `barter-regen-<tier>` status `maxHpPercent` in `data/status-effects.json`. An entry may hold at most one; the loader refuses more.
-- **The shipped values** follow a pattern: the trophy's tier sets the strength P (5 / 8 / 12 / 15 / 18 / 22%) and the cost (5, or 3 for Epic and 1 for Legendary); the most common `monsterType` among the monsters that drop it sets the main stat (armored, tanky, sentinel → defense; bruiser, striker, glass → attack; balanced → attack and defense at half each) and their most common `race` adds a second effect at half of P. That pattern is only how the file was written; the game reads the file.
+- **The shipped values** follow a pattern: the trophy's tier sets the strength P (5 / 8 / 12 / 15 / 18 / 22%) and the cost (5, or 3 for Epic and 1 for Legendary); the most common `monsterType` among the monsters that drop it sets the main stat (armored, tanky, sentinel → defense; bruiser, striker, glass → attack; balanced → attack and defense at half each) and their most common `race` adds a second effect at half of P. The strength comes from the trophy's final tier rather than its monster's `powerTier`: the tier already folds in `powerTier`, the `minFloor` bump and the group step, so using `powerTier` as well would count `minFloor` twice. That pattern is only how the file was written; the game reads the file.
 - **Once per floor.** After a barter on a floor, the Runner of a later Rest room on that floor offers no barter (`GameState.barterUsedDepth`).
+- **Where a bought buff waits.** The traded trophy's id goes into `GameState.pendingBarterBuffs`. `enterRoom` (`src/engine/dungeon.ts`) calls `applyPendingBarterBuffs` when the fight in the floor's boss/elite room begins: it adds up the percent each stat gets across every pending trophy, works out each living character's bonus from their own stat, and applies it as the statuses `barter-attack`, `barter-magic-power`, `barter-defense`, `barter-speed` and `barter-regen-<tier>` (`data/status-effects.json`) with `barter.activeDurationTurns`, long enough that only the end of the fight removes them. Bought buffs stack with no cap, and `advanceToNextFloor` (`src/engine/game.ts`) empties whatever is still waiting.
 
 Code: `src/engine/events/barter.ts`.
 

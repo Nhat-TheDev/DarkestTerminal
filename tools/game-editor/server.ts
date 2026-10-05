@@ -56,9 +56,9 @@ const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "exec
 const BALANCE_SURVIVAL_FIELDS = [
   "initialFear", "initialSatiety", "satietyDrainCombat", "satietyDrainEvent", "exhaustedThreshold",
   "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",
-  "eatDrinkRestorePercent", "eatDrinkSatietyRestore", "chatRestorePercent", "chatFearRelief",
+  "eatDrinkRestoreFraction", "eatDrinkSatietyRestore", "chatRestoreFraction", "chatFearRelief",
   "fearPerRoundBase", "fearPerRoundLowHp", "fearPerRoundBaseCap", "fearPerRoundLowHpCap",
-  "fearPerRoundDepthGrowth", "fearLowHpThresholdPercent", "fearVictoryRelief", "fearVictoryReliefQuick",
+  "fearPerRoundDepthGrowth", "fearLowHpThresholdFraction", "fearVictoryRelief", "fearVictoryReliefQuick",
   "fearQuickVictoryRoundThreshold", "fearEliteOrBossVictoryRelief", "fearEliteOrBossVictoryReliefQuick",
   "fearEliteOrBossQuickVictoryRoundThreshold",
 ] as const;

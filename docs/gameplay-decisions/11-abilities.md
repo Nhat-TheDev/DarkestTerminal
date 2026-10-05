@@ -73,9 +73,9 @@ its flat behavior:
   magnitude of `amount` or `round(base * minPercent / 100)`, where `base` is the character's base value
   for that stat.
   Not used for `aggro`/`speed` — they don't grow with level, so a flat bonus never goes stale.
-  Shipped values: 5% common, 10% rare, 10% epic.
+  Shipped values: each ability's `minPercent` in `data/abilities.json`.
 - `healOnKill.minPercent`: the heal is the larger of `amount` or `round(baseMaxHp * minPercent / 100)`.
-  Shipped values: 3% unique, 5% epic.
+  Shipped values: each ability's `minPercent` in `data/abilities.json`.
 - `autoDamage.offenseMultiplierPercent` (+ `isMagic`): the per-round tick becomes a real `damage`
   resolution — `amount` plus the bearer's base `magicPower` (`isMagic: true`) or base `attack`
   (otherwise) times the percent, mitigated by the target's defense, like a skill's `offenseMultiplierPercent`. Which stat
@@ -282,7 +282,7 @@ of the Artifact drop on the same kill.
 The ability roll shares the same drop-chance/rarity mechanics for both
 sources:
 
-- **Drop chance**: `abilities.dropChance = 0.35` (35%) per eligible kill —
+- **Drop chance**: `abilities.dropChance` (0.35) per eligible kill —
   deliberately below `items.itemDropChance` (0.9) since an Ability
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
@@ -474,19 +474,26 @@ compensating upside, and no rational player would ever pick it — dead
 catalog space, not a real choice. Every tier below is built so each
 ability owns a distinct axis.
 
+<!-- docs:intent-begin -->
+*The reasoning in this catalog records how the shipped values were calibrated. Its numbers are as of that calibration; `data/abilities.json` is authoritative.*
+
 ### Common — always selectable
 
-| id | name | description | effect |
+<!-- docs:begin abilities rarity=common -->
+*Generated from `data/abilities.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Description | Effect |
 |---|---|---|---|
-| `battle-instinct` | Battle Instinct | Aggression with nowhere left to go but into the next swing. | `statBoost attack +5` (min 5% base) |
-| `iron-skin` | Iron Skin | Enough hits taken that the flinch stopped coming. | `statBoost defense +4` (min 5% base) |
-| `hardy-constitution` | Hardy Constitution | Takes the same hits as everyone else and gets up from more of them. | `statBoost maxHp +20` (min 5% base) |
-| `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | `statBoost maxMp +10` (min 5% base) |
-| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | `fearResist 10%` |
-| `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | `dodgeChance 2%` |
-| `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | `lifesteal 5%` |
-| `arcane-aptitude` | Arcane Aptitude | Spells take shape before the words are finished. | `statBoost magicPower +5` (min 5% base) |
-| `stubborn-blood` | Stubborn Blood | Poison, hexes, whatever the dark drips into the wound — sometimes the body just refuses it. | `debuffResist 10%` |
+| `battle-instinct` | Battle Instinct | Aggression with nowhere left to go but into the next swing. | +5 attack, or 5% of base attack if higher. |
+| `iron-skin` | Iron Skin | Enough hits taken that the flinch stopped coming. | +4 defense, or 5% of base defense if higher. |
+| `hardy-constitution` | Hardy Constitution | Takes the same hits as everyone else and gets up from more of them. | +20 max HP, or 5% of base max HP if higher. |
+| `deep-reserves` | Deep Reserves | Holds more magic in reserve than most ever learn how to reach for. | +10 max MP, or 5% of base max MP if higher. |
+| `unshaken-resolve` | Unshaken Resolve | A mind trained not to let the dark get the better of it. | -10% fear accumulated. |
+| `sidestep` | Sidestep | A half-step sideways that's already happened by the time the blow arrives. | 2% chance to fully dodge an attack. |
+| `leechs-thirst` | Leech's Thirst | Takes back a mouthful from every wound it deals. | Heals 5% of damage dealt. |
+| `arcane-aptitude` | Arcane Aptitude | Spells take shape before the words are finished. | +5 magic power, or 5% of base magic power if higher. |
+| `stubborn-blood` | Stubborn Blood | Poison, hexes, whatever the dark drips into the wound — sometimes the body just refuses it. | Harmful statuses enemies apply are 10% less likely to land. |
+<!-- docs:end -->
 
 9 abilities, 9 distinct axes (attack / defense / maxHp / maxMp /
 fearResist / dodgeChance / lifesteal / magicPower / debuffResist) — no 2 abilities
@@ -548,18 +555,22 @@ specific abilities are actually worth to the character holding them.
 
 ### Rare — must be unlocked
 
-| id | name | description | effect |
+<!-- docs:begin abilities rarity=rare -->
+*Generated from `data/abilities.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Description | Effect |
 |---|---|---|---|
-| `predators-edge` | Predator's Edge | Finds the gap in a guard before the enemy knows it's open. | `statBoost attack +10` (min 10% base) |
-| `bulwark-stance` | Bulwark Stance | Feet set, weight behind the shield. Blows arrive at something already braced for them. | `statBoost defense +8` (min 10% base) |
-| `second-wind` | Second Wind | Past the point where the body should have quit, there turns out to be a little more. | `statBoost maxHp +50` (min 10% base) |
-| `bloodletting` | Bloodletting | Every wound it opens gives a little back. | `lifesteal 8%` |
-| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | `dodgeChance 6%` |
-| `restless-vigor` | Restless Vigor | Never quite at rest, even in camp, and first to move whenever anything starts. | `statBoost speed +5` |
-| `deepened-channel` | Deepened Channel | The spell leaves with more behind it than the caster meant to give. | `statBoost magicPower +10` (min 10% base) |
-| `wellspring` | Wellspring | A deeper reserve than the caster remembers building. | `statBoost maxMp +20` (min 10% base) |
-| `fixed-gaze` | Fixed Gaze | Doesn't blink until the curse has taken. | `alwaysHit 10%` |
-| `warded-flesh` | Warded Flesh | Old marks under the skin turn curses aside before they settle. | `debuffResist 16%` |
+| `predators-edge` | Predator's Edge | Finds the gap in a guard before the enemy knows it's open. | +10 attack, or 10% of base attack if higher. |
+| `bulwark-stance` | Bulwark Stance | Feet set, weight behind the shield. Blows arrive at something already braced for them. | +8 defense, or 10% of base defense if higher. |
+| `second-wind` | Second Wind | Past the point where the body should have quit, there turns out to be a little more. | +50 max HP, or 10% of base max HP if higher. |
+| `bloodletting` | Bloodletting | Every wound it opens gives a little back. | Heals 8% of damage dealt. |
+| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | 6% chance to fully dodge an attack. |
+| `restless-vigor` | Restless Vigor | Never quite at rest, even in camp, and first to move whenever anything starts. | +5 speed. |
+| `deepened-channel` | Deepened Channel | The spell leaves with more behind it than the caster meant to give. | +10 magic power, or 10% of base magic power if higher. |
+| `wellspring` | Wellspring | A deeper reserve than the caster remembers building. | +20 max MP, or 10% of base max MP if higher. |
+| `fixed-gaze` | Fixed Gaze | Doesn't blink until the curse has taken. | 10% chance to bypass a hit or debuff-chance roll entirely. |
+| `warded-flesh` | Warded Flesh | Old marks under the skin turn curses aside before they settle. | Harmful statuses enemies apply are 16% less likely to land. |
+<!-- docs:end -->
 
 The first 5 mirror their Rare-tier artifact counterparts
 (`ancient-sword`/`heart-of-stone`/`eternal-vial`, `featherweight-boots`), except
@@ -629,16 +640,20 @@ own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 
 ### Unique — must be unlocked
 
-| id | name | description | effect |
+<!-- docs:begin abilities rarity=unique -->
+*Generated from `data/abilities.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Description | Effect |
 |---|---|---|---|
-| `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | `healOnKill 20` (min 3% max HP) |
-| `thunderous-aura` | Thunderous Aura | Lightning gathers on its own and strikes something every round, no weapon raised. | `autoDamage 20 + 40% magic power` |
-| `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | `lifesteal 12%` |
-| `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | `dodgeChance 12%` |
-| `battle-scholar` | Battle Scholar | Writes down what nearly killed it after every fight, and reads it back before the next. | `expBoost 15%` |
-| `hexbinder` | Hexbinder | Says the target's name aloud. The curse takes it as an order. | `alwaysHit 15%` |
-| `quickened-pulse` | Quickened Pulse | A pulse that runs a beat ahead of everyone else's, and the body follows it. | `statBoost speed +8` |
-| `bitter-marrow` | Bitter Marrow | What the enemy tries to put in the blood fails to take more often than it should. Something in the bone won't have it. | `debuffResist 24%` |
+| `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | Heals 20 HP on defeating a target, or 3% of base max HP if higher. |
+| `thunderous-aura` | Thunderous Aura | Lightning gathers on its own and strikes something every round, no weapon raised. | Deals 20 + 40% base magic power damage to 1 random enemy at the start of each round. |
+| `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | Heals 12% of damage dealt. |
+| `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | 12% chance to fully dodge an attack. |
+| `battle-scholar` | Battle Scholar | Writes down what nearly killed it after every fight, and reads it back before the next. | +15% EXP gained for the party. |
+| `hexbinder` | Hexbinder | Says the target's name aloud. The curse takes it as an order. | 15% chance to bypass a hit or debuff-chance roll entirely. |
+| `quickened-pulse` | Quickened Pulse | A pulse that runs a beat ahead of everyone else's, and the body follows it. | +8 speed. |
+| `bitter-marrow` | Bitter Marrow | What the enemy tries to put in the blood fails to take more often than it should. Something in the bone won't have it. | Harmful statuses enemies apply are 24% less likely to land. |
+<!-- docs:end -->
 
 `thunderous-aura`/`phantom-reflexes`/`battle-scholar` exactly mirror their
 Unique-tier artifact counterparts (`thunder-totem`, `phantom-step`,
@@ -655,15 +670,19 @@ the same ladders. `quickened-pulse` (`speed +8`) continues Rare's
 
 ### Epic — must be unlocked
 
-| id | name | description | effects |
+<!-- docs:begin abilities rarity=epic -->
+*Generated from `data/abilities.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Description | Effect |
 |---|---|---|---|
-| `thornhide` | Thornhide | A share of every blow goes back to whoever dealt it, and there's more left in the body to take the next. | `reflectDamage 15%` + `statBoost maxHp +60` (min 10% base) |
-| `reapers-instinct` | Reaper's Instinct | Every kill closes a little of what the fight opened, and every wound it deals feeds it a little more. | `healOnKill 25` (min 5% max HP) + `lifesteal 8%` |
-| `lodestone` | Lodestone | Every enemy in the room keeps looking at it, and every round something near it takes a hit no one saw thrown. | `autoDamage 22 + 50% attack` + `statBoost aggro +15` |
-| `grandmasters-focus` | Grandmaster's Focus | Waits less between strikes and takes more from every fight. | `cooldownReduction 1` + `expBoost 20%` |
-| `unerring-will` | Unerring Will | Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss. | `alwaysHit 20%` + `fearResist 12%` |
-| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins. | `statBoost magicPower +14` (min 10% base) + `statBoost maxMp +28` (min 10% base) |
-| `sealed-bulwark` | Sealed Bulwark | Plate and ward set into the same frame — blows slow to land, and curses slower to stay. | `debuffResist 32%` + `statBoost defense +12` (min 10% base) |
+| `thornhide` | Thornhide | A share of every blow goes back to whoever dealt it, and there's more left in the body to take the next. | Reflects 15% of damage taken back to the attacker. +60 max HP, or 10% of base max HP if higher. |
+| `reapers-instinct` | Reaper's Instinct | Every kill closes a little of what the fight opened, and every wound it deals feeds it a little more. | Heals 25 HP on defeating a target, or 5% of base max HP if higher. Heals 8% of damage dealt. |
+| `lodestone` | Lodestone | Every enemy in the room keeps looking at it, and every round something near it takes a hit no one saw thrown. | Deals 22 + 50% base attack damage to 1 random enemy at the start of each round. +15 aggro. |
+| `grandmasters-focus` | Grandmaster's Focus | Waits less between strikes and takes more from every fight. | -1 turn skill cooldown. +20% EXP gained for the party. |
+| `unerring-will` | Unerring Will | Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss. | 20% chance to bypass a hit or debuff-chance roll entirely. -12% fear accumulated. |
+| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins. | +14 magic power, or 10% of base magic power if higher. +28 max MP, or 10% of base max MP if higher. |
+| `sealed-bulwark` | Sealed Bulwark | Plate and ward set into the same frame — blows slow to land, and curses slower to stay. | Harmful statuses enemies apply are 32% less likely to land. +12 defense, or 10% of base defense if higher. |
+<!-- docs:end -->
 
 `thornhide`/`reapers-instinct`/`grandmasters-focus` mirror their
 Epic-tier artifact counterparts exactly (`immortal-heart`'s
@@ -718,6 +737,7 @@ resisting it building up, and shrugging off the one combat penalty it
 already causes.
 
 ---
+<!-- docs:intent-end -->
 
 ## 11.3 Open follow-ups (not blocking, tracked for later tuning)
 

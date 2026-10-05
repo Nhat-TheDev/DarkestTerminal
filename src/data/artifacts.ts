@@ -62,7 +62,7 @@ export function formatArtifactEffect(artifact: ArtifactDefinition): string {
 
 export type ArtifactSource = "elite" | "boss" | "treasureOrEvent";
 
-const RARITY_ORDER: ArtifactRarity[] = ["common", "rare", "unique", "epic"];
+export const RARITY_ORDER: ArtifactRarity[] = ["common", "rare", "unique", "epic"];
 
 export interface DepthTierCurve {
   floorsPerStep: number;

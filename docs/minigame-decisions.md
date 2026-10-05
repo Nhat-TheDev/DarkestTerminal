@@ -36,7 +36,7 @@ Principle (already settled in design doc 1.8): tune for the average player's exp
 | Tile spawn rate (gap between 2 tiles) | starts slower, decreases with floor depth down to a floor value | fixed, harder than the default debuff-cure, independent of floor |
 | Target score | `targetScore = round(duration_seconds × scoreRatePerSecond)` | same formula, scaled to the boss-phase duration |
 
-- Each tile hit = a fixed point value (binary, not graded — already settled in 1.8).
+- Each tile hit = a fixed point value (binary, not graded — already settled in item 1.8 of the design doc).
 - **Combo**: every fixed number of consecutive hits without a miss increases the multiplier by a fixed step, capped at some maximum multiplier. Missing 1 tile → combo resets to 0, but **points already scored are not deducted** (the win condition only looks at total score, not combo).
 - The end-of-round combo multiplier (`maxCombo` converted into a multiplier) multiplies into:
   - Debuff-cure effectiveness (e.g. reducing the remaining `durationTurns` of a status effect proportionally to the multiplier) when used for debuff-curing.

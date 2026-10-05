@@ -165,8 +165,8 @@ export function mitigatedOffense(off: number, def: number): number {
 }
 
 /** Resist/weak only ever applies to a Monster target — a Character is never affected, per this
- *  feature's design (see docs/superpowers/specs/2026-09-16-monster-race-damage-scaling-design.md,
- *  Design invariant 2). Returns 1 (no-op) for anything that isn't a Monster. */
+ *  feature's design (see 02-monster.md, "Race, subRace & traits"). Returns 1 (no-op) for anything
+ *  that isn't a Monster. */
 function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   if (!isMonster(target)) return 1;
   const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);

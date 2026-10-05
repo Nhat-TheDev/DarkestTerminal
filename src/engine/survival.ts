@@ -9,10 +9,10 @@ const EXHAUSTED_THRESHOLD = BALANCE.survival.exhaustedThreshold;
 const EXHAUSTED_STAT_MULTIPLIER = BALANCE.survival.exhaustedStatMultiplier;
 const DYING_THRESHOLD = BALANCE.survival.dyingThreshold;
 const DYING_DAMAGE_PER_ROUND = BALANCE.survival.dyingDamagePerRound;
-const EAT_DRINK_RESTORE_PERCENT = BALANCE.survival.eatDrinkRestorePercent;
+const EAT_DRINK_RESTORE_FRACTION = BALANCE.survival.eatDrinkRestoreFraction;
 const EAT_DRINK_SATIETY_RESTORE = BALANCE.survival.eatDrinkSatietyRestore;
 const CAMP_SATIETY_RESTORE = BALANCE.survival.campSatietyRestore;
-const CHAT_RESTORE_PERCENT = BALANCE.survival.chatRestorePercent;
+const CHAT_RESTORE_FRACTION = BALANCE.survival.chatRestoreFraction;
 const CHAT_FEAR_RELIEF = BALANCE.survival.chatFearRelief;
 
 const FEAR_PER_ROUND_BASE = BALANCE.survival.fearPerRoundBase;
@@ -20,7 +20,7 @@ const FEAR_PER_ROUND_LOW_HP = BALANCE.survival.fearPerRoundLowHp;
 const FEAR_PER_ROUND_BASE_CAP = BALANCE.survival.fearPerRoundBaseCap;
 const FEAR_PER_ROUND_LOW_HP_CAP = BALANCE.survival.fearPerRoundLowHpCap;
 const FEAR_PER_ROUND_DEPTH_GROWTH = BALANCE.survival.fearPerRoundDepthGrowth;
-const FEAR_LOW_HP_THRESHOLD_PERCENT = BALANCE.survival.fearLowHpThresholdPercent;
+const FEAR_LOW_HP_THRESHOLD_FRACTION = BALANCE.survival.fearLowHpThresholdFraction;
 const FEAR_VICTORY_RELIEF = BALANCE.survival.fearVictoryRelief;
 const FEAR_VICTORY_RELIEF_QUICK = BALANCE.survival.fearVictoryReliefQuick;
 const FEAR_QUICK_VICTORY_ROUND_THRESHOLD = BALANCE.survival.fearQuickVictoryRoundThreshold;
@@ -68,7 +68,7 @@ export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
 }
 
 export function fearGainForRound(character: Character, floorDepth: number): number {
-  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_PERCENT;
+  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
   const base = isLowHp ? FEAR_PER_ROUND_LOW_HP : FEAR_PER_ROUND_BASE;
   const cap = isLowHp ? FEAR_PER_ROUND_LOW_HP_CAP : FEAR_PER_ROUND_BASE_CAP;
   const growthMultiplier = 1 + FEAR_PER_ROUND_DEPTH_GROWTH * (floorDepth - 1);
@@ -99,8 +99,8 @@ export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: b
 /** Rest room "Eat & Drink": restores each character's HP/MP. Satiety is party-wide — restore it once via `restEatDrinkSatiety`, not per character. */
 export function restEatDrink(character: Character): void {
   if (!character.isAlive) return;
-  character.hp = clamp(character.hp + Math.round(character.maxHp * EAT_DRINK_RESTORE_PERCENT), 0, character.maxHp);
-  character.mp = clamp(character.mp + Math.round(character.maxMp * EAT_DRINK_RESTORE_PERCENT), 0, character.maxMp);
+  character.hp = clamp(character.hp + Math.round(character.maxHp * EAT_DRINK_RESTORE_FRACTION), 0, character.maxHp);
+  character.mp = clamp(character.mp + Math.round(character.maxMp * EAT_DRINK_RESTORE_FRACTION), 0, character.maxMp);
 }
 
 /** Party-wide satiety restore for "Eat & Drink" — called once per rest action, not per character. */
@@ -111,8 +111,8 @@ export function restEatDrinkSatiety(state: GameState): void {
 /** Rest room "Chat": only hp/mp/fear, no satiety. */
 export function restChat(character: Character): void {
   if (!character.isAlive) return;
-  character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_PERCENT), 0, character.maxHp);
-  character.mp = clamp(character.mp + Math.round(character.maxMp * CHAT_RESTORE_PERCENT), 0, character.maxMp);
+  character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_FRACTION), 0, character.maxHp);
+  character.mp = clamp(character.mp + Math.round(character.maxMp * CHAT_RESTORE_FRACTION), 0, character.maxMp);
   character.survival.fear = clamp(character.survival.fear - CHAT_FEAR_RELIEF, 0, 100);
 }
 
