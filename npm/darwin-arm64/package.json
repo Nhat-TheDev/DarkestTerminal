@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "macOS (Apple Silicon) binary for darkest-terminal",
   "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nhat-TheDev/DarkestTerminal.git",
+    "directory": "npm/darwin-arm64"
+  },
   "os": ["darwin"],
   "cpu": ["arm64"],
   "files": ["darkest-terminal"]
