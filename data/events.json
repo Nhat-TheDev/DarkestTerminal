@@ -46,6 +46,7 @@
   {
     "id": "merchant",
     "name": "Merchant Encounter",
+    "minFloorDepth": 2,
     "description": "A trembling oil lamp casts light on a cloth spread with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer.",
     "descriptionVariants": [
       "Firelight catches on a row of small objects laid out with care, each one marked the same way. A hooded shape straightens as you approach, already reaching for the first item.",
@@ -177,6 +178,7 @@
   {
     "id": "sacrificial-circle",
     "name": "Ritual Circle",
+    "minFloorDepth": 2,
     "description": "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The circle doesn't accept ordinary offerings, only something already enchanted.",
     "chainEscalatedDescription": "Nobody hesitates at the circle anymore. It's just the next step in visiting it, the same as walking in.",
     "chainEscalated2Description": "Your knees find the stone before you've finished deciding to. The circle stopped needing you to decide a while ago.",
@@ -201,6 +203,7 @@
   {
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
+    "minFloorDepth": 2,
     "description": "A stranger shuffles 3 overturned cups, sneering in the dark — no brand on his skin, no altar in sight. 'Give me what you have. I'll double it, or keep it for good.'",
     "crossEventVariants": [
       {
@@ -227,6 +230,7 @@
   {
     "id": "wandering-hermit",
     "name": "Wandering Hermit",
+    "minFloorDepth": 3,
     "description": "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. 'I don't sell. I trade.'",
     "crossEventVariants": [
       {

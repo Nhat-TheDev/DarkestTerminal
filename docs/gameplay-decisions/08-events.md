@@ -19,14 +19,17 @@ Every time the party steps into a room with `RoomType === "event"`, the system r
 
 | Tier | Total weight | Includes |
 |---|---|---|
-| Common | 65 | `open-chest`, `guardian-fight`, `merchant`, `desecrated-altar`, `old-count`, `doubled-back`, `the-delay`, `waiting-supplies` |
-| Rare | 35 | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`, `gambling-den`, `wandering-hermit`, `collapsed-floor`, `vigil-candle` (from floor 15, once per run), `broken-seal` (from floor 15, once per run), `half-a-warning` (from floor 35, once per run), `still-breathing` (from floor 70, once per run), `the-wanderer` (from floor 10), `the-one-who-stayed` (once per run) |
+| Common | 65 | `open-chest`, `guardian-fight`, `merchant` (from floor 2), `desecrated-altar`, `old-count`, `doubled-back`, `the-delay`, `waiting-supplies` |
+| Rare | 35 | `blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle` (from floor 2), `gambling-den` (from floor 2), `wandering-hermit` (from floor 3), `collapsed-floor`, `vigil-candle` (from floor 15, once per run), `broken-seal` (from floor 15, once per run), `half-a-warning` (from floor 35, once per run), `still-breathing` (from floor 70, once per run), `the-wanderer` (from floor 10), `the-one-who-stayed` (once per run) |
 <!-- docs:end -->
 
 - **Common** — light, familiar events with few branches. Weight: `events.commonTierWeight` (`data/balance-config.json`).
 - **Rare** — heavier events with deeper risk and trade-offs. Weight: `events.rareTierWeight`.
 
-The roll is otherwise independent of party state, but some rare events carry a `minFloorDepth` gate and are also `onceLifetime` (both are shown in the table above) — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
+The roll is otherwise independent of party state. Two gates narrow the pool, both shown in the table above:
+
+- `minFloorDepth` — the event is never rolled before that floor. The narrative events in Part C.4 use it to hold back late reveals. `merchant`, `gambling-den`, `sacrificial-circle` and `wandering-hermit` use it because they have a price the party can't pay on floor 1: a fresh run starts with 0 coins and no artifacts, and these rooms need coins, an equipped artifact, or both. Floor 1's Elite guard always drops an artifact and its combat rooms pay coins, so most parties can afford them once the gate opens. The gate is depth only and doesn't read the party's coins or artifacts, so a party that is still short past it gets the room with every option locked except leaving.
+- `onceLifetime` — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
 
 All Artifact rewards in §8 share the same depth-scaled `treasureOrEvent` rarity odds (`artifactRarityWeights`, `src/data/artifacts.ts`) defined in `07-items-artifacts.md` §7.2 "Level bands & drop schedule", **unless an event states its own table** (e.g. `collapsed-floor` rolls the Boss odds, `sacrificial-circle` and `wandering-hermit` use a fixed table with a minimum tier floor).
 
@@ -37,8 +40,8 @@ EventDefinition {
   description: string
   kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "choiceReveal" | "artifactExchange" | "rescueGamble" | "coinGamble"
   forceEquip?: boolean       // true only for twin-altars, see 07-items-artifacts.md §7.2
-  minFloorDepth?: number     // rollEvent() gate — vigil-candle/broken-seal (15), half-a-warning (35), still-breathing (70)
-  onceLifetime?: boolean     // rollEvent() excludes it once fired — the same 4 events above
+  minFloorDepth?: number     // rollEvent() gate — never rolled before this floor (values in the tier table above)
+  onceLifetime?: boolean     // rollEvent() excludes it once fired
   noArtifactReward?: boolean // instantReward only — still-breathing/the-delay skip the usual artifact grant
   guaranteedArtifactId?: Id  // instantReward only — grants this exact artifact instead of rolling; waiting-supplies only so far
   guaranteedItems?: { itemId: Id, count: number }[]  // instantReward only — items added to the inventory on top of the artifact; waiting-supplies only so far

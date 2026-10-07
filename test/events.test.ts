@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { rollArtifact, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
-import { rollEvent, EVENTS } from "../src/data/events";
+import { rollEvent, EVENTS, getEvent } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
 import { removeArtifactFromCharacter } from "../src/engine/party";
 import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
@@ -1146,6 +1146,23 @@ describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative
       if (rollEvent(rng, 15, []) === "vigil-candle") sawIt = true;
     }
     expect(sawIt).toBe(true);
+  });
+
+  test("events with a coin/artifact price are depth-gated past floor 1 and roll once their gate opens", () => {
+    const pricedIds = ["merchant", "gambling-den", "sacrificial-circle", "wandering-hermit"];
+    const rng = new Rng(13);
+    for (let i = 0; i < 3000; i++) {
+      expect(pricedIds).not.toContain(rollEvent(rng, 1, []));
+    }
+    for (const id of pricedIds) {
+      const gate = getEvent(id).minFloorDepth;
+      expect(gate).toBeGreaterThan(1);
+      let sawIt = false;
+      for (let i = 0; i < 5000 && !sawIt; i++) {
+        if (rollEvent(rng, gate!, []) === id) sawIt = true;
+      }
+      expect(sawIt).toBe(true);
+    }
   });
 
   test("rollEvent excludes a onceLifetime event once it's already fired, even past its depth gate", () => {
