@@ -142,24 +142,28 @@ export function renderSpriteInSlot(sprite: Sprite, slotHeight: number, slotWidth
   return lines;
 }
 
+/**
+ * Where each sprite starts on a row of `sprites`, one slot each. A sprite wider than its slot pushes
+ * the whole row right so nothing starts at a negative column; `starts` already include that shift.
+ */
+export function spriteSlotLayout(sprites: Sprite[], slotWidth: number, gap: number): { starts: number[]; canvasWidth: number } {
+  const rawStarts = sprites.map((sprite, i) => i * (slotWidth + gap) + Math.floor((slotWidth - spriteWidth(sprite)) / 2));
+  const shift = -Math.min(0, ...rawStarts);
+  const ends = sprites.map((sprite, i) => rawStarts[i]! + spriteWidth(sprite));
+  return { starts: rawStarts.map((s) => s + shift), canvasWidth: Math.max(...ends) + shift };
+}
+
 export function compositeSpriteRow(sprites: Sprite[], slotWidth: number, slotHeight: number, gap: number): TextChunk[][] {
   if (sprites.length === 0) return Array.from({ length: slotHeight }, () => []);
 
-  const starts = sprites.map((sprite, i) => {
-    const nominalStart = i * (slotWidth + gap);
-    const offset = Math.floor((slotWidth - spriteWidth(sprite)) / 2);
-    return nominalStart + offset;
-  });
-  const ends = sprites.map((sprite, i) => starts[i]! + spriteWidth(sprite));
-  const shift = -Math.min(0, ...starts);
-  const canvasWidth = Math.max(...ends) + shift;
+  const { starts, canvasWidth } = spriteSlotLayout(sprites, slotWidth, gap);
 
   const buffer: (TextChunk | null)[][] = Array.from({ length: slotHeight }, () => new Array(canvasWidth).fill(null));
 
   sprites.forEach((sprite, i) => {
     const h = spriteHeight(sprite);
     const topPad = Math.max(0, slotHeight - h);
-    const canvasStart = starts[i]! + shift;
+    const canvasStart = starts[i]!;
     for (let spriteRow = 0; spriteRow < h; spriteRow++) {
       const canvasRow = topPad + spriteRow;
       if (canvasRow >= slotHeight) continue;

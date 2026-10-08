@@ -7,7 +7,9 @@ export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
 export const DIVIDER_WIDTH = 3;
 export const EMPTY_ENEMY_WIDTH = 30;
-export const UNIT_BLOCK_HEIGHT = MAX_BOSS_HEIGHT + 3;
+/** Rows reserved above the sprites for role icons: one icon row plus one blank row, so an icon never touches a sprite. */
+export const ICON_BAND_ROWS = 2;
+export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
 
 export function centerText(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);
