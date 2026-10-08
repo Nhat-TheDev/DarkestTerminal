@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { applySkillEffects, queueAction, resolveRound, startCombat } from "../src/engine/combat";
 import { Game } from "../src/engine/game";
+import { runMonsterTurn } from "../src/engine/monsterAI";
+import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
-import { noteAffected, noteBasicAttack, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
+import { noteAffected, noteBasicAttack, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
 import type { Actor } from "../src/engine/resolver";
-import type { CombatantRef, SkillDefinition, SkillEffect } from "../src/types";
+import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 
 function setup() {
@@ -94,8 +96,57 @@ describe("runInSession", () => {
 
   test("an actor-less session carries the units it lights", () => {
     const { combat, goblin } = setup();
-    runInSession(combat, null, () => combat.log.push({ text: "tick", kind: "info" }), [goblin.id]);
+    runInSession(combat, null, () => combat.log.push({ text: "tick", kind: "info" }), { affectedIds: [goblin.id] });
     expect(combat.log.at(-1)!.session).toMatchObject({ actorId: null, affectedIds: [goblin.id] });
+  });
+});
+
+describe("session snapshots and markers", () => {
+  test("each run of a session carries the state as of its own end; a nested session does not leak into it", () => {
+    const { combat, vanguard, acolyte } = setup();
+    let hp = 100;
+    const snapshot = () => [{ id: "x", hp, maxHp: 100, isAlive: true }];
+    runInSession(
+      combat,
+      vanguard.id,
+      () => {
+        combat.log.push({ text: "outer-1", kind: "info" });
+        hp = 90;
+        runInSession(
+          combat,
+          acolyte.id,
+          () => {
+            combat.log.push({ text: "inner", kind: "info" });
+            hp = 80;
+          },
+          { snapshot }
+        );
+        combat.log.push({ text: "outer-2", kind: "info" });
+        hp = 70;
+      },
+      { snapshot }
+    );
+    const hpOf = (text: string) => combat.log.find((e) => e.text === text)!.snapshot![0]!.hp;
+    expect(hpOf("outer-1")).toBe(90);
+    expect(hpOf("inner")).toBe(80);
+    expect(hpOf("outer-2")).toBe(70);
+  });
+
+  test("noteMiss records the missed target once, as its unit", () => {
+    const { combat, goblin, vanguard } = setup();
+    const summon = { id: "s1", ownerId: vanguard.id } as unknown as Actor;
+    runInSession(combat, goblin.id, () => {
+      noteMiss(combat, summon);
+      noteMiss(combat, vanguard);
+      combat.log.push({ text: "x", kind: "info" });
+    });
+    expect(combat.log.at(-1)!.session!.missedIds).toEqual([vanguard.id]);
+  });
+
+  test("an actor-less session carries its cause", () => {
+    const { combat } = setup();
+    runInSession(combat, null, () => combat.log.push({ text: "x", kind: "info" }), { cause: "dying" });
+    expect(combat.log.at(-1)!.session!.cause).toBe("dying");
   });
 });
 
@@ -243,6 +294,7 @@ describe("applySkillEffects notes its targets", () => {
     const entry = combat.log.at(-1)!;
     expect(entry.text.toLowerCase()).toContain("miss");
     expect(entry.session!.attackedIds).toEqual([vanguard.id]);
+    expect(entry.session!.missedIds).toEqual([vanguard.id]);
   });
 
   test("buff, heal and debuff-only", () => {
@@ -339,6 +391,7 @@ describe("resolveRound tags what a round logs", () => {
     const tick = combat.log.slice(before).find((e) => e.session?.actorId === null);
     expect(tick).toBeDefined();
     expect(tick!.session!.affectedIds).toContain(goblin.id);
+    expect(tick!.session!.cause).toBe("dot");
   });
 
   test("stat-mod expiries across several units share one actor-less session", () => {
@@ -358,6 +411,7 @@ describe("resolveRound tags what a round logs", () => {
     resolveRound(combat, ctx, 1, 0);
     const tick = combat.log.find((e) => e.text.includes("from Dying"))!;
     expect(tick.session!.actorId).toBeNull();
+    expect(tick.session!.cause).toBe("dying");
     expect(tick.session!.affectedIds).toHaveLength(ctx.party.length);
   });
 
@@ -367,9 +421,17 @@ describe("resolveRound tags what a round logs", () => {
     mage.equippedArtifactIds.push("thunder-totem");
     resolveRound(combat, ctx);
     const hit = combat.log.find((e) => e.text.includes("Thunder Totem"))!;
-    expect(hit.session!.actorId).toBeNull();
-    expect(hit.session!.affectedIds).toContain(mage.id);
-    expect(hit.session!.affectedIds).toHaveLength(2);
+    expect(hit.session).toMatchObject({ actorId: null, cause: "artifact", affectedIds: [mage.id] });
+    expect(hit.session!.attackedIds).toHaveLength(1);
+  });
+
+  test("the stat-mod expiry session does not carry the Dying damage that follows it", () => {
+    const { ctx, combat } = fight();
+    const buffed = ctx.party[0]!;
+    buffed.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 1 });
+    resolveRound(combat, ctx, 1, 0);
+    const hpIn = (text: string) => combat.log.find((e) => e.text.includes(text))!.snapshot!.find((c) => c.id === buffed.id)!.hp;
+    expect(hpIn("from Dying")).toBeLessThan(hpIn("expires"));
   });
 
   test("an Overwatch shot is the watcher's own session, ahead of the monster's turn", () => {
@@ -403,5 +465,139 @@ describe("resolveRound tags what a round logs", () => {
     expect(combat.log.slice(1).filter((e) => !e.session)).toEqual([]);
     const cast = combat.log.filter((e) => e.session?.actorId === summoner.id);
     expect(cast.length).toBeGreaterThan(0);
+  });
+});
+
+/** A Shadow Clone owned by `owner`, put straight into the fight (the engine normally spawns it from a skill). */
+function addClone(owner: Character, combat: CombatState, ctx: ReturnType<typeof makeCtx>["ctx"], extra: Partial<Summon> = {}): Summon {
+  const clone: Summon = {
+    id: `${owner.id}-clone-test`,
+    ownerId: owner.id,
+    archetypeId: "ninja-clone",
+    name: "Shadow Clone",
+    hp: 30,
+    maxHp: 30,
+    attack: 10,
+    defense: 0,
+    magicPower: 0,
+    aggro: 0,
+    speed: 99,
+    activeStatusEffects: [],
+    actionsTaken: 0,
+    maxActions: 5,
+    ...extra,
+  };
+  ctx.summons.push(clone);
+  combat.combatants.push({ ref: { kind: "summon", id: clone.id }, speed: clone.speed });
+  return clone;
+}
+
+describe("sessions for the less common paths", () => {
+  function fight() {
+    const { ctx } = makeCtx(11);
+    const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
+    for (const r of rats) {
+      r.maxHp = r.hp = 50000;
+      r.attack = 0;
+    }
+    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+    return { ctx, combat, rats };
+  }
+
+  test("a death burst is the owner's own session, attacking the monsters", () => {
+    const { ctx, combat, rats } = fight();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    addClone(ninja, combat, ctx, { hp: 0, deathBurst: { amount: 5, offenseMultiplierPercent: 0, offensiveStatOverride: 0, statusEffectChance: 0 } });
+    resolveRound(combat, ctx);
+    const burst = combat.log.find((e) => e.text.includes("Shadow Clone") && e.kind === "attack")!;
+    expect(burst.session!.actorId).toBe(ninja.id);
+    expect(burst.session!.attackedIds).toEqual(expect.arrayContaining(rats.map((r) => r.id)));
+    const damage = combat.log.filter((e) => e.session === burst.session && e.text.includes("takes"));
+    expect(damage.length).toBeGreaterThan(0);
+  });
+
+  test("every entry of a round carries a snapshot", () => {
+    const { ctx, combat } = fight();
+    resolveRound(combat, ctx, 1, 0);
+    expect(combat.log.slice(1).filter((e) => !e.snapshot)).toEqual([]);
+  });
+
+  test("a missed override effect is noted as a miss", () => {
+    const { ctx, combat, rats } = fight();
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+    ctx.rng.next = () => 0;
+    const sweep = skill({ target: "self", effects: [{ kind: "damage", amount: 1, target: "allEnemies" }], isUltimate: false });
+    runInSession(combat, vanguard.id, () => {
+      applySkillEffects(sweep, vanguard, [vanguard], combat, ctx, combat.log);
+      combat.log.push({ text: "x", kind: "info" });
+    });
+    expect(combat.log.at(-1)!.session!.missedIds).toEqual(rats.map((r) => r.id));
+  });
+
+  test("a summon's missed basic attack is noted against its target, in the owner's session", () => {
+    const { ctx, combat, rats } = fight();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    addClone(ninja, combat, ctx, { activeStatusEffects: [{ statusEffectId: "blinded", turnsRemaining: 3 }] });
+    ctx.rng.next = () => 0;
+    resolveRound(combat, ctx);
+    const miss = combat.log.find((e) => e.text.startsWith("Shadow Clone misses"))!;
+    expect(miss.session!.actorId).toBe(ninja.id);
+    expect(rats.map((r) => r.id)).toContain(miss.session!.missedIds[0]!);
+  });
+
+  test("a monster's missed and dodged basic attacks are both noted as misses", () => {
+    for (const setupMiss of ["blind", "dodge"] as const) {
+      const { ctx, combat, rats } = fight();
+      const rat = rats[0]!;
+      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+      for (const c of ctx.party) if (c !== vanguard) c.isAlive = false;
+      if (setupMiss === "blind") rat.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+      else vanguard.equippedArtifactIds.push("featherweight-boots");
+      ctx.rng.next = () => 0;
+      runInSession(combat, rat.id, () => runMonsterTurn({ kind: "monster", id: rat.id }, combat, ctx));
+      const entry = combat.log.at(-1)!;
+      expect(entry.text).toMatch(setupMiss === "blind" ? /misses/ : /dodge/i);
+      expect(entry.session!.missedIds).toEqual([vanguard.id]);
+    }
+  });
+});
+
+describe("lifesteal is recorded by the engine", () => {
+  function hit(artifactId: string) {
+    const { ctx } = makeCtx(5);
+    const goblin = spawnInto(ctx, "goblin");
+    goblin.hp = goblin.maxHp = 1;
+    const combat = startCombat("r1", [goblin.id], ctx, false);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.equippedArtifactIds.push(artifactId);
+    vanguard.hp = 10;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 50 }] }), vanguard, [goblin], combat, ctx, combat.log));
+    return { session: combat.log.at(-1)!.session!, vanguard };
+  }
+
+  test("an artifact's lifesteal marks the attacker", () => {
+    const { session, vanguard } = hit("vampiric-fang");
+    expect(session.lifestealIds).toEqual([vanguard.id]);
+  });
+
+  test("a heal on kill is not lifesteal", () => {
+    ARTIFACTS.push({ id: "test-heal-on-kill", name: "Test", description: "", rarity: "common", effects: [{ kind: "healOnKill", amount: 25 }] } as (typeof ARTIFACTS)[number]);
+    try {
+      const { session, vanguard } = hit("test-heal-on-kill");
+      expect(vanguard.hp).toBeGreaterThan(10);
+      expect(session.lifestealIds).toEqual([]);
+    } finally {
+      ARTIFACTS.pop();
+    }
+  });
+});
+
+describe("a monster skill's damage is read relative to the caster", () => {
+  test("damage scoped to the player's side, cast by a monster, is an attack on the party", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    const partyOnly = skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 1, appliesToRelation: "ally" }] });
+    runInSession(combat, goblin.id, () => applySkillEffects(partyOnly, goblin, [vanguard], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([vanguard.id]);
   });
 });

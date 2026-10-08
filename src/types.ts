@@ -758,8 +758,14 @@ export interface LogSession {
   debuffedIds: Id[];
   buffedIds: Id[];
   healedIds: Id[];
-  /** Units lit without an icon: DoT ticks, dying damage, artifact auto-damage, the owner of a summon that expires. */
+  /** Opposing-side targets whose attack or debuff missed or was dodged. */
+  missedIds: Id[];
+  /** Units that drained HP from the damage they dealt (lifesteal), as opposed to any other self-heal. */
+  lifestealIds: Id[];
+  /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
   affectedIds: Id[];
+  /** What an actor-less session was, so its lit units can wear the matching icon. */
+  cause?: "dot" | "dying" | "artifact";
 }
 
 export interface LogEntry {

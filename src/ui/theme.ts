@@ -20,6 +20,11 @@ export const PALETTE = {
   dead: "#6a5a52",
   disabled: "#5a5248",
   chipFg: "#12100c",
+  // Battlefield outcome numbers (MARKER_COLOR, src/ui/battlefieldFocus.ts).
+  markerDamageParty: "#e5484d",
+  markerDamageMonster: "#f2f2f2",
+  markerHealParty: "#8fd694",
+  markerHealMonster: "#3c9a4a",
 } as const;
 
 export const CLASS_STYLE: Record<string, { abbr: string; color: string }> = {

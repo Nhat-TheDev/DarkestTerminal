@@ -29,7 +29,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteLifesteal, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
@@ -277,11 +277,17 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
   });
 }
 
+/** Gives every entry from `fromIndex` on that has no snapshot yet (a session tags its own) the state as of now. */
 export function tagLogRange(combat: CombatState, fromIndex: number, snapshot: CombatantSnapshot[]): void {
   for (let i = fromIndex; i < combat.log.length; i++) {
     const entry = combat.log[i];
-    if (entry) entry.snapshot = snapshot;
+    if (entry && !entry.snapshot) entry.snapshot = snapshot;
   }
+}
+
+/** The `snapshot` option every combat session passes, so each of its runs carries the state as of its own end. */
+function sessionSnapshot(combat: CombatState, ctx: EngineContext): () => CombatantSnapshot[] {
+  return () => snapshotCombatants(combat, ctx);
 }
 
 /** Same idea as tagLogRange, for the party-wide (coins/EXP/satiety) snapshot instead of the per-combatant one. */
@@ -293,30 +299,35 @@ export function tagPartySnapshotRange(combat: CombatState, fromIndex: number, pa
 }
 
 function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
-  runInSession(combat, null, () => {
-    for (const character of ctx.party) {
-      if (!character.isAlive) continue;
-      for (const { effect, sourceName } of autoDamageEntries(character)) {
-        const alive = livingMonsterRefs(combat, ctx);
-        if (alive.length === 0) return;
-        const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
-        noteAffected(combat, character);
-        noteAffected(combat, target);
-        if (effect.offenseMultiplierPercent !== undefined) {
-          const base = characterBaseStats(character);
-          resolveSkillEffect(
-            { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
-            character,
-            target,
-            { log: combat.log, isMagic: effect.isMagic, skillName: sourceName, offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack }
-          );
-          continue;
+  runInSession(
+    combat,
+    null,
+    () => {
+      for (const character of ctx.party) {
+        if (!character.isAlive) continue;
+        for (const { effect, sourceName } of autoDamageEntries(character)) {
+          const alive = livingMonsterRefs(combat, ctx);
+          if (alive.length === 0) return;
+          const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
+          noteAffected(combat, character);
+          noteBasicAttack(combat, character, target);
+          if (effect.offenseMultiplierPercent !== undefined) {
+            const base = characterBaseStats(character);
+            resolveSkillEffect(
+              { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
+              character,
+              target,
+              { log: combat.log, isMagic: effect.isMagic, skillName: sourceName, offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack }
+            );
+            continue;
+          }
+          target.hp = Math.max(0, target.hp - effect.amount);
+          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
         }
-        target.hp = Math.max(0, target.hp - effect.amount);
-        combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
       }
-    }
-  });
+    },
+    { cause: "artifact", snapshot: sessionSnapshot(combat, ctx) }
+  );
 }
 
 /**
@@ -333,28 +344,34 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
   const active = watcher.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).triggersOverwatch)!;
   const def = getStatusEffect(active.statusEffectId);
 
-  return runInSession(combat, watcher.id, () => {
-    const target = getActorByRef(monsterRef, ctx) as Monster;
-    if (!isActorAlive(target)) {
+  return runInSession(
+    combat,
+    watcher.id,
+    () => {
+      const target = getActorByRef(monsterRef, ctx) as Monster;
+      if (!isActorAlive(target)) {
+        expireStatusEffect(watcher, active, { log: combat.log });
+        return false;
+      }
+      // Before the accuracy roll: a missed shot still marks its target.
+      noteBasicAttack(combat, watcher, target);
+      if (!rollHits(watcher, () => ctx.rng.next())) {
+        noteMiss(combat, target);
+        expireStatusEffect(watcher, active, { log: combat.log });
+        combat.log.push({ text: t("combat.overwatchMiss", { actor: watcher.name, target: target.name }), kind: "info" });
+        return false;
+      }
+      const interrupts = def.interruptChance === undefined || ctx.rng.chance(def.interruptChance);
+      const hitText = interrupts ? "combat.overwatchHit" : "combat.overwatchHitNoInterrupt";
+      combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
+      resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
+        log: combat.log,
+      });
       expireStatusEffect(watcher, active, { log: combat.log });
-      return false;
-    }
-    // Before the accuracy roll: a missed shot still marks its target.
-    noteBasicAttack(combat, watcher, target);
-    if (!rollHits(watcher, () => ctx.rng.next())) {
-      expireStatusEffect(watcher, active, { log: combat.log });
-      combat.log.push({ text: t("combat.overwatchMiss", { actor: watcher.name, target: target.name }), kind: "info" });
-      return false;
-    }
-    const interrupts = def.interruptChance === undefined || ctx.rng.chance(def.interruptChance);
-    const hitText = interrupts ? "combat.overwatchHit" : "combat.overwatchHitNoInterrupt";
-    combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
-    resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
-      log: combat.log,
-    });
-    expireStatusEffect(watcher, active, { log: combat.log });
-    return interrupts || !isActorAlive(target);
-  });
+      return interrupts || !isActorAlive(target);
+    },
+    { snapshot: sessionSnapshot(combat, ctx) }
+  );
 }
 
 export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1, satiety = 100): void {
@@ -364,17 +381,18 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   combat.roundStartSnapshot = snapshotCombatants(combat, ctx);
 
   const combatActors = () => combat.combatants.map((c) => getActorByRef(c.ref, ctx));
+  const snapshot = sessionSnapshot(combat, ctx);
 
-  let blockStart = combat.log.length;
-  runTicksInSession(combat, combatActors(), (actor) => {
-    if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log });
-  });
-  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log));
-  tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
-
-  blockStart = combat.log.length;
+  runTicksInSession(
+    combat,
+    combatActors(),
+    (actor) => {
+      if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log });
+    },
+    { cause: "dot", snapshot }
+  );
+  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
   runArtifactAutoDamage(combat, ctx);
-  tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 
   const actedRefs: CombatantRef[] = [];
   for (const ref of combat.turnQueue) {
@@ -382,20 +400,23 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     if (!isActorAlive(actor)) continue;
 
     const eligibleSpecial = specialStatusSnapshot(actor);
-    blockStart = combat.log.length;
-    runInSession(combat, unitId(actor), () => {
-      if (ref.kind === "character") {
-        runCharacterTurn(ref, combat, ctx);
-        actedRefs.push(ref);
-      } else if (ref.kind === "summon") {
-        runSummonTurn(ref, combat, ctx);
-      } else if (!tryTriggerOverwatch(ref, combat, ctx)) {
-        runMonsterTurn(ref, combat, ctx);
-      }
-      if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
-      pruneDeadSummons(combat, ctx, combat.log);
-    });
-    tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
+    runInSession(
+      combat,
+      unitId(actor),
+      () => {
+        if (ref.kind === "character") {
+          runCharacterTurn(ref, combat, ctx);
+          actedRefs.push(ref);
+        } else if (ref.kind === "summon") {
+          runSummonTurn(ref, combat, ctx);
+        } else if (!tryTriggerOverwatch(ref, combat, ctx)) {
+          runMonsterTurn(ref, combat, ctx);
+        }
+        if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
+        pruneDeadSummons(combat, ctx, combat.log);
+      },
+      { snapshot }
+    );
 
     if (isCombatOver(combat, ctx)) break;
   }
@@ -412,10 +433,14 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
   }
 
   if (!isCombatOver(combat, ctx)) {
-    blockStart = combat.log.length;
-    runTicksInSession(combat, combatActors(), (actor) => {
-      if (isActorAlive(actor)) tickStatModEffects(actor, { log: combat.log });
-    });
+    runTicksInSession(
+      combat,
+      combatActors(),
+      (actor) => {
+        if (isActorAlive(actor)) tickStatModEffects(actor, { log: combat.log });
+      },
+      { snapshot }
+    );
     for (const c of ctx.party) {
       if (!c.isAlive) continue;
       for (const skillId of Object.keys(c.cooldownsRemaining)) {
@@ -424,12 +449,16 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     }
     for (const c of ctx.party) applyRoundFear(c, floorDepth);
     if (isPartyDying(satiety)) {
-      runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), ctx.party.filter((c) => c.isAlive).map((c) => c.id));
+      runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), {
+        affectedIds: ctx.party.filter((c) => c.isAlive).map((c) => c.id),
+        cause: "dying",
+        snapshot,
+      });
     }
-    tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
   }
 
-  blockStart = combat.log.length;
+  // Every entry above belongs to a session that tagged its own state; finalizeRound's lines belong to none.
+  const blockStart = combat.log.length;
   finalizeRound(combat, ctx);
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
 }
@@ -866,21 +895,26 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
   const targets = livingMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Monster);
   if (targets.length === 0) return;
   // The owner's action, not part of whichever turn killed the summon.
-  runInSession(combat, summon.ownerId, () => {
-    log.push({ text: t("combat.summonDeathBurst", { summon: summon.name }), kind: "attack" });
-    for (const target of targets) {
-      noteBasicAttack(combat, summon, target);
-      resolveSkillEffect(
-        { kind: "damage", amount: burst.amount, offenseMultiplierPercent: burst.offenseMultiplierPercent },
-        summon,
-        target,
-        { log, offensiveStatOverride: burst.offensiveStatOverride }
-      );
-      if (burst.statusEffectId && ctx.rng.chance(burst.statusEffectChance)) {
-        resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: burst.statusEffectId, durationTurns: burst.durationTurns }, summon, target, { log });
+  runInSession(
+    combat,
+    summon.ownerId,
+    () => {
+      log.push({ text: t("combat.summonDeathBurst", { summon: summon.name }), kind: "attack" });
+      for (const target of targets) {
+        noteBasicAttack(combat, summon, target);
+        resolveSkillEffect(
+          { kind: "damage", amount: burst.amount, offenseMultiplierPercent: burst.offenseMultiplierPercent },
+          summon,
+          target,
+          { log, offensiveStatOverride: burst.offensiveStatOverride }
+        );
+        if (burst.statusEffectId && ctx.rng.chance(burst.statusEffectChance)) {
+          resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: burst.statusEffectId, durationTurns: burst.durationTurns }, summon, target, { log });
+        }
       }
-    }
-  });
+    },
+    { snapshot: sessionSnapshot(combat, ctx) }
+  );
 }
 
 /**
@@ -990,6 +1024,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
     const target = getActorByRef(ctx.rng.pick(enemies), ctx) as Monster;
     noteBasicAttack(combat, summon, target);
     if (!rollHits(summon, () => ctx.rng.next())) {
+      noteMiss(combat, target);
       combat.log.push({ text: t("combat.missedFear", { source: summon.name, target: target.name }), kind: "info" });
     } else {
       combat.log.push({ text: t("combat.basicAttack", { actor: summon.name, target: target.name }), kind: "attack" });
@@ -1023,7 +1058,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
   // A property of the whole skill (not of one target): damage that reaches the opposing side makes every opposing target an attack target.
-  const skillDealsDamage = (skill.effects ?? []).some((e) => e.kind === "damage" && e.appliesToRelation !== "ally");
+  // `appliesToRelation` names a side of the board ("ally" = the player's side), not a side relative to the caster.
+  const skillDealsDamage = (skill.effects ?? []).some((e) => e.kind === "damage" && (!e.appliesToRelation || (e.appliesToRelation === "ally") !== isPlayerSide(source)));
   // Set by this cast's own `summon` override effect (resolved first, in array order) so a later
   // override effect in the same cast — e.g. Totem Recall's ally buff — can tie its own expiry to
   // the summon it was cast alongside (`SkillEffect.linksToCasterSummon`).
@@ -1049,7 +1085,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         if (effect.excludesSummonTargets && isSummon(resolved)) continue;
         noteSkillTarget(combat, source, resolved, [effect], skillDealsDamage);
         const overrideEnemyFacing = isPlayerSide(source) !== isPlayerSide(resolved);
-        if (overrideEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) continue;
+        if (overrideEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
+          noteMiss(combat, resolved);
+          continue;
+        }
         if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
         resolveOneDamageEffect(
           effect,
@@ -1076,11 +1115,13 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       skillDealsDamage
     );
     if (isEnemyFacing && !skill.isUltimate && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
+      noteMiss(combat, target);
       log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
       continue;
     }
     const activeEffects = (skill.effects ?? []).filter((e) => !isOverrideEffect(e));
     if (isEnemyFacing && isCharacter(target) && activeEffects.some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
+      noteMiss(combat, target);
       log.push({ text: t("combat.dodge", { target: target.name, actor: sourceName(source) }), kind: "info" });
       continue;
     }
@@ -1108,6 +1149,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
       const wasAliveBefore = isActorAlive(target);
+      const sourceHpBefore = source.hp;
       // Summed across every hit (hitCountRange's multi-hit and any extraHitChance bonus hit), not just
       // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
       // a multi-hit skill actually dealt this cast, not just its final swing.
@@ -1131,6 +1173,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       }
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+        // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
+        if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (wasAliveBefore && !isActorAlive(target)) {
           for (const hook of combatHooks) hook.onKill?.(source, target, log);
         }

@@ -37,7 +37,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, type BattlefieldUnit } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, type BattlefieldUnit } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -100,13 +100,20 @@ export class App implements ScreenContext {
   private fullLogText: TextRenderable;
   private fullLogScroll: ScrollBoxRenderable;
   private fullLogJustOpened = false;
+  /** `runLogVersion` the run-log screen was last built from. */
+  private fullLogBuiltFrom = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
   private roomLogRoomId: Id | null = null;
   private runLog: LogEntry[] = [];
+  /** Bumped on every append: runLog's length stops changing once it is full. */
+  private runLogVersion = 0;
   private reveal = new RevealQueue();
+  /** HP change per unit over the lit session, worked out when it lights up (shown from its impact). */
+  private focusDeltas = new Map<Id, number>();
+  private deltasFor: LogSession | null = null;
   private autoReveal: boolean;
   private lastRender = { revealing: false, focusId: null as number | null, logTailSessionId: null as number | null };
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
@@ -251,6 +258,14 @@ export class App implements ScreenContext {
 
   get debugDisplaySnapshot(): CombatantSnapshot[] | null {
     return this.displaySnapshot;
+  }
+
+  get debugRevealHolding(): boolean {
+    return this.reveal.holding;
+  }
+
+  get debugFocusDeltas(): Map<Id, number> {
+    return this.focusDeltas;
   }
 
   get debugLastRender() {
@@ -653,7 +668,11 @@ export class App implements ScreenContext {
     for (const box of this.chrome) box.visible = !inFullLog;
     this.fullLogBox.visible = inFullLog;
     if (inFullLog) {
-      this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+      // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
+      if (this.fullLogBuiltFrom !== this.runLogVersion) {
+        this.fullLogBuiltFrom = this.runLogVersion;
+        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+      }
       if (this.fullLogJustOpened) {
         this.fullLogJustOpened = false;
         this.fullLogScroll.scrollTop = this.fullLogScroll.scrollHeight;
@@ -752,6 +771,7 @@ export class App implements ScreenContext {
     this.syncRoomLog();
     this.roomLog.push(...entries);
     this.runLog.push(...entries);
+    this.runLogVersion++;
     if (this.roomLog.length > ROOM_LOG_SIZE) this.roomLog.splice(0, this.roomLog.length - ROOM_LOG_SIZE);
     if (this.runLog.length > RUN_LOG_SIZE) this.runLog.splice(0, this.runLog.length - RUN_LOG_SIZE);
   }
@@ -766,8 +786,18 @@ export class App implements ScreenContext {
 
   /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */
   private applyRevealed(entries: LogEntry[]): void {
-    if (entries.length === 0) return;
-    this.appendLog(entries);
+    if (entries.length > 0) this.appendLog(entries);
+    const focus = this.reveal.focus;
+    if (focus !== this.deltasFor) {
+      this.deltasFor = focus;
+      this.focusDeltas = focus ? hpDeltas(this.displaySnapshot, this.reveal.focusSnapshot) : new Map();
+    }
+    // A session's HP/status change waits for its impact; lines with no session apply theirs at once.
+    if (this.reveal.holding) return;
+    if (focus) {
+      this.displaySnapshot = this.reveal.focusSnapshot ?? this.displaySnapshot;
+      return;
+    }
     for (const entry of entries) {
       if (entry.snapshot) this.displaySnapshot = entry.snapshot;
       if (entry.partySnapshot) this.displayPartySnapshot = entry.partySnapshot;
@@ -875,13 +905,7 @@ export class App implements ScreenContext {
   }
 
   private buildSideBlock(units: BattlefieldUnit[]): TextChunk[][] {
-    const spritePart = buildSideSpriteArea(
-      units.map((u) => u.sprite),
-      units.map((u) => u.icons),
-      units.map((u) => u.frameHeight),
-      SLOT_WIDTH,
-      SLOT_GAP
-    );
+    const spritePart = buildSideSpriteArea(units, SLOT_WIDTH, SLOT_GAP);
     const metaPart = mergeBlocksHorizontally(
       units.map((u) => this.buildUnitMeta(u.label, u.labelColor, u.statusText, u.statusColor)),
       SLOT_GAP
@@ -896,7 +920,7 @@ export class App implements ScreenContext {
     lines.push(blank());
     lines.push(message ? [colorChunk(centerText(message, EMPTY_ENEMY_WIDTH), PALETTE.dim)] : blank());
     lines.push(blank());
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildCampfireBlock(): TextChunk[][] {
@@ -904,7 +928,7 @@ export class App implements ScreenContext {
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
     lines.push([colorChunk(centerText(t("ui.campfireWarm"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildTreasureBlock(): TextChunk[][] {
@@ -912,7 +936,7 @@ export class App implements ScreenContext {
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
     lines.push([colorChunk(centerText(t("ui.treasureChestLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildEventBlock(eventId: Id): TextChunk[][] {
@@ -923,11 +947,12 @@ export class App implements ScreenContext {
     lines.push(blank());
     lines.push([colorChunk(centerText(label, EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push(blank());
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null, focus: LogSession | null = null): TextChunk[][] {
     const s = this.game.state;
+    const impact = focus !== null && !this.reveal.holding;
 
     const partyUnits = s.party.map((c) => {
       const view = hpOverride?.get(c.id);
@@ -935,7 +960,7 @@ export class App implements ScreenContext {
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      const lens = unitFocus(c.id, "party", focus);
+      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact);
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
@@ -958,7 +983,7 @@ export class App implements ScreenContext {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
-          const lens = unitFocus(m.id, "monster", focus);
+          const lens = unitFocus(m.id, "monster", focus, this.focusDeltas.get(m.id), impact);
           const frameHeight = tierFrameHeight(m.tier);
           if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
@@ -974,9 +999,6 @@ export class App implements ScreenContext {
     } else {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
-    }
-    if (!(s.combat && s.combat.combatants.some((c) => c.ref.kind === "monster"))) {
-      enemyBlock = [...blankIconBand(EMPTY_ENEMY_WIDTH), ...enemyBlock];
     }
 
     const divider: TextChunk[][] = [];

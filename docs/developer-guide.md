@@ -139,12 +139,25 @@ centred over the unit's own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). Wh
 every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
 `src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
 a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage,
-▲ buffed, ✚ healed, ⚚ caster of a buff/heal. Blue marks the party, red the monsters, by the
-side of the unit wearing the icon. Who those units are comes from `LogEntry.session`
-(`LogSession`, built in `src/engine/logSession.ts` and attached by `resolveRound`); a summon is
-recorded as its owner because it has no sprite. Round-start and round-end ticks (DoT, stat-mod
-expiry, dying damage, artifact auto-damage) are one actor-less session per block that lights the
-units whose tick logged, without icons.
+▲ buffed, ✚ healed, ⚚ caster of a buff/heal, ♥ an attacker that drained HP from its own hit
+(`LogSession.lifestealIds`; a heal-on-kill is not lifesteal and only shows its number). Blue
+marks the party, red the monsters, by the side of the unit wearing the icon.
+Who those units are comes from `LogEntry.session` (`LogSession`, built in
+`src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
+because it has no sprite. Round-start and round-end ticks are one actor-less session per block
+that lights the units whose tick logged; its `cause` picks their icon — ☣ a DoT tick (✚ for a
+regeneration tick), ☠ Dying, ✦ the bearer of an artifact's auto-damage (its target wears ⛨);
+a stat-mod expiry block has no icon.
+
+After the icons comes the unit's outcome for the session, from its impact on: its HP change
+(`-12`, `+8`), or `miss` for a target whose attack or debuff missed or was dodged
+(`LogSession.missedIds`) and lost no HP. Damage is white on a monster and red on a character; a
+heal is green, lighter on a character and deeper on a monster (`MARKER_COLOR`, taking its colours
+from `PALETTE` in `src/ui/theme.ts`; the word `miss` is `ui.focusMiss` in `data/strings.json`).
+The change is the difference between the HP on screen when the session lights up and its own
+snapshot: each run of a session's entries carries the combatant state as of the end of that run
+(`runInSession`'s `snapshot` option), so a session never shows a change that belongs to the next
+one. A unit whose HP changed is never grey.
 
 This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
 lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52
@@ -165,12 +178,15 @@ The remaining panels:
   entries of the run, in memory only (a loaded save starts empty); only `Esc`, `↑`/`↓` and
   `Ctrl+C` work inside it. Combat rounds are revealed **by action**: each actor's turn is one
   session that stays on screen for at least `SESSION_MIN_TICKS` reveal ticks (`REVEAL_TICK_MS`
-  each), its lines appear one tick apart (a session with more lines than that lasts one tick per
-  line), and lines with no session (combat start, rewards, toasts) appear one per tick with no
-  hold. One clock drives everything (`RevealQueue`,
-  `src/ui/revealQueue.ts`): each tick adds the log line, the HP/MP/coin snapshot it carries and the
-  battlefield highlight in a single `App.render()`, so the screen can never be ahead of or behind
-  the log. Any key skips straight to the end of the reveal, in one render.
+  each). Its first line appears with the highlight; its **impact** comes `IMPACT_TICKS` later,
+  and only then do HP, statuses and the battlefield's numbers change and its other lines start,
+  one tick apart (a session with more lines than fit lasts until its last one). Lines with no
+  session (combat start, rewards, toasts) appear one per tick with no hold and apply at once.
+  One clock drives everything (`RevealQueue`,
+  `src/ui/revealQueue.ts`): each tick moves the log, the battlefield highlight and the displayed
+  HP/MP/status/coins together in a single `App.render()` — a session's state lands at its impact,
+  a line with no session's state with the line itself — so the screen is never ahead of the log.
+  Any key skips straight to the end of the reveal, in one render.
 
 The full theme/color palette is defined in `src/ui/theme.ts` — to change the
 color scheme or add a new class/monster, edit `PALETTE`/`CLASS_STYLE`/

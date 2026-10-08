@@ -1,9 +1,15 @@
-import type { LogEntry, LogSession } from "../types";
+import type { CombatantSnapshot, LogEntry, LogSession } from "../types";
 
 /** One reveal step. Every pacing number below is a multiple of it. */
 export const REVEAL_TICK_MS = 100;
 /** A session stays on screen at least this many ticks: 15 × 100 ms = 1.5 s. */
 export const SESSION_MIN_TICKS = 15;
+/**
+ * Ticks between a session's first line and its impact: 5 × 100 ms = 0.5 s. Until then HP, statuses and
+ * numbers stay as they were, so a change is never mistaken for part of the previous session; the
+ * session's other lines start at the impact, one per tick.
+ */
+export const IMPACT_TICKS = 5;
 
 interface Group {
   entries: LogEntry[];
@@ -20,7 +26,7 @@ function toGroups(entries: LogEntry[]): Group[] {
     if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
     else groups.push({ entries: [entry], session: entry.session ?? null, span: 0 });
   }
-  for (const group of groups) group.span = group.session ? Math.max(SESSION_MIN_TICKS, group.entries.length) : group.entries.length;
+  for (const group of groups) group.span = group.session ? Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) : group.entries.length;
   return groups;
 }
 
@@ -49,6 +55,17 @@ export class RevealQueue {
     return this.current?.session ?? null;
   }
 
+  /** The combatant state the lit session ends in — what its impact shows. */
+  get focusSnapshot(): CombatantSnapshot[] | null {
+    if (!this.current?.session) return null;
+    return this.current.entries.at(-1)?.snapshot ?? null;
+  }
+
+  /** True while the lit session has not reached its impact: its changes must not be shown yet. */
+  get holding(): boolean {
+    return this.current?.session != null && this.ticks <= IMPACT_TICKS;
+  }
+
   tick(): LogEntry[] {
     if (this.current && this.ticks >= this.current.span) this.current = null;
     if (!this.current) {
@@ -59,7 +76,9 @@ export class RevealQueue {
       this.ticks = 0;
     }
     const revealed: LogEntry[] = [];
-    if (this.shown < this.current.entries.length) revealed.push(this.current.entries[this.shown++]!);
+    // A session shows its first line at once and the rest from its impact on; plain lines one per tick.
+    const due = !this.current.session || this.shown === 0 || this.ticks >= IMPACT_TICKS;
+    if (due && this.shown < this.current.entries.length) revealed.push(this.current.entries[this.shown++]!);
     this.ticks++;
     // Lines with no session have nothing to hold: the group ends with its last line.
     if (!this.current.session && this.shown >= this.current.entries.length) this.current = null;

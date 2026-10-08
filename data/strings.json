@@ -349,6 +349,7 @@
   "ui.hintParty": "[b] Party",
   "ui.hintSave": "[q] Save",
   "ui.hintLog": "[l] Log",
+  "ui.focusMiss": "miss",
   "ui.panelFullLog": "Run log - latest {{count}} (↑/↓ to scroll)",
   "ui.fullLogEmpty": "Nothing has happened yet.",
   "ui.hintQuicksave": "[s] Quicksave",

@@ -7,7 +7,7 @@ import { t } from "../data/strings";
 import { applyArtifactReflectDamage } from "./combatHooks";
 import { getActorByRef, livingPlayerSideEnemyFacingRefs, hasStunningStatus, applySkillEffects, type EngineContext } from "./combat";
 import { Rng } from "./rng";
-import { noteBasicAttack } from "./logSession";
+import { noteBasicAttack, noteMiss } from "./logSession";
 
 /** A monster's targeting pool: every living character/summon not currently `untargetable` (a stealthed Ninja). */
 type Targetable = Character | Summon;
@@ -107,10 +107,12 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
   const target = pickMonsterTarget(actor, livingChars, ctx.rng);
   noteBasicAttack(combat, actor, target);
   if (!rollHits(actor, () => ctx.rng.next())) {
+    noteMiss(combat, target);
     combat.log.push({ text: t("combat.missedFear", { source: actor.name, target: target.name }), kind: "info" });
     return;
   }
   if (isCharacter(target) && rollDodge(target, ctx.rng)) {
+    noteMiss(combat, target);
     combat.log.push({ text: t("combat.dodge", { target: target.name, actor: actor.name }), kind: "info" });
     return;
   }

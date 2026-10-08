@@ -91,6 +91,38 @@ describe("battlefield and log stay in step", () => {
     expect(sawShield).toBe(true);
   }, 30000);
 
+  test("a session changes HP only at its impact, and then shows each attacked unit's drop next to its icon", async () => {
+    const fight = await openFight({ goblinAttack: 40 });
+    await playRound(fight);
+    let held = fight.app.debugDisplaySnapshot;
+    let lastFocus = fight.app.debugFocus;
+    let impacts = 0;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      if (focus !== lastFocus) {
+        lastFocus = focus;
+        held = fight.app.debugDisplaySnapshot;
+      }
+      const frame = fight.captureCharFrame();
+      if (focus && fight.app.debugRevealHolding) {
+        expect(fight.app.debugDisplaySnapshot).toBe(held);
+        expect(frame).not.toMatch(/⛨ -\d/);
+      } else if (focus) {
+        for (const id of focus.attackedIds) {
+          const delta = fight.app.debugFocusDeltas.get(id);
+          if (delta !== undefined && delta < 0) {
+            impacts++;
+            expect(frame).toContain(`${FOCUS_GLYPH.shield} -${-delta}`);
+          }
+        }
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(impacts).toBeGreaterThan(0);
+  }, 30000);
+
   test("skipping reveals every line and drops the highlight in one step", async () => {
     const fight = await openFight();
     await playRound(fight);
