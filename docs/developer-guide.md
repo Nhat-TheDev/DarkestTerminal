@@ -130,8 +130,21 @@ row/column misalignment or missing palette colors. Sprites are edited
 visually in the browser via `bun run game-editor` (`tools/game-editor/`,
 Sprite Editor tab) rather than by hand-editing the character grid in JSON.
 
-This panel needs quite a bit of vertical space (13 pixels + 3 label lines +
-border ≈ 18 lines), plus the other panels → so a terminal **at least ~45-50
+Above the sprites sits a 2-row **icon band** (`ICON_BAND_ROWS`, `src/ui/layout.ts`): one
+row of role icons, one blank row, so an icon never touches a sprite; each unit's icons are
+centred over its own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
+every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
+`src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
+a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage,
+▲ buffed, ✚ healed, ⚚ caster of a buff/heal. Blue marks the party, red the monsters, by the
+side of the unit wearing the icon. Who those units are comes from `LogEntry.session`
+(`LogSession`, built in `src/engine/logSession.ts` and attached by `resolveRound`); a summon is
+recorded as its owner because it has no sprite. Round-start and round-end ticks (DoT, stat-mod
+expiry, dying damage, artifact auto-damage) are one actor-less session per block that lights the
+units whose tick logged, without icons.
+
+This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
+lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52
 lines tall** is recommended; a shorter terminal will clip the bottom of the
 frame (labels/HP).
 
@@ -143,13 +156,18 @@ The remaining panels:
   Coins/Satiety are shown in the header instead of per character.
 - **Monsters**: the list of monsters currently in combat + their HP, hidden
   when there are no monsters in the room
-- **Log**: 8 lines tall, **scrollable** (`↑`/`↓`, `ScrollBoxRenderable`,
-  sticks to the bottom by default) — keeps the entire log history for the run.
-  Combat rounds reveal log lines progressively (roughly 1 every 800ms) rather
-  than dumping the whole round at once — HP/MP/level/status (and coins/EXP/satiety
-  too) are frozen to match whichever line the reveal has reached, so the screen
-  never gets ahead of what the log has actually narrated. Any key skips straight
-  to the end of the reveal.
+- **Log**: 8 lines tall, scrollable (`↑`/`↓`, `ScrollBoxRenderable`, sticks to the bottom).
+  The box shows the **room log** — the latest 50 entries, cleared when the player enters
+  another room. `[l]` opens the **run log** on its own screen (`fullLog`): the latest 500
+  entries of the run, in memory only (a loaded save starts empty); only `Esc`, `↑`/`↓` and
+  `Ctrl+C` work inside it. Combat rounds are revealed **by action**: each actor's turn is one
+  session that stays on screen for at least `SESSION_MIN_TICKS` reveal ticks (`REVEAL_TICK_MS`
+  each), its lines appear one tick apart (a session with more lines than that lasts one tick per
+  line), and lines with no session (combat start, rewards, toasts) appear one per tick with no
+  hold. One clock drives everything (`RevealQueue`,
+  `src/ui/revealQueue.ts`): each tick adds the log line, the HP/MP/coin snapshot it carries and the
+  battlefield highlight in a single `App.render()`, so the screen can never be ahead of or behind
+  the log. Any key skips straight to the end of the reveal, in one render.
 
 The full theme/color palette is defined in `src/ui/theme.ts` — to change the
 color scheme or add a new class/monster, edit `PALETTE`/`CLASS_STYLE`/
@@ -206,16 +224,18 @@ is a key hint and belongs in the footer.
 4. paging      [←/→] Page
 5. back        [Esc] Back
    │
-6. globals     [b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit
+6. globals     [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit
 ```
 
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
-`[b]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
+`[b]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
 including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
 `saveMenu`, `[s]` is off on `gameover`/`abilityBuyback`, `[b]` only opens party
 info from a fixed list of screen kinds. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
-otherwise the two drift apart and the hint outlives the binding. `globalHints()`
+otherwise the two drift apart and the hint outlives the binding. On the log screen itself
+only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
+so no save hint is shown. `globalHints()`
 (`src/ui/keyHints.ts`) is that single derivation; `App.render` runs every footer
 through `composeFooter()` so no screen can opt out.
 
@@ -372,6 +392,7 @@ src/
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
     events/runner.ts      # the Rest-room Merchant's Runner (not an event room): rollRestRunner, shop purchase/refresh, buyback
     events/barter.ts      # his trophy-for-buff barter: runnerBarter, and applyPendingBarterBuffs when the floor's elite/boss fight begins
+    logSession.ts         # LogSession builder: runInSession/runTicksInSession tag each actor's turn (or tick block) and note who it attacked/debuffed/buffed/healed
     combatHooks.ts        # passive/on-hit hook helpers read by combat.ts (class passives that don't apply a status effect)
     monsterAI.ts           # monster action/target selection (pickMonsterAction, resolveMonsterSkillTargets, Execute charge state machine)
     paths.ts                # save-directory/file path resolution
@@ -383,10 +404,12 @@ src/
   ui/characterSelect.ts # picking 4 characters (from the 9-class roster) for the party at the start of a new game
   ui/saveSelect.ts      # slot select for New Game / Continue
   ui/layout.ts          # shared panel sizing/layout helpers for App.render
+  ui/revealQueue.ts     # RevealQueue: the single clock pacing the combat log by session and driving the battlefield highlight
+  ui/battlefieldFocus.ts # greying of bystanders, role icons and the icon band above the sprites
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
