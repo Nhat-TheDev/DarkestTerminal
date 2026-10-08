@@ -96,6 +96,11 @@ export class App implements ScreenContext {
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
+  private chrome: BoxRenderable[];
+  private fullLogBox: BoxRenderable;
+  private fullLogText: TextRenderable;
+  private fullLogScroll: ScrollBoxRenderable;
+  private fullLogJustOpened = false;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   private roomLog: LogEntry[] = [];
@@ -193,6 +198,23 @@ export class App implements ScreenContext {
     this.logScroll.add(this.log);
     logBox.add(this.logScroll);
     this.root.add(logBox);
+
+    this.chrome = [headerBox, progressBox, battlefieldBox, body, logBox];
+
+    this.fullLogBox = new BoxRenderable(renderer, { id: "full-log-box", ...panel, flexGrow: 1, title: t("ui.panelFullLog", { count: RUN_LOG_SIZE }), visible: false });
+    this.fullLogScroll = new ScrollBoxRenderable(renderer, {
+      id: "full-log-scroll",
+      width: "100%",
+      height: "100%",
+      scrollX: false,
+      scrollY: true,
+      stickyScroll: true,
+      stickyStart: "bottom",
+    });
+    this.fullLogText = new TextRenderable(renderer, { id: "full-log", content: "", fg: PALETTE.dim });
+    this.fullLogScroll.add(this.fullLogText);
+    this.fullLogBox.add(this.fullLogScroll);
+    this.root.add(this.fullLogBox);
 
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
     const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
@@ -363,6 +385,15 @@ export class App implements ScreenContext {
       this.quit();
       return;
     }
+    if (this.ui.kind === "fullLog") {
+      if (key.name === "escape") {
+        this.ui = this.ui.previous;
+        this.render();
+      } else if (this.fullLogScroll.handleKeyPress(key)) {
+        this.render();
+      }
+      return;
+    }
     if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
@@ -371,6 +402,12 @@ export class App implements ScreenContext {
     if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && key.name === "s") {
       saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
+      this.render();
+      return;
+    }
+    if (key.name === "l") {
+      this.ui = { kind: "fullLog", previous: this.ui };
+      this.fullLogJustOpened = true;
       this.render();
       return;
     }
@@ -613,6 +650,18 @@ export class App implements ScreenContext {
     }
     const revealing = this.reveal.active;
     const focus = this.reveal.focus;
+    const inFullLog = this.ui.kind === "fullLog";
+    for (const box of this.chrome) box.visible = !inFullLog;
+    this.fullLogBox.visible = inFullLog;
+    if (inFullLog) {
+      this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+      if (this.fullLogJustOpened) {
+        this.fullLogJustOpened = false;
+        this.fullLogScroll.scrollTop = this.fullLogScroll.scrollHeight;
+      }
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerBackOnly"), this.ui.kind, false))]);
+      return;
+    }
     const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
     const partyOverride = revealing ? this.displayPartySnapshot : null;
 
@@ -987,6 +1036,8 @@ export class App implements ScreenContext {
 
   private renderMain(): string | StyledText {
     switch (this.ui.kind) {
+      case "fullLog":
+        return "";
       case "gameover":
         return gameoverScreen.renderMain(this.game);
 
@@ -1137,6 +1188,8 @@ export class App implements ScreenContext {
         return abilityBuybackScreen.renderFooter();
       case "gameover":
         return gameoverScreen.renderFooter();
+      case "fullLog":
+        return t("ui.footerBackOnly");
     }
   }
 }

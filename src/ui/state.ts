@@ -33,6 +33,7 @@ export type UiState =
   | { kind: "artifactDecisionPickCharacter" }
   | { kind: "artifactDecisionPickReplace"; characterId: Id }
   | { kind: "saveMenu"; previous: UiState }
+  | { kind: "fullLog"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
   | { kind: "eventOpenChest" }

@@ -55,23 +55,27 @@ describe("key-hint grammar (R2/R3)", () => {
 
 describe("global hints (R5)", () => {
   test("room offers party info, saving and quicksaving", () => {
-    expect(globalHints("room")).toBe("[b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room")).toBe("[b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("the save menu hides [q], since [q] is what opened it", () => {
-    expect(globalHints("saveMenu")).toBe("[s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("saveMenu")).toBe("[l] Log   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("game over leaves only the quit key", () => {
-    expect(globalHints("gameover")).toBe("[Ctrl+C] Quit");
+    expect(globalHints("gameover")).toBe("[l] Log   [Ctrl+C] Quit");
+  });
+
+  test("the log screen offers only the quit key: nothing but Esc, ↑/↓ and Ctrl+C works inside it", () => {
+    expect(globalHints("fullLog")).toBe("[Ctrl+C] Quit");
   });
 
   test("character info drops [b] — that screen is where [b] leads", () => {
-    expect(globalHints("characterInfo")).toBe("[q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("characterInfo")).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("party info can be suppressed for a screen that swallows the key", () => {
-    expect(globalHints("room", false)).toBe("[q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room", false)).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 });
 
@@ -89,11 +93,11 @@ describe("page hint placement (R4)", () => {
   });
 
   test("composeFooter divides the screen's hints from the global ones", () => {
-    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("a screen contributing no hints still renders the globals alone", () => {
-    expect(composeFooter("", "gameover", false)).toBe("[Ctrl+C] Quit");
+    expect(composeFooter("", "gameover", false)).toBe("[l] Log   [Ctrl+C] Quit");
   });
 });
 

@@ -184,3 +184,54 @@ describe("room log", () => {
     expect(texts).toContain(game.state.message);
   }, 30000);
 });
+
+describe("run log screen", () => {
+  test("[l] opens the full run log, Esc returns, and the footer never offers [l] inside it", async () => {
+    const fight = await openFight();
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    const frame = fight.captureCharFrame();
+    expect(frame).toContain("Run log");
+    expect(frame).toContain("[Esc] Back");
+    expect(frame).not.toContain("[l] Log");
+
+    await pressEscape(fight);
+    expect(fight.app.debugUiState.kind).not.toBe("fullLog");
+    expect(fight.captureCharFrame()).toContain("[l] Log");
+  }, 30000);
+
+  test("opened in the middle of a reveal, Esc closes the log and leaves the reveal running", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    await pressEscape(fight);
+    expect(fight.app.debugUiState.kind).not.toBe("fullLog");
+    expect(fight.app.debugRevealActive).toBe(true);
+  }, 30000);
+
+  test("keys that would save are swallowed inside the log screen", async () => {
+    const fight = await openFight();
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    const before = fight.app.debugRunLog.length;
+    for (const key of ["s", "q", "b", "1"]) {
+      fight.mockInput.pressKey(key);
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    expect(fight.app.debugRunLog.length).toBe(before);
+  }, 30000);
+
+  test("keeps the latest 500 entries of the run, across rooms", async () => {
+    const fight = await openFight();
+    for (let i = 0; i < 600; i++) fight.app.pushToast(`entry ${i}`);
+    fight.app.tickReveal(); // the first tick renders, which queues the toasts
+    for (let i = 0; i < 1000 && fight.app.debugRevealActive; i++) fight.app.tickReveal();
+    expect(fight.app.debugRunLog).toHaveLength(500);
+    expect(fight.app.debugRunLog.at(-1)!.text).toBe("entry 599");
+    expect(fight.app.debugRunLog[0]!.text).toBe("entry 100");
+  }, 30000);
+});
