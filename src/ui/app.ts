@@ -30,7 +30,6 @@ import {
   spriteForMonster,
   spriteForEvent,
   renderSpriteInSlot,
-  compositeSpriteRow,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
@@ -38,7 +37,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideIconBand, blankIconBand, type BattlefieldUnit } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, type BattlefieldUnit } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -876,19 +875,18 @@ export class App implements ScreenContext {
   }
 
   private buildSideBlock(units: BattlefieldUnit[]): TextChunk[][] {
-    const sprites = units.map((u) => u.sprite);
-    const iconBand = buildSideIconBand(
+    const spritePart = buildSideSpriteArea(
+      units.map((u) => u.sprite),
       units.map((u) => u.icons),
-      sprites,
+      units.map((u) => u.frameHeight),
       SLOT_WIDTH,
       SLOT_GAP
     );
-    const spritePart = compositeSpriteRow(sprites, SLOT_WIDTH, MAX_BOSS_HEIGHT, SLOT_GAP);
     const metaPart = mergeBlocksHorizontally(
       units.map((u) => this.buildUnitMeta(u.label, u.labelColor, u.statusText, u.statusColor)),
       SLOT_GAP
     );
-    return [...iconBand, ...spritePart, ...metaPart];
+    return [...spritePart, ...metaPart];
   }
 
   private buildEmptyEnemyBlock(message: string): TextChunk[][] {
@@ -938,8 +936,9 @@ export class App implements ScreenContext {
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
       const lens = unitFocus(c.id, "party", focus);
-      if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead }, lens);
-      return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp) }, lens);
+      const frameHeight = tierFrameHeight("party");
+      if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
+      return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
     });
     const partyBlock = this.buildSideBlock(partyUnits);
 
@@ -960,8 +959,9 @@ export class App implements ScreenContext {
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
           const lens = unitFocus(m.id, "monster", focus);
-          if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead }, lens);
-          return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp) }, lens);
+          const frameHeight = tierFrameHeight(m.tier);
+          if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
+          return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
       }

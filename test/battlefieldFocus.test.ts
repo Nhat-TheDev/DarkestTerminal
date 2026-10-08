@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { FOCUS_COLOR, FOCUS_GLYPH, blankIconBand, buildSideIconBand, dimColor, dimSprite, focusedUnit, unitFocus } from "../src/ui/battlefieldFocus";
+import { FOCUS_COLOR, FOCUS_GLYPH, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
 import { ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
-import { MAX_BOSS_HEIGHT, compositeSpriteRow, spriteSlotLayout } from "../src/ui/sprites";
+import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
@@ -90,7 +90,7 @@ describe("unitFocus", () => {
 });
 
 describe("focusedUnit", () => {
-  const unit = { sprite: { rows: ["A"], palette: { A: "#ff0000" } }, label: "VG", labelColor: "#5b7fa6", statusText: "10/10", statusColor: "#5fa85f" };
+  const unit = { sprite: { rows: ["A"], palette: { A: "#ff0000" } }, label: "VG", labelColor: "#5b7fa6", statusText: "10/10", statusColor: "#5fa85f", frameHeight: MAX_UNIT_HEIGHT };
   test("a lit unit keeps its colours and gains its icons", () => {
     const icons = [{ glyph: FOCUS_GLYPH.sword, color: FOCUS_COLOR.party }];
     expect(focusedUnit(unit, { dim: false, icons })).toEqual({ ...unit, icons });
@@ -115,30 +115,58 @@ describe("spriteSlotLayout", () => {
   });
 });
 
-describe("icon band", () => {
-  const sword = { glyph: FOCUS_GLYPH.sword, color: FOCUS_COLOR.party };
+describe("icons above the sprites", () => {
+  const sword: FocusIcon = { glyph: FOCUS_GLYPH.sword, color: FOCUS_COLOR.party };
   const wide = { rows: ["A".repeat(14)], palette: { A: "#ff0000" } };
   const normal = { rows: ["A".repeat(13)], palette: { A: "#ff0000" } };
+  const unit = tierFrameHeight("party");
+  const area = (sprites: Sprite[], icons: FocusIcon[][], frameHeights = sprites.map(() => unit)) =>
+    buildSideSpriteArea(sprites, icons, frameHeights, SLOT_WIDTH, SLOT_GAP).map(textOf);
+  const iconRow = (lines: string[]) => lines.findIndex((line) => line.trim() !== "");
 
-  test("is ICON_BAND_ROWS lines as wide as the sprite canvas, icons on the first, second blank", () => {
-    const band = buildSideIconBand([[sword], []], [normal, normal], SLOT_WIDTH, SLOT_GAP);
+  test("tier heights are the max sprite heights: characters and normal monsters, elites, bosses", () => {
+    expect(tierFrameHeight("party")).toBe(MAX_UNIT_HEIGHT);
+    expect(tierFrameHeight("normal")).toBe(MAX_UNIT_HEIGHT);
+    expect(tierFrameHeight("elite")).toBe(MAX_ELITE_HEIGHT);
+    expect(tierFrameHeight("boss")).toBe(MAX_BOSS_HEIGHT);
+  });
+
+  test("covers the icon band plus the sprite frame, as wide as the sprite canvas", () => {
+    const lines = area([normal, normal], [[sword], []]);
     const { canvasWidth } = spriteSlotLayout([normal, normal], SLOT_WIDTH, SLOT_GAP);
-    expect(band).toHaveLength(ICON_BAND_ROWS);
-    expect(textOf(band[0]!)).toHaveLength(canvasWidth);
-    expect(textOf(band[1]!)).toBe(" ".repeat(canvasWidth));
+    expect(lines).toHaveLength(ICON_BAND_ROWS + MAX_BOSS_HEIGHT);
+    for (const line of lines) expect(line).toHaveLength(canvasWidth);
+  });
+
+  test("an icon sits one blank row above the tallest sprite of its tier", () => {
+    const total = ICON_BAND_ROWS + MAX_BOSS_HEIGHT;
+    for (const tier of ["party", "elite", "boss"] as const) {
+      const height = tierFrameHeight(tier);
+      const lines = area([normal], [[sword]], [height]);
+      const row = iconRow(lines);
+      expect(row).toBe(total - height - 2);
+      expect(lines[row + 1]!.trim()).toBe("");
+    }
+  });
+
+  test("units of one tier wear their icons on the same row", () => {
+    const lines = area([normal, normal], [[sword], [sword]]);
+    const row = iconRow(lines);
+    expect(lines[row]!.split(FOCUS_GLYPH.sword)).toHaveLength(3);
   });
 
   test("icons sit over the middle of each sprite, also for a sprite wider than its slot", () => {
-    const band = buildSideIconBand([[sword], [sword]], [wide, normal], SLOT_WIDTH, SLOT_GAP);
     const { starts } = spriteSlotLayout([wide, normal], SLOT_WIDTH, SLOT_GAP);
-    const line = textOf(band[0]!);
+    const lines = area([wide, normal], [[sword], [sword]]);
+    const line = lines[iconRow(lines)]!;
     expect(line.indexOf(FOCUS_GLYPH.sword)).toBe(starts[0]! + 7);
     expect(line.lastIndexOf(FOCUS_GLYPH.sword)).toBe(starts[1]! + 6);
   });
 
   test("several icons stay centred on the sprite", () => {
     const icons = [FOCUS_GLYPH.support, FOCUS_GLYPH.buff, FOCUS_GLYPH.heal].map((glyph) => ({ glyph, color: FOCUS_COLOR.party }));
-    const line = textOf(buildSideIconBand([icons], [normal], SLOT_WIDTH, SLOT_GAP)[0]!);
+    const lines = area([normal], [icons]);
+    const line = lines[iconRow(lines)]!;
     expect(line.trim()).toBe(`${FOCUS_GLYPH.support}${FOCUS_GLYPH.buff}${FOCUS_GLYPH.heal}`);
     expect(line.indexOf(FOCUS_GLYPH.buff)).toBe(6);
   });

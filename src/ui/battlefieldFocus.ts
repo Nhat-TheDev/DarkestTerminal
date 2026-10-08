@@ -1,7 +1,7 @@
 import type { TextChunk } from "@opentui/core";
-import type { Id, LogSession } from "../types";
+import type { Id, LogSession, MonsterTier } from "../types";
 import { ICON_BAND_ROWS } from "./layout";
-import { spriteSlotLayout, spriteWidth, type Sprite } from "./sprites";
+import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, spriteWidth, type Sprite } from "./sprites";
 import { colorChunk, plainChunk } from "./theme";
 
 export type UnitSide = "party" | "monster";
@@ -71,7 +71,16 @@ export interface BattlefieldUnit {
   labelColor: string;
   statusText: string;
   statusColor: string;
+  /** Tallest sprite the unit's tier allows (`tierFrameHeight`): its icons sit one blank row above it. */
+  frameHeight: number;
   icons: FocusIcon[];
+}
+
+/** The tallest sprite a tier may draw: characters and normal monsters share one height. */
+export function tierFrameHeight(tier: MonsterTier | "party"): number {
+  if (tier === "boss") return MAX_BOSS_HEIGHT;
+  if (tier === "elite") return MAX_ELITE_HEIGHT;
+  return MAX_UNIT_HEIGHT;
 }
 
 export function focusedUnit(unit: Omit<BattlefieldUnit, "icons">, focus: UnitFocus): BattlefieldUnit {
@@ -80,23 +89,26 @@ export function focusedUnit(unit: Omit<BattlefieldUnit, "icons">, focus: UnitFoc
 }
 
 /**
- * The `ICON_BAND_ROWS` rows above a side's sprites: each unit's icons centred over the middle of its
- * own sprite (not its nominal slot — a wide sprite or a boss sits off the slot grid), the rest blank.
- * As wide as the sprite canvas, so it lines up with the sprite rows below it.
+ * A side's sprites, bottom-aligned in `ICON_BAND_ROWS + MAX_BOSS_HEIGHT` rows, with each unit's icons
+ * one blank row above the tallest sprite of its tier (`frameHeights`) — so every unit of a tier wears
+ * its icons on the same row, and a boss uses the whole band. Icons are centred over the middle of the
+ * unit's own sprite, not its nominal slot (a wide sprite or a boss sits off the slot grid).
  */
-export function buildSideIconBand(icons: FocusIcon[][], sprites: Sprite[], slotWidth: number, gap: number): TextChunk[][] {
-  const { starts, canvasWidth } = spriteSlotLayout(sprites, slotWidth, gap);
-  const cells: (FocusIcon | null)[] = new Array(canvasWidth).fill(null);
+export function buildSideSpriteArea(sprites: Sprite[], icons: FocusIcon[][], frameHeights: number[], slotWidth: number, gap: number): TextChunk[][] {
+  const height = ICON_BAND_ROWS + MAX_BOSS_HEIGHT;
+  const rows = compositeSpriteRow(sprites, slotWidth, height, gap);
+  const { starts } = spriteSlotLayout(sprites, slotWidth, gap);
   icons.forEach((unitIcons, i) => {
+    if (unitIcons.length === 0) return;
+    const row = rows[height - frameHeights[i]! - ICON_BAND_ROWS]!;
     const centre = starts[i]! + Math.floor(spriteWidth(sprites[i]!) / 2);
     const left = centre - Math.floor((unitIcons.length - 1) / 2);
     unitIcons.forEach((icon, k) => {
       const x = left + k;
-      if (x >= 0 && x < canvasWidth) cells[x] = icon;
+      if (x >= 0 && x < row.length) row[x] = colorChunk(icon.glyph, icon.color);
     });
   });
-  const iconRow = cells.map((cell) => (cell ? colorChunk(cell.glyph, cell.color) : plainChunk(" ")));
-  return [iconRow, ...Array.from({ length: ICON_BAND_ROWS - 1 }, () => [plainChunk(" ".repeat(canvasWidth))])];
+  return rows;
 }
 
 /** The same band for a block that has no units (campfire, chest, event, empty room). */

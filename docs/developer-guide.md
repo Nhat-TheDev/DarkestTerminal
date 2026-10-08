@@ -130,9 +130,12 @@ row/column misalignment or missing palette colors. Sprites are edited
 visually in the browser via `bun run game-editor` (`tools/game-editor/`,
 Sprite Editor tab) rather than by hand-editing the character grid in JSON.
 
-Above the sprites sits a 2-row **icon band** (`ICON_BAND_ROWS`, `src/ui/layout.ts`): one
-row of role icons, one blank row, so an icon never touches a sprite; each unit's icons are
-centred over its own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
+Each unit's role icons sit one blank row above the tallest sprite its tier allows
+(`tierFrameHeight`, `src/ui/battlefieldFocus.ts`: characters and normal monsters share
+`MAX_UNIT_HEIGHT`, then `MAX_ELITE_HEIGHT`, `MAX_BOSS_HEIGHT`), so every unit of a tier wears its
+icons on the same row and an icon never touches a sprite. A boss needs the 2 extra rows above the
+frame (`ICON_BAND_ROWS`, `src/ui/layout.ts`); the battlefield always reserves them. Icons are
+centred over the unit's own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
 every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
 `src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
 a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage,
