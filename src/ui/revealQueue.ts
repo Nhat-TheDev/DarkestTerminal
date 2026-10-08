@@ -1,0 +1,78 @@
+import type { LogEntry, LogSession } from "../types";
+
+/** One reveal step. Every pacing number below is a multiple of it. */
+export const REVEAL_TICK_MS = 100;
+/** A session stays on screen at least this many ticks: 15 × 100 ms = 1.5 s. */
+export const SESSION_MIN_TICKS = 15;
+
+interface Group {
+  entries: LogEntry[];
+  session: LogSession | null;
+  /** Ticks the group occupies, counting the tick that shows its first line. */
+  span: number;
+}
+
+/** Consecutive entries with the same session id form one group; consecutive session-less entries form one too. */
+function toGroups(entries: LogEntry[]): Group[] {
+  const groups: Group[] = [];
+  for (const entry of entries) {
+    const last = groups[groups.length - 1];
+    if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
+    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0 });
+  }
+  for (const group of groups) group.span = group.session ? Math.max(SESSION_MIN_TICKS, group.entries.length) : group.entries.length;
+  return groups;
+}
+
+/**
+ * The single clock behind the log reveal and the battlefield highlight. `tick()` is called once per
+ * REVEAL_TICK_MS; what it returns is exactly what became visible in that step, and `focus` is the
+ * session those lines belong to — read both in the same render and the screen cannot drift from the log.
+ */
+export class RevealQueue {
+  private groups: Group[] = [];
+  private current: Group | null = null;
+  private shown = 0;
+  private ticks = 0;
+
+  enqueue(entries: LogEntry[]): void {
+    this.groups.push(...toGroups(entries));
+  }
+
+  /** True from the first queued line until the last session's hold has run out. */
+  get active(): boolean {
+    return this.current !== null || this.groups.length > 0;
+  }
+
+  /** The session whose participants are lit right now, or null (nothing revealing, or session-less lines showing). */
+  get focus(): LogSession | null {
+    return this.current?.session ?? null;
+  }
+
+  tick(): LogEntry[] {
+    if (this.current && this.ticks >= this.current.span) this.current = null;
+    if (!this.current) {
+      const next = this.groups.shift();
+      if (!next) return [];
+      this.current = next;
+      this.shown = 0;
+      this.ticks = 0;
+    }
+    const revealed: LogEntry[] = [];
+    if (this.shown < this.current.entries.length) revealed.push(this.current.entries[this.shown++]!);
+    this.ticks++;
+    // Lines with no session have nothing to hold: the group ends with its last line.
+    if (!this.current.session && this.shown >= this.current.entries.length) this.current = null;
+    return revealed;
+  }
+
+  /** Skip: returns every line not yet revealed and leaves the queue idle. */
+  flush(): LogEntry[] {
+    const rest = [...(this.current ? this.current.entries.slice(this.shown) : []), ...this.groups.flatMap((g) => g.entries)];
+    this.current = null;
+    this.groups = [];
+    this.shown = 0;
+    this.ticks = 0;
+    return rest;
+  }
+}
