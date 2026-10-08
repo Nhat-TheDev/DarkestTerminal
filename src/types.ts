@@ -742,11 +742,32 @@ export interface PartyStateSnapshot {
   satiety: number;
 }
 
+/**
+ * One actor's action (or one actor-less tick block) as the battlefield should present it. Every
+ * `LogEntry` produced by the action shares the same object, so the UI can group consecutive
+ * entries by `id` and light exactly the units named here. All ids are battlefield unit ids — a
+ * summon is recorded as its owner, since it has no sprite of its own.
+ */
+export interface LogSession {
+  /** Index in `CombatState.log` of the first entry this session tagged: unique within a combat, stable across a save round trip. */
+  id: number;
+  actorId: Id | null;
+  /** Opposing-side targets of a skill that deals damage, hit or missed. */
+  attackedIds: Id[];
+  /** Opposing-side targets of a skill with no damage (debuff-only). */
+  debuffedIds: Id[];
+  buffedIds: Id[];
+  healedIds: Id[];
+  /** Units lit without an icon: DoT ticks, dying damage, artifact auto-damage, the owner of a summon that expires. */
+  affectedIds: Id[];
+}
+
 export interface LogEntry {
   text: string;
   kind: LogEntryKind;
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
+  session?: LogSession;
 }
 
 export interface CombatState {
@@ -761,6 +782,8 @@ export interface CombatState {
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
   roundStartPartySnapshot?: PartyStateSnapshot;
+  /** Transient: the session being built while an actor's turn runs (see `runInSession`). */
+  activeSession?: LogSession;
   outcome?: "victory" | "defeat";
 }
 
