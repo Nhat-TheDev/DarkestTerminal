@@ -222,7 +222,7 @@ describe("key handler lifecycle", () => {
 
 describe("character info screen", () => {
   test("shows which digit switches to which party member, and switches on that digit", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const classIds = CLASSES.slice(0, 4).map((c) => c.id);
     const app = new App(renderer, new Game(7, classIds));
     await renderOnce();

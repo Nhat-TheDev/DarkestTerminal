@@ -1,5 +1,5 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSnapshot, RoomType, Floor } from "../types";
+import type { Character, Monster, Id, LogEntry, LogSession, CombatantSnapshot, CombatState, PartyStateSnapshot, RoomType, Floor } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
@@ -23,7 +23,6 @@ import {
   fearColorFor,
   joinLines,
   progressBar,
-  LOG_KIND_STYLE,
   highlightKeyHints,
 } from "./theme";
 import {
@@ -36,9 +35,11 @@ import {
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
-  type Sprite,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
+import { unitFocus, focusedUnit, buildSideIconBand, blankIconBand, type BattlefieldUnit } from "./battlefieldFocus";
+import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { composeFooter } from "./keyHints";
@@ -61,8 +62,8 @@ import * as abilityBuybackScreen from "./screens/abilityBuyback";
 import * as characterInfoScreen from "./screens/characterInfo";
 import * as runnerScreen from "./screens/runner";
 
-const LOG_HISTORY_SIZE = 20;
-const LOG_REVEAL_INTERVAL_MS = 800;
+const ROOM_LOG_SIZE = 50;
+const RUN_LOG_SIZE = 500;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
@@ -96,9 +97,14 @@ export class App implements ScreenContext {
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
   private lastLogLength = 0;
-  private observedCombatLog: LogEntry[] | null = null;
-  private logHistory: LogEntry[] = [];
-  private pendingReveal: LogEntry[] = [];
+  private observedCombat: CombatState | null = null;
+  private roomLog: LogEntry[] = [];
+  private roomLogFloor: Floor | null = null;
+  private roomLogRoomId: Id | null = null;
+  private runLog: LogEntry[] = [];
+  private reveal = new RevealQueue();
+  private autoReveal: boolean;
+  private lastRender = { revealing: false, focusId: null as number | null, logTailSessionId: null as number | null };
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private displaySnapshot: CombatantSnapshot[] | null = null;
   private displayPartySnapshot: PartyStateSnapshot | null = null;
@@ -109,7 +115,8 @@ export class App implements ScreenContext {
   private roomHistory: { roomId: Id; type: RoomType }[] = [];
   private historyFloorRef: Floor | null = null;
 
-  constructor(private renderer: CliRenderer, game?: Game) {
+  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
+    this.autoReveal = options.autoReveal ?? true;
     this.game = game ?? new Game();
 
     const panel = {
@@ -205,6 +212,30 @@ export class App implements ScreenContext {
     return this.game;
   }
 
+  get debugRoomLog(): LogEntry[] {
+    return this.roomLog;
+  }
+
+  get debugRunLog(): LogEntry[] {
+    return this.runLog;
+  }
+
+  get debugFocus(): LogSession | null {
+    return this.reveal.focus;
+  }
+
+  get debugRevealActive(): boolean {
+    return this.reveal.active;
+  }
+
+  get debugDisplaySnapshot(): CombatantSnapshot[] | null {
+    return this.displaySnapshot;
+  }
+
+  get debugLastRender() {
+    return this.lastRender;
+  }
+
   setUi(next: UiState): void {
     if (next.kind !== this.ui.kind) this.listPage = 0;
     this.ui = next;
@@ -238,7 +269,7 @@ export class App implements ScreenContext {
   }
 
   logInfo(text: string): void {
-    this.logHistory.push({ text, kind: "info" });
+    this.appendLog([{ text, kind: "info" }]);
   }
 
   syncUiToGameState(): void {
@@ -343,7 +374,7 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
-    if (this.pendingReveal.length > 0) {
+    if (this.reveal.active) {
       this.flushPendingReveal();
       return;
     }
@@ -512,12 +543,12 @@ export class App implements ScreenContext {
 
   reportUnusable(reason: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
-    else this.logHistory.push({ text: reason, kind: "info" });
+    else this.appendLog([{ text: reason, kind: "info" }]);
   }
 
   pushToast(text: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
-    else this.logHistory.push({ text, kind: "info" });
+    else this.appendLog([{ text, kind: "info" }]);
   }
 
   getPendingFloorAdvance(): boolean {
@@ -539,25 +570,49 @@ export class App implements ScreenContext {
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
+    this.syncRoomLog();
 
     // Reveal-state bookkeeping runs before the header/party/monster panels below so all of them can
     // read the same "as of the last revealed log line" snapshot, instead of the header alone jumping
     // straight to the live post-combat totals while HP/MP/status are still catching up to the log.
-    const combatLog = s.combat?.log ?? null;
-    if (combatLog !== this.observedCombatLog) {
-      this.observedCombatLog = combatLog;
+    const combat = s.combat;
+    const fresh: LogEntry[] = [];
+    // The combat whose round-start state a fresh reveal starts from: normally the current one, but the
+    // round that wipes the party ends the combat before this render runs.
+    let revealSource = combat;
+    if (combat !== this.observedCombat) {
+      // Whatever the previous combat logged after the last line this screen saw still has to be narrated.
+      const finished = this.observedCombat;
+      if (finished && finished.log.length > this.lastLogLength) {
+        fresh.push(...finished.log.slice(this.lastLogLength));
+        revealSource = finished;
+      }
+      this.observedCombat = combat;
       this.lastLogLength = 0;
       this.displaySnapshot = null;
       this.displayPartySnapshot = null;
+      // A save loaded mid-fight arrives with its resolved rounds already in the log: the player saw them
+      // before saving, so they are not replayed.
+      if (combat && combat.phase === "command" && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
-    if (combatLog && combatLog.length > this.lastLogLength) {
-      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
-      this.displayPartySnapshot = s.combat!.roundStartPartySnapshot ?? null;
-      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
-      this.lastLogLength = combatLog.length;
-      this.scheduleReveal();
+    if (combat && combat.log.length > this.lastLogLength) {
+      fresh.push(...combat.log.slice(this.lastLogLength));
+      this.lastLogLength = combat.log.length;
     }
-    const revealing = this.pendingReveal.length > 0;
+    if (fresh.length > 0) {
+      // Only a fresh reveal starts from the round-start state and takes its first step now. Lines queued
+      // behind a running reveal (a toast, a quicksave) neither rewind HP/MP/coins nor add a tick.
+      const wasIdle = !this.reveal.active;
+      if (wasIdle) {
+        const fromRound = fresh.some((e) => e.snapshot !== undefined);
+        this.displaySnapshot = fromRound ? (revealSource?.roundStartSnapshot ?? null) : null;
+        this.displayPartySnapshot = fromRound ? (revealSource?.roundStartPartySnapshot ?? null) : null;
+      }
+      this.reveal.enqueue(fresh);
+      if (wasIdle) this.startReveal();
+    }
+    const revealing = this.reveal.active;
+    const focus = this.reveal.focus;
     const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
     const partyOverride = revealing ? this.displayPartySnapshot : null;
 
@@ -605,7 +660,7 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
+    this.battlefield.content = joinLines(this.renderBattlefield(hpOverride, focus));
 
     const partyLines: TextChunk[][] = [];
     s.party.forEach((c, i) => {
@@ -632,48 +687,73 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
     }
     this.renderLogContent();
+    this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
+  }
+
+  /** The room log belongs to one room: the first thing written (or rendered) after the player changes room starts it afresh. */
+  private syncRoomLog(): void {
+    const s = this.game.state;
+    if (s.floor !== this.roomLogFloor || s.currentRoomId !== this.roomLogRoomId) {
+      this.roomLogFloor = s.floor;
+      this.roomLogRoomId = s.currentRoomId;
+      this.roomLog = [];
+    }
+  }
+
+  private appendLog(entries: LogEntry[]): void {
+    this.syncRoomLog();
+    this.roomLog.push(...entries);
+    this.runLog.push(...entries);
+    if (this.roomLog.length > ROOM_LOG_SIZE) this.roomLog.splice(0, this.roomLog.length - ROOM_LOG_SIZE);
+    if (this.runLog.length > RUN_LOG_SIZE) this.runLog.splice(0, this.runLog.length - RUN_LOG_SIZE);
   }
 
   private renderLogContent(): void {
-    const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
-    if (displayLog.length === 0) {
+    if (this.roomLog.length === 0) {
       this.log.content = this.game.state.message;
       return;
     }
-    this.log.content = joinLines(
-      displayLog.map((entry) => {
-        const style = LOG_KIND_STYLE[entry.kind];
-        return [colorChunk(`${style.icon} `, style.color), colorChunk(entry.text, style.color)];
-      })
-    );
+    this.log.content = joinLines(logLines(this.roomLog));
   }
 
-  private scheduleReveal(): void {
-    if (this.revealTimer !== null) return;
+  /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */
+  private applyRevealed(entries: LogEntry[]): void {
+    if (entries.length === 0) return;
+    this.appendLog(entries);
+    for (const entry of entries) {
+      if (entry.snapshot) this.displaySnapshot = entry.snapshot;
+      if (entry.partySnapshot) this.displayPartySnapshot = entry.partySnapshot;
+    }
+  }
+
+  /** Called only when lines were queued on an idle queue: shows the first line immediately, then lets the timer carry on. */
+  private startReveal(): void {
+    this.applyRevealed(this.reveal.tick());
+    this.scheduleRevealTick();
+  }
+
+  private scheduleRevealTick(): void {
+    if (!this.autoReveal || this.revealTimer !== null || !this.reveal.active) return;
     this.revealTimer = setTimeout(() => {
       this.revealTimer = null;
-      const next = this.pendingReveal.shift();
-      if (next) {
-        this.logHistory.push(next);
-        if (next.snapshot) this.displaySnapshot = next.snapshot;
-        if (next.partySnapshot) this.displayPartySnapshot = next.partySnapshot;
-      }
-      if (this.pendingReveal.length > 0) this.scheduleReveal();
-      this.render();
-    }, LOG_REVEAL_INTERVAL_MS);
+      this.tickReveal();
+    }, REVEAL_TICK_MS);
+  }
+
+  /** One reveal step: the log line, the HP/MP snapshot and the battlefield highlight all move together, in this single render. */
+  tickReveal(): void {
+    this.applyRevealed(this.reveal.tick());
+    this.scheduleRevealTick();
+    this.render();
   }
 
   private flushPendingReveal(): void {
-    if (this.pendingReveal.length === 0) return;
+    if (!this.reveal.active) return;
     if (this.revealTimer !== null) {
       clearTimeout(this.revealTimer);
       this.revealTimer = null;
     }
-    const last = this.pendingReveal[this.pendingReveal.length - 1];
-    this.logHistory.push(...this.pendingReveal);
-    if (last?.snapshot) this.displaySnapshot = last.snapshot;
-    if (last?.partySnapshot) this.displayPartySnapshot = last.partySnapshot;
-    this.pendingReveal = [];
+    this.applyRevealed(this.reveal.flush());
     this.render();
   }
 
@@ -746,18 +826,20 @@ export class App implements ScreenContext {
     ];
   }
 
-  private buildSideBlock(units: { sprite: Sprite; label: string; labelColor: string; statusText: string; statusColor: string }[]): TextChunk[][] {
-    const spritePart = compositeSpriteRow(
-      units.map((u) => u.sprite),
+  private buildSideBlock(units: BattlefieldUnit[]): TextChunk[][] {
+    const sprites = units.map((u) => u.sprite);
+    const iconBand = buildSideIconBand(
+      units.map((u) => u.icons),
+      sprites,
       SLOT_WIDTH,
-      MAX_BOSS_HEIGHT,
       SLOT_GAP
     );
+    const spritePart = compositeSpriteRow(sprites, SLOT_WIDTH, MAX_BOSS_HEIGHT, SLOT_GAP);
     const metaPart = mergeBlocksHorizontally(
       units.map((u) => this.buildUnitMeta(u.label, u.labelColor, u.statusText, u.statusColor)),
       SLOT_GAP
     );
-    return [...spritePart, ...metaPart];
+    return [...iconBand, ...spritePart, ...metaPart];
   }
 
   private buildEmptyEnemyBlock(message: string): TextChunk[][] {
@@ -797,7 +879,7 @@ export class App implements ScreenContext {
     return lines;
   }
 
-  private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
+  private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null, focus: LogSession | null = null): TextChunk[][] {
     const s = this.game.state;
 
     const partyUnits = s.party.map((c) => {
@@ -806,9 +888,9 @@ export class App implements ScreenContext {
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      if (!isAlive) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead };
-      const sprite = spriteForClass(c.classId);
-      return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp) };
+      const lens = unitFocus(c.id, "party", focus);
+      if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead }, lens);
+      return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp) }, lens);
     });
     const partyBlock = this.buildSideBlock(partyUnits);
 
@@ -828,9 +910,9 @@ export class App implements ScreenContext {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
-          if (hp <= 0) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead };
-          const sprite = spriteForMonster(m.archetypeId, m.tier);
-          return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp) };
+          const lens = unitFocus(m.id, "monster", focus);
+          if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead }, lens);
+          return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp) }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
       }
@@ -844,11 +926,14 @@ export class App implements ScreenContext {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
     }
+    if (!(s.combat && s.combat.combatants.some((c) => c.ref.kind === "monster"))) {
+      enemyBlock = [...blankIconBand(EMPTY_ENEMY_WIDTH), ...enemyBlock];
+    }
 
     const divider: TextChunk[][] = [];
     for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
       divider.push(
-        i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
+        i === ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS) / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
           ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
           : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
       );

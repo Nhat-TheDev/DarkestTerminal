@@ -99,7 +99,7 @@ describe("page hint placement (R4)", () => {
 
 describe("hints render into the footer, never into the body (R1)", () => {
   test("the room screen lists paths only — the [i]/[a] keys live in the footer", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     // Every run opens on an ambush; softening it just lets the test reach the room screen quickly.
     game.ctx.monsters.forEach((m) => (m.hp = 1));
@@ -147,7 +147,7 @@ describe("digit ranges match the options actually on screen (R6)", () => {
 
 describe("footers resolve against a live game", () => {
   test("the room screen counts its actual exits, and combat its actual options", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
@@ -176,7 +176,7 @@ describe("footers resolve against a live game", () => {
   }, 20000);
 
   test("no screen ever renders an unresolved template or an empty bracket", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const app = new App(renderer, new Game(7));
     await renderOnce();
 
@@ -207,7 +207,7 @@ describe("room footer tracks what the room can actually do", () => {
   }
 
   test("[i] is dropped when the bag is empty, since the key does nothing then", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
@@ -224,7 +224,7 @@ describe("room footer tracks what the room can actually do", () => {
   }, 20000);
 
   test("[i] comes back once the party is carrying something", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
