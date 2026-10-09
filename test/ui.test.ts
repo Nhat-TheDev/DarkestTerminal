@@ -6,7 +6,7 @@ import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
-import { getRoom } from "../src/engine/dungeon";
+import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
@@ -577,5 +577,49 @@ describe("Rest room runner screens", () => {
     expect(room.cleared).toBe(true);
     expect(game.state.restRunner ?? null).toBeNull();
     expect(app.debugUiState.kind).toBe("campReflection");
+  });
+});
+
+describe("a panel scrolled with the mouse wheel", () => {
+  /** A Rest room with a Runner in it, entered from a fresh run. */
+  function gameInRunnerRoom(): Game {
+    for (let seed = 1; seed < 300; seed++) {
+      const game = new Game(seed, ["vanguard", "mage", "rogue", "acolyte"]);
+      game.state.combat = null;
+      const rest = game.state.floor.rooms.find((r) => r.type === "rest")!;
+      game.state.currentRoomId = rest.id;
+      enterRoom(game.state, rest, game.ctx);
+      if (game.state.restRunner) return game;
+    }
+    throw new Error("no seed rolled a Runner");
+  }
+
+  test("does not carry its offset into the next, shorter screen", async () => {
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 50 });
+    const app = new App(renderer, gameInRunnerRoom());
+    await renderOnce();
+    const dungeon = () => {
+      const rows = captureCharFrame().split("\n");
+      return rows.slice(rows.findIndex((r) => r.includes("─Dungeon")) + 1).join("\n");
+    };
+
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+    expect(dungeon()).toContain("You have");
+    await mockMouse.scroll(90, 33, "down");
+    await renderOnce();
+    expect(dungeon()).not.toContain("You have");
+
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("1");
+    await renderOnce();
+    await Bun.sleep(300);
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("pickAction");
+    expect(dungeon()).toContain("choose an action");
   });
 });

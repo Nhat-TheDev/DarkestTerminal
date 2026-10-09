@@ -104,6 +104,8 @@ export class App implements ScreenContext {
   private fullLogBuiltFrom = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
+  /** The screen the main panel last drew, so a new screen starts unscrolled. */
+  private mainUi: UiState | null = null;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
   private roomLogRoomId: Id | null = null;
@@ -720,6 +722,7 @@ export class App implements ScreenContext {
     this.progress.content = joinLines([progressChunks]);
 
     this.battlefield.content = joinLines(this.renderBattlefield(hpOverride, focus));
+    this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
     s.party.forEach((c, i) => {
@@ -736,6 +739,8 @@ export class App implements ScreenContext {
     });
     this.party.content = joinLines(partyLines);
     this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
+    this.keepScrollInRange(this.party);
+    this.keepScrollInRange(this.monsters);
     if (revealing) {
       this.main.content = t("ui.revealingCombat");
       // The reveal swallows every key except the globals handled before it, and `[b]` is not one
@@ -745,8 +750,15 @@ export class App implements ScreenContext {
       this.main.content = this.renderMain();
       this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
     }
+    this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+    this.mainUi = this.ui;
     this.renderLogContent();
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
+  }
+
+  /** The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden. */
+  private keepScrollInRange(panel: TextRenderable, reset = false): void {
+    panel.scrollY = reset ? 0 : Math.min(panel.scrollY, Math.max(0, panel.lineCount - panel.height));
   }
 
   /** The room log belongs to one room: the first thing written (or rendered) after the player changes room starts it afresh. */
