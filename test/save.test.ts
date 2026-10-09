@@ -22,6 +22,9 @@ import { Game } from "../src/engine/game";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster, getArchetype } from "../src/data/monsters";
+import { migrateGameState } from "../src/engine/migration";
+import { getClass } from "../src/data/classes";
+import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Summon } from "../src/types";
 
 const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
@@ -323,5 +326,46 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       expect(resumedRat.subRace).toBe(archetype.subRace);
       expect(resumedRat.traitIds).toEqual(archetype.traitIds);
     });
+  });
+});
+
+describe("Loading a save after a data change", () => {
+  const savedState = (): GameState => structuredClone(new Game(11, PARTY).state);
+
+  test("a character saved with a since-renamed skill id loads with the current id", () => {
+    const state = savedState();
+    const mage = state.party.find((c) => c.classId === "mage")!;
+    const basicId = getClass("mage").skills[0]!.id;
+    mage.unlockedSkillIds = mage.unlockedSkillIds.map((id) => (id === basicId ? "renamed-old-basic" : id));
+    const migrated = migrateGameState(state);
+    expect(migrated.party.find((c) => c.classId === "mage")!.unlockedSkillIds).toContain(basicId);
+    expect(migrated.party.find((c) => c.classId === "mage")!.unlockedSkillIds).not.toContain("renamed-old-basic");
+  });
+
+  test("a pending milestone saved as text loads with a valid omen pending", () => {
+    const state = savedState() as GameState & { pendingFloorMilestoneMessage?: string | null };
+    state.pendingFloorMilestoneMessage = "Something changes in the dark beyond this floor.";
+    const migrated = migrateGameState(state) as typeof state;
+    expect(getFloorMilestoneOmen(migrated.pendingFloorMilestoneOmenId!)).toBeDefined();
+    expect(migrated.shownFloorMilestoneIds).toContain(migrated.pendingFloorMilestoneOmenId!);
+    expect(migrated.pendingFloorMilestoneMessage).toBeUndefined();
+  });
+
+  test("a pending omen id no longer in the data is replaced by one that is", () => {
+    const state = savedState();
+    state.pendingFloorMilestoneOmenId = "omen-removed-from-data";
+    state.shownFloorMilestoneIds = ["omen-removed-from-data"];
+    const migrated = migrateGameState(state);
+    expect(FLOOR_MILESTONE_OMENS.map((o) => o.id)).toContain(migrated.pendingFloorMilestoneOmenId!);
+  });
+
+  test("a pending omen that still exists is left as it is", () => {
+    const state = savedState();
+    const omenId = FLOOR_MILESTONE_OMENS[0]!.id;
+    state.pendingFloorMilestoneOmenId = omenId;
+    state.shownFloorMilestoneIds = [omenId];
+    const migrated = migrateGameState(state);
+    expect(migrated.pendingFloorMilestoneOmenId).toBe(omenId);
+    expect(migrated.shownFloorMilestoneIds).toEqual([omenId]);
   });
 });

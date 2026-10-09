@@ -77,6 +77,7 @@
   "dungeon.restEnter": "The party stops at {{room}} and gathers around the campfire.",
   "dungeon.arrived": "Arrived at {{room}}.",
   "dungeon.skippedGuardianFight": "You leave {{room}} without a fight.",
+  "dungeon.retiredClassFallback": "Old",
   "combat.barterBuffs": "The runner's bargains take hold: {{items}}.",
   "combat.started": "Battle begins in room {{roomId}}.",
   "combat.artifactAutoDamage": "{{character}}'s artifact deals {{amount}} damage to {{target}}.",

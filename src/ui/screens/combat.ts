@@ -1,5 +1,5 @@
 import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
-import type { Character, CombatantRef, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
+import type { Character, CombatantRef, CombatStat, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
@@ -13,7 +13,7 @@ import { paginate } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 
-const COMBAT_STAT_LABEL: Record<string, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed" };
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed", magicPower: "Magic Power" };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: "Fear", satiety: "Satiety" };
 
 /** Who a skill's effects land on, derived from the skill's own `target` field — every effect in a skill shares the same targets. */
@@ -105,7 +105,7 @@ function summonEffectLine(castId: string): string {
   return skills.length > 0 ? `${head}\n${t("ui.skillEffectSummonSkills", { skills: skills.join(", ") })}` : head;
 }
 
-/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and a damage effect's `critChance`. */
+/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and each distinct `critChance` among its damage effects. */
 export function skillMechanicLines(sk: SkillDefinition): string[] {
   const lines: string[] = [];
   if (sk.isUltimate) lines.push(t("ui.skillUltimateLine"));
@@ -119,8 +119,8 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
     lines.push(t("ui.skillConditionalBonusLine", { percent: sk.conditionalBonus.ignoreDefensePercentBonus, status }));
     if (sk.conditionalBonus.consumesStatus) lines.push(t("ui.skillConsumesStatusLine", { status }));
   }
-  const critEffect = (sk.effects ?? []).find((e) => e.kind === "damage" && (e.critChance ?? 0) > 0);
-  if (critEffect) lines.push(t("ui.skillCritChanceLine", { percent: Math.round((critEffect.critChance ?? 0) * 100) }));
+  const critPercents = new Set((sk.effects ?? []).filter((e) => e.kind === "damage" && (e.critChance ?? 0) > 0).map((e) => Math.round((e.critChance ?? 0) * 100)));
+  for (const percent of critPercents) lines.push(t("ui.skillCritChanceLine", { percent }));
   return lines;
 }
 
