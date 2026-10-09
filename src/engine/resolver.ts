@@ -460,7 +460,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
   ctx.log.push({
     text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
     kind: "info",
-    ...(statusRole(def) === "buff" ? { buffLostOf: isSummon(actor) ? actor.ownerId : actor.id } : {}),
+    ...(statusRole(def) === "buff" ? { buffLostOf: isSummon(actor) ? actor.ownerId : actor.id, ...(isSummon(actor) ? { buffLostOfSummon: true as const } : {}) } : {}),
   });
 }
 

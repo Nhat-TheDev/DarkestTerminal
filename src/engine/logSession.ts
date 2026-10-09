@@ -11,6 +11,11 @@ function addUnique(list: Id[], id: Id): void {
   if (!list.includes(id)) list.push(id);
 }
 
+/** Records that `actor`, if it is a summon, took part in the running session. */
+function noteSummon(session: LogSession, actor: Actor): void {
+  if (isSummon(actor)) addUnique(session.summonIds, actor.ownerId);
+}
+
 /** What a non-damage effect means for a unit on the caster's own side, or `null` when it is a cost/drawback rather than help. */
 function sameSideRole(effect: SkillEffect): "healed" | "buffed" | null {
   switch (effect.kind) {
@@ -49,6 +54,8 @@ export function noteSkillTarget(combat: CombatState, source: Actor, target: Acto
   const session = combat.activeSession;
   if (!session) return;
   const id = unitId(target);
+  noteSummon(session, source);
+  noteSummon(session, target);
   if (isPlayerSide(source) !== isPlayerSide(target)) {
     if (skillDealsDamage && effects.length > 0) addUnique(session.attackedIds, id);
     else if (effects.some(isStatDebuff)) addUnique(session.debuffedIds, id);
@@ -74,12 +81,18 @@ export function noteBasicAttack(combat: CombatState, source: Actor, target: Acto
 
 /** Lights `actor` in the running session without giving it a role (DoT tick, dying damage, an artifact's bearer). */
 export function noteAffected(combat: CombatState, actor: Actor): void {
-  if (combat.activeSession) addUnique(combat.activeSession.affectedIds, unitId(actor));
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(session.affectedIds, unitId(actor));
+  noteSummon(session, actor);
 }
 
 /** The attack aimed at `target` missed or was dodged: the battlefield says "miss" instead of a number. */
 export function noteMiss(combat: CombatState, target: Actor): void {
-  if (combat.activeSession) addUnique(combat.activeSession.missedIds, unitId(target));
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(session.missedIds, unitId(target));
+  noteSummon(session, target);
 }
 
 /** A damage-over-time or heal-over-time tick moved `actor`'s HP: the battlefield shows each kind it received, not just the net change. */
@@ -87,22 +100,31 @@ export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" 
   const session = combat.activeSession;
   if (!session) return;
   addUnique(kind === "damage" ? session.tickDamageIds : session.healedIds, unitId(actor));
+  noteSummon(session, actor);
 }
 
 /** `actor`'s turn is cancelled — stunned, too afraid to act, or interrupted — so the battlefield marks it as such. */
 export function noteLostTurn(combat: CombatState, actor: Actor): void {
-  if (combat.activeSession) addUnique(combat.activeSession.lostTurnIds, unitId(actor));
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(session.lostTurnIds, unitId(actor));
+  noteSummon(session, actor);
 }
 
 /** `actor` drained HP from the damage it just dealt. */
 export function noteLifesteal(combat: CombatState, actor: Actor): void {
-  if (combat.activeSession) addUnique(combat.activeSession.lifestealIds, unitId(actor));
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(session.lifestealIds, unitId(actor));
+  noteSummon(session, actor);
 }
 
 export interface SessionOptions {
   /** Units lit from the start (an actor-less block that already knows who it touches). */
   affectedIds?: Id[];
   cause?: LogSession["cause"];
+  /** The session is one summon's own action, so it counts as a summon session. */
+  bySummon?: boolean;
   /** Combatant state to attach to the session's entries, taken when each run of them ends. */
   snapshot?: () => CombatantSnapshot[];
 }
@@ -124,7 +146,10 @@ function closeRun(combat: CombatState, run: Run): void {
     if (!entry || entry.session) continue;
     if (run.session.id < 0) run.session.id = i;
     entry.session = run.session;
-    if (entry.buffLostOf) addUnique(run.session.buffLostIds, entry.buffLostOf);
+    if (entry.buffLostOf) {
+      addUnique(run.session.buffLostIds, entry.buffLostOf);
+      if (entry.buffLostOfSummon) addUnique(run.session.summonIds, entry.buffLostOf);
+    }
     if (run.snapshot) entry.snapshot = snapshot ??= run.snapshot();
   }
   run.from = combat.log.length;
@@ -154,6 +179,7 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
     tickDamageIds: [],
     buffLostIds: [],
     lostTurnIds: [],
+    summonIds: options.bySummon && actorId !== null ? [actorId] : [],
     affectedIds: [...(options.affectedIds ?? [])],
     ...(options.cause ? { cause: options.cause } : {}),
   };

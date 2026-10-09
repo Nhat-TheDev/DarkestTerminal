@@ -6,7 +6,7 @@ import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow,
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
-  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], affectedIds: [], ...partial };
+  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], ...partial };
 }
 const glyphs = (icons: { glyph: string }[]) => icons.map((i) => i.glyph);
 const textOf = (line: { text: string }[]) => line.map((c) => c.text).join("");
@@ -115,6 +115,27 @@ describe("unitFocus", () => {
   test("a debuff glyph is not shown for a unit that was also attacked", () => {
     const s = session({ actorId: "p1", attackedIds: ["m1"], debuffedIds: ["m1"] });
     expect(glyphs(unitFocus("m1", "monster", s).icons)).toEqual([FOCUS_GLYPH.shield]);
+  });
+});
+
+describe("the summon icon", () => {
+  test("a unit whose summon took part wears a pawn after its role icons, in its own side's colour", () => {
+    const focus = unitFocus("a", "party", session({ actorId: "a", attackedIds: ["m"], summonIds: ["a"] }));
+    expect(glyphs(focus.icons)).toEqual([FOCUS_GLYPH.sword, FOCUS_GLYPH.summon]);
+    expect(focus.icons.at(-1)!.color).toBe(FOCUS_COLOR.party);
+    expect(FOCUS_GLYPH.summon).toBe("♙");
+  });
+
+  test("a summon that is hit shows the shield and the pawn on its owner", () => {
+    expect(glyphs(unitFocus("a", "party", session({ actorId: "m", attackedIds: ["a"], summonIds: ["a"] })).icons)).toEqual([FOCUS_GLYPH.shield, FOCUS_GLYPH.summon]);
+  });
+
+  test("without a summon in the session there is no pawn", () => {
+    expect(glyphs(unitFocus("a", "party", session({ actorId: "a", attackedIds: ["m"] })).icons)).toEqual([FOCUS_GLYPH.sword]);
+  });
+
+  test("a bystander never wears it", () => {
+    expect(unitFocus("b", "party", session({ actorId: "a", summonIds: ["a"] })).icons).toEqual([]);
   });
 });
 

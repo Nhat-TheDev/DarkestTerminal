@@ -768,6 +768,8 @@ export interface LogSession {
   buffLostIds: Id[];
   /** Units whose turn was cancelled: stunned, too afraid to act, or interrupted by an Overwatch shot. */
   lostTurnIds: Id[];
+  /** Owners whose summon took part in this session — acted, was targeted, ticked, lost a buff or fell. The battlefield draws a summon as its owner, so this tells the two apart. Not set for the session that summons it. */
+  summonIds: Id[];
   /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
   affectedIds: Id[];
   /** What an actor-less session was, so its lit units can wear the matching icon. */
@@ -782,6 +784,8 @@ export interface LogEntry {
   session?: LogSession;
   /** Set on the line that reports a buff leaving a unit (a helpful status that is not a heal-over-time): the battlefield unit that lost it (a summon's owner). */
   buffLostOf?: Id;
+  /** Set with `buffLostOf` when the unit that lost the buff is a summon. */
+  buffLostOfSummon?: true;
 }
 
 export interface CombatState {

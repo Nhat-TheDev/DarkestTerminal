@@ -31,6 +31,7 @@ export const FOCUS_GLYPH = {
   dying: "☠",
   artifact: "✦",
   lifesteal: "♥",
+  summon: "♙",
 } as const;
 
 /** Blue is the player's side, red the enemy's — by the side of the unit wearing the icon, whoever attacks. */
@@ -92,6 +93,8 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   // Losing a buff reads like being debuffed: the same glyph, once.
   if (session.buffLostIds.includes(id) && !session.debuffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.debuff));
   if (healed) icons.push(icon(FOCUS_GLYPH.heal));
+  // The unit is drawn for its owner: this says the action belongs to, or lands on, the summon.
+  if (session.summonIds.includes(id)) icons.push(icon(FOCUS_GLYPH.summon));
 
   const participates =
     session.actorId === id ||

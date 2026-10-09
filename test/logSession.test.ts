@@ -6,7 +6,7 @@ import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { noteAffected, noteBasicAttack, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
-import { statusRole, type Actor } from "../src/engine/resolver";
+import { expireStatusEffect, statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 
@@ -576,6 +576,89 @@ describe("sessions for the less common paths", () => {
       expect(entry.text).toMatch(setupMiss === "blind" ? /misses/ : /dodge/i);
       expect(entry.session!.missedIds).toEqual([vanguard.id]);
     }
+  });
+});
+
+describe("a summon is told apart from its owner", () => {
+  function fight() {
+    const { ctx } = makeCtx(11);
+    const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
+    for (const r of rats) {
+      r.maxHp = r.hp = 50000;
+      r.attack = 0;
+    }
+    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    return { ctx, combat, rats, ninja };
+  }
+
+  test("the summon's own turn names its owner", () => {
+    const { ctx, combat, ninja } = fight();
+    addClone(ninja, combat, ctx);
+    resolveRound(combat, ctx);
+    const attack = combat.log.find((e) => e.text.startsWith("Shadow Clone") && e.kind === "attack")!;
+    expect(attack.session!.actorId).toBe(ninja.id);
+    expect(attack.session!.summonIds).toEqual([ninja.id]);
+  });
+
+  test("a summon that is attacked names its owner", () => {
+    const { ctx, combat, rats, ninja } = fight();
+    const clone = addClone(ninja, combat, ctx);
+    runInSession(combat, rats[0]!.id, () => {
+      noteBasicAttack(combat, rats[0]!, clone);
+      combat.log.push({ text: "x", kind: "attack" });
+    });
+    expect(combat.log.at(-1)!.session!.summonIds).toEqual([ninja.id]);
+  });
+
+  test("a summon that is buffed, healed, misses a turn or ticks names its owner", () => {
+    const { ctx, combat, ninja } = fight();
+    const clone = addClone(ninja, combat, ctx);
+    const noted = (note: () => void) => {
+      runInSession(combat, null, () => {
+        note();
+        combat.log.push({ text: "x", kind: "info" });
+      });
+      return combat.log.at(-1)!.session!.summonIds;
+    };
+    expect(noted(() => noteSkillTarget(combat, ninja, clone, [{ kind: "heal", amount: 1 }], false))).toEqual([ninja.id]);
+    expect(noted(() => noteSkillTarget(combat, ninja, clone, [{ kind: "applyStatusEffect", statusEffectId: "fortify" }], false))).toEqual([ninja.id]);
+    expect(noted(() => noteMiss(combat, clone))).toEqual([ninja.id]);
+    expect(noted(() => noteAffected(combat, clone))).toEqual([ninja.id]);
+  });
+
+  test("a buff that runs out on a summon names its owner", () => {
+    const { ctx, combat, ninja } = fight();
+    const clone = addClone(ninja, combat, ctx);
+    runInSession(combat, null, () => expireStatusEffect(clone, { statusEffectId: "fortify", turnsRemaining: 0 }, { log: combat.log }));
+    const session = combat.log.at(-1)!.session!;
+    expect(session.buffLostIds).toEqual([ninja.id]);
+    expect(session.summonIds).toEqual([ninja.id]);
+  });
+
+  test("a death burst belongs to the summon, so it counts as a summon session", () => {
+    const { ctx, combat, ninja } = fight();
+    addClone(ninja, combat, ctx, { hp: 0, deathBurst: { amount: 5, offenseMultiplierPercent: 0, offensiveStatOverride: 0, statusEffectChance: 0 } });
+    resolveRound(combat, ctx);
+    const burst = combat.log.find((e) => e.text.includes("Shadow Clone") && e.kind === "attack")!;
+    expect(burst.session!.summonIds).toEqual([ninja.id]);
+  });
+
+  test("the owner's own actions never name a summon, nor does the cast that summons it", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 75;
+    summoner.unlockedSkillIds.push("totem-recall");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "totem-recall", [self], ctx);
+    resolveRound(combat, ctx);
+    expect(ctx.summons.some((s) => s.archetypeId === "recall-totem")).toBe(true);
+    const named = combat.log.flatMap((e) => (e.session ? e.session.summonIds : []));
+    expect(named).toEqual([]);
   });
 });
 

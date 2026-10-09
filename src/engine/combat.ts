@@ -420,7 +420,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
         if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
         pruneDeadSummons(combat, ctx, combat.log);
       },
-      { snapshot }
+      { snapshot, bySummon: ref.kind === "summon" }
     );
 
     if (isCombatOver(combat, ctx)) break;
@@ -928,7 +928,7 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
         }
       }
     },
-    { snapshot: sessionSnapshot(combat, ctx) }
+    { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
   );
 }
 

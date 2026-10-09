@@ -144,7 +144,9 @@ that lost a buff (it ran out, was removed or was spent — `LogSession.buffLostI
 Mending counts here too, applied or expired), ⚚ caster of a buff/heal, ⊘ a unit whose turn was
 cancelled (stunned, too afraid to act, or cut short by an Overwatch shot — `LogSession.lostTurnIds`;
 a minion's lost turn shows on its owner), ♥ an attacker that drained HP from its own hit (`LogSession.lifestealIds`; a heal-on-kill is not
-lifesteal and only shows its number). Blue marks the party, red the monsters, by the side of the
+lifesteal and only shows its number), ♙ a unit whose summon took part in the session — it acted, was
+targeted, ticked, lost a buff or fell (`LogSession.summonIds`, the owner's id; the cast that summons it does not count),
+worn after the role icons it comes with. Blue marks the party, red the monsters, by the side of the
 unit wearing the icon.
 A status that changes a stat is a buff or a debuff, by the direction of the change
 (`statusRole`, `src/engine/resolver.ts`); a stun and a blind are debuffs of their own, though they

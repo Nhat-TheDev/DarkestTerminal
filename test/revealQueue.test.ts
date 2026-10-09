@@ -3,7 +3,7 @@ import { IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS } from "../src/ui/revealQu
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
-  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], affectedIds: [] };
+  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [] };
 }
 function entries(prefix: string, count: number, s?: LogSession): LogEntry[] {
   return Array.from({ length: count }, (_, i) => ({ text: `${prefix}${i}`, kind: "info" as const, session: s }));
