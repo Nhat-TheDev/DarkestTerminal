@@ -361,9 +361,9 @@ describe("consumable catalog data", () => {
 describe("status effect mechanics text", () => {
   // What formatStatusEffectMechanics reads, and the fields that are only bookkeeping. A status that
   // gains a field in neither list fails the first test until someone decides which it is.
-  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "triggersOverwatch", "stackable", "maxStacks", "perStackBonusPercent"];
+  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "triggersOverwatch", "interruptChance", "overwatchShot", "stackable", "maxStacks", "perStackBonusPercent"];
   const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "tickCategory"];
-  const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent"];
+  const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent", "offenseMultiplierPercent"];
   const PER_TURN_BOOKKEEPING = ["damageType"];
   const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
   const AOE_BOOKKEEPING = ["damageType"];
@@ -390,6 +390,7 @@ describe("status effect mechanics text", () => {
         if ((e.kind === "damage" || e.kind === "heal") && e.maxHpPercent) has(`${e.maxHpPercent}% of max HP`);
         if (e.kind === "damage") has("less on Elites and Bosses");
         if (e.amount) has(`${Math.abs(e.amount)} `);
+        if (e.kind === "heal" && e.offenseMultiplierPercent !== undefined) has(`${e.offenseMultiplierPercent}% of the caster's magic power`);
       }
       if (def.onHitAoeDamage) has(`${def.onHitAoeDamage.amount} damage plus ${def.onHitAoeDamage.offenseMultiplierPercent ?? 100}%`);
       if (def.onHitAoeDamage?.ignoreDefensePercent) has(`ignoring ${def.onHitAoeDamage.ignoreDefensePercent}%`);
@@ -398,6 +399,8 @@ describe("status effect mechanics text", () => {
       if (def.stuns) has("skips the turn");
       if (def.untargetable) has("untargetable");
       if (def.triggersOverwatch) has("next monster");
+      if (def.interruptChance !== undefined) has(`${Math.round(def.interruptChance * 100)}% chance to cancel`);
+      if (def.overwatchShot) has(`${def.overwatchShot.amount} damage plus ${def.overwatchShot.offenseMultiplierPercent}%`);
       if (def.stackable && (def.maxStacks ?? 1) > 1) has(`stacks up to ${def.maxStacks} times`);
       if (def.stackable && def.perStackBonusPercent) has(`adds ${def.perStackBonusPercent}% to its damage`);
     }

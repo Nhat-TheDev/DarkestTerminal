@@ -8,7 +8,8 @@ const signed = (value: number) => (value > 0 ? `+${formatNumber(value)}` : forma
 /** One per-turn effect of a status: a damage or heal tick, or a stat change. */
 function perTurn(effect: SkillEffect): string {
   const percent = effect.maxHpPercent === undefined ? "" : `${formatNumber(effect.maxHpPercent)}% max HP`;
-  const amount = effect.amount === undefined ? "" : formatNumber(effect.amount);
+  const scaling = effect.offenseMultiplierPercent === undefined ? "" : ` + ${formatNumber(effect.offenseMultiplierPercent)}% caster MAG`;
+  const amount = effect.amount === undefined ? "" : `${formatNumber(effect.amount)}${scaling}`;
   switch (effect.kind) {
     case "damage":
     case "heal":

@@ -2766,6 +2766,9 @@ boot();
     const onHitAoeDamageType = textInput((entry.onHitAoeDamage && entry.onHitAoeDamage.damageType) || "");
     const breakBonusCrit = checkboxField("Guaranteed crit on the breaking attack", entry.breakBonus && entry.breakBonus.basicAttackGuaranteedCrit);
     const breakBonusSkillDmg = numberInput(entry.breakBonus && entry.breakBonus.skillDamageBonusPercent, "1");
+    const overwatchShotAmount = numberInput(entry.overwatchShot && entry.overwatchShot.amount, "1");
+    const overwatchShotOffenseMult = numberInput(entry.overwatchShot && entry.overwatchShot.offenseMultiplierPercent, "1");
+    const interruptChance = numberInput(entry.interruptChance, "0.05");
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
@@ -2793,6 +2796,10 @@ boot();
         onHitAoeIsMagic,
       ]),
       el("fieldset", {}, [
+        el("legend", { text: "Overwatch shot (optional — only meaningful alongside Triggers overwatch; leave Amount empty for a basic-attack-strength shot)" }),
+        el("div", { class: "row" }, [field("Amount", overwatchShotAmount), field("Offense mult %", overwatchShotOffenseMult), field("Interrupt chance (0–1, empty = always)", interruptChance)]),
+      ]),
+      el("fieldset", {}, [
         el("legend", { text: "Break bonus (optional — only meaningful alongside Untargetable; applies to the attack that breaks it)" }),
         el("div", { class: "row" }, [field("Skill damage bonus %", breakBonusSkillDmg)]),
         breakBonusCrit,
@@ -2805,6 +2812,8 @@ boot();
         const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), perTurnEffects: effectsEditor._collect() };
         if (stuns._checkbox.checked) out.stuns = true;
         if (triggersOverwatch._checkbox.checked) out.triggersOverwatch = true;
+        if (overwatchShotAmount.value !== "") out.overwatchShot = { amount: Number(overwatchShotAmount.value), offenseMultiplierPercent: Number(overwatchShotOffenseMult.value) || 100 };
+        if (interruptChance.value !== "") out.interruptChance = Number(interruptChance.value);
         if (untargetable._checkbox.checked) out.untargetable = true;
         if (stackable._checkbox.checked) out.stackable = true;
         if (maxStacks.value !== "") out.maxStacks = Number(maxStacks.value);

@@ -7,7 +7,7 @@ import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTarge
 import { mitigatedOffense, getFearTier, rollHits, getFearAccuracyPenalty, isHelpfulStatusEffect, resolveSkillEffect } from "../src/engine/resolver";
 import type { CombatantRef, LogEntry, SkillDefinition, Character } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
-import { getSummonArchetype, getSummonSkill, getSummonCast } from "../src/data/summons";
+import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from "../src/data/summons";
 
 // Several tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills to exercise new mechanics.
 // Bun shares module state across test files within one run, so truncate back to the original length once
@@ -31,6 +31,61 @@ describe("new skill mechanics", () => {
 
     expect(combat.log.some((l) => l.text.includes("gains the Guard effect"))).toBe(true);
     expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
+  });
+
+  test("Prayer lowers the ally's fear, fortifies them for 2 rounds, and goes on cooldown", () => {
+    const { ctx } = makeCtx();
+    const acolyte = createCharacter("prayer-test", "Acolyte Test", getClass("acolyte"), 1);
+    ctx.party.push(acolyte);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.survival.fear = 50;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
+    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    expect(queueAction(combat, acolyteRef, "acolyte-prayer", [allyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+
+    expect(vanguard.survival.fear).toBeLessThan(40);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(true);
+    expect(acolyte.cooldownsRemaining["acolyte-prayer"]).toBe(1);
+
+    resolveRound(combat, ctx);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(false);
+    expect(acolyte.cooldownsRemaining["acolyte-prayer"]).toBe(0);
+  });
+
+  test("Healing Draught heals on cast, then again at the start of each of the next 2 rounds, scaled off the caster", () => {
+    const { ctx } = makeCtx();
+    const doctor = createCharacter("draught-test", "Doctor Test", getClass("plague-doctor"), 1);
+    ctx.party.push(doctor);
+    doctor.magicPower = 50;
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.maxHp = 1000;
+    vanguard.magicPower = 0; // a tick reading the bearer's magicPower would heal only the flat 7
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const doctorRef: CombatantRef = { kind: "character", id: doctor.id };
+    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const perHeal = 7 + 50 * 0.4;
+
+    vanguard.hp = 100;
+    expect(queueAction(combat, doctorRef, "plaguedoc-healing-draught", [allyRef], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(vanguard.hp).toBe(100 + perHeal);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(true);
+
+    doctor.magicPower = 0; // the snapshot taken on cast is what keeps scaling the ticks
+    resolveRound(combat, ctx);
+    expect(vanguard.hp).toBe(100 + 2 * perHeal);
+    resolveRound(combat, ctx);
+    expect(vanguard.hp).toBe(100 + 3 * perHeal);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(false);
+
+    resolveRound(combat, ctx);
+    expect(vanguard.hp).toBe(100 + 3 * perHeal);
   });
 
   test("stuns status makes the bearer skip their turn entirely", () => {
@@ -1137,15 +1192,17 @@ describe("Archer class", () => {
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 34, offenseMultiplierPercent: 110, critChance: 1 }]);
   });
 
-  test("overwatched/-ii/-iii trigger Overwatch, with a rank-scaled attack bonus for the interrupt shot", () => {
-    for (const [id, amount, minPercent] of [
-      ["overwatched", 4, 5],
-      ["overwatched-ii", 10, 12],
-      ["overwatched-iii", 16, 18],
+  test("overwatched/-ii/-iii trigger Overwatch with a rank-scaled shot and interrupt chance, expiring like a stat-mod buff", () => {
+    for (const [id, amount, offenseMultiplierPercent, interruptChance] of [
+      ["overwatched", 0, 90, 0.7],
+      ["overwatched-ii", 10, 95, 0.75],
+      ["overwatched-iii", 15, 100, 0.8],
     ] as const) {
       const status = getStatusEffect(id);
       expect(status.triggersOverwatch).toBe(true);
-      expect(status.perTurnEffects).toEqual([{ kind: "modifyCombatStat", combatStat: "attack", amount, minPercent }]);
+      expect(status.overwatchShot).toEqual({ amount, offenseMultiplierPercent });
+      expect(status.interruptChance).toBe(interruptChance);
+      expect(status.tickCategory).toBe("statMod");
     }
   });
 
@@ -1248,6 +1305,14 @@ describe("Summoner class", () => {
     expect(basic.id).toBe("summoner-hollow-pulse");
     expect(basic.mpCost).toBe(0);
     expect(basic.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
+  });
+
+  test("every summon cast names a skill that actually summons it", () => {
+    for (const cast of SUMMON_CASTS) {
+      const skill = getSkill(cast.skillId);
+      const casts = [1, 7, 15].flatMap((lvl) => (getEffectiveSkill(skill, lvl).effects ?? []).filter((e) => e.kind === "summon").map((e) => e.summonCastId));
+      expect(casts).toContain(cast.id);
+    }
   });
 
   test("Summon Goblin's cast profile carries the minion's attack% as a rising 3-rank tuple, sourced from the Summoner's magicPower", () => {

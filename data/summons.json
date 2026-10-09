@@ -159,6 +159,7 @@
   "casts": [
     {
       "id": "ninja-shadow-clone",
+      "skillId": "ninja-shadow-strike",
       "archetypeId": "ninja-clone",
       "maxActions": 2,
       "aggro": 20,
@@ -195,6 +196,7 @@
     },
     {
       "id": "summoner-summon-goblin",
+      "skillId": "summoner-summon-goblin",
       "archetypeId": "goblin-thrower",
       "maxActions": 3,
       "aggro": 5,
@@ -227,6 +229,7 @@
     },
     {
       "id": "summoner-summon-spirit",
+      "skillId": "summoner-summon-spirit",
       "archetypeId": "healer-spirit",
       "maxActions": 3,
       "aggro": 5,
@@ -259,6 +262,7 @@
     },
     {
       "id": "summoner-summon-golem",
+      "skillId": "summoner-summon-golem",
       "archetypeId": "stone-golem",
       "maxActions": 3,
       "aggro": 15,
@@ -291,6 +295,7 @@
     },
     {
       "id": "summoner-summon-imp",
+      "skillId": "summoner-summon-imp",
       "archetypeId": "hellfire-imp",
       "maxActions": 3,
       "aggro": 5,
@@ -323,6 +328,7 @@
     },
     {
       "id": "summoner-totem-recall",
+      "skillId": "summoner-totem-recall",
       "archetypeId": "recall-totem",
       "maxActions": 1,
       "aggro": 10,

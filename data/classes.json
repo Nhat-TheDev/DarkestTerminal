@@ -1112,9 +1112,10 @@
         "id": "acolyte-prayer",
         "name": "Prayer",
         "description": "A short prayer, spoken low, and the shaking in the hands stops.",
-        "shortDescription": "A calming prayer, lowers 1 ally's fear.",
+        "shortDescription": "Lowers 1 ally's fear and raises their defense.",
         "target": "singleAlly",
         "slot": 1,
+        "cooldownTurns": 2,
         "ranks": [
           {
             "rank": 1,
@@ -1124,7 +1125,12 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -10
+                "amount": -15
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "fortify",
+                "durationTurns": 2
               }
             ]
           },
@@ -1136,7 +1142,12 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -13
+                "amount": -19
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "fortify",
+                "durationTurns": 2
               }
             ]
           },
@@ -1148,7 +1159,12 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -16
+                "amount": -24
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "fortify",
+                "durationTurns": 2
               }
             ]
           }
@@ -1924,7 +1940,7 @@
         "id": "plaguedoc-healing-draught",
         "name": "Healing Draught",
         "description": "A draught held to the lips of the wounded, bitter all the way down.",
-        "shortDescription": "A restorative draught for 1 ally.",
+        "shortDescription": "Heals 1 ally now and over 2 turns.",
         "target": "singleAlly",
         "slot": 2,
         "isMagic": true,
@@ -1936,8 +1952,13 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 15,
-                "offenseMultiplierPercent": 90
+                "amount": 7,
+                "offenseMultiplierPercent": 40
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "mending",
+                "durationTurns": 2
               }
             ]
           },
@@ -1948,8 +1969,13 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 20,
-                "offenseMultiplierPercent": 95
+                "amount": 10,
+                "offenseMultiplierPercent": 45
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "mending-ii",
+                "durationTurns": 2
               }
             ]
           },
@@ -1960,8 +1986,13 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 25,
-                "offenseMultiplierPercent": 100
+                "amount": 15,
+                "offenseMultiplierPercent": 50
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "mending-iii",
+                "durationTurns": 2
               }
             ]
           }
@@ -2700,13 +2731,12 @@
         ]
       },
       {
-        "id": "ninja-shadow-clone",
-        "name": "Shadow Clone",
-        "description": "Steps out of its own shadow and leaves it standing in the way.",
-        "shortDescription": "Splits a clone to draw enemy attacks.",
-        "target": "self",
+        "id": "ninja-shadow-strike",
+        "name": "Shadow Strike",
+        "description": "Cuts once, then steps out of its own shadow and leaves it standing in the way.",
+        "shortDescription": "Light strike that leaves a decoy clone.",
+        "target": "singleEnemy",
         "slot": 2,
-        "isBuff": true,
         "cooldownTurns": 4,
         "ranks": [
           {
@@ -2717,6 +2747,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "ninja-shadow-clone"
+              },
+              {
+                "kind": "damage",
+                "amount": 6,
+                "offenseMultiplierPercent": 50
               }
             ]
           },
@@ -2728,6 +2763,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "ninja-shadow-clone"
+              },
+              {
+                "kind": "damage",
+                "amount": 9,
+                "offenseMultiplierPercent": 57
               }
             ]
           },
@@ -2739,6 +2779,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "ninja-shadow-clone"
+              },
+              {
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 65
               }
             ]
           }
@@ -3041,7 +3086,7 @@
         "target": "self",
         "slot": 1,
         "isBuff": true,
-        "cooldownTurns": 5,
+        "cooldownTurns": 4,
         "ranks": [
           {
             "rank": 1,
@@ -3086,7 +3131,7 @@
         "target": "self",
         "slot": 2,
         "isBuff": true,
-        "cooldownTurns": 5,
+        "cooldownTurns": 4,
         "ranks": [
           {
             "rank": 1,
