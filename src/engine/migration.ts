@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ActiveStatusEffect, GameState, Monster, Summon } from "../types";
+import type { ActiveStatusEffect, GameState, Id, Monster, Summon } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng } from "./rng";
 import { getItem } from "../data/items";
@@ -31,6 +31,23 @@ function dropUnknownStatuses(bearer: { activeStatusEffects: ActiveStatusEffect[]
   });
 }
 
+/**
+ * A save from before the route was recorded: follow the cleared rooms from the entrance, each linked to
+ * the next, then end on the room the party stands in.
+ */
+function reconstructRoomPath(state: GameState): Id[] {
+  const rooms = state.floor.rooms;
+  const path = [state.floor.entryRoomId];
+  for (;;) {
+    const last = rooms.find((r) => r.id === path[path.length - 1]);
+    const next = last?.connectedRoomIds.find((id) => !path.includes(id) && rooms.find((r) => r.id === id)?.cleared);
+    if (next === undefined) break;
+    path.push(next);
+  }
+  if (path[path.length - 1] !== state.currentRoomId) path.push(state.currentRoomId);
+  return path;
+}
+
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
 export function migrateGameState(raw: unknown): GameState {
   const state = raw as GameState & { unequippedArtifactIds?: string[]; pendingFloorMilestoneMessage?: string | null };
@@ -58,6 +75,7 @@ export function migrateGameState(raw: unknown): GameState {
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;
   if (state.pendingCampReflectionTier === undefined) state.pendingCampReflectionTier = null;
   if (state.restRunner === undefined) state.restRunner = null;
+  if (!Array.isArray(state.roomPath)) state.roomPath = reconstructRoomPath(state);
   if (!Array.isArray(state.pendingBarterBuffs)) state.pendingBarterBuffs = [];
   if (state.barterUsedDepth === undefined) state.barterUsedDepth = null;
   if (!Array.isArray(state.shownFloorMilestoneIds)) state.shownFloorMilestoneIds = [];

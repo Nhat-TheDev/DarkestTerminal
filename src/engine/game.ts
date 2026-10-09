@@ -109,6 +109,7 @@ export class Game {
       party,
       floor,
       currentRoomId: floor.entryRoomId,
+      roomPath: [floor.entryRoomId],
       combat: null,
       message: t("game.enteredRoom", { room: getRoom(floor, floor.entryRoomId).name }),
       gameOver: null,
@@ -656,6 +657,7 @@ export class Game {
     this.ctx.monsters = monsters;
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
+    this.state.roomPath = [floor.entryRoomId];
     this.state.message = t("game.nextFloor", { depth: nextDepth });
     // Part F.5 — the founder encounter, guaranteed the same way, only for a party that chose
     // Continue. Never rolled, never repeats (advancing further only ever happens once past it).

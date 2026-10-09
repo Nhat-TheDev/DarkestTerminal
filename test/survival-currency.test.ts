@@ -61,7 +61,7 @@ describe("coins", () => {
 
 describe("save-file migration", () => {
   test("migrateGameState fills in coins/satiety/pendingArtifactDecision defaults on a pre-rework save", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.coins).toBe(0);
     expect(migrated.satiety).toBe(BALANCE.survival.initialSatiety);
@@ -70,7 +70,7 @@ describe("save-file migration", () => {
   });
 
   test("migrateGameState defaults metNarrativeNpcIds to [] on a pre-§10.2 save, leaves lastGamblingDenOutcome undefined", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.metNarrativeNpcIds).toEqual([]);
     expect(migrated.lastGamblingDenOutcome).toBeUndefined();

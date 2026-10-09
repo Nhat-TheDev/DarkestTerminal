@@ -806,6 +806,8 @@ export interface GameState {
   party: Character[];
   floor: Floor;
   currentRoomId: Id;
+  /** The rooms entered on this floor, in order, ending with `currentRoomId` — what the progress bar draws. */
+  roomPath: Id[];
   combat: CombatState | null;
   message: string;
   /** `"stay"`/`"letGo"`/`"leaveAmbushed"`/`"leaveEscaped"` are the Ending System's 4 immediate

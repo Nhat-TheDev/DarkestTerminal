@@ -123,8 +123,6 @@ export class App implements ScreenContext {
   private pendingCampOffer = false;
   private listPage = 0;
   private progress: TextRenderable;
-  private roomHistory: { roomId: Id; type: RoomType }[] = [];
-  private historyFloorRef: Floor | null = null;
 
   constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
     this.autoReveal = options.autoReveal ?? true;
@@ -711,17 +709,11 @@ export class App implements ScreenContext {
       expLine,
     ]);
 
-    if (s.floor !== this.historyFloorRef) {
-      this.historyFloorRef = s.floor;
-      this.roomHistory = [{ roomId: s.currentRoomId, type: room.type }];
-    } else if (this.roomHistory[this.roomHistory.length - 1]?.roomId !== s.currentRoomId) {
-      this.roomHistory.push({ roomId: s.currentRoomId, type: room.type });
-    }
     const progressChunks: TextChunk[] = [];
-    this.roomHistory.forEach((entry, i) => {
+    s.roomPath.forEach((roomId, i) => {
       if (i > 0) progressChunks.push(plainChunk("-"));
-      const isCurrent = i === this.roomHistory.length - 1;
-      const icon = isCurrent ? CURRENT_ROOM_ICON : ROOM_TYPE_ICON[entry.type];
+      const isCurrent = i === s.roomPath.length - 1;
+      const icon = isCurrent ? CURRENT_ROOM_ICON : ROOM_TYPE_ICON[getRoom(s.floor, roomId).type];
       const color = isCurrent ? PALETTE.title : PALETTE.dim;
       progressChunks.push(plainChunk("["), colorChunk(icon, color), plainChunk("]"));
     });

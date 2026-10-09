@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
 import { getActorByRef, startCombat } from "../src/engine/combat";
-import { getRoom } from "../src/engine/dungeon";
+import { getRoom, moveToRoom } from "../src/engine/dungeon";
 import { spawnMonster, getArchetype } from "../src/data/monsters";
 import { migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
 import { getClass } from "../src/data/classes";
@@ -393,6 +393,50 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       expect(resumedRat.subRace).toBe(archetype.subRace);
       expect(resumedRat.traitIds).toEqual(archetype.traitIds);
     });
+  });
+});
+
+describe("The route walked on a floor", () => {
+  /** Clears and enters one connected room per step, as a player walking the floor would. */
+  function walk(game: Game, steps: number): void {
+    for (let i = 0; i < steps; i++) {
+      const here = getRoom(game.state.floor, game.state.currentRoomId);
+      here.cleared = true;
+      game.state.combat = null;
+      moveToRoom(game.state, here.connectedRoomIds[0]!, game.ctx);
+    }
+  }
+
+  test("starts at the entrance, grows by each room entered, and restarts on the next floor", () => {
+    const game = new Game(21, PARTY);
+    expect(game.state.roomPath).toEqual([game.state.floor.entryRoomId]);
+    walk(game, 3);
+    expect(game.state.roomPath).toHaveLength(4);
+    expect(game.state.roomPath.at(-1)).toBe(game.state.currentRoomId);
+    game.advanceToNextFloor();
+    expect(game.state.roomPath).toEqual([game.state.floor.entryRoomId]);
+  });
+
+  test("survives a save and load", () => {
+    const game = new Game(22, PARTY);
+    try {
+      walk(game, 3);
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const loaded = gameFromSave(loadSave("slot1"), "slot1");
+      expect(loaded.state.roomPath).toEqual(game.state.roomPath);
+    } finally {
+      SLOT_IDS.forEach(deleteSlot);
+    }
+  });
+
+  test("a save from before the route was recorded gets it rebuilt from the cleared rooms", () => {
+    const game = new Game(23, PARTY);
+    walk(game, 3);
+    const expected = [...game.state.roomPath];
+    const old = structuredClone(game.state) as Partial<GameState>;
+    delete old.roomPath;
+    expect(migrateGameState(old).roomPath).toEqual(expected);
   });
 });
 

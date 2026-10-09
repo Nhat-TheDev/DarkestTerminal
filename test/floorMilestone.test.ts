@@ -125,7 +125,7 @@ describe("validateFloorMilestones", () => {
 
 describe("migration default for shownFloorMilestoneIds", () => {
   test("defaults to an empty list on a save from before the omen bands", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     expect(migrateGameState(legacy).shownFloorMilestoneIds).toEqual([]);
   });
 });

@@ -237,7 +237,7 @@ describe("Game.pickEndingChoice", () => {
 
 describe("migration default for pendingEndingCheckpoint", () => {
   test("defaults to false on a pre-Ending-System save", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.pendingEndingCheckpoint).toBe(false);
   });
@@ -252,6 +252,8 @@ describe("migration backfill for narrativeCounters", () => {
     const legacy = {
       party: [],
       inventory: {},
+      floor: { depth: 1, rooms: [], entryRoomId: "r1" },
+      currentRoomId: "r1",
       narrativeCounters: { guardianGrudgeFiredCount: 2, freeRewardsTakenCount: 1 },
     } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
@@ -359,7 +361,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
 
 describe("migration defaults for continuedPastCheckpoint/pendingFounderDialogue", () => {
   test("both default to false on a pre-Ending-System save", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.continuedPastCheckpoint).toBe(false);
     expect(migrated.pendingFounderDialogue).toBe(false);
@@ -436,7 +438,7 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
   });
 
   test("a migrated pre-Ending-System save can never roll the event with no retired class recorded", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.retiredCharacterClassId).toBeNull();
     // Without this the event stays eligible on a migrated save and renders its raw placeholder.

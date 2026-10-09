@@ -94,6 +94,7 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   }
 
   state.currentRoomId = targetRoomId;
+  state.roomPath.push(targetRoomId);
   enterRoom(state, getRoom(state.floor, targetRoomId), ctx);
 }
 
