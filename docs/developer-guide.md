@@ -176,6 +176,14 @@ lines + border ≈ 22 lines), plus the other panels → so a terminal **at least
 lines tall** is recommended; a shorter terminal will clip the bottom of the
 frame (labels/HP).
 
+The target list (`pickTarget`, `src/ui/targetPicker.ts`) reads the picked skill's or item's effects.
+A heal (a `heal` effect, or a status that heals over time) lists each ally's HP; a stat buff lists
+the stats it raises instead (`ATK`, `DEF`, `SPD`, `MAG`, `AGG` — the unit's current value); a cure,
+a debuff or an attack lists plain HP. Only the HP figure is coloured, with the party panel's
+thresholds (`hpColorFor`); names are not. A trailing `*` flags the most hurt target: an ally for a
+heal, an enemy once at least two stand — in both cases only when its HP is under half
+(`MOST_HURT_BELOW`), and the first of equally hurt targets.
+
 The remaining panels:
 - **Expedition**: each character is trimmed down to 2 lines (name+chip, HP/MP/fear);
   a name-line tag appears when the party is Exhausted/Dying (satiety-driven,
@@ -437,6 +445,7 @@ src/
   ui/layout.ts          # shared panel sizing/layout helpers for App.render
   ui/revealQueue.ts     # RevealQueue: the single clock pacing the combat log by session and driving the battlefield highlight
   ui/battlefieldFocus.ts # greying of bystanders, role icons and the icon band above the sprites
+  ui/targetPicker.ts    # the target list rows: coloured HP, the stats a buff raises, the most-hurt `*`
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
