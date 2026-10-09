@@ -258,8 +258,10 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const magnitudeOverride =
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId);
-      for (const id of effect.alsoApplyStatusEffectIds ?? []) applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId);
+      const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
+      for (const id of effect.alsoApplyStatusEffectIds ?? [])
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
       return 0;
     }
     case "removeStatusEffect": {
@@ -344,9 +346,11 @@ function applyStatusEffectToActor(
   durationTurns: number | undefined,
   ctx: ResolveContext,
   magnitudeOverride?: StatusMagnitudeOverride,
-  linkedSummonId?: Id
+  linkedSummonId?: Id,
+  casterMagicPower?: number
 ): void {
   const def = getStatusEffect(statusEffectId);
+  const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
@@ -374,6 +378,7 @@ function applyStatusEffectToActor(
       stacks: stackedAfter,
       appliedAmounts,
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
+      sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -396,6 +401,7 @@ function applyStatusEffectToActor(
     stacks: def.stackable ? 1 : undefined,
     appliedAmounts,
     linkedSummonId,
+    sourceMagicPower,
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
@@ -473,7 +479,9 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
           amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
         }
         // A heal keeps its maxHpPercent: the heal branch of resolveSkillEffect already takes the larger of the two.
-        const effectToApply = e.kind === "heal" ? e : { ...e, amount, maxHpPercent: undefined };
+        // Its offenseMultiplierPercent scales the caster's magicPower snapshotted on apply, not the bearer's.
+        if (e.kind === "heal") amount += ((active.sourceMagicPower ?? 0) * (e.offenseMultiplierPercent ?? 0)) / 100;
+        const effectToApply = e.kind === "heal" ? { ...e, amount, offenseMultiplierPercent: undefined } : { ...e, amount, maxHpPercent: undefined };
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
       }
       if (!isActorAlive(actor)) continue;

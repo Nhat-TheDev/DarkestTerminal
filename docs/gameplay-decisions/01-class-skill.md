@@ -211,7 +211,7 @@ How each skill works:
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `acolyte-prayer` | Prayer | singleAlly | — | 4 / 5 / 6 | 1 / 7 / 15 | fear -10 / -13 / -16 | — |
+| 1 | `acolyte-prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -15 / -19 / -24; status fortify (2 turns) | — |
 | 2 | `acolyte-heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG | magic |
 | 3 | `acolyte-purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
 | 4 | `acolyte-mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 20 / 50 / 75 | heal 15 / 20 / 25 + 60 / 70 / 80% MAG; fear -6 / -8 / -10 | magic |
@@ -220,13 +220,13 @@ How each skill works:
 
 How each skill works:
 
-- `acolyte-prayer` — `modifyStat fear`
+- `acolyte-prayer` — `modifyStat fear` + `applyStatusEffect "fortify"` (2 turns) on the same ally. Its cooldown lets one ally keep `fortify` up continuously when Prayer is recast every time it comes off cooldown
 - `acolyte-heal` — `heal`
 - `acolyte-purify` — targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage`
 - `acolyte-mass-heal` — `heal` + `modifyStat fear`
 - `acolyte-divine-descent` — allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
-*None of Acolyte's skills carry the buff flag — `modifyStat fear` is an instant adjustment, not routed through `applyStatusEffect`/`durationTurns`.*
+*None of Acolyte's skills carry the buff flag. Prayer's `fortify` is a stat modifier like any other, but Prayer itself resolves in plain speed order (Acolyte is slow), so on the round it's cast a faster monster can act before the ally is fortified.*
 
 *Acolyte does have real damage options (Purify targeting an enemy, Divine Descent, and the Smite basic attack) alongside its primary healer role. MP costs, heal/damage amounts, and cooldowns: `data/classes.json`.*
 
@@ -320,7 +320,7 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (s
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `plaguedoc-fire-vial` | Fire Vial | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 10 / 12 / 16 + 90 / 95 / 105% MAG (fire); status burning (2 turns, 60 / 70 / 80% chance) | magic |
-| 2 | `plaguedoc-healing-draught` | Healing Draught | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 15 / 20 / 25 + 90 / 95 / 100% MAG | magic |
+| 2 | `plaguedoc-healing-draught` | Healing Draught | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 7 / 10 / 15 + 40 / 45 / 50% MAG; status mending / mending-ii / mending-iii (2 turns) | magic |
 | 3 | `plaguedoc-blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded (2 turns, 70 / 80 / 90% chance) | magic |
 | 4 | `plaguedoc-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 20 / 50 / 75 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 60 / 70 / 80% chance); status weakened (2 turns, 40 / 50 / 60% chance) | magic |
 | 5 | `plaguedoc-total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies); damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance) | ultimate · magic |
@@ -329,12 +329,28 @@ Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (s
 How each skill works:
 
 - `plaguedoc-fire-vial` — `damage` + chance to `applyStatusEffect "burning"`
-- `plaguedoc-healing-draught` — `heal`
+- `plaguedoc-healing-draught` — `heal` now, plus `applyStatusEffect "mending"` (2 turns) that repeats the same heal at the start of each of the next 2 rounds — 3 heals in total. See `mending` below
 - `plaguedoc-blinding-vial` — `damage` + chance to `applyStatusEffect "blinded"`
 - `plaguedoc-toxic-fog` — `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"`
 - `plaguedoc-total-plague` — allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate)
 
 *All skills are `isMagic: true`. Skill 5 splits its effects by `appliesToRelation: "ally" | "enemy"` (2 sides) — the same mechanic as `acolyte-divine-descent` (section 1.4).*
+
+#### `mending` — a heal over time that scales off the caster
+
+Healing Draught's lingering heal. Each rank has its own status (`mending`/`-ii`/`-iii`), and each one's `heal` perTurnEffect carries an `offenseMultiplierPercent` on top of its flat `amount`, the same shape as an instant heal. A status's per-turn tick resolves with the bearer as its own source, so scaling it the usual way would read the bearer's `magicPower`. Instead, when a magic skill applies (or refreshes) a status whose `heal` perTurnEffects carry an `offenseMultiplierPercent`, the caster's `magicPower` at that moment is stored on the active status (`ActiveStatusEffect.sourceMagicPower`), and every tick heals `amount + sourceMagicPower × offenseMultiplierPercent`. A heal-over-time with no `offenseMultiplierPercent` (`regeneration`, the barter regens) heals exactly as before.
+
+Healing Draught's first heal is a plain `heal` effect in the skill itself, with the same numbers as its rank's `mending`. That's what makes the first heal land on the cast instead of at the next round start, where a freshly applied heal-over-time first ticks. Recasting on an ally who still has `mending` refreshes it to 2 turns with the new caster's `magicPower`, and any ticks left over from the old application are lost.
+
+<!-- docs:begin statusEffects ids=mending,mending-ii,mending-iii -->
+*Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Mechanics |
+|---|---|---|
+| `mending` | Mending | heal 7 + 40% caster MAG per turn |
+| `mending-ii` | Mending | heal 10 + 45% caster MAG per turn; rankOf mending; rankLevel 2 |
+| `mending-iii` | Mending | heal 15 + 50% caster MAG per turn; rankOf mending; rankLevel 3 |
+<!-- docs:end -->
 
 #### `blinded` — a new status, and the `rollHits()` change it needed
 
@@ -579,8 +595,24 @@ How each skill works:
 
 Mechanic: while the caster carries `overwatched`, the moment resolution reaches **the next monster's queued turn** (i.e. the first monster in `turnQueue` that hasn't acted yet this round), the Archer reactively fires at that monster **before** the monster's action resolves:
 - Roll accuracy as normal.
-- **Hit** → deals `damage` to that monster, **and the monster's queued action for this round is discarded** (the monster's turn is skipped entirely — no damage/effect from it this round).
-- **Miss** → the monster's queued action resolves normally; `overwatched` is still consumed (1 shot per cast, win or lose).
+- **Hit** → deals the status's own `overwatchShot` damage (flat `amount` + `offenseMultiplierPercent` of the Archer's attack, rising per rank across `overwatched`/`-ii`/`-iii`), then rolls the status's `interruptChance`:
+  - **Interrupted** → the monster's queued action for this round is discarded (its turn is skipped entirely — no damage/effect from it this round).
+  - **Not interrupted** → the monster still takes its turn after the shot.
+  - A shot that kills the monster ends its turn either way.
+- **Miss** → the monster's queued action resolves normally.
+- `overwatched` is consumed by the first monster reached, whatever happens (1 shot per cast).
+
+The three statuses carry no `perTurnEffects` of their own; `"tickCategory": "statMod"` keeps them expiring at the end of the round they were cast in, like the stat-mod buffs they used to be. Current numbers: `data/status-effects.json`, table below.
+
+<!-- docs:begin statusEffects ids=overwatched,overwatched-ii,overwatched-iii -->
+*Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Mechanics |
+|---|---|---|
+| `overwatched` | Overwatched | tickCategory statMod; triggersOverwatch; overwatchShot amount 0, offenseMultiplierPercent 90; interruptChance 0.7 |
+| `overwatched-ii` | Overwatched | tickCategory statMod; triggersOverwatch; overwatchShot amount 10, offenseMultiplierPercent 95; interruptChance 0.75 |
+| `overwatched-iii` | Overwatched | tickCategory statMod; triggersOverwatch; overwatchShot amount 15, offenseMultiplierPercent 100; interruptChance 0.8 |
+<!-- docs:end -->
 
 This needs a new hook in the round-resolution loop (`src/engine/combat.ts`'s `resolveRound`), not just a status effect — it is the first *reactive* character mechanic in the game (every other skill only ever resolves on the caster's own turn).
 
@@ -598,7 +630,7 @@ Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai,
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `ninja-smoke-bomb` | Smoke Bomb | self | 3 | 6 / 8 / 10 | 1 / 7 / 15 | status stealthed / stealthed-ii / stealthed-iii (2 turns) | buff |
-| 2 | `ninja-shadow-clone` | Shadow Clone | self | 4 | 8 / 10 / 12 | 1 / 7 / 15 | summon ninja-shadow-clone | buff |
+| 2 | `ninja-shadow-strike` | Shadow Strike | singleEnemy | 4 | 8 / 10 / 12 | 1 / 7 / 15 | summon ninja-shadow-clone; damage 6 / 9 / 12 + 50 / 57 / 65% ATK | — |
 | 3 | `ninja-throwing-knives` | Throwing Knives | singleEnemy | 2 | 6 / 7 / 8 | 10 / 25 / 45 | damage 10 / 14 / 18 + 80 / 85 / 90% ATK (40 / 45 / 50% extra hit); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
 | 4 | `ninja-shuriken-storm` | Shuriken Storm | allEnemies | 3 | 12 / 14 / 18 | 20 / 50 / 75 | damage 8 / 15 / 12 + 55 / 60 / 65% ATK (1–2 hits / 1–3 hits / 2–3 hits); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
 | 5 | `ninja-death-mark` | Death Mark | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 14 / 19 / 24 + 100 / 115 / 135% ATK (+5% per bleeding stack); status bleeding (3 turns); below 30% HP: +30 damage | ultimate |
@@ -607,7 +639,7 @@ Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai,
 How each skill works:
 
 - `ninja-smoke-bomb` — `applyStatusEffect "stealthed"` — untargetable, breaks on the Ninja's next attack; see 1.10.1
-- `ninja-shadow-clone` — summons combatant `ninja-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
+- `ninja-shadow-strike` (Shadow Strike) — `damage` to the target, plus a `summon` that always lands on the Ninja regardless of the hit (resolved first, so a miss or dodge still leaves a clone). The hit itself can roll Afterimage's 2nd-clone chance, so a single cast can end with 2 clones. The clone is combatant `ninja-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
 - `ninja-throwing-knives` — `damage` + chance to `applyStatusEffect "bleeding"` (stacking — 1.12.6) + a chance to throw a 2nd knife (independent damage + bleeding roll) — no `executeBonus`; Death Mark alone carries the ninja's execute mechanic
 - `ninja-shuriken-storm` — `damage`/enemy, each enemy struck several times — the hit count per rank is in the Effects column, rolled per enemy — each individual hit has a chance to `applyStatusEffect "bleeding"`
 - `ninja-death-mark` — `damage`, scaling per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` below an HP threshold — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack
@@ -637,8 +669,8 @@ Basic attack (slot 0): **Hollow Pulse** (`summoner-hollow-pulse`), magic (`isMag
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `summoner-summon-goblin` | Summon Goblin | self | 5 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-goblin | buff |
-| 2 | `summoner-summon-spirit` | Summon Spirit | self | 5 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-spirit | buff |
+| 1 | `summoner-summon-goblin` | Summon Goblin | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-goblin | buff |
+| 2 | `summoner-summon-spirit` | Summon Spirit | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-spirit | buff |
 | 3 | `summoner-summon-golem` | Summon Golem | singleEnemy | 6 | 12 / 13 / 14 | 10 / 25 / 45 | summon summoner-summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK | buff |
 | 4 | `summoner-totem-recall` | Totem Recall | self | 8 | 10 / 11 / 12 | 20 / 50 / 75 | summon summoner-totem-recall; status totem-recall-buff (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
 | 5 | `summoner-summon-imp` | Summon Hellfire Imp | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | summon summoner-summon-imp (target self); damage 8 / 13 / 18 + 80% MAG | ultimate · magic |
@@ -659,7 +691,7 @@ How each skill works:
 
 #### 1.11.1 Minion stats and their own signature-skill scale
 
-Each minion's cast configuration (`SummonCast`: `archetypeId`, `maxActions`, `aggro`, and a `stat` formula per `maxHp`/`attack`/`defense`/`magicPower`) lives in `data/summons.json`'s `casts` array, not inline in `data/classes.json` — the summoning skill's `SkillEffect` just carries a `summonCastId` (by convention, the same id as the skill itself) pointing at it. 1 cast profile is shared across all 3 of the skill's ranks; `SummonStatFormula.percent` is a plain number when it's the same at every rank, or a `[rank1, rank2, rank3]` tuple when it isn't (the engine resolves which rank is active from the caster's level via `effectiveSkillRank`). Each formula computes as `base + (percent / 100) * owner[sourceStat]` (`percent` = the fraction of the named owner stat, `base` = a flat add, `sourceStat` = which of the Summoner's own stats it reads — normally the same-named stat, but can cross over). The tables below are generated from `data/summons.json`.
+Each minion's cast configuration (`SummonCast`: `skillId`, `archetypeId`, `maxActions`, `aggro`, and a `stat` formula per `maxHp`/`attack`/`defense`/`magicPower`) lives in `data/summons.json`'s `casts` array, not inline in `data/classes.json` — the summoning skill's `SkillEffect` just carries a `summonCastId` pointing at it; the cast's `skillId` names the skill whose rank it follows, so the cast and skill ids are independent. 1 cast profile is shared across all 3 of the skill's ranks; `SummonStatFormula.percent` is a plain number when it's the same at every rank, or a `[rank1, rank2, rank3]` tuple when it isn't (the engine resolves which rank is active from the caster's level via `effectiveSkillRank`). Each formula computes as `base + (percent / 100) * owner[sourceStat]` (`percent` = the fraction of the named owner stat, `base` = a flat add, `sourceStat` = which of the Summoner's own stats it reads — normally the same-named stat, but can cross over). The tables below are generated from `data/summons.json`.
 
 <!-- docs:begin minions -->
 *Generated from `data/summons.json` by `bun run docs:sync`. Do not edit.*

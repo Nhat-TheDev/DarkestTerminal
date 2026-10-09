@@ -61,7 +61,8 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
       parts.push(e.maxHpPercent ? t("item.effectPerTurnDamagePercent", { amount: flat, percent: e.maxHpPercent }) : t("item.effectPerTurnDamage", { amount: flat }));
     } else if (e.kind === "heal") {
       // A heal's maxHpPercent is a floor under the flat amount.
-      if (!e.maxHpPercent) parts.push(t("item.effectPerTurnHeal", { amount: flat }));
+      if (e.offenseMultiplierPercent !== undefined) parts.push(t("item.effectPerTurnHealScaling", { amount: flat, percent: e.offenseMultiplierPercent }));
+      else if (!e.maxHpPercent) parts.push(t("item.effectPerTurnHeal", { amount: flat }));
       else if (flat === 0) parts.push(t("item.effectPerTurnHealPercent", { percent: e.maxHpPercent }));
       else parts.push(t("item.effectPerTurnHealFloor", { amount: flat, percent: e.maxHpPercent }));
     } else if (e.kind === "modifyCombatStat" && e.combatStat) {
@@ -88,7 +89,11 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   if (def.untargetable) parts.push(t("item.effectUntargetable"));
   if (def.breakBonus?.basicAttackGuaranteedCrit) parts.push(t("item.effectBreakBonusCrit"));
   if (def.breakBonus?.skillDamageBonusPercent) parts.push(t("item.effectBreakBonusSkillPercent", { percent: def.breakBonus.skillDamageBonusPercent }));
-  if (def.triggersOverwatch) parts.push(t("item.effectOverwatch"));
+  if (def.triggersOverwatch) {
+    const chance = def.interruptChance;
+    parts.push(chance === undefined ? t("item.effectOverwatch") : t("item.effectOverwatchChance", { percent: Math.round(chance * 100) }));
+  }
+  if (def.overwatchShot) parts.push(t("item.effectOverwatchShot", { amount: def.overwatchShot.amount, percent: def.overwatchShot.offenseMultiplierPercent }));
   if (def.stackable && (def.maxStacks ?? 1) > 1) parts.push(t("item.effectStacks", { max: def.maxStacks! }));
   if (def.stackable && def.perStackBonusPercent) parts.push(t("item.effectStackBonus", { percent: def.perStackBonusPercent }));
   return parts;

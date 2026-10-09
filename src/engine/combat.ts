@@ -316,14 +316,17 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
 
 /**
  * Overwatch (Archer): the first living character carrying a `triggersOverwatch` status reactively
- * attacks `monsterRef` right before that monster's own turn would resolve. Consumed either way (hit
- * or miss); a hit returns true so the caller skips `runMonsterTurn` for this ref entirely — the
- * monster's turn for this round is discarded, not just delayed.
+ * attacks `monsterRef` right before that monster's own turn would resolve, with the status's own
+ * `overwatchShot` damage. A landed shot then rolls the status's `interruptChance`; on success the
+ * caller skips `runMonsterTurn` for this ref entirely — the monster's turn for this round is
+ * discarded, not just delayed. Consumed either way (hit or miss, interrupted or not). Also returns
+ * true when the shot kills the monster, so the caller never runs a dead monster's turn.
  */
 function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx: EngineContext): boolean {
   const watcher = ctx.party.find((c) => c.isAlive && c.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).triggersOverwatch));
   if (!watcher) return false;
   const active = watcher.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).triggersOverwatch)!;
+  const def = getStatusEffect(active.statusEffectId);
 
   const target = getActorByRef(monsterRef, ctx) as Monster;
   if (!isActorAlive(target)) {
@@ -335,13 +338,14 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
     combat.log.push({ text: t("combat.overwatchMiss", { actor: watcher.name, target: target.name }), kind: "info" });
     return false;
   }
-  // Expired only after the shot resolves, not before — `overwatched`'s rank-scaled attack bonus
-  // (§1.12.2/data/status-effects.json) is the interrupt's only source of rank progression, so it
-  // needs to still be active while this damage is computed.
-  combat.log.push({ text: t("combat.overwatchHit", { actor: watcher.name, target: target.name }), kind: "attack" });
-  resolveSkillEffect({ kind: "damage", amount: 0 }, watcher, target, { log: combat.log });
+  const interrupts = def.interruptChance === undefined || ctx.rng.chance(def.interruptChance);
+  const hitText = interrupts ? "combat.overwatchHit" : "combat.overwatchHitNoInterrupt";
+  combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
+  resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
+    log: combat.log,
+  });
   expireStatusEffect(watcher, active, { log: combat.log });
-  return true;
+  return interrupts || !isActorAlive(target);
 }
 
 export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1, satiety = 100): void {
@@ -765,9 +769,9 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
   if (!effect.summonCastId) return undefined;
   const cast = getSummonCast(effect.summonCastId);
   const archetype = getSummonArchetype(cast.archetypeId);
-  // A cast profile is shared by all 3 ranks of the summoning skill (same id by convention), so the
+  // A cast profile is shared by all 3 ranks of the summoning skill (`cast.skillId`), so the
   // stat formulas alone don't say which rank is currently active — re-derive it from the caster's level.
-  const rank = effectiveSkillRank(getSkill(effect.summonCastId), owner.level) || 1;
+  const rank = effectiveSkillRank(getSkill(cast.skillId), owner.level) || 1;
   const { stat } = cast;
   const { maxHpPercent, attackPercent } = empowermentBonusFor(owner);
   const maxHp = Math.max(1, Math.round(computeSummonStat(stat.maxHp, owner, rank, maxHpPercent)));

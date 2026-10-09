@@ -244,6 +244,46 @@
     ]
   },
   {
+    "id": "mending",
+    "name": "Mending",
+    "description": "Restores HP at the start of each turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 7,
+        "offenseMultiplierPercent": 40
+      }
+    ]
+  },
+  {
+    "id": "mending-ii",
+    "name": "Mending",
+    "description": "Restores HP at the start of each turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 10,
+        "offenseMultiplierPercent": 45
+      }
+    ],
+    "rankOf": "mending",
+    "rankLevel": 2
+  },
+  {
+    "id": "mending-iii",
+    "name": "Mending",
+    "description": "Restores HP at the start of each turn.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 15,
+        "offenseMultiplierPercent": 50
+      }
+    ],
+    "rankOf": "mending",
+    "rankLevel": 3
+  },
+  {
     "id": "regeneration",
     "name": "Regeneration",
     "description": "Restores HP per turn.",
@@ -449,44 +489,41 @@
   {
     "id": "overwatched",
     "name": "Overwatched",
-    "description": "Reactively fires at the next monster to act (a mild attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 4,
-        "minPercent": 5
-      }
-    ],
-    "triggersOverwatch": true
+    "description": "Reactively fires at the next monster to act, with a chance to interrupt its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "triggersOverwatch": true,
+    "overwatchShot": {
+      "amount": 0,
+      "offenseMultiplierPercent": 90
+    },
+    "interruptChance": 0.7
   },
   {
     "id": "overwatched-ii",
     "name": "Overwatched",
-    "description": "Reactively fires at the next monster to act (a moderate attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 10,
-        "minPercent": 12
-      }
-    ],
-    "triggersOverwatch": true
+    "description": "Reactively fires at the next monster to act, with a chance to interrupt its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "triggersOverwatch": true,
+    "overwatchShot": {
+      "amount": 10,
+      "offenseMultiplierPercent": 95
+    },
+    "interruptChance": 0.75
   },
   {
     "id": "overwatched-iii",
     "name": "Overwatched",
-    "description": "Reactively fires at the next monster to act (a sharp attack bonus for the shot), interrupting its turn on a hit. Consumed after the first monster reached, hit or miss.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 16,
-        "minPercent": 18
-      }
-    ],
-    "triggersOverwatch": true
+    "description": "Reactively fires at the next monster to act, with a chance to interrupt its turn on a hit. Consumed after the first monster reached, hit or miss.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "triggersOverwatch": true,
+    "overwatchShot": {
+      "amount": 15,
+      "offenseMultiplierPercent": 100
+    },
+    "interruptChance": 0.8
   },
   {
     "id": "blinded",

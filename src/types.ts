@@ -88,12 +88,14 @@ export interface SummonStatFormula {
 
 /**
  * A minion-summoning skill's full cast configuration — `data/summons.json` → `casts`, referenced from
- * `SkillEffect.summonCastId` (by convention the same id as the summoning `SkillDefinition`, since a
- * skill's ranks 1-3 all reference 1 shared cast profile; `effectiveSkillRank` resolves which rank is
- * currently active to pick the right element out of any `SummonStatFormula.percent` tuple).
+ * `SkillEffect.summonCastId`. A skill's ranks 1-3 all reference 1 shared cast profile;
+ * `effectiveSkillRank` of the summoning skill (`skillId`) resolves which rank is currently active
+ * to pick the right element out of any `SummonStatFormula.percent` tuple.
  */
 export interface SummonCast {
   id: Id;
+  /** The summoning `SkillDefinition` whose rank this cast follows. */
+  skillId: Id;
   archetypeId: Id;
   maxActions: number;
   stat: Record<SummonSourceStat, SummonStatFormula>;
@@ -271,6 +273,10 @@ export interface StatusEffectDefinition {
   perStackBonusPercent?: number;
   /** While the bearer carries this status, the moment resolution reaches the next monster's turn, the bearer reactively attacks that monster first — a hit discards the monster's turn entirely. Consumed after the first monster reached, hit or miss. */
   triggersOverwatch?: boolean;
+  /** The Overwatch shot's own damage (flat `amount` + `offenseMultiplierPercent` of the bearer's attack); absent = a plain basic-attack-strength shot. */
+  overwatchShot?: { amount: number; offenseMultiplierPercent: number };
+  /** Chance (0–1) that a landed Overwatch shot also discards the monster's turn; absent = always. */
+  interruptChance?: number;
   /** While active, the bearer is excluded from every enemy skill's target resolution (singleEnemy/allEnemies target-picking skips it, same as a dead combatant). */
   untargetable?: boolean;
   /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
@@ -488,6 +494,8 @@ export interface ActiveStatusEffect {
   /** If set, this status is force-expired the instant the named `Summon` (by id) leaves combat —
    *  Totem Recall's "the buff lasts until the totem dies" mechanism (`SkillEffect.linksToCasterSummon`). */
   linkedSummonId?: Id;
+  /** The caster's `magicPower` when a magic skill applied (or refreshed) this status — set only for a status whose `heal` perTurnEffects scale by `offenseMultiplierPercent` (Healing Draught's `mending`), so each later tick heals off the caster rather than the bearer. */
+  sourceMagicPower?: number;
 }
 
 export interface ShopOffer {

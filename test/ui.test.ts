@@ -343,7 +343,7 @@ describe("skillEffectLine: summon effects show their minion", () => {
   test("a minion with no signature skills gets a single line", () => {
     const { cast, archetype, skills } = minion("ninja-shadow-clone");
     expect(skills).toEqual([]);
-    expect(summonLine("ninja-shadow-clone")).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}`);
+    expect(summonLine("ninja-shadow-strike")).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}`);
   });
 
   test("a passive minion has no action count", () => {

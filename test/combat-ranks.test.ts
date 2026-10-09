@@ -173,9 +173,11 @@ describe("aggro-weighted targeting", () => {
 describe("Archer Overwatch (interrupt)", () => {
   test("casting Overwatch this round interrupts the next monster's turn in the same round", () => {
     const { ctx } = makeCtx();
+    ctx.rng.chance = () => true; // the interrupt roll succeeds
     const archer = ctx.party.find((p) => p.classId === "archer")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: archer.id };
     queueAction(combat, self, "archer-overwatch", [self], ctx);
@@ -187,8 +189,27 @@ describe("Archer Overwatch (interrupt)", () => {
     expect(rat.hp).toBeLessThan(hpBefore);
     expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(false);
     expect(combat.log.some((l) => l.text.includes("Overwatch"))).toBe(true);
-    // runMonsterTurn never ran for the rat this round, so it never logged its own basic attack.
-    expect(combat.log.some((l) => l.text.startsWith(`${rat.name} attacks`))).toBe(false);
+    // runMonsterTurn never ran for the rat this round, so it never logged an action of its own.
+    expect(combat.log.some((l) => l.text.startsWith(`${rat.name} attacks`) || l.text.startsWith(`${rat.name} uses`))).toBe(false);
+  });
+
+  test("a landed Overwatch shot that fails its interrupt roll still deals damage, and the monster still acts", () => {
+    const { ctx } = makeCtx();
+    ctx.rng.chance = () => false; // the interrupt roll fails
+    const archer = ctx.party.find((p) => p.classId === "archer")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: archer.id };
+    queueAction(combat, self, "archer-overwatch", [self], ctx);
+
+    resolveRound(combat, ctx);
+
+    expect(rat.hp).toBeLessThan(999);
+    expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(false);
+    expect(combat.log.some((l) => l.text.includes("but its turn proceeds"))).toBe(true);
+    expect(combat.log.some((l) => l.text.startsWith(`${rat.name} attacks`) || l.text.startsWith(`${rat.name} uses`))).toBe(true);
   });
 });
 
@@ -200,7 +221,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const summonRefs = livingSummonRefs(combat, ctx);
@@ -229,12 +250,27 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
     expect(clone.maxHp).toBe(20);
     expect(clone.aggro).toBe(20);
+  });
+
+  test("Shadow Strike damages its target and still leaves a clone behind", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+
+    expect(rat.hp).toBeLessThan(999);
+    expect(livingSummonRefs(combat, ctx)).toHaveLength(1);
   });
 
   test("Shadow Clone detonates for AoE damage against every enemy when it expires", () => {
@@ -244,7 +280,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     resolveRound(combat, ctx); // clone's 1st action
     const hpBeforeExpiry = rat.hp;
@@ -262,7 +298,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
@@ -283,12 +319,12 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
 
-    queueAction(combat, self, "ninja-shadow-clone", [self], ctx);
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(false);
@@ -299,7 +335,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const game = new Game(1);
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
     // Summon-casting skills no longer get the isBuff turn-priority bonus (they resolve in plain
     // speed order — see turnOrderSortKey), so the cast must actually be the fastest action this
     // round for the clone to exist before the 1-hp rat dies to someone else's queued attack.
@@ -314,7 +350,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
 
     const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
-    expect(game.queue(ninjaRef, "ninja-shadow-clone", [ninjaRef])).toBeNull();
+    expect(game.queue(ninjaRef, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
     for (const ref of game.livingCharactersNeedingAction()) {
       if (ref.id === ninja.id) continue;
       const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
@@ -338,7 +374,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const game = new Game(2);
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-clone"] = 0;
+    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 99999;
     rat.attack = 0; // never actually deals the killing blow — the wipe below is simulated directly
@@ -349,7 +385,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
 
     const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
-    expect(game.queue(ninjaRef, "ninja-shadow-clone", [ninjaRef])).toBeNull();
+    expect(game.queue(ninjaRef, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
     for (const ref of game.livingCharactersNeedingAction()) {
       if (ref.id === ninja.id) continue;
       const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
