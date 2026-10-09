@@ -145,9 +145,12 @@ marks the party, red the monsters, by the side of the unit wearing the icon.
 Who those units are comes from `LogEntry.session` (`LogSession`, built in
 `src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
 because it has no sprite. Round-start and round-end ticks are one actor-less session per block
-that lights the units whose tick logged; its `cause` picks their icon — ☣ a DoT tick (✚ for a
-regeneration tick), ☠ Dying, ✦ the bearer of an artifact's auto-damage (its target wears ⛨);
-a stat-mod expiry block has no icon.
+that lights the units whose tick logged; its `cause` picks their icon — ☣ a damage-over-time tick
+(`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
+unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
+auto-damage (its target wears ⛨); a stat-mod expiry block has no icon. Anything else a session
+narrates is lit too: an ally that a skill or item touches without helping (an aggro drop, say) and
+the allies whose buff expires with a Recall Totem are lit without an icon.
 
 After the icons comes the unit's outcome for the session, from its impact on: its HP change
 (`-12`, `+8`), or `miss` for a target whose attack or debuff missed or was dodged

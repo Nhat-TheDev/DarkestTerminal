@@ -153,6 +153,8 @@ export interface ResolveContext {
   /** For `applyStatusEffect` with `effect.linksToCasterSummon` — the id of the summon (from this same
    *  skill's own `summon` effect) this status's expiry is tied to. Set by combat.ts's `applySkillEffects`. */
   linkedSummonId?: Id;
+  /** Called by a damage/heal-over-time tick when one of its effects actually moved the bearer's HP, so the caller can record each kind of tick, not just the net change. */
+  onDotEffect?: (kind: "damage" | "heal") => void;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -482,7 +484,10 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         // Its offenseMultiplierPercent scales the caster's magicPower snapshotted on apply, not the bearer's.
         if (e.kind === "heal") amount += ((active.sourceMagicPower ?? 0) * (e.offenseMultiplierPercent ?? 0)) / 100;
         const effectToApply = e.kind === "heal" ? { ...e, amount, offenseMultiplierPercent: undefined } : { ...e, amount, maxHpPercent: undefined };
+        const hpBefore = actor.hp;
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
+        if (actor.hp < hpBefore) ctx.onDotEffect?.("damage");
+        else if (actor.hp > hpBefore) ctx.onDotEffect?.("heal");
       }
       if (!isActorAlive(actor)) continue;
     }

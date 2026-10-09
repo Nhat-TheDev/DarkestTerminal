@@ -331,6 +331,53 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     expect(combat.log.some((l) => l.text.includes("dismissed"))).toBe(true);
   });
 
+  test("a clone cast after a reload never takes the id of a dead clone left over from the saved run", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+
+    // Summons are saved with the run, dead ones included, while the id counter starts over with the
+    // process: the leftover below holds the id a freshly started process would hand out next.
+    const first = ctx.summons[0]!;
+    const nextId = first.id.replace(/\d+$/, (n) => String(Number(n) + 1));
+    ctx.summons.push({ ...first, id: nextId, hp: 0, actionsTaken: first.maxActions });
+
+    ninja.mp = ninja.maxMp;
+    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
+    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    const before = combat.log.length;
+    resolveRound(combat, ctx);
+
+    expect(new Set(ctx.summons.map((s) => s.id)).size).toBe(ctx.summons.length);
+    expect(combat.log.slice(before).some((l) => l.text.includes("detonates"))).toBe(false);
+    expect(livingSummonRefs(combat, ctx)).toHaveLength(1);
+    expect(ctx.summons.filter((s) => s.hp > 0)).toHaveLength(1);
+  });
+
+  test("a summon still alive from an earlier combat does not carry over into the next one", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    queueAction(combat, { kind: "character", id: ninja.id }, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+    expect(ctx.summons.some((s) => s.hp > 0)).toBe(true); // e.g. a save written mid-fight, then resumed in a later room
+
+    const next = spawnInto(ctx, "dungeon-rat");
+    const nextCombat = startCombat("r2", [next.id], ctx, false);
+
+    expect(ctx.summons.every((s) => s.hp <= 0)).toBe(true);
+    expect(nextCombat.combatants.some((c) => c.ref.kind === "summon")).toBe(false);
+  });
+
   test("a Shadow Clone still alive when the room's combat ends is dismissed instead of lingering in ctx.summons", () => {
     const game = new Game(1);
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;

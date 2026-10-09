@@ -77,8 +77,10 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   }
   if (session.lifestealIds.includes(id)) icons.push(icon(FOCUS_GLYPH.lifesteal));
   if (session.actorId === null && session.affectedIds.includes(id)) {
-    if (session.cause === "dot" && delta !== 0) icons.push(icon(delta < 0 ? FOCUS_GLYPH.dot : FOCUS_GLYPH.heal));
-    else if (session.cause === "dying") icons.push(icon(FOCUS_GLYPH.dying));
+    // Which ticks a unit got, not their net: a heal and a poison on one unit show both glyphs (the heal glyph comes from `healedIds` below).
+    if (session.cause === "dot") {
+      if (session.tickDamageIds.includes(id)) icons.push(icon(FOCUS_GLYPH.dot));
+    } else if (session.cause === "dying") icons.push(icon(FOCUS_GLYPH.dying));
     else if (session.cause === "artifact") icons.push(icon(FOCUS_GLYPH.artifact));
   }
   const attacked = session.attackedIds.includes(id);

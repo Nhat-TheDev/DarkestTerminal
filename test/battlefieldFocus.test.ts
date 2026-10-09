@@ -6,7 +6,7 @@ import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow,
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
-  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], affectedIds: [], ...partial };
+  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], affectedIds: [], ...partial };
 }
 const glyphs = (icons: { glyph: string }[]) => icons.map((i) => i.glyph);
 const textOf = (line: { text: string }[]) => line.map((c) => c.text).join("");
@@ -117,10 +117,18 @@ describe("outcome markers and cause icons", () => {
     expect(marker("p1", "party", session({ actorId: "m1", attackedIds: ["p1"] }), 0)).toBeNull();
   });
 
-  test("a DoT block: a damage tick wears the DoT glyph, a regeneration tick the heal glyph", () => {
-    const s = session({ affectedIds: ["m1", "p1"], cause: "dot" });
+  test("a DoT block: a damage tick wears the DoT glyph, a heal-over-time tick the heal glyph, a unit with both wears both", () => {
+    const s = session({ affectedIds: ["m1", "p1", "p2"], tickDamageIds: ["m1", "p2"], healedIds: ["p1", "p2"], cause: "dot" });
     expect(glyphs(unitFocus("m1", "monster", s, -4).icons)).toEqual([FOCUS_GLYPH.dot]);
     expect(glyphs(unitFocus("p1", "party", s, 3).icons)).toEqual([FOCUS_GLYPH.heal]);
+    expect(glyphs(unitFocus("p2", "party", s, -2).icons)).toEqual([FOCUS_GLYPH.dot, FOCUS_GLYPH.heal]);
+  });
+
+  test("a heal that exactly cancels the damage still shows both glyphs, whatever the net change", () => {
+    const s = session({ affectedIds: ["p2"], tickDamageIds: ["p2"], healedIds: ["p2"], cause: "dot" });
+    const focus = unitFocus("p2", "party", s, 0);
+    expect(glyphs(focus.icons)).toEqual([FOCUS_GLYPH.dot, FOCUS_GLYPH.heal]);
+    expect(focus.dim).toBe(false);
   });
 
   test("Dying marks each character; artifact auto-damage marks the bearer, its target is attacked", () => {

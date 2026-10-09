@@ -29,7 +29,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteLifesteal, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
@@ -86,6 +86,9 @@ function refEquals(a: CombatantRef, b: CombatantRef): boolean {
 }
 
 export function startCombat(roomId: string, monsterIds: string[], ctx: EngineContext, isBossFight: boolean): CombatState {
+  // A summon never outlives its combat. One still alive here is a leftover (a run resumed from a save
+  // written mid-fight): it is in no combatant list of this fight, so it would only linger as a ghost.
+  dismissSummonsAtCombatEnd(ctx);
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
     c.cooldownsRemaining = {};
@@ -387,7 +390,7 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
     combat,
     combatActors(),
     (actor) => {
-      if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log });
+      if (isActorAlive(actor)) tickDotEffects(actor, { log: combat.log, onDotEffect: (kind) => noteDotEffect(combat, actor, kind) });
     },
     { cause: "dot", snapshot }
   );
@@ -747,10 +750,20 @@ function resolveOneDamageEffect(
 
 // Dismissing a summon only drops its `hp` to 0 and removes its ref from `combat.combatants` — the
 // dead entry stays in `ctx.summons` (same pattern as a dead Character/Monster staying in its own
-// array). A deterministic id would collide with a later summon of the same owner+archetype, and
-// `getActorByRef`'s `.find()` would then resolve every lookup to the stale dead entry forever —
-// so each summon gets a globally unique id instead, the same way `spawnMonster` uses a counter.
-let summonCounter = 0;
+// array). An id that repeats would make `getActorByRef`'s `.find()` resolve every lookup to the stale
+// dead entry — and `pruneDeadSummons` would detonate it in place of the live summon — so each summon
+// gets an id no entry in `ctx.summons` already uses. The saved run keeps its dead summons while a
+// process-wide counter would start over at 0 on every launch, hence the id is derived from what exists.
+function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
+  const prefix = `${ownerId}-${archetypeId}-`;
+  let highest = 0;
+  for (const s of ctx.summons) {
+    if (!s.id.startsWith(prefix)) continue;
+    const n = Number(s.id.slice(prefix.length));
+    if (Number.isInteger(n) && n > highest) highest = n;
+  }
+  return `${prefix}${highest + 1}`;
+}
 
 /** How many minions of *different* archetypes `owner` may keep active at once — 1 by default, raised
  *  to 2/3 purely by the Summoner's passive rank (level 20/35), independent of anything being cast. */
@@ -767,10 +780,12 @@ function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
  *  (`ActiveStatusEffect.linkedSummonId` — Totem Recall's "the buff lasts until the totem dies"
  *  mechanism) — called wherever a summon actually leaves combat, whether by dying, running out of
  *  actions, or being evicted/replaced. */
-function expireLinkedAllyBuffs(summon: Summon, ctx: EngineContext, log: LogEntry[]): void {
+function expireLinkedAllyBuffs(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const character of ctx.party) {
     for (const active of [...character.activeStatusEffects]) {
-      if (active.linkedSummonId === summon.id) expireStatusEffect(character, active, { log });
+      if (active.linkedSummonId !== summon.id) continue;
+      expireStatusEffect(character, active, { log });
+      noteAffected(combat, character);
     }
   }
 }
@@ -779,7 +794,7 @@ function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, 
   log.push({ text: t("combat.summonDismissed", { summon: summon.name }), kind: "info" });
   summon.hp = 0;
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
-  expireLinkedAllyBuffs(summon, ctx, log);
+  expireLinkedAllyBuffs(summon, combat, ctx, log);
 }
 
 /** Summoner's passive (§11 of the design spec) — applied at spawn time to every minion, always,
@@ -829,9 +844,8 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
         durationTurns: onDeath.durationTurns,
       }
     : undefined;
-  summonCounter += 1;
   const summon: Summon = {
-    id: `${owner.id}-${archetype.id}-${summonCounter}`,
+    id: nextSummonId(owner.id, archetype.id, ctx),
     ownerId: owner.id,
     archetypeId: archetype.id,
     name: archetype.name,
@@ -939,7 +953,7 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
   // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
   // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
   summon.hp = 0;
-  expireLinkedAllyBuffs(summon, ctx, log);
+  expireLinkedAllyBuffs(summon, combat, ctx, log);
 }
 
 /**
@@ -949,7 +963,9 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
  * used up its actions when the last monster falls would otherwise linger in `ctx.summons` forever —
  * visible as a stale HP line in the party panel, and wrongly counted by `ownedSummons` on the next
  * cast. No `deathBurst` here: that's the cost of falling in battle, not of the fight simply ending.
- * Call from `clearFinishedCombat`, after which `combat.combatants` itself is discarded anyway.
+ * Called when a combat ends (`clearFinishedCombat`, a party wipe), after which `combat.combatants`
+ * itself is discarded anyway, and again when the next one starts (`startCombat`), so a summon left
+ * alive by a resumed save never carries into a new fight.
  */
 export function dismissSummonsAtCombatEnd(ctx: EngineContext): void {
   for (const summon of ctx.summons) {

@@ -46,11 +46,15 @@ export function noteSkillTarget(combat: CombatState, source: Actor, target: Acto
     else if (effects.some((e) => e.kind !== "summon")) addUnique(session.debuffedIds, id);
     return;
   }
+  let helped = false;
   for (const effect of effects) {
     const role = sameSideRole(effect);
     if (role === "healed") addUnique(session.healedIds, id);
     else if (role === "buffed") addUnique(session.buffedIds, id);
+    if (role !== null) helped = true;
   }
+  // Touched without being helped (an item that lowers an ally's aggro, a cost the skill charges): lit, but no icon.
+  if (!helped && effects.some((e) => e.kind !== "summon")) addUnique(session.affectedIds, id);
 }
 
 /** A plain attack (a monster's or summon's basic attack, a charge, an on-hit AoE) has no skill to read effects from. */
@@ -66,6 +70,13 @@ export function noteAffected(combat: CombatState, actor: Actor): void {
 /** The attack aimed at `target` missed or was dodged: the battlefield says "miss" instead of a number. */
 export function noteMiss(combat: CombatState, target: Actor): void {
   if (combat.activeSession) addUnique(combat.activeSession.missedIds, unitId(target));
+}
+
+/** A damage-over-time or heal-over-time tick moved `actor`'s HP: the battlefield shows each kind it received, not just the net change. */
+export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" | "heal"): void {
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(kind === "damage" ? session.tickDamageIds : session.healedIds, unitId(actor));
 }
 
 /** `actor` drained HP from the damage it just dealt. */
@@ -124,6 +135,7 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
     healedIds: [],
     missedIds: [],
     lifestealIds: [],
+    tickDamageIds: [],
     affectedIds: [...(options.affectedIds ?? [])],
     ...(options.cause ? { cause: options.cause } : {}),
   };

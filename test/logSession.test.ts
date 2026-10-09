@@ -225,10 +225,25 @@ describe("noteSkillTarget / noteBasicAttack", () => {
     expect(buffed.session.healedIds).toEqual([]);
   });
 
-  test("a harmful effect on a same-side target (self-cost) is not noted", () => {
-    const { session } = noted([weakenDebuff, damage], "ally");
+  test("a harmful effect on a same-side target (self-cost) earns no role, but the target is lit", () => {
+    const { session, target } = noted([weakenDebuff, damage], "ally");
     expect(session.buffedIds).toEqual([]);
     expect(session.attackedIds).toEqual([]);
+    expect(session.affectedIds).toEqual([target.id]);
+  });
+
+  test("an item that lowers an ally's aggro lights the ally without a buff icon", () => {
+    const { session, target } = noted([{ kind: "modifyCombatStat", combatStat: "aggro", amount: -20 }], "ally");
+    expect(session.buffedIds).toEqual([]);
+    expect(session.affectedIds).toEqual([target.id]);
+  });
+
+  test("a helped ally is not also listed as merely affected", () => {
+    expect(noted([guardBuff], "ally").session.affectedIds).toEqual([]);
+  });
+
+  test("a summon effect alone does not light its target", () => {
+    expect(noted([{ kind: "summon" }], "ally").session.affectedIds).toEqual([]);
   });
 
   test("a negative combat-stat change on an opponent is a debuff, a positive one on an ally a buff", () => {
@@ -599,5 +614,84 @@ describe("a monster skill's damage is read relative to the caster", () => {
     const partyOnly = skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 1, appliesToRelation: "ally" }] });
     runInSession(combat, goblin.id, () => applySkillEffects(partyOnly, goblin, [vanguard], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session!.attackedIds).toEqual([vanguard.id]);
+  });
+});
+
+describe("a leaving totem lights the allies whose buff it takes with it", () => {
+  test("every ally that loses the linked buff is named by the session that logs the expiry", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 75;
+    summoner.unlockedSkillIds.push("summoner-totem-recall");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "summoner-totem-recall", [self], ctx);
+    resolveRound(combat, ctx);
+
+    const buffed = ctx.party.filter((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "totem-recall-buff")).map((c) => c.id);
+    expect(buffed.length).toBeGreaterThan(1);
+    const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
+    totem.hp = 0;
+    const before = combat.log.length;
+    resolveRound(combat, ctx);
+
+    const expiries = combat.log.slice(before).filter((e) => e.text.includes("expires"));
+    expect(expiries.length).toBeGreaterThanOrEqual(buffed.length);
+    const lit = new Set(expiries.flatMap((e) => e.session!.affectedIds));
+    for (const id of buffed) expect(lit.has(id)).toBe(true);
+  });
+});
+
+describe("a heal-over-time and a damage-over-time tick on one unit are both recorded", () => {
+  function tickBlock(statuses: { statusEffectId: string; turnsRemaining: number; sourceMagicPower?: number }[]) {
+    const { ctx } = makeCtx(21);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.hp = Math.floor(vanguard.maxHp / 2);
+    vanguard.activeStatusEffects.push(...statuses);
+    const before = combat.log.length;
+    resolveRound(combat, ctx);
+    const session = combat.log.slice(before).find((e) => e.session?.cause === "dot")!.session!;
+    return { session, vanguard };
+  }
+  const mending = { statusEffectId: "mending", turnsRemaining: 2, sourceMagicPower: 100 };
+  const poisoned = { statusEffectId: "poisoned", turnsRemaining: 2 };
+
+  test("mending and poison on the same unit: it took damage and it was healed", () => {
+    const { session, vanguard } = tickBlock([mending, poisoned]);
+    expect(session.tickDamageIds).toContain(vanguard.id);
+    expect(session.healedIds).toContain(vanguard.id);
+  });
+
+  test("mending alone: healed, not damaged", () => {
+    const { session, vanguard } = tickBlock([mending]);
+    expect(session.healedIds).toContain(vanguard.id);
+    expect(session.tickDamageIds).not.toContain(vanguard.id);
+  });
+
+  test("poison alone: damaged, not healed", () => {
+    const { session, vanguard } = tickBlock([poisoned]);
+    expect(session.tickDamageIds).toContain(vanguard.id);
+    expect(session.healedIds).not.toContain(vanguard.id);
+  });
+
+  test("a heal that changes nothing (full HP) is not recorded", () => {
+    const { ctx } = makeCtx(22);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    vanguard.hp = vanguard.maxHp;
+    vanguard.activeStatusEffects.push(mending);
+    resolveRound(combat, ctx);
+    const dot = combat.log.find((e) => e.session?.cause === "dot");
+    expect(dot?.session?.healedIds ?? []).not.toContain(vanguard.id);
   });
 });

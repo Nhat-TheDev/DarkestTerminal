@@ -762,6 +762,8 @@ export interface LogSession {
   missedIds: Id[];
   /** Units that drained HP from the damage they dealt (lifesteal), as opposed to any other self-heal. */
   lifestealIds: Id[];
+  /** DoT sessions only: units whose HP a damage-over-time tick actually lowered (a heal-over-time tick on the same unit is in `healedIds`). */
+  tickDamageIds: Id[];
   /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
   affectedIds: Id[];
   /** What an actor-less session was, so its lit units can wear the matching icon. */
