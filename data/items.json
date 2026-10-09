@@ -2,7 +2,7 @@
   {
     "id": "small-health-potion",
     "name": "Small Health Potion",
-    "description": "A deep red potion with the familiar herbal smell every adventurer knows.",
+    "description": "A red potion that smells of crushed leaves and a little of rust.",
     "target": "self",
     "effects": [
       {
@@ -15,7 +15,7 @@
   {
     "id": "large-health-potion",
     "name": "Large Health Potion",
-    "description": "A more concentrated version, bottled thick to survive being jostled in a travel pack.",
+    "description": "Boiled down until it sits heavy in the flask, and corked tight enough to survive a travel pack.",
     "target": "self",
     "effects": [
       {
@@ -28,7 +28,7 @@
   {
     "id": "small-mana-potion",
     "name": "Small Mana Potion",
-    "description": "A shimmering blue liquid, cool to the tongue.",
+    "description": "A thin blue liquid that goes cold on the tongue and stays cold down the throat.",
     "target": "self",
     "effects": [
       {
@@ -41,7 +41,7 @@
   {
     "id": "large-mana-potion",
     "name": "Large Mana Potion",
-    "description": "Kept in a crystal flask, used to recharge magic after the most exhausting spells.",
+    "description": "Kept in a crystal flask, and drunk by casters who have nothing left to cast with.",
     "target": "self",
     "effects": [
       {
@@ -54,7 +54,7 @@
   {
     "id": "exploration-kit",
     "name": "Exploration Kit",
-    "description": "Rope, chalk, and a well-worn map case — everything needed to press on a little longer between real rests.",
+    "description": "Rope, chalk, and a map case gone soft at the corners from being opened with wet hands.",
     "target": "allAllies",
     "effects": [
       {
@@ -69,7 +69,7 @@
   {
     "id": "calming-draught",
     "name": "Calming Draught",
-    "description": "A strong herbal tea that slows the heartbeat amid the suffocating dark.",
+    "description": "A herbal tea, brewed strong and drunk cold, that slows the pulse.",
     "target": "self",
     "effects": [
       {
@@ -83,7 +83,7 @@
   {
     "id": "antidote",
     "name": "Antidote",
-    "description": "A bitter white pill, trusted by dungeon healers.",
+    "description": "A bitter white pill that coats the tongue and leaves it numb.",
     "target": "singleAlly",
     "effects": [
       {
@@ -96,7 +96,7 @@
   {
     "id": "whetstone",
     "name": "Whetstone",
-    "description": "A handheld sharpening stone — a few strokes are enough to make a blade sharp again.",
+    "description": "A flat grey stone, dished in the middle from use.",
     "target": "singleAlly",
     "effects": [
       {
@@ -110,7 +110,7 @@
   {
     "id": "temporary-ward",
     "name": "Temporary Ward",
-    "description": "A temporary charm, hastily carved on a piece of wood to soften the next blow.",
+    "description": "A scrap of wood with a ward cut into it in a hurry; the cuts are uneven and it will not last the day.",
     "target": "singleAlly",
     "effects": [
       {

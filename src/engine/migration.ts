@@ -1,15 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { GameState, Monster } from "../types";
-import { MAX_EQUIPPED_ARTIFACTS } from "./party";
+import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
+import { Rng } from "./rng";
 import { getItem } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
 import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
 import { getArchetype } from "../data/monsters";
+import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
 
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
 export function migrateGameState(raw: unknown): GameState {
-  const state = raw as GameState & { unequippedArtifactIds?: string[] };
+  const state = raw as GameState & { unequippedArtifactIds?: string[]; pendingFloorMilestoneMessage?: string | null };
 
   if (typeof state.runId !== "string") state.runId = randomUUID();
   if (typeof state.coins !== "number") state.coins = 0;
@@ -36,6 +38,16 @@ export function migrateGameState(raw: unknown): GameState {
   if (state.restRunner === undefined) state.restRunner = null;
   if (!Array.isArray(state.pendingBarterBuffs)) state.pendingBarterBuffs = [];
   if (state.barterUsedDepth === undefined) state.barterUsedDepth = null;
+  if (!Array.isArray(state.shownFloorMilestoneIds)) state.shownFloorMilestoneIds = [];
+  // A milestone screen still pending from a save that stored its text, or whose omen id has since left
+  // data/floor-milestones.json, gets a valid omen picked for it. A separate Rng keeps the run's own stream untouched.
+  const pendingOmenId = state.pendingFloorMilestoneOmenId;
+  if (state.pendingFloorMilestoneMessage || (pendingOmenId && !getFloorMilestoneOmen(pendingOmenId))) {
+    const omen = pickFloorMilestoneOmen(state.floor.depth, state.shownFloorMilestoneIds, new Rng(state.floor.depth));
+    state.shownFloorMilestoneIds.push(omen.id);
+    state.pendingFloorMilestoneOmenId = omen.id;
+  }
+  delete state.pendingFloorMilestoneMessage;
   if (!state.campReflectionChoices) state.campReflectionChoices = {};
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;
@@ -56,6 +68,8 @@ export function migrateGameState(raw: unknown): GameState {
   if (state.lastRoomDrops && !Array.isArray(state.lastRoomDrops.abilityIds)) state.lastRoomDrops.abilityIds = [];
   for (const character of state.party) {
     if (character.equippedAbilityId === undefined) character.equippedAbilityId = null;
+    // Re-derived from class and level, so a skill id renamed in data/classes.json never leaves a saved character holding the old one.
+    character.unlockedSkillIds = characterBaseStats(character).unlockedSkillIds;
   }
 
   // Old saves kept a shared pool of unequipped artifacts; auto-equip each one to the first

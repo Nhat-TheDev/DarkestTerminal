@@ -214,7 +214,7 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 **Tier 2 — Optimization**
 
 > "The whole day's route got picked around which rooms were worth the detour — not for the
-> treasure, for the trade. Three floors ago that would have sounded insane. Whoever suggested it
+> treasure, for the trade. Three floors ago it would have seemed a strange way to spend a day. Whoever suggested it
 > first, none of you can quite say."
 
 - "It's efficient. That's all that needs to be true about it."
@@ -224,8 +224,7 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 **Tier 3 — Dependence**
 
 > "Nobody argued about it this time. Whoever was closest just did it, the way you'd catch a
-> falling cup without thinking, and the rest of you kept eating like nothing happened. Someone
-> almost said something. Didn't."
+> falling cup without thinking, and the rest of you kept eating like nothing happened. Someone almost said something, and didn't."
 
 - "Someone should have said something. Nobody wanted to be the first."
 - "There wasn't anything to say. It's just what the party does now."
@@ -264,7 +263,7 @@ entry keyed on `{"eventId": "camp-reflection", "outcome": "unaware"}` — of the
 he's the 1 who learned this exact drift the hard way (`11-world-bible.md` §11.8), so he's the most
 plausible to notice it in someone else before they notice it in themselves:
 
-> "An old man sits meditating amid the rubble, a spiral mark scarred into his forearm. He doesn't
+> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. He doesn't
 > look up right away this time. When he finally does, it isn't your face he's checking first — it's
 > your hands, like he's counting something you've stopped counting yourself."
 
@@ -278,7 +277,7 @@ the same way `stanceEcho` already is — covering every visit after the first, w
 `crossEventVariants` entry above still covers the rarer case of reaching Unawareness before ever
 having met the hermit:
 
-> "This time, he doesn't check your face at all — just your hands, the whole trade through."
+> "This time, he doesn't check your face at all — only your hands, until he shuts his eyes for the trade."
 
 **Compliance check against `11-world-bible.md`**: no mechanic here implies the dream is tracking
 the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
@@ -289,7 +288,7 @@ them. Resolves nothing on §11.9's open list — entirely about the party's own 
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
 "Sleeper," "Covenant," or "the Balance."
 
-**Implemented.** Tier/content logic lives in `src/data/loreExposure.ts`; UI in `src/ui/screens/campReflection.ts`.
+**Implemented.** Tier logic lives in `src/data/loreExposure.ts` and the text in `data/strings.json` (`ui.campReflectionTier<N>Prompt` / `ui.campReflectionTier<N>Option<1-3>`); UI in `src/ui/screens/campReflection.ts`.
 
 ### Fear tiers (shared with `04-fear-combat.md` section 4 below)
 

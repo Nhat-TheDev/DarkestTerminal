@@ -3,7 +3,7 @@ import { Game } from "../src/engine/game";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { EVENTS } from "../src/data/events";
 import { BALANCE } from "../src/data/balanceConfig";
-import { campReflectionTier, highestAnsweredCampReflectionTier, LORE_EXPOSURE_EVENT_IDS } from "../src/data/loreExposure";
+import { campReflectionContent, campReflectionTier, highestAnsweredCampReflectionTier, LORE_EXPOSURE_EVENT_IDS } from "../src/data/loreExposure";
 import { migrateGameState } from "../src/engine/migration";
 
 function forceEventRoom(game: Game, eventId: string) {
@@ -49,6 +49,17 @@ describe("campReflectionTier (03-survival-stats.md)", () => {
     for (const event of EVENTS) {
       if (event.id === "open-chest") continue;
       expect(LORE_EXPOSURE_EVENT_IDS.has(event.id)).toBe(true);
+    }
+  });
+});
+
+describe("campReflectionContent (text in data/strings.json)", () => {
+  test("every tier has a prompt and 3 distinct, non-empty options", () => {
+    for (const tier of [1, 2, 3, 4] as const) {
+      const { prompt, options } = campReflectionContent(tier);
+      expect(prompt.trim()).not.toBe("");
+      expect(options.every((o) => o.trim() !== "")).toBe(true);
+      expect(new Set(options).size).toBe(3);
     }
   });
 });

@@ -1113,7 +1113,7 @@ describe("Archer class", () => {
     const basic = archer.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("archer-quick-shot");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 85 }]);
   });
 
   test("Aimed Shot ranks resolve dmg/critChance at lv1/7/15", () => {
@@ -1175,7 +1175,7 @@ describe("Ninja class", () => {
     const basic = ninja.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("ninja-kunai-strike");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 80 }]);
   });
 
   test("Throwing Knives ranks resolve dmg/offense%/extraHitChance/bleed% at lv10/25/45", () => {
@@ -1245,9 +1245,9 @@ describe("Summoner class", () => {
     const summoner = getClass("summoner");
     expect(summoner.skills.length).toBe(6);
     const basic = summoner.skills.find((s) => s.slot === 0)!;
-    expect(basic.id).toBe("summoner-totem-strike");
+    expect(basic.id).toBe("summoner-hollow-pulse");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0 }]);
+    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
 
   test("Summon Goblin's cast profile carries the minion's attack% as a rising 3-rank tuple, sourced from the Summoner's magicPower", () => {
@@ -1377,7 +1377,7 @@ describe("Summoner class", () => {
     expect(spirit!.magicPower).toBe(expectedStat("summoner-summon-spirit", "magicPower", summoner, 1));
   });
 
-  test("Summoner is selectable and fights: Totem Strike deals damage via a full combat round", () => {
+  test("Summoner is selectable and fights: Hollow Pulse deals damage via a full combat round", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     const rat = spawnInto(ctx, "dungeon-rat");
@@ -1386,7 +1386,7 @@ describe("Summoner class", () => {
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
     const self: CombatantRef = { kind: "character", id: summoner.id };
     const hpBefore = rat.hp;
-    queueAction(combat, self, "summoner-totem-strike", [enemy], ctx);
+    queueAction(combat, self, "summoner-hollow-pulse", [enemy], ctx);
     resolveRound(combat, ctx);
     expect(rat.hp).toBeLessThan(hpBefore);
   });
@@ -1409,13 +1409,25 @@ describe("damageType tagging", () => {
     expect(damageEffectsOf("mage", "mage-ice-age").every((e) => e.damageType === "ice")).toBe(true);
   });
 
-  test("mage-bludgeon is renamed to Arcane Bolt, isMagic true, damageType magic", () => {
+  test("Arcane Bolt (mage) is isMagic, damageType magic", () => {
     const cls = getClass("mage");
-    const skill = cls.skills.find((s) => s.id === "mage-bludgeon")!;
+    const skill = cls.skills.find((s) => s.id === "mage-arcane-bolt")!;
     expect(skill.name).toBe("Arcane Bolt");
     expect(skill.description).toBe("A weak bolt of raw arcane force — basic damage.");
     expect(skill.isMagic).toBe(true);
     expect((skill.effects ?? [])[0]?.damageType).toBe("magic");
+  });
+
+  test("Acolyte's Smite and Summoner's Hollow Pulse are isMagic, damageType magic, at 60% / 70%", () => {
+    const smite = getClass("acolyte").skills.find((s) => s.id === "acolyte-smite")!;
+    expect(smite.name).toBe("Smite");
+    expect(smite.isMagic).toBe(true);
+    expect(smite.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 60 }]);
+
+    const pulse = getClass("summoner").skills.find((s) => s.id === "summoner-hollow-pulse")!;
+    expect(pulse.name).toBe("Hollow Pulse");
+    expect(pulse.isMagic).toBe(true);
+    expect(pulse.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
 
   test("Viking's Thunder God's Fury is lightning, other Viking damage skills are untagged (physical)", () => {

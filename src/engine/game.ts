@@ -41,6 +41,7 @@ import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from ".
 import { getStatusEffect } from "../data/statusEffects";
 import { getEvent } from "../data/events";
 import { t } from "../data/strings";
+import { FLOOR_MILESTONE_INTERVAL, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { BALANCE } from "../data/balanceConfig";
 import { openChest } from "./events/openChest";
 import { runnerBuy, runnerRefresh, runnerSell } from "./events/runner";
@@ -57,17 +58,6 @@ import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT 
 import { maybeTriggerReflection } from "./events/shared";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
-
-/** Shown on the floor-milestone screen (§4 of the design spec) after clearing the boss/guard room
- *  of a floor depth that's a multiple of 10 — deliberately atmospheric rather than stating
- *  "monsters got stronger" outright, matching this game's flavor-text tone. */
-const FLOOR_MILESTONE_MESSAGES = [
-  "Something changes in the dark beyond this floor.",
-  "The air grows heavier past this point.",
-  "The walls remember what comes next.",
-  "Further down, the dark holds its breath.",
-  "The dungeon does not forgive what follows.",
-];
 
 export class Game {
   readonly ctx: EngineContext;
@@ -141,7 +131,8 @@ export class Game {
       restRunner: null,
       pendingBarterBuffs: [],
       barterUsedDepth: null,
-      pendingFloorMilestoneMessage: null,
+      pendingFloorMilestoneOmenId: null,
+      shownFloorMilestoneIds: [],
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
       continuedPastCheckpoint: false,
@@ -729,15 +720,17 @@ export class Game {
   clearFinishedCombat(): boolean {
     if (this.state.combat?.phase !== "over") return false;
     const wasBossRoomVictory = this.state.combat.outcome === "victory" && getRoom(this.state.floor, this.state.combat.roomId).type === "boss";
-    if (wasBossRoomVictory && this.state.floor.depth % 10 === 0) {
-      this.state.pendingFloorMilestoneMessage = this.ctx.rng.pick(FLOOR_MILESTONE_MESSAGES);
+    if (wasBossRoomVictory && this.state.floor.depth % FLOOR_MILESTONE_INTERVAL === 0) {
+      const omen = pickFloorMilestoneOmen(this.state.floor.depth, this.state.shownFloorMilestoneIds, this.ctx.rng);
+      this.state.shownFloorMilestoneIds.push(omen.id);
+      this.state.pendingFloorMilestoneOmenId = omen.id;
     }
     this.endCombat();
     return wasBossRoomVictory;
   }
 
   dismissFloorMilestoneMessage(): void {
-    this.state.pendingFloorMilestoneMessage = null;
+    this.state.pendingFloorMilestoneOmenId = null;
   }
 
   className(classId: string): string {

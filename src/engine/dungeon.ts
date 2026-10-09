@@ -167,7 +167,7 @@ export function pickEventText(state: GameState, room: Room, event: EventDefiniti
     // Belt-and-braces: the id is excluded from the roll pool whenever no class is recorded (fresh
     // runs at construction, migrated saves in migrateGameState), so this should be unreachable with
     // a null class — but a raw "{{class}}" reaching a player is bad enough to guard twice.
-    const who = state.retiredCharacterClassId ? getClass(state.retiredCharacterClassId).name : "figure";
+    const who = state.retiredCharacterClassId ? getClass(state.retiredCharacterClassId).name : t("dungeon.retiredClassFallback");
     return event.description.replace("{{class}}", who);
   }
   if (event.kind === "combatReward") {

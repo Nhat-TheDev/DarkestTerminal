@@ -19,9 +19,11 @@ export function signed(amount: number): string {
   return `${amount >= 0 ? "+" : ""}${amount}`;
 }
 
-function statusEffectSummary(statusEffectId: Id, durationTurns: number | undefined): string {
+/** An `applyStatusEffect` effect's `amount`/`minPercent` override the status's own magnitude (resolver.ts), so the summary shows those. */
+function statusEffectSummary(statusEffectId: Id, effect: SkillEffect): string {
   const status = getStatusEffect(statusEffectId);
-  return t("item.statusSummary", { name: status.name, turns: durationTurns ?? 1, body: formatStatusEffectMechanics(status) });
+  const body = formatStatusEffectMechanics(status, { amount: effect.amount, minPercent: effect.minPercent });
+  return t("item.statusSummary", { name: status.name, turns: effect.durationTurns ?? 1, body });
 }
 
 function itemEffectSummary(effect: SkillEffect): string {
@@ -42,7 +44,7 @@ function itemEffectSummary(effect: SkillEffect): string {
       return t("item.effectDamage", { amount: effect.amount ?? 0, type: effect.damageType ?? "physical" });
     case "applyStatusEffect":
       return effect.statusEffectId
-        ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId, effect.durationTurns) })
+        ? t("item.effectApplyStatus", { summary: statusEffectSummary(effect.statusEffectId, effect) })
         : t("item.effectApplyStatusGeneric");
     case "modifyCombatStat": {
       const label = effect.combatStat ? COMBAT_STAT_LABEL[effect.combatStat] : "";

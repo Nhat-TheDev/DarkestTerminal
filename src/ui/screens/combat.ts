@@ -1,18 +1,19 @@
 import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
-import type { Character, CombatantRef, SkillDefinition, SkillEffect, SkillTarget, StatusEffectDefinition, ItemDefinition } from "../../types";
+import type { Character, CombatantRef, CombatStat, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
 import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
 import { signed } from "../../data/items";
-import { getStatusEffect, statusDisplayName } from "../../data/statusEffects";
+import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
+import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
 import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
 import { paginate } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 
-const COMBAT_STAT_LABEL: Record<string, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed" };
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed", magicPower: "Magic Power" };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: "Fear", satiety: "Satiety" };
 
 /** Who a skill's effects land on, derived from the skill's own `target` field — every effect in a skill shares the same targets. */
@@ -40,19 +41,6 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
   return TARGET_SUFFIX[sk.target] ?? "";
 }
 
-/** A status's own perTurnEffects, formatted as "+6 Defense/turn" style fragments — null if it has none. */
-function statusPerTurnSummary(def: StatusEffectDefinition): string | null {
-  const parts = def.perTurnEffects
-    .map((e) => {
-      if (e.kind === "damage") return `-${e.amount ?? 0} HP/turn`;
-      if (e.kind === "heal") return `+${e.amount ?? 0} HP/turn`;
-      if (e.kind === "modifyCombatStat" && e.combatStat) return `${signed(e.amount ?? 0)} ${COMBAT_STAT_LABEL[e.combatStat]}/turn`;
-      return null;
-    })
-    .filter((p): p is string => p !== null);
-  return parts.length > 0 ? parts.join(", ") : null;
-}
-
 /**
  * One bulleted line per skill effect, built entirely from the skill's own data — never the caster's
  * live stats. Damage gets its own shape — "80% Base Attack + 10" — describing the damage formula
@@ -73,6 +61,7 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
   if (e.kind === "heal" && sk.isMagic) {
     return t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
   }
+  if (e.kind === "summon") return e.summonCastId ? summonEffectLine(e.summonCastId) : null;
   const chance = `${Math.round((e.chance ?? 1) * 100)}%`;
   let body: string | null;
   switch (e.kind) {
@@ -91,11 +80,10 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     case "applyStatusEffect": {
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
-      const turnsSuffix = ` (${e.durationTurns ?? 1}t)`;
-      const perTurn = statusPerTurnSummary(def);
-      const perTurnSuffix = perTurn ? ` (${perTurn})` : "";
-      body = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${turnsSuffix}${perTurnSuffix}`;
-      break;
+      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })} (${e.durationTurns ?? 1}t)`;
+      const bullet = t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
+      const parts = statusMechanicsParts(def, { amount: e.amount, minPercent: e.minPercent });
+      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics }))].join("\n");
     }
     case "removeStatusEffect":
       body = t("ui.skillEffectRemoveStatus");
@@ -104,6 +92,36 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       body = null;
   }
   return body === null ? null : t("ui.skillEffectBullet", { chance, body, targetSuffix });
+}
+
+/** A summon effect's bullet: the minion, how often it acts and how much aggro it draws, then its signature skills — all from data/summons.json, never the caster's live stats. */
+function summonEffectLine(castId: string): string {
+  const cast = getSummonCast(castId);
+  const archetype = getSummonArchetype(cast.archetypeId);
+  const head = archetype.passive
+    ? t("ui.skillEffectSummonPassive", { name: archetype.name, aggro: cast.aggro })
+    : t("ui.skillEffectSummon", { name: archetype.name, actions: cast.maxActions, aggro: cast.aggro });
+  const skills = (archetype.signatureSkillIds ?? []).map((id) => getSummonSkill(id).name);
+  return skills.length > 0 ? `${head}\n${t("ui.skillEffectSummonSkills", { skills: skills.join(", ") })}` : head;
+}
+
+/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and each distinct `critChance` among its damage effects. */
+export function skillMechanicLines(sk: SkillDefinition): string[] {
+  const lines: string[] = [];
+  if (sk.isUltimate) lines.push(t("ui.skillUltimateLine"));
+  if (sk.executeBonus) {
+    const { hpPercentThreshold, bonusDamageFlat, bonusDamagePercent } = sk.executeBonus;
+    const bonus = [bonusDamageFlat ? `+${bonusDamageFlat}` : null, bonusDamagePercent ? `+${bonusDamagePercent}%` : null].filter((b) => b !== null).join(" and ");
+    if (bonus !== "") lines.push(t("ui.skillExecuteBonusLine", { bonus, threshold: hpPercentThreshold }));
+  }
+  if (sk.conditionalBonus) {
+    const status = statusDisplayName(getStatusEffect(sk.conditionalBonus.requiresStatusId));
+    lines.push(t("ui.skillConditionalBonusLine", { percent: sk.conditionalBonus.ignoreDefensePercentBonus, status }));
+    if (sk.conditionalBonus.consumesStatus) lines.push(t("ui.skillConsumesStatusLine", { status }));
+  }
+  const critPercents = new Set((sk.effects ?? []).filter((e) => e.kind === "damage" && (e.critChance ?? 0) > 0).map((e) => Math.round((e.critChance ?? 0) * 100)));
+  for (const percent of critPercents) lines.push(t("ui.skillCritChanceLine", { percent }));
+  return lines;
 }
 
 export type CombatUiState = Extract<
@@ -121,7 +139,7 @@ export type CombatUiState = Extract<
 function skillMeta(actor: Character, sk: SkillDefinition): { dmgAmount: number | null; usesLeft: number | null } {
   const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
   const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
-  const dmgAmount = dmgEffect ? Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat)) : null;
+  const dmgAmount = dmgEffect ? Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat * ((dmgEffect.offenseMultiplierPercent ?? 100) / 100))) : null;
   const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
   return { dmgAmount, usesLeft };
 }
@@ -285,7 +303,7 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
       const lines = [ui.skill.name, "", t("ui.skillMpCostLine", { mp: ui.skill.mpCost })];
       if (dmgAmount !== null) lines.push(t("ui.skillDamageLine", { amount: dmgAmount }));
       if (usesLeft !== null) lines.push(t("ui.skillUsesLeftLine", { count: usesLeft }));
-      const effectLines = (ui.skill.effects ?? []).map((e) => skillEffectLine(e, ui.skill)).filter((l): l is string => l !== null);
+      const effectLines = [...(ui.skill.effects ?? []).map((e) => skillEffectLine(e, ui.skill)).filter((l): l is string => l !== null), ...skillMechanicLines(ui.skill)];
       if (effectLines.length > 0) lines.push("", t("ui.skillEffectsLabel"), ...effectLines);
       lines.push("", t("ui.descriptionLabel"), ui.skill.description);
       lines.push("", t("ui.skillDetailEnterOption"));

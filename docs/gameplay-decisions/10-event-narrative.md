@@ -257,12 +257,9 @@ rule.
 
 **All 15 pairs, final text**:
 
-1. `collapsed-floor` ← `blood-altar`=`paid`: *"One wrong step and you fall through to the floor
-   below. A weak groan echoes up from the crack. It sounds like the last one did. You don't say so
+1. `collapsed-floor` ← `blood-altar`=`paid`: *"A section of floor has dropped away along a long crack. A weak groan echoes up from below. It sounds like the last one did. You don't say so
    out loud."*
-2. `collapsed-floor` ← `blood-altar`=`declined`: *"One wrong step and you fall through to the
-   floor below. A weak groan echoes up from the crack. You hesitate. You know exactly how easy it
-   would be to just keep walking."*
+2. `collapsed-floor` ← `blood-altar`=`declined`: *"A section of floor has dropped away along a long crack. A weak groan echoes up from below. You hesitate. It would be easy to keep walking."*
 3. `blood-altar` ← (`collapsed-floor`=`attempted` OR `sacrificial-circle`=`sacrificed`): *"Ancient
    carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its
    center. Your hand is already open before you've chosen who pays."*
@@ -276,35 +273,29 @@ rule.
    You've stopped waiting for it to be nothing."*
 5. `twin-altars` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Two stone
    pedestals face each other, each carved with a spiral, open at the center. You already know which
-   one you'll choose, the way you know a room's cold before you feel it. Choose 1: the other
-   shatters the instant you touch its twin."*
+   one you'll choose, the way you know a room's cold before you feel it."*
 6. `sacrificial-circle` ← `blood-altar`=`paid`: *"Old dried blood traces a spiral across the stone,
    open at one end and too deliberate to be an accident. You've felt this exact ask before."*
-7. `wandering-hermit` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"An old man
-   sits meditating amid the rubble, a spiral mark scarred into his forearm. His eyes are already
+7. `wandering-hermit` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. His eyes are already
    open when you arrive, like he'd already felt something uneven walk in."*
 8. `wandering-hermit` ← (`guardian-fight`=`resolved` OR `desecrated-altar`=`resolved`) — a 2nd,
    independent entry on the same field; if both this and #7 match, #7 wins (array order, "first
-   match wins," no new rule): *"An old man sits meditating amid the rubble, a spiral mark scarred
+   match wins," no new rule): *"An old man sits cross-legged amid the rubble, a spiral mark scarred
    into his forearm. Something about you carries the same mark the guardians carry. He doesn't ask
    what you did to it."* (`"resolved"` is the win path's outcome tag, written from `game.ts`'s
    combat-victory block.)
-9. `gambling-den` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A stranger
-   shuffles 3 overturned cups, sneering in the dark, no brand on his skin, no altar in sight. You're
+9. `gambling-den` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A stranger shuffles three overturned cups in the dark, no brand on his skin, no altar in sight. You're
    already doing the math on what you can afford to lose before he's finished explaining the
    rules."*
-10. `cursed-shrine` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A statue with
-    3 eyes. One of them is open. You've stopped counting how many times that's true."*
+10. `cursed-shrine` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"A statue with three eyes. One of them is open. You've stopped counting how many times that's true."*
 11. `waiting-supplies` ← `merchant` (any resolution): *"A bundle sits wrapped and tied at the base
-    of the wall, exactly where someone would leave it to come back for later. The rope is knotted
-    in a spiral, pulled tight, in the same careful knot you've started to recognize. Nobody's
+    of the wall, where someone would leave it to come back for later. The rope is knotted
+    in a spiral, pulled tight, in the same knot you've started to recognize. Nobody's
     coming back for this."*
 12. `doubled-back` ← (`open-chest` OR `collapsed-floor`, any resolution): *"Footprints lead into
-    this room and stop. None lead back out. You've seen traces like this before, this run. You're
-    starting to lose count of how many."*
+    this room and stop. None lead back out. You've seen traces like this before. You're starting to lose count of how many."*
 13. `old-count` ← (`open-chest` OR `collapsed-floor`, any resolution): *"Someone scratched tally
-    marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row
-    stops in the middle, mid-stroke. You've started noticing these more, the deeper you go."*
+    marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops mid-stroke. You've started noticing these more, the deeper you go."*
 14. `broken-seal` ← `blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed` (communion-leaning
     reading): *"A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped
     into what's left of the lock, the other half torn away with whatever broke it open. The chain
@@ -324,7 +315,7 @@ they depend on events defined there.
 `broken-seal` only their conditional `crossEventVariants` text, no neutral base description for a
 party that hasn't resolved the source event yet (a real gap, not a deferred decision). Filled in
 minimally, consistent with the established tone: `waiting-supplies`' base drops only the
-"in the same careful knot you've started to recognize" clause (which presupposes having met
+"in the same knot you've started to recognize" clause (which presupposes having met
 `merchant` already); `broken-seal`'s base is the crossEventVariant text's shared first 2 sentences,
 with the interpretive final sentence ("The chain wasn't unlocked...") added only by whichever
 variant matches. Both also needed a `reflection` block, likewise not specified — see
@@ -373,15 +364,14 @@ variant, or 3 variants become the same template with nouns swapped):
 tell):
 - *(existing)* "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and
   closed, is scratched into the wall beside it. Something is guarding the treasure in this room,
-  and it just caught your scent."
+  and the scraping has stopped."
 - "Something breathes evenly in the dark ahead. It's been holding still since before you walked
   in."
 - "Loose stone shifts under something heavy, back where the light doesn't reach. It's already
   turned toward you."
 
 **`merchant`**:
-- *(existing)* "A trembling oil lamp casts light on a cloth spread with strange wares. Each one
-  bears a spiral mark burned into it. A hooded figure bows in greeting, waving you closer."
+- *(existing)* "A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
 - "Firelight catches on a row of small objects laid out with care, each one marked the same way.
   A hooded shape straightens as you approach, already reaching for the first item."
 - "A cloth is spread flat across the stone, weighted at the corners against a draft that isn't
@@ -390,11 +380,10 @@ tell):
 
 **`desecrated-altar`**:
 - *(existing)* "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is
-  cut into the base, closed like a knot. Touching it will surely wake whatever sleeps beneath."
-- "A pulse of red light rises and falls along the altar's edge, patient as a held breath. Whatever
-  it's under hasn't needed to be quiet until now."
+  cut into the base, closed like a knot."
+- "A pulse of red light rises and falls along the altar's edge, patient as a held breath."
 - "The altar's glow catches in a carved spiral at its base, sealed shut, older than the stone
-  around it. Touching it will surely wake whatever sleeps beneath."
+  around it."
 
 Remaining events (`blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`,
 `wandering-hermit`, `gambling-den`, `collapsed-floor`, and the 8 events in C.5 below): same
@@ -468,9 +457,9 @@ pure atmosphere on purpose — not every discovery needs to be a clue).
 ```
 reflection.prompt: "Whoever wrote that stopped mid-word. You don't know if they ran out of time,
 or ran out of nerve."
-curious: "Something made them stop mid-word. You can't stop turning it over."
+curious: "Twice you read the last word, then the blank after it."
 wary: "A warning like that doesn't need the rest of the sentence."
-dismissive: "Old graffiti. Everyone thinks their scratch marks matter."
+dismissive: "Scratch marks on a wall. Everyone down here thinks theirs matter."
 ```
 
 Testimony, not doctrine — "I won't write what was left of them" implies something severe without
@@ -484,15 +473,14 @@ found testimony that switching gets people killed.
 
 **Floor 70 — "Still Breathing"**
 
-> "Ribs, not walls — and something's grown into them that shouldn't be there: a thread of old cloth,
-> with a mark burned into it the exact same way as every mark you've traded for this whole run."
+> "Ribs, not walls. Something has grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it, the same mark as on everything you've traded for."
 
 ```
 reflection.prompt: "Something you've traded for is already part of this room. You don't know how
 long it's been growing there."
 curious: "You keep doing the math on how much of this used to be someone's."
 wary: "You're not sure you want anything you're carrying to end up matching."
-dismissive: "Cloth rots into strange shapes. Doesn't mean anything."
+dismissive: "Cloth rots into strange shapes. You say it aloud until it sounds true."
 ```
 
 One dominant reveal, deliberately — an earlier draft stacked 5 facts in a single scene (walls are
@@ -520,9 +508,7 @@ landing.
 **Pairs 7-8 — how the milestones echo forward** (§11.5's drift shouldn't stop meaning anything once
 the scene that taught it ends):
 
-- `merchant` ← `still-breathing` (resolved): *"A trembling oil lamp casts light on a cloth spread
-  with strange wares. Each one bears a spiral mark burned into it. A hooded figure bows in
-  greeting, waving you closer. You don't look at the cloth the way you used to."*
+- `merchant` ← `still-breathing` (resolved): *"A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows. You don't look at the cloth the way you used to."*
 - `blood-altar` ← `half-a-warning` (resolved): *"Ancient carvings on the stone pedestal ooze a dark,
   still-warm liquid, a spiral unwound and open at its center. You hesitate half a step longer than
   you used to, before your hand decides for you."*
@@ -537,15 +523,13 @@ one-observable-change discipline holding the rest of this file together.
 **`vigil-candle`** ("Vigil") — Thread 5, floor 15:
 
 > "A candle burns at the end of a corridor no one has walked in years — the dust around it
-> undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. Something sits beside it:
-> folded hands, folded cloth, the shape of someone who sat down and never got back up. Whatever left
-> it there isn't coming back for it."
+> undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. A cloth lies folded beside it."
 
 ```
 reflection.prompt: "You didn't blow it out. You didn't want to be the one who did."
 curious: "Wax doesn't last that long on its own. You noticed, and kept walking anyway."
-wary: "Some things burn for a reason. You'd rather not be part of it."
-dismissive: "A trick of the wax, probably. Nothing worth thinking about twice."
+wary: "Hands in your sleeves, well clear of the flame."
+dismissive: "Wax runs strangely sometimes. You leave it to burn."
 ```
 
 `kind: "instantReward"`, `tier: "rare"`, `minFloorDepth: 15`, `onceLifetime: true`,
@@ -560,12 +544,12 @@ readings are in C.1, entries 14-15. Same mechanics as `vigil-candle`, `guarantee
 **`old-count`** — Thread 4, common tier:
 
 > "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in
-> neat rows. The last row stops in the middle, mid-stroke."
+> neat rows. The last row stops mid-stroke."
 
 ```
 reflection.prompt: "Something interrupted the last mark. You didn't stay to find out if it came
 back."
-curious: "Whatever they were counting toward, you keep wondering if they ever reached it."
+curious: "You count the last full row before you go."
 wary: "Counting like that isn't really about the number anymore."
 dismissive: "Somebody's nervous habit. Not yours to worry about."
 ```
@@ -574,12 +558,11 @@ dismissive: "Somebody's nervous habit. Not yours to worry about."
 
 **`doubled-back`** — Thread 4, common tier:
 
-> "Footprints lead into this room and stop. None lead back out. The room is empty, and there's
-> nowhere else they could have gone."
+> "Footprints lead into this room and stop. None lead back out. The room is empty."
 
 ```
 reflection.prompt: "You checked the walls anyway. You're not sure what you expected to find."
-curious: "Rooms don't just eat people. You'd like to understand this one's trick."
+curious: "Your boot hovers over the last print, then steps around it."
 wary: "You don't linger long enough to test whether it does it twice."
 dismissive: "Feet backtrack all the time. You just missed the tracks."
 ```
@@ -595,7 +578,7 @@ dismissive: "Feet backtrack all the time. You just missed the tracks."
 reflection.prompt: "You didn't stay long enough to see if it eventually stopped catching up."
 curious: "Half a second doesn't sound like much. You're still not sure where it goes."
 wary: "You keep your eyes forward the rest of the way down."
-dismissive: "Tired eyes playing tricks. Nothing more."
+dismissive: "Tired eyes. When you look back, the water is just water."
 ```
 
 `kind: "instantReward"`, `tier: "common"`. No cross-event variant, deliberately — pure dream-logic,
@@ -655,7 +638,7 @@ randomized per room (Part C.2's existing mechanism), not by any new once-per-ide
 "unaware"}` (reuses the exact synthetic bridge tag Camp Reflection already writes for
 `wandering-hermit`, `03-survival-stats.md` — no new tracking, a 2nd reader of the same 1 tag):
 
-> "A figure sits exactly where you'd expect one to be by now. They don't ask how long it's been.
+> "A figure sits where you'd expect one to be by now. They don't ask how long it's been.
 > Neither do you."
 
 Only reachable once the party's own Camp Reflection has reached Unawareness — the payoff is
@@ -669,9 +652,9 @@ its several variants):
 
 ```
 prompt: "Whoever that was, they didn't ask your names, and you didn't offer them."
-curious: "Whoever's still down here talking to themselves — you'd guess there's more than 1."
+curious: "The whole way down, you listen for an answering voice."
 wary: "You don't look back to check if they're still where you left them."
-dismissive: "Another lost soul talking to itself. Not your problem."
+dismissive: "One more voice talking to itself. Not your problem."
 ```
 
 ### Compliance check against `11-world-bible.md`
@@ -763,15 +746,11 @@ read as "you failed to unlock" anything, since no condition anywhere in this sys
 
 ### F.2 Ending 1 — Stay
 
-> "To stay — to let whatever's still holding this floor together keep holding, and be part of what
-> holds it."
+> "To stay — to be part of what holds this floor together."
 
 Resolution, once chosen:
 
-> "The way back up stays exactly where it is. Nobody walks it. Packs come off, and stay off; the
-> torch burns down to a height it doesn't drop below again. Somewhere, much later, another party
-> will walk this same corridor. They won't know your names. But something about how they move
-> through it will be, just slightly, easier than it should be."
+> "The way back up is where it always was. No one climbs it. Packs come off and are left on the stone; the torch burns down to a height it does not drop below again. Much later, another party comes down this corridor. They do not know your names. Something in how they move through it is easier than it should be."
 
 *(Craft-panel revision: the earlier draft opened "None of you climb back out" and ran on a
 negate-then-correct spine — both of which 3 of the 4 endings were independently reaching for, and
@@ -787,9 +766,9 @@ new, rare, per-profile-once event — not a variant of `the-wanderer` (Part E), 
 different, more personal shape: it names the specific class that stayed.
 
 > "A figure crouches at the edge of the torchlight, and for a moment none of you can place why they
-> look familiar — until someone does. A {{class}}, in gear worn the same way yours is, only longer.
+> look familiar — until someone does. {{class}} gear, worn the same way yours is, only longer.
 > Not one of you. One from before, who never came back up. They don't seem surprised to see you.
-> 'You got further than we did,' they say, and for just a moment, sound like they used to."
+> 'You got further than we did,' they say."
 
 *(Craft-panel revision, the panel's #1 priority finding: the party is 4 classes picked from 6
 (`party.size`), so an earlier draft's "It's the {{class}} who never came back up" would frequently
@@ -834,13 +813,7 @@ feature specifically, which is exactly the kind of integration issue that check 
 
 Resolution:
 
-> "None of you feel yourselves stop. There isn't a moment where it happens — only, gradually, the
-> awareness that whatever's dreaming doesn't distinguish between you and everything else it's
-> already holding. The last clear thought any of you has, before the distinction stops mattering:
-> the sky above the entrance, the town you set out from, the years before any of this — none of it
-> was ever outside this. It was never a separate place you were returning to. It was just a
-> farther room in the same dream, dreamed calmly enough that nobody standing in it ever needed to
-> notice."
+> "None of you feel yourselves stop. It comes gradually: the awareness that whatever is dreaming does not tell you apart from everything else it holds. The last clear thought any of you has, before the difference stops mattering, is of the sky above the entrance, the town you set out from, the years before any of this. None of it was ever outside. It was a farther room of the same dream, dreamed calmly enough that no one standing in it needed to notice."
 
 **The plot twist, precisely**: the party's home world — everything before the descent — was never
 outside Sleeper's dream either; the dungeon and the surface are the same dream at different
@@ -857,8 +830,7 @@ screen, same as Ending 1 — not `defeat`.
 Reached only when 1 of §F.1's 2 Leave triggers fires — there was never a Stay or Let Go offered here,
 only this:
 
-> "There isn't a stay, and there isn't a further — only the way back up. Nothing else is offered.
-> Nothing about that turns out to mean it'll be easy."
+> "There is no staying here and no going further. Only the way back up is offered."
 
 What every such party finds, regardless of anything else about the run:
 
@@ -873,9 +845,7 @@ What every such party finds, regardless of anything else about the run:
 **Default outcome — bad ending, unknown fate**: unless the condition below is met, this is where it
 ends.
 
-> "Someone gets half a word out. Nobody gets a clean look at how many there are, and there was
-> never time to make a plan. What happened to the party after that isn't something anyone will ever
-> get to tell."
+> "Someone gets half a word out. Nobody gets a clean look at how many there are."
 
 Deliberately not a confirmed death and not a confirmed survival — "unknown fate" is the actual
 content of this ending, not a placeholder for one. Framed as a genuine bad ending (the only path this
@@ -886,13 +856,9 @@ screen, no fight plays out — the game never shows what happens, on purpose).
 **The way through — conditional, and rare**: if any character in the party has a specific artifact
 (`waystone-shard`, below) currently equipped, the ambush above never lands. Instead:
 
-> "Something else answers, from further along the same dead-end wall — not the wall giving way, but
-> a seam in it, sealed shut, humming at a pitch none of you would have caught if you weren't already
-> listening for anything. It isn't stone. It's failing, and it's been failing for longer than any
-> of you have been alive."
+> "A seam answers from further along the same dead-end wall, sealed shut, humming at a pitch none of you would have caught if you weren't already listening for anything. It isn't stone. It has been failing for longer than any of you have been alive."
 
-> "The shard fits like it always meant to. The seam doesn't so much open as remember how to. What's
-> on the other side isn't the corridor you came down. It's air. Actual, ordinary, undeserved air."
+> "The shard fits. The seam opens as if it remembered how. On the other side is air: ordinary, undeserved air."
 
 **This is the actual good ending** — the only fully confirmed, unambiguous escape in the whole
 system. Gated by inventory (a specific rare artifact), not by any drift/reflection state — a
@@ -964,7 +930,7 @@ unambiguously survived, the bad branch as unresolved, never as a confirmed death
 
 Available only under §F.1's condition.
 
-> "To keep going, past the point where any of you can say this is still a choice you'd recommend."
+> "To keep going, past the point where any of you can call this a choice."
 
 Choosing it does not end the run — floor generation resumes normally from floor 101 onward, unchanged,
 until floor 120.
@@ -993,8 +959,7 @@ length stops being frightening), **staged in 3 movements with a physical beat be
 >
 > *Somewhere behind the walls, something takes a breath the room is too small to hold.*
 >
-> "You can still turn back. Or you can keep asking, the way I did, until there's nothing left to
-> tell you apart from what you asked for."
+> "You could have turned back, once. Now you can keep asking, the way I did, until there's nothing left to tell you apart from what you asked for."
 
 **The 2 interleaved beats are load-bearing, not decoration** (craft-panel revision): without them
 this is 6 uninterrupted lines delivered to a silent room with 1 static image — restrained in
