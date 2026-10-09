@@ -188,7 +188,7 @@ describe("Abilities: alwaysHit", () => {
     c.equippedAbilityId = "unerring-will"; // alwaysHit 20% + fearResist 12%
     expect(alwaysHitChance(c)).toBe(20);
 
-    const skill = getSkill("vanguard-slash");
+    const skill = getSkill("slash");
     const combat = startCombat("test-room", [], ctx, false);
     const trials = 6000;
     let misses = 0;
@@ -211,7 +211,7 @@ describe("Abilities: alwaysHit", () => {
     c.survival.fear = 100;
     c.equippedAbilityId = null;
 
-    const skill = getSkill("vanguard-slash");
+    const skill = getSkill("slash");
     const combat = startCombat("test-room", [], ctx, false);
     const trials = 6000;
     let misses = 0;
@@ -548,7 +548,7 @@ describe("Abilities: alwaysHit rng cost", () => {
       return next();
     };
 
-    applySkillEffects(getSkill("vanguard-slash"), attacker, [monster], combat, ctx, log);
+    applySkillEffects(getSkill("slash"), attacker, [monster], combat, ctx, log);
 
     // Exactly the skill's own accuracy roll. `Rng.chance` advances the stream even at p = 0, so an
     // unguarded alwaysHit roll would make this 2 and shift every seeded run downstream of it.

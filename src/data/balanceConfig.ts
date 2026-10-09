@@ -151,6 +151,10 @@ interface BalanceConfig {
     offerCount: number;
     /** How long the buff lasts once active: effectively the whole combat, since it expires on victory. */
     activeDurationTurns: number;
+    /** The status (`data/status-effects.json`) that carries each stat a barter buff raises. */
+    statStatusIds: Record<"attack" | "magicPower" | "defense" | "speed", string>;
+    /** The status that heals for a trophy of each tier, strongest for the rarest. */
+    regenStatusIdByTier: Record<ItemTier, string>;
   };
   /** Shop tier odds by floor depth — same method as `artifacts`: each step away from the anchor scales tier `i` by `tilt ^ (i × steps)`. */
   shop: {

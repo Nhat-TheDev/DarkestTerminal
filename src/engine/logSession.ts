@@ -1,6 +1,6 @@
 import type { CombatState, CombatantSnapshot, Id, LogSession, SkillEffect } from "../types";
 import { getStatusEffect } from "../data/statusEffects";
-import { isHelpfulStatusEffect, isPlayerSide, isSummon, type Actor } from "./resolver";
+import { isPlayerSide, isSummon, statDirection, statusRole, type Actor } from "./resolver";
 
 /** The battlefield unit an actor is drawn as: a summon has no sprite of its own, so it stands for its owner. */
 export function unitId(actor: Actor): Id {
@@ -19,16 +19,24 @@ function sameSideRole(effect: SkillEffect): "healed" | "buffed" | null {
       return "healed";
     case "removeStatusEffect":
       return "buffed";
-    case "applyStatusEffect":
-      return effect.statusEffectId && isHelpfulStatusEffect(getStatusEffect(effect.statusEffectId)) ? "buffed" : null;
+    case "applyStatusEffect": {
+      const role = effect.statusEffectId ? statusRole(getStatusEffect(effect.statusEffectId)) : null;
+      return role === "heal" ? "healed" : role === "buff" ? "buffed" : null;
+    }
     case "modifyCombatStat":
-      return (effect.amount ?? 0) > 0 ? "buffed" : null;
+      return statDirection(effect) > 0 ? "buffed" : null;
     case "modifyStat":
       // Fear is the one survival stat where a higher number is worse.
       return (effect.amount ?? 0) * (effect.stat === "fear" ? -1 : 1) > 0 ? "buffed" : null;
     default:
       return null;
   }
+}
+
+/** An effect that lowers a stat on its target: a status that does, or a direct stat cut. */
+function isStatDebuff(effect: SkillEffect): boolean {
+  if (effect.kind === "applyStatusEffect") return effect.statusEffectId !== undefined && statusRole(getStatusEffect(effect.statusEffectId)) === "debuff";
+  return effect.kind === "modifyCombatStat" && statDirection(effect) < 0;
 }
 
 /**
@@ -43,7 +51,9 @@ export function noteSkillTarget(combat: CombatState, source: Actor, target: Acto
   const id = unitId(target);
   if (isPlayerSide(source) !== isPlayerSide(target)) {
     if (skillDealsDamage && effects.length > 0) addUnique(session.attackedIds, id);
-    else if (effects.some((e) => e.kind !== "summon")) addUnique(session.debuffedIds, id);
+    else if (effects.some(isStatDebuff)) addUnique(session.debuffedIds, id);
+    // Touched without a debuff role (poison, a vulnerability mark): lit, but no icon.
+    else if (effects.some((e) => e.kind !== "summon")) addUnique(session.affectedIds, id);
     return;
   }
   let helped = false;
@@ -79,6 +89,11 @@ export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" 
   addUnique(kind === "damage" ? session.tickDamageIds : session.healedIds, unitId(actor));
 }
 
+/** `actor`'s turn is cancelled — stunned, too afraid to act, or interrupted — so the battlefield marks it as such. */
+export function noteLostTurn(combat: CombatState, actor: Actor): void {
+  if (combat.activeSession) addUnique(combat.activeSession.lostTurnIds, unitId(actor));
+}
+
 /** `actor` drained HP from the damage it just dealt. */
 export function noteLifesteal(combat: CombatState, actor: Actor): void {
   if (combat.activeSession) addUnique(combat.activeSession.lifestealIds, unitId(actor));
@@ -109,6 +124,7 @@ function closeRun(combat: CombatState, run: Run): void {
     if (!entry || entry.session) continue;
     if (run.session.id < 0) run.session.id = i;
     entry.session = run.session;
+    if (entry.buffLostOf) addUnique(run.session.buffLostIds, entry.buffLostOf);
     if (run.snapshot) entry.snapshot = snapshot ??= run.snapshot();
   }
   run.from = combat.log.length;
@@ -136,6 +152,8 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
     missedIds: [],
     lifestealIds: [],
     tickDamageIds: [],
+    buffLostIds: [],
+    lostTurnIds: [],
     affectedIds: [...(options.affectedIds ?? [])],
     ...(options.cause ? { cause: options.cause } : {}),
   };

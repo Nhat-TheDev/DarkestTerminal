@@ -414,7 +414,7 @@ describe("status effect mechanics text", () => {
   });
 
   test("an active status shows the stat delta it actually applied, not the status's own value", () => {
-    const totem = STATUS_EFFECTS.find((d) => d.id === "totem-recall-buff")!;
+    const totem = STATUS_EFFECTS.find((d) => d.id === "totems-strength")!;
     expect(formatStatusEffectMechanics(totem, { applied: { attack: 8 } })).toBe("+8 attack");
     expect(formatStatusEffectMechanics(totem)).toBe("+0 attack");
   });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { GameState, Monster } from "../types";
+import type { ActiveStatusEffect, GameState, Monster, Summon } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng } from "./rng";
 import { getItem } from "../data/items";
@@ -8,6 +8,28 @@ import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
 import { getArchetype } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
+
+/**
+ * Removes the active statuses whose id has left `data/status-effects.json` (a renamed status, a rank
+ * removed in a data split) — otherwise the next lookup of one (ticking it, categorising it) throws.
+ * A status's stat change was applied straight onto its bearer, so the amount it recorded is taken
+ * back off; a character's stats are recomputed on load anyway, a monster's or summon's are not.
+ */
+function dropUnknownStatuses(bearer: { activeStatusEffects: ActiveStatusEffect[] }): void {
+  const stats = bearer as unknown as Record<string, unknown>;
+  bearer.activeStatusEffects = bearer.activeStatusEffects.filter((active) => {
+    try {
+      getStatusEffect(active.statusEffectId);
+      return true;
+    } catch {
+      for (const [stat, amount] of Object.entries(active.appliedAmounts ?? {})) {
+        const current = stats[stat];
+        if (typeof current === "number") stats[stat] = current - amount;
+      }
+      return false;
+    }
+  });
+}
 
 /** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
 export function migrateGameState(raw: unknown): GameState {
@@ -92,18 +114,7 @@ export function migrateGameState(raw: unknown): GameState {
     }
   }
 
-  // Drop active status effects whose id no longer exists (e.g. a rank id removed in a data split) —
-  // otherwise the very next getStatusEffect() lookup on load (categorizing or ticking it) throws.
-  for (const character of state.party) {
-    character.activeStatusEffects = character.activeStatusEffects.filter((s) => {
-      try {
-        getStatusEffect(s.statusEffectId);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-  }
+  for (const character of state.party) dropUnknownStatuses(character);
 
   // Same defensive pruning for a since-removed ability id (e.g. a future catalog edit).
   for (const character of state.party) {
@@ -121,6 +132,7 @@ export function migrateGameState(raw: unknown): GameState {
  *  `resolveRaceProfile` the instant it's targeted. */
 export function migrateMonsters(monsters: Monster[]): Monster[] {
   for (const monster of monsters) {
+    dropUnknownStatuses(monster);
     if (monster.race !== undefined) continue;
     const archetype = getArchetype(monster.archetypeId);
     monster.race = archetype.race;
@@ -128,4 +140,10 @@ export function migrateMonsters(monsters: Monster[]): Monster[] {
     monster.traitIds = archetype.traitIds;
   }
   return monsters;
+}
+
+/** Summons are saved with the run, so one can carry a status whose id has since left the catalog. */
+export function migrateSummons(summons: Summon[]): Summon[] {
+  for (const summon of summons) dropUnknownStatuses(summon);
+  return summons;
 }

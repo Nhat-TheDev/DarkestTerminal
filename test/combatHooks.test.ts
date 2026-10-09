@@ -45,7 +45,7 @@ describe("Rogue passive: bonus poison damage vs. poisoned targets", () => {
 });
 
 describe("Mage passive: stacking defense shred on hit", () => {
-  test("a Mage's hit stacks the mage-shred status on the target, reducing its defense", () => {
+  test("a Mage's hit stacks the shredded status on the target, reducing its defense", () => {
     const { ctx } = makeCtx();
     const mage = ctx.party.find((p) => p.classId === "mage")!;
     mage.level = 35; // rank 3: -10% / -12 flat, whichever is larger in magnitude
@@ -55,7 +55,7 @@ describe("Mage passive: stacking defense shred on hit", () => {
     fireOnDamageDealt(mage, target, 10, ctx);
     // max(12, round(40 * 10 / 100)) = max(12, 4) = 12
     expect(target.defense).toBe(before - 12);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred-iii")?.stacks).toBe(1);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "shredded-iii")?.stacks).toBe(1);
   });
 
   test("a 2nd hit adds another stack, up to maxStacks", () => {
@@ -66,7 +66,7 @@ describe("Mage passive: stacking defense shred on hit", () => {
     target.defense = 40;
     fireOnDamageDealt(mage, target, 10, ctx);
     fireOnDamageDealt(mage, target, 10, ctx);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred-iii")?.stacks).toBe(2);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "shredded-iii")?.stacks).toBe(2);
     expect(target.defense).toBe(40 - 12 - 12);
   });
 

@@ -2,6 +2,7 @@ import type { Id } from "../types";
 import barterJson from "../../data/barter.json";
 import { ITEMS, getItem } from "./items";
 import { getStatusEffect } from "./statusEffects";
+import { BALANCE } from "./balanceConfig";
 
 export type BarterBoostStat = "attack" | "defense" | "speed";
 
@@ -23,6 +24,9 @@ export const BARTER_ENTRIES = barterJson as unknown as BarterEntry[];
 
 const BOOST_STATS: readonly BarterBoostStat[] = ["attack", "defense", "speed"];
 
+// Every status the barter buffs are carried by must exist, so a typo fails at load rather than mid-fight.
+for (const id of [...Object.values(BALANCE.barter.statStatusIds), ...Object.values(BALANCE.barter.regenStatusIdByTier)]) getStatusEffect(id);
+
 const seen = new Set<Id>();
 for (const entry of BARTER_ENTRIES) {
   const item = getItem(entry.itemId);
@@ -38,8 +42,9 @@ for (const entry of BARTER_ENTRIES) {
       if (!(effect.percent > 0)) throw new Error(`data/barter.json: "${entry.itemId}" needs a positive percent for "${effect.stat}"`);
     } else if (effect.kind === "healOverTime") {
       // Healing runs through one status per tier (data/status-effects.json), so the entry's percent must be that status's.
-      if (getStatusEffect(`barter-regen-${item.tier}`).perTurnEffects[0]?.maxHpPercent !== effect.maxHpPercentPerTurn) {
-        throw new Error(`data/barter.json: "${entry.itemId}" maxHpPercentPerTurn must equal barter-regen-${item.tier}'s maxHpPercent`);
+      const regenId = BALANCE.barter.regenStatusIdByTier[item.tier];
+      if (getStatusEffect(regenId).perTurnEffects[0]?.maxHpPercent !== effect.maxHpPercentPerTurn) {
+        throw new Error(`data/barter.json: "${entry.itemId}" maxHpPercentPerTurn must equal ${regenId}'s maxHpPercent`);
       }
     } else {
       throw new Error(`data/barter.json: "${entry.itemId}" has an unknown effect kind "${(effect as { kind: string }).kind}"`);

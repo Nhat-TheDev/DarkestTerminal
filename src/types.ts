@@ -171,7 +171,7 @@ export interface PassiveRankDefinition {
   healBoostPercent?: number; // Acolyte
   debuffResistPercent?: number; // Acolyte
   hpThresholdPercent?: number; // Viking
-  attackBonusPercent?: number; // Viking — % attack granted by the "viking-blood-fury" status while below hpThresholdPercent
+  thresholdStatusEffectId?: Id; // Viking — the status this rank keeps applied while HP is below hpThresholdPercent, 1 id per rank (the status carries the attack bonus)
   procChancePercent?: number; // Plague Doctor
   critChancePercent?: number; // Archer
   critMultiplierPercent?: number; // Archer
@@ -263,7 +263,7 @@ export interface StatusEffectDefinition {
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
   /** If set, this status is a higher-rank variant of `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match ranks and compose the displayed name. */
   rankOf?: Id;
-  rankLevel?: 2 | 3;
+  rankLevel?: 2 | 3 | 4 | 5 | 6;
   /** Overrides the turn-countdown schedule inferred from `perTurnEffects`' shape — for a status whose shape alone doesn't capture its intended timing, e.g. a pure stat-mod rider that must tick in lockstep with a "special" status it's always co-applied with. */
   tickCategory?: "dot" | "statMod" | "special";
   /** Re-applying this status to a target that already carries it adds a stack (up to `maxStacks`) instead of only refreshing duration. */
@@ -666,7 +666,7 @@ export interface Summon {
   id: Id;
   /** The character who summoned it — whose stats it was derived from at cast time. */
   ownerId: Id;
-  /** Which kind of summon this is (`"ninja-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
+  /** Which kind of summon this is (`"shadow-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
   archetypeId: Id;
   name: string;
   hp: number;
@@ -764,6 +764,10 @@ export interface LogSession {
   lifestealIds: Id[];
   /** DoT sessions only: units whose HP a damage-over-time tick actually lowered (a heal-over-time tick on the same unit is in `healedIds`). */
   tickDamageIds: Id[];
+  /** Units that lost a buff in this session — it ran out, was removed, or was spent. Filled from the entries' `buffLostOf`. */
+  buffLostIds: Id[];
+  /** Units whose turn was cancelled: stunned, too afraid to act, or interrupted by an Overwatch shot. */
+  lostTurnIds: Id[];
   /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
   affectedIds: Id[];
   /** What an actor-less session was, so its lit units can wear the matching icon. */
@@ -776,6 +780,8 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
+  /** Set on the line that reports a buff leaving a unit (a helpful status that is not a heal-over-time): the battlefield unit that lost it (a summon's owner). */
+  buffLostOf?: Id;
 }
 
 export interface CombatState {

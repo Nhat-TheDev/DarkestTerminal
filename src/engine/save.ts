@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
-import { migrateGameState, migrateMonsters } from "./migration";
+import { migrateGameState, migrateMonsters, migrateSummons } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
@@ -222,7 +222,7 @@ export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   const state = migrateGameState(save.state);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
   const monsters = migrateMonsters(save.monsters);
-  const summons = save.summons ?? [];
+  const summons = migrateSummons(save.summons ?? []);
   pruneOrphanedSummonRefs(state, summons);
   const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
   recomputeAllPartyStats(game.state);

@@ -29,7 +29,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteLostTurn, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
@@ -371,6 +371,8 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
         log: combat.log,
       });
       expireStatusEffect(watcher, active, { log: combat.log });
+      // The monster's turn is discarded, not just delayed (a killed monster has no turn left to lose).
+      if (interrupts && isActorAlive(target)) noteLostTurn(combat, target);
       return interrupts || !isActorAlive(target);
     },
     { snapshot: sessionSnapshot(combat, ctx) }
@@ -484,12 +486,14 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   if (hasStunningStatus(actor)) {
     refundQueuedAction(queued, ctx);
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: actor.name }), kind: "info" });
+    noteLostTurn(combat, actor);
     return;
   }
 
   if (rollLosesControl(actor.survival.fear, () => ctx.rng.next())) {
     refundQueuedAction(queued, ctx);
     combat.log.push({ text: t("combat.fearLoseControl", { actor: actor.name }), kind: "info" });
+    noteLostTurn(combat, actor);
     return;
   }
 
@@ -661,30 +665,27 @@ export function acolyteDebuffResistPercent(target: Character): number {
 }
 
 /** Viking's passive (§11 of the design spec) — a below-a-HP-threshold attack buff, unlocked at level
- *  5/20/35. Synced onto the "viking-blood-fury" status (a `modifyCombatStat` buff like any other,
- *  magnitude overridden per rank — same mechanism Totem Recall's buff uses, see resolver.ts's
- *  "applyStatusEffect" case) whenever a non-buff Viking skill resolves, so it stays applied/removed
- *  exactly as long as the live HP ratio said it should the last time the Viking actually attacked.
+ *  5/20/35. Keeps the status its rank names (`thresholdStatusEffectId` — a `modifyCombatStat` buff
+ *  like any other, whose own magnitude is the bonus) applied whenever a non-buff Viking skill
+ *  resolves, so it stays applied/removed exactly as long as the live HP ratio said it should the
+ *  last time the Viking actually attacked.
  *  The caller never syncs it for an `isBuff` skill (never triggers on a buff-only skill). Landing an
  *  attack while it's active costs a fixed `selfDamagePerHitMaxHPPercent` of maxHp (harsher trade-off,
  *  deliberately not scaled by rank), gated by `landedDamageHit`. */
 function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
   if (!isCharacter(source) || source.classId !== "viking") return false;
-  const rankDef = passiveRankDef(getClass("viking").passiveSkill, source.level);
+  const passive = getClass("viking").passiveSkill;
+  const rankDef = passiveRankDef(passive, source.level);
   const belowThreshold = rankDef !== null && source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100;
-  const alreadyActive = source.activeStatusEffects.some((s) => s.statusEffectId === "viking-blood-fury");
+  const ownStatusIds = passive.ranks.flatMap((r) => (r.thresholdStatusEffectId ? [r.thresholdStatusEffectId] : []));
+  const active = source.activeStatusEffects.find((s) => ownStatusIds.includes(s.statusEffectId));
   // Only apply/remove on an actual transition — re-resolving "applyStatusEffect" every turn while
-  // already active would just refresh turnsRemaining (viking-blood-fury isn't stackable, so no new
-  // delta lands) but still logs a spurious "refreshes the Blood Fury effect" line every single turn.
-  if (belowThreshold && !alreadyActive) {
-    resolveSkillEffect(
-      { kind: "applyStatusEffect", statusEffectId: "viking-blood-fury", durationTurns: 99, amount: 0, minPercent: rankDef!.attackBonusPercent ?? 0 },
-      source,
-      source,
-      { log }
-    );
-  } else if (!belowThreshold && alreadyActive) {
-    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: "viking-blood-fury" }, source, source, { log });
+  // already active would just refresh turnsRemaining (the status isn't stackable, so no new
+  // delta lands) but still logs a spurious "refreshes the Bloodrage effect" line every single turn.
+  if (belowThreshold && !active && rankDef?.thresholdStatusEffectId) {
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.thresholdStatusEffectId, durationTurns: 99 }, source, source, { log });
+  } else if (!belowThreshold && active) {
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: active.statusEffectId }, source, source, { log });
   }
   return belowThreshold;
 }
@@ -698,10 +699,10 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
   const passive = getClass("ninja").passiveSkill;
   const chance = (passiveRankDef(passive, source.level)?.secondCloneChancePercent ?? 0) / 100;
   if (chance === 0) return;
-  const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === "ninja-clone");
+  const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === "shadow-clone");
   if (existingClones.length >= (passive.maxClones ?? 0) || existingClones.length === 0) return;
   if (!ctx.rng.chance(chance)) return;
-  spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, source, combat, ctx, log);
+  spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, source, combat, ctx, log);
 }
 
 /** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
@@ -1023,6 +1024,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   const summon = getActorByRef(ref, ctx) as Summon;
   if (hasStunningStatus(summon)) {
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: summon.name }), kind: "info" });
+    noteLostTurn(combat, summon);
     return;
   }
   const archetype = getSummonArchetype(summon.archetypeId);

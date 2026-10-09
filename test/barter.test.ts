@@ -12,6 +12,12 @@ import { getItem } from "../src/data/items";
 import { Rng } from "../src/engine/rng";
 import { BALANCE } from "../src/data/balanceConfig";
 import { ITEMS } from "../src/data/items";
+import { getStatusEffect } from "../src/data/statusEffects";
+import { statusRole } from "../src/engine/resolver";
+import type { ItemTier } from "../src/types";
+
+const TIERS: ItemTier[] = ["common", "uncommon", "rare", "unique", "epic", "legendary"];
+const BARTER_STATUS_IDS = [...Object.values(BALANCE.barter.statStatusIds), ...Object.values(BALANCE.barter.regenStatusIdByTier)];
 
 function bossRoomGame(seed: number, type: "boss" | "combat" = "boss") {
   const game = new Game(seed);
@@ -36,6 +42,40 @@ function percentOf(itemIds: string[], stat: "attack" | "defense" | "speed" | "re
   }
   return total;
 }
+
+describe("the statuses that carry a barter buff (data/balance-config.json)", () => {
+  test("each stat names a buff that raises exactly that stat", () => {
+    for (const [stat, id] of Object.entries(BALANCE.barter.statStatusIds)) {
+      const def = getStatusEffect(id);
+      expect(statusRole(def)).toBe("buff");
+      expect(def.perTurnEffects).toHaveLength(1);
+      expect(String(def.perTurnEffects[0]!.combatStat)).toBe(stat);
+    }
+  });
+
+  test("every tier names a heal-over-time, and the tiers heal more as they get rarer", () => {
+    expect(Object.keys(BALANCE.barter.regenStatusIdByTier).sort()).toEqual([...TIERS].sort());
+    const healed = TIERS.map((tier) => {
+      const def = getStatusEffect(BALANCE.barter.regenStatusIdByTier[tier]);
+      expect(statusRole(def)).toBe("heal");
+      return def.perTurnEffects[0]!.maxHpPercent!;
+    });
+    for (let i = 1; i < healed.length; i++) expect(healed[i]!).toBeGreaterThan(healed[i - 1]!);
+  });
+
+  test("the regeneration tiers are one ranked family, so the party panel reads Knitting, II, III...", () => {
+    const [root, ...rest] = TIERS.map((tier) => getStatusEffect(BALANCE.barter.regenStatusIdByTier[tier]));
+    expect(root!.rankOf).toBeUndefined();
+    rest.forEach((def, i) => {
+      expect(def.rankOf).toBe(root!.id);
+      expect(Number(def.rankLevel)).toBe(i + 2);
+    });
+  });
+
+  test("no barter status id carries the name of its source", () => {
+    for (const id of BARTER_STATUS_IDS) expect(id).not.toMatch(/barter|runner/);
+  });
+});
 
 describe("data/barter.json", () => {
   test("every trophy has exactly one entry, with a whole cost and a buff", () => {
@@ -142,7 +182,7 @@ describe("applying pending barter buffs", () => {
     expect(game.state.combat?.outcome).toBe("victory");
     game.state.party.forEach((c, i) => {
       expect(c.defense).toBe(defenses[i]!);
-      expect(c.activeStatusEffects.some((s) => s.statusEffectId.startsWith("barter-"))).toBe(false);
+      expect(c.activeStatusEffects.some((s) => BARTER_STATUS_IDS.includes(s.statusEffectId))).toBe(false);
     });
   });
 
@@ -151,7 +191,7 @@ describe("applying pending barter buffs", () => {
     game.state.pendingBarterBuffs = ["slime-solution", "warband-trophy"];
     const magic = game.state.party.map((c) => c.magicPower);
     enterRoom(game.state, room, game.ctx);
-    expect(game.state.party[0]!.activeStatusEffects.some((s) => s.statusEffectId.startsWith("barter-regen-"))).toBe(true);
+    expect(game.state.party[0]!.activeStatusEffects.some((s) => Object.values(BALANCE.barter.regenStatusIdByTier).includes(s.statusEffectId))).toBe(true);
     const attacker = game.state.party[0]!;
     game.queue({ kind: "character", id: attacker.id }, attacker.unlockedSkillIds[0]!, [{ kind: "monster", id: monster.id }]);
     game.resolve();

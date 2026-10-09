@@ -22,14 +22,14 @@ describe("status effect turn-countdown timing, per category", () => {
       const rat1Ref: CombatantRef = { kind: "monster", id: rat1.id };
       const rat2Ref: CombatantRef = { kind: "monster", id: rat2.id };
 
-      queueAction(combat, mageRef, "mage-fireball", [rat1Ref], ctx);
+      queueAction(combat, mageRef, "fireball", [rat1Ref], ctx);
       resolveRound(combat, ctx);
       const burning = rat1.activeStatusEffects.find((s) => s.statusEffectId === "burning");
       if (!burning) continue; // this seed's roll didn't proc Burning — try another
       expect(burning.turnsRemaining).toBe(2);
       const hpAfterRound1 = rat1.hp;
 
-      queueAction(combat, mageRef, "mage-arcane-bolt", [rat2Ref], ctx);
+      queueAction(combat, mageRef, "arcane-bolt", [rat2Ref], ctx);
       resolveRound(combat, ctx);
       // Burning: 6 flat + 3% of rat1's 200 maxHp = 12.
       expect(rat1.hp).toBe(hpAfterRound1 - 12);
@@ -46,7 +46,7 @@ describe("status effect turn-countdown timing, per category", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
 
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    queueAction(combat, self, "shield-guard", [self], ctx);
     resolveRound(combat, ctx);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(false);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "taunt")).toBe(false);
@@ -62,11 +62,11 @@ describe("status effect turn-countdown timing, per category", () => {
     const self: CombatantRef = { kind: "character", id: vanguard.id };
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    queueAction(combat, self, "vanguard-slash", [ratRef], ctx);
+    queueAction(combat, self, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
     expect(vanguard.activeStatusEffects.find((s) => s.statusEffectId === "weakened")?.turnsRemaining).toBe(1);
 
-    queueAction(combat, self, "vanguard-slash", [ratRef], ctx);
+    queueAction(combat, self, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
   });
@@ -80,13 +80,13 @@ describe("status effect turn-countdown timing, per category", () => {
     const self: CombatantRef = { kind: "character", id: rogue.id };
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(3);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(3);
 
-    queueAction(combat, self, "rogue-stab", [ratRef], ctx);
+    queueAction(combat, self, "stab", [ratRef], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(2);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(2);
   });
 
   test("Special, refresh: re-casting an already-active special status doesn't lose a tick to the refreshing turn", () => {
@@ -97,36 +97,36 @@ describe("status effect turn-countdown timing, per category", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
 
-    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(3);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(3);
 
     // Bypass the skill's own cooldown so it can be re-cast immediately, purely to exercise the refresh path.
-    rogue.cooldownsRemaining["rogue-poison-coat"] = 0;
-    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    rogue.cooldownsRemaining["poison-coat"] = 0;
+    queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);
     // A refresh must behave like a first cast: still 3 right after the refreshing round, not ticked to 2.
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(3);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(3);
   });
 
   test("Poison Coat rank 2: poison-coat (special) and venom-edge (statMod-shaped) tick in lockstep", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
-    rogue.level = 10; // unlocks rogue-poison-coat rank 2 (unlockLevel 7), which also applies venom-edge
+    rogue.level = 10; // unlocks poison-coat rank 2 (unlockLevel 7), which also applies venom-edge
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(3);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(3);
     expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "venom-edge")?.turnsRemaining).toBe(3);
 
-    queueAction(combat, self, "rogue-stab", [ratRef], ctx);
+    queueAction(combat, self, "stab", [ratRef], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coat")?.turnsRemaining).toBe(2);
+    expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(2);
     expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "venom-edge")?.turnsRemaining).toBe(2);
   });
 
@@ -140,7 +140,7 @@ describe("status effect turn-countdown timing, per category", () => {
 
     // Simulates a faster attacker's stun landing before this round's turn order reaches Vanguard.
     vanguard.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
-    queueAction(combat, vanguardRef, "vanguard-slash", [ratRef], ctx);
+    queueAction(combat, vanguardRef, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("stunned"))).toBe(true);

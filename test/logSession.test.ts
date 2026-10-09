@@ -4,8 +4,9 @@ import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
+import { getStatusEffect } from "../src/data/statusEffects";
 import { noteAffected, noteBasicAttack, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
-import type { Actor } from "../src/engine/resolver";
+import { statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
 
@@ -463,13 +464,13 @@ describe("resolveRound tags what a round logs", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 75;
-    summoner.unlockedSkillIds.push("summoner-totem-recall");
+    summoner.unlockedSkillIds.push("totem-recall");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.maxHp = rat.hp = 50000;
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-totem-recall", [self], ctx);
+    queueAction(combat, self, "totem-recall", [self], ctx);
     resolveRound(combat, ctx);
     resolveRound(combat, ctx); // the totem takes its own turn now
     const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
@@ -488,7 +489,7 @@ function addClone(owner: Character, combat: CombatState, ctx: ReturnType<typeof 
   const clone: Summon = {
     id: `${owner.id}-clone-test`,
     ownerId: owner.id,
-    archetypeId: "ninja-clone",
+    archetypeId: "shadow-clone",
     name: "Shadow Clone",
     hp: 30,
     maxHp: 30,
@@ -622,16 +623,16 @@ describe("a leaving totem lights the allies whose buff it takes with it", () => 
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 75;
-    summoner.unlockedSkillIds.push("summoner-totem-recall");
+    summoner.unlockedSkillIds.push("totem-recall");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.maxHp = rat.hp = 50000;
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-totem-recall", [self], ctx);
+    queueAction(combat, self, "totem-recall", [self], ctx);
     resolveRound(combat, ctx);
 
-    const buffed = ctx.party.filter((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "totem-recall-buff")).map((c) => c.id);
+    const buffed = ctx.party.filter((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "totems-strength")).map((c) => c.id);
     expect(buffed.length).toBeGreaterThan(1);
     const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
     totem.hp = 0;
@@ -642,6 +643,8 @@ describe("a leaving totem lights the allies whose buff it takes with it", () => 
     expect(expiries.length).toBeGreaterThanOrEqual(buffed.length);
     const lit = new Set(expiries.flatMap((e) => e.session!.affectedIds));
     for (const id of buffed) expect(lit.has(id)).toBe(true);
+    const lost = new Set(expiries.flatMap((e) => e.session!.buffLostIds));
+    for (const id of buffed) expect(lost.has(id)).toBe(true);
   });
 });
 
@@ -693,5 +696,284 @@ describe("a heal-over-time and a damage-over-time tick on one unit are both reco
     resolveRound(combat, ctx);
     const dot = combat.log.find((e) => e.session?.cause === "dot");
     expect(dot?.session?.healedIds ?? []).not.toContain(vanguard.id);
+  });
+});
+
+describe("a unit that loses a buff is recorded in the session that logs it", () => {
+  function fight() {
+    const { ctx } = makeCtx(31);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    return { ctx, combat };
+  }
+
+  test("a buff that runs out of turns", () => {
+    const { ctx, combat } = fight();
+    const [a, b] = ctx.party;
+    for (const c of [a!, b!]) c.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 1 });
+    resolveRound(combat, ctx);
+    const expiries = combat.log.filter((e) => e.text.includes("expires"));
+    expect(new Set(expiries.map((e) => e.session)).size).toBe(1);
+    expect(expiries[0]!.session!.buffLostIds).toEqual(expect.arrayContaining([a!.id, b!.id]));
+  });
+
+  test("a heal-over-time wearing off is not a lost buff", () => {
+    const { ctx, combat } = fight();
+    const patient = ctx.party[0]!;
+    patient.hp = Math.floor(patient.maxHp / 2);
+    patient.activeStatusEffects.push({ statusEffectId: "mending", turnsRemaining: 1, sourceMagicPower: 100 });
+    resolveRound(combat, ctx);
+    const expiry = combat.log.find((e) => e.text.includes("expires"));
+    expect(expiry).toBeDefined();
+    expect(expiry!.session!.buffLostIds).not.toContain(patient.id);
+    expect(expiry!.buffLostOf).toBeUndefined();
+  });
+
+  test("a status that heals over time and also raises a stat still counts as a buff", () => {
+    const { ctx, combat } = fight();
+    const patient = ctx.party[0]!;
+    const def = getStatusEffect("guard");
+    const before = def.perTurnEffects;
+    (def as { perTurnEffects: typeof before }).perTurnEffects = [...before, { kind: "heal", amount: 1 }];
+    try {
+      expect(getStatusEffect("guard").perTurnEffects.some((e) => e.kind === "heal")).toBe(true); // the edit above took effect
+      patient.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 1 });
+      resolveRound(combat, ctx);
+      const expiry = combat.log.find((e) => e.text.includes("expires"));
+      expect(expiry!.session!.buffLostIds).toContain(patient.id);
+    } finally {
+      (def as { perTurnEffects: typeof before }).perTurnEffects = before;
+    }
+  });
+
+  test("a debuff wearing off is not a lost buff", () => {
+    const { ctx, combat } = fight();
+    const victim = ctx.party[0]!;
+    victim.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 1 });
+    resolveRound(combat, ctx);
+    const expiry = combat.log.find((e) => e.text.includes("expires"));
+    expect(expiry).toBeDefined();
+    expect(expiry!.session!.buffLostIds).not.toContain(victim.id);
+  });
+
+  test("a buff taken off by an effect", () => {
+    const { ctx, combat } = fight();
+    const [caster, target] = ctx.party;
+    target!.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 });
+    runInSession(combat, caster!.id, () =>
+      applySkillEffects(skill({ target: "singleAlly", effects: [{ kind: "removeStatusEffect", statusEffectId: "guard" }] }), caster!, [target!], combat, ctx, combat.log)
+    );
+    expect(combat.log.at(-1)!.session!.buffLostIds).toContain(target!.id);
+  });
+
+  test("a stance spent by an Overwatch shot changes no stat, so it is not a lost buff", () => {
+    const { ctx, combat } = fight();
+    const archer = ctx.party.find((p) => p.classId === "archer")!;
+    archer.activeStatusEffects.push({ statusEffectId: "overwatched", turnsRemaining: 2 });
+    resolveRound(combat, ctx);
+    const shot = combat.log.find((e) => e.text.includes("Overwatch"))!;
+    expect(shot.session!.actorId).toBe(archer.id);
+    expect(shot.session!.buffLostIds).not.toContain(archer.id);
+  });
+
+  test("stealth wearing off changes no stat either", () => {
+    const { ctx, combat } = fight();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    ninja.activeStatusEffects.push({ statusEffectId: "stealthed", turnsRemaining: 1 });
+    resolveRound(combat, ctx);
+    const expiry = combat.log.find((e) => e.text.includes("expires"));
+    expect(expiry).toBeDefined();
+    expect(expiry!.session!.buffLostIds).not.toContain(ninja.id);
+  });
+
+  test("a stat debuff (enfeebled) wearing off is not a lost buff", () => {
+    const { ctx, combat } = fight();
+    const hero = ctx.party[0]!;
+    hero.activeStatusEffects.push({ statusEffectId: "enfeebled", turnsRemaining: 1 });
+    resolveRound(combat, ctx);
+    const expiry = combat.log.find((e) => e.text.includes("expires"));
+    expect(expiry).toBeDefined();
+    expect(expiry!.session!.buffLostIds).not.toContain(hero.id);
+  });
+
+  test("a minion that loses a buff is recorded as its owner", () => {
+    const { ctx, combat } = fight();
+    const owner = ctx.party.find((p) => p.classId === "summoner")!;
+    const minion = { id: "s1", ownerId: owner.id, name: "Golem", hp: 5, maxHp: 5, activeStatusEffects: [{ statusEffectId: "guard", turnsRemaining: 3 }] } as unknown as Summon;
+    runInSession(combat, owner.id, () =>
+      applySkillEffects(skill({ target: "singleAlly", effects: [{ kind: "removeStatusEffect", statusEffectId: "guard" }] }), owner, [minion], combat, ctx, combat.log)
+    );
+    expect(combat.log.at(-1)!.session!.buffLostIds).toEqual([owner.id]);
+  });
+});
+
+describe("a unit that loses its turn is recorded in its own session", () => {
+  function fight() {
+    const { ctx } = makeCtx(41);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    return { ctx, combat, rat };
+  }
+  const lostTurn = (combat: CombatState, text: string) => combat.log.find((e) => e.text.includes(text))!.session!;
+
+  test.each(["stunned", "stagger", "deafening-charges-din"])("a character stunned by %s", (statusEffectId) => {
+    const { ctx, combat, rat } = fight();
+    const hero = ctx.party.find((p) => p.classId === "vanguard")!;
+    queueAction(combat, { kind: "character", id: hero.id }, hero.unlockedSkillIds[0]!, [{ kind: "monster", id: rat.id }], ctx);
+    hero.activeStatusEffects.push({ statusEffectId, turnsRemaining: 3 });
+    resolveRound(combat, ctx);
+    const session = lostTurn(combat, "too dazed to act");
+    expect(session.actorId).toBe(hero.id);
+    expect(session.lostTurnIds).toEqual([hero.id]);
+    expect(session.attackedIds).toEqual([]);
+  });
+
+  test("a stunned monster", () => {
+    const { ctx, combat, rat } = fight();
+    rat.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 3 });
+    resolveRound(combat, ctx);
+    const session = lostTurn(combat, "too dazed to act");
+    expect(session.actorId).toBe(rat.id);
+    expect(session.lostTurnIds).toEqual([rat.id]);
+  });
+
+  test("a stunned minion loses its turn on its owner", () => {
+    const { ctx } = makeCtx(42);
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 75;
+    summoner.unlockedSkillIds.push("totem-recall");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "totem-recall", [self], ctx);
+    resolveRound(combat, ctx);
+    const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
+    totem.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 3 });
+    resolveRound(combat, ctx);
+    const session = lostTurn(combat, "too dazed to act");
+    expect(session.lostTurnIds).toEqual([summoner.id]);
+  });
+
+  test("a character too afraid to act", () => {
+    const { ctx, combat, rat } = fight();
+    const hero = ctx.party.find((p) => p.classId === "vanguard")!;
+    hero.survival.fear = 100;
+    ctx.rng.next = () => 0; // every control roll fails
+    queueAction(combat, { kind: "character", id: hero.id }, hero.unlockedSkillIds[0]!, [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+    const session = lostTurn(combat, "too afraid to act");
+    expect(session.actorId).toBe(hero.id);
+    expect(session.lostTurnIds).toEqual([hero.id]);
+  });
+
+  test("a monster whose turn an Overwatch shot cancels", () => {
+    const { ctx, combat, rat } = fight();
+    const archer = ctx.party.find((p) => p.classId === "archer")!;
+    archer.activeStatusEffects.push({ statusEffectId: "overwatched", turnsRemaining: 2 });
+    ctx.rng.chance = () => true; // the interrupt roll succeeds
+    resolveRound(combat, ctx);
+    const session = lostTurn(combat, "interrupting");
+    expect(session.actorId).toBe(archer.id);
+    expect(session.lostTurnIds).toEqual([rat.id]);
+  });
+
+  test("a monster whose turn proceeds despite the shot loses nothing", () => {
+    const { ctx, combat } = fight();
+    const archer = ctx.party.find((p) => p.classId === "archer")!;
+    archer.activeStatusEffects.push({ statusEffectId: "overwatched", turnsRemaining: 2 });
+    ctx.rng.chance = () => false; // the interrupt roll fails
+    resolveRound(combat, ctx);
+    expect(lostTurn(combat, "its turn proceeds").lostTurnIds).toEqual([]);
+  });
+
+  test("a turn that is simply played loses nothing", () => {
+    const { ctx, combat } = fight();
+    resolveRound(combat, ctx);
+    expect(combat.log.every((e) => (e.session?.lostTurnIds ?? []).length === 0)).toBe(true);
+  });
+});
+
+describe("statusRole: only a stat change is a buff or a debuff", () => {
+  const role = (id: string) => statusRole(getStatusEffect(id));
+  test("stat modifiers are buffs or debuffs by the direction of the change", () => {
+    for (const id of ["guard", "rallied", "fortify", "empower", "totems-strength", "whetstones-edge"]) expect(role(id)).toBe("buff");
+    for (const id of ["weakened", "slowed", "corroded", "shredded", "distracted", "enfeebled"]) expect(role(id)).toBe("debuff");
+  });
+  test("a change expressed only through minPercent still has a direction", () => {
+    const onlyPercent = (minPercent: number) => ({
+      ...getStatusEffect("enfeebled"),
+      perTurnEffects: [{ kind: "modifyCombatStat" as const, combatStat: "attack" as const, amount: 0, minPercent }],
+    });
+    expect(statusRole(onlyPercent(-15))).toBe("debuff");
+    expect(statusRole(onlyPercent(15))).toBe("buff");
+  });
+  test("a stun and a blind are debuffs of their own, though they change no stat", () => {
+    for (const id of ["stunned", "stagger", "deafening-charges-din", "blinded", "smoke-pellets-haze"]) expect(role(id)).toBe("debuff");
+  });
+  test("a status that also deals damage and cuts a stat is a debuff", () => {
+    expect(role("agony")).toBe("debuff");
+  });
+  test("a heal-over-time is a heal, not a buff", () => {
+    for (const id of ["mending", "mending-iii", "regeneration", "bandage-rolls-mend", "knitting-iii"]) expect(role(id)).toBe("heal");
+  });
+  test("damage over time, vulnerability, stealth and stances are neither", () => {
+    for (const id of ["poisoned", "burning", "bleeding", "poison-vulnerable", "stealthed", "overwatched", "poison-coated", "storm-empowered"]) {
+      expect(role(id)).toBeNull();
+    }
+  });
+});
+
+describe("noteSkillTarget reads statuses by what they change", () => {
+  function noted(effects: SkillEffect[], side: "enemy" | "ally") {
+    const { combat, vanguard, acolyte, goblin } = setup();
+    const target = side === "enemy" ? goblin : acolyte;
+    runInSession(combat, vanguard.id, () => {
+      noteSkillTarget(combat, vanguard, target, effects, false);
+      combat.log.push({ text: "x", kind: "info" });
+    });
+    return { session: combat.log.at(-1)!.session!, target };
+  }
+  const status = (statusEffectId: string): SkillEffect => ({ kind: "applyStatusEffect", statusEffectId, durationTurns: 2 });
+
+  test("a heal-over-time on an ally is a heal", () => {
+    const { session, target } = noted([status("mending")], "ally");
+    expect(session.healedIds).toEqual([target.id]);
+    expect(session.buffedIds).toEqual([]);
+  });
+
+  test("a stat buff on an ally is a buff", () => {
+    expect(noted([status("rallied")], "ally").session.buffedIds).toHaveLength(1);
+  });
+
+  test("a stance on an ally changes no stat: the ally is lit and nothing more", () => {
+    for (const id of ["overwatched", "stealthed", "poison-coated"]) {
+      const { session, target } = noted([status(id)], "ally");
+      expect(session.buffedIds).toEqual([]);
+      expect(session.healedIds).toEqual([]);
+      expect(session.affectedIds).toEqual([target.id]);
+    }
+  });
+
+  test("a stat debuff on an enemy is a debuff, including one written through minPercent", () => {
+    for (const id of ["weakened", "slowed", "enfeebled"]) expect(noted([status(id)], "enemy").session.debuffedIds).toHaveLength(1);
+    expect(noted([{ kind: "modifyCombatStat", combatStat: "attack", amount: 0, minPercent: -15 }], "enemy").session.debuffedIds).toHaveLength(1);
+  });
+
+  test("a stun or a blind on an enemy is a debuff of its own", () => {
+    for (const id of ["stunned", "stagger", "blinded"]) expect(noted([status(id)], "enemy").session.debuffedIds).toHaveLength(1);
+  });
+
+  test("poison or vulnerability on an enemy changes no stat: the enemy is lit and nothing more", () => {
+    for (const id of ["poisoned", "burning", "poison-vulnerable"]) {
+      const { session, target } = noted([status(id)], "enemy");
+      expect(session.debuffedIds).toEqual([]);
+      expect(session.affectedIds).toEqual([target.id]);
+    }
   });
 });

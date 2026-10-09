@@ -22,7 +22,7 @@ import { Game } from "../src/engine/game";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster, getArchetype } from "../src/data/monsters";
-import { migrateGameState } from "../src/engine/migration";
+import { migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
 import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Summon } from "../src/types";
@@ -207,7 +207,7 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       const summon: Summon = {
         id: "test-summon-1",
         ownerId: owner.id,
-        archetypeId: "ninja-clone",
+        archetypeId: "shadow-clone",
         name: "Test Clone",
         hp: 10,
         maxHp: 10,
@@ -229,6 +229,73 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       expect(resumed.ctx.summons).toHaveLength(1);
       expect(resumed.ctx.summons[0]!.id).toBe(summon.id);
       expect(() => getActorByRef({ kind: "summon", id: summon.id }, resumed.ctx)).not.toThrow();
+    });
+  });
+
+  describe("a saved status whose id no longer exists", () => {
+    const gone = (appliedAmounts?: Record<string, number>) => ({ statusEffectId: "a-status-that-was-renamed", turnsRemaining: 5, appliedAmounts });
+    const guard = { statusEffectId: "guard", turnsRemaining: 2 };
+
+    test("is dropped from a monster, and the stat change it recorded is taken back", () => {
+      const rat = spawnMonster("dungeon-rat", 1);
+      const [attack, defense] = [rat.attack, rat.defense];
+      rat.attack += 5; // a buff
+      rat.defense -= 4; // a debuff
+      rat.activeStatusEffects.push(gone({ attack: 5 }), gone({ defense: -4 }), { ...guard });
+      migrateMonsters([rat]);
+      expect(rat.attack).toBe(attack);
+      expect(rat.defense).toBe(defense);
+      expect(rat.activeStatusEffects).toEqual([guard]);
+    });
+
+    test("is dropped from a summon the same way", () => {
+      const summon = { id: "s", ownerId: "p", archetypeId: "shadow-clone", name: "Clone", hp: 5, maxHp: 5, attack: 8, defense: 2, magicPower: 0, aggro: 20, speed: 3, activeStatusEffects: [gone({ attack: 3, aggro: 4 }), { ...guard }], actionsTaken: 0, maxActions: 2 } as Summon;
+      migrateSummons([summon]);
+      expect(summon.attack).toBe(5);
+      expect(summon.aggro).toBe(16);
+      expect(summon.activeStatusEffects).toEqual([guard]);
+    });
+
+    test("a status with no recorded stat change is just dropped, and a stat the bearer does not have is ignored", () => {
+      const rat = spawnMonster("dungeon-rat", 1);
+      const attack = rat.attack;
+      rat.activeStatusEffects.push(gone(), gone({ aggro: 7 }));
+      migrateMonsters([rat]);
+      expect(rat.activeStatusEffects).toEqual([]);
+      expect(rat.attack).toBe(attack);
+      expect("aggro" in rat).toBe(false);
+    });
+
+    test("loading a save drops it from everyone in the party, the monsters and the summons", () => {
+      withGame(21, (game) => {
+        game.currentSaveSlot = "slot1";
+        const hero = game.state.party[0]!;
+        const heroAttack = hero.attack;
+        const rat = spawnMonster("dungeon-rat", 1);
+        game.ctx.monsters.push(rat);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.monsterIds = [rat.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
+        const summon = { id: "test-summon-2", ownerId: hero.id, archetypeId: "shadow-clone", name: "Clone", hp: 5, maxHp: 5, attack: 6, defense: 1, magicPower: 0, aggro: 20, speed: 5, activeStatusEffects: [gone({ attack: 2 })], actionsTaken: 0, maxActions: 2 } as Summon;
+        game.ctx.summons.push(summon);
+        game.state.combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
+        const ratAttack = rat.attack;
+        hero.attack += 9;
+        hero.activeStatusEffects.push(gone({ attack: 9 }));
+        rat.attack += 5;
+        rat.activeStatusEffects.push(gone({ attack: 5 }));
+
+        saveRun(game);
+        const resumed = gameFromSave(loadSave("slot1"), "slot1");
+
+        expect(resumed.state.party[0]!.activeStatusEffects).toEqual([]);
+        expect(resumed.state.party[0]!.attack).toBe(heroAttack);
+        expect(resumed.ctx.monsters.find((m) => m.id === rat.id)!.activeStatusEffects).toEqual([]);
+        expect(resumed.ctx.monsters.find((m) => m.id === rat.id)!.attack).toBe(ratAttack);
+        expect(resumed.ctx.summons[0]!.activeStatusEffects).toEqual([]);
+        expect(resumed.ctx.summons[0]!.attack).toBe(4);
+      });
     });
   });
 

@@ -339,7 +339,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
     vanguard.speed = founder.speed + 1; // this test is about the victory bookkeeping, not turn order: the killing blow must land first
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
     const founderRef: CombatantRef = { kind: "monster", id: founder.id };
-    expect(game.queue(vanguardRef, "vanguard-slash", [founderRef])).toBeNull();
+    expect(game.queue(vanguardRef, "slash", [founderRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");

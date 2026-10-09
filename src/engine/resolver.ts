@@ -12,6 +12,30 @@ export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   return true;
 }
 
+/**
+ * Which way a stat change pushes: the sign of `amount`, or of `minPercent` when `amount` is 0 (a
+ * change written only as a share of the stat, like Enfeebled's -15%). 0 means no change either way.
+ */
+export function statDirection(effect: { amount?: number; minPercent?: number }): number {
+  return Math.sign(effect.amount ?? 0) || Math.sign(effect.minPercent ?? 0);
+}
+
+export type StatusRole = "buff" | "debuff" | "heal";
+
+/**
+ * What a status is on the battlefield. A status that changes a stat is a buff or a debuff (by the
+ * direction of the change); a stun and a blind are debuffs of their own, though they change no stat;
+ * one that restores HP or MP over time is a heal; everything else — damage over time, vulnerability,
+ * stealth, a stance — is neither.
+ */
+export function statusRole(def: StatusEffectDefinition): StatusRole | null {
+  const statChanges = def.perTurnEffects.filter((e) => e.kind === "modifyCombatStat");
+  if (statChanges.length > 0) return statChanges.some((e) => statDirection(e) < 0) ? "debuff" : "buff";
+  if (def.stuns || def.accuracyPenaltyPercent) return "debuff";
+  if (def.perTurnEffects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "heal";
+  return null;
+}
+
 export type StatusCategory = "dot" | "statMod" | "special";
 
 /**
@@ -433,7 +457,11 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
-  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: "info" });
+  ctx.log.push({
+    text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+    kind: "info",
+    ...(statusRole(def) === "buff" ? { buffLostOf: isSummon(actor) ? actor.ownerId : actor.id } : {}),
+  });
 }
 
 function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {

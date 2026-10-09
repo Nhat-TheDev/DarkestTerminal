@@ -26,6 +26,7 @@ export const FOCUS_GLYPH = {
   debuff: "▼",
   heal: "✚",
   support: "⚚",
+  skip: "⊘",
   dot: "☣",
   dying: "☠",
   artifact: "✦",
@@ -87,6 +88,9 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   if (attacked) icons.push(icon(FOCUS_GLYPH.shield));
   else if (session.debuffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.debuff));
   if (session.buffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.buff));
+  if (session.lostTurnIds.includes(id)) icons.push(icon(FOCUS_GLYPH.skip));
+  // Losing a buff reads like being debuffed: the same glyph, once.
+  if (session.buffLostIds.includes(id) && !session.debuffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.debuff));
   if (healed) icons.push(icon(FOCUS_GLYPH.heal));
 
   const participates =
@@ -95,6 +99,8 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     delta !== 0 ||
     session.debuffedIds.includes(id) ||
     session.buffedIds.includes(id) ||
+    session.buffLostIds.includes(id) ||
+    session.lostTurnIds.includes(id) ||
     healed ||
     session.affectedIds.includes(id);
   return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta) : null };

@@ -48,7 +48,7 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    queueAction(combat, self, "shield-guard", [self], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === vanguard.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -70,7 +70,7 @@ describe("combat round structure", () => {
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === summoner.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -91,7 +91,7 @@ describe("combat round structure", () => {
     const mage = ctx.party.find((p) => p.classId === "mage")!;
     const mpBefore = mage.mp;
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
-    queueAction(combat, { kind: "character", id: mage.id }, "mage-fireball", [enemy], ctx);
+    queueAction(combat, { kind: "character", id: mage.id }, "fireball", [enemy], ctx);
     expect(mage.mp).toBe(mpBefore);
     resolveRound(combat, ctx);
     expect(mage.mp).toBe(mpBefore - 5);
@@ -105,14 +105,14 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
 
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    queueAction(combat, self, "shield-guard", [self], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(1);
-    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).not.toBeNull();
+    expect(vanguard.cooldownsRemaining["shield-guard"]).toBe(1);
+    expect(queueAction(combat, self, "shield-guard", [self], ctx)).not.toBeNull();
 
     resolveRound(combat, ctx);
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBe(0);
-    expect(queueAction(combat, self, "vanguard-shield-guard", [self], ctx)).toBeNull();
+    expect(vanguard.cooldownsRemaining["shield-guard"]).toBe(0);
+    expect(queueAction(combat, self, "shield-guard", [self], ctx)).toBeNull();
   });
 
   test("dead singleEnemy target redirects to another living enemy instead of fizzling", () => {
@@ -124,7 +124,7 @@ describe("combat round structure", () => {
 
     const targetA = getActorByRef(enemyA!, ctx);
     targetA.hp = 0;
-    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-stab", [enemyA!], ctx);
+    queueAction(combat, { kind: "character", id: rogue.id }, "stab", [enemyA!], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === rogue.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -180,7 +180,7 @@ describe("Archer Overwatch (interrupt)", () => {
     rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: archer.id };
-    queueAction(combat, self, "archer-overwatch", [self], ctx);
+    queueAction(combat, self, "overwatch", [self], ctx);
     const hpBefore = rat.hp;
 
     resolveRound(combat, ctx);
@@ -202,7 +202,7 @@ describe("Archer Overwatch (interrupt)", () => {
     rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: archer.id };
-    queueAction(combat, self, "archer-overwatch", [self], ctx);
+    queueAction(combat, self, "overwatch", [self], ctx);
 
     resolveRound(combat, ctx);
 
@@ -221,7 +221,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const summonRefs = livingSummonRefs(combat, ctx);
@@ -250,7 +250,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
@@ -266,7 +266,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     expect(rat.hp).toBeLessThan(999);
@@ -280,7 +280,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     resolveRound(combat, ctx); // clone's 1st action
     const hpBeforeExpiry = rat.hp;
@@ -298,7 +298,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
@@ -319,12 +319,12 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
+    ninja.cooldownsRemaining["shadow-strike"] = 0;
 
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(false);
@@ -339,7 +339,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     // Summons are saved with the run, dead ones included, while the id counter starts over with the
@@ -349,8 +349,8 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     ctx.summons.push({ ...first, id: nextId, hp: 0, actionsTaken: first.maxActions });
 
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
-    queueAction(combat, self, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    ninja.cooldownsRemaining["shadow-strike"] = 0;
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     const before = combat.log.length;
     resolveRound(combat, ctx);
 
@@ -367,7 +367,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     rat.attack = 0;
     rat.hp = rat.maxHp = 999;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    queueAction(combat, { kind: "character", id: ninja.id }, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, { kind: "character", id: ninja.id }, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     expect(ctx.summons.some((s) => s.hp > 0)).toBe(true); // e.g. a save written mid-fight, then resumed in a later room
 
@@ -382,7 +382,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const game = new Game(1);
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
+    ninja.cooldownsRemaining["shadow-strike"] = 0;
     // Summon-casting skills no longer get the isBuff turn-priority bonus (they resolve in plain
     // speed order — see turnOrderSortKey), so the cast must actually be the fastest action this
     // round for the clone to exist before the 1-hp rat dies to someone else's queued attack.
@@ -397,7 +397,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
 
     const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
-    expect(game.queue(ninjaRef, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
+    expect(game.queue(ninjaRef, "shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
     for (const ref of game.livingCharactersNeedingAction()) {
       if (ref.id === ninja.id) continue;
       const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
@@ -421,7 +421,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const game = new Game(2);
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
-    ninja.cooldownsRemaining["ninja-shadow-strike"] = 0;
+    ninja.cooldownsRemaining["shadow-strike"] = 0;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 99999;
     rat.attack = 0; // never actually deals the killing blow — the wipe below is simulated directly
@@ -432,7 +432,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
 
     const ninjaRef: CombatantRef = { kind: "character", id: ninja.id };
-    expect(game.queue(ninjaRef, "ninja-shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
+    expect(game.queue(ninjaRef, "shadow-strike", [{ kind: "monster", id: rat.id }])).toBeNull();
     for (const ref of game.livingCharactersNeedingAction()) {
       if (ref.id === ninja.id) continue;
       const { skillId, targets } = pickAnyAction(game.ctx, game.state.combat!, ref);
@@ -466,7 +466,7 @@ describe("Ninja Smoke Bomb (stealth / untargetable)", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
-    queueAction(combat, self, "ninja-smoke-bomb", [self], ctx);
+    queueAction(combat, self, "smoke-bomb", [self], ctx);
     resolveRound(combat, ctx);
 
     expect(ninja.activeStatusEffects.some((s) => s.statusEffectId === "stealthed")).toBe(true);
@@ -486,12 +486,12 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     expect(ctx.summons.filter((s) => s.hp > 0)).toHaveLength(1);
     expect(ctx.summons.find((s) => s.hp > 0)!.archetypeId).toBe("goblin-thrower");
 
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx);
     const active = ctx.summons.filter((s) => s.hp > 0);
     expect(active).toHaveLength(1);
@@ -507,7 +507,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
     // goblin-thrower's speed (12) > the Summoner's own speed (10).
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
     expect(goblin.speed).toBeGreaterThan(summoner.speed);
@@ -518,7 +518,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 10;
-    summoner.unlockedSkillIds.push("summoner-summon-golem");
+    summoner.unlockedSkillIds.push("summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
@@ -526,7 +526,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
     // stone-golem's speed (6) < the Summoner's own speed (10).
-    queueAction(combat, self, "summoner-summon-golem", [enemy], ctx);
+    queueAction(combat, self, "summon-golem", [enemy], ctx);
     resolveRound(combat, ctx);
     const golem = ctx.summons.find((s) => s.archetypeId === "stone-golem")!;
     expect(golem.speed).toBeLessThan(summoner.speed);
@@ -541,15 +541,15 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    const err1 = queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    const err1 = queueAction(combat, self, "summon-goblin", [self], ctx);
     expect(err1).toBeNull();
     resolveRound(combat, ctx);
 
     // Summon Goblin has a cooldown, so clear it to actually exercise a 2nd cast this test — a
     // queueAction call that silently no-ops on cooldown would make this test pass for the wrong reason.
-    summoner.cooldownsRemaining["summoner-summon-goblin"] = 0;
+    summoner.cooldownsRemaining["summon-goblin"] = 0;
     summoner.mp = summoner.maxMp;
-    const err2 = queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    const err2 = queueAction(combat, self, "summon-goblin", [self], ctx);
     expect(err2).toBeNull();
     resolveRound(combat, ctx);
 
@@ -570,7 +570,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx); // action 1 — Goblin Thrower is faster than the Summoner, so it acts the moment it spawns
     resolveRound(combat, ctx); // action 2
     resolveRound(combat, ctx); // action 3 — goblin-thrower's maxActions, expires this round
@@ -583,9 +583,9 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
 
     // A different-type summon right after must not see the expired goblin as still "owned" —
     // it should be added cleanly, not treated as if the owner were already at any cap.
-    summoner.cooldownsRemaining["summoner-summon-spirit"] = 0;
+    summoner.cooldownsRemaining["summon-spirit"] = 0;
     summoner.mp = summoner.maxMp;
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx);
     const activeMinions = combat.combatants.filter((c) => c.ref.kind === "summon");
     expect(activeMinions).toHaveLength(1);
@@ -596,7 +596,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 20; // passive rank 2: +1 cap
-    summoner.unlockedSkillIds.push("summoner-summon-golem");
+    summoner.unlockedSkillIds.push("summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     // Goblin Thrower is faster than the Summoner, so it now gets an extra immediate action the round
@@ -607,16 +607,16 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx);
 
     let active = ctx.summons.filter((s) => s.hp > 0);
     expect(active.map((s) => s.archetypeId).sort()).toEqual(["goblin-thrower", "healer-spirit"]);
 
     // A 3rd different type, still under the same rank-2 cap of 2, evicts the oldest (goblin).
-    queueAction(combat, self, "summoner-summon-golem", [self], ctx);
+    queueAction(combat, self, "summon-golem", [self], ctx);
     resolveRound(combat, ctx);
     active = ctx.summons.filter((s) => s.hp > 0);
     expect(active.map((s) => s.archetypeId).sort()).toEqual(["healer-spirit", "stone-golem"]);
@@ -630,15 +630,15 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
 
     // Computed directly from the cast formula + the passive's rank-3 bonus, not by comparing against
     // an unbuffed instance at a different level — the Summoner's own maxHp/magicPower (the formula's
     // sourceStat) also grows with level, which would confound a simple before/after ratio.
-    const cast = getSummonCast("summoner-summon-goblin");
-    const skillRank = effectiveSkillRank(getSkill("summoner-summon-goblin"), summoner.level) || 1;
+    const cast = getSummonCast("summon-goblin");
+    const skillRank = effectiveSkillRank(getSkill("summon-goblin"), summoner.level) || 1;
     const maxHpPercent = cast.stat.maxHp.percent as number;
     const attackPercent = Array.isArray(cast.stat.attack.percent) ? cast.stat.attack.percent[skillRank - 1]! : cast.stat.attack.percent;
     const expectedMaxHp = Math.round(cast.stat.maxHp.base + (maxHpPercent / 100) * summoner.maxHp * 1.3);
@@ -656,7 +656,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx); // spirit spawns mid-round, doesn't act yet
     vanguard.hp = 1;
 
@@ -676,9 +676,9 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx); // spirit spawns mid-round, doesn't act yet
 
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
@@ -701,7 +701,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 35;
     summoner.mp = summoner.maxMp;
-    summoner.unlockedSkillIds.push("summoner-summon-imp");
+    summoner.unlockedSkillIds.push("summon-hellfire-imp");
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
     rat1.attack = 0;
@@ -711,7 +711,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const targets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
 
     const hpBefore = [rat1.hp, rat2.hp];
-    queueAction(combat, self, "summoner-summon-imp", targets, ctx);
+    queueAction(combat, self, "summon-hellfire-imp", targets, ctx);
     resolveRound(combat, ctx);
 
     expect(ctx.summons.filter((s) => s.archetypeId === "hellfire-imp")).toHaveLength(1);

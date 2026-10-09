@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { applySkillEffects, startCombat } from "../src/engine/combat";
+import { resolveSkillEffect } from "../src/engine/resolver";
+import { getClass } from "../src/data/classes";
+import { getStatusEffect } from "../src/data/statusEffects";
 import { spawnMonster } from "../src/data/monsters";
 import { makeCtx } from "./helpers";
 import type { LogEntry, SkillDefinition } from "../src/types";
@@ -93,5 +96,71 @@ describe("Viking passive: low-HP damage buff with self-cost", () => {
     const target = spawnMonster("goblin", 1);
     applySkillEffects(attackSkill(), viking, [target], combat, ctx, []);
     expect(viking.hp).toBe(1);
+  });
+});
+
+describe("Viking passive: the status carries the magnitude, the passive only names it", () => {
+  const ranks = getClass("viking").passiveSkill.ranks;
+  const lowHpViking = (level: number) => {
+    const { ctx } = makeCtx();
+    const viking = ctx.party.find((p) => p.classId === "viking")!;
+    viking.level = level;
+    viking.hp = Math.round(viking.maxHp * 0.2); // below every rank's threshold
+    return { ctx, viking };
+  };
+
+  test("every rank names a status that raises attack, and the ranks get stronger", () => {
+    const magnitudes = ranks.map((rank) => {
+      expect(rank.thresholdStatusEffectId).toBeDefined();
+      const stat = getStatusEffect(rank.thresholdStatusEffectId!).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === "attack");
+      expect(stat).toBeDefined();
+      return Math.max(stat!.amount ?? 0, stat!.minPercent ?? 0);
+    });
+    expect(magnitudes[0]).toBeGreaterThan(0);
+    expect(magnitudes[1]!).toBeGreaterThan(magnitudes[0]!);
+    expect(magnitudes[2]!).toBeGreaterThan(magnitudes[1]!);
+  });
+
+  test("the passive no longer carries a bonus of its own", () => {
+    for (const rank of ranks) expect("attackBonusPercent" in rank).toBe(false);
+  });
+
+  for (const rank of ranks) {
+    test(`rank ${rank.rank}: dropping below the threshold applies ${rank.thresholdStatusEffectId} with that status's own magnitude`, () => {
+      const { ctx, viking } = lowHpViking(rank.unlockLevel);
+      const combat = startCombat("test-room", [], ctx, false);
+      applySkillEffects(attackSkill(), viking, [spawnMonster("goblin", 1)], combat, ctx, []);
+      const active = viking.activeStatusEffects.find((s) => s.statusEffectId === rank.thresholdStatusEffectId);
+      expect(active).toBeDefined();
+
+      // The same status applied by hand, with no override, lands the same attack bonus.
+      const { ctx: otherCtx, viking: other } = lowHpViking(rank.unlockLevel);
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rank.thresholdStatusEffectId! }, other, other, { log: [] });
+      const direct = other.activeStatusEffects.find((s) => s.statusEffectId === rank.thresholdStatusEffectId)!;
+      expect(active!.appliedAmounts?.attack).toBeGreaterThan(0);
+      expect(active!.appliedAmounts?.attack).toBe(direct.appliedAmounts?.attack);
+      expect(otherCtx).toBeDefined();
+    });
+  }
+
+  test("climbing back above the threshold takes the status off again", () => {
+    const rank = ranks[2]!;
+    const { ctx, viking } = lowHpViking(rank.unlockLevel);
+    const combat = startCombat("test-room", [], ctx, false);
+    applySkillEffects(attackSkill(), viking, [spawnMonster("goblin", 1)], combat, ctx, []);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === rank.thresholdStatusEffectId)).toBe(true);
+    viking.hp = viking.maxHp;
+    applySkillEffects(attackSkill(), viking, [spawnMonster("goblin", 1)], combat, ctx, []);
+    expect(viking.activeStatusEffects.some((s) => s.statusEffectId === rank.thresholdStatusEffectId)).toBe(false);
+  });
+
+  test("it is applied once per drop, not refreshed on every attack", () => {
+    const { ctx, viking } = lowHpViking(35);
+    const combat = startCombat("test-room", [], ctx, false);
+    const log: LogEntry[] = [];
+    for (let i = 0; i < 3; i++) applySkillEffects(attackSkill(), viking, [spawnMonster("goblin", 1)], combat, ctx, log);
+    const ownIds = ranks.map((r) => r.thresholdStatusEffectId);
+    expect(viking.activeStatusEffects.filter((s) => ownIds.includes(s.statusEffectId))).toHaveLength(1);
+    expect(log.filter((l) => l.text.includes(getStatusEffect(ranks[2]!.thresholdStatusEffectId!).name)).length).toBeLessThanOrEqual(1);
   });
 });

@@ -62,7 +62,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/classes.json` | 9 classes (Vanguard/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner): stats + all 6 skills per class | `src/data/classes.ts` |
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
-| `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
+| `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rallied`, `poison-coated`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
 | `data/floor-milestones.json` | The floor-milestone omen lines (one per milestone floor, banded by `maxFloor`): `id`, `maxFloor`, `text`, plus the milestone `interval` | `src/data/floorMilestones.ts` |
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
@@ -80,7 +80,7 @@ of the code doesn't need to know the data comes from JSON.
 
 **Class passives — 2 shapes, no hardcoded ids in engine code.** A passive's mechanic always reads its magnitude off `PassiveRankDefinition`/`PassiveSkillDefinition` fields in `data/classes.json` (see `src/types.ts`) — never a number typed into TypeScript. Beyond that, a passive is one of 2 shapes:
 - **Pure stat math** (Vanguard, Rogue's bonus%, Acolyte, Archer, Ninja's dodge/clone%, Summoner): no status effect involved at all — the hook/helper in `src/engine/combat.ts`/`combatHooks.ts` just reads the rank's numeric field(s) and computes directly.
-- **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank (Mage's `onHitStatusEffectId` — "mage-shred"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall, Viking's `viking-blood-fury` — see `docs/gameplay-decisions/01-class-skill.md` §11's `minPercent`-override note). A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
+- **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank, whose own magnitude is the whole effect (Mage's `onHitStatusEffectId` — "shredded"/"-ii"/"-iii", Viking's `thresholdStatusEffectId` — "bloodrage"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall's `totems-strength` — see `docs/gameplay-decisions/01-class-skill.md` §11's `minPercent`-override note). A passive never repeats a number its status already carries. A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
 
 ## 🗺️ Floor structure — generated at runtime
 
@@ -138,19 +138,28 @@ frame (`ICON_BAND_ROWS`, `src/ui/layout.ts`); the battlefield always reserves th
 centred over the unit's own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
 every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
 `src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
-a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage,
-▲ buffed, ✚ healed, ⚚ caster of a buff/heal, ♥ an attacker that drained HP from its own hit
-(`LogSession.lifestealIds`; a heal-on-kill is not lifesteal and only shows its number). Blue
-marks the party, red the monsters, by the side of the unit wearing the icon.
+a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage or a unit
+that lost a buff (it ran out, was removed or was spent — `LogSession.buffLostIds`, filled from the
+`buffLostOf` of the line `expireStatusEffect` logs), ▲ buffed, ✚ healed (a heal-over-time such as
+Mending counts here too, applied or expired), ⚚ caster of a buff/heal, ⊘ a unit whose turn was
+cancelled (stunned, too afraid to act, or cut short by an Overwatch shot — `LogSession.lostTurnIds`;
+a minion's lost turn shows on its owner), ♥ an attacker that drained HP from its own hit (`LogSession.lifestealIds`; a heal-on-kill is not
+lifesteal and only shows its number). Blue marks the party, red the monsters, by the side of the
+unit wearing the icon.
+A status that changes a stat is a buff or a debuff, by the direction of the change
+(`statusRole`, `src/engine/resolver.ts`); a stun and a blind are debuffs of their own, though they
+change no stat; one that restores HP or MP over time is a heal; damage over time, vulnerability,
+stealth and a stance such as Overwatch are neither, so casting or losing one lights the unit
+without a ▲ or ▼.
 Who those units are comes from `LogEntry.session` (`LogSession`, built in
 `src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
 because it has no sprite. Round-start and round-end ticks are one actor-less session per block
 that lights the units whose tick logged; its `cause` picks their icon — ☣ a damage-over-time tick
 (`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
 unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
-auto-damage (its target wears ⛨); a stat-mod expiry block has no icon. Anything else a session
-narrates is lit too: an ally that a skill or item touches without helping (an aggro drop, say) and
-the allies whose buff expires with a Recall Totem are lit without an icon.
+auto-damage (its target wears ⛨); a stat-mod expiry block shows only the ▼ of the units that lost a
+buff, which includes the allies whose buff ends with a leaving Recall Totem. An ally that a skill or
+item touches without helping (an aggro drop, say) is lit without an icon.
 
 After the icons comes the unit's outcome for the session, from its impact on: its HP change
 (`-12`, `+8`), or `miss` for a target whose attack or debuff missed or was dodged

@@ -41,7 +41,7 @@ Pillar (`fire`), Lightning Bolt/Lightning Storm (`lightning`), Ice Age (`ice`), 
 `acid-burn`), as does `onHitAoeDamage` (`storm-empowered`'s lightning splash) — `damageType` is a
 property of any `damage`-shaped effect, not something scoped to `perTurnEffects` specifically.
 
-**Mage's basic attack, Arcane Bolt** (`mage-arcane-bolt`), is `isMagic: true` (scales off
+**Mage's basic attack, Arcane Bolt** (`arcane-bolt`), is `isMagic: true` (scales off
 `magicPower`), consistent with its `damageType: "magic"` tag.
 
 The first class-specific skills are unlocked at level 1 (on top of the always-available basic attack), the rest unlock gradually via each skill's `unlockLevel` field. `slot`/`unlockLevel`/`cooldownTurns` match the field of the same name in `SkillDefinition` (see `docs/technical-decisions.md` §4) — `usesPerCombat` is not used for character skills (section 1.7, last bullet, "Design notes").
@@ -113,15 +113,15 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 | Class | Skill id | Name | Damage stat |
 |---|---|---|---|
-| Vanguard | `vanguard-slash` | Slash | attack |
-| Mage | `mage-arcane-bolt` | Arcane Bolt | magicPower |
-| Rogue | `rogue-stab` | Stab | attack |
-| Acolyte | `acolyte-smite` | Smite | magicPower |
-| Viking | `viking-axe-slash` | Axe Slash | attack |
-| Plague Doctor | `plaguedoc-vial-toss` | Vial Toss | magicPower |
-| Archer | `archer-quick-shot` | Quick Shot | attack |
-| Ninja | `ninja-kunai-strike` | Kunai Strike | attack |
-| Summoner | `summoner-hollow-pulse` | Hollow Pulse | magicPower |
+| Vanguard | `slash` | Slash | attack |
+| Mage | `arcane-bolt` | Arcane Bolt | magicPower |
+| Rogue | `stab` | Stab | attack |
+| Acolyte | `smite` | Smite | magicPower |
+| Viking | `axe-slash` | Axe Slash | attack |
+| Plague Doctor | `vial-toss` | Vial Toss | magicPower |
+| Archer | `quick-shot` | Quick Shot | attack |
+| Ninja | `kunai-strike` | Kunai Strike | attack |
+| Summoner | `hollow-pulse` | Hollow Pulse | magicPower |
 <!-- docs:end -->
 
 *Most basic attacks are physical and scale off their full `attack`. The exceptions: the **magic basics** — Mage's Arcane Bolt, Acolyte's Smite, Summoner's Hollow Pulse (`isMagic: true` + `damageType: "magic"`, each with a reduced `offenseMultiplierPercent`) and Plague Doctor's Vial Toss (`isMagic: true` only, full multiplier) — draw their baseline damage from `magicPower` instead of `attack`; and the **ranged basics** — Archer's Quick Shot and Ninja's Kunai Strike — which stay physical but carry a reduced `offenseMultiplierPercent` because they attack from range, while the melee basics keep the full multiplier. Exact values: `data/classes.json`.*
@@ -133,20 +133,20 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `vanguard-shield-guard` | Shield Guard | self | 2 | 8 / 9 / 10 | 1 / 7 / 15 | status guard / guard-ii / guard-iii (1 turn); status taunt (1 turn) | buff |
-| 2 | `vanguard-shield-throw` | Shield Throw | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% ATK | — |
-| 3 | `vanguard-rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rally / rally-ii / rally-iii (1 turn) | buff |
-| 4 | `vanguard-heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 20 / 50 / 75 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `vanguard-sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
+| 1 | `shield-guard` | Shield Guard | self | 2 | 8 / 9 / 10 | 1 / 7 / 15 | status guard / guard-ii / guard-iii (1 turn); status taunt (1 turn) | buff |
+| 2 | `shield-throw` | Shield Throw | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% ATK | — |
+| 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
+| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 20 / 50 / 75 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
+| 5 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `vanguard-shield-guard` — `applyStatusEffect "guard"` (temporary defense buff) **+** `applyStatusEffect "taunt"` (temporary aggro buff) — 2 independent statuses, applied together
-- `vanguard-shield-throw` — `damage`
-- `vanguard-rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rally"` (temporary attack buff, whole party)
-- `vanguard-heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
-- `vanguard-sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `shield-guard` — `applyStatusEffect "guard"` (temporary defense buff) **+** `applyStatusEffect "taunt"` (temporary aggro buff) — 2 independent statuses, applied together
+- `shield-throw` — `damage`
+- `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
+- `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
+- `sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Shield Guard carries both the "aggro draw" role and the "defense" role, while Rally is a whole-party buff rather than just self-taunt. The Flags column marks skills that receive `isBuff: true` — see the `durationTurns`/cooldown/speed rules specific to buffs in section 1.7 and `docs/technical-decisions.md` §4.7. MP costs, effects and cooldowns are in the table above, generated from `data/classes.json`.*
 
@@ -159,20 +159,20 @@ How each skill works:
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `mage-fireball` | Fireball | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% MAG (fire); status burning (2 turns, 30 / 40 / 50% chance) | magic |
-| 2 | `mage-lightning-bolt` | Lightning Bolt | singleEnemy | — | 6 / 7 / 8 | 1 / 7 / 15 | damage 12 / 15 / 19 + 100 / 110 / 115% MAG (lightning); status stunned (1 turn, 20 / 28 / 35% chance) | magic |
-| 3 | `mage-fire-pillar` | Fire Pillar | allEnemies | 2 | 14 / 15 / 16 | 10 / 25 / 45 | damage 12 / 15 / 19 + 80 / 85 / 90% MAG (fire); status burning (2 turns, 50 / 60 / 70% chance) | magic |
-| 4 | `mage-lightning-storm` | Lightning Storm | allEnemies | 3 | 16 / 17 / 18 | 20 / 50 / 75 | damage 15 / 20 / 30 + 80 / 90 / 100% MAG (lightning); status stunned (1 turn, 30 / 38 / 45% chance) | magic |
-| 5 | `mage-ice-age` | Ice Age | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 20 / 25 / 35 + 110 / 120 / 130% MAG (ice) | ultimate · magic |
+| 1 | `fireball` | Fireball | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% MAG (fire); status burning (2 turns, 30 / 40 / 50% chance) | magic |
+| 2 | `lightning-bolt` | Lightning Bolt | singleEnemy | — | 6 / 7 / 8 | 1 / 7 / 15 | damage 12 / 15 / 19 + 100 / 110 / 115% MAG (lightning); status stunned (1 turn, 20 / 28 / 35% chance) | magic |
+| 3 | `fire-pillar` | Fire Pillar | allEnemies | 2 | 14 / 15 / 16 | 10 / 25 / 45 | damage 12 / 15 / 19 + 80 / 85 / 90% MAG (fire); status burning (2 turns, 50 / 60 / 70% chance) | magic |
+| 4 | `lightning-storm` | Lightning Storm | allEnemies | 3 | 16 / 17 / 18 | 20 / 50 / 75 | damage 15 / 20 / 30 + 80 / 90 / 100% MAG (lightning); status stunned (1 turn, 30 / 38 / 45% chance) | magic |
+| 5 | `ice-age` | Ice Age | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 20 / 25 / 35 + 110 / 120 / 130% MAG (ice) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
-- `mage-fireball` — `damage` + chance to `applyStatusEffect "burning"`
-- `mage-lightning-bolt` — `damage` + chance to `applyStatusEffect "stunned"`
-- `mage-fire-pillar` — `damage`/enemy + chance to `applyStatusEffect "burning"` **per enemy** (rolled separately for each target, both accuracy and proc)
-- `mage-lightning-storm` — `damage`/enemy + chance to `applyStatusEffect "stunned"` **per enemy**
-- `mage-ice-age` — `damage`/enemy — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `fireball` — `damage` + chance to `applyStatusEffect "burning"`
+- `lightning-bolt` — `damage` + chance to `applyStatusEffect "stunned"`
+- `fire-pillar` — `damage`/enemy + chance to `applyStatusEffect "burning"` **per enemy** (rolled separately for each target, both accuracy and proc)
+- `lightning-storm` — `damage`/enemy + chance to `applyStatusEffect "stunned"` **per enemy**
+- `ice-age` — `damage`/enemy — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *All of Mage's skills are `isMagic: true`, so the engine substitutes `magicPower` for `attack` in the same formula (`amount + mitigatedOffense(magicPower * offenseMultiplier, defense)`) — see the "Reading the Effects column" note under section 1.1 for how `offenseMultiplier` is read per skill/rank from `data/classes.json`.*
 
@@ -185,24 +185,24 @@ How each skill works:
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `rogue-poison-coat` | Poison Coat | self | 4 | 3 / 4 / 5 | 1 / 7 / 15 | status poison-coat (3 turns); status venom-edge / venom-edge-ii (3 turns) | buff |
-| 2 | `rogue-knife-throw` | Knife Throw | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 12 / 15 / 19 + 90 / 100 / 110% ATK | — |
-| 3 | `rogue-backstab` | Backstab | singleEnemy | 1 | 8 / 9 / 10 | 10 / 25 / 45 | damage 15 / 20 / 25 + 115 / 125 / 140% ATK | — |
-| 4 | `rogue-poison-bomb` | Poison Bomb | allEnemies | 3 | 10 / 11 / 12 | 20 / 50 / 75 | damage 10 / 20 / 30 + 50 / 55 / 60% ATK; status poisoned / poisoned-ii / poisoned-iii (3 turns) | — |
-| 5 | `rogue-flurry-assault` | Flurry Assault | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 12 / 15 / 20 + 45 / 55 / 65% ATK ×3 | ultimate |
+| 1 | `poison-coat` | Poison Coat | self | 4 | 3 / 4 / 5 | 1 / 7 / 15 | status poison-coated (3 turns); status venom-edge / venom-edge-ii (3 turns) | buff |
+| 2 | `knife-throw` | Knife Throw | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 12 / 15 / 19 + 90 / 100 / 110% ATK | — |
+| 3 | `backstab` | Backstab | singleEnemy | 1 | 8 / 9 / 10 | 10 / 25 / 45 | damage 15 / 20 / 25 + 115 / 125 / 140% ATK | — |
+| 4 | `poison-bomb` | Poison Bomb | allEnemies | 3 | 10 / 11 / 12 | 20 / 50 / 75 | damage 10 / 20 / 30 + 50 / 55 / 60% ATK; status poisoned / poisoned-ii / poisoned-iii (3 turns) | — |
+| 5 | `flurry-assault` | Flurry Assault | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 12 / 15 / 20 + 45 / 55 / 65% ATK ×3 | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `rogue-poison-coat` — `applyStatusEffect "poison-coat"` (self-buff, **does not** deal damage itself — every `damage` effect this actor deals while the buff is active automatically carries `applyStatusEffect "poisoned"` onto the target hit; see "on-hit rider" in `docs/technical-decisions.md` §4.2)
-- `rogue-knife-throw` — `damage`
-- `rogue-backstab` — `damage`
-- `rogue-poison-bomb` — `damage`/enemy + `applyStatusEffect "poisoned"` per enemy — accuracy rolled separately per enemy
-- `rogue-flurry-assault` — several consecutive `damage` hits — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `poison-coat` — `applyStatusEffect "poison-coated"` (self-buff, **does not** deal damage itself — every `damage` effect this actor deals while the buff is active automatically carries `applyStatusEffect "poisoned"` onto the target hit; see "on-hit rider" in `docs/technical-decisions.md` §4.2)
+- `knife-throw` — `damage`
+- `backstab` — `damage`
+- `poison-bomb` — `damage`/enemy + `applyStatusEffect "poisoned"` per enemy — accuracy rolled separately per enemy
+- `flurry-assault` — several consecutive `damage` hits — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Poison Coat is a self-buff that "coats the weapon in poison" — its value comes indirectly through subsequent hits. Rogue has no dedicated defensive skill — the kit is 100% offense/debuff. MP costs, damage amounts, and cooldowns: `data/classes.json`.*
 
-**On Poison Coat and the "buffs are always 1 turn" rule**: `poison-coat` is **not** forced down to a 1-turn duration the way Shield Guard/Rally are, even though it is also a self-buff — see `rogue-poison-coat`'s `applyStatusEffect` effect in `data/classes.json` for its actual `durationTurns`. `poison-coat` carries no `modifyCombatStat` — it's a buff-rider (it toggles the "attacks auto-apply poison" mechanic). Its cooldown follows the shared "duration + 1" formula (§1.7, "Design notes").
+**On Poison Coat and the "buffs are always 1 turn" rule**: `poison-coat` is **not** forced down to a 1-turn duration the way Shield Guard/Rally are, even though it is also a self-buff — see `poison-coat`'s `applyStatusEffect` effect in `data/classes.json` for its actual `durationTurns`. `poison-coated` carries no `modifyCombatStat` — it's a buff-rider (it toggles the "attacks auto-apply poison" mechanic). Its cooldown follows the shared "duration + 1" formula (§1.7, "Design notes").
 
 ### 1.4 Acolyte — healing + team-wide fear reduction
 
@@ -211,20 +211,20 @@ How each skill works:
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `acolyte-prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -15 / -19 / -24; status fortify (2 turns) | — |
-| 2 | `acolyte-heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG | magic |
-| 3 | `acolyte-purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
-| 4 | `acolyte-mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 20 / 50 / 75 | heal 15 / 20 / 25 + 60 / 70 / 80% MAG; fear -6 / -8 / -10 | magic |
-| 5 | `acolyte-divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies); fear -15 / -20 / -25 (on allies); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
+| 1 | `prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -15 / -19 / -24; status fortify (2 turns) | — |
+| 2 | `heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG | magic |
+| 3 | `purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
+| 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 20 / 50 / 75 | heal 15 / 20 / 25 + 60 / 70 / 80% MAG; fear -6 / -8 / -10 | magic |
+| 5 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies); fear -15 / -20 / -25 (on allies); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
-- `acolyte-prayer` — `modifyStat fear` + `applyStatusEffect "fortify"` (2 turns) on the same ally. Its cooldown lets one ally keep `fortify` up continuously when Prayer is recast every time it comes off cooldown
-- `acolyte-heal` — `heal`
-- `acolyte-purify` — targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage`
-- `acolyte-mass-heal` — `heal` + `modifyStat fear`
-- `acolyte-divine-descent` — allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `prayer` — `modifyStat fear` + `applyStatusEffect "fortify"` (2 turns) on the same ally. Its cooldown lets one ally keep `fortify` up continuously when Prayer is recast every time it comes off cooldown
+- `heal` — `heal`
+- `purify` — targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage`
+- `mass-heal` — `heal` + `modifyStat fear`
+- `divine-descent` — allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *None of Acolyte's skills carry the buff flag. Prayer's `fortify` is a stat modifier like any other, but Prayer itself resolves in plain speed order (Acolyte is slow), so on the round it's cast a faster monster can act before the ally is fortified.*
 
@@ -238,27 +238,27 @@ How each skill works:
 
 #### 1.5.1 Skill table (shape only — mp/damage/cooldown live in `data/classes.json`)
 
-Basic attack (slot 0, same as every class — section 1.0): **Axe Slash** (`viking-axe-slash`), physical.
+Basic attack (slot 0, same as every class — section 1.0): **Axe Slash** (`axe-slash`), physical.
 
 <!-- docs:begin classSkills class=viking -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `viking-lightning-axe` | Lightning Axe | self | 4 | 8 / 9 / 10 | 1 / 7 / 15 | status storm-empowered / storm-empowered-ii / storm-empowered-iii (3 turns); status storm-recoil (1 turn) | buff |
-| 2 | `viking-frenzied-slash` | Frenzied Slash | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 9 / 12 / 15 + 95 / 100 / 105% ATK; status bleeding (3 turns, 50 / 60 / 70% chance); with status storm-empowered: ignores 30% defense | — |
-| 3 | `viking-throw-axe` | Throw Axe | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 16 / 20 / 25 + 100 / 107 / 115% ATK; with status storm-empowered: ignores 30% defense | — |
-| 4 | `viking-spin-axe` | Spinning Axe | allEnemies | 3 | 14 / 15 / 16 | 20 / 50 / 75 | damage 15 / 20 / 30 + 70 / 77 / 85% ATK; status bleeding (3 turns, 30 / 40 / 50% chance); with status storm-empowered: ignores 30% defense | — |
-| 5 | `viking-thunder-god-fury` | Thunder God's Fury | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 30 / 40 / 50 + 80 / 100 / 120% ATK (lightning); with status storm-empowered: ignores 60% defense, consumes it | ultimate |
+| 1 | `lightning-axe` | Lightning Axe | self | 4 | 8 / 9 / 10 | 1 / 7 / 15 | status storm-empowered / storm-empowered-ii / storm-empowered-iii (3 turns); status storm-recoil (1 turn) | buff |
+| 2 | `frenzied-slash` | Frenzied Slash | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 9 / 12 / 15 + 95 / 100 / 105% ATK; status bleeding (3 turns, 50 / 60 / 70% chance); with status storm-empowered: ignores 30% defense | — |
+| 3 | `throw-axe` | Throw Axe | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 16 / 20 / 25 + 100 / 107 / 115% ATK; with status storm-empowered: ignores 30% defense | — |
+| 4 | `spinning-axe` | Spinning Axe | allEnemies | 3 | 14 / 15 / 16 | 20 / 50 / 75 | damage 15 / 20 / 30 + 70 / 77 / 85% ATK; status bleeding (3 turns, 30 / 40 / 50% chance); with status storm-empowered: ignores 30% defense | — |
+| 5 | `thunder-gods-fury` | Thunder God's Fury | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 30 / 40 / 50 + 80 / 100 / 120% ATK (lightning); with status storm-empowered: ignores 60% defense, consumes it | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `viking-lightning-axe` — `applyStatusEffect "storm-empowered"` + temporary defense debuff + temporary aggro buff
-- `viking-frenzied-slash` — `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered`
-- `viking-throw-axe` — `damage` (physical) — same `storm-empowered` conditionalBonus
-- `viking-spin-axe` — `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus
-- `viking-thunder-god-fury` — `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use
+- `lightning-axe` — `applyStatusEffect "storm-empowered"` + temporary defense debuff + temporary aggro buff
+- `frenzied-slash` — `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered`
+- `throw-axe` — `damage` (physical) — same `storm-empowered` conditionalBonus
+- `spinning-axe` — `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus
+- `thunder-gods-fury` — `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use
 
 *Skills 2-5 are all purely physical (not `isMagic`) — the Viking's magic damage only comes indirectly through the `storm-empowered` proc (1.5.2), not directly through the skill formula the way Mage/Acolyte work.*
 
@@ -266,13 +266,13 @@ How each skill works:
 
 The Viking needed **2 fields not present** in the schema before it (`src/types.ts`) — this was the part that went beyond "just adding data", both now implemented:
 
-**a) `onHitAoeDamage` on `StatusEffectDefinition`** — a buff that deals its own AoE damage every time the bearer lands a hit (basic attack or skill), similar to the existing on-hit rider mechanic (`onHitStatusEffectId`, used by `poison-coat` — section 1.3, `docs/technical-decisions.md` §4.2) but dealing AoE damage instead of applying a status to a single target:
+**a) `onHitAoeDamage` on `StatusEffectDefinition`** — a buff that deals its own AoE damage every time the bearer lands a hit (basic attack or skill), similar to the existing on-hit rider mechanic (`onHitStatusEffectId`, used by `poison-coated` — section 1.3, `docs/technical-decisions.md` §4.2) but dealing AoE damage instead of applying a status to a single target:
 
 ```ts
 onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number };
 ```
 
-New status effect `storm-empowered` (shape — actual `amount`/`ignoreDefensePercent` live in `data/status-effects.json`, `durationTurns` on `viking-lightning-axe`'s applying effect in `data/classes.json`; row also included in the summary table, section 1.7):
+New status effect `storm-empowered` (shape — actual `amount`/`ignoreDefensePercent` live in `data/status-effects.json`, `durationTurns` on `lightning-axe`'s applying effect in `data/classes.json`; row also included in the summary table, section 1.7):
 
 ```json
 {
@@ -312,29 +312,29 @@ Role: an AoE debuffer (burn/poison/blind/weaken), with 1 single-target heal skil
 
 #### Skill table (shape only)
 
-Basic attack (slot 0): **Vial Toss** (`plaguedoc-vial-toss`), `isMagic: true` (see the footnote under section 1.0).
+Basic attack (slot 0): **Vial Toss** (`vial-toss`), `isMagic: true` (see the footnote under section 1.0).
 
 <!-- docs:begin classSkills class=plague-doctor -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `plaguedoc-fire-vial` | Fire Vial | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 10 / 12 / 16 + 90 / 95 / 105% MAG (fire); status burning (2 turns, 60 / 70 / 80% chance) | magic |
-| 2 | `plaguedoc-healing-draught` | Healing Draught | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 7 / 10 / 15 + 40 / 45 / 50% MAG; status mending / mending-ii / mending-iii (2 turns) | magic |
-| 3 | `plaguedoc-blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded (2 turns, 70 / 80 / 90% chance) | magic |
-| 4 | `plaguedoc-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 20 / 50 / 75 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 60 / 70 / 80% chance); status weakened (2 turns, 40 / 50 / 60% chance) | magic |
-| 5 | `plaguedoc-total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies); damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance) | ultimate · magic |
+| 1 | `fire-vial` | Fire Vial | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 10 / 12 / 16 + 90 / 95 / 105% MAG (fire); status burning (2 turns, 60 / 70 / 80% chance) | magic |
+| 2 | `healing-draught` | Healing Draught | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 7 / 10 / 15 + 40 / 45 / 50% MAG; status mending / mending-ii / mending-iii (2 turns) | magic |
+| 3 | `blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded (2 turns, 70 / 80 / 90% chance) | magic |
+| 4 | `spreading-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 20 / 50 / 75 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 60 / 70 / 80% chance); status weakened (2 turns, 40 / 50 / 60% chance) | magic |
+| 5 | `total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies); damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
-- `plaguedoc-fire-vial` — `damage` + chance to `applyStatusEffect "burning"`
-- `plaguedoc-healing-draught` — `heal` now, plus `applyStatusEffect "mending"` (2 turns) that repeats the same heal at the start of each of the next 2 rounds — 3 heals in total. See `mending` below
-- `plaguedoc-blinding-vial` — `damage` + chance to `applyStatusEffect "blinded"`
-- `plaguedoc-toxic-fog` — `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"`
-- `plaguedoc-total-plague` — allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate)
+- `fire-vial` — `damage` + chance to `applyStatusEffect "burning"`
+- `healing-draught` — `heal` now, plus `applyStatusEffect "mending"` (2 turns) that repeats the same heal at the start of each of the next 2 rounds — 3 heals in total. See `mending` below
+- `blinding-vial` — `damage` + chance to `applyStatusEffect "blinded"`
+- `spreading-toxic-fog` — `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"`
+- `total-plague` — allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate)
 
-*All skills are `isMagic: true`. Skill 5 splits its effects by `appliesToRelation: "ally" | "enemy"` (2 sides) — the same mechanic as `acolyte-divine-descent` (section 1.4).*
+*All skills are `isMagic: true`. Skill 5 splits its effects by `appliesToRelation: "ally" | "enemy"` (2 sides) — the same mechanic as `divine-descent` (section 1.4).*
 
 #### `mending` — a heal over time that scales off the caster
 
@@ -365,7 +365,7 @@ Healing Draught's first heal is a plain `heal` effect in the skill itself, with 
 }
 ```
 
-`blinded` reduces the bearer's own chance to land its attacks/skills by a flat percentage for the duration, rather than weakening its `attack` stat — thematically "can't see" means "misses more", not "hits softer". This needed a new `StatusEffectDefinition` field, `accuracyPenaltyPercent?: number`, and a change to `rollHits()` (`src/engine/resolver.ts`): previously `rollHits` returned `true` unconditionally for any non-`Character` source (`if (!isCharacter(source)) return true`), meaning monsters always hit with no accuracy roll. Applying `blinded` to a monster (the only target `plaguedoc-blinding-vial` can hit) required `rollHits` to also check the source's active statuses for `accuracyPenaltyPercent` regardless of whether the source is a character or a monster, combining it with the existing fear-based penalty when both apply, clamped to 100%. This was the first status effect that gives a *monster* a chance to miss.
+`blinded` reduces the bearer's own chance to land its attacks/skills by a flat percentage for the duration, rather than weakening its `attack` stat — thematically "can't see" means "misses more", not "hits softer". This needed a new `StatusEffectDefinition` field, `accuracyPenaltyPercent?: number`, and a change to `rollHits()` (`src/engine/resolver.ts`): previously `rollHits` returned `true` unconditionally for any non-`Character` source (`if (!isCharacter(source)) return true`), meaning monsters always hit with no accuracy roll. Applying `blinded` to a monster (the only target `blinding-vial` can hit) required `rollHits` to also check the source's active statuses for `accuracyPenaltyPercent` regardless of whether the source is a character or a monster, combining it with the existing fear-based penalty when both apply, clamped to 100%. This was the first status effect that gives a *monster* a chance to miss.
 
 This also required a fix to `isHelpfulStatusEffect()` (`src/engine/resolver.ts`, used only for combat-log "buff"/"debuff" coloring): it previously inferred "helpful" from `stuns`/`vulnerableTo`, a `damage` `perTurnEffect`, or a negative `modifyCombatStat` — `blinded` has none of those (`perTurnEffects: []`, only `accuracyPenaltyPercent`), so without this fix it would log as a buff despite being a debuff. A 4th check was added: any status with `accuracyPenaltyPercent` set is not helpful.
 
@@ -379,15 +379,15 @@ This also required a fix to `isHelpfulStatusEffect()` (`src/engine/resolver.ts`,
 
 The statuses used by the character skill kits in sections 1.1-1.6 (English id/name, matching `data/status-effects.json`):
 
-<!-- docs:begin statusEffects ids=guard,taunt,rally,poison-coat,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
+<!-- docs:begin statusEffects ids=guard,taunt,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
 | `guard` | Guard | defense +6 (min 10%) |
 | `taunt` | Taunt | aggro +40 |
-| `rally` | Rally | attack +4 (min 5%) |
-| `poison-coat` | Poison Coat | onHitStatusEffectId poisoned |
+| `rallied` | Rallied | attack +4 (min 5%) |
+| `poison-coated` | Poison-Coated | onHitStatusEffectId poisoned |
 | `poisoned` | Poisoned | damage 4 or 2.5% max HP per turn |
 | `burning` | Burning | damage 6 or 3% max HP per turn |
 | `stunned` | Stunned | stuns |
@@ -401,8 +401,8 @@ What each is, and where it comes from:
 
 - `guard` — Buff; used by Shield Guard (Vanguard).
 - `taunt` — Buff; used by Shield Guard (Vanguard).
-- `rally` — Buff; used by Rally (Vanguard).
-- `poison-coat` — Buff (rider, not a stat-buff); used by Poison Coat (Rogue). (see `docs/technical-decisions.md` §4.2)
+- `rallied` — Buff; used by Rally (Vanguard).
+- `poison-coated` — Buff (rider, not a stat-buff); used by Poison Coat (Rogue). (see `docs/technical-decisions.md` §4.2)
 - `poisoned` — Debuff; used by on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor).
 - `burning` — Debuff; used by Fireball, Fire Pillar (Mage); Fire Vial, Total Plague (Plague Doctor).
 - `stunned` — Control (debuff); used by Lightning Bolt, Lightning Storm (Mage). (see `docs/technical-decisions.md` §4.3)
@@ -489,32 +489,32 @@ At cast time, the game resolves the character's current rank for a skill as the 
 
 #### Buff-status rank scaling — 4 new statuses (Vanguard)
 
-2 of the class-specific skills carry a `modifyCombatStat` status whose magnitude scales with rank (Vanguard's Shield Guard → `guard`, Vanguard's Rally → `rally`). Since `guard`/`rally` are shared `StatusEffectDefinition`s with a fixed magnitude, scaling them per-rank meant adding rank-specific variants rather than mutating the shared status (avoids changing the base `guard`/`rally` magnitude for any other skill/rank that might reuse them). Shape (current magnitudes: `data/status-effects.json`):
+2 of the class-specific skills carry a `modifyCombatStat` status whose magnitude scales with rank (Vanguard's Shield Guard → `guard`, Vanguard's Rally → `rallied`). Since `guard`/`rallied` are shared `StatusEffectDefinition`s with a fixed magnitude, scaling them per-rank meant adding rank-specific variants rather than mutating the shared status (avoids changing the base `guard`/`rallied` magnitude for any other skill/rank that might reuse them). Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
   { "id": "guard-ii", "name": "Guard II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
   { "id": "guard-iii", "name": "Guard III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rally-ii", "name": "Rally II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rally-iii", "name": "Rally III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
+  { "id": "rallied-ii", "name": "Rallied II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
+  { "id": "rallied-iii", "name": "Rallied III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
-`taunt` and `poison-coat` are **not** given rank variants: `taunt`'s aggro bonus already dominates target selection at rank 1 (diminishing returns from going higher), and `poison-coat` is a binary on-hit rider, not a magnitude stat.
+`taunt` and `poison-coated` are **not** given rank variants: `taunt`'s aggro bonus already dominates target selection at rank 1 (diminishing returns from going higher), and `poison-coated` is a binary on-hit rider, not a magnitude stat.
 
 #### Poison Coat — rank-up adds a separate attack-buff status (Rogue)
 
-**Poison Coat** (Rogue, slot 1) scales by applying a *second*, independent status alongside the base `poison-coat` at rank 2/3, rather than by growing `poison-coat` itself: `poison-coat` (the on-hit poison rider, `onHitStatusEffectId: "poisoned"`, no `perTurnEffects` of its own) is cast unchanged at every rank, and `rogue-poison-coat`'s rank 2/3 `effects` additionally apply `venom-edge`/`venom-edge-ii` — a pure `modifyCombatStat attack` status with no on-hit rider. They're two distinct status ids (not one combined `poison-coat-ii`/`poison-coat-iii` status) so each can be categorized cleanly by the turn-countdown system (`src/engine/resolver.ts`'s `statusCategory`): `poison-coat` has no per-turn effect and is "special" by shape, while `venom-edge` is a stat modifier and would be "statMod" by shape — but a stat-mod status ticks down unconditionally at round-end with no free round, while a "special" status doesn't tick until the bearer's own next turn, so left to shape-inference alone the two would drift out of sync despite always being cast together. `venom-edge`/`venom-edge-ii` instead set `"tickCategory": "special"` (a StatusEffectDefinition field that overrides the shape-inferred category) so both statuses always tick — and expire — on the same turn. `rogue-poison-coat`'s `applyStatusEffect` effects declare the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
+**Poison Coat** (Rogue, slot 1) scales by applying a *second*, independent status alongside the base `poison-coated` at rank 2/3, rather than by growing `poison-coated` itself: `poison-coated` (the on-hit poison rider, `onHitStatusEffectId: "poisoned"`, no `perTurnEffects` of its own) is cast unchanged at every rank, and `poison-coat`'s rank 2/3 `effects` additionally apply `venom-edge`/`venom-edge-ii` — a pure `modifyCombatStat attack` status with no on-hit rider. They're two distinct status ids (not one combined `poison-coat-ii`/`poison-coat-iii` status) so each can be categorized cleanly by the turn-countdown system (`src/engine/resolver.ts`'s `statusCategory`): `poison-coated` has no per-turn effect and is "special" by shape, while `venom-edge` is a stat modifier and would be "statMod" by shape — but a stat-mod status ticks down unconditionally at round-end with no free round, while a "special" status doesn't tick until the bearer's own next turn, so left to shape-inference alone the two would drift out of sync despite always being cast together. `venom-edge`/`venom-edge-ii` instead set `"tickCategory": "special"` (a StatusEffectDefinition field that overrides the shape-inferred category) so both statuses always tick — and expire — on the same turn. `poison-coat`'s `applyStatusEffect` effects declare the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still resolves to the same value at every rank — no conflict with the "cooldown never changes across ranks" rule. Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
-  { "id": "poison-coat", "name": "Poison Coat", "onHitStatusEffectId": "poisoned", "perTurnEffects": [] },
+  { "id": "poison-coated", "name": "Poison-Coated", "onHitStatusEffectId": "poisoned", "perTurnEffects": [] },
   { "id": "venom-edge", "name": "Venom Edge", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
   { "id": "venom-edge-ii", "name": "Venom Edge II", "tickCategory": "special", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
-`rogue-poison-coat`'s rank 2 `effects` apply `["poison-coat", "venom-edge"]`; rank 3 applies `["poison-coat", "venom-edge-ii"]`. The attack-bonus progression matches the step size used for `rally-ii`/`rally-iii` above, for consistency across all attack-buff statuses in this system. The on-hit poison rider itself (`poison-coat`'s `onHitStatusEffectId: "poisoned"`) is carried over unchanged on every rank — rank-up only adds the attack buff, it does not touch the "poison level" applied on hit (that stays base `poisoned`, level 1, same as every other non-Poison-Bomb source per the note below).
+`poison-coat`'s rank 2 `effects` apply `["poison-coated", "venom-edge"]`; rank 3 applies `["poison-coated", "venom-edge-ii"]`. The attack-bonus progression matches the step size used for `rallied-ii`/`rallied-iii` above, for consistency across all attack-buff statuses in this system. The on-hit poison rider itself (`poison-coated`'s `onHitStatusEffectId: "poisoned"`) is carried over unchanged on every rank — rank-up only adds the attack buff, it does not touch the "poison level" applied on hit (that stays base `poisoned`, level 1, same as every other non-Poison-Bomb source per the note below).
 
 #### Poison Bomb — poison potency scales via leveled `poisoned` variants (exclusive to this skill)
 
@@ -531,7 +531,7 @@ Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is 
 
 #### Storm-Empowered — rank scaling (Viking)
 
-`storm-empowered` (Lightning Axe's self-buff, section 1.5.2) is the Viking's signature rider — its `onHitAoeDamage.amount` **is** the skill's core value, the same situation as Poison Bomb's `poisoned` above and Poison Coat's attack buff. It has 2 rank-exclusive variants scaling that amount up; `ignoreDefensePercent` stays fixed and `viking-lightning-axe`'s applying effect declares the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still holds at every rank. The splash's `magicPower` contribution is also scaled by `onHitAoeDamage.offenseMultiplierPercent` (80/90/100 at rank 1/2/3, `docs/technical-decisions.md` §4.8). Shape (current magnitudes: `data/status-effects.json`):
+`storm-empowered` (Lightning Axe's self-buff, section 1.5.2) is the Viking's signature rider — its `onHitAoeDamage.amount` **is** the skill's core value, the same situation as Poison Bomb's `poisoned` above and Poison Coat's attack buff. It has 2 rank-exclusive variants scaling that amount up; `ignoreDefensePercent` stays fixed and `lightning-axe`'s applying effect declares the same `durationTurns` at every rank, so the existing `cooldownTurns = durationTurns + 1` formula still holds at every rank. The splash's `magicPower` contribution is also scaled by `onHitAoeDamage.offenseMultiplierPercent` (80/90/100 at rank 1/2/3, `docs/technical-decisions.md` §4.8). Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
@@ -544,7 +544,7 @@ The self-debuff piece of Lightning Axe (`defense`/`aggro`) and every skill's `co
 
 #### Blinded — rank scaling (Plague Doctor)
 
-No new statuses needed. `blinded` (Blinding Vial's debuff, section 1.6) follows the same pattern as Fireball/Lightning Bolt: only its proc-chance scales per rank, its magnitude (miss-chance percentage) stays fixed — it's an enemy-facing proc, not the caster's own signature buff, so it's treated like `burning`/`stunned`/`poisoned`, not like `guard`/`rally`/`storm-empowered`. `poisoned`/`burning`/`weakened` procced by Toxic Fog/Total Plague stay the plain, un-leveled versions, consistent with the rule above that only Poison Bomb ever applies a leveled `poisoned` variant. Total Plague's `removeStatusEffect` (ally branch) is binary and unchanged at every rank, same treatment as Purify's ally branch.
+No new statuses needed. `blinded` (Blinding Vial's debuff, section 1.6) follows the same pattern as Fireball/Lightning Bolt: only its proc-chance scales per rank, its magnitude (miss-chance percentage) stays fixed — it's an enemy-facing proc, not the caster's own signature buff, so it's treated like `burning`/`stunned`/`poisoned`, not like `guard`/`rallied`/`storm-empowered`. `poisoned`/`burning`/`weakened` procced by Toxic Fog/Total Plague stay the plain, un-leveled versions, consistent with the rule above that only Poison Bomb ever applies a leveled `poisoned` variant. Total Plague's `removeStatusEffect` (ally branch) is binary and unchanged at every rank, same treatment as Purify's ally branch.
 
 Neither Viking nor Plague Doctor needed new rank thresholds — both reuse the same threshold table as the 4 original classes (`data/classes.json`), same level-threshold shape and the same "cooldown never changes / mpCost rises slightly / effects hand-tuned per skill" rules.
 
@@ -554,7 +554,7 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 9)
 
 #### Engine/data summary
 
-- **Data**: `data/classes.json` — `ranks` on all 45 class-specific skills; `data/status-effects.json` — the 12 rank-variant statuses (`guard-ii/iii`, `rally-ii/iii`, `venom-edge/venom-edge-ii`, `poisoned-ii/iii`, `storm-empowered-ii/iii`).
+- **Data**: `data/classes.json` — `ranks` on all 45 class-specific skills; `data/status-effects.json` — the 12 rank-variant statuses (`guard-ii/iii`, `rallied-ii/iii`, `venom-edge/venom-edge-ii`, `poisoned-ii/iii`, `storm-empowered-ii/iii`).
 - **Code**: `SkillDefinition.ranks` + the `getEffectiveSkill` lookup helper, used wherever a character skill is cast/displayed.
 
 ### 1.9 Archer — single-target damage, CC, critical hits, stat debuffs
@@ -563,27 +563,27 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 9)
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — between Vanguard and Rogue on attack, reflecting a single-target physical striker. Confirmed against the roster's `BalancePoints` formula (section 1's "Base stats balancing formula").
 
-Basic attack (slot 0): **Quick Shot** (`archer-quick-shot`), physical, bow, sub-100% offense (ranged — see the footnote under section 1.0).
+Basic attack (slot 0): **Quick Shot** (`quick-shot`), physical, bow, sub-100% offense (ranged — see the footnote under section 1.0).
 
 <!-- docs:begin classSkills class=archer -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `archer-aimed-shot` | Aimed Shot | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 16 / 21 / 26 + 90 / 95 / 105% ATK (crit 30 / 35 / 40%) | — |
-| 2 | `archer-overwatch` | Overwatch | self | 2 | 6 / 7 / 8 | 1 / 7 / 15 | status overwatched / overwatched-ii / overwatched-iii (1 turn) | buff |
-| 3 | `archer-volley-shot` | Volley Shot | allEnemies | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 10 / 14 / 19 + 60 / 66 / 75% ATK | — |
-| 4 | `archer-crippling-shot` | Crippling Shot | singleEnemy | 2 | 10 / 11 / 12 | 20 / 50 / 75 | damage 16 / 21 / 27 + 80 / 90 / 100% ATK; status stagger (1 turn, 30 / 40 / 45% chance); status weakened (2 turns, 50 / 60 / 70% chance) | — |
-| 5 | `archer-deadeye-shot` | Deadeye Shot | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 20 / 27 / 34 + 90 / 100 / 110% ATK (crit 100%) | ultimate |
+| 1 | `aimed-shot` | Aimed Shot | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 16 / 21 / 26 + 90 / 95 / 105% ATK (crit 30 / 35 / 40%) | — |
+| 2 | `overwatch` | Overwatch | self | 2 | 6 / 7 / 8 | 1 / 7 / 15 | status overwatched / overwatched-ii / overwatched-iii (1 turn) | buff |
+| 3 | `volley-shot` | Volley Shot | allEnemies | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 10 / 14 / 19 + 60 / 66 / 75% ATK | — |
+| 4 | `crippling-shot` | Crippling Shot | singleEnemy | 2 | 10 / 11 / 12 | 20 / 50 / 75 | damage 16 / 21 / 27 + 80 / 90 / 100% ATK; status stagger (1 turn, 30 / 40 / 45% chance); status weakened (2 turns, 50 / 60 / 70% chance) | — |
+| 5 | `deadeye-shot` | Deadeye Shot | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 20 / 27 / 34 + 90 / 100 / 110% ATK (crit 100%) | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `archer-aimed-shot` — `damage` + high `critChance` (signature crit skill)
-- `archer-overwatch` — `applyStatusEffect "overwatched"` — see section 1.12.2 for the interrupt mechanic
-- `archer-volley-shot` — `damage`/enemy — uses an `offenseMultiplierPercent` below 100, see below <!-- docs:intent -->
-- `archer-crippling-shot` — `damage` + chance to `applyStatusEffect "stagger"` (skips the target's next turn) + chance to `applyStatusEffect "weakened"` (defense debuff, reused from section 1.7)
-- `archer-deadeye-shot` — `damage` — **always hits**, always crits, effectiveness scales down with fear via the ultimate formula (`04-fear-combat.md` §4)
+- `aimed-shot` — `damage` + high `critChance` (signature crit skill)
+- `overwatch` — `applyStatusEffect "overwatched"` — see section 1.12.2 for the interrupt mechanic
+- `volley-shot` — `damage`/enemy — uses an `offenseMultiplierPercent` below 100, see below <!-- docs:intent -->
+- `crippling-shot` — `damage` + chance to `applyStatusEffect "stagger"` (skips the target's next turn) + chance to `applyStatusEffect "weakened"` (defense debuff, reused from section 1.7)
+- `deadeye-shot` — `damage` — **always hits**, always crits, effectiveness scales down with fear via the ultimate formula (`04-fear-combat.md` §4)
 
 **Volley Shot** hits for a reduced share of the caster's `attack` (its `offenseMultiplierPercent`, in the table above), weaker than a skill that uses `attack` at its full, un-scaled value — introduced via the new `offenseMultiplierPercent?: number` `SkillEffect` field (absent/100 = full, un-scaled `attack`/`magicPower`), applied as `(attack * offenseMultiplierPercent/100) + amount` before defense mitigation. The field was added for Archer/Ninja (this class and section 1.10) but has since been retuned onto most damage/heal skills across every class, not just these — see section 1.12.7.
 
@@ -591,7 +591,7 @@ How each skill works:
 
 #### 1.9.1 Overwatch — the interrupt mechanic
 
-`archer-overwatch` is `isBuff: true`, so it already receives the existing "buff skills get a temporary speed bonus for turn-order purposes" rule (Design notes, below) — in practice this means it resolves before monster turns in the round it's cast, without needing any new "carry the buff into next round" fallback.
+`overwatch` is `isBuff: true`, so it already receives the existing "buff skills get a temporary speed bonus for turn-order purposes" rule (Design notes, below) — in practice this means it resolves before monster turns in the round it's cast, without needing any new "carry the buff into next round" fallback.
 
 Mechanic: while the caster carries `overwatched`, the moment resolution reaches **the next monster's queued turn** (i.e. the first monster in `turnQueue` that hasn't acted yet this round), the Archer reactively fires at that monster **before** the monster's action resolves:
 - Roll accuracy as normal.
@@ -622,27 +622,27 @@ This needs a new hook in the round-resolution loop (`src/engine/combat.ts`'s `re
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — deliberately below both Archer and Rogue on attack, matching the brief ("weaker than Archer and Rogue"). Confirmed against `BalancePoints`, same as Archer above.
 
-Basic attack (slot 0): **Kunai Strike** (`ninja-kunai-strike`), physical, kunai, sub-100% offense (ranged — see the footnote under section 1.0).
+Basic attack (slot 0): **Kunai Strike** (`kunai-strike`), physical, kunai, sub-100% offense (ranged — see the footnote under section 1.0).
 
 <!-- docs:begin classSkills class=ninja -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `ninja-smoke-bomb` | Smoke Bomb | self | 3 | 6 / 8 / 10 | 1 / 7 / 15 | status stealthed / stealthed-ii / stealthed-iii (2 turns) | buff |
-| 2 | `ninja-shadow-strike` | Shadow Strike | singleEnemy | 4 | 8 / 10 / 12 | 1 / 7 / 15 | summon ninja-shadow-clone; damage 6 / 9 / 12 + 50 / 57 / 65% ATK | — |
-| 3 | `ninja-throwing-knives` | Throwing Knives | singleEnemy | 2 | 6 / 7 / 8 | 10 / 25 / 45 | damage 10 / 14 / 18 + 80 / 85 / 90% ATK (40 / 45 / 50% extra hit); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
-| 4 | `ninja-shuriken-storm` | Shuriken Storm | allEnemies | 3 | 12 / 14 / 18 | 20 / 50 / 75 | damage 8 / 15 / 12 + 55 / 60 / 65% ATK (1–2 hits / 1–3 hits / 2–3 hits); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
-| 5 | `ninja-death-mark` | Death Mark | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 14 / 19 / 24 + 100 / 115 / 135% ATK (+5% per bleeding stack); status bleeding (3 turns); below 30% HP: +30 damage | ultimate |
+| 1 | `smoke-bomb` | Smoke Bomb | self | 3 | 6 / 8 / 10 | 1 / 7 / 15 | status stealthed / stealthed-ii / stealthed-iii (2 turns) | buff |
+| 2 | `shadow-strike` | Shadow Strike | singleEnemy | 4 | 8 / 10 / 12 | 1 / 7 / 15 | summon shadow-clone; damage 6 / 9 / 12 + 50 / 57 / 65% ATK | — |
+| 3 | `throwing-knives` | Throwing Knives | singleEnemy | 2 | 6 / 7 / 8 | 10 / 25 / 45 | damage 10 / 14 / 18 + 80 / 85 / 90% ATK (40 / 45 / 50% extra hit); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
+| 4 | `shuriken-storm` | Shuriken Storm | allEnemies | 3 | 12 / 14 / 18 | 20 / 50 / 75 | damage 8 / 15 / 12 + 55 / 60 / 65% ATK (1–2 hits / 1–3 hits / 2–3 hits); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
+| 5 | `death-mark` | Death Mark | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 14 / 19 / 24 + 100 / 115 / 135% ATK (+5% per bleeding stack); status bleeding (3 turns); below 30% HP: +30 damage | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `ninja-smoke-bomb` — `applyStatusEffect "stealthed"` — untargetable, breaks on the Ninja's next attack; see 1.10.1
-- `ninja-shadow-strike` (Shadow Strike) — `damage` to the target, plus a `summon` that always lands on the Ninja regardless of the hit (resolved first, so a miss or dodge still leaves a clone). The hit itself can roll Afterimage's 2nd-clone chance, so a single cast can end with 2 clones. The clone is combatant `ninja-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
-- `ninja-throwing-knives` — `damage` + chance to `applyStatusEffect "bleeding"` (stacking — 1.12.6) + a chance to throw a 2nd knife (independent damage + bleeding roll) — no `executeBonus`; Death Mark alone carries the ninja's execute mechanic
-- `ninja-shuriken-storm` — `damage`/enemy, each enemy struck several times — the hit count per rank is in the Effects column, rolled per enemy — each individual hit has a chance to `applyStatusEffect "bleeding"`
-- `ninja-death-mark` — `damage`, scaling per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` below an HP threshold — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack
+- `smoke-bomb` — `applyStatusEffect "stealthed"` — untargetable, breaks on the Ninja's next attack; see 1.10.1
+- `shadow-strike` (Shadow Strike) — `damage` to the target, plus a `summon` that always lands on the Ninja regardless of the hit (resolved first, so a miss or dodge still leaves a clone). The hit itself can roll Afterimage's 2nd-clone chance, so a single cast can end with 2 clones. The clone is combatant `shadow-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
+- `throwing-knives` — `damage` + chance to `applyStatusEffect "bleeding"` (stacking — 1.12.6) + a chance to throw a 2nd knife (independent damage + bleeding roll) — no `executeBonus`; Death Mark alone carries the ninja's execute mechanic
+- `shuriken-storm` — `damage`/enemy, each enemy struck several times — the hit count per rank is in the Effects column, rolled per enemy — each individual hit has a chance to `applyStatusEffect "bleeding"`
+- `death-mark` — `damage`, scaling per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` below an HP threshold — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack
 
 Throwing Knives and Shuriken Storm use `offenseMultiplierPercent` (1.12.7). Death Mark's multiplier is dynamic: it grows with each existing `bleeding` stack on the target, read via `scalesWithStatusStacks` (1.12.6), on top of its own rank-scaled base — not a fixed multiplier.
 
@@ -662,27 +662,27 @@ The breaking attack itself carries a bonus, via a new `StatusEffectDefinition` f
 
 **Base stats (`data/classes.json`)**: see the class stats table in section 1 — low attack/high magicPower like Acolyte/Plague Doctor, since Summoner's own combat output is secondary to its minions; low `aggro` since its minions (especially Stone Golem) are meant to draw enemy attacks instead. See the Balance Points table in section 1 for how it compares with the roster. Minion stat-derivation ratios off these numbers: `base + (percent/100) * owner[sourceStat]` per stat at cast time (`SkillEffect.summonCastId` → `data/summons.json`'s `casts`), the same mechanism Ninja's clone uses — see the implementation note at the end of 1.11.1 for how the table below maps onto that.
 
-Basic attack (slot 0): **Hollow Pulse** (`summoner-hollow-pulse`), magic (`isMagic`, scales off `magicPower`), weak — Summoner leans on its minions, not its own combat.
+Basic attack (slot 0): **Hollow Pulse** (`hollow-pulse`), magic (`isMagic`, scales off `magicPower`), weak — Summoner leans on its minions, not its own combat.
 
 <!-- docs:begin classSkills class=summoner -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `summoner-summon-goblin` | Summon Goblin | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-goblin | buff |
-| 2 | `summoner-summon-spirit` | Summon Spirit | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summoner-summon-spirit | buff |
-| 3 | `summoner-summon-golem` | Summon Golem | singleEnemy | 6 | 12 / 13 / 14 | 10 / 25 / 45 | summon summoner-summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK | buff |
-| 4 | `summoner-totem-recall` | Totem Recall | self | 8 | 10 / 11 / 12 | 20 / 50 / 75 | summon summoner-totem-recall; status totem-recall-buff (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
-| 5 | `summoner-summon-imp` | Summon Hellfire Imp | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | summon summoner-summon-imp (target self); damage 8 / 13 / 18 + 80% MAG | ultimate · magic |
+| 1 | `summon-goblin` | Summon Goblin | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-goblin | buff |
+| 2 | `summon-spirit` | Summon Spirit | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-spirit | buff |
+| 3 | `summon-golem` | Summon Golem | singleEnemy | 6 | 12 / 13 / 14 | 10 / 25 / 45 | summon summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK | buff |
+| 4 | `totem-recall` | Totem Recall | self | 8 | 10 / 11 / 12 | 20 / 50 / 75 | summon totem-recall; status totems-strength (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
+| 5 | `summon-hellfire-imp` | Summon Hellfire Imp | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | summon summon-hellfire-imp (target self); damage 8 / 13 / 18 + 80% MAG | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
-- `summoner-summon-goblin` — summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns it rolls between Rock Throw (ranged `damage`, singleEnemy) and a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
-- `summoner-summon-spirit` — summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the party character with the lowest %HP (never itself or another minion); it sometimes instead casts a party-wide heal (`allAllies`, characters only) that turn, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
-- `summoner-summon-golem` — summons `stone-golem` — high HP, moderate `attack`, **high `aggro`**. Each turn: Stomp (`damage`, allEnemies) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` directly to the chosen enemy**
-- `summoner-totem-recall` — Plants a passive totem (`recall-totem` — never acts, only leaves combat by actually dying; 1.13's `SummonArchetype.passive`) and applies an `attack` buff to every ally except summons, lasting **until the totem dies**, not a fixed duration — see 1.13 for the mechanism.
-- `summoner-summon-imp` — summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has a chance to `applyStatusEffect "burning"`. Each turn: Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula
+- `summon-goblin` — summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns it rolls between Rock Throw (ranged `damage`, singleEnemy) and a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
+- `summon-spirit` — summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the party character with the lowest %HP (never itself or another minion); it sometimes instead casts a party-wide heal (`allAllies`, characters only) that turn, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
+- `summon-golem` — summons `stone-golem` — high HP, moderate `attack`, **high `aggro`**. Each turn: Stomp (`damage`, allEnemies) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` directly to the chosen enemy**
+- `totem-recall` — Plants a passive totem (`recall-totem` — never acts, only leaves combat by actually dying; 1.13's `SummonArchetype.passive`) and applies an `attack` buff to every ally except summons, lasting **until the totem dies**, not a fixed duration — see 1.13 for the mechanism.
+- `summon-hellfire-imp` — summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has a chance to `applyStatusEffect "burning"`. Each turn: Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula
 
 - Default cap (before the Bound Legion passive reaches its second rank, see 1.13): **1 minion** active at a time — casting a new summon skill dismisses whichever minion is currently active. Each later rank of the passive raises the cap (`maxActiveMinions` in the passive table in 1.13), for minions of **different types** simultaneously. Purely level-gated (the unlock levels are in that table), independent of anything being cast, with no separate "cast the buff to raise the cap" step (see 1.13 for the Bound Legion passive).
 - All 4 summon skills (slots 1, 2, 3, 5) cost a large amount of MP.
@@ -698,12 +698,12 @@ Each minion's cast configuration (`SummonCast`: `skillId`, `archetypeId`, `maxAc
 
 | Cast | Minion | Speed | Actions | Aggro | Max HP | Defense | Attack | Magic power | Action weights |
 |---|---|---|---|---|---|---|---|---|---|
-| `ninja-shadow-clone` | Shadow Clone | 1 | 2 | 20 | 20 | 60% owner defense + 5 | 0 | 0 | basicAttack 1 |
-| `summoner-summon-goblin` | Goblin Thrower | 12 | 3 | 5 | 30% owner maxHp + 25 | 80% owner defense + 2 | 60 / 80 / 100% owner magicPower + 5 | 0 | rock-throw 40, basicAttack 60 |
-| `summoner-summon-spirit` | Healer Spirit | 10 | 3 | 5 | 50% owner maxHp + 20 | 70% owner defense + 2 | 0 | 60 / 70 / 80% owner magicPower + 6 | spirit-heal-single 60, spirit-heal-party 40 |
-| `summoner-summon-golem` | Stone Golem | 6 | 3 | 15 | 110% owner maxHp + 30 | 80% owner defense + 8 | 70 / 80 / 90% owner magicPower + 15 | 0 | stomp 40, basicAttack 60 |
-| `summoner-summon-imp` | Hellfire Imp | 16 | 3 | 5 | 80% owner maxHp + 19 | 80% owner defense + 8 | 0 | 80 / 90 / 110% owner magicPower + 21 | hellfire-strike 40, basicAttack 60 |
-| `summoner-totem-recall` | Recall Totem | 1 | 1 | 10 | 50% owner maxHp + 20 | 0 | 0 | 0 | — |
+| `shadow-clone` | Shadow Clone | 1 | 2 | 20 | 20 | 60% owner defense + 5 | 0 | 0 | basicAttack 1 |
+| `summon-goblin` | Goblin Thrower | 12 | 3 | 5 | 30% owner maxHp + 25 | 80% owner defense + 2 | 60 / 80 / 100% owner magicPower + 5 | 0 | rock-throw 40, basicAttack 60 |
+| `summon-spirit` | Healer Spirit | 10 | 3 | 5 | 50% owner maxHp + 20 | 70% owner defense + 2 | 0 | 60 / 70 / 80% owner magicPower + 6 | spirit-heal-single 60, spirit-heal-party 40 |
+| `summon-golem` | Stone Golem | 6 | 3 | 15 | 110% owner maxHp + 30 | 80% owner defense + 8 | 70 / 80 / 90% owner magicPower + 15 | 0 | stomp 40, basicAttack 60 |
+| `summon-hellfire-imp` | Hellfire Imp | 16 | 3 | 5 | 80% owner maxHp + 19 | 80% owner defense + 8 | 0 | 80 / 90 / 110% owner magicPower + 21 | hellfire-strike 40, basicAttack 60 |
+| `totem-recall` | Recall Totem | 1 | 1 | 10 | 50% owner maxHp + 20 | 0 | 0 | 0 | — |
 <!-- docs:end -->
 
 The minions' own skills:
@@ -722,7 +722,7 @@ The minions' own skills:
 
 *Every minion's basic attack (the rest of its action-weight roll) uses the same `attack`/`magicPower` value above with `amount: 0`, the same "100% base, no bonus" shape as every character's own basic attack (section 1.0).*
 
-**The `attack`/`magicPower` percent grows with the rank of the summon skill that called the minion out** (`summoner-summon-goblin`, etc.), the same 3-rank mechanism already used by every other class-specific skill (section 1.8) — e.g. `goblin-thrower`'s `attack` (derived from the Summoner's own `magicPower`) uses a higher percent at rank 2/3 than rank 1. This is **not** a per-action-within-combat progression (the minion doesn't get stronger across its own 3 turns before vanishing) — it only changes across combats/levels, as the summon skill itself ranks up.
+**The `attack`/`magicPower` percent grows with the rank of the summon skill that called the minion out** (`summon-goblin`, etc.), the same 3-rank mechanism already used by every other class-specific skill (section 1.8) — e.g. `goblin-thrower`'s `attack` (derived from the Summoner's own `magicPower`) uses a higher percent at rank 2/3 than rank 1. This is **not** a per-action-within-combat progression (the minion doesn't get stronger across its own 3 turns before vanishing) — it only changes across combats/levels, as the summon skill itself ranks up.
 
 **`hellfire-imp`'s signature-skill flat term reads the same regardless of stat**: `SkillEffect.amount` (the flat term) is stat-agnostic in the damage formula (`finalDamage = amount + mitigatedOffense(offensiveStat * offenseMultiplier, ...)`), so its flat term applies the same whether the skill's `isMagic` flag routes through `attack` or `magicPower`.
 
@@ -794,7 +794,7 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 
 | Cast | On death (R1/R2/R3) |
 |---|---|
-| `ninja-shadow-clone` | damage 10 / 15 / 22 + 30 / 40 / 50% owner attack; status bleeding (3 turns, 30 / 33 / 37% chance) |
+| `shadow-clone` | damage 10 / 15 / 22 + 30 / 40 / 50% owner attack; status bleeding (3 turns, 30 / 33 / 37% chance) |
 <!-- docs:end -->
 
 **Triggering it reliably**: a summon can die on *any* actor's turn (an enemy's attack, another combatant's DoT tick), not just its own — `expireSummonIfDone` (the function that finalizes a done summon and fires its burst) is therefore called from more than one place in `resolveRound` (`src/engine/combat.ts`): once after the round's DoT-tick pass, and once after every combatant's turn, via a small sweep (`pruneDeadSummons`) over every summon still in `combat.combatants`. Once a summon is finalized it's removed from `combat.combatants`, so a later sweep call simply won't find it again — safe to call from multiple checkpoints without double-firing the burst.
@@ -813,10 +813,10 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 | Class | Passive | Unlock level (R1/R2/R3) | Parameters (R1/R2/R3) |
 |---|---|---|---|
 | Vanguard | Bulwark | 5 / 20 / 35 | maxHpPercent 5 / 10 / 15, defensePercent 7 / 10 / 14, aggroFlat 3 / 6 / 9 |
-| Mage | Arcane Shred | 5 / 20 / 35 | onHitStatusEffectId mage-shred / mage-shred-ii / mage-shred-iii |
+| Mage | Arcane Shred | 5 / 20 / 35 | onHitStatusEffectId shredded / shredded-ii / shredded-iii |
 | Rogue | Venomcraft | 5 / 20 / 35 | bonusPercent 15 / 20 / 30, bonusFlat 5 / 10 / 20 |
 | Acolyte | Devotion | 5 / 20 / 35 | healBoostPercent 10 / 20 / 25, debuffResistPercent 30 / 40 / 50 |
-| Viking | Blood Fury | 5 / 20 / 35 | hpThresholdPercent 40 / 45 / 50, attackBonusPercent 20 / 30 / 40 |
+| Viking | Blood Fury | 5 / 20 / 35 | hpThresholdPercent 40 / 45 / 50, thresholdStatusEffectId bloodrage / bloodrage-ii / bloodrage-iii |
 | Plague Doctor | Contagion | 5 / 20 / 35 | procChancePercent 30 / 40 / 50 |
 | Archer | Deadly Precision | 5 / 20 / 35 | critChancePercent 2 / 5 / 8, critMultiplierPercent 160 / 170 / 180 |
 | Ninja | Afterimage | 5 / 20 / 35 | dodgePercent 5 / 10 / 15, secondCloneChancePercent 20 / 25 / 30 |
@@ -827,15 +827,15 @@ How each passive works:
 
 - **Vanguard — Bulwark.** Permanent, unconditional stat buff — applied as a final multiplier on top of the fully-computed maxHp/defense (after Artifact/Ability boosts), flat add to aggro. Engine hook: `recomputeCharacterStats` (`src/engine/party.ts`)
 - **Rogue — Venomcraft.** Triggers only when the target carries `passiveSkill.requiresTargetStatusId` (or a `rankOf` variant of it — `statusSatisfiesRequirement`, the same family-match `conditionalBonus` skills use); the bonus is a true flat amount (`ignoreDefensePercent` at its maximum plus a zero `offenseMultiplierPercent` zero out the usual attack-vs-defense term). Engine hook: `onDamageDealt` hook, `combatHooks.ts`
-- **Mage — Arcane Shred.** Every hit stacks the status named by that rank's `onHitStatusEffectId` (`mage-shred`/`-ii`/`-iii`, 1 status id per rank — same rank-to-status mapping Rogue's own Poison Bomb skill uses for `poisoned`/`-ii`/`-iii`); needed a real fix to `applyStatusEffectToActor`'s existing-status branch (it only bumped `stacks`/`turnsRemaining` before, never re-applied a fresh delta per stack). Engine hook: `onDamageDealt` hook, `combatHooks.ts`; stacking fix in `src/engine/resolver.ts`
+- **Mage — Arcane Shred.** Every hit stacks the status named by that rank's `onHitStatusEffectId` (`shredded`/`-ii`/`-iii`, 1 status id per rank — same rank-to-status mapping Rogue's own Poison Bomb skill uses for `poisoned`/`-ii`/`-iii`); needed a real fix to `applyStatusEffectToActor`'s existing-status branch (it only bumped `stacks`/`turnsRemaining` before, never re-applied a fresh delta per stack). Engine hook: `onDamageDealt` hook, `combatHooks.ts`; stacking fix in `src/engine/resolver.ts`
 - **Acolyte — Devotion.** Debuff resist combines multiplicatively with equipped Artifact/Ability `debuffResist` (`combinePercents`, same formula both already used independently); the heal boost applies only to a heal cast via the Acolyte's **own class skill** — not an item, not another class's skill — via a new `ResolveContext.castByOwnClassSkill` flag `combat.ts` sets by checking the casting skill's id against the source's own class skill list. Engine hook: `acolyteDebuffResistPercent` + the `"heal"` case, both in `src/engine/combat.ts`/`resolver.ts`
-- **Viking — Blood Fury.** Synced onto the `viking-blood-fury` status (`modifyCombatStat` on `attack`, like any other buff — magnitude overridden per rank via the same `minPercent`-override mechanic Totem Recall uses, see below) at the top of every non-`isBuff` Viking skill, so it's applied/removed to match the live HP ratio; self-damage gated separately by `landedDamageHit`. Engine hook: `applySkillEffects` (`syncVikingBloodFury`), `src/engine/combat.ts`
-- **Plague Doctor — Contagion.** Each success applies a random 2-turn debuff from a 6-entry pool: `poisoned`, `burning`, `weakened`, `blinded`, and 2 new statuses added for this — `slowed` (-5 speed), `enfeebled` (-15% attack, `minPercent`-floored). Engine hook: `onDamageDealt` hook, `combatHooks.ts`
+- **Viking — Blood Fury.** Keeps the status the rank names (`thresholdStatusEffectId`: `bloodrage` / `-ii` / `-iii`, a `modifyCombatStat` on `attack` like any other buff — the bonus is that status's own magnitude, so the passive holds no percentage of its own) applied at the top of every non-`isBuff` Viking skill, so it's applied/removed to match the live HP ratio; self-damage gated separately by `landedDamageHit`. Engine hook: `applySkillEffects` (`syncVikingBloodFury`), `src/engine/combat.ts`
+- **Plague Doctor — Contagion.** Each success applies a random 2-turn debuff from a 6-entry pool: `poisoned`, `burning`, `weakened`, `blinded`, and 2 new statuses added for this — `slowed` (-5 speed), `enfeebled` (-4 attack or -15%, whichever cuts more). Engine hook: `onDamageDealt` hook, `combatHooks.ts`
 - **Archer — Deadly Precision.** Chance is additive on top of the skill's own `critChance` (so a skill with none, like Quick Shot, can still crit); multiplier is whichever of the skill's own and the passive's is larger (so a skill with no `critMultiplierPercent` of its own, or one below the passive's floor, still benefits). Engine hook: `resolveOneDamageEffect`, `src/engine/combat.ts`
 - **Ninja — Afterimage.** Dodge folds into `rollDodge` alongside equipped Artifact/Ability `dodgeChance`. The 2nd clone needed a new spawn path (`spawnAdditionalSummon`, `combat.ts`) — `spawnSummon`'s existing "recasting the same archetype replaces it" eviction rule would otherwise dismiss the first clone the instant a 2nd tried to spawn; `spawnAdditionalSummon` skips that rule entirely. Engine hook: `rollDodge`, `src/engine/artifacts.ts`; `applySkillEffects`, `src/engine/combat.ts`
 - **Summoner — Bound Legion.** Replaces the old cast-based Mastery Summoner skill (and its `minion-empowerment`/`-ii`/`-iii` statuses) entirely — both effects are purely level-gated now, applied automatically at spawn time and read directly off the passive rank, with no "cast the buff first" step. Engine hook: `empowermentBonusFor` / `maxActiveMinionsFor`, `src/engine/combat.ts`
 
-**The `minPercent`-override mechanic, reused for Totem Recall and Viking**: a status normally applies its own fixed, JSON-declared `modifyCombatStat` magnitude — but Totem Recall (1.11, slot 4) and Viking's passive each need **1 status id** to express **3 different magnitudes** (1 per skill/passive rank), and adding 3 near-duplicate status ids per case was rejected as needless duplication (the same reasoning that keeps `guard`/`rally` as 1 status each with rank variants only where the shape genuinely needs a distinct `tickCategory`, section 1.8). Instead, an `applyStatusEffect` `SkillEffect` may carry `amount`/`minPercent` directly (fields that already existed on `SkillEffect` for other kinds, reused here rather than adding new ones) to **override** the target status's own declared magnitude for that one application — `totem-recall-buff`'s and `viking-blood-fury`'s own JSON entries carry placeholder magnitudes that are never actually used unmodified; the real numbers live on Totem Recall's own rank effects in `data/classes.json`, and on Viking's `attackBonusPercent` per rank, read at apply-time by `syncVikingBloodFury` (`combat.ts`). Mage's passive (§ above) is the *other* shape this same problem can take — instead of 1 status id with an overridden magnitude, it names a genuinely different status id per rank (`onHitStatusEffectId`), matching Rogue's Poison Bomb; the override mechanic here is for a case that doesn't otherwise need a distinct status identity per rank.
+**The `minPercent`-override mechanic, used by Totem Recall**: a status normally applies its own fixed, JSON-declared `modifyCombatStat` magnitude — but Totem Recall (1.11, slot 4) needs **1 status id** to express **3 different magnitudes** (1 per skill rank), and adding 3 near-duplicate status ids was rejected as needless duplication (the same reasoning that keeps `guard`/`rallied` as 1 status each with rank variants only where the shape genuinely needs a distinct `tickCategory`, section 1.8). Instead, an `applyStatusEffect` `SkillEffect` may carry `amount`/`minPercent` directly (fields that already existed on `SkillEffect` for other kinds, reused here rather than adding new ones) to **override** the target status's own declared magnitude for that one application — `totems-strength`'s own JSON entry carries a placeholder magnitude that is never actually used unmodified; the real numbers live on Totem Recall's own rank effects in `data/classes.json`. Mage's and Viking's passives are the *other* shape this same problem can take — instead of 1 status id with an overridden magnitude, each names a genuinely different status id per rank (`onHitStatusEffectId` for Mage, `thresholdStatusEffectId` for Viking: `bloodrage` / `-ii` / `-iii`), matching Rogue's Poison Bomb, so the magnitude lives only on the status; the override mechanic here is for a case that doesn't otherwise need a distinct status identity per rank.
 
 **Totem Recall's "lasts until the totem dies" duration** (1.11, slot 4) needed a second, related mechanism beyond the `minPercent` override above: `ActiveStatusEffect.linkedSummonId` (new field) ties a status's expiry to a specific summon's lifetime rather than a turn countdown. Set via `SkillEffect.linksToCasterSummon` on the `applyStatusEffect` effect — combat.ts's `applySkillEffects` resolves a cast's `summon` override effect first (in array order) and threads the newly-spawned summon's id into any later effect in the same cast that asks for it. The buff itself still carries a long fixed `durationTurns` (the same "effectively permanent for the fight" idiom the old Mastery buff used) so the normal per-turn countdown never naturally expires it first — in practice the totem dying is what actually ends it. Both places a summon can leave combat (`dismissSummon`, now taking `EngineContext`; `expireSummonIfDone`) sweep every party member for a status with a matching `linkedSummonId` and force-expire it (`expireLinkedAllyBuffs`). A separate new field, `SkillEffect.excludesSummonTargets`, keeps the buff off the caster's own totem (and any other minions) when resolving an `allAllies` target — without it, the totem would receive its own buff the instant it's summoned, since summons are ordinary allies for most targeting purposes. **The one other place summons are always excluded is a summon's own heal**: `resolveSummonSkillTargets` (`combat.ts`) restricts any heal-effect target list to living characters only, unconditionally — so Healer Spirit can never end up healing itself or another minion. Unlike Totem Recall's buff, this isn't opt-in per skill via `excludesSummonTargets`; it's enforced for every summon-cast heal at the engine level, so no future summon heal skill needs its own opt-out flag to get the same behavior.
 

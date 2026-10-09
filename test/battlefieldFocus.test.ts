@@ -6,7 +6,7 @@ import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow,
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
-  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], affectedIds: [], ...partial };
+  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], affectedIds: [], ...partial };
 }
 const glyphs = (icons: { glyph: string }[]) => icons.map((i) => i.glyph);
 const textOf = (line: { text: string }[]) => line.map((c) => c.text).join("");
@@ -82,6 +82,34 @@ describe("unitFocus", () => {
     const s = session({ affectedIds: ["m1"] });
     expect(unitFocus("m1", "monster", s)).toEqual({ dim: false, icons: [], marker: null });
     expect(unitFocus("p1", "party", s).dim).toBe(true);
+  });
+
+  test("a unit that lost its turn wears the skip glyph in its own side's colour, and is lit", () => {
+    const stunned = session({ actorId: "p1", lostTurnIds: ["p1"] });
+    expect(unitFocus("p1", "party", stunned)).toEqual({ dim: false, icons: [{ glyph: FOCUS_GLYPH.skip, color: FOCUS_COLOR.party }], marker: null });
+    const monster = session({ actorId: "m1", lostTurnIds: ["m1"] });
+    expect(unitFocus("m1", "monster", monster).icons).toEqual([{ glyph: FOCUS_GLYPH.skip, color: FOCUS_COLOR.monster }]);
+    expect(unitFocus("p2", "party", stunned).dim).toBe(true);
+  });
+
+  test("a monster whose turn an Overwatch shot cancelled wears the shield and the skip glyph", () => {
+    const shot = session({ actorId: "p1", attackedIds: ["m1"], lostTurnIds: ["m1"] });
+    expect(glyphs(unitFocus("m1", "monster", shot).icons)).toEqual([FOCUS_GLYPH.shield, FOCUS_GLYPH.skip]);
+    expect(glyphs(unitFocus("p1", "party", shot).icons)).toEqual([FOCUS_GLYPH.sword]);
+  });
+
+  test("a unit that lost a buff wears the debuff glyph and is lit, with or without another role", () => {
+    const lost = session({ affectedIds: ["p1"], buffLostIds: ["p1"] });
+    expect(unitFocus("p1", "party", lost)).toEqual({ dim: false, icons: [{ glyph: FOCUS_GLYPH.debuff, color: FOCUS_COLOR.party }], marker: null });
+    expect(unitFocus("p2", "party", lost).dim).toBe(true);
+    const onMonster = session({ affectedIds: ["m1"], buffLostIds: ["m1"] });
+    expect(unitFocus("m1", "monster", onMonster).icons).toEqual([{ glyph: FOCUS_GLYPH.debuff, color: FOCUS_COLOR.monster }]);
+  });
+
+  test("losing a buff alone does not make its bearer an attacker, and a unit already debuffed shows one glyph", () => {
+    expect(glyphs(unitFocus("p1", "party", session({ actorId: "p1", buffLostIds: ["p1"] })).icons)).toEqual([FOCUS_GLYPH.debuff]);
+    const both = session({ actorId: "p2", debuffedIds: ["m1"], buffLostIds: ["m1"] });
+    expect(glyphs(unitFocus("m1", "monster", both).icons)).toEqual([FOCUS_GLYPH.debuff]);
   });
 
   test("a debuff glyph is not shown for a unit that was also attacked", () => {

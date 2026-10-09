@@ -12,7 +12,7 @@ const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
 
 /** An app standing at the first command prompt of a fight against 2 sturdy goblins, reveal clock under test control. */
-async function openFight(options: { goblinAttack?: number; partyHp?: number; satiety?: number } = {}) {
+async function openFight(options: { goblinAttack?: number; partyHp?: number; satiety?: number; expiringBuff?: boolean; stunnedMonsters?: boolean } = {}) {
   const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 62 });
   const game = new Game(7, PARTY);
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -24,6 +24,8 @@ async function openFight(options: { goblinAttack?: number; partyHp?: number; sat
   }
   if (options.partyHp !== undefined) for (const c of game.state.party) c.hp = options.partyHp;
   if (options.satiety !== undefined) game.state.satiety = options.satiety;
+  if (options.stunnedMonsters) for (const g of goblins) g.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 3 });
+  if (options.expiringBuff) for (const c of game.state.party) c.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 1 });
   room.monsterIds = goblins.map((g) => g.id);
   room.cleared = false;
   game.state.combat = startCombat(room.id, room.monsterIds, game.ctx, false);
@@ -65,11 +67,48 @@ describe("battlefield and log stay in step", () => {
       const frame = fight.captureCharFrame();
       const focus = fight.app.debugFocus;
       expect(count(frame, FOCUS_GLYPH.shield)).toBe(focus?.attackedIds.length ?? 0);
-      expect(count(frame, FOCUS_GLYPH.debuff)).toBe(focus?.debuffedIds.length ?? 0);
+      expect(count(frame, FOCUS_GLYPH.debuff)).toBe(new Set([...(focus?.debuffedIds ?? []), ...(focus?.buffLostIds ?? [])]).size);
       fight.app.tickReveal();
       await fight.renderOnce();
     }
     expect(guard).toBeLessThan(400);
+  }, 30000);
+
+  test("units that lose a buff wear the debuff glyph in the frame that logs it", async () => {
+    const fight = await openFight({ expiringBuff: true });
+    await playRound(fight);
+    let sawLoss = false;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      if (focus && focus.buffLostIds.length > 0) {
+        sawLoss = true;
+        expect(fight.app.debugRoomLog.at(-1)!.text).toContain("expires");
+        expect(count(fight.captureCharFrame(), FOCUS_GLYPH.debuff)).toBe(focus.buffLostIds.length);
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(sawLoss).toBe(true);
+  }, 30000);
+
+  test("a stunned monster wears the skip glyph in the frame that logs its lost turn", async () => {
+    const fight = await openFight({ stunnedMonsters: true });
+    await playRound(fight);
+    let sawSkip = false;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      const frame = fight.captureCharFrame();
+      expect(count(frame, FOCUS_GLYPH.skip)).toBe(focus?.lostTurnIds.length ?? 0);
+      if (focus && focus.lostTurnIds.length > 0) {
+        sawSkip = true;
+        expect(fight.app.debugRoomLog.at(-1)!.text).toContain("too dazed to act");
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(sawSkip).toBe(true);
   }, 30000);
 
   test("at least one session shows a shield, and the frame with it also shows that session's log line", async () => {

@@ -76,7 +76,11 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   }
   if (rankDef.hpThresholdPercent !== undefined) {
     parts.push(
-      t("passive.vikingBloodFury", { threshold: rankDef.hpThresholdPercent, bonus: rankDef.attackBonusPercent ?? 0, selfDamage: passive.selfDamagePerHitMaxHPPercent ?? 0 })
+      t("passive.vikingBloodFury", {
+        threshold: rankDef.hpThresholdPercent,
+        effect: rankDef.thresholdStatusEffectId ? formatStatusEffectMechanics(getStatusEffect(rankDef.thresholdStatusEffectId)) : "",
+        selfDamage: passive.selfDamagePerHitMaxHPPercent ?? 0,
+      })
     );
   }
   if (rankDef.procChancePercent !== undefined) {

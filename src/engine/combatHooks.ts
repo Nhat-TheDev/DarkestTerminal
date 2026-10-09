@@ -117,7 +117,7 @@ const roguePoisonBonusHook: SkillEffectHooks = {
 
 /** Mage's passive (§11 of the design spec) — every hit the Mage lands stacks a defense-shredding
  *  status on the target (up to 3 stacks), magnitude scaling with the passive's unlocked rank. Each
- *  rank names its own status id ("mage-shred"/"-ii"/"-iii", see `data/classes.json`) rather than 1
+ *  rank names its own status id ("shredded"/"-ii"/"-iii", see `data/classes.json`) rather than 1
  *  status id whose magnitude gets overridden at runtime — the same rank-to-status mapping Poison
  *  Bomb (Rogue) uses for "poisoned"/"-ii"/"-iii". */
 const mageShredHook: SkillEffectHooks = {

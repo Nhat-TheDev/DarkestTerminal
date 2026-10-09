@@ -51,8 +51,8 @@
     ]
   },
   {
-    "id": "rally",
-    "name": "Rally",
+    "id": "rallied",
+    "name": "Rallied",
     "description": "Mildly raises the whole party's attack for the duration.",
     "perTurnEffects": [
       {
@@ -64,8 +64,8 @@
     ]
   },
   {
-    "id": "rally-ii",
-    "name": "Rally II",
+    "id": "rallied-ii",
+    "name": "Rallied II",
     "description": "Moderately raises the whole party's attack for the duration.",
     "perTurnEffects": [
       {
@@ -77,8 +77,8 @@
     ]
   },
   {
-    "id": "rally-iii",
-    "name": "Rally III",
+    "id": "rallied-iii",
+    "name": "Rallied III",
     "description": "Sharply raises the whole party's attack for the duration.",
     "perTurnEffects": [
       {
@@ -90,8 +90,8 @@
     ]
   },
   {
-    "id": "poison-coat",
-    "name": "Poison Coat",
+    "id": "poison-coated",
+    "name": "Poison-Coated",
     "description": "No effect by itself each turn — while active, every damaging hit the bearer lands also applies Poisoned to whoever got hit.",
     "perTurnEffects": [],
     "onHitStatusEffectId": "poisoned"
@@ -552,7 +552,7 @@
     ]
   },
   {
-    "id": "totem-recall-buff",
+    "id": "totems-strength",
     "name": "Totem's Strength",
     "description": "Channeled by Totem Recall — boosts attack until the totem falls.",
     "perTurnEffects": [
@@ -565,20 +565,50 @@
     ]
   },
   {
-    "id": "viking-blood-fury",
+    "id": "bloodrage",
     "name": "Bloodrage",
     "description": "Attack sharpens as the blood runs low.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 0,
-        "minPercent": 0
+        "amount": 10,
+        "minPercent": 20
       }
     ]
   },
   {
-    "id": "mage-shred",
+    "id": "bloodrage-ii",
+    "name": "Bloodrage",
+    "description": "Attack sharpens as the blood runs low.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 14,
+        "minPercent": 30
+      }
+    ],
+    "rankOf": "bloodrage",
+    "rankLevel": 2
+  },
+  {
+    "id": "bloodrage-iii",
+    "name": "Bloodrage",
+    "description": "Attack sharpens as the blood runs low.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 19,
+        "minPercent": 40
+      }
+    ],
+    "rankOf": "bloodrage",
+    "rankLevel": 3
+  },
+  {
+    "id": "shredded",
     "name": "Shredded",
     "description": "Wards fray with every landed hit.",
     "perTurnEffects": [
@@ -593,8 +623,8 @@
     "maxStacks": 3
   },
   {
-    "id": "mage-shred-ii",
-    "name": "Shredded II",
+    "id": "shredded-ii",
+    "name": "Shredded",
     "description": "Wards fray faster with every landed hit.",
     "perTurnEffects": [
       {
@@ -605,11 +635,13 @@
       }
     ],
     "stackable": true,
-    "maxStacks": 3
+    "maxStacks": 3,
+    "rankOf": "shredded",
+    "rankLevel": 2
   },
   {
-    "id": "mage-shred-iii",
-    "name": "Shredded III",
+    "id": "shredded-iii",
+    "name": "Shredded",
     "description": "Wards collapse with every landed hit.",
     "perTurnEffects": [
       {
@@ -620,7 +652,9 @@
       }
     ],
     "stackable": true,
-    "maxStacks": 3
+    "maxStacks": 3,
+    "rankOf": "shredded",
+    "rankLevel": 3
   },
   {
     "id": "slowed",
@@ -642,14 +676,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 0,
+        "amount": -4,
         "minPercent": -15
       }
     ]
   },
   {
-    "id": "whetstone",
-    "name": "Whetstone",
+    "id": "whetstones-edge",
+    "name": "Whetstone's Edge",
     "description": "Raises attack for the duration.",
     "perTurnEffects": [
       {
@@ -660,8 +694,8 @@
     ]
   },
   {
-    "id": "temporary-ward",
-    "name": "Temporary Ward",
+    "id": "temporary-wards-hold",
+    "name": "Temporary Ward's Hold",
     "description": "Raises defense for the duration.",
     "perTurnEffects": [
       {
@@ -672,8 +706,8 @@
     ]
   },
   {
-    "id": "honing-oil",
-    "name": "Honing Oil",
+    "id": "honing-oils-edge",
+    "name": "Honing Oil's Edge",
     "description": "Raises attack for the duration.",
     "perTurnEffects": [
       {
@@ -684,8 +718,8 @@
     ]
   },
   {
-    "id": "marrow-broth",
-    "name": "Marrow Broth",
+    "id": "marrow-broths-mend",
+    "name": "Marrow Broth's Mend",
     "description": "Restores HP per turn.",
     "perTurnEffects": [
       {
@@ -695,8 +729,8 @@
     ]
   },
   {
-    "id": "tar-flask",
-    "name": "Tar Flask",
+    "id": "tar-flasks-drag",
+    "name": "Tar Flask's Drag",
     "description": "Lowers speed for the duration.",
     "perTurnEffects": [
       {
@@ -707,15 +741,15 @@
     ]
   },
   {
-    "id": "smoke-pellet",
-    "name": "Smoke Pellet",
+    "id": "smoke-pellets-haze",
+    "name": "Smoke Pellet's Haze",
     "description": "The bearer's own attacks/skills miss more often for the duration.",
     "perTurnEffects": [],
     "accuracyPenaltyPercent": 40
   },
   {
-    "id": "bandage-roll",
-    "name": "Bandage Roll",
+    "id": "bandage-rolls-mend",
+    "name": "Bandage Roll's Mend",
     "description": "Restores HP per turn.",
     "perTurnEffects": [
       {
@@ -725,8 +759,8 @@
     ]
   },
   {
-    "id": "resin-wrap",
-    "name": "Resin Wrap",
+    "id": "resin-wraps-ward",
+    "name": "Resin Wrap's Ward",
     "description": "Raises defense for the duration.",
     "perTurnEffects": [
       {
@@ -737,8 +771,8 @@
     ]
   },
   {
-    "id": "repelling-smoke-powder",
-    "name": "Repelling Smoke Powder",
+    "id": "repelling-powders-veil",
+    "name": "Repelling Powder's Veil",
     "description": "Lowers aggro for the duration.",
     "perTurnEffects": [
       {
@@ -749,8 +783,8 @@
     ]
   },
   {
-    "id": "acid-vial",
-    "name": "Acid Vial",
+    "id": "acid-vials-breach",
+    "name": "Acid Vial's Breach",
     "description": "Lowers defense for the duration.",
     "perTurnEffects": [
       {
@@ -761,8 +795,8 @@
     ]
   },
   {
-    "id": "war-paint",
-    "name": "War Paint",
+    "id": "war-paints-edge",
+    "name": "War Paint's Edge",
     "description": "Raises attack for the duration.",
     "perTurnEffects": [
       {
@@ -773,8 +807,8 @@
     ]
   },
   {
-    "id": "fracture-charge",
-    "name": "Fracture Charge",
+    "id": "fracture-charges-breach",
+    "name": "Fracture Charge's Breach",
     "description": "Lowers defense for the duration.",
     "perTurnEffects": [
       {
@@ -785,15 +819,15 @@
     ]
   },
   {
-    "id": "deafening-charge",
-    "name": "Deafening Charge",
+    "id": "deafening-charges-din",
+    "name": "Deafening Charge's Din",
     "description": "Skips the turn entirely while active.",
     "perTurnEffects": [],
     "stuns": true
   },
   {
-    "id": "rally-standard",
-    "name": "Rally Standard",
+    "id": "rally-standards-edge",
+    "name": "Rally Standard's Edge",
     "description": "Raises attack for the duration.",
     "perTurnEffects": [
       {
@@ -804,8 +838,8 @@
     ]
   },
   {
-    "id": "bulwark-draught",
-    "name": "Bulwark Draught",
+    "id": "bulwark-draughts-ward",
+    "name": "Bulwark Draught's Ward",
     "description": "Raises defense for the duration.",
     "perTurnEffects": [
       {
@@ -816,8 +850,8 @@
     ]
   },
   {
-    "id": "spark-salt",
-    "name": "Spark Salt",
+    "id": "spark-salts-focus",
+    "name": "Spark Salt's Focus",
     "description": "Raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -828,8 +862,8 @@
     ]
   },
   {
-    "id": "scholars-candle",
-    "name": "Scholar's Candle",
+    "id": "scholars-candles-focus",
+    "name": "Scholar's Candle's Focus",
     "description": "Raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -840,8 +874,8 @@
     ]
   },
   {
-    "id": "hushed-bell",
-    "name": "Hushed Bell",
+    "id": "hushed-bells-focus",
+    "name": "Hushed Bell's Focus",
     "description": "Raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -852,8 +886,8 @@
     ]
   },
   {
-    "id": "etched-lens",
-    "name": "Etched Lens",
+    "id": "etched-lens-focus",
+    "name": "Etched Lens' Focus",
     "description": "Raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -864,8 +898,8 @@
     ]
   },
   {
-    "id": "pitch-pipe",
-    "name": "Pitch Pipe",
+    "id": "pitch-pipes-focus",
+    "name": "Pitch Pipe's Focus",
     "description": "Raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -876,8 +910,8 @@
     ]
   },
   {
-    "id": "barter-attack",
-    "name": "Runner's Bargain: Attack",
+    "id": "blooded",
+    "name": "Blooded",
     "description": "Raises attack for the whole fight.",
     "perTurnEffects": [
       {
@@ -888,8 +922,8 @@
     ]
   },
   {
-    "id": "barter-magic-power",
-    "name": "Runner's Bargain: Magic Power",
+    "id": "attuned",
+    "name": "Attuned",
     "description": "Raises magic power for the whole fight.",
     "perTurnEffects": [
       {
@@ -900,8 +934,8 @@
     ]
   },
   {
-    "id": "barter-defense",
-    "name": "Runner's Bargain: Defense",
+    "id": "hardened",
+    "name": "Hardened",
     "description": "Raises defense for the whole fight.",
     "perTurnEffects": [
       {
@@ -912,8 +946,8 @@
     ]
   },
   {
-    "id": "barter-speed",
-    "name": "Runner's Bargain: Speed",
+    "id": "quickened",
+    "name": "Quickened",
     "description": "Raises speed for the whole fight.",
     "perTurnEffects": [
       {
@@ -924,8 +958,8 @@
     ]
   },
   {
-    "id": "barter-regen-common",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -936,8 +970,8 @@
     ]
   },
   {
-    "id": "barter-regen-uncommon",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting-ii",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -945,11 +979,13 @@
         "amount": 0,
         "maxHpPercent": 4.0
       }
-    ]
+    ],
+    "rankOf": "knitting",
+    "rankLevel": 2
   },
   {
-    "id": "barter-regen-rare",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting-iii",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -957,11 +993,13 @@
         "amount": 0,
         "maxHpPercent": 6.0
       }
-    ]
+    ],
+    "rankOf": "knitting",
+    "rankLevel": 3
   },
   {
-    "id": "barter-regen-unique",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting-iv",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -969,11 +1007,13 @@
         "amount": 0,
         "maxHpPercent": 7.5
       }
-    ]
+    ],
+    "rankOf": "knitting",
+    "rankLevel": 4
   },
   {
-    "id": "barter-regen-epic",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting-v",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -981,11 +1021,13 @@
         "amount": 0,
         "maxHpPercent": 9.0
       }
-    ]
+    ],
+    "rankOf": "knitting",
+    "rankLevel": 5
   },
   {
-    "id": "barter-regen-legendary",
-    "name": "Runner's Bargain: Regeneration",
+    "id": "knitting-vi",
+    "name": "Knitting",
     "description": "Restores HP each turn of the fight.",
     "perTurnEffects": [
       {
@@ -993,6 +1035,8 @@
         "amount": 0,
         "maxHpPercent": 11.0
       }
-    ]
+    ],
+    "rankOf": "knitting",
+    "rankLevel": 6
   }
 ]
