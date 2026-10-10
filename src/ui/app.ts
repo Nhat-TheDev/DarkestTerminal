@@ -433,6 +433,18 @@ export class App implements ScreenContext {
       this.flushPendingReveal();
       return;
     }
+    if (key.name === "left" || key.name === "right") {
+      const count = this.listCountFor(this.ui);
+      if (count !== null) {
+        const size = pageSizeFor(this.ui.kind);
+        if (pageCount(count, size) > 1) {
+          this.listPage = clampPage(this.listPage + (key.name === "right" ? 1 : -1), count, size);
+        }
+        this.render();
+        return;
+      }
+    }
+    // The log panel claims left/right, up/down, h/j/k/l, pageup/pagedown and home/end, so any of those a screen needs must be handled above this.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
       return;
@@ -448,17 +460,6 @@ export class App implements ScreenContext {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
       return;
-    }
-    if (key.name === "left" || key.name === "right") {
-      const count = this.listCountFor(this.ui);
-      if (count !== null) {
-        const size = pageSizeFor(this.ui.kind);
-        if (pageCount(count, size) > 1) {
-          this.listPage = clampPage(this.listPage + (key.name === "right" ? 1 : -1), count, size);
-        }
-        this.render();
-        return;
-      }
     }
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
