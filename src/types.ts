@@ -195,6 +195,7 @@ export interface PassiveSkillDefinition {
   selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
   maxClones?: number; // Ninja — fixed across ranks, not scaled
   cloneSummonCastId?: Id; // Ninja — the summon cast (`data/summons.json` → `casts`) the second-clone proc spawns, and whose archetype `maxClones` counts
+  secondCloneName?: string; // Ninja — the name the proc's clone carries, telling it apart from the one Shadow Clone casts
   debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }
 
@@ -414,7 +415,8 @@ export interface EventDefinition {
       when `GameState.eventOutcomes[id]` holds this tag (a decline or a skip writes a different one). */
   reflectionRequiresOutcome?: string;
   /** Part F.5 — tied to the Covenant as an institution; permanently removed from the roll pool once
-      the founder falls. */
+      the founder falls. 10-event-narrative.md §F.5 lists which events carry it and which deliberately
+      stay (e.g. `still-breathing` goes as redundant; `gambling-den` and `the-wanderer` stay). */
   removedOnFounderVictory?: boolean;
   /** `instantReward` only: skip the usual rollArtifact/grantArtifact — still-breathing is
       deliberately "no artifact, no stat effect of any kind" (Part C.4). */
@@ -696,6 +698,8 @@ export interface Summon {
   activeStatusEffects: ActiveStatusEffect[];
   actionsTaken: number;
   maxActions: number;
+  /** Spawned by its owner's passive (Ninja's second clone) rather than a cast: a recast never replaces it and it doesn't count toward the owner's minion cap. */
+  fromPassive?: boolean;
   /** Resolved once from `SummonCast.onDeath` at spawn time (`spawnSummon`) — fires via `triggerSummonDeathBurst` the moment this summon is removed from combat by dying or running out of actions. `offensiveStatOverride` is the owner's `onDeath.sourceStat` value frozen at cast time. */
   deathBurst?: {
     amount: number;

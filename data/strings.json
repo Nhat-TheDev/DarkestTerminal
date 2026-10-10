@@ -101,6 +101,7 @@
   "combat.overwatchHitNoInterrupt": "{{actor}} fires from Overwatch at {{target}}, but its turn proceeds.",
   "combat.overwatchMiss": "{{actor}}'s Overwatch shot misses {{target}} — its turn proceeds.",
   "combat.summonSpawned": "{{owner}} summons {{summon}}.",
+  "combat.passiveCloneSpawned": "A second shadow stands up behind {{owner}}: {{summon}}.",
   "combat.summonDismissed": "{{summon}} is dismissed.",
   "combat.summonExpired": "{{summon}} fades away.",
   "combat.summonDeathBurst": "{{summon}} detonates as it fades, tearing into every enemy!",

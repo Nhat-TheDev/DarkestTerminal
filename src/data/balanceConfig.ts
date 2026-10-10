@@ -224,3 +224,6 @@ for (const [key, length] of Object.entries(FEAR_TIER_ARRAYS)) {
   const value = BALANCE.combat[key as keyof typeof FEAR_TIER_ARRAYS];
   if (!Array.isArray(value) || value.length !== length) throw new Error(`balance-config combat.${key} must list ${length} numbers`);
 }
+if (BALANCE.combat.fearTierThresholds.some((v, i, all) => i > 0 && v <= all[i - 1]!)) {
+  throw new Error("balance-config combat.fearTierThresholds must be strictly ascending");
+}

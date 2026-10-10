@@ -1,4 +1,4 @@
-import type { EventDefinition, Floor, GameState, Id, Room } from "../types";
+import type { EventDefinition, Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
 import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";

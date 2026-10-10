@@ -612,7 +612,7 @@ export class Game {
         }
         // Part F.5 — defeating the founder permanently removes every Covenant-institution event
         // from the roll pool. No new mechanism needed: rollEvent() already excludes any id present
-        // in firedOnceEventIds; this just bulk-inserts all 11 in 1 pass, deduping defensively in
+        // in firedOnceEventIds; this just bulk-inserts every flagged id in 1 pass, deduping defensively in
         // case any were already onceLifetime-fired earlier this run.
         if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === "the-founder")) {
           for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {

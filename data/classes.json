@@ -3048,7 +3048,8 @@
         }
       ],
       "maxClones": 2,
-      "cloneSummonCastId": "shadow-clone"
+      "cloneSummonCastId": "shadow-clone",
+      "secondCloneName": "Shadow Clone II"
     }
   },
   {

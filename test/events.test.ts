@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { rollArtifact, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
-import { rollEvent, EVENTS, getEvent } from "../src/data/events";
+import { rollEvent, EVENTS, getEvent, assertEventDataConsistent } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
 import { removeArtifactFromCharacter } from "../src/engine/party";
 import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
@@ -1480,5 +1480,24 @@ describe("Chain 4: 'Taken, Never Given' (08-events.md §8.15)", () => {
   test("the escalated text is shared verbatim across all 7 ids", () => {
     const texts = new Set(FREE_TAKE_IDS.map((id) => EVENTS.find((e) => e.id === id)!.chainEscalatedDescription));
     expect(texts.size).toBe(1);
+  });
+});
+
+describe("assertEventDataConsistent", () => {
+  const base = { id: "test-event", name: "Test", description: "x", kind: "instantReward", tier: "common" } as const;
+
+  test("the shipped catalog passes", () => {
+    expect(() => assertEventDataConsistent(EVENTS)).not.toThrow();
+  });
+
+  test("freeTake needs an instantReward that grants an artifact", () => {
+    expect(() => assertEventDataConsistent([{ ...base, freeTake: true, noArtifactReward: true }])).toThrow(/sets freeTake/);
+    expect(() => assertEventDataConsistent([{ ...base, kind: "merchant", freeTake: true }])).toThrow(/sets freeTake/);
+  });
+
+  test("reflectionRequiresOutcome needs a reflection and an engagement tag", () => {
+    const reflection = getEvent("blood-altar").reflection!;
+    expect(() => assertEventDataConsistent([{ ...base, reflectionRequiresOutcome: "paid" }])).toThrow(/has no reflection/);
+    expect(() => assertEventDataConsistent([{ ...base, reflection, reflectionRequiresOutcome: "skipped" }])).toThrow(/is not one of/);
   });
 });

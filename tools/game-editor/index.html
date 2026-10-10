@@ -216,12 +216,7 @@
   <h1>⚔ Game Editor</h1>
   <div class="field">
     <label for="global-fear-tier">Fear tier (for character-sourced damage)</label>
-    <select id="global-fear-tier">
-      <option value="1">1 — Calm (no penalty)</option>
-      <option value="2">2 — Uneasy (-10% acc)</option>
-      <option value="3">3 — Panicked (-20% acc, -15% dmg)</option>
-      <option value="4">4 — Broken (-20% acc, -15% dmg, 25% lose-control)</option>
-    </select>
+    <select id="global-fear-tier"></select>
   </div>
   <span id="status"></span>
 </header>
@@ -736,6 +731,17 @@ function populateMonsterSelect(sel) {
   }
 }
 
+/** Options read from META.fearTiers, e.g. "4 — Broken (-20% acc, -15% dmg, 25% lose-control)". */
+function populateFearTierSelect(sel) {
+  for (const f of META.fearTiers) {
+    const parts = [];
+    if (f.accuracyPenaltyPercent) parts.push("-" + pct(f.accuracyPenaltyPercent) + " acc");
+    if (f.damagePenaltyPercent) parts.push("-" + pct(f.damagePenaltyPercent) + " dmg");
+    if (f.loseControlChancePercent) parts.push(pct(f.loseControlChancePercent) + " lose-control");
+    sel.appendChild(el("option", { value: String(f.tier), text: f.tier + " — " + f.name + " (" + (parts.join(", ") || "no penalty") + ")" }));
+  }
+}
+
 async function boot() {
   try {
     META = await api("/api/meta");
@@ -745,6 +751,7 @@ async function boot() {
     return;
   }
 
+  populateFearTierSelect($("#global-fear-tier"));
   populateClassSelect($("#char-class"));
   populateMonsterSelect($("#mon-archetype"));
   populateClassSelect($("#rb-char-class"));
@@ -1781,13 +1788,13 @@ function renderOther() {
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Reference (read-only)" }));
 
-  const fearCard = el("div", { class: "card" }, [el("h3", { text: "Fear tiers (src/engine/resolver.ts)" })]);
-  const fearTable = el("table", {}, [el("tr", {}, [el("th", { text: "Tier" }), el("th", { class: "num", text: "Accuracy penalty" }), el("th", { class: "num", text: "Damage penalty" })])]);
+  const fearCard = el("div", { class: "card" }, [el("h3", { text: "Fear tiers (data/balance-config.json combat)" })]);
+  const fearTable = el("table", {}, [el("tr", {}, [el("th", { text: "Tier" }), el("th", { class: "num", text: "Accuracy penalty" }), el("th", { class: "num", text: "Damage penalty" }), el("th", { class: "num", text: "Lose control" })])]);
   for (const f of META.fearTiers) {
-    fearTable.appendChild(el("tr", {}, [el("td", { text: String(f.tier) }), el("td", { class: "num", text: pct(f.accuracyPenaltyPercent) }), el("td", { class: "num", text: pct(f.damagePenaltyPercent) })]));
+    fearTable.appendChild(el("tr", {}, [el("td", { text: f.tier + " — " + f.name }), el("td", { class: "num", text: pct(f.accuracyPenaltyPercent) }), el("td", { class: "num", text: pct(f.damagePenaltyPercent) }), el("td", { class: "num", text: pct(f.loseControlChancePercent) })]));
   }
   fearCard.appendChild(fearTable);
-  fearCard.appendChild(el("p", { class: "hint", text: "Tier 4 additionally has a chance per turn (combat.fearLoseControlChance) of losing control entirely (skips the turn) — not a damage/accuracy modifier, see rollLosesControl()." }));
+  fearCard.appendChild(el("p", { class: "hint", text: "Losing control skips the turn entirely — not a damage/accuracy modifier, see rollLosesControl()." }));
   out.appendChild(fearCard);
 
   const expCard = el("div", { class: "card scroll-y" }, [el("h3", { text: "EXP curve (cumulative EXP required per level)" })]);

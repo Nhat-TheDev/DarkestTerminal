@@ -179,7 +179,9 @@ Alone it reads like the owner's own number. When the owner changed as well, the 
 first and, a beat after the impact (`SUMMON_BEAT_TICKS`), the summon's replaces it,
 led by ♙ (`-12` becomes `♙-12`). A summon that died, was dismissed or faded leaves the fight with the
 HP it left with (`CombatState.departedSummons`), so a killing hit is still a number and a fade-away
-is not one.
+is not one. The label under a party member's sprite carries one ♙ per living summon it owns
+(`NJ ♙♙`), counted from the replayed snapshot so a summon spawned later in the round appears with
+its own action.
 
 This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
 lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52

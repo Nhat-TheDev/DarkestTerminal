@@ -10,6 +10,12 @@ import roomNamesJson from "../../data/room-names.json";
 /** Room names per room type. Event rooms get their own pool: the combat-room names ("Bone Vault")
     read as fight-flavored and clash with merchant/altar/gambling scenes. */
 const ROOM_NAMES = roomNamesJson as Record<RoomType, string[]>;
+for (const type of ["combat", "rest", "boss", "event"] satisfies RoomType[]) {
+  const pool: unknown = ROOM_NAMES[type];
+  if (!Array.isArray(pool) || pool.length === 0 || pool.some((n) => typeof n !== "string")) {
+    throw new Error(`data/room-names.json: "${type}" must be a non-empty list of names`);
+  }
+}
 
 function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
   const pool = ROOM_NAMES[type];
