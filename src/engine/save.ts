@@ -200,15 +200,18 @@ export function loadSave(id: Id): SaveFile {
   return JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
 }
 
-// A save written before `summons` existed on `SaveFile` (or otherwise missing an entry the combat
-// state still references) would leave `state.combat` pointing at a summon `getActorByRef` can never
-// resolve, throwing "Unknown summon" the instant that ref is looked up. Rather than crash on an
-// already-broken save, drop the dangling refs — the summon silently doesn't come back, same as if it
-// had expired the moment the save was made.
+// A save written before `summons` existed on `SaveFile`, or holding a summon `migrateSummons` dropped,
+// would leave `state.combat` pointing at a summon `getActorByRef` can never resolve, throwing
+// "Unknown summon" the instant that ref is looked up. Rather than crash, drop the dangling refs — the
+// summon silently doesn't come back, same as if it had expired the moment the save was made, so the
+// buffs that last only while it stands (`linkedSummonId`) go with it.
 function pruneOrphanedSummonRefs(state: GameState, summons: Summon[]): void {
+  const validIds = new Set(summons.map((s) => s.id));
+  for (const character of state.party) {
+    character.activeStatusEffects = character.activeStatusEffects.filter((s) => s.linkedSummonId === undefined || validIds.has(s.linkedSummonId));
+  }
   const combat = state.combat;
   if (!combat) return;
-  const validIds = new Set(summons.map((s) => s.id));
   const isOrphaned = (ref: CombatantRef) => ref.kind === "summon" && !validIds.has(ref.id);
   combat.combatants = combat.combatants.filter((c) => !isOrphaned(c.ref));
   combat.turnQueue = combat.turnQueue.filter((ref) => !isOrphaned(ref));
