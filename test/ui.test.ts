@@ -15,6 +15,7 @@ import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
 import { getStatusEffect } from "../src/data/statusEffects";
+import { ITEMS } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 
 describe("headless UI smoke test", () => {
@@ -256,6 +257,30 @@ describe("character info screen", () => {
     mockInput.pressKey("3");
     await renderOnce();
     expect(captureCharFrame()).toContain("Rogue (Level 1 Rogue)");
+  });
+});
+
+describe("list paging", () => {
+  test("right/left arrows turn the page of the item list instead of being taken by the log panel", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
+    const game = new Game(1);
+    for (const item of ITEMS) game.state.inventory[item.id] = 1;
+    const app = new App(renderer, game);
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("pickAction");
+    mockInput.pressKey("2");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("pickItemInCombat");
+    const firstItemLine = () => captureCharFrame().split("\n").find((l) => l.includes("[1] "))!;
+    const page1 = firstItemLine();
+
+    mockInput.pressArrow("right");
+    await renderOnce();
+    expect(firstItemLine()).not.toBe(page1);
+
+    mockInput.pressArrow("left");
+    await renderOnce();
+    expect(firstItemLine()).toBe(page1);
   });
 });
 
