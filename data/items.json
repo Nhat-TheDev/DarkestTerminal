@@ -248,7 +248,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "poison-coated",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "onHitDurationTurns": 3
       }
     ],
     "tier": "rare"

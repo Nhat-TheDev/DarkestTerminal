@@ -51,6 +51,8 @@ export interface SkillEffect {
   summonCastId?: Id;
   /** For `applyStatusEffect`: how many turns this specific application lasts (shared by `alsoApplyStatusEffectIds`, if any) — absent defaults to 1. Each skill declares its own duration; the status definition itself no longer carries one, so the same status can last a different number of turns depending on what applied it. */
   durationTurns?: number;
+  /** For `applyStatusEffect` of a status that carries `onHitStatusEffectId` (an on-hit rider, e.g. `poison-coated`): how many turns the status each hit applies lasts on the target — absent defaults to 1. Declared here rather than on the status so the skill or item that grants the rider decides it. */
+  onHitDurationTurns?: number;
   /** Overrides the skill's own `target` for just this effect, resolved separately from every other effect in the skill — e.g. a skill that both damages `allEnemies` and needs a `summon` effect to always land on the caster sets `target: "self"` on that one effect. Only resolvable target kinds that need no player picking (`self`/`allAllies`/`allEnemies`/`allAlliesAndEnemies`) are supported; a `single*` override is silently skipped, since there's no UI for picking a 2nd target within one cast. */
   target?: SkillTarget;
   /** Restricts this effect to only the targets already resolved by the skill's own `target` that are on the given side (relative to `isPlayerSide`, not relative to the caster) — e.g. one `heal` effect with `appliesToRelation: "ally"` and one `damage` effect with `"enemy"` on a skill targeting `allAlliesAndEnemies` replaces the old `effectsByRelation` split. Unlike `target`, this filters within the already-resolved population rather than resolving a different one — the only shape that correctly expresses a skill like Purify, whose `singleAllyOrEnemy` target is 1 player-picked actor whose side decides which effect fires. */
@@ -166,6 +168,7 @@ export interface PassiveRankDefinition {
   defensePercent?: number; // Vanguard
   aggroFlat?: number; // Vanguard
   onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
+  durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
   bonusPercent?: number; // Rogue
   bonusFlat?: number; // Rogue
   healBoostPercent?: number; // Acolyte
@@ -311,7 +314,8 @@ export type ArtifactEffect =
       only set by `data/abilities.json` entries; Artifacts don't use it. */
   | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp" | "magicPower" | "speed"; amount: number; minPercent?: number }
   | { kind: "reflectDamage"; percent: number }
-  | { kind: "poisonOnHit"; chance: number }
+  /** Each damaging hit by the bearer has `chance` percent to apply `statusEffectId` to the target for `durationTurns`. */
+  | { kind: "poisonOnHit"; chance: number; statusEffectId: Id; durationTurns: number }
   | { kind: "lifesteal"; percent: number }
   | { kind: "dodgeChance"; chance: number }
   /** `minPercent`: the heal is whichever has the larger magnitude of `amount` or `baseMaxHp * minPercent / 100` (the bearer's class-base-plus-level max HP, not the live one), so a flat heal stays meaningful as max HP grows — the same floor idea as `statBoost.minPercent`. Absent = flat `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
@@ -497,6 +501,8 @@ export interface ActiveStatusEffect {
   linkedSummonId?: Id;
   /** The caster's `magicPower` when a magic skill applied (or refreshed) this status — set only for a status whose `heal` perTurnEffects scale by `offenseMultiplierPercent` (Healing Draught's `mending`), so each later tick heals off the caster rather than the bearer. */
   sourceMagicPower?: number;
+  /** `SkillEffect.onHitDurationTurns` of the application that granted this on-hit rider, read back each time the rider fires. */
+  onHitDurationTurns?: number;
 }
 
 export interface ShopOffer {

@@ -101,8 +101,9 @@ export function rollDodge(character: Character, rng: Rng): boolean {
   return dodgePercent > 0 && rng.chance(dodgePercent / 100);
 }
 
-export function rollPoisonOnHit(character: Character, rng: Rng): boolean {
-  return equippedEffects(character).some((e) => e.kind === "poisonOnHit" && rng.chance(e.chance / 100));
+/** The first equipped `poisonOnHit` effect whose roll lands, so the caller applies the status and duration that effect declares. */
+export function rollPoisonOnHit(character: Character, rng: Rng): Extract<ArtifactEffect, { kind: "poisonOnHit" }> | undefined {
+  return equippedEffects(character).find((e): e is Extract<ArtifactEffect, { kind: "poisonOnHit" }> => e.kind === "poisonOnHit" && rng.chance(e.chance / 100));
 }
 
 export function totalReflectDamagePercent(character: Character): number {

@@ -285,9 +285,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
       const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
-        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
       return 0;
     }
     case "removeStatusEffect": {
@@ -373,7 +373,8 @@ function applyStatusEffectToActor(
   ctx: ResolveContext,
   magnitudeOverride?: StatusMagnitudeOverride,
   linkedSummonId?: Id,
-  casterMagicPower?: number
+  casterMagicPower?: number,
+  onHitDurationTurns?: number
 ): void {
   const def = getStatusEffect(statusEffectId);
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
@@ -405,6 +406,7 @@ function applyStatusEffectToActor(
       appliedAmounts,
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
+      onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -428,6 +430,7 @@ function applyStatusEffectToActor(
     appliedAmounts,
     linkedSummonId,
     sourceMagicPower,
+    onHitDurationTurns,
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);

@@ -482,7 +482,7 @@
   "artifact.statLabelMaxHp": "max HP",
   "artifact.statLabelMaxMp": "max MP",
   "artifact.effectReflectDamage": "Reflects {{percent}}% of damage taken back to the attacker",
-  "artifact.effectPoisonOnHit": "{{chance}}% chance to inflict Poisoned on hit",
+  "artifact.effectPoisonOnHit": "{{chance}}% chance to inflict {{status}} on hit",
   "artifact.effectLifesteal": "Heals {{percent}}% of damage dealt",
   "artifact.effectDodgeChance": "{{chance}}% chance to fully dodge an attack",
   "artifact.effectHealOnKill": "Heals {{amount}} HP on defeating a target",

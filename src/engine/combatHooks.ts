@@ -20,7 +20,7 @@ export function applyOnHitRider(source: Character, target: Actor, log: LogEntry[
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
     if (def.onHitStatusEffectId) {
-      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: def.onHitStatusEffectId }, source, target, { log });
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: def.onHitStatusEffectId, durationTurns: active.onHitDurationTurns }, source, target, { log });
     }
   }
 }
@@ -71,9 +71,8 @@ const lifestealHook: SkillEffectHooks = {
 
 const poisonOnHitHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
-    if (isCharacter(source) && rollPoisonOnHit(source, ctx.rng)) {
-      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, source, target, { log });
-    }
+    const proc = isCharacter(source) ? rollPoisonOnHit(source, ctx.rng) : undefined;
+    if (proc) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: proc.statusEffectId, durationTurns: proc.durationTurns }, source, target, { log });
   },
 };
 
@@ -125,7 +124,7 @@ const mageShredHook: SkillEffectHooks = {
     if (!isCharacter(source) || source.classId !== "mage") return;
     const rankDef = passiveRankDef(getClass("mage").passiveSkill, source.level);
     if (!rankDef?.onHitStatusEffectId) return;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.onHitStatusEffectId }, source, target, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.onHitStatusEffectId, durationTurns: rankDef.durationTurns }, source, target, { log });
   },
 };
 
@@ -135,12 +134,13 @@ const plagueDoctorDebuffProcHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "plague-doctor") return;
     const passive = getClass("plague-doctor").passiveSkill;
-    const chance = (passiveRankDef(passive, source.level)?.procChancePercent ?? 0) / 100;
+    const rankDef = passiveRankDef(passive, source.level);
+    const chance = (rankDef?.procChancePercent ?? 0) / 100;
     if (chance === 0) return;
     for (let roll = 0; roll < 2; roll++) {
       if (!ctx.rng.chance(chance)) continue;
       const statusId = ctx.rng.pick(passive.debuffPool ?? []);
-      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: statusId, durationTurns: 2 }, source, target, { log });
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: statusId, durationTurns: rankDef?.durationTurns }, source, target, { log });
     }
   },
 };
