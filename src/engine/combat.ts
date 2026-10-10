@@ -264,7 +264,8 @@ function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[]
 }
 
 export function snapshotCombatants(combat: CombatState, ctx: EngineContext): CombatantSnapshot[] {
-  return combat.combatants.map((c) => {
+  const departed: CombatantSnapshot[] = (combat.departedSummons ?? []).map((d) => ({ id: d.id, hp: d.hp, maxHp: d.maxHp, isAlive: false, activeStatusEffects: [] }));
+  const present = combat.combatants.map((c): CombatantSnapshot => {
     const actor = getActorByRef(c.ref, ctx);
     const isCharacter = c.ref.kind === "character";
     return {
@@ -278,6 +279,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
     };
   });
+  return [...present, ...departed];
 }
 
 /** Gives every entry from `fromIndex` on that has no snapshot yet (a session tags its own) the state as of now. */
@@ -801,8 +803,14 @@ function expireLinkedAllyBuffs(summon: Summon, combat: CombatState, ctx: EngineC
   }
 }
 
+/** Keeps what a summon leaves the fight with in `combat.departedSummons`, so the snapshots that follow still list it. */
+function recordDeparture(summon: Summon, combat: CombatState): void {
+  (combat.departedSummons ??= []).push({ id: summon.id, hp: summon.hp, maxHp: summon.maxHp });
+}
+
 function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   log.push({ text: t("combat.summonDismissed", { summon: summon.name }), kind: "info" });
+  recordDeparture(summon, combat);
   summon.hp = 0;
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
   expireLinkedAllyBuffs(summon, combat, ctx, log);
@@ -963,6 +971,7 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
   // Without this, ownedSummons()'s `hp > 0` filter keeps counting an action-expired summon toward
   // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
   // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
+  recordDeparture(summon, combat);
   summon.hp = 0;
   expireLinkedAllyBuffs(summon, combat, ctx, log);
 }

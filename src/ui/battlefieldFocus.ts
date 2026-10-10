@@ -34,6 +34,14 @@ export const FOCUS_GLYPH = {
   summon: "♙",
 } as const;
 
+/** The HP change of the summons a unit owns over the lit session, and whether the beat that shows it after the owner's own has come. */
+export interface SummonFocus {
+  delta: number;
+  beat: boolean;
+}
+
+const NO_SUMMON: SummonFocus = { delta: 0, beat: false };
+
 /** Blue is the player's side, red the enemy's — by the side of the unit wearing the icon, whoever attacks. */
 export const FOCUS_COLOR: Record<UnitSide, string> = { party: PALETTE.mp, monster: PALETTE.hpLow };
 
@@ -66,7 +74,7 @@ export function dimSprite(sprite: Sprite): Sprite {
  * `delta` is the unit's HP change over the session (known from its start, so a DoT tick can pick its
  * icon at once); the marker that prints it appears only once `impact` is reached.
  */
-export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false): UnitFocus {
+export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON): UnitFocus {
   if (!session) return { dim: false, icons: [], marker: null };
   const color = FOCUS_COLOR[side];
   const icon = (glyph: string): FocusIcon => ({ glyph, color });
@@ -101,13 +109,14 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     session.actorId === id ||
     attacked ||
     delta !== 0 ||
+    summon.delta !== 0 ||
     session.debuffedIds.includes(id) ||
     session.buffedIds.includes(id) ||
     session.buffLostIds.includes(id) ||
     session.lostTurnIds.includes(id) ||
     healed ||
     session.affectedIds.includes(id);
-  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta) : null };
+  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, summon) : null };
 }
 
 /** Each unit's HP change from `before` (what the screen shows) to `after` (where a session ends). */
@@ -122,9 +131,19 @@ export function hpDeltas(before: CombatantSnapshot[] | null, after: CombatantSna
   return deltas;
 }
 
-function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number): FocusIcon | null {
-  if (delta < 0) return { glyph: `-${-delta}`, color: MARKER_COLOR.damage[side] };
-  if (delta > 0) return { glyph: `+${delta}`, color: MARKER_COLOR.heal[side] };
+function hpMarker(amount: number, side: UnitSide, prefix = ""): FocusIcon {
+  return amount < 0 ? { glyph: `${prefix}-${-amount}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}`, color: MARKER_COLOR.heal[side] };
+}
+
+/**
+ * The number written beside a unit's icons. A summon is drawn as its owner, so its own HP change is
+ * shown there too: alone it reads like the owner's; when the owner changed as well, the owner's
+ * number comes first and the summon's replaces it a beat later, led by the summon icon.
+ */
+function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, summon: SummonFocus): FocusIcon | null {
+  if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon);
+  if (delta !== 0) return hpMarker(delta, side);
+  if (summon.delta !== 0) return hpMarker(summon.delta, side);
   return session.missedIds.includes(id) ? { glyph: t("ui.focusMiss"), color: MARKER_COLOR.miss } : null;
 }
 

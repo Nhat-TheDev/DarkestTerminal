@@ -124,6 +124,30 @@ describe("unitFocus", () => {
   });
 });
 
+describe("a summon's HP change beside its owner", () => {
+  const hit = session({ actorId: "m", attackedIds: ["a"], summonIds: ["a"] });
+
+  test("alone, it reads like the owner's own number", () => {
+    expect(unitFocus("a", "party", hit, 0, true, { delta: -12, beat: false }).marker).toEqual({ glyph: "-12", color: MARKER_COLOR.damage.party });
+    expect(unitFocus("a", "party", hit, 0, true, { delta: 7, beat: true }).marker).toEqual({ glyph: "+7", color: MARKER_COLOR.heal.party });
+  });
+
+  test("with the owner's own change it comes a beat later, led by the summon icon, in place of the owner's number", () => {
+    expect(unitFocus("a", "party", hit, -5, true, { delta: -12, beat: false }).marker).toEqual({ glyph: "-5", color: MARKER_COLOR.damage.party });
+    expect(unitFocus("a", "party", hit, -5, true, { delta: -12, beat: true }).marker).toEqual({ glyph: `${FOCUS_GLYPH.summon}-12`, color: MARKER_COLOR.damage.party });
+  });
+
+  test("nothing shows before the impact, and the owner's number stays when its summon did not change", () => {
+    expect(unitFocus("a", "party", hit, -5, false, { delta: -12, beat: true }).marker).toBeNull();
+    expect(unitFocus("a", "party", hit, -5, true, { delta: 0, beat: true }).marker).toEqual({ glyph: "-5", color: MARKER_COLOR.damage.party });
+  });
+
+  test("a miss still reads as a miss when neither the owner nor its summon lost HP", () => {
+    const missed = session({ actorId: "m", attackedIds: ["a"], missedIds: ["a"], summonIds: ["a"] });
+    expect(unitFocus("a", "party", missed, 0, true, { delta: 0, beat: true }).marker?.glyph).toBe(t("ui.focusMiss"));
+  });
+});
+
 describe("the summon icon", () => {
   test("a unit whose summon took part wears a pawn after its role icons, in its own side's colour", () => {
     const focus = unitFocus("a", "party", session({ actorId: "a", attackedIds: ["m"], summonIds: ["a"] }));

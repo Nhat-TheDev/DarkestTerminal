@@ -801,6 +801,8 @@ export interface CombatState {
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
   roundStartPartySnapshot?: PartyStateSnapshot;
+  /** Summons that left the fight, with the HP they left with: a snapshot keeps showing them, so a summon's last hit is still a change. A fade-away leaves with its HP unchanged, a death with 0. */
+  departedSummons?: { id: Id; hp: number; maxHp: number }[];
   /** Transient: the session being built while an actor's turn runs (see `runInSession`). */
   activeSession?: LogSession;
   outcome?: "victory" | "defeat";

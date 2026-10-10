@@ -10,6 +10,8 @@ export const SESSION_MIN_TICKS = 15;
  * session's other lines start at the impact, one per tick.
  */
 export const IMPACT_TICKS = 5;
+/** Ticks after the impact before a summon's own HP change replaces its owner's number: 5 × 100 ms = 0.5 s. */
+export const SUMMON_BEAT_TICKS = 5;
 
 interface Group {
   entries: LogEntry[];
@@ -64,6 +66,11 @@ export class RevealQueue {
   /** True while the lit session has not reached its impact: its changes must not be shown yet. */
   get holding(): boolean {
     return this.current?.session != null && this.ticks <= IMPACT_TICKS;
+  }
+
+  /** True once the lit session has run a beat past its impact: the owner's number gives way to its summon's. */
+  get summonBeat(): boolean {
+    return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS;
   }
 
   tick(): LogEntry[] {

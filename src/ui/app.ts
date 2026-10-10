@@ -37,7 +37,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, type BattlefieldUnit } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -765,7 +765,17 @@ export class App implements ScreenContext {
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
   }
 
-  /** The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden. */
+  /** What the summons `ownerId` owns did to their HP over the lit session; they are drawn as the owner. */
+  private summonFocus(ownerId: Id): SummonFocus {
+    let delta = 0;
+    for (const summon of this.game.ctx.summons) if (summon.ownerId === ownerId) delta += this.focusDeltas.get(summon.id) ?? 0;
+    return { delta, beat: this.reveal.summonBeat };
+  }
+
+  /**
+   * The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden.
+   * The range is counted in wrapped rows (`maxScrollY`), the same unit the wheel scrolls in.
+   */
   private keepScrollInRange(panel: TextRenderable, reset = false): void {
     panel.scrollY = reset ? 0 : panel.scrollY;
   }
@@ -973,7 +983,7 @@ export class App implements ScreenContext {
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact);
+      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact, this.summonFocus(c.id));
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);

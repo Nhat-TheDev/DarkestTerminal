@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS } from "../src/ui/revealQueue";
+import { IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
@@ -20,6 +20,29 @@ function drain(queue: RevealQueue, maxTicks = 500) {
 }
 
 describe("RevealQueue", () => {
+  test("a summon's beat comes SUMMON_BEAT_TICKS after the impact and inside the session's minimum hold", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("a", 2, session(1)));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      beat.push(q.summonBeat);
+    }
+    const first = beat.indexOf(true);
+    expect(first).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
+    expect(first).toBeLessThan(SESSION_MIN_TICKS);
+    expect(beat.slice(0, first).every((b) => !b)).toBe(true);
+  });
+
+  test("lines with no session never beat", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("p", 3));
+    while (q.active) {
+      q.tick();
+      expect(q.summonBeat).toBe(false);
+    }
+  });
+
   test("the first line of a session appears on the first tick, in the same step as its highlight", () => {
     const q = new RevealQueue();
     q.enqueue(entries("a", 3, session(1)));

@@ -173,6 +173,13 @@ snapshot: each run of a session's entries carries the combatant state as of the 
 (`runInSession`'s `snapshot` option), so a session never shows a change that belongs to the next
 one. A unit whose HP changed is never grey.
 
+A summon is drawn as its owner, so the HP change of the summons a unit owns is written there too.
+Alone it reads like the owner's own number. When the owner changed as well, the owner's number shows
+first and, a beat after the impact (`SUMMON_BEAT_TICKS`), the summon's replaces it,
+led by ♙ (`-12` becomes `♙-12`). A summon that died, was dismissed or faded leaves the fight with the
+HP it left with (`CombatState.departedSummons`), so a killing hit is still a number and a fade-away
+is not one.
+
 This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
 lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52
 lines tall** is recommended; a shorter terminal will clip the bottom of the

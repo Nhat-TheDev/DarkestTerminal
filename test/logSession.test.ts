@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { applySkillEffects, queueAction, resolveRound, startCombat } from "../src/engine/combat";
+import { applySkillEffects, queueAction, resolveRound, snapshotCombatants, startCombat } from "../src/engine/combat";
+import { hpDeltas } from "../src/ui/battlefieldFocus";
 import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -625,6 +626,37 @@ describe("sessions for the less common paths", () => {
       expect(entry.text).toMatch(setupMiss === "blind" ? /misses/ : /dodge/i);
       expect(entry.session!.missedIds).toEqual([vanguard.id]);
     }
+  });
+});
+
+describe("a summon that left the fight stays in the snapshots with the HP it left with", () => {
+  function fightWithClone(extra: Partial<Summon>) {
+    const { ctx } = makeCtx(11);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.maxHp = rat.hp = 50000;
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const clone = addClone(ninja, combat, ctx, extra);
+    return { ctx, combat, clone };
+  }
+
+  test("one that was killed leaves with 0, so the hit that killed it is a change", () => {
+    const { ctx, combat, clone } = fightWithClone({ hp: 12, maxHp: 30 });
+    const before = snapshotCombatants(combat, ctx);
+    clone.hp = 0;
+    resolveRound(combat, ctx);
+    const after = snapshotCombatants(combat, ctx);
+    expect(after.find((s) => s.id === clone.id)).toMatchObject({ hp: 0, isAlive: false });
+    expect(hpDeltas(before, after).get(clone.id)).toBe(-12);
+  });
+
+  test("one that faded or was dismissed with HP left shows no change", () => {
+    const { ctx, combat, clone } = fightWithClone({ hp: 30, maxHp: 30, actionsTaken: 5, maxActions: 5 });
+    const before = snapshotCombatants(combat, ctx);
+    resolveRound(combat, ctx);
+    expect(combat.departedSummons).toEqual([{ id: clone.id, hp: 30, maxHp: 30 }]);
+    expect(hpDeltas(before, snapshotCombatants(combat, ctx)).get(clone.id)).toBeUndefined();
   });
 });
 
