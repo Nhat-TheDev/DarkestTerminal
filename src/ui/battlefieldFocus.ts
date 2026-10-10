@@ -4,6 +4,7 @@ import { ICON_BAND_ROWS } from "./layout";
 import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, spriteWidth, type Sprite } from "./sprites";
 import { t } from "../data/strings";
 import { PALETTE, colorChunk, plainChunk } from "./theme";
+import { formatFear, roundFear } from "../engine/survival";
 
 export type UnitSide = "party" | "monster";
 
@@ -51,7 +52,8 @@ export const MARKER_COLOR = {
   damage: { party: PALETTE.markerDamageParty, monster: PALETTE.markerDamageMonster } as Record<UnitSide, string>,
   heal: { party: PALETTE.markerHealParty, monster: PALETTE.markerHealMonster } as Record<UnitSide, string>,
   miss: PALETTE.dim,
-  fear: PALETTE.fearUneasy,
+  fearUp: PALETTE.fearUneasy,
+  fearDown: PALETTE.markerHealParty,
 };
 
 /** Share of the original brightness a bystander keeps. */
@@ -74,14 +76,17 @@ export function dimSprite(sprite: Sprite): Sprite {
 /**
  * Who is lit and what each lit unit wears in `session`. With no session everyone is shown normally.
  * `delta` is the unit's HP change over the session (known from its start, so a DoT tick can pick its
- * icon at once); the marker that prints it appears only once `impact` is reached. `fearGain` is passed
- * only once the session's fear beat has come: it then replaces everything else the unit wears (`◉ +2`).
+ * icon at once); the marker that prints it appears only once `impact` is reached. `fearChange` is passed
+ * only once the session's fear beat has come: it then replaces everything else the unit wears (`◉ +2.1`, `◉ -15`).
  */
-export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearGain = 0): UnitFocus {
+export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearChange = 0): UnitFocus {
   if (!session) return { dim: false, icons: [], marker: null };
   const color = FOCUS_COLOR[side];
   const icon = (glyph: string): FocusIcon => ({ glyph, color });
-  if (fearGain > 0) return { dim: false, icons: [icon(FOCUS_GLYPH.fear)], marker: { glyph: `+${fearGain}`, color: MARKER_COLOR.fear } };
+  if (fearChange !== 0) {
+    const marker = fearChange > 0 ? { glyph: `+${formatFear(fearChange)}`, color: MARKER_COLOR.fearUp } : { glyph: formatFear(fearChange), color: MARKER_COLOR.fearDown };
+    return { dim: false, icons: [icon(FOCUS_GLYPH.fear)], marker };
+  }
   const icons: FocusIcon[] = [];
   const healed = session.healedIds.includes(id);
 
@@ -142,10 +147,10 @@ export function hpDeltas(before: CombatantSnapshot[] | null, after: CombatantSna
   return snapshotDeltas(before, after, (c) => c.hp);
 }
 
-/** Each character's fear gain from `before` to `after`; a drop is not a gain and is left out. */
+/** Each character's fear change from `before` to `after`, rounded to fear's one decimal place; one fallen by `after` shows none. */
 export function fearDeltas(before: CombatantSnapshot[] | null, after: CombatantSnapshot[] | null): Map<Id, number> {
-  const deltas = snapshotDeltas(before, after, (c) => c.fear);
-  for (const [id, delta] of deltas) if (delta < 0) deltas.delete(id);
+  const deltas = snapshotDeltas(before, after, (c) => (c.isAlive ? c.fear : undefined));
+  for (const [id, delta] of deltas) deltas.set(id, roundFear(delta));
   return deltas;
 }
 

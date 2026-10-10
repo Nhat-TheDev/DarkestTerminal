@@ -3,7 +3,7 @@ import { FEAR_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_B
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
-  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearGainIds: [] };
+  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearChangedIds: [] };
 }
 function entries(prefix: string, count: number, s?: LogSession): LogEntry[] {
   return Array.from({ length: count }, (_, i) => ({ text: `${prefix}${i}`, kind: "info" as const, session: s }));
@@ -36,7 +36,7 @@ describe("RevealQueue", () => {
 
   test("a session where fear rose shows it once its usual hold has run, then holds FEAR_BEAT_TICKS longer", () => {
     const q = new RevealQueue();
-    q.enqueue(entries("a", 2, { ...session(1), fearGainIds: ["p1"] }));
+    q.enqueue(entries("a", 2, { ...session(1), fearChangedIds: ["p1"] }));
     const beat: boolean[] = [];
     while (q.active) {
       q.tick();
@@ -48,7 +48,7 @@ describe("RevealQueue", () => {
 
   test("end-of-round fear shows at the impact and ends FEAR_BEAT_TICKS later", () => {
     const q = new RevealQueue();
-    q.enqueue(entries("f", 1, { ...session(1), actorId: null, cause: "fear", fearGainIds: ["p1"] }));
+    q.enqueue(entries("f", 1, { ...session(1), actorId: null, cause: "fear", fearChangedIds: ["p1"] }));
     const beat: boolean[] = [];
     while (q.active) {
       q.tick();

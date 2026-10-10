@@ -21,7 +21,7 @@ import {
   alwaysHitChance,
   debuffResistPercent,
 } from "../src/engine/artifacts";
-import { fearGainForRound, fearGainForHit, applyRoundFear, applyHitFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
+import { fearGainForRound, fearGainForHit, applyRoundFear, applyHitFear, adjustFear, formatFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
 import type { CombatantRef, SkillDefinition } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
@@ -207,9 +207,9 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
     c.equippedArtifactIds.push("pendant-of-calm");
-    expect(fearGainForRound(c, 1)).toBe(4);
+    expect(fearGainForRound(c, 1)).toBe(3.6);
     c.equippedArtifactIds.push("vigil-cloth", "bundle-of-undelivered-letters");
-    expect(fearGainForRound(c, 1)).toBe(2);
+    expect(fearGainForRound(c, 1)).toBe(2.4);
   });
 
   test("applyRoundFear adds the gain and skips dead characters", () => {
@@ -228,11 +228,48 @@ describe("artifacts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     expect(fearGainForHit(c, 1)).toBe(1);
-    expect(fearGainForHit(c, 11)).toBe(2);
+    expect(fearGainForHit(c, 11)).toBe(1.5);
     expect(fearGainForHit(c, 100)).toBe(3);
-    c.equippedArtifactIds.push("pendant-of-calm", "vigil-cloth", "bundle-of-undelivered-letters");
-    expect(fearGainForHit(c, 1)).toBe(1);
-    expect(fearGainForHit(c, 100)).toBe(2);
+    c.equippedArtifactIds.push("pendant-of-calm");
+    expect(fearGainForHit(c, 1)).toBe(0.9);
+    c.equippedArtifactIds.push("vigil-cloth", "bundle-of-undelivered-letters");
+    expect(fearGainForHit(c, 1)).toBe(0.6);
+    expect(fearGainForHit(c, 100)).toBe(1.8);
+  });
+
+  test("adjustFear keeps one decimal place with no float drift, clamps to 0-100 and returns the real change", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.survival.fear = 12.3;
+    expect(adjustFear(c, -5)).toBe(-5);
+    expect(c.survival.fear).toBe(7.3);
+    expect(adjustFear(c, 0.1 + 0.2)).toBe(0.3);
+    expect(c.survival.fear).toBe(7.6);
+    c.survival.fear = 99.5;
+    expect(adjustFear(c, 2.1)).toBe(0.5);
+    expect(c.survival.fear).toBe(100);
+    expect(adjustFear(c, -150)).toBe(-100);
+    expect(c.survival.fear).toBe(0);
+  });
+
+  test("formatFear drops a trailing .0 and keeps the sign of a drop", () => {
+    expect(formatFear(2)).toBe("2");
+    expect(formatFear(2.1)).toBe("2.1");
+    expect(formatFear(-15)).toBe("-15");
+    expect(formatFear(0.30000000000000004)).toBe("0.3");
+  });
+
+  test("applyVictoryFearRelief returns only the living characters it calmed", () => {
+    const { ctx } = makeCtx();
+    const [a, b, c] = ctx.party;
+    a!.survival.fear = 20.4;
+    b!.survival.fear = 0;
+    c!.survival.fear = 30;
+    c!.isAlive = false;
+    const calmed = applyVictoryFearRelief(ctx.party, false, 10);
+    expect(calmed).toEqual([a!]);
+    expect(a!.survival.fear).toBe(15.4);
+    expect(c!.survival.fear).toBe(30);
   });
 
   test("applyHitFear returns what was actually added: nothing past 100, nothing for the dead", () => {

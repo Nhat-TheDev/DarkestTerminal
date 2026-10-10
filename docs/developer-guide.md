@@ -160,7 +160,7 @@ because it has no sprite. Round-start and round-end ticks are one actor-less ses
 that lights the units whose tick logged; its `cause` picks their icon — ☣ a damage-over-time tick
 (`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
 unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
-auto-damage (its target wears ⛨), ◉ a character whose fear rose at the end of the round; a stat-mod expiry block shows only the ▼ of the units that lost a
+auto-damage (its target wears ⛨), ◉ a character whose fear changed at the end of the round or on a victory; a stat-mod expiry block shows only the ▼ of the units that lost a
 buff, which includes the allies whose buff ends with a leaving Recall Totem. An ally that a skill or
 item touches without helping (an aggro drop, say) is lit without an icon.
 
@@ -183,12 +183,14 @@ is not one. The label under a party member's sprite carries one ♙ per living s
 (`NJ ♙♙`), counted from the replayed snapshot so a summon spawned later in the round appears with
 its own action.
 
-A character whose fear rose in a session (`LogSession.fearGainIds`, noted by `noteFearGain` when a
-monster's hit lands or the round ends) shows the gain once everything else it wears has had its
-time: the reveal holds the session `FEAR_BEAT_TICKS` past its usual end, and for that beat the
-character wears only `◉ +2` (`MARKER_COLOR.fear`), the gain read from the `fear` that snapshots
-carry for characters. End-of-round fear has no line in the log, so its session rides on one
-`LogEntry` with `hidden: true`, which `logLines` never renders; its beat starts at the impact.
+A character whose fear changed in a session (`LogSession.fearChangedIds`, noted by `noteFearChange`
+when a monster's hit lands, a skill or item's `modifyStat` moves it, the round ends, or the fight is
+won) shows the change once everything else it wears has had its time: the reveal holds the session
+`FEAR_BEAT_TICKS` past its usual end, and for that beat the character wears only `◉ +2.1` or
+`◉ -15` (`MARKER_COLOR.fearUp`/`fearDown`, written by `formatFear`, which drops a trailing `.0`),
+the change read from the `fear` that snapshots carry for characters. Party-wide fear (end of round,
+victory) has no line in the log, so its session (`runFearSession`) rides on one `LogEntry` with
+`hidden: true`, which `logLines` never renders; its beat starts at the impact.
 
 This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
 lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52

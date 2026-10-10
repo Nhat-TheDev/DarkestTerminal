@@ -8,7 +8,7 @@ There are 2 survival stats, tracked at different scopes:
 
 | Stat | Scope | Range |
 |---|---|---|
-| `fear` | Per character (`Character.survival.fear`) | 0–100 |
+| `fear` | Per character (`Character.survival.fear`) | 0.0–100.0, one decimal place |
 | `satiety` | Party-wide (`GameState.satiety`) | 0–100 |
 
 Both are clamped to their range via `clamp(...)` wherever they're modified (`src/engine/survival.ts`, `src/engine/resolver.ts`).
@@ -73,6 +73,8 @@ Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiet
 
 ## Fear
 
+Fear is kept to one decimal place: every change goes through `adjustFear` (`src/engine/survival.ts`), which clamps to 0–100 and rounds to one decimal place, so even the smallest gain is reduced by any `fearResist`, however minor, instead of rounding back to a whole point, and repeated changes never drift. The party panel shows the value rounded down, so the number shown never reaches a tier threshold before the tier itself does; the battlefield marker shows the decimal.
+
 - **Per combat round**: at the end of each round where the fight has **not yet ended**, every living character gains additional fear via `fearGainForRound`/`applyRoundFear` (`src/engine/survival.ts`), called from `resolveRound` (`src/engine/combat.ts`):
   - A base amount (`survival.fearPerRoundBase`), or a higher amount instead (`survival.fearPerRoundLowHp`, not additive with the base) if the character is below a low-HP threshold (`survival.fearLowHpThresholdFraction` of `maxHp`).
   - Both amounts scale up with floor depth (`survival.fearPerRoundDepthGrowth`), each with its own cap (`survival.fearPerRoundBaseCap`/`fearPerRoundLowHpCap`).
@@ -81,7 +83,8 @@ Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiet
   - A base amount (`survival.fearPerHitTaken`) per hit. A multi-hit skill counts once per target; an area attack counts once for each character it lands on. A miss, a dodge, and damage over time do not count.
   - Scales with floor depth by the same `survival.fearPerRoundDepthGrowth`, capped at `survival.fearPerHitTakenCap`, and is reduced by `fearResist` the same way.
   - Because it lands mid-round, its accuracy/damage penalty already applies to the character's own action later in that round.
-- Every fear gain is shown on the battlefield as `◉ +N` over the character, after the session's other icons (`docs/developer-guide.md`, the battlefield section); it adds no log line.
+- **Skills and items** (`modifyStat` on `fear`, resolved in `src/engine/resolver.ts`): a positive amount is reduced by `fearResist` like every other gain (`resistedFearGain`); a negative amount (Prayer, Rally, Calming Draught…) is applied in full. These keep their usual log line, written with the decimal.
+- Every fear change in combat — a rise or a drop, from a round, a hit, a skill, an item or a victory — is shown on the battlefield as `◉ +N` or `◉ -N` over the character, after the session's other icons (`docs/developer-guide.md`, the battlefield section). Round, hit and victory changes add no log line.
 - **Winning a fight** — relief now also depends on how fast the fight was won (`CombatState.roundNumber` at the moment `outcome === "victory"` is set):
 
   | Fight type | Normal relief | Quick-win relief | Quick-win condition |

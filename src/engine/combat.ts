@@ -29,7 +29,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteDotEffect, noteFearGain, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
@@ -299,6 +299,23 @@ function sessionSnapshot(combat: CombatState, ctx: EngineContext): () => Combata
   return () => snapshotCombatants(combat, ctx);
 }
 
+/** An actor-less session for party-wide fear (end of round, victory). It has no line to show, so a hidden entry carries it. */
+function runFearSession(combat: CombatState, ctx: EngineContext, changeFear: () => Character[]): void {
+  runInSession(
+    combat,
+    null,
+    () => {
+      const changed = changeFear();
+      for (const c of changed) {
+        noteAffected(combat, c);
+        noteFearChange(combat, c);
+      }
+      if (changed.length > 0) combat.log.push({ text: "", kind: "info", hidden: true });
+    },
+    { cause: "fear", snapshot: sessionSnapshot(combat, ctx) }
+  );
+}
+
 /** Same idea as tagLogRange, for the party-wide (coins/EXP/satiety) snapshot instead of the per-combatant one. */
 export function tagPartySnapshotRange(combat: CombatState, fromIndex: number, partySnapshot: PartyStateSnapshot): void {
   for (let i = fromIndex; i < combat.log.length; i++) {
@@ -459,20 +476,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
         if (c.cooldownsRemaining[skillId]! > 0) c.cooldownsRemaining[skillId]! -= 1;
       }
     }
-    runInSession(
-      combat,
-      null,
-      () => {
-        for (const c of ctx.party) {
-          if (applyRoundFear(c, floorDepth) > 0) {
-            noteAffected(combat, c);
-            noteFearGain(combat, c);
-          }
-        }
-        if (combat.activeSession && combat.activeSession.fearGainIds.length > 0) combat.log.push({ text: "", kind: "info", hidden: true });
-      },
-      { cause: "fear", snapshot }
-    );
+    runFearSession(combat, ctx, () => ctx.party.filter((c) => applyRoundFear(c, floorDepth) !== 0));
     if (isPartyDying(satiety)) {
       runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), {
         affectedIds: ctx.party.filter((c) => c.isAlive).map((c) => c.id),
@@ -1099,7 +1103,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
 
 /** A monster's damage landed on `target`: a character gains fear, noted on the running session. */
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
-  if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) > 0) noteFearGain(combat, target);
+  if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
 
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
@@ -1224,6 +1228,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
       const wasAliveBefore = isActorAlive(target);
       const sourceHpBefore = source.hp;
+      const fearBefore = isCharacter(target) ? target.survival.fear : 0;
       // Summed across every hit (hitCountRange's multi-hit and any extraHitChance bonus hit), not just
       // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
       // a multi-hit skill actually dealt this cast, not just its final swing.
@@ -1238,6 +1243,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
           }
         }
       }
+      if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);
       if (effect.kind === "damage") {
         for (const hook of combatHooks) hook.onHit?.(source, target, log);
         if (isCharacter(source)) {
@@ -1287,7 +1293,7 @@ function finalizeRound(combat: CombatState, ctx: EngineContext): void {
     combat.phase = "over";
     combat.outcome = "victory";
     const hasEliteOrBoss = combat.combatants.some((c) => c.ref.kind === "monster" && (getActorByRef(c.ref, ctx) as Monster).tier !== "normal");
-    applyVictoryFearRelief(ctx.party, hasEliteOrBoss, combat.roundNumber);
+    runFearSession(combat, ctx, () => applyVictoryFearRelief(ctx.party, hasEliteOrBoss, combat.roundNumber));
     combat.log.push({ text: t("combat.roomCleared"), kind: "info" });
     return;
   }

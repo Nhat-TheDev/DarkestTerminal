@@ -71,7 +71,7 @@ describe("battlefield and log stay in step", () => {
       const frame = fight.captureCharFrame();
       const focus = fight.app.debugFocus;
       // In the fear beat a character whose fear rose wears only `◉ +N`.
-      const fearing = new Set(fight.app.debugFearBeat ? (focus?.fearGainIds ?? []).filter((id) => (fight.app.debugFocusFearDeltas.get(id) ?? 0) > 0) : []);
+      const fearing = new Set(fight.app.debugFearBeat ? (focus?.fearChangedIds ?? []).filter((id) => (fight.app.debugFocusFearDeltas.get(id) ?? 0) > 0) : []);
       const shown = (ids: Id[]) => ids.filter((id) => !fearing.has(id));
       expect(count(frame, FOCUS_GLYPH.shield)).toBe(shown(focus?.attackedIds ?? []).length);
       expect(count(frame, FOCUS_GLYPH.debuff)).toBe(new Set(shown([...(focus?.debuffedIds ?? []), ...(focus?.buffLostIds ?? [])])).size);
@@ -159,7 +159,7 @@ describe("battlefield and log stay in step", () => {
       } else if (focus) {
         for (const id of focus.attackedIds) {
           const fearGain = fight.app.debugFocusFearDeltas.get(id) ?? 0;
-          if (fight.app.debugFearBeat && focus.fearGainIds.includes(id) && fearGain > 0) {
+          if (fight.app.debugFearBeat && focus.fearChangedIds.includes(id) && fearGain > 0) {
             fearBeats++;
             expect(frame).toContain(`${FOCUS_GLYPH.fear} +${fearGain}`);
             continue;
@@ -177,6 +177,20 @@ describe("battlefield and log stay in step", () => {
     expect(impacts).toBeGreaterThan(0);
     expect(fearBeats).toBeGreaterThan(0);
   }, 30000);
+
+  test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {
+    const fight = await openFight();
+    fight.game.state.party[0]!.survival.fear = 39.9;
+    fight.game.state.party[1]!.survival.fear = 40;
+    fight.mockInput.pressKey("b");
+    await fight.renderOnce();
+    fight.mockInput.pressEscape();
+    await fight.renderOnce();
+    const frame = fight.captureCharFrame();
+    expect(frame).toContain("Fear 39 ");
+    expect(frame).not.toContain("Fear 39 (");
+    expect(frame).toContain(`Fear 40 (${t("ui.fearTier2")})`);
+  });
 
   test("skipping reveals every line and drops the highlight in one step", async () => {
     const fight = await openFight();

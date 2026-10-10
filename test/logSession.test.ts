@@ -296,10 +296,31 @@ describe("applySkillEffects notes its targets", () => {
     expect(combat.log.at(-1)!.session).toMatchObject({ actorId: vanguard.id, attackedIds: [goblin.id], buffedIds: [], healedIds: [] });
   });
 
+  test("a skill that lowers an ally's fear notes the change; one that leaves it at 0 does not", () => {
+    const { ctx, combat, acolyte, vanguard } = setup();
+    vanguard.survival.fear = 30;
+    const calm = skill({ target: "singleAlly", effects: [{ kind: "modifyStat", stat: "fear", amount: -15 }] });
+    runInSession(combat, acolyte.id, () => applySkillEffects(calm, acolyte, [vanguard], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([vanguard.id]);
+    expect(vanguard.survival.fear).toBe(15);
+    acolyte.survival.fear = 0;
+    runInSession(combat, acolyte.id, () => applySkillEffects(calm, acolyte, [acolyte], combat, ctx, combat.log));
+    expect(combat.log.filter((e) => e.session?.actorId === acolyte.id).at(-1)?.session?.fearChangedIds ?? []).not.toContain(acolyte.id);
+  });
+
+  test("a monster skill's damage that lands adds hit fear to the struck character and notes it", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    const bite = skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 5 }] });
+    runInSession(combat, goblin.id, () => applySkillEffects(bite, goblin, [vanguard], combat, ctx, combat.log));
+    expect(vanguard.hp).toBeLessThan(vanguard.maxHp);
+    expect(vanguard.survival.fear).toBe(1);
+    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([vanguard.id]);
+  });
+
   test("a character hitting a monster gains no fear and notes none", () => {
     const { ctx, combat, vanguard, goblin } = setup();
     runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), vanguard, [goblin], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session!.fearGainIds).toEqual([]);
+    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([]);
     expect(vanguard.survival.fear).toBe(0);
   });
 
@@ -436,10 +457,24 @@ describe("resolveRound tags what a round logs", () => {
     expect(fearEntries).toHaveLength(1);
     expect(fearEntries[0]!.hidden).toBe(true);
     const living = ctx.party.filter((c) => c.isAlive).map((c) => c.id);
-    expect(fearEntries[0]!.session!.fearGainIds).toEqual(living);
+    expect(fearEntries[0]!.session!.fearChangedIds).toEqual(living);
     expect(fearEntries[0]!.session!.affectedIds).toEqual(living);
     ctx.party.forEach((c, i) => expect(c.survival.fear).toBeGreaterThan(fearBefore[i]!));
     expect(fearEntries[0]!.snapshot!.find((snap) => snap.id === living[0])!.fear).toBe(ctx.party.find((c) => c.id === living[0])!.survival.fear);
+  });
+
+  test("victory relief is its own fear session carried by a hidden entry, before the room-cleared line", () => {
+    const { ctx, combat, rats } = fight();
+    for (const r of rats) r.hp = 0;
+    for (const c of ctx.party) c.survival.fear = 20.5;
+    resolveRound(combat, ctx);
+    expect(combat.outcome).toBe("victory");
+    const fearEntries = combat.log.filter((e) => e.session?.cause === "fear");
+    expect(fearEntries).toHaveLength(1);
+    expect(fearEntries[0]!.hidden).toBe(true);
+    expect(fearEntries[0]!.session!.fearChangedIds).toEqual(ctx.party.map((c) => c.id));
+    expect(combat.log.indexOf(fearEntries[0]!)).toBe(combat.log.length - 2);
+    for (const c of ctx.party) expect(c.survival.fear).toBeLessThan(20.5);
   });
 
   test("a monster's hit that lands notes the struck character's fear gain in its own session", () => {
@@ -447,9 +482,9 @@ describe("resolveRound tags what a round logs", () => {
     for (const r of rats) r.attack = 30;
     resolveRound(combat, ctx);
     const attacks = combat.log.filter((e) => e.session && rats.some((r) => r.id === e.session!.actorId));
-    const struck = attacks.flatMap((e) => e.session!.fearGainIds);
+    const struck = attacks.flatMap((e) => e.session!.fearChangedIds);
     expect(struck.length).toBeGreaterThan(0);
-    for (const e of attacks) for (const id of e.session!.fearGainIds) expect(e.session!.attackedIds).toContain(id);
+    for (const e of attacks) for (const id of e.session!.fearChangedIds) expect(e.session!.attackedIds).toContain(id);
   });
 
   test("combat start and reward lines carry no session", () => {

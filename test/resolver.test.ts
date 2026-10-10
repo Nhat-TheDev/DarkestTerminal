@@ -152,6 +152,18 @@ describe("resolver", () => {
     expect(target.survival.fear).toBe(100);
   });
 
+  test("modifyStat fear: a rise is reduced by fearResist and logged with its decimal, a drop is not resisted", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[0]!;
+    target.equippedArtifactIds.push("pendant-of-calm");
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "modifyStat", stat: "fear", amount: 5 }, target, target, { log });
+    expect(target.survival.fear).toBe(4.5);
+    expect(log.at(-1)!.text).toContain("4.5");
+    resolveSkillEffect({ kind: "modifyStat", stat: "fear", amount: -2 }, target, target, { log });
+    expect(target.survival.fear).toBe(2.5);
+  });
+
   test("modifyCombatStat buff installs immediately and undoes on expiry", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party[0]!;
