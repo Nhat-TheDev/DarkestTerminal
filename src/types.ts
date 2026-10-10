@@ -191,6 +191,7 @@ export interface PassiveSkillDefinition {
   bonusDamageType?: DamageType; // Rogue
   selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
   maxClones?: number; // Ninja — fixed across ranks, not scaled
+  cloneSummonCastId?: Id; // Ninja — the summon cast (`data/summons.json` → `casts`) the second-clone proc spawns, and whose archetype `maxClones` counts
   debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }
 

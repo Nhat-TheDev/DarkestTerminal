@@ -3038,7 +3038,8 @@
           "secondCloneChancePercent": 30
         }
       ],
-      "maxClones": 2
+      "maxClones": 2,
+      "cloneSummonCastId": "shadow-clone"
     }
   },
   {

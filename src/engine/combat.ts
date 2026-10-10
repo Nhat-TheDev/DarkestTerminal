@@ -707,10 +707,12 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
   const passive = getClass("ninja").passiveSkill;
   const chance = (passiveRankDef(passive, source.level)?.secondCloneChancePercent ?? 0) / 100;
   if (chance === 0) return;
-  const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === "shadow-clone");
+  if (!passive.cloneSummonCastId) return;
+  const cast = getSummonCast(passive.cloneSummonCastId);
+  const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === cast.archetypeId);
   if (existingClones.length >= (passive.maxClones ?? 0) || existingClones.length === 0) return;
   if (!ctx.rng.chance(chance)) return;
-  spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, source, combat, ctx, log);
+  spawnAdditionalSummon({ kind: "summon", summonCastId: cast.id }, source, combat, ctx, log);
 }
 
 /** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */

@@ -48,6 +48,9 @@ describe("validatePassiveStatusIds", () => {
     expect(() => validatePassiveStatusIds(mage.id, typo)).toThrow(/mage.*onHitStatusEffectId "shreded"/);
     const rogue = getClass("rogue");
     expect(() => validatePassiveStatusIds(rogue.id, { ...rogue.passiveSkill, requiresTargetStatusId: "poisonned" })).toThrow(/requiresTargetStatusId "poisonned"/);
+    const ninja = getClass("ninja");
+    expect(ninja.passiveSkill.cloneSummonCastId).toBe("shadow-clone");
+    expect(() => validatePassiveStatusIds(ninja.id, { ...ninja.passiveSkill, cloneSummonCastId: "shadow-clon" })).toThrow(/cloneSummonCastId "shadow-clon"/);
     const doctor = getClass("plague-doctor");
     expect(() => validatePassiveStatusIds(doctor.id, { ...doctor.passiveSkill, debuffPool: ["burning", "not-a-status"] })).toThrow(/debuffPool "not-a-status"/);
   });

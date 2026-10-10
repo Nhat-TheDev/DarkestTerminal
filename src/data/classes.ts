@@ -1,6 +1,7 @@
 import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
 import { STATUS_EFFECTS } from "./statusEffects";
+import { SUMMON_CASTS } from "./summons";
 
 /**
  * A ranked skill's rank-1 numbers are its "base" numbers — `data/classes.json` doesn't repeat
@@ -29,6 +30,9 @@ export function validatePassiveStatusIds(classId: string, passive: PassiveSkillD
   }
   check("skill", "requiresTargetStatusId", passive.requiresTargetStatusId ? [passive.requiresTargetStatusId] : []);
   check("skill", "debuffPool", passive.debuffPool ?? []);
+  if (passive.cloneSummonCastId !== undefined && !SUMMON_CASTS.some((c) => c.id === passive.cloneSummonCastId)) {
+    throw new Error(`data/classes.json: class "${classId}"'s passive names an unknown cloneSummonCastId "${passive.cloneSummonCastId}"`);
+  }
 }
 
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");
