@@ -26,13 +26,14 @@ import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, 
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
-import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
+import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteFearGain, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
+  isMonster,
   isSummon,
   isPlayerSide,
   isActorAlive,
@@ -54,6 +55,8 @@ export interface EngineContext {
   summons: Summon[];
   rng: Rng;
   inventory: Record<Id, number>;
+  /** Set for the length of one `resolveRound`, so fear gained mid-round scales with the floor. */
+  floorDepth?: number;
 }
 
 function actionDefinition(source: ActionSource, actor?: Actor): SkillDefinition {
@@ -276,6 +279,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       level: isCharacter ? (actor as Character).level : undefined,
       mp: isCharacter ? (actor as Character).mp : undefined,
       maxMp: isCharacter ? (actor as Character).maxMp : undefined,
+      fear: isCharacter ? (actor as Character).survival.fear : undefined,
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
     };
   });
@@ -381,7 +385,8 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
   );
 }
 
-export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth = 1, satiety = 100): void {
+export function resolveRound(combat: CombatState, roundCtx: EngineContext, floorDepth = 1, satiety = 100): void {
+  const ctx: EngineContext = { ...roundCtx, floorDepth };
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
   combat.activeTurnIndex = 0;
@@ -454,7 +459,20 @@ export function resolveRound(combat: CombatState, ctx: EngineContext, floorDepth
         if (c.cooldownsRemaining[skillId]! > 0) c.cooldownsRemaining[skillId]! -= 1;
       }
     }
-    for (const c of ctx.party) applyRoundFear(c, floorDepth);
+    runInSession(
+      combat,
+      null,
+      () => {
+        for (const c of ctx.party) {
+          if (applyRoundFear(c, floorDepth) > 0) {
+            noteAffected(combat, c);
+            noteFearGain(combat, c);
+          }
+        }
+        if (combat.activeSession && combat.activeSession.fearGainIds.length > 0) combat.log.push({ text: "", kind: "info", hidden: true });
+      },
+      { cause: "fear", snapshot }
+    );
     if (isPartyDying(satiety)) {
       runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), {
         affectedIds: ctx.party.filter((c) => c.isAlive).map((c) => c.id),
@@ -1079,6 +1097,11 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
+/** A monster's damage landed on `target`: a character gains fear, noted on the running session. */
+export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
+  if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) > 0) noteFearGain(combat, target);
+}
+
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
@@ -1224,6 +1247,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       }
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+        applyMonsterHitFear(source, target, combat, ctx);
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (wasAliveBefore && !isActorAlive(target)) {

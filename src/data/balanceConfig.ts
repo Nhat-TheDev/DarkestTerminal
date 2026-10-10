@@ -51,6 +51,9 @@ interface BalanceConfig {
     fearPerRoundLowHpCap: number;
     fearPerRoundDepthGrowth: number;
     fearLowHpThresholdFraction: number;
+    /** Fear a character gains each time a monster's damage effect lands on it, before depth growth and fearResist. */
+    fearPerHitTaken: number;
+    fearPerHitTakenCap: number;
     fearVictoryRelief: number;
     fearVictoryReliefQuick: number;
     fearQuickVictoryRoundThreshold: number;

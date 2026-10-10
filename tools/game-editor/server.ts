@@ -58,7 +58,7 @@ const BALANCE_SURVIVAL_FIELDS = [
   "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",
   "eatDrinkRestoreFraction", "eatDrinkSatietyRestore", "chatRestoreFraction", "chatFearRelief",
   "fearPerRoundBase", "fearPerRoundLowHp", "fearPerRoundBaseCap", "fearPerRoundLowHpCap",
-  "fearPerRoundDepthGrowth", "fearLowHpThresholdFraction", "fearVictoryRelief", "fearVictoryReliefQuick",
+  "fearPerRoundDepthGrowth", "fearLowHpThresholdFraction", "fearPerHitTaken", "fearPerHitTakenCap", "fearVictoryRelief", "fearVictoryReliefQuick",
   "fearQuickVictoryRoundThreshold", "fearEliteOrBossVictoryRelief", "fearEliteOrBossVictoryReliefQuick",
   "fearEliteOrBossQuickVictoryRoundThreshold",
 ] as const;

@@ -5,7 +5,7 @@ import { rollDodge } from "./artifacts";
 import { resolveSkillEffect, rollHits, isCharacter, type Actor } from "./resolver";
 import { t } from "../data/strings";
 import { applyArtifactReflectDamage } from "./combatHooks";
-import { getActorByRef, livingPlayerSideEnemyFacingRefs, hasStunningStatus, applySkillEffects, type EngineContext } from "./combat";
+import { getActorByRef, livingPlayerSideEnemyFacingRefs, hasStunningStatus, applySkillEffects, applyMonsterHitFear, type EngineContext } from "./combat";
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 
@@ -120,6 +120,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
   combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: target.name }), kind: "attack" });
   const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log });
   if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
+  if (damageDealt > 0) applyMonsterHitFear(actor, target, combat, ctx);
 }
 
 function pickAggroWeighted(characters: Targetable[], rng: Rng): Targetable {

@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
+import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
 import { t } from "../src/data/strings";
 import { ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
-  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], ...partial };
+  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearGainIds: [], ...partial };
 }
 const glyphs = (icons: { glyph: string }[]) => icons.map((i) => i.glyph);
 const textOf = (line: { text: string }[]) => line.map((c) => c.text).join("");
@@ -32,6 +32,27 @@ describe("dimSprite", () => {
 });
 
 describe("unitFocus", () => {
+  test("in the fear beat a character wears only the fear glyph and its gain, whatever else the session did", () => {
+    const s = session({ actorId: "m1", attackedIds: ["p1"], fearGainIds: ["p1"] });
+    const before = unitFocus("p1", "party", s, -12, true);
+    expect(glyphs(before.icons)).toEqual([FOCUS_GLYPH.shield]);
+    expect(before.marker?.glyph).toBe("-12");
+    const beat = unitFocus("p1", "party", s, -12, true, undefined, 1);
+    expect(beat).toEqual({ dim: false, icons: [{ glyph: FOCUS_GLYPH.fear, color: FOCUS_COLOR.party }], marker: { glyph: "+1", color: MARKER_COLOR.fear } });
+  });
+
+  test("an end-of-round fear session lights its characters with the fear glyph before the impact", () => {
+    const s = session({ cause: "fear", affectedIds: ["p1"], fearGainIds: ["p1"] });
+    expect(glyphs(unitFocus("p1", "party", s).icons)).toEqual([FOCUS_GLYPH.fear]);
+    expect(unitFocus("p2", "party", s).dim).toBe(true);
+  });
+
+  test("fearDeltas keeps only rises in fear", () => {
+    const before = [{ id: "p1", hp: 10, maxHp: 10, isAlive: true, fear: 5 }, { id: "p2", hp: 10, maxHp: 10, isAlive: true, fear: 30 }, { id: "m1", hp: 10, maxHp: 10, isAlive: true }];
+    const after = [{ id: "p1", hp: 10, maxHp: 10, isAlive: true, fear: 7 }, { id: "p2", hp: 10, maxHp: 10, isAlive: true, fear: 20 }, { id: "m1", hp: 4, maxHp: 10, isAlive: true }];
+    expect([...fearDeltas(before, after)]).toEqual([["p1", 2]]);
+  });
+
   test("no session: nothing is dimmed, no icons", () => {
     expect(unitFocus("a", "party", null)).toEqual({ dim: false, icons: [], marker: null });
   });

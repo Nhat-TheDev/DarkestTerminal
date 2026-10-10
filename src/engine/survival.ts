@@ -21,6 +21,8 @@ const FEAR_PER_ROUND_BASE_CAP = BALANCE.survival.fearPerRoundBaseCap;
 const FEAR_PER_ROUND_LOW_HP_CAP = BALANCE.survival.fearPerRoundLowHpCap;
 const FEAR_PER_ROUND_DEPTH_GROWTH = BALANCE.survival.fearPerRoundDepthGrowth;
 const FEAR_LOW_HP_THRESHOLD_FRACTION = BALANCE.survival.fearLowHpThresholdFraction;
+const FEAR_PER_HIT_TAKEN = BALANCE.survival.fearPerHitTaken;
+const FEAR_PER_HIT_TAKEN_CAP = BALANCE.survival.fearPerHitTakenCap;
 const FEAR_VICTORY_RELIEF = BALANCE.survival.fearVictoryRelief;
 const FEAR_VICTORY_RELIEF_QUICK = BALANCE.survival.fearVictoryReliefQuick;
 const FEAR_QUICK_VICTORY_ROUND_THRESHOLD = BALANCE.survival.fearQuickVictoryRoundThreshold;
@@ -67,18 +69,38 @@ export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   }
 }
 
-export function fearGainForRound(character: Character, floorDepth: number): number {
-  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
-  const base = isLowHp ? FEAR_PER_ROUND_LOW_HP : FEAR_PER_ROUND_BASE;
-  const cap = isLowHp ? FEAR_PER_ROUND_LOW_HP_CAP : FEAR_PER_ROUND_BASE_CAP;
+/** `base` grown by floor depth, capped, then reduced by the character's fearResist. */
+function scaledFearGain(character: Character, base: number, cap: number, floorDepth: number): number {
   const growthMultiplier = 1 + FEAR_PER_ROUND_DEPTH_GROWTH * (floorDepth - 1);
-  const scaled = Math.min(base * growthMultiplier, cap);
-  return Math.round(scaled * fearResistMultiplier(character));
+  return Math.round(Math.min(base * growthMultiplier, cap) * fearResistMultiplier(character));
 }
 
-export function applyRoundFear(character: Character, floorDepth: number): void {
-  if (!character.isAlive) return;
-  character.survival.fear = clamp(character.survival.fear + fearGainForRound(character, floorDepth), 0, 100);
+export function fearGainForRound(character: Character, floorDepth: number): number {
+  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
+  return isLowHp
+    ? scaledFearGain(character, FEAR_PER_ROUND_LOW_HP, FEAR_PER_ROUND_LOW_HP_CAP, floorDepth)
+    : scaledFearGain(character, FEAR_PER_ROUND_BASE, FEAR_PER_ROUND_BASE_CAP, floorDepth);
+}
+
+export function fearGainForHit(character: Character, floorDepth: number): number {
+  return scaledFearGain(character, FEAR_PER_HIT_TAKEN, FEAR_PER_HIT_TAKEN_CAP, floorDepth);
+}
+
+/** Returns the fear actually added, after the 0-100 clamp. */
+function addFear(character: Character, gain: number): number {
+  if (!character.isAlive) return 0;
+  const before = character.survival.fear;
+  character.survival.fear = clamp(before + gain, 0, 100);
+  return character.survival.fear - before;
+}
+
+export function applyRoundFear(character: Character, floorDepth: number): number {
+  return addFear(character, fearGainForRound(character, floorDepth));
+}
+
+/** A monster's damage effect landed on `character`. */
+export function applyHitFear(character: Character, floorDepth: number): number {
+  return addFear(character, fearGainForHit(character, floorDepth));
 }
 
 /** Relief depends on how fast the fight was won; quick-win and normal relief aren't additive. */

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
+import { FEAR_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
-  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [] };
+  return { id, actorId: "a", attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearGainIds: [] };
 }
 function entries(prefix: string, count: number, s?: LogSession): LogEntry[] {
   return Array.from({ length: count }, (_, i) => ({ text: `${prefix}${i}`, kind: "info" as const, session: s }));
@@ -32,6 +32,42 @@ describe("RevealQueue", () => {
     expect(first).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
     expect(first).toBeLessThan(SESSION_MIN_TICKS);
     expect(beat.slice(0, first).every((b) => !b)).toBe(true);
+  });
+
+  test("a session where fear rose shows it once its usual hold has run, then holds FEAR_BEAT_TICKS longer", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("a", 2, { ...session(1), fearGainIds: ["p1"] }));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) beat.push(q.fearBeat);
+    }
+    expect(beat.indexOf(true)).toBe(SESSION_MIN_TICKS);
+    expect(beat.length).toBe(SESSION_MIN_TICKS + FEAR_BEAT_TICKS);
+  });
+
+  test("end-of-round fear shows at the impact and ends FEAR_BEAT_TICKS later", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("f", 1, { ...session(1), actorId: null, cause: "fear", fearGainIds: ["p1"] }));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) beat.push(q.fearBeat);
+    }
+    expect(beat.indexOf(true)).toBe(IMPACT_TICKS);
+    expect(beat.length).toBe(IMPACT_TICKS + FEAR_BEAT_TICKS);
+  });
+
+  test("a session with no fear gain never reaches a fear beat and keeps its usual span", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("a", 2, session(1)));
+    let ticks = 0;
+    while (q.active) {
+      q.tick();
+      if (q.focus) ticks++;
+      expect(q.fearBeat).toBe(false);
+    }
+    expect(ticks).toBe(SESSION_MIN_TICKS);
   });
 
   test("lines with no session never beat", () => {

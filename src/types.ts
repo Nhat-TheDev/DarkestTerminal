@@ -753,6 +753,8 @@ export interface CombatantSnapshot {
   level?: number;
   mp?: number;
   maxMp?: number;
+  /** Characters only. */
+  fear?: number;
   activeStatusEffects?: ActiveStatusEffect[];
 }
 
@@ -793,8 +795,10 @@ export interface LogSession {
   summonIds: Id[];
   /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
   affectedIds: Id[];
+  /** Characters whose fear rose in this session; the battlefield shows it a beat after their other changes. */
+  fearGainIds: Id[];
   /** What an actor-less session was, so its lit units can wear the matching icon. */
-  cause?: "dot" | "dying" | "artifact";
+  cause?: "dot" | "dying" | "artifact" | "fear";
 }
 
 export interface LogEntry {
@@ -803,6 +807,8 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
+  /** Carries a session that has no line to show (end-of-round fear); never rendered in a log. */
+  hidden?: true;
   /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff", i.e. one that raises a stat, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
   buffLostOf?: Id;
   /** Set with `buffLostOf` when the unit that lost the buff is a summon. */

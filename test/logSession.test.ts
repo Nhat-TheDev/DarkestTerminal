@@ -296,6 +296,13 @@ describe("applySkillEffects notes its targets", () => {
     expect(combat.log.at(-1)!.session).toMatchObject({ actorId: vanguard.id, attackedIds: [goblin.id], buffedIds: [], healedIds: [] });
   });
 
+  test("a character hitting a monster gains no fear and notes none", () => {
+    const { ctx, combat, vanguard, goblin } = setup();
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), vanguard, [goblin], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session!.fearGainIds).toEqual([]);
+    expect(vanguard.survival.fear).toBe(0);
+  });
+
   test("area attack lists every enemy", () => {
     const { ctx, combat, vanguard, goblin, goblin2 } = setup();
     runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "allEnemies", effects: [damage] }), vanguard, [goblin, goblin2], combat, ctx, combat.log));
@@ -419,6 +426,30 @@ describe("resolveRound tags what a round logs", () => {
     const attacks = combat.log.filter((e) => e.session && rats.some((r) => r.id === e.session!.actorId));
     expect(attacks.length).toBeGreaterThan(0);
     for (const e of attacks) expect(e.session!.attackedIds).toHaveLength(1);
+  });
+
+  test("end-of-round fear is one actor-less session carried by a single hidden entry", () => {
+    const { ctx, combat } = fight();
+    const fearBefore = ctx.party.map((c) => c.survival.fear);
+    resolveRound(combat, ctx);
+    const fearEntries = combat.log.filter((e) => e.session?.cause === "fear");
+    expect(fearEntries).toHaveLength(1);
+    expect(fearEntries[0]!.hidden).toBe(true);
+    const living = ctx.party.filter((c) => c.isAlive).map((c) => c.id);
+    expect(fearEntries[0]!.session!.fearGainIds).toEqual(living);
+    expect(fearEntries[0]!.session!.affectedIds).toEqual(living);
+    ctx.party.forEach((c, i) => expect(c.survival.fear).toBeGreaterThan(fearBefore[i]!));
+    expect(fearEntries[0]!.snapshot!.find((snap) => snap.id === living[0])!.fear).toBe(ctx.party.find((c) => c.id === living[0])!.survival.fear);
+  });
+
+  test("a monster's hit that lands notes the struck character's fear gain in its own session", () => {
+    const { ctx, combat, rats } = fight();
+    for (const r of rats) r.attack = 30;
+    resolveRound(combat, ctx);
+    const attacks = combat.log.filter((e) => e.session && rats.some((r) => r.id === e.session!.actorId));
+    const struck = attacks.flatMap((e) => e.session!.fearGainIds);
+    expect(struck.length).toBeGreaterThan(0);
+    for (const e of attacks) for (const id of e.session!.fearGainIds) expect(e.session!.attackedIds).toContain(id);
   });
 
   test("combat start and reward lines carry no session", () => {

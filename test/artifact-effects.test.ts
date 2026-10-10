@@ -21,7 +21,7 @@ import {
   alwaysHitChance,
   debuffResistPercent,
 } from "../src/engine/artifacts";
-import { fearGainForRound, applyRoundFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
+import { fearGainForRound, fearGainForHit, applyRoundFear, applyHitFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
 import type { CombatantRef, SkillDefinition } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
@@ -183,23 +183,23 @@ describe("artifacts", () => {
   test("fearGainForRound: base amount at depth 1, no fearResist", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForRound(c, 1)).toBe(1);
+    expect(fearGainForRound(c, 1)).toBe(2);
   });
 
   test("fearGainForRound: low-HP amount replaces (not adds to) the base amount", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 1)).toBe(3);
+    expect(fearGainForRound(c, 1)).toBe(4);
   });
 
   test("fearGainForRound: scales +5%/floor depth, capped separately for base vs low-HP", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForRound(c, 40)).toBe(3);
-    expect(fearGainForRound(c, 100)).toBe(3);
+    expect(fearGainForRound(c, 11)).toBe(3);
+    expect(fearGainForRound(c, 100)).toBe(5);
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 100)).toBe(6);
+    expect(fearGainForRound(c, 100)).toBe(10);
   });
 
   test("fearGainForRound: reduced by fearResist artifacts", () => {
@@ -207,19 +207,45 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
     c.equippedArtifactIds.push("pendant-of-calm");
-    expect(fearGainForRound(c, 1)).toBe(3);
+    expect(fearGainForRound(c, 1)).toBe(4);
+    c.equippedArtifactIds.push("vigil-cloth", "bundle-of-undelivered-letters");
+    expect(fearGainForRound(c, 1)).toBe(2);
   });
 
   test("applyRoundFear adds the gain and skips dead characters", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.survival.fear = 10;
-    applyRoundFear(c, 1);
-    expect(c.survival.fear).toBe(11);
+    expect(applyRoundFear(c, 1)).toBe(2);
+    expect(c.survival.fear).toBe(12);
 
     c.isAlive = false;
-    applyRoundFear(c, 1);
-    expect(c.survival.fear).toBe(11);
+    expect(applyRoundFear(c, 1)).toBe(0);
+    expect(c.survival.fear).toBe(12);
+  });
+
+  test("fearGainForHit: 1 per hit at depth 1, scaled by depth up to its cap, reduced by fearResist", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    expect(fearGainForHit(c, 1)).toBe(1);
+    expect(fearGainForHit(c, 11)).toBe(2);
+    expect(fearGainForHit(c, 100)).toBe(3);
+    c.equippedArtifactIds.push("pendant-of-calm", "vigil-cloth", "bundle-of-undelivered-letters");
+    expect(fearGainForHit(c, 1)).toBe(1);
+    expect(fearGainForHit(c, 100)).toBe(2);
+  });
+
+  test("applyHitFear returns what was actually added: nothing past 100, nothing for the dead", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.survival.fear = 99;
+    expect(applyHitFear(c, 100)).toBe(1);
+    expect(c.survival.fear).toBe(100);
+    expect(applyHitFear(c, 1)).toBe(0);
+    c.survival.fear = 10;
+    c.isAlive = false;
+    expect(applyHitFear(c, 1)).toBe(0);
+    expect(c.survival.fear).toBe(10);
   });
 
   test("applyVictoryFearRelief: regular vs elite/boss, quick-win vs normal, never stacked", () => {

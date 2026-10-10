@@ -77,6 +77,11 @@ Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiet
   - A base amount (`survival.fearPerRoundBase`), or a higher amount instead (`survival.fearPerRoundLowHp`, not additive with the base) if the character is below a low-HP threshold (`survival.fearLowHpThresholdFraction` of `maxHp`).
   - Both amounts scale up with floor depth (`survival.fearPerRoundDepthGrowth`), each with its own cap (`survival.fearPerRoundBaseCap`/`fearPerRoundLowHpCap`).
   - Reduced by the `fearResist` artifact — see `07-items-artifacts.md` §7.2.
+- **Per hit taken**: each time a monster's damage lands on a character (a basic attack or a skill's damage effect, with damage above 0), that character gains fear at once via `fearGainForHit`/`applyHitFear` (`src/engine/survival.ts`), called from `applySkillEffects` (`src/engine/combat.ts`) and from the monster basic attack in `src/engine/monsterAI.ts`:
+  - A base amount (`survival.fearPerHitTaken`) per hit. A multi-hit skill counts once per target; an area attack counts once for each character it lands on. A miss, a dodge, and damage over time do not count.
+  - Scales with floor depth by the same `survival.fearPerRoundDepthGrowth`, capped at `survival.fearPerHitTakenCap`, and is reduced by `fearResist` the same way.
+  - Because it lands mid-round, its accuracy/damage penalty already applies to the character's own action later in that round.
+- Every fear gain is shown on the battlefield as `◉ +N` over the character, after the session's other icons (`docs/developer-guide.md`, the battlefield section); it adds no log line.
 - **Winning a fight** — relief now also depends on how fast the fight was won (`CombatState.roundNumber` at the moment `outcome === "victory"` is set):
 
   | Fight type | Normal relief | Quick-win relief | Quick-win condition |
@@ -88,7 +93,7 @@ Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiet
 - Losing a mini-game: a fixed fear increase, regardless of mini-game type (`gameplay-decisions/00-index.md` → `minigame-decisions.md`, not yet implemented).
 - Rest room ("Chat" option): reduces fear by `survival.chatFearRelief` (`CHAT_FEAR_RELIEF`, `src/engine/survival.ts`).
 
-Fear does not increase while moving between rooms — it only increases during combat that drags on (per round, as described above).
+Fear does not increase while moving between rooms — it only increases during combat: every round the fight continues, and every monster hit that lands (as described above).
 
 ---
 

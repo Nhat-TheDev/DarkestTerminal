@@ -12,12 +12,16 @@ export const SESSION_MIN_TICKS = 15;
 export const IMPACT_TICKS = 5;
 /** Ticks after the impact before a summon's own HP change replaces its owner's number: 5 × 100 ms = 0.5 s. */
 export const SUMMON_BEAT_TICKS = 5;
+/** Ticks the fear gain (`◉ +2`) stays up once it replaces a unit's other icons: 5 × 100 ms = 0.5 s. */
+export const FEAR_BEAT_TICKS = 5;
 
 interface Group {
   entries: LogEntry[];
   session: LogSession | null;
   /** Ticks the group occupies, counting the tick that shows its first line. */
   span: number;
+  /** The tick its fear gain shows from, or null when no character's fear rose. */
+  fearStart: number | null;
 }
 
 /** Consecutive entries with the same session id form one group; consecutive session-less entries form one too. */
@@ -26,9 +30,18 @@ function toGroups(entries: LogEntry[]): Group[] {
   for (const entry of entries) {
     const last = groups[groups.length - 1];
     if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
-    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0 });
+    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null });
   }
-  for (const group of groups) group.span = group.session ? Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) : group.entries.length;
+  for (const group of groups) {
+    if (!group.session) {
+      group.span = group.entries.length;
+      continue;
+    }
+    // End-of-round fear has nothing else to show, so it starts at the impact; otherwise it follows the session's own hold.
+    const hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1);
+    group.fearStart = group.session.fearGainIds.length > 0 ? hold : null;
+    group.span = group.fearStart === null ? hold : group.fearStart + FEAR_BEAT_TICKS;
+  }
   return groups;
 }
 
@@ -71,6 +84,12 @@ export class RevealQueue {
   /** True once the lit session has run a beat past its impact: the owner's number gives way to its summon's. */
   get summonBeat(): boolean {
     return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS;
+  }
+
+  /** True once the lit session's fear gain replaces everything else its characters wear. */
+  get fearBeat(): boolean {
+    const start = this.current?.fearStart;
+    return start != null && this.ticks > start;
   }
 
   tick(): LogEntry[] {

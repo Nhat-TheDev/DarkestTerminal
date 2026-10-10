@@ -62,6 +62,7 @@ const SESSION_ID_LISTS = [
   "lostTurnIds",
   "summonIds",
   "affectedIds",
+  "fearGainIds",
 ] as const satisfies readonly (keyof LogSession)[];
 
 /**

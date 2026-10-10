@@ -10,6 +10,7 @@ import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
 import { monsterStyle } from "../src/ui/layout";
 import { t } from "../src/data/strings";
 import { gameFromSave, loadSave } from "../src/engine/save";
+import type { Id } from "../src/types";
 
 const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
@@ -69,8 +70,12 @@ describe("battlefield and log stay in step", () => {
       if (last.revealing) expect(last.focusId).toBe(last.logTailSessionId);
       const frame = fight.captureCharFrame();
       const focus = fight.app.debugFocus;
-      expect(count(frame, FOCUS_GLYPH.shield)).toBe(focus?.attackedIds.length ?? 0);
-      expect(count(frame, FOCUS_GLYPH.debuff)).toBe(new Set([...(focus?.debuffedIds ?? []), ...(focus?.buffLostIds ?? [])]).size);
+      // In the fear beat a character whose fear rose wears only `◉ +N`.
+      const fearing = new Set(fight.app.debugFearBeat ? (focus?.fearGainIds ?? []).filter((id) => (fight.app.debugFocusFearDeltas.get(id) ?? 0) > 0) : []);
+      const shown = (ids: Id[]) => ids.filter((id) => !fearing.has(id));
+      expect(count(frame, FOCUS_GLYPH.shield)).toBe(shown(focus?.attackedIds ?? []).length);
+      expect(count(frame, FOCUS_GLYPH.debuff)).toBe(new Set(shown([...(focus?.debuffedIds ?? []), ...(focus?.buffLostIds ?? [])])).size);
+      for (const id of fearing) expect(frame).toContain(`${FOCUS_GLYPH.fear} +${fight.app.debugFocusFearDeltas.get(id)}`);
       fight.app.tickReveal();
       await fight.renderOnce();
     }
@@ -139,6 +144,7 @@ describe("battlefield and log stay in step", () => {
     let held = fight.app.debugDisplaySnapshot;
     let lastFocus = fight.app.debugFocus;
     let impacts = 0;
+    let fearBeats = 0;
     let guard = 0;
     while (fight.app.debugRevealActive && guard++ < 400) {
       const focus = fight.app.debugFocus;
@@ -152,6 +158,12 @@ describe("battlefield and log stay in step", () => {
         expect(frame).not.toMatch(/⛨ -\d/);
       } else if (focus) {
         for (const id of focus.attackedIds) {
+          const fearGain = fight.app.debugFocusFearDeltas.get(id) ?? 0;
+          if (fight.app.debugFearBeat && focus.fearGainIds.includes(id) && fearGain > 0) {
+            fearBeats++;
+            expect(frame).toContain(`${FOCUS_GLYPH.fear} +${fearGain}`);
+            continue;
+          }
           const delta = fight.app.debugFocusDeltas.get(id);
           if (delta !== undefined && delta < 0) {
             impacts++;
@@ -163,6 +175,7 @@ describe("battlefield and log stay in step", () => {
       await fight.renderOnce();
     }
     expect(impacts).toBeGreaterThan(0);
+    expect(fearBeats).toBeGreaterThan(0);
   }, 30000);
 
   test("skipping reveals every line and drops the highlight in one step", async () => {
