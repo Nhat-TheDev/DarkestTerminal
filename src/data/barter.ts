@@ -1,4 +1,4 @@
-import type { Id } from "../types";
+import type { Id, ItemTier } from "../types";
 import barterJson from "../../data/barter.json";
 import { ITEMS, getItem } from "./items";
 import { getStatusEffect } from "./statusEffects";
@@ -24,8 +24,25 @@ export const BARTER_ENTRIES = barterJson as unknown as BarterEntry[];
 
 const BOOST_STATS: readonly BarterBoostStat[] = ["attack", "defense", "speed"];
 
-// Every status the barter buffs are carried by must exist, so a typo fails at load rather than mid-fight.
-for (const id of [...Object.values(BALANCE.barter.statStatusIds), ...Object.values(BALANCE.barter.regenStatusIdByTier)]) getStatusEffect(id);
+type BarterConfig = typeof BALANCE.barter;
+
+// Every key each map must have; typed as a full Record so a new stat or tier fails to compile until it is listed.
+const STATUS_STATS: Record<keyof BarterConfig["statStatusIds"], true> = { attack: true, magicPower: true, defense: true, speed: true };
+const ITEM_TIERS: Record<ItemTier, true> = { common: true, uncommon: true, rare: true, unique: true, epic: true, legendary: true };
+
+/** Every stat and every tier names a status, and each status exists, so a typo or a missing key fails at load rather than mid-fight. */
+export function validateBarterStatusIds(config: BarterConfig): void {
+  const check = (field: string, map: Record<string, string>, keys: string[]) => {
+    for (const key of keys) {
+      const id = map[key];
+      if (!id) throw new Error(`data/balance-config.json: barter.${field} has no entry for "${key}"`);
+      getStatusEffect(id);
+    }
+  };
+  check("statStatusIds", config.statStatusIds, Object.keys(STATUS_STATS));
+  check("regenStatusIdByTier", config.regenStatusIdByTier, Object.keys(ITEM_TIERS));
+}
+validateBarterStatusIds(BALANCE.barter);
 
 const seen = new Set<Id>();
 for (const entry of BARTER_ENTRIES) {

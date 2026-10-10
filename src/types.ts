@@ -782,7 +782,7 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
-  /** Set on the line that reports a buff leaving a unit (a helpful status that is not a heal-over-time): the battlefield unit that lost it (a summon's owner). */
+  /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff", i.e. one that raises a stat, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
   buffLostOf?: Id;
   /** Set with `buffLostOf` when the unit that lost the buff is a summon. */
   buffLostOfSummon?: true;

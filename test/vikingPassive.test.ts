@@ -121,7 +121,7 @@ describe("Viking passive: the status carries the magnitude, the passive only nam
     expect(magnitudes[2]!).toBeGreaterThan(magnitudes[1]!);
   });
 
-  test("the passive no longer carries a bonus of its own", () => {
+  test("no rank carries attackBonusPercent", () => {
     for (const rank of ranks) expect("attackBonusPercent" in rank).toBe(false);
   });
 
@@ -134,12 +134,11 @@ describe("Viking passive: the status carries the magnitude, the passive only nam
       expect(active).toBeDefined();
 
       // The same status applied by hand, with no override, lands the same attack bonus.
-      const { ctx: otherCtx, viking: other } = lowHpViking(rank.unlockLevel);
+      const { viking: other } = lowHpViking(rank.unlockLevel);
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rank.thresholdStatusEffectId! }, other, other, { log: [] });
       const direct = other.activeStatusEffects.find((s) => s.statusEffectId === rank.thresholdStatusEffectId)!;
       expect(active!.appliedAmounts?.attack).toBeGreaterThan(0);
       expect(active!.appliedAmounts?.attack).toBe(direct.appliedAmounts?.attack);
-      expect(otherCtx).toBeDefined();
     });
   }
 
@@ -161,6 +160,6 @@ describe("Viking passive: the status carries the magnitude, the passive only nam
     for (let i = 0; i < 3; i++) applySkillEffects(attackSkill(), viking, [spawnMonster("goblin", 1)], combat, ctx, log);
     const ownIds = ranks.map((r) => r.thresholdStatusEffectId);
     expect(viking.activeStatusEffects.filter((s) => ownIds.includes(s.statusEffectId))).toHaveLength(1);
-    expect(log.filter((l) => l.text.includes(getStatusEffect(ranks[2]!.thresholdStatusEffectId!).name)).length).toBeLessThanOrEqual(1);
+    expect(log.filter((l) => l.text.includes(getStatusEffect(ranks[2]!.thresholdStatusEffectId!).name)).length).toBe(1);
   });
 });

@@ -29,7 +29,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
 import { runMonsterTurn } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteLostTurn, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
   isCharacter,
@@ -86,8 +86,8 @@ function refEquals(a: CombatantRef, b: CombatantRef): boolean {
 }
 
 export function startCombat(roomId: string, monsterIds: string[], ctx: EngineContext, isBossFight: boolean): CombatState {
-  // A summon never outlives its combat. One still alive here is a leftover (a run resumed from a save
-  // written mid-fight): it is in no combatant list of this fight, so it would only linger as a ghost.
+  // A summon never outlives its combat: any still alive here is in no combatant list of this fight,
+  // so it is dismissed rather than left to linger as a ghost.
   dismissSummonsAtCombatEnd(ctx);
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
@@ -531,9 +531,17 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed) — it
   // would otherwise sit idle until next round regardless of speed. A summon faster than its owner
   // instead acts immediately, right after being cast; a slower one just waits for its normal turn
-  // next round, same as before.
+  // next round, same as before. That turn is the summon's own session, as in `resolveRound`, not part of the cast.
   if (spawnedSummon && spawnedSummon.speed > actor.speed && !isCombatOver(combat, ctx)) {
-    runSummonTurn({ kind: "summon", id: spawnedSummon.id }, combat, ctx);
+    runInSession(
+      combat,
+      spawnedSummon.ownerId,
+      () => {
+        runSummonTurn({ kind: "summon", id: spawnedSummon.id }, combat, ctx);
+        pruneDeadSummons(combat, ctx, combat.log);
+      },
+      { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
+    );
   }
 }
 
@@ -752,9 +760,9 @@ function resolveOneDamageEffect(
 // Dismissing a summon only drops its `hp` to 0 and removes its ref from `combat.combatants` — the
 // dead entry stays in `ctx.summons` (same pattern as a dead Character/Monster staying in its own
 // array). An id that repeats would make `getActorByRef`'s `.find()` resolve every lookup to the stale
-// dead entry — and `pruneDeadSummons` would detonate it in place of the live summon — so each summon
-// gets an id no entry in `ctx.summons` already uses. The saved run keeps its dead summons while a
-// process-wide counter would start over at 0 on every launch, hence the id is derived from what exists.
+// dead entry — and `pruneDeadSummons` would detonate it in place of the live summon. So each id is
+// derived from the ids already in `ctx.summons`, dead summons included, which are saved with the run,
+// so a reloaded run never reissues one.
 function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
   const prefix = `${ownerId}-${archetypeId}-`;
   let highest = 0;
@@ -965,8 +973,8 @@ function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineCont
  * visible as a stale HP line in the party panel, and wrongly counted by `ownedSummons` on the next
  * cast. No `deathBurst` here: that's the cost of falling in battle, not of the fight simply ending.
  * Called when a combat ends (`clearFinishedCombat`, a party wipe), after which `combat.combatants`
- * itself is discarded anyway, and again when the next one starts (`startCombat`), so a summon left
- * alive by a resumed save never carries into a new fight.
+ * itself is discarded anyway, and again when the next one starts (`startCombat`), so no summon
+ * left alive ever carries into a new fight.
  */
 export function dismissSummonsAtCombatEnd(ctx: EngineContext): void {
   for (const summon of ctx.summons) {
@@ -1144,6 +1152,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       continue;
     }
 
+    // A target that threw off a status and took nothing else from the action counts as missed.
+    let resisted = false;
+    let landed = false;
     for (const effect of activeEffects) {
       if (effect.appliesToRelation) {
         const targetIsAlly = isPlayerSide(target);
@@ -1159,10 +1170,14 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         const baseChance = effect.chance ?? 1;
         const roll = ctx.rng.next();
         if (roll >= baseChance * (1 - resistPercent / 100)) {
-          if (roll < baseChance) log.push({ text: t("combat.debuffResisted", { target: target.name, status: statusDisplayName(harmfulStatus!) }), kind: "info" });
+          if (roll < baseChance) {
+            log.push({ text: t("combat.debuffResisted", { target: target.name, status: statusDisplayName(harmfulStatus!) }), kind: "info" });
+            resisted = true;
+          }
           continue;
         }
       } else if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
+      landed = true;
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
@@ -1198,6 +1213,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         }
       }
     }
+    if (resisted && !landed) noteResisted(combat, target);
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);

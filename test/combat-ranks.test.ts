@@ -556,7 +556,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(ctx.summons.filter((s) => s.hp > 0 && s.archetypeId === "goblin-thrower")).toHaveLength(1);
 
     // The stale, dismissed entry must not shadow the live one when resolved by combatant ref
-    // (both once shared a deterministic id — see the `summonCounter` fix in combat.ts).
+    // (each summon gets an id no entry in ctx.summons uses — see `nextSummonId` in combat.ts).
     const summonRef = combat.combatants.find((c) => c.ref.kind === "summon")!.ref;
     const resolved = getActorByRef(summonRef, ctx) as Summon;
     expect(resolved.hp).toBeGreaterThan(0);

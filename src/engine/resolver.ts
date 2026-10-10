@@ -8,13 +8,13 @@ import { getClass, passiveRankDef } from "../data/classes";
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
-  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && (e.amount ?? 0) < 0)) return false;
+  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && statDirection(e) < 0)) return false;
   return true;
 }
 
 /**
- * Which way a stat change pushes: the sign of `amount`, or of `minPercent` when `amount` is 0 (a
- * change written only as a share of the stat, like Enfeebled's -15%). 0 means no change either way.
+ * Which way a stat change pushes: the sign of `amount`, or of `minPercent` when `amount` is 0 (an
+ * effect written only as a share of the stat, e.g. amount 0 with minPercent -15). 0 means no change either way.
  */
 export function statDirection(effect: { amount?: number; minPercent?: number }): number {
   return Math.sign(effect.amount ?? 0) || Math.sign(effect.minPercent ?? 0);

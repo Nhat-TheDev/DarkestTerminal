@@ -2777,7 +2777,7 @@ boot();
       el("div", { class: "row" }, [field("Stackable", stackable), field("Max stacks", maxStacks), field("Per-stack bonus %", perStackBonusPercent), field("Accuracy penalty %", accuracyPenaltyPercent), field("On-hit status (optional)", onHitStatusEffectId)]),
       el("fieldset", {}, [
         el("legend", { text: "Rank (optional — for a status that's a higher-rank variant of another, e.g. \"poisoned-ii\" of \"poisoned\")" }),
-        el("div", { class: "row" }, [field("Rank of (status id)", rankOf), field("Rank level (2 or 3)", rankLevel)]),
+        el("div", { class: "row" }, [field("Rank of (status id)", rankOf), field("Rank level (2-6)", rankLevel)]),
       ]),
       el("fieldset", {}, [
         el("legend", { text: "Tick category (optional — overrides inferred timing: dot, statMod, or special)" }),

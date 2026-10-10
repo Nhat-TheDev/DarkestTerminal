@@ -7,7 +7,7 @@ import { barterBuffFor, barterCost, statBonus } from "../src/engine/events/barte
 import { rollRestRunner } from "../src/engine/events/runner";
 import { rollBarterOffers } from "../src/data/shopStock";
 import { getArchetype } from "../src/data/monsters";
-import { BARTER_ENTRIES } from "../src/data/barter";
+import { BARTER_ENTRIES, validateBarterStatusIds } from "../src/data/barter";
 import { getItem } from "../src/data/items";
 import { Rng } from "../src/engine/rng";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -74,6 +74,16 @@ describe("the statuses that carry a barter buff (data/balance-config.json)", () 
 
   test("no barter status id carries the name of its source", () => {
     for (const id of BARTER_STATUS_IDS) expect(id).not.toMatch(/barter|runner/);
+  });
+
+  test("the load check refuses a missing stat or tier and an unknown status", () => {
+    const config = BALANCE.barter;
+    expect(() => validateBarterStatusIds(config)).not.toThrow();
+    const { speed: _speed, ...noSpeed } = config.statStatusIds;
+    expect(() => validateBarterStatusIds({ ...config, statStatusIds: noSpeed as typeof config.statStatusIds })).toThrow(/statStatusIds.*speed/);
+    const { legendary: _legendary, ...noLegendary } = config.regenStatusIdByTier;
+    expect(() => validateBarterStatusIds({ ...config, regenStatusIdByTier: noLegendary as typeof config.regenStatusIdByTier })).toThrow(/regenStatusIdByTier.*legendary/);
+    expect(() => validateBarterStatusIds({ ...config, statStatusIds: { ...config.statStatusIds, attack: "no-such-status" } })).toThrow(/no-such-status/);
   });
 });
 

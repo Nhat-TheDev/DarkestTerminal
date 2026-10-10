@@ -695,6 +695,11 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     expect(isHelpfulStatusEffect(getStatusEffect("test-blinded"))).toBe(false);
   });
 
+  test("isHelpfulStatusEffect: a stat cut written only as a share of the stat is a debuff, not a buff", () => {
+    const shareOnly = { ...getStatusEffect("weakened"), perTurnEffects: [{ kind: "modifyCombatStat" as const, combatStat: "attack" as const, amount: 0, minPercent: -15 }] };
+    expect(isHelpfulStatusEffect(shareOnly)).toBe(false);
+  });
+
   test("a monster's basicAttack rolls rollHits: never misses without accuracyPenaltyPercent, can miss when Blinded", () => {
     let missWithoutBlinded = 0;
     let missWithBlinded = 0;

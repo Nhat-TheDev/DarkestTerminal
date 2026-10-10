@@ -3,9 +3,10 @@ import { applySkillEffects, queueAction, resolveRound, startCombat } from "../sr
 import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { ARTIFACTS } from "../src/data/artifacts";
+import { debuffResistPercent } from "../src/engine/artifacts";
 import { spawnMonster } from "../src/data/monsters";
 import { getStatusEffect } from "../src/data/statusEffects";
-import { noteAffected, noteBasicAttack, noteMiss, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
+import { noteAffected, noteBasicAttack, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
 import { expireStatusEffect, statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
 import { makeCtx, spawnInto } from "./helpers";
@@ -346,6 +347,49 @@ describe("applySkillEffects notes its targets", () => {
     runInSession(combat, acolyte.id, () => applySkillEffects(purify, acolyte, [vanguard, goblin], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session).toMatchObject({ healedIds: [vanguard.id], attackedIds: [goblin.id] });
   });
+
+  test("a debuff the owner throws off keeps its icon when the same cast landed on its summon", () => {
+    const { ctx } = makeCtx(3);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const started = startCombat("r1", [rat.id], ctx, false);
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const clone = addClone(ninja, started, ctx);
+    const debuff = [{ kind: "applyStatusEffect", statusEffectId: "weakened" } as SkillEffect];
+    for (const [first, second, landsOnSummon] of [[clone, ninja, true], [ninja, null, false]] as const) {
+      runInSession(started, rat.id, () => {
+        noteSkillTarget(started, rat, first, debuff, false);
+        if (second) noteSkillTarget(started, rat, second, debuff, false);
+        noteResisted(started, ninja);
+        started.log.push({ text: "x", kind: "info" });
+      });
+      const session = started.log.at(-1)!.session!;
+      expect(session.debuffedIds).toEqual(landsOnSummon ? [ninja.id] : []);
+      expect(session.missedIds).toEqual([ninja.id]);
+    }
+  });
+
+  test("a debuff the target throws off is a miss, not a debuff; one that lands stays a debuff", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    vanguard.equippedArtifactIds.push("bitter-root-charm");
+    const resist = debuffResistPercent(vanguard);
+    expect(resist).toBeGreaterThan(0);
+    const weaken = skill({ target: "singleEnemy", effects: [weakenDebuff] });
+    const cast = (roll: number) => {
+      ctx.rng.next = () => roll;
+      runInSession(combat, goblin.id, () => applySkillEffects(weaken, goblin, [vanguard], combat, ctx, combat.log));
+      return combat.log.at(-1)!;
+    };
+
+    // Inside the resisted band: the roll would land without the resist, and misses with it.
+    const thrownOff = cast(1 - resist / 200);
+    expect(thrownOff.text).toContain("throws off");
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
+    expect(thrownOff.session).toMatchObject({ debuffedIds: [], missedIds: [vanguard.id], affectedIds: [vanguard.id] });
+
+    const landed = cast(0);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
+    expect(landed.session).toMatchObject({ debuffedIds: [vanguard.id], missedIds: [] });
+  });
 });
 
 describe("resolveRound tags what a round logs", () => {
@@ -460,27 +504,32 @@ describe("resolveRound tags what a round logs", () => {
     expect(rats.map((r) => r.id)).toContain(shot.session!.attackedIds[0]!);
   });
 
-  test("a summon is never named in a session, and its owner's turn stays one session", () => {
+  test("a summon faster than its owner acts right after the cast, in a session of its own", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 75;
-    summoner.unlockedSkillIds.push("totem-recall");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.maxHp = rat.hp = 50000;
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "totem-recall", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
-    resolveRound(combat, ctx); // the totem takes its own turn now
-    const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
-    const named = combat.log.flatMap((e) =>
-      e.session ? [e.session.actorId, ...e.session.attackedIds, ...e.session.debuffedIds, ...e.session.buffedIds, ...e.session.healedIds, ...e.session.affectedIds] : []
-    );
-    expect(named).not.toContain(totem.id);
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
+    expect(goblin.speed).toBeGreaterThan(summoner.speed);
     expect(combat.log.slice(1).filter((e) => !e.session)).toEqual([]);
-    const cast = combat.log.filter((e) => e.session?.actorId === summoner.id);
-    expect(cast.length).toBeGreaterThan(0);
+
+    const castSession = combat.log.find((e) => e.text === `${summoner.name} uses Summon Goblin.`)!.session!;
+    const cast = combat.log.filter((e) => e.session === castSession);
+    expect(cast.some((e) => e.text === `${summoner.name} summons ${goblin.name}.`)).toBe(true);
+    expect(castSession).toMatchObject({ actorId: summoner.id, summonIds: [], attackedIds: [] });
+
+    const goblinTurn = combat.log.filter((e) => e.text.startsWith(`${goblin.name} `));
+    expect(goblinTurn.length).toBeGreaterThan(0);
+    for (const e of goblinTurn) {
+      expect(e.session).not.toBe(castSession);
+      expect(e.session).toMatchObject({ actorId: summoner.id, summonIds: [summoner.id] });
+    }
   });
 });
 

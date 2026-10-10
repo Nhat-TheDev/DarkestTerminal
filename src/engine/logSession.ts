@@ -95,6 +95,17 @@ export function noteMiss(combat: CombatState, target: Actor): void {
   noteSummon(session, target);
 }
 
+/** `target` threw off everything the action tried to put on it: still lit as the one aimed at, with a miss in place of a debuff icon. */
+export function noteResisted(combat: CombatState, target: Actor): void {
+  const session = combat.activeSession;
+  if (!session) return;
+  const id = unitId(target);
+  // A summon is drawn as its owner: a debuff that landed on the summon must keep the owner's icon.
+  if (!session.summonIds.includes(id)) session.debuffedIds = session.debuffedIds.filter((d) => d !== id);
+  addUnique(session.affectedIds, id);
+  noteMiss(combat, target);
+}
+
 /** A damage-over-time or heal-over-time tick moved `actor`'s HP: the battlefield shows each kind it received, not just the net change. */
 export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" | "heal"): void {
   const session = combat.activeSession;
