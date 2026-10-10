@@ -208,7 +208,7 @@ describe("wandering-hermit's camp-reflection bridge (both forms)", () => {
 
 describe("migration defaults for Camp Reflection's 3 new fields", () => {
   test("fills in loreExposureCount/pendingCampReflectionTier/campReflectionChoices on a pre-Camp-Reflection save", () => {
-    const legacy = { party: [], inventory: {} } as unknown as Parameters<typeof migrateGameState>[0];
+    const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.loreExposureCount).toBe(0);
     expect(migrated.pendingCampReflectionTier).toBeNull();

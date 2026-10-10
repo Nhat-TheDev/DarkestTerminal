@@ -45,6 +45,15 @@ describe("dev-save-dump applyDump", () => {
     }
   });
 
+  test("the walked route is the new floor's entry followed by the dumped room, or just the entry", () => {
+    const game = new Game(11, PARTY);
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "rest" });
+    expect(game.state.roomPath).toEqual([game.state.floor.entryRoomId, room.id]);
+    const atEntry = new Game(12, PARTY);
+    applyDump(atEntry, { level: 10, floorDepth: 20, roomArg: "entry" });
+    expect(atEntry.state.roomPath).toEqual([atEntry.state.floor.entryRoomId]);
+  });
+
   test("out-of-range level/floor are clamped instead of producing an invalid state", () => {
     const game = new Game(5, PARTY);
     applyDump(game, { level: 999, floorDepth: -5, roomArg: "entry" });

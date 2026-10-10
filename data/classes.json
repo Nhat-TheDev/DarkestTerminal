@@ -18,7 +18,7 @@
     "baseMagicPower": 0,
     "skills": [
       {
-        "id": "vanguard-slash",
+        "id": "slash",
         "name": "Slash",
         "description": "A sword slash — basic damage.",
         "shortDescription": "A sword slash — basic damage.",
@@ -34,7 +34,7 @@
         "unlockLevel": 1
       },
       {
-        "id": "vanguard-shield-guard",
+        "id": "shield-guard",
         "name": "Shield Guard",
         "description": "Sets the shield square to the front and plants the feet behind it, and every eye in the room finds it.",
         "shortDescription": "Raises a shield: defense, aggro up.",
@@ -97,7 +97,7 @@
         ]
       },
       {
-        "id": "vanguard-shield-throw",
+        "id": "shield-throw",
         "name": "Shield Throw",
         "description": "Hurls the shield flat across the room, edge first.",
         "shortDescription": "Throws the shield for ranged damage.",
@@ -143,7 +143,7 @@
         ]
       },
       {
-        "id": "vanguard-rally",
+        "id": "rally",
         "name": "Rally",
         "description": "A shout that carries to the back of the line, and the line closes up behind it.",
         "shortDescription": "Lowers party fear, boosts team attack for 1 turn.",
@@ -164,7 +164,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally",
+                "statusEffectId": "rallied",
                 "durationTurns": 1
               }
             ]
@@ -181,7 +181,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally-ii",
+                "statusEffectId": "rallied-ii",
                 "durationTurns": 1
               }
             ]
@@ -198,7 +198,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "rally-iii",
+                "statusEffectId": "rallied-iii",
                 "durationTurns": 1
               }
             ]
@@ -206,7 +206,7 @@
         ]
       },
       {
-        "id": "vanguard-heavy-charge",
+        "id": "heavy-charge",
         "name": "Heavy Charge",
         "description": "Lowers the shoulder and goes through the enemy line as though it were a door.",
         "shortDescription": "Charges the enemy group for area damage.",
@@ -253,7 +253,7 @@
         ]
       },
       {
-        "id": "vanguard-sword-judgment",
+        "id": "sword-judgment",
         "name": "Sword Judgment",
         "description": "A single stroke with the whole weight of the blade behind it, and no thought of a second.",
         "shortDescription": "A heavy sword strike. Always hits.",
@@ -302,7 +302,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "vanguard-passive",
+      "id": "bulwark",
       "name": "Bulwark",
       "description": "Years on the front line have hardened more than just the shield arm.",
       "ranks": [
@@ -349,7 +349,7 @@
     "baseMagicPower": 16,
     "skills": [
       {
-        "id": "mage-arcane-bolt",
+        "id": "arcane-bolt",
         "name": "Arcane Bolt",
         "description": "A weak bolt of raw arcane force — basic damage.",
         "shortDescription": "A weak arcane bolt — basic damage.",
@@ -368,7 +368,7 @@
         "isMagic": true
       },
       {
-        "id": "mage-fireball",
+        "id": "fireball",
         "name": "Fireball",
         "description": "A ball of fire thrown from the palm, still turning as it goes.",
         "shortDescription": "A fireball; may set the target Burning.",
@@ -436,7 +436,7 @@
         ]
       },
       {
-        "id": "mage-lightning-bolt",
+        "id": "lightning-bolt",
         "name": "Lightning Bolt",
         "description": "A bolt of lightning out of a clear patch of ceiling, and the smell of it arrives after.",
         "shortDescription": "A fast bolt; may cause Stunned.",
@@ -504,7 +504,7 @@
         ]
       },
       {
-        "id": "mage-fire-pillar",
+        "id": "fire-pillar",
         "name": "Fire Pillar",
         "description": "Raises a pillar of fire from the floor, and the enemy line stands in it.",
         "shortDescription": "Burns the group, high chance to Burn.",
@@ -573,7 +573,7 @@
         ]
       },
       {
-        "id": "mage-lightning-storm",
+        "id": "lightning-storm",
         "name": "Lightning Storm",
         "description": "Draws a storm in under the ceiling, and every enemy in the room hears it before it breaks.",
         "shortDescription": "Storm hits all enemies, may cause Stunned.",
@@ -642,7 +642,7 @@
         ]
       },
       {
-        "id": "mage-ice-age",
+        "id": "ice-age",
         "name": "Ice Age",
         "description": "Frost crosses the floor and climbs every wall, and the torch flames lean away from it.",
         "shortDescription": "Wide frost damage. Always hits.",
@@ -695,24 +695,27 @@
       }
     ],
     "passiveSkill": {
-      "id": "mage-passive",
+      "id": "arcane-shred",
       "name": "Arcane Shred",
       "description": "Every bolt that lands leaves the target's wards a little thinner than the last.",
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "onHitStatusEffectId": "mage-shred"
+          "onHitStatusEffectId": "shredded",
+          "durationTurns": 3
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "onHitStatusEffectId": "mage-shred-ii"
+          "onHitStatusEffectId": "shredded-ii",
+          "durationTurns": 3
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "onHitStatusEffectId": "mage-shred-iii"
+          "onHitStatusEffectId": "shredded-iii",
+          "durationTurns": 3
         }
       ]
     }
@@ -736,7 +739,7 @@
     "baseMagicPower": 0,
     "skills": [
       {
-        "id": "rogue-stab",
+        "id": "stab",
         "name": "Stab",
         "description": "Stabs with a dagger — basic damage.",
         "shortDescription": "Stabs with a dagger — basic damage.",
@@ -752,7 +755,7 @@
         "unlockLevel": 1
       },
       {
-        "id": "rogue-poison-coat",
+        "id": "poison-coat",
         "name": "Poison Coat",
         "description": "Draws the blade through a poisoned rag and does not wipe it clean.",
         "shortDescription": "Coats the blade: hits also poison.",
@@ -768,8 +771,9 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat",
-                "durationTurns": 3
+                "statusEffectId": "poison-coated",
+                "durationTurns": 3,
+                "onHitDurationTurns": 3
               }
             ]
           },
@@ -780,8 +784,9 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat",
-                "durationTurns": 3
+                "statusEffectId": "poison-coated",
+                "durationTurns": 3,
+                "onHitDurationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
@@ -797,8 +802,9 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "poison-coat",
-                "durationTurns": 3
+                "statusEffectId": "poison-coated",
+                "durationTurns": 3,
+                "onHitDurationTurns": 3
               },
               {
                 "kind": "applyStatusEffect",
@@ -810,7 +816,7 @@
         ]
       },
       {
-        "id": "rogue-knife-throw",
+        "id": "knife-throw",
         "name": "Knife Throw",
         "description": "A knife thrown underhand, from the hip, with no wind-up to warn anyone.",
         "shortDescription": "Throws a dagger for ranged damage.",
@@ -856,7 +862,7 @@
         ]
       },
       {
-        "id": "rogue-backstab",
+        "id": "backstab",
         "name": "Backstab",
         "description": "A stab from the one place the target is not looking.",
         "shortDescription": "A vicious blind-spot stab, high damage.",
@@ -903,7 +909,7 @@
         ]
       },
       {
-        "id": "rogue-poison-bomb",
+        "id": "poison-bomb",
         "name": "Poison Bomb",
         "description": "A clay bomb thrown into the middle of the enemy, and the smoke goes where it likes.",
         "shortDescription": "Poisons every enemy at once.",
@@ -965,7 +971,7 @@
         ]
       },
       {
-        "id": "rogue-flurry-assault",
+        "id": "flurry-assault",
         "name": "Flurry Assault",
         "description": "Cut after cut, too close together to count, and the dagger is back at the hip.",
         "shortDescription": "3 rapid stabs. Always hits.",
@@ -1044,7 +1050,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "rogue-passive",
+      "id": "venomcraft",
       "name": "Venomcraft",
       "description": "Knows exactly where the poison is already working, and where to add to it.",
       "ranks": [
@@ -1090,7 +1096,7 @@
     "baseMagicPower": 10,
     "skills": [
       {
-        "id": "acolyte-smite",
+        "id": "smite",
         "name": "Smite",
         "description": "A flicker of borrowed light — basic damage.",
         "shortDescription": "A flicker of borrowed light — basic damage.",
@@ -1109,7 +1115,7 @@
         "isMagic": true
       },
       {
-        "id": "acolyte-prayer",
+        "id": "prayer",
         "name": "Prayer",
         "description": "A short prayer, spoken low, and the shaking in the hands stops.",
         "shortDescription": "Lowers 1 ally's fear and raises their defense.",
@@ -1171,7 +1177,7 @@
         ]
       },
       {
-        "id": "acolyte-heal",
+        "id": "heal",
         "name": "Heal",
         "description": "A hand laid on the wound until it closes.",
         "shortDescription": "Restores HP to 1 ally.",
@@ -1218,7 +1224,7 @@
         ]
       },
       {
-        "id": "acolyte-purify",
+        "id": "purify",
         "name": "Purify",
         "description": "Holy light that lifts the rot from a friend and burns through an enemy.",
         "shortDescription": "Cures an ally's debuff, or smites an enemy.",
@@ -1284,7 +1290,7 @@
         ]
       },
       {
-        "id": "acolyte-mass-heal",
+        "id": "mass-heal",
         "name": "Mass Heal",
         "description": "A blessing spoken over the whole party; wounds close and breathing slows.",
         "shortDescription": "Heals and calms the whole party.",
@@ -1347,7 +1353,7 @@
         ]
       },
       {
-        "id": "acolyte-divine-descent",
+        "id": "divine-descent",
         "name": "Divine Descent",
         "description": "Light comes down through a ceiling that was never open, and wounds on one side of the room close while the other side goes white.",
         "shortDescription": "Holy light: heals allies, smites foes.",
@@ -1439,7 +1445,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "acolyte-passive",
+      "id": "devotion",
       "name": "Devotion",
       "description": "Curses slide off it, and its blessings land heavier.",
       "ranks": [
@@ -1483,7 +1489,7 @@
     "baseMagicPower": 8,
     "skills": [
       {
-        "id": "viking-axe-slash",
+        "id": "axe-slash",
         "name": "Axe Slash",
         "description": "An axe slash — basic damage.",
         "shortDescription": "An axe slash — basic damage.",
@@ -1499,7 +1505,7 @@
         "unlockLevel": 1
       },
       {
-        "id": "viking-lightning-axe",
+        "id": "lightning-axe",
         "name": "Lightning Axe",
         "description": "Holds the axe up to the storm, and the storm answers through the handle.",
         "shortDescription": "Lightning-charges the axe for a few turns.",
@@ -1562,7 +1568,7 @@
         ]
       },
       {
-        "id": "viking-frenzied-slash",
+        "id": "frenzied-slash",
         "name": "Frenzied Slash",
         "description": "A slash with no guard behind it, thrown wide and wild.",
         "shortDescription": "A wild slash, may cause Bleeding.",
@@ -1630,7 +1636,7 @@
         ]
       },
       {
-        "id": "viking-throw-axe",
+        "id": "throw-axe",
         "name": "Throw Axe",
         "description": "The axe leaves the hand end over end and does not slow down.",
         "shortDescription": "Throws the axe for ranged damage.",
@@ -1681,7 +1687,7 @@
         ]
       },
       {
-        "id": "viking-spin-axe",
+        "id": "spinning-axe",
         "name": "Spinning Axe",
         "description": "Turns on the spot with the axe at arm's length, and the whole enemy line is in reach.",
         "shortDescription": "Spins the axe through the enemy group.",
@@ -1750,7 +1756,7 @@
         ]
       },
       {
-        "id": "viking-thunder-god-fury",
+        "id": "thunder-gods-fury",
         "name": "Thunder God's Fury",
         "description": "Calls the storm in through the roof and lets it find every enemy in the room.",
         "shortDescription": "Unleashes the storm's full fury on all foes.",
@@ -1807,7 +1813,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "viking-passive",
+      "id": "blood-fury",
       "name": "Blood Fury",
       "description": "The closer death gets, the harder the swing.",
       "ranks": [
@@ -1815,19 +1821,19 @@
           "rank": 1,
           "unlockLevel": 5,
           "hpThresholdPercent": 40,
-          "attackBonusPercent": 20
+          "thresholdStatusEffectId": "bloodrage"
         },
         {
           "rank": 2,
           "unlockLevel": 20,
           "hpThresholdPercent": 45,
-          "attackBonusPercent": 30
+          "thresholdStatusEffectId": "bloodrage-ii"
         },
         {
           "rank": 3,
           "unlockLevel": 35,
           "hpThresholdPercent": 50,
-          "attackBonusPercent": 40
+          "thresholdStatusEffectId": "bloodrage-iii"
         }
       ],
       "selfDamagePerHitMaxHPPercent": 3
@@ -1852,7 +1858,7 @@
     "baseMagicPower": 13,
     "skills": [
       {
-        "id": "plaguedoc-vial-toss",
+        "id": "vial-toss",
         "name": "Vial Toss",
         "description": "Tosses a crude vial — basic damage.",
         "shortDescription": "A crude vial toss — basic damage.",
@@ -1869,7 +1875,7 @@
         "isMagic": true
       },
       {
-        "id": "plaguedoc-fire-vial",
+        "id": "fire-vial",
         "name": "Fire Vial",
         "description": "A vial of alchemist's fire, thrown with the cork still smoking.",
         "shortDescription": "Alchemical fire — possibly setting foe ablaze.",
@@ -1937,7 +1943,7 @@
         ]
       },
       {
-        "id": "plaguedoc-healing-draught",
+        "id": "healing-draught",
         "name": "Healing Draught",
         "description": "A draught held to the lips of the wounded, bitter all the way down.",
         "shortDescription": "Heals 1 ally now and over 2 turns.",
@@ -1999,7 +2005,7 @@
         ]
       },
       {
-        "id": "plaguedoc-blinding-vial",
+        "id": "blinding-vial",
         "name": "Blinding Vial",
         "description": "Caustic powder broken at the enemy's feet, and it rises to the eyes.",
         "shortDescription": "Caustic powder; possibly blinding the target.",
@@ -2065,7 +2071,7 @@
         ]
       },
       {
-        "id": "plaguedoc-toxic-fog",
+        "id": "spreading-toxic-fog",
         "name": "Spreading Toxic Fog",
         "description": "A fog that rolls out of the flask thick and low, and finds every enemy in the group.",
         "shortDescription": "Toxic fog: possibly poisoning or weakening foes.",
@@ -2152,7 +2158,7 @@
         ]
       },
       {
-        "id": "plaguedoc-total-plague",
+        "id": "total-plague",
         "name": "Total Plague",
         "description": "Breaks every vial at once and stands in the cloud it makes, untouched.",
         "shortDescription": "Heals allies, poisons and burns foes.",
@@ -2277,24 +2283,27 @@
       }
     ],
     "passiveSkill": {
-      "id": "plaguedoc-passive",
+      "id": "contagion",
       "name": "Contagion",
       "description": "Every touch carries something new — the body just hasn't noticed yet.",
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "procChancePercent": 30
+          "procChancePercent": 30,
+          "durationTurns": 2
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "procChancePercent": 40
+          "procChancePercent": 40,
+          "durationTurns": 2
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "procChancePercent": 50
+          "procChancePercent": 50,
+          "durationTurns": 2
         }
       ],
       "debuffPool": [
@@ -2326,7 +2335,7 @@
     "baseMagicPower": 0,
     "skills": [
       {
-        "id": "archer-quick-shot",
+        "id": "quick-shot",
         "name": "Quick Shot",
         "description": "A bow shot — basic damage.",
         "shortDescription": "A bow shot — basic damage.",
@@ -2343,7 +2352,7 @@
         "unlockLevel": 1
       },
       {
-        "id": "archer-aimed-shot",
+        "id": "aimed-shot",
         "name": "Aimed Shot",
         "description": "A shot taken slowly, with the string held and the breath held with it.",
         "shortDescription": "An aimed shot, likely to crit.",
@@ -2392,7 +2401,7 @@
         ]
       },
       {
-        "id": "archer-overwatch",
+        "id": "overwatch",
         "name": "Overwatch",
         "description": "Settles the bow on the room and stays still, string drawn, until something moves.",
         "shortDescription": "Fires the instant an enemy moves.",
@@ -2440,7 +2449,7 @@
         ]
       },
       {
-        "id": "archer-volley-shot",
+        "id": "volley-shot",
         "name": "Volley Shot",
         "description": "Arrows loosed in a high arc, and they come down on the whole enemy group.",
         "shortDescription": "A volley of arrows over the enemy group.",
@@ -2487,7 +2496,7 @@
         ]
       },
       {
-        "id": "archer-crippling-shot",
+        "id": "crippling-shot",
         "name": "Crippling Shot",
         "description": "A shot placed through the joint, where the armour is only strap.",
         "shortDescription": "Joint shot, may weaken defense.",
@@ -2570,7 +2579,7 @@
         ]
       },
       {
-        "id": "archer-deadeye-shot",
+        "id": "deadeye-shot",
         "name": "Deadeye Shot",
         "description": "Holds the string a breath longer than any other shot, then lets it go.",
         "shortDescription": "A perfect, guaranteed critical shot.",
@@ -2622,7 +2631,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "archer-passive",
+      "id": "deadly-precision",
       "name": "Deadly Precision",
       "description": "A breath held before every release, however small the target.",
       "ranks": [
@@ -2666,7 +2675,7 @@
     "baseMagicPower": 0,
     "skills": [
       {
-        "id": "ninja-kunai-strike",
+        "id": "kunai-strike",
         "name": "Kunai Strike",
         "description": "A kunai stab — basic damage.",
         "shortDescription": "A kunai stab — basic damage.",
@@ -2683,7 +2692,7 @@
         "unlockLevel": 1
       },
       {
-        "id": "ninja-smoke-bomb",
+        "id": "smoke-bomb",
         "name": "Smoke Bomb",
         "description": "A pellet cracked underfoot, and by the time the smoke clears there is no one to look at.",
         "shortDescription": "Vanishes, untargetable until it strikes.",
@@ -2731,7 +2740,7 @@
         ]
       },
       {
-        "id": "ninja-shadow-strike",
+        "id": "shadow-strike",
         "name": "Shadow Strike",
         "description": "Cuts once, then steps out of its own shadow and leaves it standing in the way.",
         "shortDescription": "Light strike that leaves a decoy clone.",
@@ -2746,7 +2755,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "ninja-shadow-clone"
+                "summonCastId": "shadow-clone"
               },
               {
                 "kind": "damage",
@@ -2762,7 +2771,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "ninja-shadow-clone"
+                "summonCastId": "shadow-clone"
               },
               {
                 "kind": "damage",
@@ -2778,7 +2787,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "ninja-shadow-clone"
+                "summonCastId": "shadow-clone"
               },
               {
                 "kind": "damage",
@@ -2790,7 +2799,7 @@
         ]
       },
       {
-        "id": "ninja-throwing-knives",
+        "id": "throwing-knives",
         "name": "Throwing Knives",
         "description": "Knives thrown in a quick spread, small enough to be missed until they land.",
         "shortDescription": "Thrown knives, may cause Bleeding.",
@@ -2858,7 +2867,7 @@
         ]
       },
       {
-        "id": "ninja-shuriken-storm",
+        "id": "shuriken-storm",
         "name": "Shuriken Storm",
         "description": "A handful of shuriken thrown into the air all at once, and they come down on the whole group.",
         "shortDescription": "Showers foes with shuriken, may cause Bleeding.",
@@ -2935,7 +2944,7 @@
         ]
       },
       {
-        "id": "ninja-death-mark",
+        "id": "death-mark",
         "name": "Death Mark",
         "description": "Finds the place where a body is already coming apart, and puts the blade there.",
         "shortDescription": "A vital strike, harder vs a low-HP foe.",
@@ -3015,7 +3024,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "ninja-passive",
+      "id": "afterimage",
       "name": "Afterimage",
       "description": "Never quite where the strike lands, and sometimes a second shadow stands up to answer for it.",
       "ranks": [
@@ -3038,7 +3047,8 @@
           "secondCloneChancePercent": 30
         }
       ],
-      "maxClones": 2
+      "maxClones": 2,
+      "cloneSummonCastId": "shadow-clone"
     }
   },
   {
@@ -3060,7 +3070,7 @@
     "baseMagicPower": 12,
     "skills": [
       {
-        "id": "summoner-hollow-pulse",
+        "id": "hollow-pulse",
         "name": "Hollow Pulse",
         "description": "A dull pulse drawn from the totem's hollow — basic damage. The Summoner leans on its minions, not its own combat.",
         "shortDescription": "A dull pulse from the totem — basic damage.",
@@ -3079,7 +3089,7 @@
         "isMagic": true
       },
       {
-        "id": "summoner-summon-goblin",
+        "id": "summon-goblin",
         "name": "Summon Goblin",
         "description": "A goblin steps out of the totem's shadow, thin and fast, a stone already in its hand.",
         "shortDescription": "Summons a ranged Goblin Thrower.",
@@ -3095,7 +3105,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-goblin"
+                "summonCastId": "summon-goblin"
               }
             ]
           },
@@ -3106,7 +3116,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-goblin"
+                "summonCastId": "summon-goblin"
               }
             ]
           },
@@ -3117,14 +3127,14 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-goblin"
+                "summonCastId": "summon-goblin"
               }
             ]
           }
         ]
       },
       {
-        "id": "summoner-summon-spirit",
+        "id": "summon-spirit",
         "name": "Summon Spirit",
         "description": "Calls a pale spirit out of the air, and it goes to whoever is bleeding.",
         "shortDescription": "Summons a Healer Spirit for the party.",
@@ -3140,7 +3150,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-spirit"
+                "summonCastId": "summon-spirit"
               }
             ]
           },
@@ -3151,7 +3161,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-spirit"
+                "summonCastId": "summon-spirit"
               }
             ]
           },
@@ -3162,14 +3172,14 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-spirit"
+                "summonCastId": "summon-spirit"
               }
             ]
           }
         ]
       },
       {
-        "id": "summoner-summon-golem",
+        "id": "summon-golem",
         "name": "Summon Golem",
         "description": "Pulls a golem up out of the floor, slow and heavy, and every enemy in the room turns to look at it.",
         "shortDescription": "Summons a high-HP, high-aggro Golem.",
@@ -3185,7 +3195,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem",
+                "summonCastId": "summon-golem",
                 "target": "self"
               },
               {
@@ -3202,7 +3212,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem",
+                "summonCastId": "summon-golem",
                 "target": "self"
               },
               {
@@ -3219,7 +3229,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-golem",
+                "summonCastId": "summon-golem",
                 "target": "self"
               },
               {
@@ -3232,7 +3242,7 @@
         ]
       },
       {
-        "id": "summoner-totem-recall",
+        "id": "totem-recall",
         "name": "Totem Recall",
         "description": "Plants a totem that channels strength into the whole party, until something breaks it.",
         "shortDescription": "Plants a totem buffing the party.",
@@ -3248,11 +3258,11 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-totem-recall"
+                "summonCastId": "totem-recall"
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "totem-recall-buff",
+                "statusEffectId": "totems-strength",
                 "target": "allAllies",
                 "excludesSummonTargets": true,
                 "linksToCasterSummon": true,
@@ -3269,11 +3279,11 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-totem-recall"
+                "summonCastId": "totem-recall"
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "totem-recall-buff",
+                "statusEffectId": "totems-strength",
                 "target": "allAllies",
                 "excludesSummonTargets": true,
                 "linksToCasterSummon": true,
@@ -3290,11 +3300,11 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-totem-recall"
+                "summonCastId": "totem-recall"
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "totem-recall-buff",
+                "statusEffectId": "totems-strength",
                 "target": "allAllies",
                 "excludesSummonTargets": true,
                 "linksToCasterSummon": true,
@@ -3307,7 +3317,7 @@
         ]
       },
       {
-        "id": "summoner-summon-imp",
+        "id": "summon-hellfire-imp",
         "name": "Summon Hellfire Imp",
         "description": "Pulls an imp up out of some other hearth, and it arrives already burning everything in sight.",
         "shortDescription": "Summons an Imp, scorches every foe.",
@@ -3324,7 +3334,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
+                "summonCastId": "summon-hellfire-imp",
                 "target": "self"
               },
               {
@@ -3341,7 +3351,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
+                "summonCastId": "summon-hellfire-imp",
                 "target": "self"
               },
               {
@@ -3358,7 +3368,7 @@
             "effects": [
               {
                 "kind": "summon",
-                "summonCastId": "summoner-summon-imp",
+                "summonCastId": "summon-hellfire-imp",
                 "target": "self"
               },
               {
@@ -3372,7 +3382,7 @@
       }
     ],
     "passiveSkill": {
-      "id": "summoner-passive",
+      "id": "bound-legion",
       "name": "Bound Legion",
       "description": "The pact deepens on its own, and makes room for more minions at the Summoner's side.",
       "ranks": [

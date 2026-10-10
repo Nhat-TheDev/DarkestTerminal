@@ -304,7 +304,7 @@ describe("artifacts", () => {
     rat.attack = 200;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    queueAction(combat, self, "shield-guard", [self], ctx);
     const ratHpBefore = rat.hp;
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("reflected from"))).toBe(true);
@@ -361,7 +361,7 @@ describe("artifacts", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: mage.id };
-    queueAction(combat, self, "mage-arcane-bolt", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, self, "arcane-bolt", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
     const firstAutoHit = combat.log.findIndex((l) => l.text.includes("Thunder Totem"));
     const firstAction = combat.log.findIndex((l) => l.text.includes("Arcane Bolt"));
@@ -399,11 +399,11 @@ describe("artifacts", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
-    expect(queueAction(combat, self, "rogue-poison-coat", [self], ctx)).toBeNull();
+    expect(queueAction(combat, self, "poison-coat", [self], ctx)).toBeNull();
     resolveRound(combat, ctx);
     // cooldownTurns 4 - cooldownReduction 1 = 3, set when the skill executes mid-round, then ticked
     // down by 1 more at this same round's end-of-round cooldown tick.
-    expect(rogue.cooldownsRemaining["rogue-poison-coat"]).toBe(2);
+    expect(rogue.cooldownsRemaining["poison-coat"]).toBe(2);
   });
 
   test("expBoost artifacts increase EXP gained on victory", () => {

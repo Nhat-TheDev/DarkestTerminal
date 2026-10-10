@@ -4,6 +4,7 @@ import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 import { signed } from "./items";
+import { getStatusEffect } from "./statusEffects";
 
 export const ABILITIES = abilitiesJson as unknown as AbilityDefinition[];
 
@@ -30,6 +31,11 @@ export function autoDamageSummary(effect: Extract<ArtifactEffect, { kind: "autoD
   return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
 }
 
+/** Text for a `poisonOnHit` effect, shared with `formatArtifactEffect` — the status it applies is named by the effect, not fixed. */
+export function poisonOnHitSummary(effect: Extract<ArtifactEffect, { kind: "poisonOnHit" }>): string {
+  return t("artifact.effectPoisonOnHit", { chance: effect.chance, status: getStatusEffect(effect.statusEffectId).name });
+}
+
 function abilityEffectSummary(effect: AbilityEffect): string {
   switch (effect.kind) {
     case "statBoost": {
@@ -40,7 +46,7 @@ function abilityEffectSummary(effect: AbilityEffect): string {
     case "reflectDamage":
       return t("artifact.effectReflectDamage", { percent: effect.percent });
     case "poisonOnHit":
-      return t("artifact.effectPoisonOnHit", { chance: effect.chance });
+      return poisonOnHitSummary(effect);
     case "lifesteal":
       return t("artifact.effectLifesteal", { percent: effect.percent });
     case "dodgeChance":

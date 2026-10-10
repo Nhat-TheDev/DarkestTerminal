@@ -42,6 +42,7 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
 
   const roomId = resolveRoomId(floor, opts.roomArg);
   game.state.currentRoomId = roomId;
+  game.state.roomPath = roomId === floor.entryRoomId ? [roomId] : [floor.entryRoomId, roomId];
   const room = getRoom(floor, roomId);
 
   // Mirrors `Game.advanceToNextFloor()`'s own precedence: the founder encounter is a guaranteed

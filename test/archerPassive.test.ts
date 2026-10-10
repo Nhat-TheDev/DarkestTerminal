@@ -16,8 +16,8 @@ function tankyTarget() {
 }
 
 describe("Archer passive: character-level crit", () => {
-  test("archer-quick-shot (no innate crit) can now crit at a level-35 Archer's +8% rate", () => {
-    const skill = getSkill("archer-quick-shot");
+  test("quick-shot (no innate crit) can now crit at a level-35 Archer's +8% rate", () => {
+    const skill = getSkill("quick-shot");
     const trials = 2000;
     const dealtValues: number[] = [];
     for (let i = 0; i < trials; i++) {
@@ -37,8 +37,8 @@ describe("Archer passive: character-level crit", () => {
     expect(rate).toBeLessThan(0.13);
   });
 
-  test("archer-aimed-shot's own 30-40% crit chance still adds the passive's chance on top", () => {
-    const skill = getEffectiveSkill(getSkill("archer-aimed-shot"), 35); // rank 3: 40% own crit chance
+  test("aimed-shot's own 30-40% crit chance still adds the passive's chance on top", () => {
+    const skill = getEffectiveSkill(getSkill("aimed-shot"), 35); // rank 3: 40% own crit chance
     const trials = 2000;
     const dealtValues: number[] = [];
     for (let i = 0; i < trials; i++) {
@@ -58,11 +58,11 @@ describe("Archer passive: character-level crit", () => {
     expect(rate).toBeLessThan(0.56);
   });
 
-  test("archer-deadeye-shot (already guaranteed 100%) still uses the passive's multiplier when it's higher than the skill's own", () => {
+  test("deadeye-shot (already guaranteed 100%) still uses the passive's multiplier when it's higher than the skill's own", () => {
     const { ctx } = makeCtx();
     const archer = ctx.party.find((p) => p.classId === "archer")!;
     archer.level = 35;
-    const skill = getEffectiveSkill(getSkill("archer-deadeye-shot"), 35); // rank 1: no own critMultiplierPercent
+    const skill = getEffectiveSkill(getSkill("deadeye-shot"), 35); // rank 1: no own critMultiplierPercent
     const combat = startCombat("test-room", [], ctx, false);
     const target = tankyTarget();
     const before = target.hp;
@@ -79,7 +79,7 @@ describe("Archer passive: character-level crit", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.level = 35;
-    const skill = getSkill("vanguard-slash");
+    const skill = getSkill("slash");
     const combat = startCombat("test-room", [], ctx, false);
     const target = tankyTarget();
     const before = target.hp;

@@ -15,13 +15,13 @@
   { "id": "eternal-vial", "name": "Eternal Vial", "description": "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxHp", "amount": 50 }] },
   { "id": "arcane-core", "name": "Arcane Core", "description": "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess.", "rarity": "rare", "effects": [{ "kind": "statBoost", "stat": "maxMp", "amount": 25 }] },
   { "id": "thorned-armor", "name": "Thorned Armor", "description": "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain.", "rarity": "rare", "effects": [{ "kind": "reflectDamage", "percent": 5 }] },
-  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6 }] },
+  { "id": "venomous-dagger-relic", "name": "Venomous Dagger (Relic)", "description": "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling.", "rarity": "rare", "effects": [{ "kind": "poisonOnHit", "chance": 6, "statusEffectId": "poisoned", "durationTurns": 1 }] },
   { "id": "vampiric-fang", "name": "Vampiric Fang", "description": "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. It leaves a faint warmth in the hand that does not come from the hand.", "rarity": "rare", "effects": [{ "kind": "lifesteal", "percent": 5 }] },
   { "id": "featherweight-boots", "name": "Featherweight Boots", "description": "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down.", "rarity": "rare", "effects": [{ "kind": "dodgeChance", "chance": 6 }] },
   { "id": "quickcharge-rune", "name": "Quickcharge Rune", "description": "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either.", "rarity": "rare", "effects": [{ "kind": "cooldownReduction", "turns": 1 }] },
 
   { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
-  { "id": "serpent-ring", "name": "Serpent Ring", "description": "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12 }] },
+  { "id": "serpent-ring", "name": "Serpent Ring", "description": "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12, "statusEffectId": "poisoned", "durationTurns": 1 }] },
   { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6, "offenseMultiplierPercent": 25, "isMagic": true }] },
   {
     "id": "armor-of-wholeness",
@@ -45,7 +45,7 @@
     "rarity": "epic",
     "effects": [
       { "kind": "autoDamage", "amount": 12, "offenseMultiplierPercent": 30 },
-      { "kind": "poisonOnHit", "chance": 8 }
+      { "kind": "poisonOnHit", "chance": 8, "statusEffectId": "poisoned", "durationTurns": 1 }
     ]
   },
   {

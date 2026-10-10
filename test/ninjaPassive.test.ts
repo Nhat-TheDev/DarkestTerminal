@@ -5,7 +5,7 @@ import { spawnMonster } from "../src/data/monsters";
 import { makeCtx } from "./helpers";
 
 function aliveNinjaClones(ctx: ReturnType<typeof makeCtx>["ctx"], ownerId: string) {
-  return ctx.summons.filter((s) => s.ownerId === ownerId && s.archetypeId === "ninja-clone" && s.hp > 0);
+  return ctx.summons.filter((s) => s.ownerId === ownerId && s.archetypeId === "shadow-clone" && s.hp > 0);
 }
 
 describe("Ninja passive: 2nd clone on hit", () => {
@@ -17,10 +17,10 @@ describe("Ninja passive: 2nd clone on hit", () => {
       const ninja = ctx.party.find((p) => p.classId === "ninja")!;
       ninja.level = 35; // rank 3: 30% chance
       const combat = startCombat("test-room", [], ctx, false);
-      spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, ninja, combat, ctx, []); // seed 1 existing clone
+      spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, ninja, combat, ctx, []); // seed 1 existing clone
       const target = spawnMonster("goblin", 1);
       target.hp = 1_000_000;
-      applySkillEffects(getSkill("ninja-kunai-strike"), ninja, [target], combat, ctx, []);
+      applySkillEffects(getSkill("kunai-strike"), ninja, [target], combat, ctx, []);
       if (aliveNinjaClones(ctx, ninja.id).length === 2) spawned++;
     }
     const rate = spawned / trials;
@@ -34,13 +34,13 @@ describe("Ninja passive: 2nd clone on hit", () => {
     const ninja = ctx.party.find((p) => p.classId === "ninja")!;
     ninja.level = 35;
     const combat = startCombat("test-room", [], ctx, false);
-    spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, ninja, combat, ctx, []);
-    spawnAdditionalSummon({ kind: "summon", summonCastId: "ninja-shadow-clone" }, ninja, combat, ctx, []);
+    spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, ninja, combat, ctx, []);
+    spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, ninja, combat, ctx, []);
     expect(aliveNinjaClones(ctx, ninja.id).length).toBe(2);
 
     const target = spawnMonster("goblin", 1);
     target.hp = 1_000_000;
-    const attackSkill = getSkill("ninja-kunai-strike");
+    const attackSkill = getSkill("kunai-strike");
     for (let i = 0; i < 50; i++) applySkillEffects(attackSkill, ninja, [target], combat, ctx, []);
     expect(aliveNinjaClones(ctx, ninja.id).length).toBe(2);
   });

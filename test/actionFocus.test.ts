@@ -1,0 +1,370 @@
+import { describe, expect, test } from "bun:test";
+import { createTestRenderer } from "@opentui/core/testing";
+import { App } from "../src/ui/app";
+import { Game } from "../src/engine/game";
+import { CLASSES } from "../src/data/classes";
+import { getRoom } from "../src/engine/dungeon";
+import { startCombat } from "../src/engine/combat";
+import { spawnMonster } from "../src/data/monsters";
+import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
+import { monsterStyle } from "../src/ui/layout";
+import { t } from "../src/data/strings";
+import { gameFromSave, loadSave } from "../src/engine/save";
+
+const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
+const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
+
+/** An app standing at the first command prompt of a fight against 2 sturdy goblins, reveal clock under test control. */
+async function openFight(options: { goblinAttack?: number; partyHp?: number; satiety?: number; expiringBuff?: boolean; stunnedMonsters?: boolean } = {}) {
+  // Kitty key encoding sends Esc as a full sequence, so a lone Esc is not held back to tell it from the start of one.
+  const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 62, kittyKeyboard: true });
+  const game = new Game(7, PARTY);
+  const room = getRoom(game.state.floor, game.state.currentRoomId);
+  const goblins = [spawnMonster("goblin", 1), spawnMonster("goblin", 1)];
+  for (const g of goblins) {
+    g.hp = g.maxHp = 500;
+    if (options.goblinAttack !== undefined) g.attack = options.goblinAttack;
+    game.ctx.monsters.push(g);
+  }
+  if (options.partyHp !== undefined) for (const c of game.state.party) c.hp = options.partyHp;
+  if (options.satiety !== undefined) game.state.satiety = options.satiety;
+  if (options.stunnedMonsters) for (const g of goblins) g.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 3 });
+  if (options.expiringBuff) for (const c of game.state.party) c.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 1 });
+  room.monsterIds = goblins.map((g) => g.id);
+  room.cleared = false;
+  game.state.combat = startCombat(room.id, room.monsterIds, game.ctx, false);
+  const app = new App(renderer, game, { autoReveal: false });
+  await renderOnce();
+  // `startCombat` logs a "combat started" line, which the first render queues for reveal: drain it,
+  // or `playRound` would see a reveal already running and never play the round.
+  while (app.debugRevealActive) app.tickReveal();
+  await renderOnce();
+  return { app, mockInput, renderOnce, captureCharFrame, game };
+}
+type Fight = Awaited<ReturnType<typeof openFight>>;
+
+/** Walks the command phase (Fight → first skill → first target) until the round resolves and the reveal starts. */
+async function playRound(fight: Fight) {
+  let guard = 0;
+  while (!fight.app.debugRevealActive && guard++ < 6 * PARTY.length + 10) {
+    const kind = fight.app.debugUiState.kind;
+    fight.mockInput.pressKey(kind === "skillDetail" ? "RETURN" : "1");
+    await fight.renderOnce();
+  }
+  expect(fight.app.debugRevealActive).toBe(true);
+}
+
+async function pressEscape(fight: Fight) {
+  fight.mockInput.pressEscape();
+  await fight.renderOnce();
+}
+
+describe("battlefield and log stay in step", () => {
+  test("every render shows the session of the newest visible log line, and the icons of that session", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const last = fight.app.debugLastRender;
+      if (last.revealing) expect(last.focusId).toBe(last.logTailSessionId);
+      const frame = fight.captureCharFrame();
+      const focus = fight.app.debugFocus;
+      expect(count(frame, FOCUS_GLYPH.shield)).toBe(focus?.attackedIds.length ?? 0);
+      expect(count(frame, FOCUS_GLYPH.debuff)).toBe(new Set([...(focus?.debuffedIds ?? []), ...(focus?.buffLostIds ?? [])]).size);
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(guard).toBeLessThan(400);
+  }, 30000);
+
+  test("units that lose a buff wear the debuff glyph in the frame that logs it", async () => {
+    const fight = await openFight({ expiringBuff: true });
+    await playRound(fight);
+    let sawLoss = false;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      if (focus && focus.buffLostIds.length > 0) {
+        sawLoss = true;
+        expect(fight.app.debugRoomLog.at(-1)!.text).toContain("expires");
+        expect(count(fight.captureCharFrame(), FOCUS_GLYPH.debuff)).toBe(focus.buffLostIds.length);
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(sawLoss).toBe(true);
+  }, 30000);
+
+  test("a stunned monster wears the skip glyph in the frame that logs its lost turn", async () => {
+    const fight = await openFight({ stunnedMonsters: true });
+    await playRound(fight);
+    let sawSkip = false;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      const frame = fight.captureCharFrame();
+      expect(count(frame, FOCUS_GLYPH.skip)).toBe(focus?.lostTurnIds.length ?? 0);
+      if (focus && focus.lostTurnIds.length > 0) {
+        sawSkip = true;
+        expect(fight.app.debugRoomLog.at(-1)!.text).toContain("too dazed to act");
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(sawSkip).toBe(true);
+  }, 30000);
+
+  test("at least one session shows a shield, and the frame with it also shows that session's log line", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    let sawShield = false;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      if (focus && focus.attackedIds.length > 0) {
+        sawShield = true;
+        const newest = fight.app.debugRoomLog.at(-1)!;
+        expect(newest.session?.id).toBe(focus.id);
+        expect(fight.captureCharFrame()).toContain(newest.text.slice(0, 20));
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(sawShield).toBe(true);
+  }, 30000);
+
+  test("a session changes HP only at its impact, and then shows each attacked unit's drop next to its icon", async () => {
+    const fight = await openFight({ goblinAttack: 40 });
+    await playRound(fight);
+    let held = fight.app.debugDisplaySnapshot;
+    let lastFocus = fight.app.debugFocus;
+    let impacts = 0;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      const focus = fight.app.debugFocus;
+      if (focus !== lastFocus) {
+        lastFocus = focus;
+        held = fight.app.debugDisplaySnapshot;
+      }
+      const frame = fight.captureCharFrame();
+      if (focus && fight.app.debugRevealHolding) {
+        expect(fight.app.debugDisplaySnapshot).toBe(held);
+        expect(frame).not.toMatch(/⛨ -\d/);
+      } else if (focus) {
+        for (const id of focus.attackedIds) {
+          const delta = fight.app.debugFocusDeltas.get(id);
+          if (delta !== undefined && delta < 0) {
+            impacts++;
+            expect(frame).toContain(`${FOCUS_GLYPH.shield} -${-delta}`);
+          }
+        }
+      }
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(impacts).toBeGreaterThan(0);
+  }, 30000);
+
+  test("skipping reveals every line and drops the highlight in one step", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    fight.mockInput.pressKey("1"); // any key skips
+    await fight.renderOnce();
+    expect(fight.app.debugRevealActive).toBe(false);
+    expect(fight.app.debugFocus).toBeNull();
+    expect(fight.captureCharFrame()).not.toContain(FOCUS_GLYPH.shield);
+    expect(fight.app.debugRoomLog.length).toBe(fight.game.state.combat!.log.length);
+  }, 30000);
+
+  test("when the last session's hold ends the round is over for the screen too", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 400) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugFocus).toBeNull();
+    expect(fight.captureCharFrame()).not.toContain("Revealing");
+  }, 30000);
+
+  test("a quicksave during the reveal does not rewind HP, MP or coins to the start of the round", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    for (let i = 0; i < 20 && fight.app.debugRevealActive; i++) fight.app.tickReveal();
+    const before = fight.app.debugDisplaySnapshot;
+    expect(fight.app.debugRevealActive).toBe(true);
+    fight.mockInput.pressKey("s");
+    await fight.renderOnce();
+    expect(fight.app.debugRevealActive).toBe(true);
+    expect(fight.app.debugDisplaySnapshot).toBe(before);
+  }, 30000);
+
+  test("the round that wipes the party is still narrated, although the combat is already gone", async () => {
+    // Dying damage at round end finishes off whoever the goblins missed, so the wipe is certain.
+    const fight = await openFight({ partyHp: 1, satiety: 0 });
+    await playRound(fight);
+    expect(fight.game.state.combat).toBeNull();
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 600) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugRoomLog.some((e) => e.text.includes("party has fallen"))).toBe(true);
+  }, 30000);
+
+  test("while the round that wipes the party is narrated, the monsters and the round stay on screen", async () => {
+    const fight = await openFight({ partyHp: 1, satiety: 0 });
+    await playRound(fight);
+    expect(fight.game.state.combat).toBeNull();
+    let frames = 0;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 600) {
+      const frame = fight.captureCharFrame();
+      expect(frame).toContain(t("ui.roundHeader", { round: 1 }));
+      expect(frame).not.toContain(t("ui.exploring"));
+      expect(frame).not.toContain(t("ui.notEncountered"));
+      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters[0]!).abbr} `);
+      expect(count(frame, FOCUS_GLYPH.shield)).toBe(fight.app.debugFocus?.attackedIds.length ?? 0);
+      frames++;
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(frames).toBeGreaterThan(1);
+    expect(fight.captureCharFrame()).toContain(t("ui.exploring"));
+  }, 30000);
+
+  test("the cleared save slot is reported after the round that wiped the party", async () => {
+    const fight = await openFight({ partyHp: 1, satiety: 0 });
+    fight.game.currentSaveSlot = "slot1";
+    await playRound(fight);
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 600) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    const texts = fight.app.debugRoomLog.map((e) => e.text);
+    expect(texts.at(-1)).toBe(t("ui.saveDeletedMsg"));
+    expect(texts.indexOf(t("combat.partyWiped"))).toBeGreaterThanOrEqual(0);
+    expect(texts.filter((text) => text === t("ui.saveDeletedMsg"))).toHaveLength(1);
+  }, 30000);
+
+  test("a save loaded mid-fight does not replay the rounds already played", async () => {
+    const { renderer, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const game = new Game(7, PARTY);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const goblin = spawnMonster("goblin", 1);
+    goblin.hp = goblin.maxHp = 500;
+    game.ctx.monsters.push(goblin);
+    room.monsterIds = [goblin.id];
+    game.state.combat = startCombat(room.id, [goblin.id], game.ctx, false);
+    for (const c of game.state.party) game.queue({ kind: "character", id: c.id }, c.unlockedSkillIds[0]!, [{ kind: "monster", id: goblin.id }]);
+    game.resolve();
+    expect(game.state.combat!.phase).toBe("command");
+    const app = new App(renderer, game, { autoReveal: false });
+    await renderOnce();
+    expect(app.debugRevealActive).toBe(false);
+    expect(app.debugRoomLog).toEqual([]);
+  }, 30000);
+
+  test("a save made on the combat-over screen does not replay the fight when loaded", async () => {
+    const fight = await openFight();
+    for (const g of fight.game.ctx.monsters) g.hp = 1;
+    await playRound(fight);
+    fight.mockInput.pressKey("1"); // skip the reveal
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("combatOver");
+    fight.game.currentSaveSlot = "slot1";
+    fight.mockInput.pressKey("s");
+    await fight.renderOnce();
+
+    const { renderer, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const loaded = gameFromSave(loadSave("slot1"), "slot1");
+    expect(loaded.state.combat!.phase).toBe("over");
+    const app = new App(renderer, loaded, { autoReveal: false });
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("combatOver");
+    expect(app.debugRevealActive).toBe(false);
+    expect(app.debugRoomLog).toEqual([]);
+  }, 30000);
+});
+
+describe("room log", () => {
+  test("keeps at most 50 entries", async () => {
+    const fight = await openFight();
+    for (let i = 0; i < 80; i++) fight.app.pushToast(`note ${i}`);
+    fight.app.tickReveal(); // the first tick renders, which queues the toasts
+    for (let i = 0; i < 200 && fight.app.debugRevealActive; i++) fight.app.tickReveal();
+    await fight.renderOnce();
+    expect(fight.app.debugRoomLog.length).toBe(50);
+    expect(fight.app.debugRoomLog.at(-1)!.text).toBe("note 79");
+  }, 30000);
+
+  test("walking into another room clears it but keeps the line that announces the new room", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const game = new Game(7, PARTY);
+    game.state.combat = null;
+    const app = new App(renderer, game, { autoReveal: false });
+    await renderOnce();
+    app.logInfo("left over from the first room");
+    expect(app.debugRoomLog.map((e) => e.text)).toContain("left over from the first room");
+
+    mockInput.pressKey("1"); // move through the first exit
+    await renderOnce();
+    for (let i = 0; i < 50 && app.debugRevealActive; i++) app.tickReveal();
+    const texts = app.debugRoomLog.map((e) => e.text);
+    expect(texts).not.toContain("left over from the first room");
+    expect(texts).toContain(game.state.message);
+  }, 30000);
+});
+
+describe("run log screen", () => {
+  test("[l] opens the full run log, Esc returns, and the footer never offers [l] inside it", async () => {
+    const fight = await openFight();
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    const frame = fight.captureCharFrame();
+    expect(frame).toContain("Run log");
+    expect(frame).toContain("[Esc] Back");
+    expect(frame).not.toContain("[l] Log");
+
+    await pressEscape(fight);
+    expect(fight.app.debugUiState.kind).not.toBe("fullLog");
+    expect(fight.captureCharFrame()).toContain("[l] Log");
+  }, 30000);
+
+  test("opened in the middle of a reveal, Esc closes the log and leaves the reveal running", async () => {
+    const fight = await openFight();
+    await playRound(fight);
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    await pressEscape(fight);
+    expect(fight.app.debugUiState.kind).not.toBe("fullLog");
+    expect(fight.app.debugRevealActive).toBe(true);
+  }, 30000);
+
+  test("keys that would save are swallowed inside the log screen", async () => {
+    const fight = await openFight();
+    fight.mockInput.pressKey("l");
+    await fight.renderOnce();
+    const before = fight.app.debugRunLog.length;
+    for (const key of ["s", "q", "b", "1"]) {
+      fight.mockInput.pressKey(key);
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugUiState.kind).toBe("fullLog");
+    expect(fight.app.debugRunLog.length).toBe(before);
+  }, 30000);
+
+  test("keeps the latest 500 entries of the run, across rooms", async () => {
+    const fight = await openFight();
+    for (let i = 0; i < 600; i++) fight.app.pushToast(`entry ${i}`);
+    fight.app.tickReveal(); // the first tick renders, which queues the toasts
+    for (let i = 0; i < 1000 && fight.app.debugRevealActive; i++) fight.app.tickReveal();
+    expect(fight.app.debugRunLog).toHaveLength(500);
+    expect(fight.app.debugRunLog.at(-1)!.text).toBe("entry 599");
+    expect(fight.app.debugRunLog[0]!.text).toBe("entry 100");
+  }, 30000);
+});

@@ -49,11 +49,12 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
     const magicBonus = statBonus(percentByStat.attack, character.magicPower);
     const defenseBonus = statBonus(percentByStat.defense, defenseMitigationX + character.defense);
     const speedBonus = statBonus(percentByStat.speed, character.speed);
-    if (attackBonus > 0) applyStatus(character, "barter-attack", attackBonus);
-    if (magicBonus > 0) applyStatus(character, "barter-magic-power", magicBonus);
-    if (defenseBonus > 0) applyStatus(character, "barter-defense", defenseBonus);
-    if (speedBonus > 0) applyStatus(character, "barter-speed", speedBonus);
-    for (const tier of regenTiers) applyStatus(character, `barter-regen-${tier}`);
+    const { statStatusIds, regenStatusIdByTier } = BALANCE.barter;
+    if (attackBonus > 0) applyStatus(character, statStatusIds.attack, attackBonus);
+    if (magicBonus > 0) applyStatus(character, statStatusIds.magicPower, magicBonus);
+    if (defenseBonus > 0) applyStatus(character, statStatusIds.defense, defenseBonus);
+    if (speedBonus > 0) applyStatus(character, statStatusIds.speed, speedBonus);
+    for (const tier of regenTiers) applyStatus(character, regenStatusIdByTier[tier]);
   }
 
   log.push({ text: t("combat.barterBuffs", { items: pending.map((id) => getItem(id).name).join(", ") }), kind: "buff" });

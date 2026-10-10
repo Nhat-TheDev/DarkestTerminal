@@ -6,7 +6,7 @@ import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
-import { getRoom } from "../src/engine/dungeon";
+import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { CLASSES } from "../src/data/classes";
@@ -222,7 +222,7 @@ describe("key handler lifecycle", () => {
 
 describe("character info screen", () => {
   test("shows which digit switches to which party member, and switches on that digit", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const classIds = CLASSES.slice(0, 4).map((c) => c.id);
     const app = new App(renderer, new Game(7, classIds));
     await renderOnce();
@@ -244,26 +244,26 @@ describe("character info screen", () => {
 
 describe("skillEffectLine: damage/heal scaling description shows the effect's real offenseMultiplierPercent", () => {
   test("a damage effect below 100% shows its own percent, not a hardcoded 100%", () => {
-    const skill = getSkill("archer-volley-shot");
+    const skill = getSkill("volley-shot");
     const effect = skill.effects![0]!; // amount:10, offenseMultiplierPercent:60
     expect(skillEffectLine(effect, skill)).toBe("  • 60% Base Attack + 10 Attack to all enemies");
   });
 
   test("a damage effect above 100% shows its own percent too", () => {
-    const skill = getSkill("viking-throw-axe");
+    const skill = getSkill("throw-axe");
     const effect = skill.effects![0]!; // amount:16, offenseMultiplierPercent:100 (rank 1)
     expect(skillEffectLine(effect, skill)).toBe("  • 100% Base Attack + 16 Attack to an enemy");
   });
 
   test("a flat-amount-only damage effect (e.g. a basic attack) with no offenseMultiplierPercent falls back to 100%", () => {
-    const skill = getSkill("vanguard-slash");
+    const skill = getSkill("slash");
     const effect = skill.effects![0]!; // amount:0
     expect(effect.offenseMultiplierPercent).toBeUndefined();
     expect(skillEffectLine(effect, skill)).toBe("  • 100% Base Attack to an enemy");
   });
 
   test("a heal effect with a non-100% offenseMultiplierPercent shows its own percent", () => {
-    const skill = getSkill("acolyte-heal");
+    const skill = getSkill("heal");
     const effect = skill.effects![0]!; // amount:16, offenseMultiplierPercent:90 (rank 1)
     expect(skillEffectLine(effect, skill)).toBe("  • Heals: 90% Base Magic Power + 16 HP to an ally");
   });
@@ -271,7 +271,7 @@ describe("skillEffectLine: damage/heal scaling description shows the effect's re
 
 describe("skillEffectLine: per-effect target overrides (replaces the old effectsByRelation)", () => {
   test("appliesToRelation on a singleAllyOrEnemy skill (Purify) shows the singular ally/enemy suffix per effect", () => {
-    const skill = getSkill("acolyte-purify");
+    const skill = getSkill("purify");
     const [removeStatus, damage] = skill.effects!;
     expect(removeStatus!.appliesToRelation).toBe("ally");
     expect(skillEffectLine(removeStatus!, skill)).toBe("  • 100%: Removes 1 debuff to an ally");
@@ -280,7 +280,7 @@ describe("skillEffectLine: per-effect target overrides (replaces the old effects
   });
 
   test("appliesToRelation on an allAlliesAndEnemies skill (Total Plague) shows the plural party/all-enemies suffix per effect", () => {
-    const skill = getSkill("plaguedoc-total-plague");
+    const skill = getSkill("total-plague");
     const heal = skill.effects!.find((e) => e.kind === "heal")!;
     const damage = skill.effects!.find((e) => e.kind === "damage")!;
     expect(skillEffectLine(heal, skill)).toContain("to your party");
@@ -288,7 +288,7 @@ describe("skillEffectLine: per-effect target overrides (replaces the old effects
   });
 
   test("effect.target overrides the skill's own target for that 1 effect's suffix", () => {
-    const skill = getSkill("mage-fireball"); // any allEnemies-less singleEnemy skill works as a stand-in host
+    const skill = getSkill("fireball"); // any allEnemies-less singleEnemy skill works as a stand-in host
     const overriddenEffect: SkillEffect = { kind: "damage", amount: 5, target: "self" };
     expect(skillEffectLine(overriddenEffect, skill)).toContain("to yourself");
   });
@@ -296,27 +296,27 @@ describe("skillEffectLine: per-effect target overrides (replaces the old effects
 
 describe("skillMechanicLines: skill-level mechanics derived from the skill's own data", () => {
   test("an ultimate shows the always-hit / fear rule", () => {
-    expect(skillMechanicLines(getSkill("vanguard-sword-judgment"))).toEqual(["  • Always hits; effectiveness is reduced by fear"]);
+    expect(skillMechanicLines(getSkill("sword-judgment"))).toEqual(["  • Always hits; effectiveness is reduced by fear"]);
   });
 
   test("executeBonus shows its bonus and HP threshold", () => {
-    const { hpPercentThreshold, bonusDamageFlat } = getSkill("ninja-death-mark").executeBonus!;
-    expect(skillMechanicLines(getSkill("ninja-death-mark"))).toContain(`  • +${bonusDamageFlat} damage against targets below ${hpPercentThreshold}% HP`);
+    const { hpPercentThreshold, bonusDamageFlat } = getSkill("death-mark").executeBonus!;
+    expect(skillMechanicLines(getSkill("death-mark"))).toContain(`  • +${bonusDamageFlat} damage against targets below ${hpPercentThreshold}% HP`);
   });
 
   test("conditionalBonus shows the defense ignored, and a consumed status gets its own line", () => {
-    const frenzied = getSkill("viking-frenzied-slash");
+    const frenzied = getSkill("frenzied-slash");
     expect(skillMechanicLines(frenzied)).toEqual([`  • Ignores ${frenzied.conditionalBonus!.ignoreDefensePercentBonus}% more defense while Storm-Empowered`]);
-    expect(skillMechanicLines(getSkill("viking-thunder-god-fury"))).toContain("  • Consumes Storm-Empowered");
+    expect(skillMechanicLines(getSkill("thunder-gods-fury"))).toContain("  • Consumes Storm-Empowered");
   });
 
   test("a damage effect's critChance is shown as a percent", () => {
-    const { critChance } = getSkill("archer-deadeye-shot").effects!.find((e) => e.kind === "damage")!;
-    expect(skillMechanicLines(getSkill("archer-deadeye-shot"))).toContain(`  • Critical chance: ${Math.round(critChance! * 100)}%`);
+    const { critChance } = getSkill("deadeye-shot").effects!.find((e) => e.kind === "damage")!;
+    expect(skillMechanicLines(getSkill("deadeye-shot"))).toContain(`  • Critical chance: ${Math.round(critChance! * 100)}%`);
   });
 
   test("a skill with none of these mechanics yields no lines", () => {
-    expect(skillMechanicLines(getSkill("vanguard-slash"))).toEqual([]);
+    expect(skillMechanicLines(getSkill("slash"))).toEqual([]);
   });
 });
 
@@ -333,7 +333,7 @@ describe("skillEffectLine: summon effects show their minion", () => {
   };
 
   test("a minion with signature skills lists them under its bullet", () => {
-    for (const id of ["summoner-summon-goblin", "summoner-summon-spirit"]) {
+    for (const id of ["summon-goblin", "summon-spirit"]) {
       const { cast, archetype, skills } = minion(id);
       expect(skills.length).toBeGreaterThan(0);
       expect(summonLine(id)).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}\n      Skills: ${skills.join(", ")}`);
@@ -341,15 +341,15 @@ describe("skillEffectLine: summon effects show their minion", () => {
   });
 
   test("a minion with no signature skills gets a single line", () => {
-    const { cast, archetype, skills } = minion("ninja-shadow-clone");
+    const { cast, archetype, skills } = minion("shadow-clone");
     expect(skills).toEqual([]);
-    expect(summonLine("ninja-shadow-strike")).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}`);
+    expect(summonLine("shadow-strike")).toBe(`  • Summons ${archetype.name}: acts up to ${cast.maxActions} times, aggro ${cast.aggro}`);
   });
 
   test("a passive minion has no action count", () => {
-    const { cast, archetype } = minion("summoner-totem-recall");
+    const { cast, archetype } = minion("totem-recall");
     expect(archetype.passive).toBe(true);
-    expect(summonLine("summoner-totem-recall")).toBe(`  • Summons ${archetype.name}: aggro ${cast.aggro}`);
+    expect(summonLine("totem-recall")).toBe(`  • Summons ${archetype.name}: aggro ${cast.aggro}`);
   });
 });
 
@@ -370,13 +370,13 @@ describe("skillEffectLine: an applied status shows what it does", () => {
   });
 
   test("a status whose magnitude the skill sets shows that magnitude and its floor, not the status's own 0", () => {
-    const skill = getSkill("summoner-totem-recall");
+    const skill = getSkill("totem-recall");
     const effect = skill.effects!.find((e) => e.kind === "applyStatusEffect")!;
     expect(skillEffectLine(effect, skill)).toContain(`\n      +${effect.amount} attack (or ${effect.minPercent}% of the bearer's attack if larger)`);
   });
 
   test("Storm-Empowered shows its splash with the multiplier and the defense it ignores", () => {
-    const skill = getSkill("viking-lightning-axe");
+    const skill = getSkill("lightning-axe");
     const effect = skill.effects!.find((e) => e.kind === "applyStatusEffect" && e.statusEffectId?.startsWith("storm-empowered"))!;
     const aoe = getStatusEffect(effect.statusEffectId!).onHitAoeDamage!;
     expect(skillEffectLine(effect, skill)).toContain(
@@ -385,7 +385,7 @@ describe("skillEffectLine: an applied status shows what it does", () => {
   });
 
   test("Poison Coat says that its hits also poison", () => {
-    const skill = getSkill("rogue-poison-coat");
+    const skill = getSkill("poison-coat");
     const line = skillEffectLine(skill.effects!.find((e) => e.kind === "applyStatusEffect")!, skill);
     expect(line).toContain("every landed hit also applies Poisoned");
   });
@@ -410,7 +410,7 @@ describe("skill detail screen", () => {
   });
 
   test("lists the mechanic lines under Effects", () => {
-    const text = detail(getSkill("vanguard-sword-judgment"));
+    const text = detail(getSkill("sword-judgment"));
     expect(text).toContain("Effects:");
     expect(text).toContain("  • Always hits; effectiveness is reduced by fear");
   });
@@ -422,12 +422,12 @@ describe("skill detail screen", () => {
       const expected = Math.round((effect.amount ?? 0) + value * ((effect.offenseMultiplierPercent ?? 100) / 100));
       expect(detail(skill, (a) => (a[stat] = value))).toContain(`Estimated damage: ~${expected}`);
     };
-    check("archer-quick-shot", "attack", 20);
-    check("summoner-hollow-pulse", "magicPower", 30);
+    check("quick-shot", "attack", 20);
+    check("hollow-pulse", "magicPower", 30);
   });
 
   test("an executeBonus shows a percent bonus, both bonuses, and nothing when it carries no bonus", () => {
-    const withBonus = (executeBonus: NonNullable<SkillDefinition["executeBonus"]>) => ({ ...getSkill("ninja-death-mark"), executeBonus });
+    const withBonus = (executeBonus: NonNullable<SkillDefinition["executeBonus"]>) => ({ ...getSkill("death-mark"), executeBonus });
     expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25, bonusDamagePercent: 20 }))).toContain("  • +20% damage against targets below 25% HP");
     expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25, bonusDamageFlat: 10, bonusDamagePercent: 20 }))).toContain("  • +10 and +20% damage against targets below 25% HP");
     expect(skillMechanicLines(withBonus({ hpPercentThreshold: 25 })).some((l) => l.includes("damage against"))).toBe(false);
@@ -577,5 +577,73 @@ describe("Rest room runner screens", () => {
     expect(room.cleared).toBe(true);
     expect(game.state.restRunner ?? null).toBeNull();
     expect(app.debugUiState.kind).toBe("campReflection");
+  });
+});
+
+describe("a panel scrolled with the mouse wheel", () => {
+  /** A Rest room with a Runner in it, entered from a fresh run. */
+  function gameInRunnerRoom(): Game {
+    for (let seed = 1; seed < 300; seed++) {
+      const game = new Game(seed, ["vanguard", "mage", "rogue", "acolyte"]);
+      game.state.combat = null;
+      const rest = game.state.floor.rooms.find((r) => r.type === "rest")!;
+      game.state.currentRoomId = rest.id;
+      enterRoom(game.state, rest, game.ctx);
+      if (game.state.restRunner) return game;
+    }
+    throw new Error("no seed rolled a Runner");
+  }
+
+  /** The Dungeon panel and everything below it. */
+  const dungeonOf = (frame: string) => {
+    const rows = frame.split("\n");
+    return rows.slice(rows.findIndex((r) => r.includes("─Dungeon")) + 1).join("\n");
+  };
+
+  test("does not carry its offset into the next, shorter screen", async () => {
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 50 });
+    const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
+    await renderOnce();
+    const dungeon = () => dungeonOf(captureCharFrame());
+
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+    expect(dungeon()).toContain("You have");
+    await mockMouse.scroll(90, 33, "down");
+    await renderOnce();
+    expect(dungeon()).not.toContain("You have");
+
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("1");
+    await renderOnce();
+    for (let i = 0; i < 50 && app.debugRevealActive; i++) app.tickReveal();
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("pickAction");
+    expect(dungeon()).toContain("choose an action");
+  });
+
+  test("keeps its offset across re-renders when its lines wrap", async () => {
+    // At this width the shop's lines wrap: the panel holds more rows than it has lines of text.
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 50 });
+    const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
+    await renderOnce();
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+    const top = dungeonOf(captureCharFrame());
+    for (let i = 0; i < 20; i++) await mockMouse.scroll(50, 33, "down");
+    await renderOnce();
+    const scrolled = dungeonOf(captureCharFrame());
+    expect(scrolled).not.toBe(top);
+
+    app.tickReveal(); // a render with nothing new to show
+    await renderOnce();
+    expect(dungeonOf(captureCharFrame())).toBe(scrolled);
   });
 });

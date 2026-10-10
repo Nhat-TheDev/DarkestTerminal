@@ -51,6 +51,8 @@ export interface SkillEffect {
   summonCastId?: Id;
   /** For `applyStatusEffect`: how many turns this specific application lasts (shared by `alsoApplyStatusEffectIds`, if any) — absent defaults to 1. Each skill declares its own duration; the status definition itself no longer carries one, so the same status can last a different number of turns depending on what applied it. */
   durationTurns?: number;
+  /** For `applyStatusEffect` of a status that carries `onHitStatusEffectId` (an on-hit rider, e.g. `poison-coated`): how many turns the status each hit applies lasts on the target — absent defaults to 1. Declared here rather than on the status so the skill or item that grants the rider decides it. */
+  onHitDurationTurns?: number;
   /** Overrides the skill's own `target` for just this effect, resolved separately from every other effect in the skill — e.g. a skill that both damages `allEnemies` and needs a `summon` effect to always land on the caster sets `target: "self"` on that one effect. Only resolvable target kinds that need no player picking (`self`/`allAllies`/`allEnemies`/`allAlliesAndEnemies`) are supported; a `single*` override is silently skipped, since there's no UI for picking a 2nd target within one cast. */
   target?: SkillTarget;
   /** Restricts this effect to only the targets already resolved by the skill's own `target` that are on the given side (relative to `isPlayerSide`, not relative to the caster) — e.g. one `heal` effect with `appliesToRelation: "ally"` and one `damage` effect with `"enemy"` on a skill targeting `allAlliesAndEnemies` replaces the old `effectsByRelation` split. Unlike `target`, this filters within the already-resolved population rather than resolving a different one — the only shape that correctly expresses a skill like Purify, whose `singleAllyOrEnemy` target is 1 player-picked actor whose side decides which effect fires. */
@@ -166,12 +168,13 @@ export interface PassiveRankDefinition {
   defensePercent?: number; // Vanguard
   aggroFlat?: number; // Vanguard
   onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
+  durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
   bonusPercent?: number; // Rogue
   bonusFlat?: number; // Rogue
   healBoostPercent?: number; // Acolyte
   debuffResistPercent?: number; // Acolyte
   hpThresholdPercent?: number; // Viking
-  attackBonusPercent?: number; // Viking — % attack granted by the "viking-blood-fury" status while below hpThresholdPercent
+  thresholdStatusEffectId?: Id; // Viking — the status this rank keeps applied while HP is below hpThresholdPercent, 1 id per rank (the status carries the attack bonus)
   procChancePercent?: number; // Plague Doctor
   critChancePercent?: number; // Archer
   critMultiplierPercent?: number; // Archer
@@ -191,6 +194,7 @@ export interface PassiveSkillDefinition {
   bonusDamageType?: DamageType; // Rogue
   selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
   maxClones?: number; // Ninja — fixed across ranks, not scaled
+  cloneSummonCastId?: Id; // Ninja — the summon cast (`data/summons.json` → `casts`) the second-clone proc spawns, and whose archetype `maxClones` counts
   debuffPool?: Id[]; // Plague Doctor — same pool at every rank
 }
 
@@ -263,7 +267,7 @@ export interface StatusEffectDefinition {
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
   /** If set, this status is a higher-rank variant of `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match ranks and compose the displayed name. */
   rankOf?: Id;
-  rankLevel?: 2 | 3;
+  rankLevel?: 2 | 3 | 4 | 5 | 6;
   /** Overrides the turn-countdown schedule inferred from `perTurnEffects`' shape — for a status whose shape alone doesn't capture its intended timing, e.g. a pure stat-mod rider that must tick in lockstep with a "special" status it's always co-applied with. */
   tickCategory?: "dot" | "statMod" | "special";
   /** Re-applying this status to a target that already carries it adds a stack (up to `maxStacks`) instead of only refreshing duration. */
@@ -310,7 +314,8 @@ export type ArtifactEffect =
       only set by `data/abilities.json` entries; Artifacts don't use it. */
   | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp" | "magicPower" | "speed"; amount: number; minPercent?: number }
   | { kind: "reflectDamage"; percent: number }
-  | { kind: "poisonOnHit"; chance: number }
+  /** Each damaging hit by the bearer has `chance` percent to apply `statusEffectId` to the target for `durationTurns`. */
+  | { kind: "poisonOnHit"; chance: number; statusEffectId: Id; durationTurns: number }
   | { kind: "lifesteal"; percent: number }
   | { kind: "dodgeChance"; chance: number }
   /** `minPercent`: the heal is whichever has the larger magnitude of `amount` or `baseMaxHp * minPercent / 100` (the bearer's class-base-plus-level max HP, not the live one), so a flat heal stays meaningful as max HP grows — the same floor idea as `statBoost.minPercent`. Absent = flat `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
@@ -496,6 +501,8 @@ export interface ActiveStatusEffect {
   linkedSummonId?: Id;
   /** The caster's `magicPower` when a magic skill applied (or refreshed) this status — set only for a status whose `heal` perTurnEffects scale by `offenseMultiplierPercent` (Healing Draught's `mending`), so each later tick heals off the caster rather than the bearer. */
   sourceMagicPower?: number;
+  /** `SkillEffect.onHitDurationTurns` of the application that granted this on-hit rider, read back each time the rider fires. */
+  onHitDurationTurns?: number;
 }
 
 export interface ShopOffer {
@@ -666,7 +673,7 @@ export interface Summon {
   id: Id;
   /** The character who summoned it — whose stats it was derived from at cast time. */
   ownerId: Id;
-  /** Which kind of summon this is (`"ninja-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
+  /** Which kind of summon this is (`"shadow-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
   archetypeId: Id;
   name: string;
   hp: number;
@@ -742,11 +749,50 @@ export interface PartyStateSnapshot {
   satiety: number;
 }
 
+/**
+ * One actor's action (or one actor-less tick block) as the battlefield should present it. Every
+ * `LogEntry` produced by the action shares the same object, so the UI can group consecutive
+ * entries by `id` and light exactly the units named here. All ids are battlefield unit ids — a
+ * summon is recorded as its owner, since it has no sprite of its own.
+ */
+export interface LogSession {
+  /** Index in `CombatState.log` of the first entry this session tagged: unique within a combat, stable across a save round trip. */
+  id: number;
+  actorId: Id | null;
+  /** Opposing-side targets of a skill that deals damage, hit or missed. */
+  attackedIds: Id[];
+  /** Opposing-side targets of a skill with no damage (debuff-only). */
+  debuffedIds: Id[];
+  buffedIds: Id[];
+  healedIds: Id[];
+  /** Opposing-side targets whose attack or debuff missed or was dodged. */
+  missedIds: Id[];
+  /** Units that drained HP from the damage they dealt (lifesteal), as opposed to any other self-heal. */
+  lifestealIds: Id[];
+  /** DoT sessions only: units whose HP a damage-over-time tick actually lowered (a heal-over-time tick on the same unit is in `healedIds`). */
+  tickDamageIds: Id[];
+  /** Units that lost a buff in this session — it ran out, was removed, or was spent. Filled from the entries' `buffLostOf`. */
+  buffLostIds: Id[];
+  /** Units whose turn was cancelled: stunned, too afraid to act, or interrupted by an Overwatch shot. */
+  lostTurnIds: Id[];
+  /** Owners whose summon took part in this session — acted, was targeted, ticked, lost a buff or fell. The battlefield draws a summon as its owner, so this tells the two apart. Not set for the session that summons it. */
+  summonIds: Id[];
+  /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
+  affectedIds: Id[];
+  /** What an actor-less session was, so its lit units can wear the matching icon. */
+  cause?: "dot" | "dying" | "artifact";
+}
+
 export interface LogEntry {
   text: string;
   kind: LogEntryKind;
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
+  session?: LogSession;
+  /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff", i.e. one that raises a stat, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
+  buffLostOf?: Id;
+  /** Set with `buffLostOf` when the unit that lost the buff is a summon. */
+  buffLostOfSummon?: true;
 }
 
 export interface CombatState {
@@ -761,6 +807,10 @@ export interface CombatState {
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
   roundStartPartySnapshot?: PartyStateSnapshot;
+  /** Summons that left the fight, with the HP they left with: a snapshot keeps showing them, so a summon's last hit is still a change. A fade-away leaves with its HP unchanged, a death with 0. */
+  departedSummons?: { id: Id; hp: number; maxHp: number }[];
+  /** Transient: the session being built while an actor's turn runs (see `runInSession`). */
+  activeSession?: LogSession;
   outcome?: "victory" | "defeat";
 }
 
@@ -769,6 +819,8 @@ export interface GameState {
   party: Character[];
   floor: Floor;
   currentRoomId: Id;
+  /** The rooms entered on this floor, in order, ending with `currentRoomId` — what the progress bar draws. */
+  roomPath: Id[];
   combat: CombatState | null;
   message: string;
   /** `"stay"`/`"letGo"`/`"leaveAmbushed"`/`"leaveEscaped"` are the Ending System's 4 immediate

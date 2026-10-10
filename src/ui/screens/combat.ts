@@ -12,6 +12,7 @@ import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "..
 import { paginate } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
+import { targetChoiceLines } from "../targetPicker";
 
 const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed", magicPower: "Magic Power" };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: "Fear", satiety: "Satiety" };
@@ -323,15 +324,9 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
     case "pickTarget": {
       const sourceName = ui.source.kind === "skill" ? ui.source.skill.name : ui.source.item.name;
       const sourceTarget = ui.source.kind === "skill" ? ui.source.skill.target : ui.source.item.target;
-      const lines = [t("ui.chooseTargetFor", { source: sourceName })];
-      const isDualRelation = sourceTarget === "singleAllyOrEnemy";
-      ui.candidates.forEach((ref, i) => {
-        const target = getActorByRef(ref, game.ctx);
-        const hpInfo = "hp" in target ? t("ui.hpSuffix", { hp: target.hp, maxHp: target.maxHp }) : "";
-        const sidePrefix = isDualRelation ? (ref.kind === "character" ? t("ui.allySidePrefix") : t("ui.enemySidePrefix")) : "";
-        lines.push(`  [${i + 1}] ${sidePrefix}${target.name}${hpInfo}`);
-      });
-      return lines.join("\n");
+      const effects = ui.source.kind === "skill" ? ui.source.skill.effects ?? [] : ui.source.item.effects;
+      const candidates = ui.candidates.map((ref) => ({ ref, actor: getActorByRef(ref, game.ctx) }));
+      return joinLines([[plainChunk(t("ui.chooseTargetFor", { source: sourceName }))], ...targetChoiceLines(candidates, effects, sourceTarget === "singleAllyOrEnemy")]);
     }
   }
 }

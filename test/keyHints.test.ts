@@ -55,23 +55,27 @@ describe("key-hint grammar (R2/R3)", () => {
 
 describe("global hints (R5)", () => {
   test("room offers party info, saving and quicksaving", () => {
-    expect(globalHints("room")).toBe("[b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room")).toBe("[b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("the save menu hides [q], since [q] is what opened it", () => {
-    expect(globalHints("saveMenu")).toBe("[s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("saveMenu")).toBe("[l] Log   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("game over leaves only the quit key", () => {
-    expect(globalHints("gameover")).toBe("[Ctrl+C] Quit");
+    expect(globalHints("gameover")).toBe("[l] Log   [Ctrl+C] Quit");
+  });
+
+  test("the log screen offers only the quit key: nothing but Esc, ↑/↓ and Ctrl+C works inside it", () => {
+    expect(globalHints("fullLog")).toBe("[Ctrl+C] Quit");
   });
 
   test("character info drops [b] — that screen is where [b] leads", () => {
-    expect(globalHints("characterInfo")).toBe("[q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("characterInfo")).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("party info can be suppressed for a screen that swallows the key", () => {
-    expect(globalHints("room", false)).toBe("[q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room", false)).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 });
 
@@ -89,17 +93,17 @@ describe("page hint placement (R4)", () => {
   });
 
   test("composeFooter divides the screen's hints from the global ones", () => {
-    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("a screen contributing no hints still renders the globals alone", () => {
-    expect(composeFooter("", "gameover", false)).toBe("[Ctrl+C] Quit");
+    expect(composeFooter("", "gameover", false)).toBe("[l] Log   [Ctrl+C] Quit");
   });
 });
 
 describe("hints render into the footer, never into the body (R1)", () => {
   test("the room screen lists paths only — the [i]/[a] keys live in the footer", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     // Every run opens on an ambush; softening it just lets the test reach the room screen quickly.
     game.ctx.monsters.forEach((m) => (m.hp = 1));
@@ -147,7 +151,7 @@ describe("digit ranges match the options actually on screen (R6)", () => {
 
 describe("footers resolve against a live game", () => {
   test("the room screen counts its actual exits, and combat its actual options", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
@@ -176,7 +180,7 @@ describe("footers resolve against a live game", () => {
   }, 20000);
 
   test("no screen ever renders an unresolved template or an empty bracket", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const app = new App(renderer, new Game(7));
     await renderOnce();
 
@@ -207,7 +211,7 @@ describe("room footer tracks what the room can actually do", () => {
   }
 
   test("[i] is dropped when the bag is empty, since the key does nothing then", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
@@ -224,7 +228,7 @@ describe("room footer tracks what the room can actually do", () => {
   }, 20000);
 
   test("[i] comes back once the party is carrying something", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);

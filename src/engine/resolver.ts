@@ -8,8 +8,32 @@ import { getClass, passiveRankDef } from "../data/classes";
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
-  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && (e.amount ?? 0) < 0)) return false;
+  if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && statDirection(e) < 0)) return false;
   return true;
+}
+
+/**
+ * Which way a stat change pushes: the sign of `amount`, or of `minPercent` when `amount` is 0 (an
+ * effect written only as a share of the stat, e.g. amount 0 with minPercent -15). 0 means no change either way.
+ */
+export function statDirection(effect: { amount?: number; minPercent?: number }): number {
+  return Math.sign(effect.amount ?? 0) || Math.sign(effect.minPercent ?? 0);
+}
+
+export type StatusRole = "buff" | "debuff" | "heal";
+
+/**
+ * What a status is on the battlefield. A status that changes a stat is a buff or a debuff (by the
+ * direction of the change); a stun and a blind are debuffs of their own, though they change no stat;
+ * one that restores HP or MP over time is a heal; everything else — damage over time, vulnerability,
+ * stealth, a stance — is neither.
+ */
+export function statusRole(def: StatusEffectDefinition): StatusRole | null {
+  const statChanges = def.perTurnEffects.filter((e) => e.kind === "modifyCombatStat");
+  if (statChanges.length > 0) return statChanges.some((e) => statDirection(e) < 0) ? "debuff" : "buff";
+  if (def.stuns || def.accuracyPenaltyPercent) return "debuff";
+  if (def.perTurnEffects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "heal";
+  return null;
 }
 
 export type StatusCategory = "dot" | "statMod" | "special";
@@ -153,6 +177,8 @@ export interface ResolveContext {
   /** For `applyStatusEffect` with `effect.linksToCasterSummon` — the id of the summon (from this same
    *  skill's own `summon` effect) this status's expiry is tied to. Set by combat.ts's `applySkillEffects`. */
   linkedSummonId?: Id;
+  /** Called by a damage/heal-over-time tick when one of its effects actually moved the bearer's HP, so the caller can record each kind of tick, not just the net change. */
+  onDotEffect?: (kind: "damage" | "heal") => void;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -259,9 +285,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
       const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
-        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower);
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
       return 0;
     }
     case "removeStatusEffect": {
@@ -347,7 +373,8 @@ function applyStatusEffectToActor(
   ctx: ResolveContext,
   magnitudeOverride?: StatusMagnitudeOverride,
   linkedSummonId?: Id,
-  casterMagicPower?: number
+  casterMagicPower?: number,
+  onHitDurationTurns?: number
 ): void {
   const def = getStatusEffect(statusEffectId);
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
@@ -379,6 +406,7 @@ function applyStatusEffectToActor(
       appliedAmounts,
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
+      onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -402,6 +430,7 @@ function applyStatusEffectToActor(
     appliedAmounts,
     linkedSummonId,
     sourceMagicPower,
+    onHitDurationTurns,
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
@@ -431,7 +460,11 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
     }
   }
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
-  ctx.log.push({ text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: "info" });
+  ctx.log.push({
+    text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+    kind: "info",
+    ...(statusRole(def) === "buff" ? { buffLostOf: isSummon(actor) ? actor.ownerId : actor.id, ...(isSummon(actor) ? { buffLostOfSummon: true as const } : {}) } : {}),
+  });
 }
 
 function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
@@ -482,7 +515,10 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         // Its offenseMultiplierPercent scales the caster's magicPower snapshotted on apply, not the bearer's.
         if (e.kind === "heal") amount += ((active.sourceMagicPower ?? 0) * (e.offenseMultiplierPercent ?? 0)) / 100;
         const effectToApply = e.kind === "heal" ? { ...e, amount, offenseMultiplierPercent: undefined } : { ...e, amount, maxHpPercent: undefined };
+        const hpBefore = actor.hp;
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
+        if (actor.hp < hpBefore) ctx.onDotEffect?.("damage");
+        else if (actor.hp > hpBefore) ctx.onDotEffect?.("heal");
       }
       if (!isActorAlive(actor)) continue;
     }

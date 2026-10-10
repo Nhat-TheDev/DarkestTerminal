@@ -2299,7 +2299,7 @@ boot();
     damage: ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent"],
     heal: ["amount", "chance", "target", "offenseMultiplierPercent", "maxHpPercent"],
     restoreMp: ["amount", "chance", "target"],
-    applyStatusEffect: ["statusEffectId", "amount", "minPercent", "chance", "target", "durationTurns", "alsoApplyStatusEffectIds"],
+    applyStatusEffect: ["statusEffectId", "amount", "minPercent", "chance", "target", "durationTurns", "onHitDurationTurns", "alsoApplyStatusEffectIds"],
     removeStatusEffect: ["statusEffectId", "chance", "target"],
     modifyStat: ["stat", "amount", "chance", "target"],
     modifyCombatStat: ["combatStat", "amount", "minPercent", "chance", "target"],
@@ -2312,7 +2312,7 @@ boot();
   const ARTIFACT_EFFECT_FIELDS = {
     statBoost: ["stat", "amount", "minPercent"],
     reflectDamage: ["percent"],
-    poisonOnHit: ["chance"],
+    poisonOnHit: ["chance", "statusEffectId", "durationTurns"],
     lifesteal: ["percent"],
     dodgeChance: ["chance"],
     healOnKill: ["amount", "minPercent"],
@@ -2438,6 +2438,7 @@ boot();
     const combatStat = selectInput(["", ...COMBAT_STATS], effect.combatStat || "");
     const statusEffectId = textInput(effect.statusEffectId || "");
     const durationTurns = numberInput(effect.durationTurns, "1");
+    const onHitDurationTurns = numberInput(effect.onHitDurationTurns, "1");
     const ignoreDefensePercent = numberInput(effect.ignoreDefensePercent, "1");
     const lifestealPercent = numberInput(effect.lifestealPercent, "1");
     const maxHpPercent = numberInput(effect.maxHpPercent, "0.1");
@@ -2458,6 +2459,7 @@ boot();
       field("Combat stat", combatStat, "combatStat"),
       field("Status effect id", statusEffectId, "statusEffectId"),
       field("Duration (turns)", durationTurns, "durationTurns"),
+      field("On-hit status duration (turns)", onHitDurationTurns, "onHitDurationTurns"),
       field("Ignore defense %", ignoreDefensePercent, "ignoreDefensePercent"),
       field("Lifesteal %", lifestealPercent, "lifestealPercent"),
       field("Max HP % bonus", maxHpPercent, "maxHpPercent"),
@@ -2482,6 +2484,7 @@ boot();
       if (visible.includes("combatStat") && combatStat.value) out.combatStat = combatStat.value;
       if (visible.includes("statusEffectId")) out.statusEffectId = strOrUndefined(statusEffectId);
       if (visible.includes("durationTurns")) out.durationTurns = numOrUndefined(durationTurns);
+      if (visible.includes("onHitDurationTurns")) out.onHitDurationTurns = numOrUndefined(onHitDurationTurns);
       if (visible.includes("ignoreDefensePercent")) out.ignoreDefensePercent = numOrUndefined(ignoreDefensePercent);
       if (visible.includes("lifestealPercent")) out.lifestealPercent = numOrUndefined(lifestealPercent);
       if (visible.includes("maxHpPercent")) out.maxHpPercent = numOrUndefined(maxHpPercent);
@@ -2505,6 +2508,8 @@ boot();
     const percent = numberInput(effect.percent, "any");
     const chance = numberInput(effect.chance, "0.01");
     const turns = numberInput(effect.turns, "1");
+    const statusEffectId = textInput(effect.statusEffectId || "");
+    const durationTurns = numberInput(effect.durationTurns, "1");
     const minPercent = numberInput(effect.minPercent, "1");
     const offenseMultiplierPercent = numberInput(effect.offenseMultiplierPercent, "1");
     const isMagic = checkboxField("Is magic", effect.isMagic);
@@ -2519,6 +2524,8 @@ boot();
       field("Percent", percent, "percent"),
       field("Chance (0-1)", chance, "chance"),
       field("Turns", turns, "turns"),
+      field("Status effect id", statusEffectId, "statusEffectId"),
+      field("Duration (turns)", durationTurns, "durationTurns"),
       field("Min % (floor)", minPercent, "minPercent"),
       field("Offense mult %", offenseMultiplierPercent, "offenseMultiplierPercent"),
       field("", isMagic, "isMagic"),
@@ -2537,6 +2544,8 @@ boot();
       if (visible.includes("percent")) out.percent = numOrUndefined(percent) ?? 0;
       if (visible.includes("chance")) out.chance = numOrUndefined(chance) ?? 0;
       if (visible.includes("turns")) out.turns = numOrUndefined(turns) ?? 0;
+      if (visible.includes("statusEffectId")) out.statusEffectId = statusEffectId.value.trim();
+      if (visible.includes("durationTurns")) out.durationTurns = numOrUndefined(durationTurns) ?? 1;
       if (visible.includes("minPercent")) { const v = numOrUndefined(minPercent); if (v !== undefined) out.minPercent = v; }
       if (visible.includes("offenseMultiplierPercent")) { const v = numOrUndefined(offenseMultiplierPercent); if (v !== undefined) out.offenseMultiplierPercent = v; }
       if (visible.includes("isMagic") && isMagic._checkbox.checked) out.isMagic = true;
@@ -2777,7 +2786,7 @@ boot();
       el("div", { class: "row" }, [field("Stackable", stackable), field("Max stacks", maxStacks), field("Per-stack bonus %", perStackBonusPercent), field("Accuracy penalty %", accuracyPenaltyPercent), field("On-hit status (optional)", onHitStatusEffectId)]),
       el("fieldset", {}, [
         el("legend", { text: "Rank (optional — for a status that's a higher-rank variant of another, e.g. \"poisoned-ii\" of \"poisoned\")" }),
-        el("div", { class: "row" }, [field("Rank of (status id)", rankOf), field("Rank level (2 or 3)", rankLevel)]),
+        el("div", { class: "row" }, [field("Rank of (status id)", rankOf), field("Rank level (2-6)", rankLevel)]),
       ]),
       el("fieldset", {}, [
         el("legend", { text: "Tick category (optional — overrides inferred timing: dot, statMod, or special)" }),

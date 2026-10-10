@@ -10,7 +10,7 @@ export function getStatusEffect(id: string): StatusEffectDefinition {
   return def;
 }
 
-const RANK_NUMERAL: Record<2 | 3, string> = { 2: "II", 3: "III" };
+const RANK_NUMERAL: Record<NonNullable<StatusEffectDefinition["rankLevel"]>, string> = { 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI" };
 
 /** Composes the player-facing name for a status, appending a rank numeral (e.g. "Storm-Empowered II") for ranked variants instead of baking it into `name`. */
 export function statusDisplayName(def: StatusEffectDefinition): string {

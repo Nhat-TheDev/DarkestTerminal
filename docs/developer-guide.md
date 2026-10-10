@@ -62,7 +62,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/classes.json` | 9 classes (Vanguard/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner): stats + all 6 skills per class | `src/data/classes.ts` |
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
-| `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rally`, `poison-coat`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
+| `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rallied`, `poison-coated`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
 | `data/floor-milestones.json` | The floor-milestone omen lines (one per milestone floor, banded by `maxFloor`): `id`, `maxFloor`, `text`, plus the milestone `interval` | `src/data/floorMilestones.ts` |
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
@@ -80,7 +80,7 @@ of the code doesn't need to know the data comes from JSON.
 
 **Class passives — 2 shapes, no hardcoded ids in engine code.** A passive's mechanic always reads its magnitude off `PassiveRankDefinition`/`PassiveSkillDefinition` fields in `data/classes.json` (see `src/types.ts`) — never a number typed into TypeScript. Beyond that, a passive is one of 2 shapes:
 - **Pure stat math** (Vanguard, Rogue's bonus%, Acolyte, Archer, Ninja's dodge/clone%, Summoner): no status effect involved at all — the hook/helper in `src/engine/combat.ts`/`combatHooks.ts` just reads the rank's numeric field(s) and computes directly.
-- **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank (Mage's `onHitStatusEffectId` — "mage-shred"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall, Viking's `viking-blood-fury` — see `docs/gameplay-decisions/01-class-skill.md` §11's `minPercent`-override note). A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
+- **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank, whose own magnitude is the whole effect (Mage's `onHitStatusEffectId` — "shredded"/"-ii"/"-iii", Viking's `thresholdStatusEffectId` — "bloodrage"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall's `totems-strength` — see `docs/gameplay-decisions/01-class-skill.md` §11's `minPercent`-override note). A passive never repeats a number its status already carries. A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
 
 ## 🗺️ Floor structure — generated at runtime
 
@@ -130,10 +130,69 @@ row/column misalignment or missing palette colors. Sprites are edited
 visually in the browser via `bun run game-editor` (`tools/game-editor/`,
 Sprite Editor tab) rather than by hand-editing the character grid in JSON.
 
-This panel needs quite a bit of vertical space (13 pixels + 3 label lines +
-border ≈ 18 lines), plus the other panels → so a terminal **at least ~45-50
+Each unit's role icons sit one blank row above the tallest sprite its tier allows
+(`tierFrameHeight`, `src/ui/battlefieldFocus.ts`: characters and normal monsters share
+`MAX_UNIT_HEIGHT`, then `MAX_ELITE_HEIGHT`, `MAX_BOSS_HEIGHT`), so every unit of a tier wears its
+icons on the same row and an icon never touches a sprite. A boss needs the 2 extra rows above the
+frame (`ICON_BAND_ROWS`, `src/ui/layout.ts`); the battlefield always reserves them. Icons are
+centred over the unit's own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
+every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
+`src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
+a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage or a unit
+that lost a buff (it ran out, was removed or was spent — `LogSession.buffLostIds`, filled from the
+`buffLostOf` of the line `expireStatusEffect` logs), ▲ buffed, ✚ healed (a heal-over-time such as
+Mending counts here too, applied or expired), ⚚ caster of a buff/heal, ⊘ a unit whose turn was
+cancelled (stunned, too afraid to act, or cut short by an Overwatch shot — `LogSession.lostTurnIds`;
+a minion's lost turn shows on its owner), ♥ an attacker that drained HP from its own hit (`LogSession.lifestealIds`; a heal-on-kill is not
+lifesteal and only shows its number), ♙ a unit whose summon took part in the session — it acted, was
+targeted, ticked, lost a buff or fell (`LogSession.summonIds`, the owner's id; the cast that summons it does not count),
+worn after the role icons it comes with. Blue marks the party, red the monsters, by the side of the
+unit wearing the icon.
+A status that changes a stat is a buff or a debuff, by the direction of the change
+(`statusRole`, `src/engine/resolver.ts`); a stun and a blind are debuffs of their own, though they
+change no stat; one that restores HP or MP over time is a heal; damage over time, vulnerability,
+stealth and a stance such as Overwatch are neither, so casting or losing one lights the unit
+without a ▲ or ▼.
+Who those units are comes from `LogEntry.session` (`LogSession`, built in
+`src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
+because it has no sprite. Round-start and round-end ticks are one actor-less session per block
+that lights the units whose tick logged; its `cause` picks their icon — ☣ a damage-over-time tick
+(`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
+unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
+auto-damage (its target wears ⛨); a stat-mod expiry block shows only the ▼ of the units that lost a
+buff, which includes the allies whose buff ends with a leaving Recall Totem. An ally that a skill or
+item touches without helping (an aggro drop, say) is lit without an icon.
+
+After the icons comes the unit's outcome for the session, from its impact on: its HP change
+(`-12`, `+8`), or `miss` for a target whose attack or debuff missed or was dodged
+(`LogSession.missedIds`) and lost no HP. Damage is white on a monster and red on a character; a
+heal is green, lighter on a character and deeper on a monster (`MARKER_COLOR`, taking its colours
+from `PALETTE` in `src/ui/theme.ts`; the word `miss` is `ui.focusMiss` in `data/strings.json`).
+The change is the difference between the HP on screen when the session lights up and its own
+snapshot: each run of a session's entries carries the combatant state as of the end of that run
+(`runInSession`'s `snapshot` option), so a session never shows a change that belongs to the next
+one. A unit whose HP changed is never grey.
+
+A summon is drawn as its owner, so the HP change of the summons a unit owns is written there too.
+Alone it reads like the owner's own number. When the owner changed as well, the owner's number shows
+first and, a beat after the impact (`SUMMON_BEAT_TICKS`), the summon's replaces it,
+led by ♙ (`-12` becomes `♙-12`). A summon that died, was dismissed or faded leaves the fight with the
+HP it left with (`CombatState.departedSummons`), so a killing hit is still a number and a fade-away
+is not one.
+
+This panel needs quite a bit of vertical space (2 icon rows + 15 pixels + 3 label
+lines + border ≈ 22 lines), plus the other panels → so a terminal **at least ~47-52
 lines tall** is recommended; a shorter terminal will clip the bottom of the
 frame (labels/HP).
+
+The target list (`pickTarget`, `src/ui/targetPicker.ts`) reads the picked skill's or item's effects.
+A heal (a `heal` effect, or a status that heals over time) lists each ally's HP; a stat buff lists
+the stats it raises instead (`ATK`, `DEF`, `SPD`, `MAG`, `AGG` — the unit's current value); a cure,
+a debuff or an attack lists plain HP. Only the HP figure is coloured, with the party panel's
+thresholds (`hpColorFor`); names are not. A trailing `*` flags the most hurt target, only when its
+HP is under half (`MOST_HURT_BELOW`) and the first of equally hurt targets: an ally for a heal, an
+enemy for an attack or a debuff once at least two stand. Each side is read from the effects that
+reach it, so a stat buff or a heal flags no enemy and Purify flags an enemy and no ally.
 
 The remaining panels:
 - **Expedition**: each character is trimmed down to 2 lines (name+chip, HP/MP/fear);
@@ -143,13 +202,21 @@ The remaining panels:
   Coins/Satiety are shown in the header instead of per character.
 - **Monsters**: the list of monsters currently in combat + their HP, hidden
   when there are no monsters in the room
-- **Log**: 8 lines tall, **scrollable** (`↑`/`↓`, `ScrollBoxRenderable`,
-  sticks to the bottom by default) — keeps the entire log history for the run.
-  Combat rounds reveal log lines progressively (roughly 1 every 800ms) rather
-  than dumping the whole round at once — HP/MP/level/status (and coins/EXP/satiety
-  too) are frozen to match whichever line the reveal has reached, so the screen
-  never gets ahead of what the log has actually narrated. Any key skips straight
-  to the end of the reveal.
+- **Log**: 8 lines tall, scrollable (`↑`/`↓`, `ScrollBoxRenderable`, sticks to the bottom).
+  The box shows the **room log** — the latest 50 entries, cleared when the player enters
+  another room. `[l]` opens the **run log** on its own screen (`fullLog`): the latest 500
+  entries of the run, in memory only (a loaded save starts empty); only `Esc`, `↑`/`↓` and
+  `Ctrl+C` work inside it. Combat rounds are revealed **by action**: each actor's turn is one
+  session that stays on screen for at least `SESSION_MIN_TICKS` reveal ticks (`REVEAL_TICK_MS`
+  each). Its first line appears with the highlight; its **impact** comes `IMPACT_TICKS` later,
+  and only then do HP, statuses and the battlefield's numbers change and its other lines start,
+  one tick apart (a session with more lines than fit lasts until its last one). Lines with no
+  session (combat start, rewards, toasts) appear one per tick with no hold and apply at once.
+  One clock drives everything (`RevealQueue`,
+  `src/ui/revealQueue.ts`): each tick moves the log, the battlefield highlight and the displayed
+  HP/MP/status/coins together in a single `App.render()` — a session's state lands at its impact,
+  a line with no session's state with the line itself — so the screen is never ahead of the log.
+  Any key skips straight to the end of the reveal, in one render.
 
 The full theme/color palette is defined in `src/ui/theme.ts` — to change the
 color scheme or add a new class/monster, edit `PALETTE`/`CLASS_STYLE`/
@@ -206,16 +273,18 @@ is a key hint and belongs in the footer.
 4. paging      [←/→] Page
 5. back        [Esc] Back
    │
-6. globals     [b] Party   [q] Save   [s] Quicksave   [Ctrl+C] Quit
+6. globals     [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit
 ```
 
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
-`[b]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
+`[b]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
 including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
 `saveMenu`, `[s]` is off on `gameover`/`abilityBuyback`, `[b]` only opens party
 info from a fixed list of screen kinds. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
-otherwise the two drift apart and the hint outlives the binding. `globalHints()`
+otherwise the two drift apart and the hint outlives the binding. On the log screen itself
+only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
+so no save hint is shown. `globalHints()`
 (`src/ui/keyHints.ts`) is that single derivation; `App.render` runs every footer
 through `composeFooter()` so no screen can opt out.
 
@@ -368,10 +437,11 @@ src/
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear + satiety mechanics: room-entry drain, Exhausted/Dying, Camp, rest room actions
-    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). Only saves of the current app version load (`ALLOWED_LEGACY_SAVE_VERSIONS` is empty), so item renames such as `rat-meat` → `rat-tail` need no remap; if an older version is ever allowed, remap renamed item ids here first, because the loop that drops inventory counts for items no longer in the catalog would delete them silently
+    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). Only saves of the current app version load (`ALLOWED_LEGACY_SAVE_VERSIONS` is empty) and renamed ids are not remapped: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over. If an older version is ever allowed, remap its renamed ids here first, or those drops lose them silently
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
     events/runner.ts      # the Rest-room Merchant's Runner (not an event room): rollRestRunner, shop purchase/refresh, buyback
     events/barter.ts      # his trophy-for-buff barter: runnerBarter, and applyPendingBarterBuffs when the floor's elite/boss fight begins
+    logSession.ts         # LogSession builder: runInSession/runTicksInSession tag each actor's turn (or tick block) and note who it attacked/debuffed/buffed/healed
     combatHooks.ts        # passive/on-hit hook helpers read by combat.ts (class passives that don't apply a status effect)
     monsterAI.ts           # monster action/target selection (pickMonsterAction, resolveMonsterSkillTargets, Execute charge state machine)
     paths.ts                # save-directory/file path resolution
@@ -383,10 +453,13 @@ src/
   ui/characterSelect.ts # picking 4 characters (from the 9-class roster) for the party at the start of a new game
   ui/saveSelect.ts      # slot select for New Game / Continue
   ui/layout.ts          # shared panel sizing/layout helpers for App.render
+  ui/revealQueue.ts     # RevealQueue: the single clock pacing the combat log by session and driving the battlefield highlight
+  ui/battlefieldFocus.ts # greying of bystanders, role icons and the icon band above the sprites
+  ui/targetPicker.ts    # the target list rows: coloured HP, the stats a buff raises, the most-hurt `*`
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → characterSelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)

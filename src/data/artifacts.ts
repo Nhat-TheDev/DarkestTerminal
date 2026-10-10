@@ -4,7 +4,7 @@ import type { Rng } from "../engine/rng";
 import { t } from "./strings";
 import { signed } from "./items";
 import { BALANCE } from "./balanceConfig";
-import { autoDamageSummary } from "./abilities";
+import { autoDamageSummary, poisonOnHitSummary } from "./abilities";
 
 export const ARTIFACTS = artifactsJson as unknown as ArtifactDefinition[];
 
@@ -30,7 +30,7 @@ function artifactEffectSummary(effect: ArtifactEffect): string {
     case "reflectDamage":
       return t("artifact.effectReflectDamage", { percent: effect.percent });
     case "poisonOnHit":
-      return t("artifact.effectPoisonOnHit", { chance: effect.chance });
+      return poisonOnHitSummary(effect);
     case "lifesteal":
       return t("artifact.effectLifesteal", { percent: effect.percent });
     case "dodgeChance":

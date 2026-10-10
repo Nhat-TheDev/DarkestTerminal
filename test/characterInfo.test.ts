@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { formatPassiveEffect, renderMain } from "../src/ui/screens/characterInfo";
 import { CLASSES } from "../src/data/classes";
+import { formatStatusEffectMechanics, getStatusEffect } from "../src/data/statusEffects";
 import { Game } from "../src/engine/game";
 import type { UiState } from "../src/ui/state";
 
@@ -25,6 +26,8 @@ describe("formatPassiveEffect", () => {
     const viking = CLASSES.find((c) => c.id === "viking")!;
     const vikingRank1 = viking.passiveSkill.ranks.find((r) => r.rank === 1)!;
     expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(`costs ${viking.passiveSkill.selfDamagePerHitMaxHPPercent}%`);
+    // The bonus is read off the status the rank names, so the text cannot drift from what the status does.
+    expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(formatStatusEffectMechanics(getStatusEffect(vikingRank1.thresholdStatusEffectId!)));
 
     const ninja = CLASSES.find((c) => c.id === "ninja")!;
     const ninjaRank1 = ninja.passiveSkill.ranks.find((r) => r.rank === 1)!;
@@ -44,7 +47,7 @@ describe("formatPassiveEffect", () => {
 describe("renderMain: active statuses", () => {
   test("a status shows the stat delta it applied, not the status's own value", () => {
     const game = new Game(7);
-    game.state.party[0]!.activeStatusEffects.push({ statusEffectId: "totem-recall-buff", turnsRemaining: 2, appliedAmounts: { attack: 8 } });
+    game.state.party[0]!.activeStatusEffects.push({ statusEffectId: "totems-strength", turnsRemaining: 2, appliedAmounts: { attack: 8 } });
     const out = renderMain(game, { kind: "characterInfo", characterIndex: 0, previousUi: { kind: "room" } as UiState });
     const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("\n");
     expect(text).toContain("+8 attack");

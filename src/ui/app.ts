@@ -1,5 +1,5 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
-import type { Character, Monster, Id, LogEntry, CombatantSnapshot, PartyStateSnapshot, RoomType, Floor } from "../types";
+import type { Character, Monster, Id, LogEntry, LogSession, CombatantSnapshot, CombatState, PartyStateSnapshot, RoomType, Floor } from "../types";
 import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
@@ -23,7 +23,6 @@ import {
   fearColorFor,
   joinLines,
   progressBar,
-  LOG_KIND_STYLE,
   highlightKeyHints,
 } from "./theme";
 import {
@@ -31,14 +30,15 @@ import {
   spriteForMonster,
   spriteForEvent,
   renderSpriteInSlot,
-  compositeSpriteRow,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
-  type Sprite,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
+import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { composeFooter } from "./keyHints";
@@ -61,8 +61,8 @@ import * as abilityBuybackScreen from "./screens/abilityBuyback";
 import * as characterInfoScreen from "./screens/characterInfo";
 import * as runnerScreen from "./screens/runner";
 
-const LOG_HISTORY_SIZE = 20;
-const LOG_REVEAL_INTERVAL_MS = 800;
+const ROOM_LOG_SIZE = 50;
+const RUN_LOG_SIZE = 500;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
@@ -95,10 +95,33 @@ export class App implements ScreenContext {
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
+  private chrome: BoxRenderable[];
+  private fullLogBox: BoxRenderable;
+  private fullLogText: TextRenderable;
+  private fullLogScroll: ScrollBoxRenderable;
+  private fullLogJustOpened = false;
+  /** `runLogVersion` the run-log screen was last built from. */
+  private fullLogBuiltFrom = -1;
   private lastLogLength = 0;
-  private observedCombatLog: LogEntry[] | null = null;
-  private logHistory: LogEntry[] = [];
-  private pendingReveal: LogEntry[] = [];
+  private observedCombat: CombatState | null = null;
+  /** A combat that ended before its last round was narrated: the enemy side, the Monsters panel and the round in the header are drawn from it until that reveal drains. */
+  private narratedCombat: CombatState | null = null;
+  /** Toasts written while no combat is open but a finished one is still being narrated: they join the reveal after its lines. */
+  private deferredToasts: LogEntry[] = [];
+  /** The screen the main panel last drew, so a new screen starts unscrolled. */
+  private mainUi: UiState | null = null;
+  private roomLog: LogEntry[] = [];
+  private roomLogFloor: Floor | null = null;
+  private roomLogRoomId: Id | null = null;
+  private runLog: LogEntry[] = [];
+  /** Bumped on every append: runLog's length stops changing once it is full. */
+  private runLogVersion = 0;
+  private reveal = new RevealQueue();
+  /** HP change per unit over the lit session, worked out when it lights up (shown from its impact). */
+  private focusDeltas = new Map<Id, number>();
+  private deltasFor: LogSession | null = null;
+  private autoReveal: boolean;
+  private lastRender = { revealing: false, focusId: null as number | null, logTailSessionId: null as number | null };
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private displaySnapshot: CombatantSnapshot[] | null = null;
   private displayPartySnapshot: PartyStateSnapshot | null = null;
@@ -106,10 +129,9 @@ export class App implements ScreenContext {
   private pendingCampOffer = false;
   private listPage = 0;
   private progress: TextRenderable;
-  private roomHistory: { roomId: Id; type: RoomType }[] = [];
-  private historyFloorRef: Floor | null = null;
 
-  constructor(private renderer: CliRenderer, game?: Game) {
+  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
+    this.autoReveal = options.autoReveal ?? true;
     this.game = game ?? new Game();
 
     const panel = {
@@ -187,6 +209,23 @@ export class App implements ScreenContext {
     logBox.add(this.logScroll);
     this.root.add(logBox);
 
+    this.chrome = [headerBox, progressBox, battlefieldBox, body, logBox];
+
+    this.fullLogBox = new BoxRenderable(renderer, { id: "full-log-box", ...panel, flexGrow: 1, title: t("ui.panelFullLog", { count: RUN_LOG_SIZE }), visible: false });
+    this.fullLogScroll = new ScrollBoxRenderable(renderer, {
+      id: "full-log-scroll",
+      width: "100%",
+      height: "100%",
+      scrollX: false,
+      scrollY: true,
+      stickyScroll: true,
+      stickyStart: "bottom",
+    });
+    this.fullLogText = new TextRenderable(renderer, { id: "full-log", content: "", fg: PALETTE.dim });
+    this.fullLogScroll.add(this.fullLogText);
+    this.fullLogBox.add(this.fullLogScroll);
+    this.root.add(this.fullLogBox);
+
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
     const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
@@ -203,6 +242,38 @@ export class App implements ScreenContext {
 
   get debugGame(): Game {
     return this.game;
+  }
+
+  get debugRoomLog(): LogEntry[] {
+    return this.roomLog;
+  }
+
+  get debugRunLog(): LogEntry[] {
+    return this.runLog;
+  }
+
+  get debugFocus(): LogSession | null {
+    return this.reveal.focus;
+  }
+
+  get debugRevealActive(): boolean {
+    return this.reveal.active;
+  }
+
+  get debugDisplaySnapshot(): CombatantSnapshot[] | null {
+    return this.displaySnapshot;
+  }
+
+  get debugRevealHolding(): boolean {
+    return this.reveal.holding;
+  }
+
+  get debugFocusDeltas(): Map<Id, number> {
+    return this.focusDeltas;
+  }
+
+  get debugLastRender() {
+    return this.lastRender;
   }
 
   setUi(next: UiState): void {
@@ -238,7 +309,7 @@ export class App implements ScreenContext {
   }
 
   logInfo(text: string): void {
-    this.logHistory.push({ text, kind: "info" });
+    this.appendLog([{ text, kind: "info" }]);
   }
 
   syncUiToGameState(): void {
@@ -332,6 +403,15 @@ export class App implements ScreenContext {
       this.quit();
       return;
     }
+    if (this.ui.kind === "fullLog") {
+      if (key.name === "escape") {
+        this.ui = this.ui.previous;
+        this.render();
+      } else if (this.fullLogScroll.handleKeyPress(key)) {
+        this.render();
+      }
+      return;
+    }
     if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
@@ -343,7 +423,13 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
-    if (this.pendingReveal.length > 0) {
+    if (key.name === "l") {
+      this.ui = { kind: "fullLog", previous: this.ui };
+      this.fullLogJustOpened = true;
+      this.render();
+      return;
+    }
+    if (this.reveal.active) {
       this.flushPendingReveal();
       return;
     }
@@ -512,12 +598,13 @@ export class App implements ScreenContext {
 
   reportUnusable(reason: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text: reason, kind: "info" });
-    else this.logHistory.push({ text: reason, kind: "info" });
+    else this.appendLog([{ text: reason, kind: "info" }]);
   }
 
   pushToast(text: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
-    else this.logHistory.push({ text, kind: "info" });
+    else if (this.reveal.active || (this.observedCombat !== null && this.observedCombat.log.length > this.lastLogLength)) this.deferredToasts.push({ text, kind: "info" });
+    else this.appendLog([{ text, kind: "info" }]);
   }
 
   getPendingFloorAdvance(): boolean {
@@ -539,25 +626,69 @@ export class App implements ScreenContext {
   private render(): void {
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
+    this.syncRoomLog();
 
     // Reveal-state bookkeeping runs before the header/party/monster panels below so all of them can
     // read the same "as of the last revealed log line" snapshot, instead of the header alone jumping
     // straight to the live post-combat totals while HP/MP/status are still catching up to the log.
-    const combatLog = s.combat?.log ?? null;
-    if (combatLog !== this.observedCombatLog) {
-      this.observedCombatLog = combatLog;
+    const combat = s.combat;
+    const fresh: LogEntry[] = [];
+    // The combat whose round-start state a fresh reveal starts from: normally the current one, but the
+    // round that wipes the party ends the combat before this render runs.
+    let revealSource = combat;
+    if (combat !== this.observedCombat) {
+      // Whatever the previous combat logged after the last line this screen saw still has to be narrated.
+      const finished = this.observedCombat;
+      if (finished && finished.log.length > this.lastLogLength) {
+        fresh.push(...finished.log.slice(this.lastLogLength));
+        revealSource = finished;
+      }
+      this.observedCombat = combat;
       this.lastLogLength = 0;
       this.displaySnapshot = null;
       this.displayPartySnapshot = null;
+      // A save loaded mid-fight or on the combat-over screen arrives with its resolved rounds already in
+      // the log: the player saw them before saving, so they are not replayed.
+      if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
-    if (combatLog && combatLog.length > this.lastLogLength) {
-      this.displaySnapshot = s.combat!.roundStartSnapshot ?? null;
-      this.displayPartySnapshot = s.combat!.roundStartPartySnapshot ?? null;
-      this.pendingReveal.push(...combatLog.slice(this.lastLogLength));
-      this.lastLogLength = combatLog.length;
-      this.scheduleReveal();
+    if (combat && combat.log.length > this.lastLogLength) {
+      fresh.push(...combat.log.slice(this.lastLogLength));
+      this.lastLogLength = combat.log.length;
     }
-    const revealing = this.pendingReveal.length > 0;
+    fresh.push(...this.deferredToasts.splice(0));
+    if (fresh.length > 0) {
+      // Only a fresh reveal starts from the round-start state and takes its first step now. Lines queued
+      // behind a running reveal (a toast, a quicksave) neither rewind HP/MP/coins nor add a tick.
+      const wasIdle = !this.reveal.active;
+      if (wasIdle) {
+        const fromRound = fresh.some((e) => e.snapshot !== undefined);
+        this.displaySnapshot = fromRound ? (revealSource?.roundStartSnapshot ?? null) : null;
+        this.displayPartySnapshot = fromRound ? (revealSource?.roundStartPartySnapshot ?? null) : null;
+        this.narratedCombat = revealSource !== combat ? revealSource : null;
+      }
+      this.reveal.enqueue(fresh);
+      if (wasIdle) this.startReveal();
+    }
+    const revealing = this.reveal.active;
+    if (!revealing) this.narratedCombat = null;
+    const shownCombat = this.narratedCombat ?? combat;
+    const focus = this.reveal.focus;
+    const inFullLog = this.ui.kind === "fullLog";
+    for (const box of this.chrome) box.visible = !inFullLog;
+    this.fullLogBox.visible = inFullLog;
+    if (inFullLog) {
+      // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
+      if (this.fullLogBuiltFrom !== this.runLogVersion) {
+        this.fullLogBuiltFrom = this.runLogVersion;
+        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+      }
+      if (this.fullLogJustOpened) {
+        this.fullLogJustOpened = false;
+        this.fullLogScroll.scrollTop = this.fullLogScroll.scrollHeight;
+      }
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, false))]);
+      return;
+    }
     const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
     const partyOverride = revealing ? this.displayPartySnapshot : null;
 
@@ -579,7 +710,7 @@ export class App implements ScreenContext {
       [
         boldColorChunk(room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
-        colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
+        colorChunk(shownCombat ? t("ui.roundHeader", { round: shownCombat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
         colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
@@ -589,23 +720,18 @@ export class App implements ScreenContext {
       expLine,
     ]);
 
-    if (s.floor !== this.historyFloorRef) {
-      this.historyFloorRef = s.floor;
-      this.roomHistory = [{ roomId: s.currentRoomId, type: room.type }];
-    } else if (this.roomHistory[this.roomHistory.length - 1]?.roomId !== s.currentRoomId) {
-      this.roomHistory.push({ roomId: s.currentRoomId, type: room.type });
-    }
     const progressChunks: TextChunk[] = [];
-    this.roomHistory.forEach((entry, i) => {
+    s.roomPath.forEach((roomId, i) => {
       if (i > 0) progressChunks.push(plainChunk("-"));
-      const isCurrent = i === this.roomHistory.length - 1;
-      const icon = isCurrent ? CURRENT_ROOM_ICON : ROOM_TYPE_ICON[entry.type];
+      const isCurrent = i === s.roomPath.length - 1;
+      const icon = isCurrent ? CURRENT_ROOM_ICON : ROOM_TYPE_ICON[getRoom(s.floor, roomId).type];
       const color = isCurrent ? PALETTE.title : PALETTE.dim;
       progressChunks.push(plainChunk("["), colorChunk(icon, color), plainChunk("]"));
     });
     this.progress.content = joinLines([progressChunks]);
 
-    this.battlefield.content = joinLines(this.renderBattlefield(hpOverride));
+    this.battlefield.content = joinLines(this.renderBattlefield(shownCombat, hpOverride, focus));
+    this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
     s.party.forEach((c, i) => {
@@ -621,7 +747,9 @@ export class App implements ScreenContext {
       );
     });
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
+    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride));
+    this.keepScrollInRange(this.party);
+    this.keepScrollInRange(this.monsters);
     if (revealing) {
       this.main.content = t("ui.revealingCombat");
       // The reveal swallows every key except the globals handled before it, and `[b]` is not one
@@ -631,49 +759,102 @@ export class App implements ScreenContext {
       this.main.content = this.renderMain();
       this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
     }
+    this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+    this.mainUi = this.ui;
     this.renderLogContent();
+    this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
+  }
+
+  /** What the summons `ownerId` owns did to their HP over the lit session; they are drawn as the owner. */
+  private summonFocus(ownerId: Id): SummonFocus {
+    let delta = 0;
+    for (const summon of this.game.ctx.summons) if (summon.ownerId === ownerId) delta += this.focusDeltas.get(summon.id) ?? 0;
+    return { delta, beat: this.reveal.summonBeat };
+  }
+
+  /**
+   * The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden.
+   * The range is counted in wrapped rows (`maxScrollY`), the same unit the wheel scrolls in.
+   */
+  private keepScrollInRange(panel: TextRenderable, reset = false): void {
+    panel.scrollY = reset ? 0 : panel.scrollY;
+  }
+
+  /** The room log belongs to one room: the first thing written (or rendered) after the player changes room starts it afresh. */
+  private syncRoomLog(): void {
+    const s = this.game.state;
+    if (s.floor !== this.roomLogFloor || s.currentRoomId !== this.roomLogRoomId) {
+      this.roomLogFloor = s.floor;
+      this.roomLogRoomId = s.currentRoomId;
+      this.roomLog = [];
+    }
+  }
+
+  private appendLog(entries: LogEntry[]): void {
+    this.syncRoomLog();
+    this.roomLog.push(...entries);
+    this.runLog.push(...entries);
+    this.runLogVersion++;
+    if (this.roomLog.length > ROOM_LOG_SIZE) this.roomLog.splice(0, this.roomLog.length - ROOM_LOG_SIZE);
+    if (this.runLog.length > RUN_LOG_SIZE) this.runLog.splice(0, this.runLog.length - RUN_LOG_SIZE);
   }
 
   private renderLogContent(): void {
-    const displayLog = this.logHistory.slice(-LOG_HISTORY_SIZE);
-    if (displayLog.length === 0) {
+    if (this.roomLog.length === 0) {
       this.log.content = this.game.state.message;
       return;
     }
-    this.log.content = joinLines(
-      displayLog.map((entry) => {
-        const style = LOG_KIND_STYLE[entry.kind];
-        return [colorChunk(`${style.icon} `, style.color), colorChunk(entry.text, style.color)];
-      })
-    );
+    this.log.content = joinLines(logLines(this.roomLog));
   }
 
-  private scheduleReveal(): void {
-    if (this.revealTimer !== null) return;
+  /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */
+  private applyRevealed(entries: LogEntry[]): void {
+    if (entries.length > 0) this.appendLog(entries);
+    const focus = this.reveal.focus;
+    if (focus !== this.deltasFor) {
+      this.deltasFor = focus;
+      this.focusDeltas = focus ? hpDeltas(this.displaySnapshot, this.reveal.focusSnapshot) : new Map();
+    }
+    // A session's HP/status change waits for its impact; lines with no session apply theirs at once.
+    if (this.reveal.holding) return;
+    if (focus) {
+      this.displaySnapshot = this.reveal.focusSnapshot ?? this.displaySnapshot;
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.snapshot) this.displaySnapshot = entry.snapshot;
+      if (entry.partySnapshot) this.displayPartySnapshot = entry.partySnapshot;
+    }
+  }
+
+  /** Called only when lines were queued on an idle queue: shows the first line immediately, then lets the timer carry on. */
+  private startReveal(): void {
+    this.applyRevealed(this.reveal.tick());
+    this.scheduleRevealTick();
+  }
+
+  private scheduleRevealTick(): void {
+    if (!this.autoReveal || this.revealTimer !== null || !this.reveal.active) return;
     this.revealTimer = setTimeout(() => {
       this.revealTimer = null;
-      const next = this.pendingReveal.shift();
-      if (next) {
-        this.logHistory.push(next);
-        if (next.snapshot) this.displaySnapshot = next.snapshot;
-        if (next.partySnapshot) this.displayPartySnapshot = next.partySnapshot;
-      }
-      if (this.pendingReveal.length > 0) this.scheduleReveal();
-      this.render();
-    }, LOG_REVEAL_INTERVAL_MS);
+      this.tickReveal();
+    }, REVEAL_TICK_MS);
+  }
+
+  /** One reveal step: the log line, the HP/MP snapshot and the battlefield highlight all move together, in this single render. */
+  tickReveal(): void {
+    this.applyRevealed(this.reveal.tick());
+    this.scheduleRevealTick();
+    this.render();
   }
 
   private flushPendingReveal(): void {
-    if (this.pendingReveal.length === 0) return;
+    if (!this.reveal.active) return;
     if (this.revealTimer !== null) {
       clearTimeout(this.revealTimer);
       this.revealTimer = null;
     }
-    const last = this.pendingReveal[this.pendingReveal.length - 1];
-    this.logHistory.push(...this.pendingReveal);
-    if (last?.snapshot) this.displaySnapshot = last.snapshot;
-    if (last?.partySnapshot) this.displayPartySnapshot = last.partySnapshot;
-    this.pendingReveal = [];
+    this.applyRevealed(this.reveal.flush());
     this.render();
   }
 
@@ -746,13 +927,8 @@ export class App implements ScreenContext {
     ];
   }
 
-  private buildSideBlock(units: { sprite: Sprite; label: string; labelColor: string; statusText: string; statusColor: string }[]): TextChunk[][] {
-    const spritePart = compositeSpriteRow(
-      units.map((u) => u.sprite),
-      SLOT_WIDTH,
-      MAX_BOSS_HEIGHT,
-      SLOT_GAP
-    );
+  private buildSideBlock(units: BattlefieldUnit[]): TextChunk[][] {
+    const spritePart = buildSideSpriteArea(units, SLOT_WIDTH, SLOT_GAP);
     const metaPart = mergeBlocksHorizontally(
       units.map((u) => this.buildUnitMeta(u.label, u.labelColor, u.statusText, u.statusColor)),
       SLOT_GAP
@@ -767,7 +943,7 @@ export class App implements ScreenContext {
     lines.push(blank());
     lines.push(message ? [colorChunk(centerText(message, EMPTY_ENEMY_WIDTH), PALETTE.dim)] : blank());
     lines.push(blank());
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildCampfireBlock(): TextChunk[][] {
@@ -775,7 +951,7 @@ export class App implements ScreenContext {
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
     lines.push([colorChunk(centerText(t("ui.campfireWarm"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildTreasureBlock(): TextChunk[][] {
@@ -783,7 +959,7 @@ export class App implements ScreenContext {
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
     lines.push([colorChunk(centerText(t("ui.treasureChestLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
   private buildEventBlock(eventId: Id): TextChunk[][] {
@@ -794,11 +970,12 @@ export class App implements ScreenContext {
     lines.push(blank());
     lines.push([colorChunk(centerText(label, EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push(blank());
-    return lines;
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
+    const impact = focus !== null && !this.reveal.holding;
 
     const partyUnits = s.party.map((c) => {
       const view = hpOverride?.get(c.id);
@@ -806,20 +983,21 @@ export class App implements ScreenContext {
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      if (!isAlive) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead };
-      const sprite = spriteForClass(c.classId);
-      return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp) };
+      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact, this.summonFocus(c.id));
+      const frameHeight = tierFrameHeight("party");
+      if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
+      return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
     });
     const partyBlock = this.buildSideBlock(partyUnits);
 
     const room = getRoom(s.floor, s.currentRoomId);
-    const isRestRoom = !s.combat && room.type === "rest";
-    const isEventRoom = !s.combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isRestRoom = !combat && room.type === "rest";
+    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
-    if (s.combat) {
-      const monsterCombatants = s.combat.combatants.filter((c) => c.ref.kind === "monster");
+    if (combat) {
+      const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
       } else {
@@ -828,9 +1006,10 @@ export class App implements ScreenContext {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
-          if (hp <= 0) return { sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead };
-          const sprite = spriteForMonster(m.archetypeId, m.tier);
-          return { sprite, label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp) };
+          const lens = unitFocus(m.id, "monster", focus, this.focusDeltas.get(m.id), impact);
+          const frameHeight = tierFrameHeight(m.tier);
+          if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
+          return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
       }
@@ -848,7 +1027,7 @@ export class App implements ScreenContext {
     const divider: TextChunk[][] = [];
     for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
       divider.push(
-        i === Math.floor(UNIT_BLOCK_HEIGHT / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
+        i === ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS) / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
           ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
           : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
       );
@@ -857,9 +1036,9 @@ export class App implements ScreenContext {
     return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
-  private renderMonsterLines(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
+  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
     const s = this.game.state;
-    if (!s.combat) {
+    if (!combat) {
       const room = getRoom(s.floor, s.currentRoomId);
       if (room.type !== "combat" && room.type !== "boss") {
         return [[colorChunk(t("ui.noMonsters"), PALETTE.dim)]];
@@ -867,7 +1046,7 @@ export class App implements ScreenContext {
       return [[colorChunk(room.cleared ? t("ui.roomSafe") : t("ui.notEncounteredDot"), PALETTE.dim)]];
     }
     const lines: TextChunk[][] = [];
-    for (const combatant of s.combat.combatants) {
+    for (const combatant of combat.combatants) {
       if (combatant.ref.kind !== "monster") continue;
       const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
       const hp = hpOverride?.get(m.id)?.hp ?? m.hp;
@@ -902,6 +1081,8 @@ export class App implements ScreenContext {
 
   private renderMain(): string | StyledText {
     switch (this.ui.kind) {
+      case "fullLog":
+        return "";
       case "gameover":
         return gameoverScreen.renderMain(this.game);
 
@@ -1052,6 +1233,8 @@ export class App implements ScreenContext {
         return abilityBuybackScreen.renderFooter();
       case "gameover":
         return gameoverScreen.renderFooter();
+      case "fullLog":
+        return t("ui.footerBackOnly");
     }
   }
 }

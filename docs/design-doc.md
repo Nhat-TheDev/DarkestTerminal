@@ -56,7 +56,7 @@ existing gameplay.
 - Details of each event type: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
 
 ### 1.8 Status Effect (buff/debuff)
-- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rally`), expiring after `durationTurns`, without stacking — reapplying one only refreshes its duration
+- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns`, without stacking — reapplying one only refreshes its duration
 - List of status effects and how they interact with skills: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1
 
 ---

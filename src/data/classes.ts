@@ -1,5 +1,7 @@
-import type { CharacterClass, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
+import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
+import { STATUS_EFFECTS } from "./statusEffects";
+import { SUMMON_CASTS } from "./summons";
 
 /**
  * A ranked skill's rank-1 numbers are its "base" numbers — `data/classes.json` doesn't repeat
@@ -15,6 +17,24 @@ function normalizeRankedSkill(skill: SkillDefinition): SkillDefinition {
 
 export const CLASSES = classesJson as unknown as CharacterClass[];
 
+/** Every status a passive names must exist, so a typo fails at load rather than mid-fight. */
+export function validatePassiveStatusIds(classId: string, passive: PassiveSkillDefinition): void {
+  const check = (where: string, field: string, ids: Id[]) => {
+    for (const id of ids) {
+      if (!STATUS_EFFECTS.some((s) => s.id === id)) throw new Error(`data/classes.json: class "${classId}"'s passive ${where} names an unknown ${field} "${id}"`);
+    }
+  };
+  for (const rank of passive.ranks) {
+    check(`rank ${rank.rank}`, "thresholdStatusEffectId", rank.thresholdStatusEffectId ? [rank.thresholdStatusEffectId] : []);
+    check(`rank ${rank.rank}`, "onHitStatusEffectId", rank.onHitStatusEffectId ? [rank.onHitStatusEffectId] : []);
+  }
+  check("skill", "requiresTargetStatusId", passive.requiresTargetStatusId ? [passive.requiresTargetStatusId] : []);
+  check("skill", "debuffPool", passive.debuffPool ?? []);
+  if (passive.cloneSummonCastId !== undefined && !SUMMON_CASTS.some((c) => c.id === passive.cloneSummonCastId)) {
+    throw new Error(`data/classes.json: class "${classId}"'s passive names an unknown cloneSummonCastId "${passive.cloneSummonCastId}"`);
+  }
+}
+
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");
 for (const cls of CLASSES) {
   if (cls.skills.length !== 6) {
@@ -26,6 +46,7 @@ for (const cls of CLASSES) {
   if (passiveRanks.length !== 3 || ![1, 2, 3].every((rank) => passiveRanks.includes(rank as 1 | 2 | 3))) {
     throw new Error(`data/classes.json: class "${cls.id}"'s passiveSkill must have exactly ranks 1, 2, and 3 (has ${JSON.stringify(passiveRanks)})`);
   }
+  validatePassiveStatusIds(cls.id, cls.passiveSkill);
 }
 
 export function getClass(id: string): CharacterClass {

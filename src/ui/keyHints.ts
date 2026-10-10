@@ -31,8 +31,9 @@ const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "roomReward",
   "campPrompt",
 ];
-const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "saveMenu"];
-const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback"];
+const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "saveMenu", "fullLog"];
+const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "fullLog"];
+const NO_LOG_KINDS: readonly UiState["kind"][] = ["fullLog"];
 
 export function joinHints(...parts: (string | null | false | undefined)[]): string {
   return parts.filter((p): p is string => typeof p === "string" && p.length > 0).join(HINT_GAP);
@@ -41,6 +42,7 @@ export function joinHints(...parts: (string | null | false | undefined)[]): stri
 export function globalHints(kind: UiState["kind"], allowPartyInfo: boolean = true): string {
   return joinHints(
     allowPartyInfo && PARTY_INFO_KINDS.includes(kind) ? t("ui.hintParty") : null,
+    NO_LOG_KINDS.includes(kind) ? null : t("ui.hintLog"),
     NO_SAVE_KINDS.includes(kind) ? null : t("ui.hintSave"),
     NO_QUICKSAVE_KINDS.includes(kind) ? null : t("ui.hintQuicksave"),
     t("ui.hintQuit")

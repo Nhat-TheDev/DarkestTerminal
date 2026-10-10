@@ -26,7 +26,7 @@ describe("new skill mechanics", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "vanguard-shield-guard", [self], ctx);
+    queueAction(combat, self, "shield-guard", [self], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("gains the Guard effect"))).toBe(true);
@@ -44,16 +44,16 @@ describe("new skill mechanics", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
     const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
-    expect(queueAction(combat, acolyteRef, "acolyte-prayer", [allyRef], ctx)).toBeNull();
+    expect(queueAction(combat, acolyteRef, "prayer", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
     expect(vanguard.survival.fear).toBeLessThan(40);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(true);
-    expect(acolyte.cooldownsRemaining["acolyte-prayer"]).toBe(1);
+    expect(acolyte.cooldownsRemaining["prayer"]).toBe(1);
 
     resolveRound(combat, ctx);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(false);
-    expect(acolyte.cooldownsRemaining["acolyte-prayer"]).toBe(0);
+    expect(acolyte.cooldownsRemaining["prayer"]).toBe(0);
   });
 
   test("Healing Draught heals on cast, then again at the start of each of the next 2 rounds, scaled off the caster", () => {
@@ -72,7 +72,7 @@ describe("new skill mechanics", () => {
     const perHeal = 7 + 50 * 0.4;
 
     vanguard.hp = 100;
-    expect(queueAction(combat, doctorRef, "plaguedoc-healing-draught", [allyRef], ctx)).toBeNull();
+    expect(queueAction(combat, doctorRef, "healing-draught", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
     expect(vanguard.hp).toBe(100 + perHeal);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(true);
@@ -95,7 +95,7 @@ describe("new skill mechanics", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
-    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-stab", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: rogue.id }, "stab", [enemyRef], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === rogue.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -117,18 +117,18 @@ describe("new skill mechanics", () => {
     const self: CombatantRef = { kind: "character", id: rogue.id };
 
     for (const ref of livingCharacterRefs(combat, ctx)) {
-      if (ref.id === rogue.id) queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+      if (ref.id === rogue.id) queueAction(combat, self, "poison-coat", [self], ctx);
       else {
         const { skillId, targets } = pickAnyAction(ctx, combat, ref);
         queueAction(combat, ref, skillId, targets, ctx);
       }
     }
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coated")).toBe(true);
 
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     for (const ref of livingCharacterRefs(combat, ctx)) {
-      if (ref.id === rogue.id) queueAction(combat, self, "rogue-knife-throw", [enemyRef], ctx);
+      if (ref.id === rogue.id) queueAction(combat, self, "knife-throw", [enemyRef], ctx);
       else {
         const { skillId, targets } = pickAnyAction(ctx, combat, ref);
         queueAction(combat, ref, skillId, targets, ctx);
@@ -152,12 +152,12 @@ describe("new skill mechanics", () => {
 
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     const hpBefore = getActorByRef(enemyRef, ctx).hp;
-    expect(queueAction(combat, acolyteRef, "acolyte-purify", [enemyRef], ctx)).toBeNull();
+    expect(queueAction(combat, acolyteRef, "purify", [enemyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
     expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore);
 
     const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
-    expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
+    expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
   });
@@ -176,7 +176,7 @@ describe("new skill mechanics", () => {
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
     const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
 
-    expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
+    expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
@@ -195,7 +195,7 @@ describe("new skill mechanics", () => {
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
     const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
 
-    expect(queueAction(combat, acolyteRef, "acolyte-purify", [allyRef], ctx)).toBeNull();
+    expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
     expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
@@ -204,7 +204,7 @@ describe("new skill mechanics", () => {
   test("ultimate skills always hit even at high fear, but scale damage down instead of missing", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("vanguard-sword-judgment");
+    vanguard.unlockedSkillIds.push("sword-judgment");
     vanguard.mp = 999;
     vanguard.survival.fear = 99;
     const skeleton = spawnInto(ctx, "skeleton-guard");
@@ -213,7 +213,7 @@ describe("new skill mechanics", () => {
     const enemyActor = getActorByRef(enemyRef, ctx);
     const fullPowerDamage = Math.max(1, 30 + mitigatedOffense(vanguard.attack, enemyActor.defense));
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-sword-judgment", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: vanguard.id }, "sword-judgment", [enemyRef], ctx);
     const hpBefore = enemyActor.hp;
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - enemyActor.hp;
@@ -226,7 +226,7 @@ describe("new skill mechanics", () => {
   test("an ultimate's fear-tier penalty scales its whole power budget (offenseMultiplierPercent-based portion included), not just its flat amount", () => {
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("vanguard-sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
+    vanguard.unlockedSkillIds.push("sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
     vanguard.mp = 999;
     vanguard.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
     // vampire-bat (Beast race, Predator subRace) rather than skeleton-guard — its Skeletal subRace
@@ -240,7 +240,7 @@ describe("new skill mechanics", () => {
     // round(30*0.6) + mitigatedOffense(vanguard.attack*0.85, defense) — the offense-scaled term unaffected.
     const amountOnlyScaledDamage = Math.max(1, Math.round(30 * 0.6) + mitigatedOffense(vanguard.attack * 0.85, enemyActor.defense));
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-sword-judgment", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: vanguard.id }, "sword-judgment", [enemyRef], ctx);
     const hpBefore = enemyActor.hp;
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - enemyActor.hp;
@@ -255,7 +255,7 @@ describe("new skill mechanics", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    queueAction(combat, { kind: "character", id: rogue.id }, "rogue-knife-throw", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: rogue.id }, "knife-throw", [enemyRef], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => /^Dungeon Rat takes \d+ damage from Rogue's Knife Throw\.$/.test(l.text))).toBe(true);
@@ -281,10 +281,10 @@ describe("new skill mechanics", () => {
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
     const combat = startCombat("r1", [rat.id], ctx, false);
 
-    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    queueAction(combat, self, "lightning-axe", [self], ctx);
     resolveRound(combat, ctx);
     const logBefore = combat.log.length;
-    queueAction(combat, self, "viking-axe-slash", [enemyRef], ctx);
+    queueAction(combat, self, "axe-slash", [enemyRef], ctx);
     resolveRound(combat, ctx);
 
     const newLines = combat.log.slice(logBefore).map((l) => l.text);
@@ -306,8 +306,8 @@ describe("queued action refund when it never executes", () => {
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
     const rogueMpBefore = rogue.mp;
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [ratRef], ctx);
-    expect(queueAction(combat, { kind: "character", id: rogue.id }, "rogue-knife-throw", [ratRef], ctx)).toBeNull();
+    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [ratRef], ctx);
+    expect(queueAction(combat, { kind: "character", id: rogue.id }, "knife-throw", [ratRef], ctx)).toBeNull();
     expect(rogue.mp).toBe(rogueMpBefore);
 
     resolveRound(combat, ctx);
@@ -327,7 +327,7 @@ describe("queued action refund when it never executes", () => {
     const combat = startCombat("r1", [monster.id], ctx, false);
 
     const acolyteMpBefore = acolyte.mp;
-    expect(queueAction(combat, { kind: "character", id: acolyte.id }, "acolyte-heal", [vanguardRef], ctx)).toBeNull();
+    expect(queueAction(combat, { kind: "character", id: acolyte.id }, "heal", [vanguardRef], ctx)).toBeNull();
     expect(acolyte.mp).toBe(acolyteMpBefore);
 
     vanguard.hp = 0;
@@ -348,15 +348,15 @@ describe("queued action refund when it never executes", () => {
     const selfRef: CombatantRef = { kind: "character", id: vanguard.id };
 
     const mpBefore = vanguard.mp;
-    expect(queueAction(combat, selfRef, "vanguard-shield-guard", [selfRef], ctx)).toBeNull();
+    expect(queueAction(combat, selfRef, "shield-guard", [selfRef], ctx)).toBeNull();
     expect(vanguard.mp).toBe(mpBefore);
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBeUndefined();
+    expect(vanguard.cooldownsRemaining["shield-guard"]).toBeUndefined();
 
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
     expect(vanguard.mp).toBe(mpBefore);
-    expect(vanguard.cooldownsRemaining["vanguard-shield-guard"]).toBeUndefined();
+    expect(vanguard.cooldownsRemaining["shield-guard"]).toBeUndefined();
   });
 });
 
@@ -398,7 +398,7 @@ describe("skill rank resolution", () => {
   });
 
   test("a skill with no ranks is returned unchanged", () => {
-    const noRanks = getSkill("vanguard-slash");
+    const noRanks = getSkill("slash");
     expect(getEffectiveSkill(noRanks, 100)).toBe(noRanks);
   });
 
@@ -441,7 +441,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const enemyRefs = livingMonsterRefs(combat, ctx);
     const hpBefore = enemyRefs.map((r) => getActorByRef(r, ctx).hp);
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [enemyRefs[0]!], ctx);
+    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [enemyRefs[0]!], ctx);
     resolveRound(combat, ctx);
 
     for (let i = 0; i < enemyRefs.length; i++) {
@@ -460,7 +460,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const { ctx } = makeCtx();
     const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
     vanguard.mp = 999;
-    vanguard.unlockedSkillIds.push("vanguard-heavy-charge");
+    vanguard.unlockedSkillIds.push("heavy-charge");
     vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-aoe", turnsRemaining: 3 });
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
@@ -475,7 +475,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const directDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack * 0.7, rat1.defense) + 20));
     const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower, rat1.defense * 0.7) + 6));
 
-    queueAction(combat, self, "vanguard-heavy-charge", targets, ctx);
+    queueAction(combat, self, "heavy-charge", targets, ctx);
     resolveRound(combat, ctx);
 
     const dmgTaken1 = 500 - getActorByRef({ kind: "monster", id: rat1.id }, ctx).hp;
@@ -502,7 +502,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     for (let i = 0; i < offFloor.length; i++) {
@@ -528,7 +528,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const combat = startCombat("r1", [rat.id], ctx, false);
 
     const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower * 0.5, rat.defense * 0.7) + 6));
-    queueAction(combat, { kind: "character", id: vanguard.id }, "vanguard-slash", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     const basicAttackDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, rat.defense)));
@@ -695,6 +695,11 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     expect(isHelpfulStatusEffect(getStatusEffect("test-blinded"))).toBe(false);
   });
 
+  test("isHelpfulStatusEffect: a stat cut written only as a share of the stat is a debuff, not a buff", () => {
+    const shareOnly = { ...getStatusEffect("weakened"), perTurnEffects: [{ kind: "modifyCombatStat" as const, combatStat: "attack" as const, amount: 0, minPercent: -15 }] };
+    expect(isHelpfulStatusEffect(shareOnly)).toBe(false);
+  });
+
   test("a monster's basicAttack rolls rollHits: never misses without accuracyPenaltyPercent, can miss when Blinded", () => {
     let missWithoutBlinded = 0;
     let missWithBlinded = 0;
@@ -720,7 +725,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
 
 describe("Vanguard skill ranks", () => {
   test("Shield Guard ranks resolve to guard-ii/guard-iii at lv7/lv15", () => {
-    const skill = getSkill("vanguard-shield-guard");
+    const skill = getSkill("shield-guard");
     expect(getEffectiveSkill(skill, 1).mpCost).toBe(8);
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 },
@@ -739,7 +744,7 @@ describe("Vanguard skill ranks", () => {
   });
 
   test("Sword Judgment ranks resolve to dmg 30/40/50 at lv35/70/100", () => {
-    const skill = getSkill("vanguard-sword-judgment");
+    const skill = getSkill("sword-judgment");
     expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 85 }]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 95 }]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 110 }]);
@@ -749,7 +754,7 @@ describe("Vanguard skill ranks", () => {
 
 describe("Mage skill ranks", () => {
   test("Fireball ranks resolve dmg/mp/burn-chance at lv1/7/15", () => {
-    const skill = getSkill("mage-fireball");
+    const skill = getSkill("fireball");
     expect(getEffectiveSkill(skill, 1)).toMatchObject({
       mpCost: 5,
       effects: [
@@ -774,7 +779,7 @@ describe("Mage skill ranks", () => {
   });
 
   test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100", () => {
-    const skill = getSkill("mage-ice-age");
+    const skill = getSkill("ice-age");
     expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }]);
@@ -818,7 +823,7 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
   });
 
   test("Fire Vial ranks resolve dmg/burn% at lv1/7/15", () => {
-    const skill = getSkill("plaguedoc-fire-vial");
+    const skill = getSkill("fire-vial");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 90, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.6, durationTurns: 2 },
@@ -834,7 +839,7 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
   });
 
   test("Total Plague ranks resolve ally/enemy effects (via appliesToRelation) at lv35/100", () => {
-    const skill = getSkill("plaguedoc-total-plague");
+    const skill = getSkill("total-plague");
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
       { kind: "heal", amount: 20, offenseMultiplierPercent: 60, appliesToRelation: "ally" },
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
@@ -856,12 +861,12 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
       const doc = ctx.party.find((p) => p.classId === "plague-doctor")!;
-      doc.unlockedSkillIds.push("plaguedoc-blinding-vial");
+      doc.unlockedSkillIds.push("blinding-vial");
       doc.mp = 999;
       const tanky = spawnInto(ctx, "skeleton-guard");
       const combat = startCombat("r1", [tanky.id], ctx, false);
       const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
-      queueAction(combat, { kind: "character", id: doc.id }, "plaguedoc-blinding-vial", [enemyRef], ctx);
+      queueAction(combat, { kind: "character", id: doc.id }, "blinding-vial", [enemyRef], ctx);
       resolveRound(combat, ctx);
       const enemyActor = getActorByRef(enemyRef, ctx);
       if (!enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "blinded")) continue;
@@ -884,7 +889,7 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
       const doc = ctx.party.find((p) => p.classId === "plague-doctor")!;
-      doc.unlockedSkillIds.push("plaguedoc-total-plague");
+      doc.unlockedSkillIds.push("total-plague");
       doc.mp = 999;
       const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
       vanguard.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
@@ -893,7 +898,7 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
       const combat = startCombat("r1", [tanky.id], ctx, false);
       const docRef: CombatantRef = { kind: "character", id: doc.id };
       const targets = autoResolveTargets("allAlliesAndEnemies", docRef, combat, ctx) ?? [];
-      queueAction(combat, docRef, "plaguedoc-total-plague", targets, ctx);
+      queueAction(combat, docRef, "total-plague", targets, ctx);
       resolveRound(combat, ctx);
 
       expect(combat.log.some((l) => l.text.startsWith(vanguard.name) && l.text.includes("recovers"))).toBe(true);
@@ -916,7 +921,7 @@ describe("Viking class", () => {
   });
 
   test("Lightning Axe applies storm-empowered + storm-recoil at rank 1", () => {
-    const skill = getSkill("viking-lightning-axe");
+    const skill = getSkill("lightning-axe");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered", durationTurns: 3 },
       { kind: "applyStatusEffect", statusEffectId: "storm-recoil", durationTurns: 1 },
@@ -924,7 +929,7 @@ describe("Viking class", () => {
   });
 
   test("Lightning Axe ranks reference storm-empowered-ii/iii, storm-recoil unchanged", () => {
-    const skill = getSkill("viking-lightning-axe");
+    const skill = getSkill("lightning-axe");
     expect(getEffectiveSkill(skill, 7).effects).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered-ii", durationTurns: 3 },
       { kind: "applyStatusEffect", statusEffectId: "storm-recoil", durationTurns: 1 },
@@ -936,7 +941,7 @@ describe("Viking class", () => {
   });
 
   test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 30/40/50", () => {
-    const skill = getSkill("viking-thunder-god-fury");
+    const skill = getSkill("thunder-gods-fury");
     expect(skill.conditionalBonus).toEqual({ requiresStatusId: "storm-empowered", ignoreDefensePercentBonus: 60, consumesStatus: true });
     expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 80, damageType: "lightning" }]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 100, damageType: "lightning" }]);
@@ -944,7 +949,7 @@ describe("Viking class", () => {
   });
 
   test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed%", () => {
-    const slash = getSkill("viking-frenzied-slash");
+    const slash = getSkill("frenzied-slash");
     expect(getEffectiveSkill(slash, 7).effects).toEqual([
       { kind: "damage", amount: 12, offenseMultiplierPercent: 100 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6, durationTurns: 3 },
@@ -954,11 +959,11 @@ describe("Viking class", () => {
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.7, durationTurns: 3 },
     ]);
 
-    const throwAxe = getSkill("viking-throw-axe");
+    const throwAxe = getSkill("throw-axe");
     expect(getEffectiveSkill(throwAxe, 25).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
     expect(getEffectiveSkill(throwAxe, 45).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 115 }]);
 
-    const spinAxe = getSkill("viking-spin-axe");
+    const spinAxe = getSkill("spinning-axe");
     expect(getEffectiveSkill(spinAxe, 50).effects).toEqual([
       { kind: "damage", amount: 20, offenseMultiplierPercent: 77 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.4, durationTurns: 3 },
@@ -982,20 +987,20 @@ describe("Viking class", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.mp = 999;
-    viking.unlockedSkillIds.push("viking-thunder-god-fury");
+    viking.unlockedSkillIds.push("thunder-gods-fury");
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: viking.id };
     const rat1Ref: CombatantRef = { kind: "monster", id: rat1.id };
 
-    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    queueAction(combat, self, "lightning-axe", [self], ctx);
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("gains the Storm-Empowered effect"))).toBe(true);
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(true);
 
     const rat2HpBefore = getActorByRef({ kind: "monster", id: rat2.id }, ctx).hp;
-    queueAction(combat, self, "viking-frenzied-slash", [rat1Ref], ctx);
+    queueAction(combat, self, "frenzied-slash", [rat1Ref], ctx);
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("misses"))).toBe(false);
     const rat2HpAfter = getActorByRef({ kind: "monster", id: rat2.id }, ctx).hp;
@@ -1003,14 +1008,14 @@ describe("Viking class", () => {
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(true);
 
     const ultimateTargets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
-    queueAction(combat, self, "viking-thunder-god-fury", ultimateTargets, ctx);
+    queueAction(combat, self, "thunder-gods-fury", ultimateTargets, ctx);
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("Thunder God's Fury"))).toBe(true);
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered")).toBe(false);
   });
 
   test("rank-resolution picks up Viking's rank-2/3 numbers at the correct character level", () => {
-    const skill = getSkill("viking-throw-axe");
+    const skill = getSkill("throw-axe");
     const character = createCharacter("vk-test", "Viking Test", getClass("viking"), 25);
     expect(getEffectiveSkill(skill, character.level).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
   });
@@ -1028,7 +1033,7 @@ describe("Viking class", () => {
     const self: CombatantRef = { kind: "character", id: viking.id };
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    queueAction(combat, self, "lightning-axe", [self], ctx);
     resolveRound(combat, ctx);
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-ii")).toBe(true);
 
@@ -1040,7 +1045,7 @@ describe("Viking class", () => {
     expect(withBonusDamage).toBeGreaterThan(noBonusDamage);
 
     const logBefore = combat.log.length;
-    queueAction(combat, self, "viking-frenzied-slash", [enemyRef], ctx);
+    queueAction(combat, self, "frenzied-slash", [enemyRef], ctx);
     resolveRound(combat, ctx);
     const directHitLine = combat.log.slice(logBefore).find((l) => /^Dungeon Rat takes \d+ damage from Viking's Frenzied Slash\.$/.test(l.text));
     const directDamage = Number(directHitLine!.text.match(/takes (\d+) damage/)![1]);
@@ -1053,18 +1058,18 @@ describe("Viking class", () => {
     const viking = ctx.party.find((p) => p.classId === "viking")!;
     viking.level = 40;
     viking.mp = 999;
-    viking.unlockedSkillIds.push("viking-thunder-god-fury");
+    viking.unlockedSkillIds.push("thunder-gods-fury");
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: viking.id };
 
-    queueAction(combat, self, "viking-lightning-axe", [self], ctx);
+    queueAction(combat, self, "lightning-axe", [self], ctx);
     resolveRound(combat, ctx);
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-iii")).toBe(true);
 
     const ultimateTargets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
-    queueAction(combat, self, "viking-thunder-god-fury", ultimateTargets, ctx);
+    queueAction(combat, self, "thunder-gods-fury", ultimateTargets, ctx);
     resolveRound(combat, ctx);
 
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId.startsWith("storm-empowered"))).toBe(false);
@@ -1074,7 +1079,7 @@ describe("Viking class", () => {
 
 describe("Rogue skill ranks + poison exclusivity", () => {
   test("Poison Bomb ranks deal upfront damage and apply poisoned-ii/iii, exclusive to this skill", () => {
-    const bomb = getSkill("rogue-poison-bomb");
+    const bomb = getSkill("poison-bomb");
     expect(getEffectiveSkill(bomb, 20).effects).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 50 },
       { kind: "applyStatusEffect", statusEffectId: "poisoned", durationTurns: 3 },
@@ -1090,10 +1095,10 @@ describe("Rogue skill ranks + poison exclusivity", () => {
   });
 
   test("Poison Coat's on-hit rider always applies plain poisoned, even at rank 2/3", () => {
-    const coat = getSkill("rogue-poison-coat");
-    // Ranks 2/3 apply the same base "poison-coat" rider status alongside a separate attack-buff
+    const coat = getSkill("poison-coat");
+    // Ranks 2/3 apply the same base "poison-coated" rider status alongside a separate attack-buff
     // status (venom-edge/-ii) — the on-hit rider itself never changes rank.
-    expect(getStatusEffect("poison-coat").onHitStatusEffectId).toBe("poisoned");
+    expect(getStatusEffect("poison-coated").onHitStatusEffectId).toBe("poisoned");
 
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
@@ -1102,13 +1107,13 @@ describe("Rogue skill ranks + poison exclusivity", () => {
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
-    queueAction(combat, self, "rogue-poison-coat", [self], ctx);
+    queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);
-    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coat")).toBe(true);
+    expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "poison-coated")).toBe(true);
     expect(rogue.activeStatusEffects.some((s) => s.statusEffectId === "venom-edge-ii")).toBe(true);
 
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
-    queueAction(combat, self, "rogue-knife-throw", [enemyRef], ctx);
+    queueAction(combat, self, "knife-throw", [enemyRef], ctx);
     resolveRound(combat, ctx);
     const enemyActor = getActorByRef(enemyRef, ctx);
     expect(enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "poisoned")).toBe(true);
@@ -1119,14 +1124,14 @@ describe("Rogue skill ranks + poison exclusivity", () => {
 
 describe("Acolyte skill ranks incl. appliesToRelation", () => {
   test("Heal ranks resolve heal 16/22/30 at lv1/7/15", () => {
-    const skill = getSkill("acolyte-heal");
+    const skill = getSkill("heal");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16, offenseMultiplierPercent: 90 }]);
     expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "heal", amount: 22, offenseMultiplierPercent: 100 }]);
     expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "heal", amount: 30, offenseMultiplierPercent: 110 }]);
   });
 
   test("Divine Descent ranks resolve ally (heal+fear) / enemy (dmg) effects at lv35/70/100", () => {
-    const skill = getSkill("acolyte-divine-descent");
+    const skill = getSkill("divine-descent");
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
       { kind: "heal", amount: 25, offenseMultiplierPercent: 70, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -15, appliesToRelation: "ally" },
@@ -1145,7 +1150,7 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
   });
 
   test("Purify ranks resolve the enemy-side damage only, ally side always removeStatusEffect", () => {
-    const skill = getSkill("acolyte-purify");
+    const skill = getSkill("purify");
     expect(getEffectiveSkill(skill, 10).effects).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
       { kind: "damage", amount: 15, offenseMultiplierPercent: 100, appliesToRelation: "enemy", damageType: "holy" },
@@ -1166,27 +1171,27 @@ describe("Archer class", () => {
     const archer = getClass("archer");
     expect(archer.skills.length).toBe(6);
     const basic = archer.skills.find((s) => s.slot === 0)!;
-    expect(basic.id).toBe("archer-quick-shot");
+    expect(basic.id).toBe("quick-shot");
     expect(basic.mpCost).toBe(0);
     expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 85 }]);
   });
 
   test("Aimed Shot ranks resolve dmg/critChance at lv1/7/15", () => {
-    const skill = getSkill("archer-aimed-shot");
+    const skill = getSkill("aimed-shot");
     expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "damage", amount: 16, offenseMultiplierPercent: 90, critChance: 0.3 }]);
     expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "damage", amount: 21, offenseMultiplierPercent: 95, critChance: 0.35 }]);
     expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "damage", amount: 26, offenseMultiplierPercent: 105, critChance: 0.4 }]);
   });
 
   test("Volley Shot's offense multiplier rises with rank", () => {
-    const skill = getSkill("archer-volley-shot");
+    const skill = getSkill("volley-shot");
     for (const [level, amount, offenseMultiplierPercent] of [[10, 10, 60], [25, 14, 66], [45, 19, 75]] as const) {
       expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "damage", amount, offenseMultiplierPercent }]);
     }
   });
 
   test("Deadeye Shot is an ultimate with guaranteed crit (critChance 1) at every rank", () => {
-    const skill = getSkill("archer-deadeye-shot");
+    const skill = getSkill("deadeye-shot");
     expect(skill.isUltimate).toBe(true);
     expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 90, critChance: 1 }]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 34, offenseMultiplierPercent: 110, critChance: 1 }]);
@@ -1215,7 +1220,7 @@ describe("Archer class", () => {
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
     const self: CombatantRef = { kind: "character", id: archer.id };
     const hpBefore = rat.hp;
-    queueAction(combat, self, "archer-aimed-shot", [enemy], ctx);
+    queueAction(combat, self, "aimed-shot", [enemy], ctx);
     resolveRound(combat, ctx);
     expect(rat.hp).toBeLessThan(hpBefore);
   });
@@ -1230,13 +1235,13 @@ describe("Ninja class", () => {
     const ninja = getClass("ninja");
     expect(ninja.skills.length).toBe(6);
     const basic = ninja.skills.find((s) => s.slot === 0)!;
-    expect(basic.id).toBe("ninja-kunai-strike");
+    expect(basic.id).toBe("kunai-strike");
     expect(basic.mpCost).toBe(0);
     expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 80 }]);
   });
 
   test("Throwing Knives ranks resolve dmg/offense%/extraHitChance/bleed% at lv10/25/45", () => {
-    const skill = getSkill("ninja-throwing-knives");
+    const skill = getSkill("throwing-knives");
     expect(getEffectiveSkill(skill, 10).effects).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 80, extraHitChance: 0.4 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6, durationTurns: 3 },
@@ -1250,14 +1255,14 @@ describe("Ninja class", () => {
   });
 
   test("Shuriken Storm's hitCountRange widens by rank: 1-2 / 1-3 / 2-3", () => {
-    const skill = getSkill("ninja-shuriken-storm");
+    const skill = getSkill("shuriken-storm");
     expect(getEffectiveSkill(skill, 20).effects?.[0]?.hitCountRange).toEqual({ min: 1, max: 2 });
     expect(getEffectiveSkill(skill, 50).effects?.[0]?.hitCountRange).toEqual({ min: 1, max: 3 });
     expect(getEffectiveSkill(skill, 75).effects?.[0]?.hitCountRange).toEqual({ min: 2, max: 3 });
   });
 
   test("Death Mark is an ultimate that scales with bleeding stacks and has a bigger executeBonus", () => {
-    const skill = getSkill("ninja-death-mark");
+    const skill = getSkill("death-mark");
     expect(skill.isUltimate).toBe(true);
     expect(skill.executeBonus).toEqual({ hpPercentThreshold: 30, bonusDamageFlat: 30 });
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
@@ -1273,8 +1278,8 @@ describe("Ninja class", () => {
     expect(status.perTurnEffects).toEqual([]);
   });
 
-  test("ninja-clone summon archetype exists with a basic-attack-only action weight table", () => {
-    const archetype = getSummonArchetype("ninja-clone");
+  test("shadow-clone summon archetype exists with a basic-attack-only action weight table", () => {
+    const archetype = getSummonArchetype("shadow-clone");
     expect(archetype.actionWeights).toEqual({ basicAttack: 1 });
   });
 
@@ -1287,7 +1292,7 @@ describe("Ninja class", () => {
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
     const self: CombatantRef = { kind: "character", id: ninja.id };
     const hpBefore = rat.hp;
-    queueAction(combat, self, "ninja-kunai-strike", [enemy], ctx);
+    queueAction(combat, self, "kunai-strike", [enemy], ctx);
     resolveRound(combat, ctx);
     expect(rat.hp).toBeLessThan(hpBefore);
   });
@@ -1302,7 +1307,7 @@ describe("Summoner class", () => {
     const summoner = getClass("summoner");
     expect(summoner.skills.length).toBe(6);
     const basic = summoner.skills.find((s) => s.slot === 0)!;
-    expect(basic.id).toBe("summoner-hollow-pulse");
+    expect(basic.id).toBe("hollow-pulse");
     expect(basic.mpCost).toBe(0);
     expect(basic.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
@@ -1316,9 +1321,9 @@ describe("Summoner class", () => {
   });
 
   test("Summon Goblin's cast profile carries the minion's attack% as a rising 3-rank tuple, sourced from the Summoner's magicPower", () => {
-    const skill = getSkill("summoner-summon-goblin");
+    const skill = getSkill("summon-goblin");
     const castId = getEffectiveSkill(skill, 1).effects?.[0]?.summonCastId;
-    expect(castId).toBe("summoner-summon-goblin");
+    expect(castId).toBe("summon-goblin");
     // The same cast profile is referenced at every rank — the per-rank growth lives inside it as a tuple.
     expect(getEffectiveSkill(skill, 7).effects?.[0]?.summonCastId).toBe(castId);
     expect(getEffectiveSkill(skill, 15).effects?.[0]?.summonCastId).toBe(castId);
@@ -1331,7 +1336,7 @@ describe("Summoner class", () => {
   });
 
   test("Summon Hellfire Imp is an ultimate that both spawns a minion and hits allEnemies", () => {
-    const skill = getSkill("summoner-summon-imp");
+    const skill = getSkill("summon-hellfire-imp");
     expect(skill.isUltimate).toBe(true);
     expect(skill.target).toBe("allEnemies");
     const effects = getEffectiveSkill(skill, 35).effects ?? [];
@@ -1345,13 +1350,13 @@ describe("Summoner class", () => {
     expect(() => getSkill("summoner-mastery")).toThrow();
   });
 
-  test("summoner-totem-recall exists in slot 4 and grants an attack buff to allies except summons", () => {
+  test("totem-recall exists in slot 4 and grants an attack buff to allies except summons", () => {
     const cls = getClass("summoner");
-    const skill = cls.skills.find((s) => s.id === "summoner-totem-recall")!;
+    const skill = cls.skills.find((s) => s.id === "totem-recall")!;
     expect(skill).toBeDefined();
     expect(skill.slot).toBe(4);
     const buffEffect = getEffectiveSkill(skill, 75).effects!.find((e) => e.kind === "applyStatusEffect")!;
-    expect(buffEffect.statusEffectId).toBe("totem-recall-buff");
+    expect(buffEffect.statusEffectId).toBe("totems-strength");
     expect(buffEffect.target).toBe("allAllies");
     expect(buffEffect.excludesSummonTargets).toBe(true);
     expect(buffEffect.linksToCasterSummon).toBe(true);
@@ -1387,46 +1392,46 @@ describe("Summoner class", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower");
     expect(goblin).toBeDefined();
-    expect(goblin!.maxHp).toBe(expectedStat("summoner-summon-goblin", "maxHp", summoner, 1));
+    expect(goblin!.maxHp).toBe(expectedStat("summon-goblin", "maxHp", summoner, 1));
     // Physical-attacking minion, but funded by the magic-leaning Summoner's magicPower, not its own weak attack.
-    expect(getSummonCast("summoner-summon-goblin").stat.attack.sourceStat).toBe("magicPower");
-    expect(goblin!.attack).toBe(expectedStat("summoner-summon-goblin", "attack", summoner, 1));
+    expect(getSummonCast("summon-goblin").stat.attack.sourceStat).toBe("magicPower");
+    expect(goblin!.attack).toBe(expectedStat("summon-goblin", "attack", summoner, 1));
   });
 
   test("Summon Goblin at rank 2 uses rank 2's attack%, not rank 1's — resolved from the shared cast profile via the caster's level", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    summoner.level = 7; // summoner-summon-goblin's rank 2 unlockLevel
+    summoner.level = 7; // summon-goblin's rank 2 unlockLevel
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-goblin", [self], ctx);
+    queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower");
     expect(goblin).toBeDefined();
-    expect(goblin!.attack).toBe(expectedStat("summoner-summon-goblin", "attack", summoner, 2));
-    expect(goblin!.attack).not.toBe(expectedStat("summoner-summon-goblin", "attack", summoner, 1));
+    expect(goblin!.attack).toBe(expectedStat("summon-goblin", "attack", summoner, 2));
+    expect(goblin!.attack).not.toBe(expectedStat("summon-goblin", "attack", summoner, 1));
   });
 
   test("Summon Golem spawns a stone-golem with attack from the Summoner's magicPower too", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 10;
-    summoner.unlockedSkillIds.push("summoner-summon-golem");
+    summoner.unlockedSkillIds.push("summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-golem", [self], ctx);
+    queueAction(combat, self, "summon-golem", [self], ctx);
     resolveRound(combat, ctx);
     const golem = ctx.summons.find((s) => s.archetypeId === "stone-golem");
     expect(golem).toBeDefined();
-    expect(golem!.maxHp).toBe(expectedStat("summoner-summon-golem", "maxHp", summoner, 1));
-    expect(getSummonCast("summoner-summon-golem").stat.attack.sourceStat).toBe("magicPower");
-    expect(golem!.attack).toBe(expectedStat("summoner-summon-golem", "attack", summoner, 1));
+    expect(golem!.maxHp).toBe(expectedStat("summon-golem", "maxHp", summoner, 1));
+    expect(getSummonCast("summon-golem").stat.attack.sourceStat).toBe("magicPower");
+    expect(golem!.attack).toBe(expectedStat("summon-golem", "attack", summoner, 1));
   });
 
   test("Summon Spirit spawns a healer-spirit with magicPower from the Summoner's own magicPower, not attack", () => {
@@ -1435,11 +1440,11 @@ describe("Summoner class", () => {
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
-    queueAction(combat, self, "summoner-summon-spirit", [self], ctx);
+    queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx);
     const spirit = ctx.summons.find((s) => s.archetypeId === "healer-spirit");
     expect(spirit).toBeDefined();
-    expect(spirit!.magicPower).toBe(expectedStat("summoner-summon-spirit", "magicPower", summoner, 1));
+    expect(spirit!.magicPower).toBe(expectedStat("summon-spirit", "magicPower", summoner, 1));
   });
 
   test("Summoner is selectable and fights: Hollow Pulse deals damage via a full combat round", () => {
@@ -1451,7 +1456,7 @@ describe("Summoner class", () => {
     const enemy = livingMonsterRefs(combat, ctx)[0]!;
     const self: CombatantRef = { kind: "character", id: summoner.id };
     const hpBefore = rat.hp;
-    queueAction(combat, self, "summoner-hollow-pulse", [enemy], ctx);
+    queueAction(combat, self, "hollow-pulse", [enemy], ctx);
     resolveRound(combat, ctx);
     expect(rat.hp).toBeLessThan(hpBefore);
   });
@@ -1467,16 +1472,16 @@ describe("damageType tagging", () => {
   }
 
   test("Mage elemental skills carry the right damageType", () => {
-    expect(damageEffectsOf("mage", "mage-fireball").every((e) => e.damageType === "fire")).toBe(true);
-    expect(damageEffectsOf("mage", "mage-fire-pillar").every((e) => e.damageType === "fire")).toBe(true);
-    expect(damageEffectsOf("mage", "mage-lightning-bolt").every((e) => e.damageType === "lightning")).toBe(true);
-    expect(damageEffectsOf("mage", "mage-lightning-storm").every((e) => e.damageType === "lightning")).toBe(true);
-    expect(damageEffectsOf("mage", "mage-ice-age").every((e) => e.damageType === "ice")).toBe(true);
+    expect(damageEffectsOf("mage", "fireball").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("mage", "fire-pillar").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("mage", "lightning-bolt").every((e) => e.damageType === "lightning")).toBe(true);
+    expect(damageEffectsOf("mage", "lightning-storm").every((e) => e.damageType === "lightning")).toBe(true);
+    expect(damageEffectsOf("mage", "ice-age").every((e) => e.damageType === "ice")).toBe(true);
   });
 
   test("Arcane Bolt (mage) is isMagic, damageType magic", () => {
     const cls = getClass("mage");
-    const skill = cls.skills.find((s) => s.id === "mage-arcane-bolt")!;
+    const skill = cls.skills.find((s) => s.id === "arcane-bolt")!;
     expect(skill.name).toBe("Arcane Bolt");
     expect(skill.description).toBe("A weak bolt of raw arcane force — basic damage.");
     expect(skill.isMagic).toBe(true);
@@ -1484,31 +1489,31 @@ describe("damageType tagging", () => {
   });
 
   test("Acolyte's Smite and Summoner's Hollow Pulse are isMagic, damageType magic, at 60% / 70%", () => {
-    const smite = getClass("acolyte").skills.find((s) => s.id === "acolyte-smite")!;
+    const smite = getClass("acolyte").skills.find((s) => s.id === "smite")!;
     expect(smite.name).toBe("Smite");
     expect(smite.isMagic).toBe(true);
     expect(smite.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 60 }]);
 
-    const pulse = getClass("summoner").skills.find((s) => s.id === "summoner-hollow-pulse")!;
+    const pulse = getClass("summoner").skills.find((s) => s.id === "hollow-pulse")!;
     expect(pulse.name).toBe("Hollow Pulse");
     expect(pulse.isMagic).toBe(true);
     expect(pulse.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
 
   test("Viking's Thunder God's Fury is lightning, other Viking damage skills are untagged (physical)", () => {
-    expect(damageEffectsOf("viking", "viking-thunder-god-fury").every((e) => e.damageType === "lightning")).toBe(true);
-    for (const id of ["viking-axe-slash", "viking-frenzied-slash", "viking-throw-axe", "viking-spin-axe"]) {
+    expect(damageEffectsOf("viking", "thunder-gods-fury").every((e) => e.damageType === "lightning")).toBe(true);
+    for (const id of ["axe-slash", "frenzied-slash", "throw-axe", "spinning-axe"]) {
       expect(damageEffectsOf("viking", id).every((e) => e.damageType === undefined)).toBe(true);
     }
   });
 
   test("Plague Doctor's Fire Vial is fire, Spreading Toxic Fog is poison", () => {
-    expect(damageEffectsOf("plague-doctor", "plaguedoc-fire-vial").every((e) => e.damageType === "fire")).toBe(true);
-    expect(damageEffectsOf("plague-doctor", "plaguedoc-toxic-fog").every((e) => e.damageType === "poison")).toBe(true);
+    expect(damageEffectsOf("plague-doctor", "fire-vial").every((e) => e.damageType === "fire")).toBe(true);
+    expect(damageEffectsOf("plague-doctor", "spreading-toxic-fog").every((e) => e.damageType === "poison")).toBe(true);
   });
 
   test("Acolyte's Purify/Divine Descent enemy-facing damage effect is holy", () => {
-    for (const skillId of ["acolyte-purify", "acolyte-divine-descent"]) {
+    for (const skillId of ["purify", "divine-descent"]) {
       const cls = getClass("acolyte");
       const skill = cls.skills.find((s) => s.id === skillId)!;
       const damageEffects = (skill.ranks ?? []).flatMap((r) => (r.effects ?? []).filter((e) => e.kind === "damage"));

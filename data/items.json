@@ -101,7 +101,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "whetstone",
+        "statusEffectId": "whetstones-edge",
         "durationTurns": 2
       }
     ],
@@ -115,7 +115,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "temporary-ward",
+        "statusEffectId": "temporary-wards-hold",
         "durationTurns": 2
       }
     ],
@@ -219,7 +219,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "honing-oil",
+        "statusEffectId": "honing-oils-edge",
         "durationTurns": 3
       }
     ],
@@ -233,7 +233,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "marrow-broth",
+        "statusEffectId": "marrow-broths-mend",
         "durationTurns": 3
       }
     ],
@@ -247,8 +247,9 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "poison-coat",
-        "durationTurns": 3
+        "statusEffectId": "poison-coated",
+        "durationTurns": 3,
+        "onHitDurationTurns": 3
       }
     ],
     "tier": "rare"
@@ -261,7 +262,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "tar-flask",
+        "statusEffectId": "tar-flasks-drag",
         "durationTurns": 2
       }
     ],
@@ -275,7 +276,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "smoke-pellet",
+        "statusEffectId": "smoke-pellets-haze",
         "durationTurns": 1
       }
     ],
@@ -289,7 +290,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "bandage-roll",
+        "statusEffectId": "bandage-rolls-mend",
         "durationTurns": 3
       }
     ],
@@ -303,7 +304,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "resin-wrap",
+        "statusEffectId": "resin-wraps-ward",
         "durationTurns": 2
       }
     ],
@@ -317,7 +318,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "repelling-smoke-powder",
+        "statusEffectId": "repelling-powders-veil",
         "durationTurns": 1
       }
     ],
@@ -331,7 +332,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "acid-vial",
+        "statusEffectId": "acid-vials-breach",
         "durationTurns": 3
       }
     ],
@@ -345,7 +346,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "war-paint",
+        "statusEffectId": "war-paints-edge",
         "durationTurns": 2
       }
     ],
@@ -359,7 +360,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "fracture-charge",
+        "statusEffectId": "fracture-charges-breach",
         "durationTurns": 3
       }
     ],
@@ -373,7 +374,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "deafening-charge",
+        "statusEffectId": "deafening-charges-din",
         "durationTurns": 1
       }
     ],
@@ -387,7 +388,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "rally-standard",
+        "statusEffectId": "rally-standards-edge",
         "durationTurns": 3
       }
     ],
@@ -401,7 +402,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "bulwark-draught",
+        "statusEffectId": "bulwark-draughts-ward",
         "durationTurns": 2
       }
     ],
@@ -428,7 +429,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "spark-salt",
+        "statusEffectId": "spark-salts-focus",
         "durationTurns": 2
       }
     ],
@@ -442,7 +443,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "scholars-candle",
+        "statusEffectId": "scholars-candles-focus",
         "durationTurns": 2
       }
     ],
@@ -456,7 +457,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "hushed-bell",
+        "statusEffectId": "hushed-bells-focus",
         "durationTurns": 2
       }
     ],
@@ -470,7 +471,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "etched-lens",
+        "statusEffectId": "etched-lens-focus",
         "durationTurns": 3
       }
     ],
@@ -484,7 +485,7 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "pitch-pipe",
+        "statusEffectId": "pitch-pipes-focus",
         "durationTurns": 3
       }
     ],

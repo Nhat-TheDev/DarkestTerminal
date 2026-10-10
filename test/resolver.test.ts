@@ -359,13 +359,13 @@ describe("room-clear status effect cleanup", () => {
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    expect(game.queue(rogueRef, "rogue-poison-coat", [rogueRef])).toBeNull();
-    expect(game.queue(vikingRef, "viking-lightning-axe", [vikingRef])).toBeNull();
-    expect(game.queue(vanguardRef, "vanguard-slash", [enemyRef])).toBeNull();
+    expect(game.queue(rogueRef, "poison-coat", [rogueRef])).toBeNull();
+    expect(game.queue(vikingRef, "lightning-axe", [vikingRef])).toBeNull();
+    expect(game.queue(vanguardRef, "slash", [enemyRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
-    expect(rogue.activeStatusEffects.some((a) => a.statusEffectId === "poison-coat")).toBe(false);
+    expect(rogue.activeStatusEffects.some((a) => a.statusEffectId === "poison-coated")).toBe(false);
     expect(viking.activeStatusEffects.some((a) => a.statusEffectId.startsWith("storm-empowered"))).toBe(false);
   });
 
@@ -377,7 +377,7 @@ describe("room-clear status effect cleanup", () => {
 
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
-    expect(game.queue(vanguardRef, "vanguard-slash", [enemyRef])).toBeNull();
+    expect(game.queue(vanguardRef, "slash", [enemyRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
@@ -455,10 +455,10 @@ describe("stackable modifyCombatStat re-application (Mage's shred)", () => {
     const source = ctx.party[0]!;
     const target = ctx.party[1]!;
     target.defense = 40;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
     // max(5, round(40 * 5 / 100)) = max(5, 2) = 5
     expect(target.defense).toBe(35);
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
     // 2nd stack computed against the now-current defense (35): max(5, round(35 * 5 / 100)) = max(5, 2) = 5
     expect(target.defense).toBe(30);
   });
@@ -468,11 +468,11 @@ describe("stackable modifyCombatStat re-application (Mage's shred)", () => {
     const source = ctx.party[0]!;
     const target = ctx.party[1]!;
     target.defense = 40;
-    for (let i = 0; i < 3; i++) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    for (let i = 0; i < 3; i++) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
     const afterThree = target.defense;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
     expect(target.defense).toBe(afterThree);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")!.stacks).toBe(3);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "shredded")!.stacks).toBe(3);
   });
 
   test("expireStatusEffect undoes the full accumulated delta across all stacks, not just the last one applied", () => {
@@ -481,11 +481,11 @@ describe("stackable modifyCombatStat re-application (Mage's shred)", () => {
     const target = ctx.party[1]!;
     target.defense = 40;
     const before = target.defense;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
-    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: "mage-shred" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: "shredded" }, source, target, { log: [] });
     expect(target.defense).toBe(before);
-    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "mage-shred")).toBeUndefined();
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "shredded")).toBeUndefined();
   });
 });
 

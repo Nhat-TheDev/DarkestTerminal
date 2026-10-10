@@ -150,7 +150,21 @@
   },
   "barter": {
     "offerCount": 2,
-    "activeDurationTurns": 999
+    "activeDurationTurns": 999,
+    "statStatusIds": {
+      "attack": "blooded",
+      "magicPower": "attuned",
+      "defense": "hardened",
+      "speed": "quickened"
+    },
+    "regenStatusIdByTier": {
+      "common": "knitting",
+      "uncommon": "knitting-ii",
+      "rare": "knitting-iii",
+      "unique": "knitting-iv",
+      "epic": "knitting-v",
+      "legendary": "knitting-vi"
+    }
   },
   "shop": {
     "floorsPerStep": 10,
