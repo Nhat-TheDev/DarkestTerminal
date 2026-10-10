@@ -69,7 +69,10 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     const finish = (result: Id | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
-      resolve(result);
+      // The remove above schedules a frame that can run before an immediate continuation could mount the
+      // next screen, and OpenTUI drops that screen's render request while the frame is still settling
+      // — Esc back to the main menu would leave a blank terminal. Resolving a tick later avoids it.
+      setTimeout(() => resolve(result), 0);
     };
 
     const onKey = (key: KeyEvent) => {

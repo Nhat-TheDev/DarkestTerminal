@@ -9,6 +9,8 @@ import { spawnMonster } from "../src/data/monsters";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
+import { showSlotSelect } from "../src/ui/saveSelect";
+import { t } from "../src/data/strings";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
@@ -217,6 +219,21 @@ describe("key handler lifecycle", () => {
     for (const key of ["b", "b", "1", "2", "b"]) await press(key);
 
     expect(listeners()).toBe(settled);
+  });
+
+  test("Esc out of the slot list draws the main menu without another keypress", async () => {
+    const { renderer, mockInput, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    // No renderOnce() here: the bug only shows when the renderer schedules its own frames.
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
+
+    const slot = showSlotSelect(renderer, "new");
+    await settle();
+    mockInput.pressEscape();
+    expect(await slot).toBeNull();
+
+    void showMainMenu(renderer);
+    await settle();
+    expect(captureCharFrame()).toContain(t("mainMenu.tagline"));
   });
 });
 
