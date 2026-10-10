@@ -1701,7 +1701,16 @@ function renderOther() {
   out.appendChild(el("p", { class: "hint", text: "tierWeights (per-tier drop weight) is a nested structure not editable here — edit data/balance-config.json directly." }));
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Floor generation" }));
-  out.appendChild(buildBalanceEditCard("Floor generation", "data/balance-config.json", "floorGeneration", Object.entries(b.floorGeneration).map(([key, value]) => ({ key, value })), renderOther));
+  out.appendChild(
+    buildBalanceEditCard(
+      "Floor generation",
+      "data/balance-config.json",
+      "floorGeneration",
+      Object.entries(b.floorGeneration).filter(([, value]) => typeof value === "number").map(([key, value]) => ({ key, value })),
+      renderOther
+    )
+  );
+  out.appendChild(el("p", { class: "hint", text: "roomCompositionTemplates (monster power tiers per combat room) is a nested structure not editable here — edit data/balance-config.json directly." }));
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Party" }));
   out.appendChild(buildBalanceEditCard("Party", "data/balance-config.json", "party", Object.entries(b.party).map(([key, value]) => ({ key, value })), renderOther));
@@ -1778,7 +1787,7 @@ function renderOther() {
     fearTable.appendChild(el("tr", {}, [el("td", { text: String(f.tier) }), el("td", { class: "num", text: pct(f.accuracyPenaltyPercent) }), el("td", { class: "num", text: pct(f.damagePenaltyPercent) })]));
   }
   fearCard.appendChild(fearTable);
-  fearCard.appendChild(el("p", { class: "hint", text: "Tier 4 additionally has a 25% chance/turn of losing control entirely (skips the turn) — not a damage/accuracy modifier, see rollLosesControl()." }));
+  fearCard.appendChild(el("p", { class: "hint", text: "Tier 4 additionally has a chance per turn (combat.fearLoseControlChance) of losing control entirely (skips the turn) — not a damage/accuracy modifier, see rollLosesControl()." }));
   out.appendChild(fearCard);
 
   const expCard = el("div", { class: "card scroll-y" }, [el("h3", { text: "EXP curve (cumulative EXP required per level)" })]);

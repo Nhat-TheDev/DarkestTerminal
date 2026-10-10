@@ -1,0 +1,28 @@
+{
+  "combat": [
+    "Dungeon Gate",
+    "Damp Corridor",
+    "Old Cell",
+    "Ruined Storeroom",
+    "Dark Alcove",
+    "Bone Vault",
+    "Ruined Hall",
+    "Collapsed Passage",
+    "Old Ritual Chamber",
+    "Damp Low Cave"
+  ],
+  "rest": ["Shelter", "Safe Resting Corner", "Abandoned Shrine"],
+  "boss": ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"],
+  "event": [
+    "Torchlit Nook",
+    "Forgotten Landing",
+    "Quiet Alcove",
+    "Sunken Chamber",
+    "Old Reliquary",
+    "Dust-Choked Vestibule",
+    "Hollow Antechamber",
+    "Silent Junction",
+    "Half-Buried Passage",
+    "Flickering Recess"
+  ]
+}

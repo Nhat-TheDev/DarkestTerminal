@@ -406,6 +406,16 @@ export interface EventDefinition {
   /** This event can fire at most once per run — `rollEvent()` excludes it once its id is in
       `GameState.firedOnceEventIds`, set by `closeEvent()` (Part C.4/C.5). */
   onceLifetime?: boolean;
+  /** §8.15 Chain 4, "Taken, Never Given" — this event grants an Artifact for no cost of any kind
+      and has no decline option, so every resolution counts toward `freeRewardsTakenCount` and the
+      chain's escalated text applies to it. */
+  freeTake?: boolean;
+  /** §10.5 — the reflection describes the event's core action having happened, so it only shows
+      when `GameState.eventOutcomes[id]` holds this tag (a decline or a skip writes a different one). */
+  reflectionRequiresOutcome?: string;
+  /** Part F.5 — tied to the Covenant as an institution; permanently removed from the roll pool once
+      the founder falls. */
+  removedOnFounderVictory?: boolean;
   /** `instantReward` only: skip the usual rollArtifact/grantArtifact — still-breathing is
       deliberately "no artifact, no stat effect of any kind" (Part C.4). */
   noArtifactReward?: boolean;

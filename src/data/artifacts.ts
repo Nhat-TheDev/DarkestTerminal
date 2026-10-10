@@ -94,9 +94,6 @@ export function artifactRarityWeights(source: ArtifactSource, depth: number): Re
   return tierWeightsByDepth(RARITY_ORDER, anchorWeights[source], depth, curve);
 }
 
-/** Fixed odds for the exchange events (Sacrificial Circle, Wandering Hermit) — deliberately not depth-scaled. */
-const EXCHANGE_RARITY_WEIGHTS: Record<ArtifactRarity, number> = { common: 50, rare: 30, unique: 15, epic: 5 };
-
 export function rollArtifactRarity(source: ArtifactSource, rng: Rng, depth: number): ArtifactRarity {
   const weights = artifactRarityWeights(source, depth);
   const entries = (Object.entries(weights) as [ArtifactRarity, number][]).filter(([, w]) => w > 0);
@@ -120,7 +117,7 @@ export function rollArtifact(source: ArtifactSource, rng: Rng, depth: number, al
 
 export function rollArtifactWithMinRarity(minRarity: ArtifactRarity, rng: Rng): Id {
   const minIndex = RARITY_ORDER.indexOf(minRarity);
-  const weights = EXCHANGE_RARITY_WEIGHTS;
+  const weights = BALANCE.events.exchangeRarityWeights;
   const entries = (Object.entries(weights) as [ArtifactRarity, number][]).filter(
     ([rarity, w]) => w > 0 && RARITY_ORDER.indexOf(rarity) >= minIndex
   );
@@ -131,6 +128,6 @@ export function rollArtifactWithMinRarity(minRarity: ArtifactRarity, rng: Rng): 
 const CURSED_ARTIFACT_IDS = ARTIFACTS.filter((a) => a.isCursed).map((a) => a.id);
 
 export function rollArtifactOrCursed(rng: Rng, depth: number): Id {
-  if (rng.chance(0.3)) return rng.pick(CURSED_ARTIFACT_IDS);
+  if (rng.chance(BALANCE.events.cursedArtifactChance)) return rng.pick(CURSED_ARTIFACT_IDS);
   return rollArtifact("treasureOrEvent", rng, depth);
 }

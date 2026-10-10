@@ -5,45 +5,14 @@ import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatt
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
+import roomNamesJson from "../../data/room-names.json";
 
-const COMBAT_ROOM_NAMES = [
-  "Dungeon Gate",
-  "Damp Corridor",
-  "Old Cell",
-  "Ruined Storeroom",
-  "Dark Alcove",
-  "Bone Vault",
-  "Ruined Hall",
-  "Collapsed Passage",
-  "Old Ritual Chamber",
-  "Damp Low Cave",
-];
-const REST_ROOM_NAMES = ["Shelter", "Safe Resting Corner", "Abandoned Shrine"];
-const BOSS_ROOM_NAMES = ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"];
-// Event rooms (merchant, altars, gambling den, hermit, etc.) get their own pool — the combat-room
-// names above ("Guardian Fight", "Bone Vault") read as fight-flavored and clash with those scenes.
-const EVENT_ROOM_NAMES = [
-  "Torchlit Nook",
-  "Forgotten Landing",
-  "Quiet Alcove",
-  "Sunken Chamber",
-  "Old Reliquary",
-  "Dust-Choked Vestibule",
-  "Hollow Antechamber",
-  "Silent Junction",
-  "Half-Buried Passage",
-  "Flickering Recess",
-];
-
-function namePool(type: RoomType): string[] {
-  if (type === "rest") return REST_ROOM_NAMES;
-  if (type === "boss") return BOSS_ROOM_NAMES;
-  if (type === "event") return EVENT_ROOM_NAMES;
-  return COMBAT_ROOM_NAMES;
-}
+/** Room names per room type. Event rooms get their own pool: the combat-room names ("Bone Vault")
+    read as fight-flavored and clash with merchant/altar/gambling scenes. */
+const ROOM_NAMES = roomNamesJson as Record<RoomType, string[]>;
 
 function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
-  const pool = namePool(type);
+  const pool = ROOM_NAMES[type];
   const fresh = pool.filter((n) => !used.has(n));
   const name = rng.pick(fresh.length > 0 ? fresh : pool);
   used.add(name);
@@ -58,21 +27,7 @@ const ARCHETYPES_BY_TIER: Record<PowerTier, MonsterArchetype[]> = {
   strong: COMBAT_ROOM_ARCHETYPES.filter((a) => a.powerTier === "strong"),
 };
 
-const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = [
-  ["weak", "medium"],
-  ["weak", "strong"],
-  ["medium", "medium"],
-  ["medium", "strong"],
-  ["strong", "strong"],
-  ["weak", "weak", "medium"],
-  ["weak", "weak", "strong"],
-  ["weak", "medium", "medium"],
-  ["weak", "medium", "strong"],
-  ["weak", "strong", "strong"],
-  ["medium", "medium", "medium"],
-  ["medium", "medium", "strong"],
-  ["medium", "strong", "strong"],
-];
+const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = BALANCE.floorGeneration.roomCompositionTemplates;
 
 type RoomSpawnFn = (rng: Rng, depth: number) => Monster[];
 
@@ -107,7 +62,7 @@ const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplie
 const EVENT_GUARDIAN_ARCHETYPES = [...ARCHETYPES_BY_TIER.medium, ...ARCHETYPES_BY_TIER.strong];
 
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {
-  const count = rng.int(1, 2);
+  const count = rng.int(BALANCE.events.eventGuardianCount.min, BALANCE.events.eventGuardianCount.max);
   const eligible = eligibleAtDepth(EVENT_GUARDIAN_ARCHETYPES, depth);
   return Array.from({ length: count }, () => {
     const archetype = rng.pick(eligible).id;

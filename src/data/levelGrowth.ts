@@ -31,6 +31,7 @@ interface DepthBuffStatCoefficients {
 }
 
 interface LevelGrowthFile {
+  maxLevel: number;
   tiers: Tier[];
   expTiers: ExpTier[];
   eliteMultiplier: TierMultiplier;
@@ -44,7 +45,7 @@ interface LevelGrowthFile {
 
 const DATA = levelGrowthJson as unknown as LevelGrowthFile;
 
-export const MAX_LEVEL = 100;
+export const MAX_LEVEL = DATA.maxLevel;
 export const ELITE_MULTIPLIER: TierMultiplier = DATA.eliteMultiplier;
 export const BOSS_MULTIPLIER: TierMultiplier = DATA.bossMultiplier;
 export const EXP_REWARD_DEPTH_RATE = DATA.expRewardDepthRate;

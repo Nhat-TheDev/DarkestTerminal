@@ -86,7 +86,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
   // for a catalog lookup per skill id. It has to be a self-targeted skill specifically — skillIds
   // holds every skill an archetype can roll at any tier, so taking the first one would have a
   // normal-tier Skeleton Guard swinging Cleaving Strike at itself.
-  if (actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * 0.4) {
+  if (actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
     const selfSkillId = archetype.skillIds.find((id) => getMonsterSkill(id).target === "self");
     if (selfSkillId !== undefined && ctx.rng.chance(BALANCE.combat.defensiveLowHpSkillChance)) {
       const skill = getMonsterSkill(selfSkillId);

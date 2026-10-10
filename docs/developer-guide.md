@@ -68,7 +68,8 @@ of the code doesn't need to know the data comes from JSON.
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
-| `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` | `src/data/levelGrowth.ts` |
+| `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event) | `src/data/floor.ts` |
+| `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` + `maxLevel` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts...) | `src/data/balanceConfig.ts` |
 | `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI | `src/data/strings.ts` |
@@ -411,6 +412,7 @@ data/                  # design data as JSON — see "Design data" above
   items.json
   artifacts.json
   events.json
+  room-names.json
   floor-milestones.json
   level-growth.json
   balance-config.json

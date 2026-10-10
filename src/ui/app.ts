@@ -156,7 +156,7 @@ export class App implements ScreenContext {
       ...panel,
       borderColor: PALETTE.borderAccent,
       height: 4,
-      title: "DARKEST-TERMINAL",
+      title: t("ui.headerTitle"),
     });
     headerBox.add(this.header);
     this.root.add(headerBox);

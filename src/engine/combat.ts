@@ -246,7 +246,7 @@ function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
   if (!queued) return c.speed;
   const def = actionDefinition(queued.source);
-  if (def.isBuff && !isSummonSkill(def)) return c.speed + 20;
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + BALANCE.combat.buffTurnOrderSpeedBonus;
   return c.speed;
 }
 
@@ -579,16 +579,7 @@ function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, c
 }
 
 function ultimateEffectivenessMultiplier(fear: number): number {
-  switch (getFearTier(fear)) {
-    case 1:
-      return 1;
-    case 2:
-      return 0.9;
-    case 3:
-      return 0.75;
-    default:
-      return 0.6;
-  }
+  return BALANCE.combat.ultimateMultiplierByFearTier[getFearTier(fear) - 1]!;
 }
 
 /** Scales BOTH the flat `amount` and the stat-scaled `offenseMultiplierPercent` by the same fear-tier

@@ -1,11 +1,12 @@
 import type { GameState } from "../types";
 import { campReflectionTier } from "./loreExposure";
 import { BALANCE } from "./balanceConfig";
+import { EVENTS } from "./events";
 
 export type EndingCheckpointMode = "leaveOnly" | "stayOrLetGo" | "full";
 
 /** Part F.1 — the exact depth the guaranteed checkpoint fires at. */
-export const ENDING_CHECKPOINT_FLOOR_DEPTH = 100;
+export const ENDING_CHECKPOINT_FLOOR_DEPTH = BALANCE.endings.checkpointFloorDepth;
 
 /** 10-event-narrative.md §F.1 — Leave's 2 independent triggers, either sufficient on its own.
     Trigger 1, "the blood debt breaks": Chain 3 reached tier-3 escalation at some point this run,
@@ -40,22 +41,8 @@ export function hasWaystoneShardEquipped(state: GameState): boolean {
 }
 
 /** Part F.5 — the exact depth the founder encounter fires at, once `continuedPastCheckpoint`. */
-export const FOUNDER_FLOOR_DEPTH = 120;
+export const FOUNDER_FLOOR_DEPTH = BALANCE.endings.founderFloorDepth;
 
-/** Part F.5 — every event tied to the Covenant as an institution, permanently removed from the
-    roll pool once the founder falls. `still-breathing` is included too (narratively redundant once
-    this reveal has landed), `open-chest`/`collapsed-floor`/the 8 Part-C events/`gambling-den`/
-    `the-wanderer`/Ending 1's future retired-character event are deliberately NOT in this list. */
-export const FOUNDER_VICTORY_REMOVED_EVENT_IDS: string[] = [
-  "guardian-fight",
-  "desecrated-altar",
-  "merchant",
-  "blood-altar",
-  "cursed-shrine",
-  "twin-altars",
-  "sacrificial-circle",
-  "wandering-hermit",
-  "broken-seal",
-  "half-a-warning",
-  "still-breathing",
-];
+/** Part F.5 — every event marked `removedOnFounderVictory` (tied to the Covenant as an institution),
+    permanently removed from the roll pool once the founder falls. */
+export const FOUNDER_VICTORY_REMOVED_EVENT_IDS: string[] = EVENTS.filter((e) => e.removedOnFounderVictory).map((e) => e.id);

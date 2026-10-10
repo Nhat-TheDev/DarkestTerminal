@@ -37,7 +37,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
     closeEvent(state);
     return;
   }
-  const newPot = pot * 2;
+  const newPot = pot * BALANCE.events.gamblingDenPotMultiplier;
   // gambleState.round (1-indexed, round just won) doubles as the 0-based index of the next round.
   if (state.activeEvent) state.activeEvent.gambleState = { round: roundIndex + 1, pot: newPot, maxRounds: ROUNDS.length };
   state.message = t("game.gamblingDenPotDoubled", { pot: newPot });

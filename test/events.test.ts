@@ -771,7 +771,7 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
 
   test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
     // merchant, not wandering-hermit — merchant has no engagement gate, so this test stays focused
-    // purely on the trigger-frequency mechanism (see the REQUIRES_ENGAGEMENT tests below for that).
+    // purely on the trigger-frequency mechanism (see the reflectionRequiresOutcome tests below for that).
     const game = new Game(61);
     forceEventRoom(game, "merchant");
     getRoom(game.state.floor, game.state.currentRoomId).cleared = true;

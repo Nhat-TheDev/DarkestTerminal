@@ -538,5 +538,20 @@
   "ui.statAbbrAggro": "AGG",
   "ui.inventoryLine": "  [{{i}}] {{name}} x{{qty}}",
   "ui.statusTurnsSuffix": " ({{turns}}t)",
-  "ui.statusStacksSuffix": " x{{stacks}}"
+  "ui.statusStacksSuffix": " x{{stacks}}",
+  "ui.headerTitle": "DARKEST-TERMINAL",
+  "ui.statLabelAttack": "Attack",
+  "ui.statLabelDefense": "Defense",
+  "ui.statLabelAggro": "Aggro",
+  "ui.statLabelSpeed": "Speed",
+  "ui.statLabelMagicPower": "Magic Power",
+  "ui.statLabelFear": "Fear",
+  "ui.statLabelSatiety": "Satiety",
+  "ui.targetSuffixSelf": "to yourself",
+  "ui.targetSuffixSingleAlly": "to an ally",
+  "ui.targetSuffixAllAllies": "to your party",
+  "ui.targetSuffixSingleEnemy": "to an enemy",
+  "ui.targetSuffixAllEnemies": "to all enemies",
+  "monster.eliteNameSuffix": " (Elite)",
+  "monster.bossNameSuffix": " (Boss)"
 }

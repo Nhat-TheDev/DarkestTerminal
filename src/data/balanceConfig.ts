@@ -9,6 +9,21 @@ interface BalanceConfig {
     defensiveLowHpSkillChance: number;
     /** Shared crit-damage multiplier (as a %) for any `SkillEffect.critChance` that doesn't set its own `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
+    /** A normal-tier defensive monster below this share of max HP reaches for its self-targeted skill. */
+    defensiveLowHpThresholdFraction: number;
+    /** Added to a character's speed for turn order when its queued skill is `isBuff` (and not a summon). */
+    buffTurnOrderSpeedBonus: number;
+    /** Every DoT tick on an Elite or Boss is multiplied by this. */
+    eliteBossDotMultiplier: number;
+    /** Fear values at which tiers 2, 3 and 4 begin. */
+    fearTierThresholds: [number, number, number];
+    /** Indexed by fear tier - 1. */
+    fearAccuracyPenaltyByTier: [number, number, number, number];
+    fearDamagePenaltyByTier: [number, number, number, number];
+    /** Chance per turn that a tier-4 character loses control and skips the turn. */
+    fearLoseControlChance: number;
+    /** An ultimate's damage/heal is scaled by this, indexed by the caster's fear tier - 1. */
+    ultimateMultiplierByFearTier: [number, number, number, number];
   };
   survival: {
     initialSatiety: number;
@@ -113,6 +128,19 @@ interface BalanceConfig {
       jackpotRarity?: ArtifactRarity;
     }[];
     wanderingHermitExchangeCostCoins: number;
+    /** Gambling Den: the pot is multiplied by this after each won round before the jackpot. */
+    gamblingDenPotMultiplier: number;
+    /** Fixed rarity odds for the exchange events (Sacrificial Circle, Wandering Hermit), not depth-scaled. */
+    exchangeRarityWeights: Record<ArtifactRarity, number>;
+    /** Chance `rollArtifactOrCursed` returns a Cursed Artifact instead of a normal roll. */
+    cursedArtifactChance: number;
+    /** How many guardians an event guardian fight spawns, inclusive. */
+    eventGuardianCount: { min: number; max: number };
+  };
+  /** 10-event-narrative.md Part F — the floor depths the ending checkpoint and the founder encounter fire at. */
+  endings: {
+    checkpointFloorDepth: number;
+    founderFloorDepth: number;
   };
   items: {
     itemDropChance: number;
@@ -179,7 +207,20 @@ interface BalanceConfig {
     maxEventRoomsPerPath: number;
     minRestRoomsPerPath: number;
     maxRestRoomsPerPath: number;
+    /** Monster power tiers of an ordinary combat room, one entry per possible room. */
+    roomCompositionTemplates: ("weak" | "medium" | "strong")[][];
   };
 }
 
 export const BALANCE = balanceConfigJson as unknown as BalanceConfig;
+
+const FEAR_TIER_ARRAYS = {
+  fearTierThresholds: 3,
+  fearAccuracyPenaltyByTier: 4,
+  fearDamagePenaltyByTier: 4,
+  ultimateMultiplierByFearTier: 4,
+} as const;
+for (const [key, length] of Object.entries(FEAR_TIER_ARRAYS)) {
+  const value = BALANCE.combat[key as keyof typeof FEAR_TIER_ARRAYS];
+  if (!Array.isArray(value) || value.length !== length) throw new Error(`balance-config combat.${key} must list ${length} numbers`);
+}

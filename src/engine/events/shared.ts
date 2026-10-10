@@ -8,43 +8,6 @@ import { BALANCE } from "../../data/balanceConfig";
 import { LORE_EXPOSURE_EVENT_IDS } from "../../data/loreExposure";
 import { markRetiredCharacterEventShown } from "../profile";
 
-/** Events in scope for §10.5's post-event reflection choice — every event except the 2 deliberately
-    mundane ones (open-chest, collapsed-floor), which stay unreflected on purpose. */
-const REFLECTION_EVENT_IDS: ReadonlySet<Id> = new Set([
-  "guardian-fight",
-  "merchant",
-  "desecrated-altar",
-  "blood-altar",
-  "cursed-shrine",
-  "twin-altars",
-  "sacrificial-circle",
-  "gambling-den",
-  "wandering-hermit",
-  "old-count",
-  "doubled-back",
-  "the-delay",
-  "waiting-supplies",
-  "vigil-candle",
-  "broken-seal",
-  "half-a-warning",
-  "still-breathing",
-  "the-wanderer",
-]);
-
-/** §8.15 Chain 4, "Taken, Never Given" — the 7 events that grant an Artifact for literally no cost
-    of any kind. `the-delay`/`still-breathing` are excluded: both `noArtifactReward: true`, so
-    there's nothing taken to count. None of these 7 ever offer a decline option (a single confirm
-    action is the only way to resolve them), so every resolution genuinely took the reward. */
-const FREE_TAKE_EVENT_IDS: ReadonlySet<Id> = new Set([
-  "open-chest",
-  "old-count",
-  "doubled-back",
-  "waiting-supplies",
-  "vigil-candle",
-  "broken-seal",
-  "half-a-warning",
-]);
-
 export function payHpPercent(character: Character, percent: number): number | null {
   const cost = Math.floor((character.maxHp * percent) / 100);
   if (cost >= character.hp) return null;
@@ -75,7 +38,7 @@ export function closeEvent(state: GameState): void {
       state.eventOutcomes[event.id] = "resolved";
     }
     // §8.15 Chain 4 — counts every resolution of a zero-cost event, regardless of chain state.
-    if (FREE_TAKE_EVENT_IDS.has(event.id)) {
+    if (event.freeTake) {
       state.narrativeCounters.freeRewardsTakenCount += 1;
     }
     // 03-survival-stats.md's Camp Reflection — fully independent tracking, incremented alongside
@@ -90,21 +53,6 @@ export function closeEvent(state: GameState): void {
   }
 }
 
-/** These 5 events' reflection text (base prompt, and every escalated tier for the 2 that chain)
-    describes the event's core action having happened — a payment taken, a trade struck, a
-    guardian fought and beaten. Showing that text after the party merely left (voluntarily, or
-    because they couldn't meet the cost) would describe something that never occurred. Gate
-    reflection on the specific outcome tag that only gets written when the action actually
-    succeeded, so a decline skips reflection entirely — the same reasoning open-chest/
-    collapsed-floor are excluded for: nothing happened, nothing to reflect on. */
-const REQUIRES_ENGAGEMENT: Partial<Record<Id, string>> = {
-  "blood-altar": "paid",
-  "sacrificial-circle": "sacrificed",
-  "wandering-hermit": "traded",
-  "guardian-fight": "resolved",
-  "desecrated-altar": "resolved",
-};
-
 /**
  * §10.5 — call after any action that might have just closed an event room. Safe to call
  * unconditionally, including after actions that DON'T close the event (e.g. a Gambling Den round
@@ -116,9 +64,10 @@ export function maybeTriggerReflection(state: GameState, ctx: EngineContext): vo
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.cleared || !room.rolledEventId) return;
   const event = getEvent(room.rolledEventId);
-  if (!event.reflection || !REFLECTION_EVENT_IDS.has(event.id)) return;
-  const requiredOutcome = REQUIRES_ENGAGEMENT[event.id];
-  if (requiredOutcome && state.eventOutcomes[event.id] !== requiredOutcome) return;
+  // An event's reflection may describe its core action having happened (a payment taken, a
+  // guardian beaten); `reflectionRequiresOutcome` skips it when the party merely left.
+  if (!event.reflection) return;
+  if (event.reflectionRequiresOutcome && state.eventOutcomes[event.id] !== event.reflectionRequiresOutcome) return;
   const alreadySeen = event.id in state.eventReflectionStances;
   const chance = alreadySeen ? BALANCE.events.reflectionRepeatChance : 1;
   if (ctx.rng.chance(chance)) state.pendingReflection = { eventId: event.id };
