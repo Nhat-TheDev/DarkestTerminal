@@ -182,9 +182,10 @@ The target list (`pickTarget`, `src/ui/targetPicker.ts`) reads the picked skill'
 A heal (a `heal` effect, or a status that heals over time) lists each ally's HP; a stat buff lists
 the stats it raises instead (`ATK`, `DEF`, `SPD`, `MAG`, `AGG` — the unit's current value); a cure,
 a debuff or an attack lists plain HP. Only the HP figure is coloured, with the party panel's
-thresholds (`hpColorFor`); names are not. A trailing `*` flags the most hurt target: an ally for a
-heal, an enemy once at least two stand — in both cases only when its HP is under half
-(`MOST_HURT_BELOW`), and the first of equally hurt targets.
+thresholds (`hpColorFor`); names are not. A trailing `*` flags the most hurt target, only when its
+HP is under half (`MOST_HURT_BELOW`) and the first of equally hurt targets: an ally for a heal, an
+enemy for an attack or a debuff once at least two stand. Each side is read from the effects that
+reach it, so a stat buff or a heal flags no enemy and Purify flags an enemy and no ally.
 
 The remaining panels:
 - **Expedition**: each character is trimmed down to 2 lines (name+chip, HP/MP/fear);

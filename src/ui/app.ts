@@ -104,6 +104,10 @@ export class App implements ScreenContext {
   private fullLogBuiltFrom = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
+  /** A combat that ended before its last round was narrated: the enemy side, the Monsters panel and the round in the header are drawn from it until that reveal drains. */
+  private narratedCombat: CombatState | null = null;
+  /** Toasts written while no combat is open but a finished one is still being narrated: they join the reveal after its lines. */
+  private deferredToasts: LogEntry[] = [];
   /** The screen the main panel last drew, so a new screen starts unscrolled. */
   private mainUi: UiState | null = null;
   private roomLog: LogEntry[] = [];
@@ -599,6 +603,7 @@ export class App implements ScreenContext {
 
   pushToast(text: string): void {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
+    else if (this.reveal.active || (this.observedCombat !== null && this.observedCombat.log.length > this.lastLogLength)) this.deferredToasts.push({ text, kind: "info" });
     else this.appendLog([{ text, kind: "info" }]);
   }
 
@@ -642,14 +647,15 @@ export class App implements ScreenContext {
       this.lastLogLength = 0;
       this.displaySnapshot = null;
       this.displayPartySnapshot = null;
-      // A save loaded mid-fight arrives with its resolved rounds already in the log: the player saw them
-      // before saving, so they are not replayed.
-      if (combat && combat.phase === "command" && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
+      // A save loaded mid-fight or on the combat-over screen arrives with its resolved rounds already in
+      // the log: the player saw them before saving, so they are not replayed.
+      if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
     if (combat && combat.log.length > this.lastLogLength) {
       fresh.push(...combat.log.slice(this.lastLogLength));
       this.lastLogLength = combat.log.length;
     }
+    fresh.push(...this.deferredToasts.splice(0));
     if (fresh.length > 0) {
       // Only a fresh reveal starts from the round-start state and takes its first step now. Lines queued
       // behind a running reveal (a toast, a quicksave) neither rewind HP/MP/coins nor add a tick.
@@ -658,11 +664,14 @@ export class App implements ScreenContext {
         const fromRound = fresh.some((e) => e.snapshot !== undefined);
         this.displaySnapshot = fromRound ? (revealSource?.roundStartSnapshot ?? null) : null;
         this.displayPartySnapshot = fromRound ? (revealSource?.roundStartPartySnapshot ?? null) : null;
+        this.narratedCombat = revealSource !== combat ? revealSource : null;
       }
       this.reveal.enqueue(fresh);
       if (wasIdle) this.startReveal();
     }
     const revealing = this.reveal.active;
+    if (!revealing) this.narratedCombat = null;
+    const shownCombat = this.narratedCombat ?? combat;
     const focus = this.reveal.focus;
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
@@ -677,7 +686,7 @@ export class App implements ScreenContext {
         this.fullLogJustOpened = false;
         this.fullLogScroll.scrollTop = this.fullLogScroll.scrollHeight;
       }
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerBackOnly"), this.ui.kind, false))]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, false))]);
       return;
     }
     const hpOverride = revealing && this.displaySnapshot ? new Map(this.displaySnapshot.map((snap) => [snap.id, snap])) : null;
@@ -701,7 +710,7 @@ export class App implements ScreenContext {
       [
         boldColorChunk(room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
-        colorChunk(s.combat ? t("ui.roundHeader", { round: s.combat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
+        colorChunk(shownCombat ? t("ui.roundHeader", { round: shownCombat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
         colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
@@ -721,7 +730,7 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    this.battlefield.content = joinLines(this.renderBattlefield(hpOverride, focus));
+    this.battlefield.content = joinLines(this.renderBattlefield(shownCombat, hpOverride, focus));
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -738,7 +747,7 @@ export class App implements ScreenContext {
       );
     });
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines(hpOverride));
+    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride));
     this.keepScrollInRange(this.party);
     this.keepScrollInRange(this.monsters);
     if (revealing) {
@@ -758,7 +767,7 @@ export class App implements ScreenContext {
 
   /** The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden. */
   private keepScrollInRange(panel: TextRenderable, reset = false): void {
-    panel.scrollY = reset ? 0 : Math.min(panel.scrollY, Math.max(0, panel.lineCount - panel.height));
+    panel.scrollY = reset ? 0 : panel.scrollY;
   }
 
   /** The room log belongs to one room: the first thing written (or rendered) after the player changes room starts it afresh. */
@@ -954,7 +963,7 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  private renderBattlefield(hpOverride: Map<Id, CombatantSnapshot> | null = null, focus: LogSession | null = null): TextChunk[][] {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     const impact = focus !== null && !this.reveal.holding;
 
@@ -972,13 +981,13 @@ export class App implements ScreenContext {
     const partyBlock = this.buildSideBlock(partyUnits);
 
     const room = getRoom(s.floor, s.currentRoomId);
-    const isRestRoom = !s.combat && room.type === "rest";
-    const isEventRoom = !s.combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isRestRoom = !combat && room.type === "rest";
+    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
-    if (s.combat) {
-      const monsterCombatants = s.combat.combatants.filter((c) => c.ref.kind === "monster");
+    if (combat) {
+      const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
       } else {
@@ -1017,9 +1026,9 @@ export class App implements ScreenContext {
     return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
-  private renderMonsterLines(hpOverride: Map<Id, CombatantSnapshot> | null = null): TextChunk[][] {
+  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
     const s = this.game.state;
-    if (!s.combat) {
+    if (!combat) {
       const room = getRoom(s.floor, s.currentRoomId);
       if (room.type !== "combat" && room.type !== "boss") {
         return [[colorChunk(t("ui.noMonsters"), PALETTE.dim)]];
@@ -1027,7 +1036,7 @@ export class App implements ScreenContext {
       return [[colorChunk(room.cleared ? t("ui.roomSafe") : t("ui.notEncounteredDot"), PALETTE.dim)]];
     }
     const lines: TextChunk[][] = [];
-    for (const combatant of s.combat.combatants) {
+    for (const combatant of combat.combatants) {
       if (combatant.ref.kind !== "monster") continue;
       const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
       const hp = hpOverride?.get(m.id)?.hp ?? m.hp;

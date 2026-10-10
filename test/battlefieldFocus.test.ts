@@ -36,6 +36,12 @@ describe("unitFocus", () => {
     expect(unitFocus("a", "party", null)).toEqual({ dim: false, icons: [], marker: null });
   });
 
+  test("the caster of a debuff that every target threw off still wears the sword", () => {
+    const s = session({ actorId: "m1", missedIds: ["p1"], affectedIds: ["p1"] });
+    expect(glyphs(unitFocus("m1", "monster", s).icons)).toEqual([FOCUS_GLYPH.sword]);
+    expect(unitFocus("p1", "party", s).dim).toBe(false);
+  });
+
   test("a bystander is dimmed and has no icons", () => {
     expect(unitFocus("z", "party", session({ actorId: "a", attackedIds: ["m1"] }))).toEqual({ dim: true, icons: [], marker: null });
   });
@@ -287,6 +293,19 @@ describe("icons above the sprites", () => {
     const line = lines[iconRow(lines)]!;
     expect(line.trim()).toBe(`${FOCUS_GLYPH.support}${FOCUS_GLYPH.buff}${FOCUS_GLYPH.heal}`);
     expect(line.indexOf(FOCUS_GLYPH.buff)).toBe(6);
+  });
+
+  test("icons are centred on even and odd sprite widths, a spare column going to their left", () => {
+    for (const width of [12, 13, 14]) {
+      const sprite = { rows: ["A".repeat(width)], palette: { A: "#ff0000" } };
+      const { starts } = spriteSlotLayout([sprite], SLOT_WIDTH, SLOT_GAP);
+      for (let n = 1; n <= 3; n++) {
+        const lines = area([sprite], [Array.from({ length: n }, () => sword)]);
+        const left = lines[iconRow(lines)]!.indexOf(FOCUS_GLYPH.sword) - starts[0]!;
+        const right = width - n - left;
+        expect([width, n, left - right]).toEqual([width, n, (width - n) % 2]);
+      }
+    }
   });
 
   test("the marker follows the icons after a space, and the whole label is centred on the sprite", () => {

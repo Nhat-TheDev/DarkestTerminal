@@ -594,14 +594,17 @@ describe("a panel scrolled with the mouse wheel", () => {
     throw new Error("no seed rolled a Runner");
   }
 
+  /** The Dungeon panel and everything below it. */
+  const dungeonOf = (frame: string) => {
+    const rows = frame.split("\n");
+    return rows.slice(rows.findIndex((r) => r.includes("─Dungeon")) + 1).join("\n");
+  };
+
   test("does not carry its offset into the next, shorter screen", async () => {
     const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 50 });
-    const app = new App(renderer, gameInRunnerRoom());
+    const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
     await renderOnce();
-    const dungeon = () => {
-      const rows = captureCharFrame().split("\n");
-      return rows.slice(rows.findIndex((r) => r.includes("─Dungeon")) + 1).join("\n");
-    };
+    const dungeon = () => dungeonOf(captureCharFrame());
 
     mockInput.pressKey("RETURN");
     await renderOnce();
@@ -617,9 +620,30 @@ describe("a panel scrolled with the mouse wheel", () => {
     await renderOnce();
     mockInput.pressKey("1");
     await renderOnce();
-    await Bun.sleep(300);
+    for (let i = 0; i < 50 && app.debugRevealActive; i++) app.tickReveal();
     await renderOnce();
     expect(app.debugUiState.kind).toBe("pickAction");
     expect(dungeon()).toContain("choose an action");
+  });
+
+  test("keeps its offset across re-renders when its lines wrap", async () => {
+    // At this width the shop's lines wrap: the panel holds more rows than it has lines of text.
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 50 });
+    const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
+    await renderOnce();
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("runnerShop");
+    const top = dungeonOf(captureCharFrame());
+    for (let i = 0; i < 20; i++) await mockMouse.scroll(50, 33, "down");
+    await renderOnce();
+    const scrolled = dungeonOf(captureCharFrame());
+    expect(scrolled).not.toBe(top);
+
+    app.tickReveal(); // a render with nothing new to show
+    await renderOnce();
+    expect(dungeonOf(captureCharFrame())).toBe(scrolled);
   });
 });

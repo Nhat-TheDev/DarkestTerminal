@@ -22,10 +22,15 @@ const STAT_ABBR_KEY: Record<CombatStat, string> = {
 export type AllyTargetInfo = { kind: "heal" } | { kind: "stats"; stats: CombatStat[] } | { kind: "plain" };
 
 export function allyTargetInfo(effects: SkillEffect[]): AllyTargetInfo {
+  return sideTargetInfo(effects, "ally");
+}
+
+/** What the effects do to the picked target on one side: an effect restricted to the other side (`appliesToRelation`), or resolved on a target of its own (`target`), is left out. */
+function sideTargetInfo(effects: SkillEffect[], side: "ally" | "enemy"): AllyTargetInfo {
   let heals = false;
   const stats = new Set<CombatStat>();
   for (const effect of effects) {
-    if (effect.appliesToRelation === "enemy") continue;
+    if (effect.target !== undefined || (effect.appliesToRelation && effect.appliesToRelation !== side)) continue;
     if (effect.kind === "heal") heals = true;
     else if (effect.kind === "modifyCombatStat") {
       if (effect.combatStat && statDirection(effect) > 0) stats.add(effect.combatStat);
@@ -64,8 +69,9 @@ export interface TargetCandidate {
 
 /**
  * The rows of a target list. Only the HP figure is coloured (the party panel's thresholds). A heal flags
- * the most hurt ally with `*`; an attack or debuff flags the most hurt enemy, once there are two or more;
- * a stat buff shows the stats it raises in place of HP.
+ * the most hurt ally with `*`; what does neither heal nor buff an enemy (an attack, a debuff) flags the most
+ * hurt enemy, once there are two or more; a stat buff shows the stats it raises in place of HP and flags
+ * nobody. A list of both sides is judged per side, by the effects that reach that side.
  */
 export function targetChoiceLines(candidates: TargetCandidate[], effects: SkillEffect[], withSidePrefix: boolean): TextChunk[][] {
   const info = allyTargetInfo(effects);
@@ -77,11 +83,13 @@ export function targetChoiceLines(candidates: TargetCandidate[], effects: SkillE
     const i = mostHurtIndex(allies.map((c) => c.actor));
     if (i >= 0) flagged.add(allies[i]!);
   }
-  const j = mostHurtIndex(
-    enemies.map((c) => c.actor),
-    MIN_ENEMIES_TO_FLAG
-  );
-  if (j >= 0) flagged.add(enemies[j]!);
+  if (sideTargetInfo(effects, "enemy").kind === "plain") {
+    const j = mostHurtIndex(
+      enemies.map((c) => c.actor),
+      MIN_ENEMIES_TO_FLAG
+    );
+    if (j >= 0) flagged.add(enemies[j]!);
+  }
 
   return candidates.map((candidate, i) => {
     const { actor } = candidate;

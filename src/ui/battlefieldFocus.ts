@@ -74,7 +74,8 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   const healed = session.healedIds.includes(id);
 
   if (session.actorId === id) {
-    if (session.attackedIds.length > 0 || session.debuffedIds.length > 0) icons.push(icon(FOCUS_GLYPH.sword));
+    // A debuff that every target threw off leaves only a miss behind, and it was still an attack.
+    if (session.attackedIds.length > 0 || session.debuffedIds.length > 0 || session.missedIds.length > 0) icons.push(icon(FOCUS_GLYPH.sword));
     if (session.buffedIds.length > 0 || session.healedIds.length > 0) icons.push(icon(FOCUS_GLYPH.support));
   }
   if (session.lifestealIds.includes(id)) icons.push(icon(FOCUS_GLYPH.lifesteal));
@@ -157,7 +158,7 @@ export function focusedUnit(unit: Omit<BattlefieldUnit, "icons" | "marker">, foc
  * (then a space and its marker, e.g. `⛨ -12`) one blank row above the tallest sprite of its tier — so
  * every unit of a tier wears them on the same row, and a boss uses the whole band. The whole label is
  * centred over the middle of the unit's own sprite, not its nominal slot (a wide sprite or a boss sits
- * off the slot grid).
+ * off the slot grid); when it cannot be exact, the spare column goes to its left.
  */
 export function buildSideSpriteArea(
   units: Pick<BattlefieldUnit, "sprite" | "icons" | "marker" | "frameHeight">[],
@@ -176,8 +177,7 @@ export function buildSideSpriteArea(
     }
     if (cells.length === 0) return;
     const row = rows[height - unit.frameHeight - ICON_BAND_ROWS]!;
-    const centre = starts[i]! + Math.floor(spriteWidth(unit.sprite) / 2);
-    const left = centre - Math.floor((cells.length - 1) / 2);
+    const left = starts[i]! + Math.ceil((spriteWidth(unit.sprite) - cells.length) / 2);
     cells.forEach((cell, k) => {
       const x = left + k;
       if (x >= 0 && x < row.length) row[x] = cell;

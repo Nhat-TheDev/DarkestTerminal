@@ -22,6 +22,15 @@ const heal = getSkill("heal").effects as SkillEffect[];
 const slash = getSkill("slash").effects as SkillEffect[];
 const whetstone = getItem("whetstone").effects;
 
+describe("effects with a target of their own", () => {
+  test("a rider resolved on the caster does not turn an attack into a buff list or hide the enemy flag", () => {
+    const withRider: SkillEffect[] = [...slash, { kind: "modifyCombatStat", combatStat: "attack", amount: 5, target: "self" }];
+    expect(allyTargetInfo(withRider)).toEqual({ kind: "plain" });
+    const rows = targetChoiceLines([enemy("Goblin", 10, 100), enemy("Rat", 90, 100)], withRider, false);
+    expect(rows.map(text)).toEqual(["  [1] Goblin (10/100 HP) *", "  [2] Rat (90/100 HP)"]);
+  });
+});
+
 describe("what a target list shows", () => {
   test("a heal, a healing item and a heal-over-time status all read as healing", () => {
     expect(allyTargetInfo(heal)).toEqual({ kind: "heal" });
@@ -98,10 +107,20 @@ describe("the rows of a target list", () => {
     expect(text(rows[0]!)).toBe("  [1] Goblin (5/55 HP)");
   });
 
-  test("an attack never flags an ally and a heal never flags an enemy", () => {
+  test("an attack never flags an ally, and a heal or a stat buff never flags an enemy", () => {
     const mixed = [ally("Mage", 10, 100), enemy("Goblin", 10, 100), enemy("Rat", 90, 100)];
-    expect(targetChoiceLines(mixed, heal, false).map(text)).toEqual(["  [1] Mage (10/100 HP) *", "  [2] Goblin (10/100 HP) *", "  [3] Rat (90/100 HP)"]);
+    expect(targetChoiceLines(mixed, heal, false).map(text)).toEqual(["  [1] Mage (10/100 HP) *", "  [2] Goblin (10/100 HP)", "  [3] Rat (90/100 HP)"]);
+    expect(targetChoiceLines(mixed, whetstone, false).map(text)).toEqual(["  [1] Mage (ATK 10)", "  [2] Goblin (10/100 HP)", "  [3] Rat (90/100 HP)"]);
     expect(targetChoiceLines(mixed, slash, false).map(text)).toEqual(["  [1] Mage (10/100 HP)", "  [2] Goblin (10/100 HP) *", "  [3] Rat (90/100 HP)"]);
+  });
+
+  test("a skill that cures an ally and smites an enemy flags only the most hurt enemy", () => {
+    const mixed = [ally("Mage", 10, 100), enemy("Goblin", 10, 100), enemy("Rat", 90, 100)];
+    expect(targetChoiceLines(mixed, getSkill("purify").effects as SkillEffect[], true).map(text)).toEqual([
+      "  [1] [Ally] Mage (10/100 HP)",
+      "  [2] [Enemy] Goblin (10/100 HP) *",
+      "  [3] [Enemy] Rat (90/100 HP)",
+    ]);
   });
 
   test("a cure shows coloured HP without a flag", () => {

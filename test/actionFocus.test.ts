@@ -7,13 +7,17 @@ import { getRoom } from "../src/engine/dungeon";
 import { startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
+import { monsterStyle } from "../src/ui/layout";
+import { t } from "../src/data/strings";
+import { gameFromSave, loadSave } from "../src/engine/save";
 
 const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
 
 /** An app standing at the first command prompt of a fight against 2 sturdy goblins, reveal clock under test control. */
 async function openFight(options: { goblinAttack?: number; partyHp?: number; satiety?: number; expiringBuff?: boolean; stunnedMonsters?: boolean } = {}) {
-  const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 62 });
+  // Kitty key encoding sends Esc as a full sequence, so a lone Esc is not held back to tell it from the start of one.
+  const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 62, kittyKeyboard: true });
   const game = new Game(7, PARTY);
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   const goblins = [spawnMonster("goblin", 1), spawnMonster("goblin", 1)];
@@ -52,7 +56,6 @@ async function playRound(fight: Fight) {
 
 async function pressEscape(fight: Fight) {
   fight.mockInput.pressEscape();
-  await new Promise((resolve) => setTimeout(resolve, 100)); // a lone Esc is held back briefly to tell it from an escape sequence
   await fight.renderOnce();
 }
 
@@ -190,9 +193,11 @@ describe("battlefield and log stay in step", () => {
     await playRound(fight);
     for (let i = 0; i < 20 && fight.app.debugRevealActive; i++) fight.app.tickReveal();
     const before = fight.app.debugDisplaySnapshot;
+    expect(fight.app.debugRevealActive).toBe(true);
     fight.mockInput.pressKey("s");
     await fight.renderOnce();
-    if (fight.app.debugRevealActive) expect(fight.app.debugDisplaySnapshot).toBe(before);
+    expect(fight.app.debugRevealActive).toBe(true);
+    expect(fight.app.debugDisplaySnapshot).toBe(before);
   }, 30000);
 
   test("the round that wipes the party is still narrated, although the combat is already gone", async () => {
@@ -206,6 +211,42 @@ describe("battlefield and log stay in step", () => {
       await fight.renderOnce();
     }
     expect(fight.app.debugRoomLog.some((e) => e.text.includes("party has fallen"))).toBe(true);
+  }, 30000);
+
+  test("while the round that wipes the party is narrated, the monsters and the round stay on screen", async () => {
+    const fight = await openFight({ partyHp: 1, satiety: 0 });
+    await playRound(fight);
+    expect(fight.game.state.combat).toBeNull();
+    let frames = 0;
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 600) {
+      const frame = fight.captureCharFrame();
+      expect(frame).toContain(t("ui.roundHeader", { round: 1 }));
+      expect(frame).not.toContain(t("ui.exploring"));
+      expect(frame).not.toContain(t("ui.notEncountered"));
+      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters[0]!).abbr} `);
+      expect(count(frame, FOCUS_GLYPH.shield)).toBe(fight.app.debugFocus?.attackedIds.length ?? 0);
+      frames++;
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(frames).toBeGreaterThan(1);
+    expect(fight.captureCharFrame()).toContain(t("ui.exploring"));
+  }, 30000);
+
+  test("the cleared save slot is reported after the round that wiped the party", async () => {
+    const fight = await openFight({ partyHp: 1, satiety: 0 });
+    fight.game.currentSaveSlot = "slot1";
+    await playRound(fight);
+    let guard = 0;
+    while (fight.app.debugRevealActive && guard++ < 600) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+    }
+    const texts = fight.app.debugRoomLog.map((e) => e.text);
+    expect(texts.at(-1)).toBe(t("ui.saveDeletedMsg"));
+    expect(texts.indexOf(t("combat.partyWiped"))).toBeGreaterThanOrEqual(0);
+    expect(texts.filter((text) => text === t("ui.saveDeletedMsg"))).toHaveLength(1);
   }, 30000);
 
   test("a save loaded mid-fight does not replay the rounds already played", async () => {
@@ -222,6 +263,27 @@ describe("battlefield and log stay in step", () => {
     expect(game.state.combat!.phase).toBe("command");
     const app = new App(renderer, game, { autoReveal: false });
     await renderOnce();
+    expect(app.debugRevealActive).toBe(false);
+    expect(app.debugRoomLog).toEqual([]);
+  }, 30000);
+
+  test("a save made on the combat-over screen does not replay the fight when loaded", async () => {
+    const fight = await openFight();
+    for (const g of fight.game.ctx.monsters) g.hp = 1;
+    await playRound(fight);
+    fight.mockInput.pressKey("1"); // skip the reveal
+    await fight.renderOnce();
+    expect(fight.app.debugUiState.kind).toBe("combatOver");
+    fight.game.currentSaveSlot = "slot1";
+    fight.mockInput.pressKey("s");
+    await fight.renderOnce();
+
+    const { renderer, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const loaded = gameFromSave(loadSave("slot1"), "slot1");
+    expect(loaded.state.combat!.phase).toBe("over");
+    const app = new App(renderer, loaded, { autoReveal: false });
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("combatOver");
     expect(app.debugRevealActive).toBe(false);
     expect(app.debugRoomLog).toEqual([]);
   }, 30000);
