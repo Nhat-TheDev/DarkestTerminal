@@ -191,7 +191,7 @@ ArtifactDefinition {
 
 **Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". Two rules survive from the earlier fixed tables: **Elite never rolls Epic** (its Epic anchor is 0, and a zero anchor stays zero at every depth), and Treasure/Event sit between Elite and Boss in average quality.
 
-Not depth-scaled, on purpose: **Sacrificial Circle** and **Wandering Hermit** roll through `rollArtifactWithMinRarity`, which keeps a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) renormalized above the required minimum, and **Gambling Den** picks its jackpot rarity directly from `events.gamblingDenRounds`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
+Not depth-scaled, on purpose: **Sacrificial Circle** and **Wandering Hermit** roll through `rollArtifactWithMinRarity`, which keeps the fixed `events.exchangeRarityWeights` table (common / rare / unique / epic) renormalized above the required minimum, and **Gambling Den** picks its jackpot rarity directly from `events.gamblingDenRounds`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
 
 ### Level bands & drop schedule
 

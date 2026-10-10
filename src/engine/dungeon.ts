@@ -1,4 +1,4 @@
-import type { EventDefinition, Floor, GameState, Id, Room } from "../types";
+import type { EventDefinition, Floor, GameState, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
 import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
@@ -11,19 +11,6 @@ import { campReflectionTier, highestAnsweredCampReflectionTier } from "../data/l
 import { getClass } from "../data/classes";
 import { rollRestRunner } from "./events/runner";
 import { applyPendingBarterBuffs } from "./events/barter";
-
-/** §8.15 Chain 4, "Taken, Never Given" — same 7 ids `closeEvent()` (events/shared.ts) counts;
-    duplicated here rather than imported to avoid a circular import (shared.ts already imports
-    `getRoom` from this file). */
-const FREE_TAKE_EVENT_IDS: ReadonlySet<Id> = new Set([
-  "open-chest",
-  "old-count",
-  "doubled-back",
-  "waiting-supplies",
-  "vigil-candle",
-  "broken-seal",
-  "half-a-warning",
-]);
 
 export function getRoom(floor: Floor, roomId: string): Room {
   const room = floor.rooms.find((r) => r.id === roomId);
@@ -207,7 +194,7 @@ export function pickEventText(state: GameState, room: Room, event: EventDefiniti
   // §8.15 Chain 4, "Taken, Never Given" — single tier, shared verbatim across all 7 ids, and unlike
   // Chain 2/3 it also requires the party to have never paid a cost anywhere else this run.
   if (
-    FREE_TAKE_EVENT_IDS.has(event.id) &&
+    event.freeTake &&
     state.narrativeCounters.freeRewardsTakenCount >= BALANCE.events.freeTakenThreshold &&
     state.narrativeCounters.altarPaymentsCount === 0 &&
     state.narrativeCounters.artifactsSacrificed === 0

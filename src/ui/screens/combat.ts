@@ -14,16 +14,22 @@ import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
 
-const COMBAT_STAT_LABEL: Record<CombatStat, string> = { attack: "Attack", defense: "Defense", aggro: "Aggro", speed: "Speed", magicPower: "Magic Power" };
-const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: "Fear", satiety: "Satiety" };
+const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
+  attack: t("ui.statLabelAttack"),
+  defense: t("ui.statLabelDefense"),
+  aggro: t("ui.statLabelAggro"),
+  speed: t("ui.statLabelSpeed"),
+  magicPower: t("ui.statLabelMagicPower"),
+};
+const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: t("ui.statLabelFear"), satiety: t("ui.statLabelSatiety") };
 
 /** Who a skill's effects land on, derived from the skill's own `target` field — every effect in a skill shares the same targets. */
 const TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
-  self: "to yourself",
-  singleAlly: "to an ally",
-  allAllies: "to your party",
-  singleEnemy: "to an enemy",
-  allEnemies: "to all enemies",
+  self: t("ui.targetSuffixSelf"),
+  singleAlly: t("ui.targetSuffixSingleAlly"),
+  allAllies: t("ui.targetSuffixAllAllies"),
+  singleEnemy: t("ui.targetSuffixSingleEnemy"),
+  allEnemies: t("ui.targetSuffixAllEnemies"),
 };
 
 /**
@@ -37,7 +43,9 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
   if (e.target) return TARGET_SUFFIX[e.target] ?? "";
   if (e.appliesToRelation) {
     const isAllTargets = sk.target.startsWith("all");
-    return e.appliesToRelation === "ally" ? (isAllTargets ? "to your party" : "to an ally") : isAllTargets ? "to all enemies" : "to an enemy";
+    const target: SkillTarget =
+      e.appliesToRelation === "ally" ? (isAllTargets ? "allAllies" : "singleAlly") : isAllTargets ? "allEnemies" : "singleEnemy";
+    return TARGET_SUFFIX[target]!;
   }
   return TARGET_SUFFIX[sk.target] ?? "";
 }

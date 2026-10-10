@@ -37,7 +37,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, FOCUS_GLYPH, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -156,7 +156,7 @@ export class App implements ScreenContext {
       ...panel,
       borderColor: PALETTE.borderAccent,
       height: 4,
-      title: "DARKEST-TERMINAL",
+      title: t("ui.headerTitle"),
     });
     headerBox.add(this.header);
     this.root.add(headerBox);
@@ -986,7 +986,10 @@ export class App implements ScreenContext {
       const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact, this.summonFocus(c.id));
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
-      return focusedUnit({ sprite: spriteForClass(c.classId), label: style.abbr, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
+      // One pawn per living summon, read from the replayed snapshot so a clone spawned later in the round isn't shown early.
+      const summonCount = this.game.ctx.summons.filter((m) => m.ownerId === c.id && (hpOverride ? hpOverride.get(m.id)?.isAlive === true : m.hp > 0)).length;
+      const label = summonCount > 0 ? `${style.abbr} ${FOCUS_GLYPH.summon.repeat(summonCount)}` : style.abbr;
+      return focusedUnit({ sprite: spriteForClass(c.classId), label, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
     });
     const partyBlock = this.buildSideBlock(partyUnits);
 

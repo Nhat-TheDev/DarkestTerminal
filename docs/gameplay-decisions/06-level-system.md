@@ -2,7 +2,7 @@
 
 *(section 6 of `00-index.md` — every reference to "section 6.X"/"§6.X" in this file points internally, within the same file)*
 
-**Source of truth for every number below**: `data/level-growth.json` (growth tiers, EXP tiers, elite/boss multipliers, `expRewardDepthRate`, `bossFloorInterval`), loaded via `src/data/levelGrowth.ts`. `MAX_LEVEL` is a separate hardcoded constant in that same file (not part of the JSON). This document describes the formulas — not the current tuning values, which change independently of this doc.
+**Source of truth for every number below**: `data/level-growth.json` (growth tiers, EXP tiers, elite/boss multipliers, `expRewardDepthRate`, `bossFloorInterval`), loaded via `src/data/levelGrowth.ts`. The character level cap is `maxLevel` in that same JSON, exposed as `MAX_LEVEL`. This document describes the formulas — not the current tuning values, which change independently of this doc.
 
 ### 6.1 Growth formula
 

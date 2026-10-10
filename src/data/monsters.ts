@@ -10,6 +10,7 @@ import {
   MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS,
 } from "./levelGrowth";
 import { BALANCE } from "./balanceConfig";
+import { t } from "./strings";
 import { assertRaceDataConsistent, resolveRaceProfile } from "./monsterRaces";
 
 import { GROWTH_WEIGHTS } from "./growthWeights";
@@ -122,7 +123,7 @@ export const FINAL_BOSS_ARCHETYPE = MONSTER_ARCHETYPES.find((a) => a.finalBoss)!
 let monsterCounter = 0;
 
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
-const TIER_NAME_SUFFIX = { elite: " (Elite)", boss: " (Boss)" };
+const TIER_NAME_SUFFIX = { elite: t("monster.eliteNameSuffix"), boss: t("monster.bossNameSuffix") };
 
 export const EXECUTE_COOLDOWN_TURNS = BALANCE.combat.executeCooldownTurns;
 export const MONSTER_TYPE_MULTIPLIER = GROWTH_WEIGHTS.monsterGrowthWeights;

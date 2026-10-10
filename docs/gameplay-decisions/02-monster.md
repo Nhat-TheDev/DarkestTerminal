@@ -118,7 +118,7 @@ source of truth for the actual values, not this doc.
 
 This gates 2 things, both in `src/data/floor.ts`: which **archetype** fills a tier slot
 (`ARCHETYPES_BY_TIER[tier].filter(a => (a.minFloor ?? 0) <= depth)`), and — more importantly —
-which **`ROOM_COMPOSITION_TEMPLATES` entry is even selectable** at a given depth
+which **`floorGeneration.roomCompositionTemplates` entry** (`data/balance-config.json`) **is even selectable** at a given depth
 (`eligibleTemplatesAtDepth`: a template is only eligible if *every* tier it lists has at least 1
 archetype available at that depth). This is deliberately not "fall back to the one low-`minFloor`
 archetype in that tier" — a template needing "strong" tier simply isn't rolled at all below

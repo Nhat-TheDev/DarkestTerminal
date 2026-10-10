@@ -82,24 +82,23 @@ export function isActorAlive(actor: Actor): boolean {
 export type FearTier = 1 | 2 | 3 | 4;
 
 export function getFearTier(fear: number): FearTier {
-  if (fear >= 100) return 4;
-  if (fear >= 70) return 3;
-  if (fear >= 40) return 2;
+  const [tier2, tier3, tier4] = BALANCE.combat.fearTierThresholds;
+  if (fear >= tier4) return 4;
+  if (fear >= tier3) return 3;
+  if (fear >= tier2) return 2;
   return 1;
 }
 
 export function getFearAccuracyPenalty(tier: FearTier): number {
-  if (tier === 1) return 0;
-  if (tier === 2) return 0.1;
-  return 0.2;
+  return BALANCE.combat.fearAccuracyPenaltyByTier[tier - 1]!;
 }
 
 export function getFearDamagePenalty(tier: FearTier): number {
-  return tier >= 3 ? 0.15 : 0;
+  return BALANCE.combat.fearDamagePenaltyByTier[tier - 1]!;
 }
 
 export function rollLosesControl(fear: number, roll: () => number): boolean {
-  return getFearTier(fear) === 4 && roll() < 0.25;
+  return getFearTier(fear) === 4 && roll() < BALANCE.combat.fearLoseControlChance;
 }
 
 function statusAccuracyPenaltyPercent(source: Actor): number {
@@ -508,7 +507,7 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         if (e.kind === "damage") {
           if (e.maxHpPercent) amount += (actor.maxHp * e.maxHpPercent) / 100;
           if (def.stackable) amount *= 1 + ((active.stacks ?? 1) - 1) * ((def.perStackBonusPercent ?? 0) / 100);
-          if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= 0.8;
+          if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= BALANCE.combat.eliteBossDotMultiplier;
           amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
         }
         // A heal keeps its maxHpPercent: the heal branch of resolveSkillEffect already takes the larger of the two.

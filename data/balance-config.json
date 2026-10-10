@@ -4,7 +4,15 @@
     "defenseMitigationY": 10,
     "executeCooldownTurns": 3,
     "defensiveLowHpSkillChance": 0.7,
-    "defaultCritMultiplierPercent": 150
+    "defaultCritMultiplierPercent": 150,
+    "defensiveLowHpThresholdFraction": 0.4,
+    "buffTurnOrderSpeedBonus": 20,
+    "eliteBossDotMultiplier": 0.8,
+    "fearTierThresholds": [40, 70, 100],
+    "fearAccuracyPenaltyByTier": [0, 0.1, 0.2, 0.2],
+    "fearDamagePenaltyByTier": [0, 0, 0.15, 0.15],
+    "fearLoseControlChance": 0.25,
+    "ultimateMultiplierByFearTier": [1, 0.9, 0.75, 0.6]
   },
   "survival": {
     "initialFear": 0,
@@ -117,7 +125,15 @@
         "jackpotRarity": "epic"
       }
     ],
-    "wanderingHermitExchangeCostCoins": 50
+    "wanderingHermitExchangeCostCoins": 50,
+    "gamblingDenPotMultiplier": 2,
+    "exchangeRarityWeights": { "common": 50, "rare": 30, "unique": 15, "epic": 5 },
+    "cursedArtifactChance": 0.3,
+    "eventGuardianCount": { "min": 1, "max": 2 }
+  },
+  "endings": {
+    "checkpointFloorDepth": 100,
+    "founderFloorDepth": 120
   },
   "items": {
     "itemDropChance": 0.9,
@@ -249,6 +265,21 @@
     "minBranchSpacing": 3,
     "maxEventRoomsPerPath": 4,
     "minRestRoomsPerPath": 1,
-    "maxRestRoomsPerPath": 2
+    "maxRestRoomsPerPath": 2,
+    "roomCompositionTemplates": [
+      ["weak", "medium"],
+      ["weak", "strong"],
+      ["medium", "medium"],
+      ["medium", "strong"],
+      ["strong", "strong"],
+      ["weak", "weak", "medium"],
+      ["weak", "weak", "strong"],
+      ["weak", "medium", "medium"],
+      ["weak", "medium", "strong"],
+      ["weak", "strong", "strong"],
+      ["medium", "medium", "medium"],
+      ["medium", "medium", "strong"],
+      ["medium", "strong", "strong"]
+    ]
   }
 }

@@ -5,6 +5,26 @@ import { BALANCE } from "./balanceConfig";
 
 export const EVENTS = eventsJson as unknown as EventDefinition[];
 
+/** Outcome tags an event handler writes only when the party actually engaged (paid, sacrificed,
+    traded, or won/finished the scene) — the only values `reflectionRequiresOutcome` can usefully name. */
+const ENGAGEMENT_OUTCOMES: ReadonlySet<string> = new Set(["paid", "sacrificed", "traded", "resolved"]);
+
+export function assertEventDataConsistent(events: EventDefinition[]): void {
+  for (const event of events) {
+    if (event.freeTake && (event.kind !== "instantReward" || event.noArtifactReward)) {
+      throw new Error(`data/events.json: "${event.id}" sets freeTake but is not an instantReward that grants an artifact`);
+    }
+    if (event.reflectionRequiresOutcome !== undefined) {
+      if (!event.reflection) throw new Error(`data/events.json: "${event.id}" sets reflectionRequiresOutcome but has no reflection`);
+      if (!ENGAGEMENT_OUTCOMES.has(event.reflectionRequiresOutcome)) {
+        throw new Error(`data/events.json: "${event.id}" reflectionRequiresOutcome "${event.reflectionRequiresOutcome}" is not one of ${[...ENGAGEMENT_OUTCOMES].join(", ")}`);
+      }
+    }
+  }
+}
+
+assertEventDataConsistent(EVENTS);
+
 export function getEvent(id: Id): EventDefinition {
   const found = EVENTS.find((e) => e.id === id);
   if (!found) throw new Error(`Unknown event: ${id}`);

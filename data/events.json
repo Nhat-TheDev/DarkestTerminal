@@ -1,6 +1,7 @@
 [
   {
     "id": "open-chest",
+    "freeTake": true,
     "name": "Open Chest",
     "description": "A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further.",
     "descriptionVariants": [
@@ -13,6 +14,8 @@
   },
   {
     "id": "guardian-fight",
+    "reflectionRequiresOutcome": "resolved",
+    "removedOnFounderVictory": true,
     "name": "Guardian Fight",
     "description": "The scrape of claws on stone echoes from a dark corner. A spiral, coiled tight and closed, is scratched into the wall beside it. Something is guarding the treasure in this room, and the scraping has stopped.",
     "descriptionVariants": [
@@ -45,6 +48,7 @@
   },
   {
     "id": "merchant",
+    "removedOnFounderVictory": true,
     "name": "Merchant Encounter",
     "minFloorDepth": 2,
     "description": "A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows.",
@@ -69,6 +73,8 @@
   },
   {
     "id": "desecrated-altar",
+    "reflectionRequiresOutcome": "resolved",
+    "removedOnFounderVictory": true,
     "name": "Desecrate the Altar",
     "description": "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot.",
     "descriptionVariants": [
@@ -101,6 +107,8 @@
   },
   {
     "id": "blood-altar",
+    "reflectionRequiresOutcome": "paid",
+    "removedOnFounderVictory": true,
     "name": "Trade HP for an Artifact",
     "description": "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it.",
     "chainEscalatedDescription": "Nobody hesitates at the stone anymore. The question of whether to pay stopped being asked out loud a while ago.",
@@ -134,6 +142,7 @@
   },
   {
     "id": "cursed-shrine",
+    "removedOnFounderVictory": true,
     "name": "Cursed Shrine",
     "description": "A statue with three eyes. One of them is open. It wasn't the same one a moment ago.",
     "crossEventVariants": [
@@ -155,6 +164,7 @@
   },
   {
     "id": "twin-altars",
+    "removedOnFounderVictory": true,
     "name": "Twin Altars",
     "description": "Two stone pedestals face each other, each carved with a spiral, open at the center. A hairline crack already runs between them.",
     "crossEventVariants": [
@@ -177,6 +187,8 @@
   },
   {
     "id": "sacrificial-circle",
+    "reflectionRequiresOutcome": "sacrificed",
+    "removedOnFounderVictory": true,
     "name": "Ritual Circle",
     "minFloorDepth": 2,
     "description": "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident.",
@@ -229,6 +241,8 @@
   },
   {
     "id": "wandering-hermit",
+    "reflectionRequiresOutcome": "traded",
+    "removedOnFounderVictory": true,
     "name": "Wandering Hermit",
     "minFloorDepth": 3,
     "description": "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. 'Put down what you want rid of. I'll name the price.'",
@@ -300,6 +314,7 @@
   },
   {
     "id": "old-count",
+    "freeTake": true,
     "name": "Old Count",
     "description": "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops mid-stroke.",
     "crossEventVariants": [
@@ -325,6 +340,7 @@
   },
   {
     "id": "doubled-back",
+    "freeTake": true,
     "name": "Doubled Back",
     "description": "Footprints lead into this room and stop. None lead back out. The room is empty.",
     "crossEventVariants": [
@@ -363,6 +379,7 @@
   },
   {
     "id": "waiting-supplies",
+    "freeTake": true,
     "name": "Waiting Supplies",
     "description": "A bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The rope is knotted tight, every turn laid the same way. Nobody's coming back for this.",
     "crossEventVariants": [
@@ -385,6 +402,7 @@
   },
   {
     "id": "vigil-candle",
+    "freeTake": true,
     "name": "Vigil",
     "description": "A candle burns at the end of a corridor no one has walked in years — the dust around it undisturbed, the wax pooled thick and old, but the flame hasn't shrunk. A cloth lies folded beside it.",
     "instantRewardActionLabel": "  [1] Move on",
@@ -401,6 +419,8 @@
   },
   {
     "id": "broken-seal",
+    "freeTake": true,
+    "removedOnFounderVictory": true,
     "name": "Broken Seal",
     "description": "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
     "guaranteedArtifactId": "torn-lock-plate",
@@ -435,6 +455,8 @@
   },
   {
     "id": "half-a-warning",
+    "freeTake": true,
+    "removedOnFounderVictory": true,
     "name": "Half a Warning",
     "description": "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'",
     "instantRewardActionLabel": "  [1] Move on",
@@ -451,6 +473,7 @@
   },
   {
     "id": "still-breathing",
+    "removedOnFounderVictory": true,
     "name": "Still Breathing",
     "description": "Ribs, not walls. Something has grown into them that shouldn't be there: a thread of old cloth, with a mark burned into it, the same mark as on everything you've traded for.",
     "instantRewardActionLabel": "  [1] Move on",

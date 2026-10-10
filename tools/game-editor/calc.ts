@@ -28,6 +28,7 @@ import { createFloor } from "../../src/data/floor";
 import { Rng } from "../../src/engine/rng";
 import { STATUS_EFFECTS, getStatusEffect } from "../../src/data/statusEffects";
 import { BALANCE } from "../../src/data/balanceConfig";
+import { t } from "../../src/data/strings";
 import type { CharacterClass, MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
 
 const GROWTH_STATS: GrowthStat[] = ["attack", "defense", "maxHp", "maxMp", "magicPower"];
@@ -106,8 +107,10 @@ export function getCatalog() {
     balance: BALANCE,
     fearTiers: ([1, 2, 3, 4] as FearTier[]).map((tier) => ({
       tier,
+      name: t(`ui.fearTier${tier}`),
       accuracyPenaltyPercent: getFearAccuracyPenalty(tier) * 100,
       damagePenaltyPercent: getFearDamagePenalty(tier) * 100,
+      loseControlChancePercent: tier === 4 ? BALANCE.combat.fearLoseControlChance * 100 : 0,
     })),
     expCurve: Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((level) => ({
       level,

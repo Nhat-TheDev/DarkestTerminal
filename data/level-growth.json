@@ -137,6 +137,7 @@
   },
   "expRewardDepthRate": 0.1,
   "bossFloorInterval": 5,
+  "maxLevel": 100,
   "monsterDepthBuffBracketFloors": 10,
   "monsterDepthBuffBracketIncrements": [10, 8, 7, 6, 5, 4.25, 3.5, 3, 2.5, 2],
   "monsterDepthBuffStatCoefficients": { "maxHp": 1.5, "attack": 1, "defense": 0.75 }

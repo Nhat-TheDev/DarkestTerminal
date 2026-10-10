@@ -246,7 +246,7 @@ function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
   if (!queued) return c.speed;
   const def = actionDefinition(queued.source);
-  if (def.isBuff && !isSummonSkill(def)) return c.speed + 20;
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + BALANCE.combat.buffTurnOrderSpeedBonus;
   return c.speed;
 }
 
@@ -579,16 +579,7 @@ function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, c
 }
 
 function ultimateEffectivenessMultiplier(fear: number): number {
-  switch (getFearTier(fear)) {
-    case 1:
-      return 1;
-    case 2:
-      return 0.9;
-    case 3:
-      return 0.75;
-    default:
-      return 0.6;
-  }
+  return BALANCE.combat.ultimateMultiplierByFearTier[getFearTier(fear) - 1]!;
 }
 
 /** Scales BOTH the flat `amount` and the stat-scaled `offenseMultiplierPercent` by the same fear-tier
@@ -713,8 +704,14 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
   const cast = getSummonCast(passive.cloneSummonCastId);
   const existingClones = ownedSummons(source.id, ctx).filter((s) => s.archetypeId === cast.archetypeId);
   if (existingClones.length >= (passive.maxClones ?? 0) || existingClones.length === 0) return;
+  // At most 1 passive clone at a time, beside the 1 the skill casts.
+  if (existingClones.some((s) => s.fromPassive)) return;
   if (!ctx.rng.chance(chance)) return;
-  spawnAdditionalSummon({ kind: "summon", summonCastId: cast.id }, source, combat, ctx, log);
+  spawnAdditionalSummon({ kind: "summon", summonCastId: cast.id }, source, combat, ctx, log, {
+    name: passive.secondCloneName,
+    fromPassive: true,
+    logKey: "combat.passiveCloneSpawned",
+  });
 }
 
 /** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
@@ -839,10 +836,18 @@ function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: n
   return formula.base + (resolveStatPercent(formula, rank) / 100) * owner[formula.sourceStat] * (1 + bonusPercent / 100);
 }
 
+interface SummonSpawnOptions {
+  /** Overrides the archetype's name (Ninja's passive clone is "Shadow Clone II"). */
+  name?: string;
+  fromPassive?: boolean;
+  /** Overrides the "{{owner}} summons {{summon}}." spawn line. */
+  logKey?: string;
+}
+
 /** Builds and registers 1 new summon from `effect.summonCastId` — no eviction, no cap check; the
  *  caller decides whether/what to evict first (`spawnSummon`) or whether a cap even applies
  *  (`spawnAdditionalSummon`). */
-function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
+function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[], opts: SummonSpawnOptions = {}): Summon | undefined {
   if (!effect.summonCastId) return undefined;
   const cast = getSummonCast(effect.summonCastId);
   const archetype = getSummonArchetype(cast.archetypeId);
@@ -867,7 +872,7 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
     id: nextSummonId(owner.id, archetype.id, ctx),
     ownerId: owner.id,
     archetypeId: archetype.id,
-    name: archetype.name,
+    name: opts.name ?? archetype.name,
     hp: maxHp,
     maxHp,
     attack: Math.round(computeSummonStat(stat.attack, owner, rank, attackPercent)),
@@ -879,10 +884,11 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
     actionsTaken: 0,
     maxActions: cast.maxActions,
     deathBurst,
+    ...(opts.fromPassive ? { fromPassive: true } : {}),
   };
   ctx.summons.push(summon);
   combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
-  log.push({ text: t("combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info" });
+  log.push({ text: t(opts.logKey ?? "combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info" });
   return summon;
 }
 
@@ -890,7 +896,8 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
   if (!effect.summonCastId) return undefined;
   const cast = getSummonCast(effect.summonCastId);
   const archetype = getSummonArchetype(cast.archetypeId);
-  const owned = ownedSummons(owner.id, ctx);
+  // A passive's clone sits outside both rules: a recast never replaces it and it never fills the cap.
+  const owned = ownedSummons(owner.id, ctx).filter((s) => !s.fromPassive);
   const sameType = owned.find((s) => s.archetypeId === archetype.id);
   if (sameType) {
     dismissSummon(sameType, combat, ctx, log);
@@ -905,8 +912,8 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
  *  same-type-replaces eviction rule that every ordinary summon skill follows on a recast — used by
  *  Ninja's passive to stack up to 2 shadow clones instead of replacing the first. The caller is
  *  responsible for its own cap check before calling this. */
-export function spawnAdditionalSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
-  return addSummon(effect, owner, combat, ctx, log);
+export function spawnAdditionalSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[], opts: SummonSpawnOptions = {}): Summon | undefined {
+  return addSummon(effect, owner, combat, ctx, log, opts);
 }
 
 function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng: Rng): Id | null {
