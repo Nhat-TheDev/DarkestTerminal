@@ -2695,7 +2695,7 @@
         "id": "smoke-bomb",
         "name": "Smoke Bomb",
         "description": "A pellet cracked underfoot, and by the time the smoke clears there is no one to look at.",
-        "shortDescription": "Vanishes, untargetable until it strikes.",
+        "shortDescription": "Vanishes until it strikes; smoke hides the party.",
         "target": "self",
         "slot": 1,
         "isBuff": true,
@@ -2710,6 +2710,13 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stealthed",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "smoke-cover",
+                "durationTurns": 2,
+                "target": "allAllies",
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -2722,6 +2729,13 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stealthed-ii",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "smoke-cover-ii",
+                "durationTurns": 2,
+                "target": "allAllies",
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -2734,6 +2748,13 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "stealthed-iii",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "smoke-cover-iii",
+                "durationTurns": 2,
+                "target": "allAllies",
+                "excludesSummonTargets": true
               }
             ]
           }
@@ -3097,7 +3118,7 @@
         "target": "self",
         "slot": 1,
         "isBuff": true,
-        "cooldownTurns": 4,
+        "cooldownTurns": 3,
         "ranks": [
           {
             "rank": 1,
@@ -3107,6 +3128,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-goblin"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "skittish",
+                "durationTurns": 2
               }
             ]
           },
@@ -3118,6 +3144,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-goblin"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "skittish",
+                "durationTurns": 2
               }
             ]
           },
@@ -3129,6 +3160,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-goblin"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "skittish",
+                "durationTurns": 2
               }
             ]
           }
@@ -3142,7 +3178,7 @@
         "target": "self",
         "slot": 2,
         "isBuff": true,
-        "cooldownTurns": 4,
+        "cooldownTurns": 3,
         "ranks": [
           {
             "rank": 1,
@@ -3152,6 +3188,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-spirit"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "spirit-bound",
+                "durationTurns": 2
               }
             ]
           },
@@ -3163,6 +3204,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-spirit"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "spirit-bound",
+                "durationTurns": 2
               }
             ]
           },
@@ -3174,6 +3220,11 @@
               {
                 "kind": "summon",
                 "summonCastId": "summon-spirit"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "spirit-bound",
+                "durationTurns": 2
               }
             ]
           }
@@ -3187,7 +3238,7 @@
         "target": "singleEnemy",
         "slot": 3,
         "isBuff": true,
-        "cooldownTurns": 6,
+        "cooldownTurns": 4,
         "ranks": [
           {
             "rank": 1,
@@ -3203,6 +3254,12 @@
                 "kind": "damage",
                 "amount": 12,
                 "offenseMultiplierPercent": 90
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stone-skin",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -3220,6 +3277,12 @@
                 "kind": "damage",
                 "amount": 18,
                 "offenseMultiplierPercent": 105
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stone-skin",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -3237,6 +3300,12 @@
                 "kind": "damage",
                 "amount": 26,
                 "offenseMultiplierPercent": 120
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stone-skin",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           }
@@ -3250,7 +3319,7 @@
         "target": "self",
         "slot": 4,
         "isBuff": true,
-        "cooldownTurns": 8,
+        "cooldownTurns": 6,
         "ranks": [
           {
             "rank": 1,
@@ -3326,7 +3395,7 @@
         "isMagic": true,
         "slot": 5,
         "isUltimate": true,
-        "cooldownTurns": 5,
+        "cooldownTurns": 4,
         "ranks": [
           {
             "rank": 1,
@@ -3342,6 +3411,12 @@
                 "kind": "damage",
                 "amount": 8,
                 "offenseMultiplierPercent": 80
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hellfire-kindled",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -3359,6 +3434,12 @@
                 "kind": "damage",
                 "amount": 13,
                 "offenseMultiplierPercent": 80
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hellfire-kindled",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -3376,6 +3457,12 @@
                 "kind": "damage",
                 "amount": 18,
                 "offenseMultiplierPercent": 80
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hellfire-kindled",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           }

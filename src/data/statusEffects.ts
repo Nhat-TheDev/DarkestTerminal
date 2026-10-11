@@ -29,6 +29,7 @@ export const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   aggro: t("resolver.statLabelAggro"),
   speed: t("resolver.statLabelSpeed"),
   magicPower: t("resolver.statLabelMagicPower"),
+  maxHp: t("resolver.statLabelMaxHp"),
 };
 
 // `items.ts` owns the exported `signed`, but importing it here would close a cycle
@@ -87,6 +88,7 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   }
   if (def.stuns) parts.push(t("item.effectStuns"));
   if (def.untargetable) parts.push(t("item.effectUntargetable"));
+  if (def.dodgePercent) parts.push(t("artifact.effectDodgeChance", { chance: def.dodgePercent }));
   if (def.breakBonus?.basicAttackGuaranteedCrit) parts.push(t("item.effectBreakBonusCrit"));
   if (def.breakBonus?.skillDamageBonusPercent) parts.push(t("item.effectBreakBonusSkillPercent", { percent: def.breakBonus.skillDamageBonusPercent }));
   if (def.triggersOverwatch) {

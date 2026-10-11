@@ -1,5 +1,6 @@
 import type { SummonArchetype, SkillDefinition, SummonCast } from "../types";
 import summonsJson from "../../data/summons.json";
+import { getStatusEffect } from "./statusEffects";
 
 const DATA = summonsJson as unknown as { archetypes: SummonArchetype[]; skills: SkillDefinition[]; casts: SummonCast[] };
 
@@ -37,6 +38,7 @@ export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts:
     }
     const declared = new Set(archetype.signatureSkillIds ?? []);
     for (const id of archetype.signatureSkillIds ?? []) getSummonSkill(id); // throws on an unknown id
+    if (archetype.basicAttackOnHit) getStatusEffect(archetype.basicAttackOnHit.statusEffectId); // throws on an unknown id
     for (const key of Object.keys(archetype.actionWeights ?? {})) {
       if (key !== "basicAttack" && !declared.has(key)) {
         throw new Error(`data/summons.json: "${archetype.id}" actionWeights key "${key}" is not in its signatureSkillIds`);

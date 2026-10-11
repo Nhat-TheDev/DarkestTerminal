@@ -2,6 +2,7 @@ import type { Character, ArtifactEffect, AbilityEffect, AbilityOnlyEffect } from
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
 import { getClass, passiveRankDef } from "../data/classes";
+import { getStatusEffect } from "../data/statusEffects";
 import type { Rng } from "./rng";
 
 /** The part of `AbilityEffect` that isn't `AbilityOnlyEffect` — structurally identical to `Exclude<ArtifactEffect, { kind: "curseAggroBoost" }>`, so it's safely usable wherever `ArtifactEffect[]` is expected below. */
@@ -96,6 +97,10 @@ export function artifactStatBoostSum(character: Character, base: Record<StatBoos
 
 export function rollDodge(character: Character, rng: Rng): boolean {
   if (equippedEffects(character).some((e) => e.kind === "dodgeChance" && rng.chance(e.chance / 100))) return true;
+  for (const active of character.activeStatusEffects) {
+    const percent = getStatusEffect(active.statusEffectId).dodgePercent ?? 0;
+    if (percent > 0 && rng.chance(percent / 100)) return true;
+  }
   if (character.classId !== "ninja") return false;
   const dodgePercent = passiveRankDef(getClass("ninja").passiveSkill, character.level)?.dodgePercent ?? 0;
   return dodgePercent > 0 && rng.chance(dodgePercent / 100);

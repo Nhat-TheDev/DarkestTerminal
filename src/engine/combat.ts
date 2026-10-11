@@ -10,6 +10,7 @@ import type {
   SkillDefinition,
   SkillEffect,
   SummonStatFormula,
+  SummonSourceStat,
   ActionSource,
   Id,
   LogEntry,
@@ -18,7 +19,7 @@ import type {
   PartyStateSnapshot,
 } from "../types";
 import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, passiveRankDef } from "../data/classes";
-import { characterBaseStats } from "./party";
+import { characterBaseStats, activeStatusCombatStatSum } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
@@ -552,11 +553,10 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   });
   if (queued.source.kind === "item" && getItem(queued.source.itemId).effects.length === 0) combat.log.push({ text: t("game.itemNoEffect"), kind: "item" });
   const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
-  // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed) — it
-  // would otherwise sit idle until next round regardless of speed. A summon faster than its owner
-  // instead acts immediately, right after being cast; a slower one just waits for its normal turn
-  // next round, same as before. That turn is the summon's own session, as in `resolveRound`, not part of the cast.
-  if (spawnedSummon && spawnedSummon.speed > actor.speed && !isCombatOver(combat, ctx)) {
+  // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed), so it acts
+  // once right after being cast, whatever its speed, then takes its normal turns from next round on.
+  // That turn is the summon's own session, as in `resolveRound`, not part of the cast.
+  if (spawnedSummon && !getSummonArchetype(spawnedSummon.archetypeId).passive && !isCombatOver(combat, ctx)) {
     runInSession(
       combat,
       spawnedSummon.ownerId,
@@ -854,8 +854,14 @@ function resolveStatPercent(formula: SummonStatFormula, rank: number): number {
   return resolveRankValue(formula.percent, rank);
 }
 
+/** The owner's stat a summon is derived from, without the owner's active status deltas — a buff or debuff
+ *  on the owner lasts a few turns and must not be frozen into a minion that outlives it. */
+function ownerSourceStat(owner: Character, stat: SummonSourceStat): number {
+  return owner[stat] - activeStatusCombatStatSum(owner, stat);
+}
+
 function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: number, bonusPercent: number): number {
-  return formula.base + (resolveStatPercent(formula, rank) / 100) * owner[formula.sourceStat] * (1 + bonusPercent / 100);
+  return formula.base + (resolveStatPercent(formula, rank) / 100) * ownerSourceStat(owner, formula.sourceStat) * (1 + bonusPercent / 100);
 }
 
 interface SummonSpawnOptions {
@@ -884,7 +890,7 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
     ? {
         amount: resolveRankValue(onDeath.amount, rank),
         offenseMultiplierPercent: resolveRankValue(onDeath.offenseMultiplierPercent, rank),
-        offensiveStatOverride: owner[onDeath.sourceStat],
+        offensiveStatOverride: ownerSourceStat(owner, onDeath.sourceStat),
         statusEffectId: onDeath.statusEffectId,
         statusEffectChance: resolveRankValue(onDeath.statusEffectChance, rank),
         durationTurns: onDeath.durationTurns,
@@ -1095,6 +1101,10 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
     } else {
       combat.log.push({ text: t("combat.basicAttack", { actor: summon.name, target: target.name }), kind: "attack" });
       resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log });
+      const onHit = archetype.basicAttackOnHit;
+      if (onHit && isActorAlive(target) && ctx.rng.chance(onHit.chance)) {
+        resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: onHit.statusEffectId, durationTurns: onHit.durationTurns }, summon, target, { log: combat.log });
+      }
     }
   }
   summon.actionsTaken += 1;

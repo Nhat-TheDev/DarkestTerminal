@@ -20,6 +20,7 @@ const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   aggro: t("ui.statLabelAggro"),
   speed: t("ui.statLabelSpeed"),
   magicPower: t("ui.statLabelMagicPower"),
+  maxHp: t("ui.statLabelMaxHp"),
 };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: t("ui.statLabelFear"), satiety: t("ui.statLabelSatiety") };
 

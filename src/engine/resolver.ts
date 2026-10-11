@@ -133,6 +133,13 @@ function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): v
     if (isCharacter(actor) || isSummon(actor)) actor.magicPower += amount;
     return;
   }
+  if (stat === "maxHp") {
+    // Gaining max HP raises current HP by the same amount, so the HP already lost stays the same (a
+    // fallen actor stays at 0); losing it only trims HP that would now sit above the new max.
+    actor.maxHp += amount;
+    actor.hp = amount > 0 ? (actor.hp > 0 ? actor.hp + amount : 0) : Math.min(actor.hp, actor.maxHp);
+    return;
+  }
   actor[stat] += amount;
 }
 
