@@ -6,6 +6,11 @@
       "speed": 1,
       "actionWeights": {
         "basicAttack": 1
+      },
+      "basicAttackOnHit": {
+        "statusEffectId": "bleeding",
+        "chance": 0.2,
+        "durationTurns": 3
       }
     },
     {

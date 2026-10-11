@@ -629,7 +629,7 @@ Basic attack (slot 0): **Kunai Strike** (`kunai-strike`), physical, kunai, sub-1
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `smoke-bomb` | Smoke Bomb | self | 3 | 6 / 8 / 10 | 1 / 7 / 15 | status stealthed / stealthed-ii / stealthed-iii (2 turns) | buff |
+| 1 | `smoke-bomb` | Smoke Bomb | self | 3 | 6 / 8 / 10 | 1 / 7 / 15 | status stealthed / stealthed-ii / stealthed-iii (2 turns); status smoke-cover / smoke-cover-ii / smoke-cover-iii (2 turns, target allAllies, not on summons) | buff |
 | 2 | `shadow-strike` | Shadow Strike | singleEnemy | 4 | 8 / 10 / 12 | 1 / 7 / 15 | summon shadow-clone; damage 6 / 9 / 12 + 50 / 57 / 65% ATK | — |
 | 3 | `throwing-knives` | Throwing Knives | singleEnemy | 2 | 6 / 7 / 8 | 10 / 25 / 45 | damage 10 / 14 / 18 + 80 / 85 / 90% ATK (40 / 45 / 50% extra hit); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
 | 4 | `shuriken-storm` | Shuriken Storm | allEnemies | 3 | 12 / 14 / 18 | 20 / 50 / 75 | damage 8 / 15 / 12 + 55 / 60 / 65% ATK (1–2 hits / 1–3 hits / 2–3 hits); status bleeding (3 turns, 60 / 70 / 80% chance) | — |
@@ -638,8 +638,8 @@ Basic attack (slot 0): **Kunai Strike** (`kunai-strike`), physical, kunai, sub-1
 
 How each skill works:
 
-- `smoke-bomb` — `applyStatusEffect "stealthed"` — untargetable, breaks on the Ninja's next attack; see 1.10.1
-- `shadow-strike` (Shadow Strike) — `damage` to the target, plus a `summon` that always lands on the Ninja regardless of the hit (resolved first, so a miss or dodge still leaves a clone). The hit itself can roll Afterimage's 2nd-clone chance, so a single cast can end with 2 clones: the cast's own `Shadow Clone` and the passive's `Shadow Clone II` (`secondCloneName`). The clone is combatant `shadow-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
+- `smoke-bomb` — `applyStatusEffect "stealthed"` on the Ninja — untargetable, breaks on the Ninja's next attack — plus `applyStatusEffect "smoke-cover"` on every party member, the Ninja included (per-effect `target: "allAllies"`, `excludesSummonTargets`); see 1.10.1
+- `shadow-strike` (Shadow Strike) — `damage` to the target, plus a `summon` that always lands on the Ninja regardless of the hit (resolved first, so a miss or dodge still leaves a clone). The hit itself can roll Afterimage's 2nd-clone chance, so a single cast can end with 2 clones: the cast's own `Shadow Clone` and the passive's `Shadow Clone II` (`secondCloneName`). The clone is combatant `shadow-clone` (flat, level/stat-independent `maxHp` — does **not** scale with the Ninja's own `maxHp`; high `aggro` — weighted only, not a forced taunt) — vanishes after a fixed number of actions taken (the cast's `maxActions`). Each basic attack the clone lands has a chance to apply `bleeding` (`SummonArchetype.basicAttackOnHit`, `data/summons.json`; rolled in `runSummonTurn`, `src/engine/combat.ts`). Whenever it's removed by dying or running out of actions (not by being dismissed/recast), it detonates: AoE `damage` to every enemy + a chance to apply `bleeding`. See section 1.12.4 and 1.12.8
 - `throwing-knives` — `damage` + chance to `applyStatusEffect "bleeding"` (stacking — 1.12.6) + a chance to throw a 2nd knife (independent damage + bleeding roll) — no `executeBonus`; Death Mark alone carries the ninja's execute mechanic
 - `shuriken-storm` — `damage`/enemy, each enemy struck several times — the hit count per rank is in the Effects column, rolled per enemy — each individual hit has a chance to `applyStatusEffect "bleeding"`
 - `death-mark` — `damage`, scaling per existing `bleeding` stack on the target (via `scalesWithStatusStacks`, 1.12.6), plus a flat `executeBonus` below an HP threshold — **always hits**, effectiveness scales down with fear via the ultimate formula, applies/refreshes 1 `bleeding` stack
@@ -656,6 +656,18 @@ The breaking attack itself carries a bonus, via a new `StatusEffectDefinition` f
 - If the breaking attack is the **basic attack** → guaranteed critical hit (for that hit only).
 - If the breaking attack is a **skill** → that skill's damage is increased by `skillDamageBonusPercent`.
 
+The same cast also covers the party in smoke for the same duration: status `smoke-cover` carries `StatusEffectDefinition.dodgePercent`, and while it is active every enemy attack aimed at the bearer rolls that chance to be dodged through `rollDodge` (`src/engine/artifacts.ts`), as an independent roll alongside Artifact `dodgeChance` and the Afterimage passive. Smoke Cover does not break when the bearer attacks. Summons are not covered.
+
+<!-- docs:begin statusEffects ids=smoke-cover,smoke-cover-ii,smoke-cover-iii -->
+*Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Mechanics |
+|---|---|---|
+| `smoke-cover` | Smoke Cover | dodgePercent 30 |
+| `smoke-cover-ii` | Smoke Cover | dodgePercent 37; rankOf smoke-cover; rankLevel 2 |
+| `smoke-cover-iii` | Smoke Cover | dodgePercent 45; rankOf smoke-cover; rankLevel 3 |
+<!-- docs:end -->
+
 ### 1.11 Summoner — minions that heal, tank, and deal damage, scaled off the caster's own stats
 
 **Status: implemented.**
@@ -669,15 +681,16 @@ Basic attack (slot 0): **Hollow Pulse** (`hollow-pulse`), magic (`isMagic`, scal
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `summon-goblin` | Summon Goblin | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-goblin | buff |
-| 2 | `summon-spirit` | Summon Spirit | self | 4 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-spirit | buff |
-| 3 | `summon-golem` | Summon Golem | singleEnemy | 6 | 12 / 13 / 14 | 10 / 25 / 45 | summon summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK | buff |
-| 4 | `totem-recall` | Totem Recall | self | 8 | 10 / 11 / 12 | 20 / 50 / 75 | summon totem-recall; status totems-strength (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
-| 5 | `summon-hellfire-imp` | Summon Hellfire Imp | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | summon summon-hellfire-imp (target self); damage 8 / 13 / 18 + 80% MAG | ultimate · magic |
+| 1 | `summon-goblin` | Summon Goblin | self | 3 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-goblin; status skittish (2 turns) | buff |
+| 2 | `summon-spirit` | Summon Spirit | self | 3 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-spirit; status spirit-bound (2 turns) | buff |
+| 3 | `summon-golem` | Summon Golem | singleEnemy | 4 | 12 / 13 / 14 | 10 / 25 / 45 | summon summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK; status stone-skin (2 turns, target self) | buff |
+| 4 | `totem-recall` | Totem Recall | self | 6 | 10 / 11 / 12 | 20 / 50 / 75 | summon totem-recall; status totems-strength (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
+| 5 | `summon-hellfire-imp` | Summon Hellfire Imp | allEnemies | 4 | 20 / 21 / 22 | 35 / 70 / 100 | summon summon-hellfire-imp (target self); damage 8 / 13 / 18 + 80% MAG; status hellfire-kindled (2 turns, target self) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
+- Every summon skill except Totem Recall also buffs the Summoner alone (not the party, not the minions) for 2 turns: Summon Goblin → `skittish` (`speed`), Summon Spirit → `spirit-bound` (`maxHp`), Summon Golem → `stone-skin` (`defense`), Summon Hellfire Imp → `hellfire-kindled` (`magicPower`); amounts are in the status table below. `spirit-bound` uses the `maxHp` combat stat: gaining it raises current HP by the same amount, so the HP already lost stays the same; when it fades max HP drops back and current HP is only trimmed if it would sit above the new max (`applyCombatStatDelta`, `src/engine/resolver.ts`).
 - `summon-goblin` — summons `goblin-thrower` — low HP, low `aggro`, moderate `attack` (all scaled off the Summoner's own stats, 1.12.4). Each of its own turns it rolls between Rock Throw (ranged `damage`, singleEnemy) and a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
 - `summon-spirit` — summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the party character with the lowest %HP (never itself or another minion); it sometimes instead casts a party-wide heal (`allAllies`, characters only) that turn, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
 - `summon-golem` — summons `stone-golem` — high HP, moderate `attack`, **high `aggro`**. Each turn: Stomp (`damage`, allEnemies) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` directly to the chosen enemy**
@@ -686,7 +699,18 @@ How each skill works:
 
 - Default cap (before the Bound Legion passive reaches its second rank, see 1.13): **1 minion** active at a time — casting a new summon skill dismisses whichever minion is currently active. Each later rank of the passive raises the cap (`maxActiveMinions` in the passive table in 1.13), for minions of **different types** simultaneously. Purely level-gated (the unlock levels are in that table), independent of anything being cast, with no separate "cast the buff to raise the cap" step (see 1.13 for the Bound Legion passive).
 - All 4 summon skills (slots 1, 2, 3, 5) cost a large amount of MP.
-- Every minion's stats scale off the Summoner's own stats at the moment of casting (1.12.4) — a minion does not grow further as the Summoner grows mid-combat.
+
+<!-- docs:begin statusEffects ids=skittish,spirit-bound,stone-skin,hellfire-kindled -->
+*Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Name | Mechanics |
+|---|---|---|
+| `skittish` | Skittish | speed +3 |
+| `spirit-bound` | Spirit-Bound | maxHp +15 |
+| `stone-skin` | Stone Skin | defense +8 |
+| `hellfire-kindled` | Hellfire-Kindled | magicPower +10 |
+<!-- docs:end -->
+- Every minion's stats scale off the Summoner's own stats at the moment of casting, without the Summoner's active status deltas (1.12.4) — a minion does not grow further as the Summoner grows mid-combat.
 - Slot 5 is Summoner's only `isUltimate: true` skill, satisfying the "every class has exactly 1 ultimate in slot 5" rule (Design notes, below) even though its main payload (Summon Hellfire Imp) is also a minion-summon skill like slots 1-3 — the AoE `damage` component is what makes it a proper ultimate.
 
 #### 1.11.1 Minion stats and their own signature-skill scale
@@ -750,8 +774,8 @@ New `StatusEffectDefinition` field `untargetable?: boolean`. Every place the eng
 
 New `CombatantRef` kind: `{ kind: "summon"; id: Id; ownerId: Id }`. A summon has its own HP/`aggro`/turn and takes a real slot in `turnQueue`, but is displayed **nested under its owner's own portrait** (e.g. a small "🐺 Clone: 12/12 HP" badge under the Ninja's/Summoner's HP bar) rather than occupying a new party-formation slot — this was chosen specifically so the summon is a "real combatant" (has HP, can be targeted and killed, acts on its own turn) without requiring a rework of the fixed party-formation UI.
 
-- **Stats**: derived from the owner's own stats at the moment of summoning, via the cast profile named by `SkillEffect.summonCastId` (`data/summons.json`'s `casts`, 1 profile shared by a skill's 3 ranks — `base + (percent/100) * owner[sourceStat]` per stat, `sourceStat` normally the same-named owner stat but can cross over, e.g. a minion's `attack` sourced from the owner's `magicPower`; see 1.11.1 for concrete ratios) — a summon does not grow further as its owner grows mid-combat. **Exception: `speed` is not derived from the owner at all** — it's a flat, fixed trait of the archetype itself (`SummonArchetype.speed`, `data/summons.json`), the same value every time that archetype is summoned regardless of who casts it or how much the owner's own speed has grown/been buffed.
-- **Acts immediately if faster than its owner**: a summon spawned mid-round isn't in that round's `turnQueue` (built before it existed), so by default it would otherwise sit idle until next round no matter how fast it is. Right after `applySkillEffects` resolves the casting skill, `runCharacterTurn` (`src/engine/combat.ts`) compares the freshly-spawned summon's `speed` against its owner's — strictly faster and it takes its first action right then, in the same round; equal or slower and it just waits for its normal turn next round, same as before this mechanic existed.
+- **Stats**: derived from the owner's own stats at the moment of summoning, minus whatever the owner's active statuses add or take away (`ownerSourceStat`, `src/engine/combat.ts`: a buff or debuff lasting a few turns is not frozen into a minion that outlives it, the same rule for the death burst's offensive stat), via the cast profile named by `SkillEffect.summonCastId` (`data/summons.json`'s `casts`, 1 profile shared by a skill's 3 ranks — `base + (percent/100) * owner[sourceStat]` per stat, `sourceStat` normally the same-named owner stat but can cross over, e.g. a minion's `attack` sourced from the owner's `magicPower`; see 1.11.1 for concrete ratios) — a summon does not grow further as its owner grows mid-combat. **Exception: `speed` is not derived from the owner at all** — it's a flat, fixed trait of the archetype itself (`SummonArchetype.speed`, `data/summons.json`), the same value every time that archetype is summoned regardless of who casts it or how much the owner's own speed has grown/been buffed.
+- **Acts immediately on cast**: a summon spawned mid-round isn't in that round's `turnQueue` (built before it existed). Right after `applySkillEffects` resolves the casting skill, `runCharacterTurn` (`src/engine/combat.ts`) gives the freshly-spawned summon its first action right then, in the same round, whatever its `speed`; from the next round on it acts in `turnQueue` order by its own `speed`. A second clone spawned by the Afterimage passive does not get this action, and neither does a passive summon (the Recall Totem), which never acts.
 - **AI**: each summon type gets its own small action-weight table (`"basicAttack"` vs its 1 signature skill), the same shape as a monster archetype's `actionWeights` (`data/monsters.json`) — not a copy of monster AI, just the same weighted-random-pick pattern.
 - **Lifespan**: a summon vanishes after it has **taken its turn N times** (N is the cast's `maxActions` in `data/summons.json`) — a skipped/stunned turn does **not** count toward N. It also vanishes immediately if its HP reaches 0. Either way of vanishing fires the summon's `deathBurst` if its cast profile has one (the table in 1.12.8 lists which) — see 1.12.8. If a summon is still alive and under N turns when its combat ends (the room is cleared or the party is wiped), it's silently dismissed the moment that combat is torn down (`Game.clearFinishedCombat`) — no `deathBurst`, since that's the cost of falling in battle, not of the fight simply ending. Without this, a summon that outlives its own combat would otherwise linger indefinitely (visible as a stale HP badge under its owner) until its owner recasts the same archetype.
 - **Aggro**: summons participate in the existing aggro-weighted targeting formula like any other combatant — a high-`aggro` summon (Ninja's clone, Summoner's Golem) draws enemy attacks more often by weight, but this is **not** a forced/absolute redirect (no new targeting-override mechanic was added — see the Ninja aggro question in the design discussion).
@@ -825,7 +849,7 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 
 How each passive works:
 
-- **Vanguard — Bulwark.** Permanent, unconditional stat buff — applied as a final multiplier on top of the fully-computed maxHp/defense (after Artifact/Ability boosts), flat add to aggro. Engine hook: `recomputeCharacterStats` (`src/engine/party.ts`)
+- **Vanguard — Bulwark.** Permanent, unconditional stat buff — a multiplier on maxHp/defense after Artifact/Ability boosts and before status deltas (which stay flat, the same way the resolver applies them mid-fight), flat add to aggro. The Character Info screen shows its share as its own bracket. Engine hook: `characterStatBreakdown` (`src/engine/party.ts`)
 - **Rogue — Venomcraft.** Triggers only when the target carries `passiveSkill.requiresTargetStatusId` (or a `rankOf` variant of it — `statusSatisfiesRequirement`, the same family-match `conditionalBonus` skills use); the bonus is a true flat amount (`ignoreDefensePercent` at its maximum plus a zero `offenseMultiplierPercent` zero out the usual attack-vs-defense term). Engine hook: `onDamageDealt` hook, `combatHooks.ts`
 - **Mage — Arcane Shred.** Every hit stacks the status named by that rank's `onHitStatusEffectId` (`shredded`/`-ii`/`-iii`, 1 status id per rank — same rank-to-status mapping Rogue's own Poison Bomb skill uses for `poisoned`/`-ii`/`-iii`); the status lasts that rank's `durationTurns` and every hit refreshes it back to that value; needed a real fix to `applyStatusEffectToActor`'s existing-status branch (it only bumped `stacks`/`turnsRemaining` before, never re-applied a fresh delta per stack). Engine hook: `onDamageDealt` hook, `combatHooks.ts`; stacking fix in `src/engine/resolver.ts`
 - **Acolyte — Devotion.** Debuff resist combines multiplicatively with equipped Artifact/Ability `debuffResist` (`combinePercents`, same formula both already used independently); the heal boost applies only to a heal cast via the Acolyte's **own class skill** — not an item, not another class's skill — via a new `ResolveContext.castByOwnClassSkill` flag `combat.ts` sets by checking the casting skill's id against the source's own class skill list. Engine hook: `acolyteDebuffResistPercent` + the `"heal"` case, both in `src/engine/combat.ts`/`resolver.ts`

@@ -16,6 +16,7 @@ const STAT_ABBR_KEY: Record<CombatStat, string> = {
   speed: "ui.statAbbrSpeed",
   magicPower: "ui.statAbbrMagicPower",
   aggro: "ui.statAbbrAggro",
+  maxHp: "ui.statAbbrMaxHp",
 };
 
 /** What an ally in the target list is shown with: HP for a heal, the raised stats for a buff, plain HP otherwise. */

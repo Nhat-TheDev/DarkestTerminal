@@ -13,6 +13,7 @@ export const PALETTE = {
   hpMid: "#d1a23a",
   hpLow: "#c0392b",
   mp: "#5b8fc9",
+  passive: "#9b7ad1",
   fearCalm: "#8a9a6a",
   fearUneasy: "#d1a23a",
   fearPanic: "#d1702a",

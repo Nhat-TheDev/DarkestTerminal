@@ -17,7 +17,7 @@ export type SkillEffectKind =
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
-export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower";
+export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower" | "maxHp";
 
 export interface SkillEffect {
   kind: SkillEffectKind;
@@ -287,6 +287,8 @@ export interface StatusEffectDefinition {
   untargetable?: boolean;
   /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
+  /** While active, every enemy attack aimed at the bearer has this percent chance to be dodged, rolled through `rollDodge` alongside Artifact and passive dodge. */
+  dodgePercent?: number;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -716,8 +718,7 @@ export interface SummonArchetype {
   id: Id;
   name: string;
   /** Fixed trait of this creature, independent of the owner's own `speed` — used for its turn-order
-   *  position every round it's out, and to decide whether it acts immediately the round it's cast
-   *  (faster than its owner) or waits for its first normal turn next round (see `runCharacterTurn`,
+   *  position every round it's out (its first action, right after the cast, ignores speed — see `runCharacterTurn`,
    *  `src/engine/combat.ts`). */
   speed: number;
   /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
@@ -727,6 +728,8 @@ export interface SummonArchetype {
    *  it can't expire by running out of actions either. For a summon whose whole purpose is to just
    *  stand there (Totem Recall) rather than fight, so its lifetime depends only on actually dying. */
   passive?: boolean;
+  /** Each landed basic attack rolls `chance` (0–1) to apply `statusEffectId` to its target for `durationTurns`. */
+  basicAttackOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };

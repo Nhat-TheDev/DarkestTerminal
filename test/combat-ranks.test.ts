@@ -14,6 +14,9 @@ import {
 } from "../src/engine/combat";
 import type { CombatantRef, Summon } from "../src/types";
 import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { rollDodge } from "../src/engine/artifacts";
+import { resolveSkillEffect, expireStatusEffect } from "../src/engine/resolver";
+import { recomputeCharacterStats } from "../src/engine/party";
 import { Game } from "../src/engine/game";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
@@ -214,7 +217,7 @@ describe("Archer Overwatch (interrupt)", () => {
 });
 
 describe("Ninja Shadow Clone (summon combatant)", () => {
-  test("Shadow Clone spawns as a real, targetable combatant with aggro, and expires after 2 of its own actions", () => {
+  test("Shadow Clone spawns as a real, targetable combatant with aggro, acts right away, and expires after 2 of its own actions", () => {
     const { ctx } = makeCtx();
     const ninja = ctx.party.find((p) => p.classId === "ninja")!;
     const rat = spawnInto(ctx, "dungeon-rat");
@@ -229,14 +232,10 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const clone = getActorByRef(summonRefs[0]!, ctx) as Summon;
     expect(clone.ownerId).toBe(ninja.id);
     expect(clone.aggro).toBeGreaterThan(ninja.aggro);
-    expect(clone.actionsTaken).toBe(0);
-
-    // Round 2: the clone takes its 1st action (it was spawned mid-round-1, so it starts acting from round 2).
-    resolveRound(combat, ctx);
+    // Its 1st action comes right after the cast, still in round 1.
     expect(clone.actionsTaken).toBe(1);
-    expect(livingSummonRefs(combat, ctx)).toHaveLength(1);
 
-    // Round 3: the clone takes its 2nd action and expires.
+    // Round 2: the clone takes its 2nd action and expires.
     resolveRound(combat, ctx);
     expect(clone.actionsTaken).toBe(2);
     expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
@@ -281,8 +280,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: ninja.id };
     queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
-    resolveRound(combat, ctx);
-    resolveRound(combat, ctx); // clone's 1st action
+    resolveRound(combat, ctx); // cast, then the clone's 1st action
     const hpBeforeExpiry = rat.hp;
 
     resolveRound(combat, ctx); // clone's 2nd action — expires and detonates
@@ -302,11 +300,11 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
-    clone.hp = 0; // simulates being killed by enemy damage before it ever gets to act on its own
+    clone.hp = 0; // simulates being killed by enemy damage before its 2nd action
     const hpBeforeDeath = rat.hp;
 
     resolveRound(combat, ctx);
-    expect(clone.actionsTaken).toBe(0);
+    expect(clone.actionsTaken).toBe(1);
     expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
     expect(rat.hp).toBeLessThan(hpBeforeDeath);
     expect(combat.log.some((l) => l.text.includes("detonates"))).toBe(true);
@@ -475,6 +473,130 @@ describe("Ninja Smoke Bomb (stealth / untargetable)", () => {
     const allyRefs = livingCharacterRefs(combat, ctx);
     expect(allyRefs.some((r) => r.id === ninja.id)).toBe(true);
   });
+
+  test("Smoke Bomb covers every living party member in smoke, but not the summons", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+    expect(ctx.summons.some((s) => s.hp > 0)).toBe(true);
+
+    queueAction(combat, self, "smoke-bomb", [self], ctx);
+    resolveRound(combat, ctx);
+
+    const covered = (a: { activeStatusEffects: { statusEffectId: string }[] }) => a.activeStatusEffects.some((s) => s.statusEffectId === "smoke-cover");
+    expect(ctx.party.filter((p) => p.isAlive).every(covered)).toBe(true);
+    expect(ctx.summons.some(covered)).toBe(false);
+  });
+
+  test("Smoke Cover makes enemy attacks miss at roughly its dodge chance", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party.find((p) => p.classId !== "ninja")!;
+    c.activeStatusEffects.push({ statusEffectId: "smoke-cover-iii", turnsRemaining: 2 });
+    const rng = new Rng(9);
+    let dodges = 0;
+    const total = 6000;
+    for (let i = 0; i < total; i++) if (rollDodge(c, rng)) dodges++;
+    expect(dodges / total).toBeGreaterThan(0.41);
+    expect(dodges / total).toBeLessThan(0.49);
+  });
+});
+
+describe("Shadow Clone basic attack", () => {
+  test("a landed basic attack from the clone can open a bleed on its target", () => {
+    const { ctx } = makeCtx();
+    const ninja = ctx.party.find((p) => p.classId === "ninja")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 999;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: ninja.id };
+    ctx.rng.next = () => 0; // every hit lands and every chance roll succeeds
+    queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
+    resolveRound(combat, ctx);
+
+    const clone = ctx.summons.find((s) => s.archetypeId === "shadow-clone")!;
+    expect(clone.actionsTaken).toBe(1);
+    expect(rat.activeStatusEffects.some((s) => s.statusEffectId === "bleeding")).toBe(true);
+  });
+});
+
+describe("Summoner self-buff on summon", () => {
+  const cases: [string, string, number][] = [
+    ["summon-goblin", "skittish", 1],
+    ["summon-spirit", "spirit-bound", 1],
+    ["summon-golem", "stone-skin", 10],
+    ["summon-hellfire-imp", "hellfire-kindled", 35],
+  ];
+  for (const [skillId, statusId, level] of cases) {
+    test(`${skillId} buffs the Summoner alone with ${statusId}`, () => {
+      const { ctx } = makeCtx();
+      const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+      summoner.level = level;
+      summoner.unlockedSkillIds.push(skillId);
+      summoner.mp = summoner.maxMp = 999;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      rat.attack = 0;
+      rat.hp = rat.maxHp = 999;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const self: CombatantRef = { kind: "character", id: summoner.id };
+      const skill = getSkill(skillId);
+      const targets: CombatantRef[] = skill.target === "self" ? [self] : [{ kind: "monster", id: rat.id }];
+      expect(queueAction(combat, self, skillId, targets, ctx)).toBeNull();
+      resolveRound(combat, ctx);
+
+      const has = (a: { activeStatusEffects: { statusEffectId: string }[] }) => a.activeStatusEffects.some((s) => s.statusEffectId === statusId);
+      expect(has(summoner)).toBe(true);
+      expect(ctx.party.filter((p) => p !== summoner).some(has)).toBe(false);
+      expect(ctx.summons.some(has)).toBe(false);
+    });
+  }
+
+  test("Spirit-Bound raises max HP and HP together, and leaves HP alone when it fades", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const baseMax = summoner.maxHp;
+    summoner.hp = baseMax - 20;
+    const log: { text: string; kind: string }[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "spirit-bound", durationTurns: 2 }, summoner, summoner, { log } as never);
+    expect(summoner.maxHp).toBe(baseMax + 15);
+    expect(summoner.maxHp - summoner.hp).toBe(20);
+
+    recomputeCharacterStats(summoner, 100);
+    expect(summoner.maxHp).toBe(baseMax + 15);
+
+    expireStatusEffect(summoner, summoner.activeStatusEffects.find((s) => s.statusEffectId === "spirit-bound")!, { log } as never);
+    expect(summoner.maxHp).toBe(baseMax);
+    expect(summoner.hp).toBe(baseMax - 5);
+  });
+
+  test("Spirit-Bound landing on a fallen character raises max HP but leaves HP at 0", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.hp = 0;
+    c.isAlive = false;
+    const before = c.maxHp;
+    const log: { text: string; kind: string }[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "spirit-bound", durationTurns: 2 }, c, c, { log } as never);
+    expect(c.maxHp).toBe(before + 15);
+    expect(c.hp).toBe(0);
+  });
+
+  test("Spirit-Bound fading at full HP only trims HP down to the restored max", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    const baseMax = summoner.maxHp;
+    const log: { text: string; kind: string }[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "spirit-bound", durationTurns: 2 }, summoner, summoner, { log } as never);
+    expect(summoner.hp).toBe(baseMax + 15);
+    expireStatusEffect(summoner, summoner.activeStatusEffects.find((s) => s.statusEffectId === "spirit-bound")!, { log } as never);
+    expect(summoner.hp).toBe(baseMax);
+  });
 });
 
 describe("Summoner minion cap and Mastery (summon combatant)", () => {
@@ -498,23 +620,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(active[0]!.archetypeId).toBe("healer-spirit");
   });
 
-  test("a summon faster than its owner acts immediately, the same round it's cast", () => {
-    const { ctx } = makeCtx();
-    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    const rat = spawnInto(ctx, "dungeon-rat");
-    rat.attack = 0;
-    const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: summoner.id };
-
-    // goblin-thrower's speed (12) > the Summoner's own speed (10).
-    queueAction(combat, self, "summon-goblin", [self], ctx);
-    resolveRound(combat, ctx);
-    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
-    expect(goblin.speed).toBeGreaterThan(summoner.speed);
-    expect(goblin.actionsTaken).toBe(1);
-  });
-
-  test("a summon slower than its owner waits for its own turn next round", () => {
+  test("a summon acts right after the cast whatever its speed", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 10;
@@ -530,7 +636,51 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     resolveRound(combat, ctx);
     const golem = ctx.summons.find((s) => s.archetypeId === "stone-golem")!;
     expect(golem.speed).toBeLessThan(summoner.speed);
-    expect(golem.actionsTaken).toBe(0);
+    expect(golem.actionsTaken).toBe(1);
+
+    queueAction(combat, self, "summon-goblin", [self], ctx);
+    resolveRound(combat, ctx);
+    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
+    expect(goblin.speed).toBeGreaterThan(golem.speed);
+    expect(goblin.actionsTaken).toBe(1);
+  });
+
+  test("a passive summon gets no turn of its own right after the cast", () => {
+    const { ctx } = makeCtx();
+    const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+    summoner.level = 20;
+    summoner.unlockedSkillIds.push("totem-recall");
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const self: CombatantRef = { kind: "character", id: summoner.id };
+    queueAction(combat, self, "totem-recall", [self], ctx);
+    resolveRound(combat, ctx);
+    const totem = ctx.summons.find((s) => s.archetypeId === "recall-totem")!;
+    expect(combat.log.some((e) => e.session?.actorId === summoner.id && e.session.summonIds.includes(summoner.id))).toBe(false);
+    expect(totem.actionsTaken).toBe(0);
+  });
+
+  test("a minion's stats ignore the Summoner's active buffs, so a self-buff is not frozen into the next minion", () => {
+    const castGoblin = (buffIds: string[]) => {
+      const { ctx } = makeCtx();
+      const summoner = ctx.party.find((p) => p.classId === "summoner")!;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      rat.attack = 0;
+      rat.hp = rat.maxHp = 999;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      for (const id of buffIds) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: id, durationTurns: 2 }, summoner, summoner, { log: combat.log });
+      const self: CombatantRef = { kind: "character", id: summoner.id };
+      queueAction(combat, self, "summon-goblin", [self], ctx);
+      resolveRound(combat, ctx);
+      return { summoner, goblin: ctx.summons.find((s) => s.archetypeId === "goblin-thrower")! };
+    };
+    const plain = castGoblin([]);
+    const buffed = castGoblin(["hellfire-kindled", "spirit-bound", "stone-skin"]);
+    expect(buffed.summoner.magicPower).toBeGreaterThan(plain.summoner.magicPower);
+    expect(buffed.goblin.attack).toBe(plain.goblin.attack);
+    expect(buffed.goblin.maxHp).toBe(plain.goblin.maxHp);
+    expect(buffed.goblin.defense).toBe(plain.goblin.defense);
   });
 
   test("recasting the same summon skill replaces only that minion, not a duplicate, and the surviving combatant ref resolves to the live one", () => {

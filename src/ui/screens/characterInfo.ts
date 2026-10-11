@@ -10,9 +10,7 @@ import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
 import { wrapText } from "../layout";
-import { statsForLevel, activeStatusCombatStatSum } from "../../engine/party";
-import { artifactStatBoostSum, curseAggroBoostSum, abilityWidenedStatBoost } from "../../engine/artifacts";
-import { applyExhaustedMultiplier } from "../../engine/survival";
+import { characterStatBreakdown, type StatBreakdown } from "../../engine/party";
 import { t } from "../../data/strings";
 
 export type CharacterInfoUiState = Extract<UiState, { kind: "characterInfo" }>;
@@ -107,30 +105,21 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
 /**
  * One stat as `Name  total`, then its sources on an indented line: the base value followed by one
  * bracketed number per source, each summed into a single figure and told apart by colour alone
- * (gold = Artifacts, blue = Ability, green/red = status effects). The base itself turns red while
- * Exhausted is scaling it down, which is why that penalty needs no bracket of its own. The
- * breakdown wraps onto its own line because this screen renders into the middle panel, only ~32
- * columns wide on an 80-100 column terminal.
+ * (gold = Artifacts, blue = Ability, purple = class passive, green/red = status effects). The base
+ * itself turns red while Exhausted is scaling it down, which is why that penalty needs no bracket of
+ * its own. The breakdown wraps onto its own line because this screen renders into the middle panel,
+ * only ~32 columns wide on an 80-100 column terminal.
  */
-function statLines(
-  name: string,
-  exhaustedBase: number,
-  isExhausted: boolean,
-  artifactBonus: number,
-  abilityBonus: number,
-  statusBonus: number,
-  total: number
-): TextChunk[][] {
-  const sources: TextChunk[] = [
-    colorChunk(t("ui.characterInfoBaseTag", { base: exhaustedBase }), isExhausted ? PALETTE.hpLow : PALETTE.dim),
-  ];
+function statLines(name: string, stat: StatBreakdown, total: number): TextChunk[][] {
+  const sources: TextChunk[] = [colorChunk(t("ui.characterInfoBaseTag", { base: stat.base }), stat.isExhausted ? PALETTE.hpLow : PALETTE.dim)];
   const push = (chunk: TextChunk) => {
     sources.push(plainChunk(" "));
     sources.push(chunk);
   };
-  if (artifactBonus !== 0) push(statTag(artifactBonus, PALETTE.title));
-  if (abilityBonus !== 0) push(statTag(abilityBonus, PALETTE.mp));
-  if (statusBonus !== 0) push(statTag(statusBonus, statusBonus > 0 ? PALETTE.hpHigh : PALETTE.hpLow));
+  if (stat.artifact !== 0) push(statTag(stat.artifact, PALETTE.title));
+  if (stat.ability !== 0) push(statTag(stat.ability, PALETTE.mp));
+  if (stat.passive !== 0) push(statTag(stat.passive, PALETTE.passive));
+  if (stat.status !== 0) push(statTag(stat.status, stat.status > 0 ? PALETTE.hpHigh : PALETTE.hpLow));
 
   return [
     [boldColorChunk(t("ui.characterInfoStatLine", { stat: name.padEnd(12), total }), PALETTE.text)],
@@ -144,16 +133,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
   if (!character) return t("ui.characterInfoInvalidIndex");
 
   const cls = getClass(character.classId);
-  const satiety = game.state.satiety;
-  const baseStats = statsForLevel(cls, character.level);
-  const exhausted = (base: number) => applyExhaustedMultiplier(base, satiety);
-  // Sampled off a fixed number rather than a real stat, so a class whose base is 0 for that stat
-  // (a Vanguard's magic power) doesn't read as "not exhausted".
-  const isExhausted = exhausted(100) !== 100;
-  // `artifactStatBoostSum` deliberately folds the equipped Ability's shared effects in with the
-  // Artifacts', so the Ability's share has to be subtracted back out to colour the two apart.
-  const boost = artifactStatBoostSum(character, { ...baseStats, speed: cls.baseSpeed });
-  const abilityBoost = (stat: "attack" | "defense") => abilityWidenedStatBoost(character, stat, baseStats[stat]);
+  const stats = characterStatBreakdown(character, game.state.satiety);
 
   // Which digit switches to whom — the only place the party's indices are visible on this screen.
   const picker: TextChunk[] = [];
@@ -172,72 +152,14 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       colorChunk(t("ui.characterInfoMp", { mp: character.mp, maxMp: character.maxMp }), PALETTE.mp),
     ],
     [],
-    // maxHp/maxMp sit above the combat stats because they are what the HP:/MP: line above is
-    // measured against. Exhausted does not scale them (`party.ts` `recomputeCharacterStats`), and
-    // no status effect touches them, so those two sources are hard-zeroed here.
-    ...statLines(
-      t("ui.characterInfoStatMaxHp"),
-      baseStats.maxHp,
-      false,
-      boost.maxHp - abilityWidenedStatBoost(character, "maxHp", baseStats.maxHp),
-      abilityWidenedStatBoost(character, "maxHp", baseStats.maxHp),
-      0,
-      character.maxHp
-    ),
-    ...statLines(
-      t("ui.characterInfoStatMaxMp"),
-      baseStats.maxMp,
-      false,
-      boost.maxMp - abilityWidenedStatBoost(character, "maxMp", baseStats.maxMp),
-      abilityWidenedStatBoost(character, "maxMp", baseStats.maxMp),
-      0,
-      character.maxMp
-    ),
-    ...statLines(
-      t("ui.characterInfoStatAttack"),
-      exhausted(baseStats.attack),
-      isExhausted,
-      boost.attack - abilityBoost("attack"),
-      abilityBoost("attack"),
-      activeStatusCombatStatSum(character, "attack"),
-      character.attack
-    ),
-    ...statLines(
-      t("ui.characterInfoStatDefense"),
-      exhausted(baseStats.defense),
-      isExhausted,
-      boost.defense - abilityBoost("defense"),
-      abilityBoost("defense"),
-      activeStatusCombatStatSum(character, "defense"),
-      character.defense
-    ),
-    ...statLines(
-      t("ui.characterInfoStatMagicPower"),
-      exhausted(baseStats.magicPower),
-      isExhausted,
-      boost.magicPower - abilityWidenedStatBoost(character, "magicPower", baseStats.magicPower),
-      abilityWidenedStatBoost(character, "magicPower", baseStats.magicPower),
-      0,
-      character.magicPower
-    ),
-    ...statLines(
-      t("ui.characterInfoStatSpeed"),
-      exhausted(cls.baseSpeed),
-      isExhausted,
-      boost.speed - abilityWidenedStatBoost(character, "speed", cls.baseSpeed),
-      abilityWidenedStatBoost(character, "speed", cls.baseSpeed),
-      activeStatusCombatStatSum(character, "speed"),
-      character.speed
-    ),
-    ...statLines(
-      t("ui.characterInfoStatAggro"),
-      exhausted(cls.baseAggro),
-      isExhausted,
-      curseAggroBoostSum(character),
-      abilityWidenedStatBoost(character, "aggro", cls.baseAggro),
-      activeStatusCombatStatSum(character, "aggro"),
-      character.aggro
-    ),
+    // maxHp/maxMp sit above the combat stats because they are what the HP:/MP: line above is measured against.
+    ...statLines(t("ui.characterInfoStatMaxHp"), stats.maxHp, character.maxHp),
+    ...statLines(t("ui.characterInfoStatMaxMp"), stats.maxMp, character.maxMp),
+    ...statLines(t("ui.characterInfoStatAttack"), stats.attack, character.attack),
+    ...statLines(t("ui.characterInfoStatDefense"), stats.defense, character.defense),
+    ...statLines(t("ui.characterInfoStatMagicPower"), stats.magicPower, character.magicPower),
+    ...statLines(t("ui.characterInfoStatSpeed"), stats.speed, character.speed),
+    ...statLines(t("ui.characterInfoStatAggro"), stats.aggro, character.aggro),
     [],
     [colorChunk(t("ui.characterInfoPassiveLabel"), PALETTE.title)],
   ];

@@ -487,6 +487,79 @@
     }
   },
   {
+    "id": "smoke-cover",
+    "name": "Smoke Cover",
+    "description": "Hidden in the smoke — enemy attacks have a chance to find nothing at all.",
+    "perTurnEffects": [],
+    "dodgePercent": 30
+  },
+  {
+    "id": "smoke-cover-ii",
+    "name": "Smoke Cover",
+    "description": "Hidden in the smoke — enemy attacks have a better chance to find nothing at all.",
+    "perTurnEffects": [],
+    "dodgePercent": 37,
+    "rankOf": "smoke-cover",
+    "rankLevel": 2
+  },
+  {
+    "id": "smoke-cover-iii",
+    "name": "Smoke Cover",
+    "description": "Hidden in the smoke — enemy attacks have a good chance to find nothing at all.",
+    "perTurnEffects": [],
+    "dodgePercent": 45,
+    "rankOf": "smoke-cover",
+    "rankLevel": 3
+  },
+  {
+    "id": "skittish",
+    "name": "Skittish",
+    "description": "Some of the goblin's nerves rub off on whoever called it. Raises speed.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": 3
+      }
+    ]
+  },
+  {
+    "id": "spirit-bound",
+    "name": "Spirit-Bound",
+    "description": "The spirit lends back a little of what the pact took. Raises max HP, and current HP with it.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "maxHp",
+        "amount": 15
+      }
+    ]
+  },
+  {
+    "id": "stone-skin",
+    "name": "Stone Skin",
+    "description": "Dust from the golem settles on the caller and does not brush off. Raises defense.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8
+      }
+    ]
+  },
+  {
+    "id": "hellfire-kindled",
+    "name": "Hellfire-Kindled",
+    "description": "The gate the imp came through is slow to close. Raises magic power.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 10
+      }
+    ]
+  },
+  {
     "id": "overwatched",
     "name": "Overwatched",
     "description": "Reactively fires at the next monster to act, with a chance to interrupt its turn on a hit. Consumed after the first monster reached, hit or miss.",

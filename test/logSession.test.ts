@@ -571,7 +571,7 @@ describe("resolveRound tags what a round logs", () => {
     expect(rats.map((r) => r.id)).toContain(shot.session!.attackedIds[0]!);
   });
 
-  test("a summon faster than its owner acts right after the cast, in a session of its own", () => {
+  test("a summon acts right after the cast, in a session of its own", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 75;
@@ -583,7 +583,6 @@ describe("resolveRound tags what a round logs", () => {
     queueAction(combat, self, "summon-goblin", [self], ctx);
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
-    expect(goblin.speed).toBeGreaterThan(summoner.speed);
     expect(combat.log.slice(1).filter((e) => !e.session)).toEqual([]);
 
     const castSession = combat.log.find((e) => e.text === `${summoner.name} uses Summon Goblin.`)!.session!;

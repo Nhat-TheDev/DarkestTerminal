@@ -11,10 +11,18 @@ import { GROWTH_WEIGHTS } from "../data/growthWeights";
 
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
-/** Net modifyCombatStat delta from the character's active status effects, so recomputeCharacterStats can rebuild `stat` from scratch without dropping them. */
+/** Net modifyCombatStat delta the character's active status effects actually applied to `stat` — the
+ *  `appliedAmounts` each application stored (minPercent floors, a caster's magnitude override and every
+ *  stack included), which is exactly what `expireStatusEffect` will undo. The status's own JSON `amount`
+ *  is only a fallback for an entry saved without `appliedAmounts`. */
 export function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
   let sum = 0;
   for (const active of character.activeStatusEffects) {
+    const applied = active.appliedAmounts?.[stat];
+    if (applied !== undefined) {
+      sum += applied;
+      continue;
+    }
     for (const e of getStatusEffect(active.statusEffectId).perTurnEffects) {
       if (e.kind === "modifyCombatStat" && e.combatStat === stat) sum += e.amount ?? 0;
     }
@@ -83,33 +91,70 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
   };
 }
 
-/** `satiety`'s Exhausted penalty applies to base stats before artifact/curse bonuses are added; maxHp/maxMp are
- *  unaffected. Vanguard's passive (§11 of the design spec) — a permanent, unconditional buff, unlocked at level
- *  5/20/35 — is applied as a final multiplier on the fully-computed maxHp/defense (after artifact boosts, same
- *  layering as every other stat modifier here) and a flat add to aggro. */
-export function recomputeCharacterStats(character: Character, satiety: number): void {
+export type CharacterStat = "maxHp" | "maxMp" | "attack" | "defense" | "magicPower" | "speed" | "aggro";
+
+/** One stat split by source. `total` is always the sum of the other numbers. `base` is the class base plus
+ *  level growth, already scaled down while Exhausted (`isExhausted`); `artifact`/`ability` are the equipped
+ *  bonuses; `passive` is the class passive's own share; `status` is what active statuses applied. */
+export interface StatBreakdown {
+  base: number;
+  isExhausted: boolean;
+  artifact: number;
+  ability: number;
+  passive: number;
+  status: number;
+  total: number;
+}
+
+/** The single formula every character stat is built from — `recomputeCharacterStats` writes the totals, the
+ *  Character Info screen shows the parts. `satiety`'s Exhausted penalty scales the base of every stat but
+ *  maxHp/maxMp. Vanguard's passive (§11 of the design spec) multiplies maxHp/defense after equipment and adds
+ *  flat aggro; status deltas come last and flat, the same way the resolver applies and undoes them mid-fight. */
+export function characterStatBreakdown(character: Character, satiety: number): Record<CharacterStat, StatBreakdown> {
   const cls = getClass(character.classId);
   const base = statsForLevel(cls, character.level);
-  const exhaustedAttack = applyExhaustedMultiplier(base.attack, satiety);
-  const exhaustedDefense = applyExhaustedMultiplier(base.defense, satiety);
-  const exhaustedMagicPower = applyExhaustedMultiplier(base.magicPower, satiety);
+  const reference: Record<CharacterStat, number> = { ...base, speed: cls.baseSpeed, aggro: cls.baseAggro };
+  // `artifactStatBoostSum` folds the equipped Ability's shared effects in with the Artifacts', so the
+  // Ability's share is subtracted back out to tell the two apart.
   const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
   const vanguardPassive = character.classId === "vanguard" ? passiveRankDef(cls.passiveSkill, character.level) : null;
-  character.attack = exhaustedAttack + boost.attack + activeStatusCombatStatSum(character, "attack");
-  character.defense = exhaustedDefense + boost.defense + activeStatusCombatStatSum(character, "defense");
-  if (vanguardPassive) character.defense = Math.round(character.defense * (1 + (vanguardPassive.defensePercent ?? 0) / 100));
-  character.magicPower = exhaustedMagicPower + boost.magicPower + activeStatusCombatStatSum(character, "magicPower");
-  character.maxHp = base.maxHp + boost.maxHp;
-  if (vanguardPassive) character.maxHp = Math.round(character.maxHp * (1 + (vanguardPassive.maxHpPercent ?? 0) / 100));
-  character.maxMp = base.maxMp + boost.maxMp;
-  character.aggro =
-    applyExhaustedMultiplier(cls.baseAggro, satiety) +
-    curseAggroBoostSum(character) +
-    abilityWidenedStatBoost(character, "aggro", cls.baseAggro) +
-    activeStatusCombatStatSum(character, "aggro") +
-    (vanguardPassive?.aggroFlat ?? 0);
-  character.speed =
-    applyExhaustedMultiplier(cls.baseSpeed, satiety) + boost.speed + activeStatusCombatStatSum(character, "speed");
+  const passivePercent: Partial<Record<CharacterStat, number>> = {
+    maxHp: vanguardPassive?.maxHpPercent ?? 0,
+    defense: vanguardPassive?.defensePercent ?? 0,
+  };
+  const isExhausted = applyExhaustedMultiplier(100, satiety) !== 100;
+
+  const build = (stat: CharacterStat): StatBreakdown => {
+    const scalesWithExhausted = stat !== "maxHp" && stat !== "maxMp";
+    const statBase = scalesWithExhausted ? applyExhaustedMultiplier(reference[stat], satiety) : reference[stat];
+    const ability = abilityWidenedStatBoost(character, stat, reference[stat]);
+    const artifact = stat === "aggro" ? curseAggroBoostSum(character) : boost[stat] - ability;
+    const beforePassive = statBase + artifact + ability;
+    const percent = passivePercent[stat] ?? 0;
+    const passive = (percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0) + (stat === "aggro" ? (vanguardPassive?.aggroFlat ?? 0) : 0);
+    const status = stat === "maxMp" ? 0 : activeStatusCombatStatSum(character, stat);
+    return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, status, total: beforePassive + passive + status };
+  };
+  return {
+    maxHp: build("maxHp"),
+    maxMp: build("maxMp"),
+    attack: build("attack"),
+    defense: build("defense"),
+    magicPower: build("magicPower"),
+    speed: build("speed"),
+    aggro: build("aggro"),
+  };
+}
+
+export function recomputeCharacterStats(character: Character, satiety: number): void {
+  const stats = characterStatBreakdown(character, satiety);
+  character.maxHp = stats.maxHp.total;
+  character.maxMp = stats.maxMp.total;
+  character.attack = stats.attack.total;
+  character.defense = stats.defense.total;
+  character.magicPower = stats.magicPower.total;
+  character.speed = stats.speed.total;
+  character.aggro = stats.aggro.total;
   character.hp = Math.min(character.hp, character.maxHp);
   character.mp = Math.min(character.mp, character.maxMp);
 }
