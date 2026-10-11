@@ -4,6 +4,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
 import { getClass, passiveRankDef } from "../data/classes";
+import { adjustFear, formatFear, resistedFearGain } from "./survival";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
@@ -310,13 +311,12 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         return 0;
       }
       if (!isCharacter(target)) return 0;
-      const before = target.survival[effect.stat];
-      target.survival[effect.stat] = clamp(before + (effect.amount ?? 0), 0, 100);
-      const delta = target.survival[effect.stat] - before;
+      const amount = effect.amount ?? 0;
+      const delta = adjustFear(target, amount > 0 ? resistedFearGain(target, amount) : amount);
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
         ctx.log.push({
-          text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: SURVIVAL_STAT_LABEL[effect.stat] }),
+          text: t("resolver.statChange", { target: nameOf(target), verb, amount: formatFear(Math.abs(delta)), stat: SURVIVAL_STAT_LABEL[effect.stat] }),
           kind: delta < 0 ? "buff" : "debuff",
         });
       }

@@ -37,7 +37,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, FOCUS_GLYPH, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, FOCUS_GLYPH, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -119,6 +119,8 @@ export class App implements ScreenContext {
   private reveal = new RevealQueue();
   /** HP change per unit over the lit session, worked out when it lights up (shown from its impact). */
   private focusDeltas = new Map<Id, number>();
+  /** Fear change per character over the lit session, shown once its fear beat comes. */
+  private focusFearDeltas = new Map<Id, number>();
   private deltasFor: LogSession | null = null;
   private autoReveal: boolean;
   private lastRender = { revealing: false, focusId: null as number | null, logTailSessionId: null as number | null };
@@ -270,6 +272,14 @@ export class App implements ScreenContext {
 
   get debugFocusDeltas(): Map<Id, number> {
     return this.focusDeltas;
+  }
+
+  get debugFocusFearDeltas(): Map<Id, number> {
+    return this.focusFearDeltas;
+  }
+
+  get debugFearBeat(): boolean {
+    return this.reveal.fearBeat;
   }
 
   get debugLastRender() {
@@ -741,7 +751,7 @@ export class App implements ScreenContext {
       partyLines.push(
         ...this.renderCharacterLines(
           view
-            ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp, activeStatusEffects: view.activeStatusEffects ?? c.activeStatusEffects }
+            ? { ...c, hp: view.hp, isAlive: view.isAlive, level: view.level ?? c.level, mp: view.mp ?? c.mp, survival: { ...c.survival, fear: view.fear ?? c.survival.fear }, activeStatusEffects: view.activeStatusEffects ?? c.activeStatusEffects }
             : c,
           satiety
         )
@@ -815,6 +825,7 @@ export class App implements ScreenContext {
     if (focus !== this.deltasFor) {
       this.deltasFor = focus;
       this.focusDeltas = focus ? hpDeltas(this.displaySnapshot, this.reveal.focusSnapshot) : new Map();
+      this.focusFearDeltas = focus ? fearDeltas(this.displaySnapshot, this.reveal.focusSnapshot) : new Map();
     }
     // A session's HP/status change waits for its impact; lines with no session apply theirs at once.
     if (this.reveal.holding) return;
@@ -885,7 +896,7 @@ export class App implements ScreenContext {
       plainChunk(" "),
       colorChunk(t("ui.statValueSuffix", { cur: c.mp, max: c.maxMp }), PALETTE.mp),
     ];
-    const fearLine: TextChunk[] = [plainChunk("  "), colorChunk(t("ui.fearStat", { fear: c.survival.fear }), fearColorFor(tier))];
+    const fearLine: TextChunk[] = [plainChunk("  "), colorChunk(t("ui.fearStat", { fear: Math.floor(c.survival.fear) }), fearColorFor(tier))];
     if (tier >= 2) {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
@@ -984,7 +995,8 @@ export class App implements ScreenContext {
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
-      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact, this.summonFocus(c.id));
+      const fearChange = this.reveal.fearBeat && focus?.fearChangedIds.includes(c.id) ? (this.focusFearDeltas.get(c.id) ?? 0) : 0;
+      const lens = unitFocus(c.id, "party", focus, this.focusDeltas.get(c.id), impact, this.summonFocus(c.id), fearChange);
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       // One pawn per living summon, read from the replayed snapshot so a clone spawned later in the round isn't shown early.

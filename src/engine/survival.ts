@@ -21,6 +21,8 @@ const FEAR_PER_ROUND_BASE_CAP = BALANCE.survival.fearPerRoundBaseCap;
 const FEAR_PER_ROUND_LOW_HP_CAP = BALANCE.survival.fearPerRoundLowHpCap;
 const FEAR_PER_ROUND_DEPTH_GROWTH = BALANCE.survival.fearPerRoundDepthGrowth;
 const FEAR_LOW_HP_THRESHOLD_FRACTION = BALANCE.survival.fearLowHpThresholdFraction;
+const FEAR_PER_HIT_TAKEN = BALANCE.survival.fearPerHitTaken;
+const FEAR_PER_HIT_TAKEN_CAP = BALANCE.survival.fearPerHitTakenCap;
 const FEAR_VICTORY_RELIEF = BALANCE.survival.fearVictoryRelief;
 const FEAR_VICTORY_RELIEF_QUICK = BALANCE.survival.fearVictoryReliefQuick;
 const FEAR_QUICK_VICTORY_ROUND_THRESHOLD = BALANCE.survival.fearQuickVictoryRoundThreshold;
@@ -67,22 +69,57 @@ export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   }
 }
 
-export function fearGainForRound(character: Character, floorDepth: number): number {
-  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
-  const base = isLowHp ? FEAR_PER_ROUND_LOW_HP : FEAR_PER_ROUND_BASE;
-  const cap = isLowHp ? FEAR_PER_ROUND_LOW_HP_CAP : FEAR_PER_ROUND_BASE_CAP;
+/** Fear is kept to one decimal place (0.0-100.0), so a small gain still shows its fearResist reduction. */
+export function roundFear(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/** `+2.1`-style text for a fear amount: one decimal, dropped when it is `.0`. */
+export function formatFear(value: number): string {
+  return String(roundFear(value));
+}
+
+/** Every fear gain, whatever its source, is reduced by the character's fearResist. */
+export function resistedFearGain(character: Character, amount: number): number {
+  return roundFear(amount * fearResistMultiplier(character));
+}
+
+/** The one place fear is written: clamped to 0-100 and rounded. Returns the change actually made. */
+export function adjustFear(character: Character, delta: number): number {
+  const before = character.survival.fear;
+  character.survival.fear = roundFear(clamp(before + delta, 0, 100));
+  return roundFear(character.survival.fear - before);
+}
+
+/** `base` grown by floor depth, capped, then reduced by the character's fearResist. */
+function scaledFearGain(character: Character, base: number, cap: number, floorDepth: number): number {
   const growthMultiplier = 1 + FEAR_PER_ROUND_DEPTH_GROWTH * (floorDepth - 1);
   const scaled = Math.min(base * growthMultiplier, cap);
-  return Math.round(scaled * fearResistMultiplier(character));
+  return scaled > 0 ? resistedFearGain(character, scaled) : roundFear(scaled);
 }
 
-export function applyRoundFear(character: Character, floorDepth: number): void {
-  if (!character.isAlive) return;
-  character.survival.fear = clamp(character.survival.fear + fearGainForRound(character, floorDepth), 0, 100);
+export function fearGainForRound(character: Character, floorDepth: number): number {
+  const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
+  return isLowHp
+    ? scaledFearGain(character, FEAR_PER_ROUND_LOW_HP, FEAR_PER_ROUND_LOW_HP_CAP, floorDepth)
+    : scaledFearGain(character, FEAR_PER_ROUND_BASE, FEAR_PER_ROUND_BASE_CAP, floorDepth);
 }
 
-/** Relief depends on how fast the fight was won; quick-win and normal relief aren't additive. */
-export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: boolean, roundNumber: number): void {
+export function fearGainForHit(character: Character, floorDepth: number): number {
+  return scaledFearGain(character, FEAR_PER_HIT_TAKEN, FEAR_PER_HIT_TAKEN_CAP, floorDepth);
+}
+
+export function applyRoundFear(character: Character, floorDepth: number): number {
+  return character.isAlive ? adjustFear(character, fearGainForRound(character, floorDepth)) : 0;
+}
+
+/** A monster's damage effect landed on `character`. */
+export function applyHitFear(character: Character, floorDepth: number): number {
+  return character.isAlive ? adjustFear(character, fearGainForHit(character, floorDepth)) : 0;
+}
+
+/** Relief depends on how fast the fight was won; quick-win and normal relief aren't additive. Returns who it calmed. */
+export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: boolean, roundNumber: number): Character[] {
   const relief = isEliteOrBossFight
     ? roundNumber < FEAR_ELITE_OR_BOSS_QUICK_VICTORY_ROUND_THRESHOLD
       ? FEAR_ELITE_OR_BOSS_VICTORY_RELIEF_QUICK
@@ -90,10 +127,7 @@ export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: b
     : roundNumber < FEAR_QUICK_VICTORY_ROUND_THRESHOLD
       ? FEAR_VICTORY_RELIEF_QUICK
       : FEAR_VICTORY_RELIEF;
-  for (const c of party) {
-    if (!c.isAlive) continue;
-    c.survival.fear = clamp(c.survival.fear - relief, 0, 100);
-  }
+  return party.filter((c) => c.isAlive && adjustFear(c, -relief) !== 0);
 }
 
 /** Rest room "Eat & Drink": restores each character's HP/MP. Satiety is party-wide — restore it once via `restEatDrinkSatiety`, not per character. */
@@ -113,7 +147,7 @@ export function restChat(character: Character): void {
   if (!character.isAlive) return;
   character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_FRACTION), 0, character.maxHp);
   character.mp = clamp(character.mp + Math.round(character.maxMp * CHAT_RESTORE_FRACTION), 0, character.maxMp);
-  character.survival.fear = clamp(character.survival.fear - CHAT_FEAR_RELIEF, 0, 100);
+  adjustFear(character, -CHAT_FEAR_RELIEF);
 }
 
 /** Post-victory option distinct from the Rest room: costs 1 Exploration Kit, restores satiety only. */

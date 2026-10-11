@@ -122,6 +122,13 @@ export function noteLostTurn(combat: CombatState, actor: Actor): void {
   noteSummon(session, actor);
 }
 
+/** `character`'s fear rose or fell in the running session. */
+export function noteFearChange(combat: CombatState, character: Actor): void {
+  const session = combat.activeSession;
+  if (!session) return;
+  addUnique(session.fearChangedIds, character.id);
+}
+
 /** `actor` drained HP from the damage it just dealt. */
 export function noteLifesteal(combat: CombatState, actor: Actor): void {
   const session = combat.activeSession;
@@ -192,6 +199,7 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
     lostTurnIds: [],
     summonIds: options.bySummon && actorId !== null ? [actorId] : [],
     affectedIds: [...(options.affectedIds ?? [])],
+    fearChangedIds: [],
     ...(options.cause ? { cause: options.cause } : {}),
   };
   const run: Run = { session, from: combat.log.length, snapshot: options.snapshot };
