@@ -19,6 +19,8 @@ import * as artifactsScreen from "../src/ui/screens/artifacts";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
+import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
+import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
   test("plays a scripted run via keypresses without crashing", async () => {
@@ -708,7 +710,8 @@ describe("a panel scrolled with the mouse wheel", () => {
   };
 
   test("does not carry its offset into the next, shorter screen", async () => {
-    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 50 });
+    // Short enough that the shop overflows the Dungeon panel, so there is an offset to carry.
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 44 });
     const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
     await renderOnce();
     const dungeon = () => dungeonOf(captureCharFrame());
@@ -752,5 +755,65 @@ describe("a panel scrolled with the mouse wheel", () => {
     app.tickReveal(); // a render with nothing new to show
     await renderOnce();
     expect(dungeonOf(captureCharFrame())).toBe(scrolled);
+  });
+});
+
+describe("layout below the full height", () => {
+  const panelRows = (frame: string, title: string) => panelContentRows(frame.split("\n"), title);
+
+  /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
+  async function openFight(width: number, height: number, boss = false) {
+    const game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    if (boss) {
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      game.ctx.monsters.push(monster);
+      room.monsterIds = [monster.id];
+      game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    }
+    const setup = await createTestRenderer({ width, height });
+    const app = new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    expect(app.debugUiState.kind).toBe("pickAction");
+    return { ...setup, game };
+  }
+
+  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel gets room for its choices", async () => {
+    const { captureCharFrame, game } = await openFight(120, 40);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
+    // Only blank rows above the sprites were trimmed: every character's name and HP row is still drawn.
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
+    for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
+    for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
+  });
+
+  test("at 120x40 a boss keeps the battlefield's full height, so its sprite is not cut", async () => {
+    const { captureCharFrame } = await openFight(120, 40, true);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+  });
+
+  test("at full height the layout is unchanged", async () => {
+    const { captureCharFrame } = await openFight(120, 70);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(6);
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(20);
+  });
+
+  test("resizing the terminal switches between the two layouts at once", async () => {
+    const { captureCharFrame, resize, renderOnce } = await openFight(120, 70);
+    resize(120, 40);
+    await renderOnce();
+    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
+    resize(120, 70);
+    await renderOnce();
+    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(20);
   });
 });
