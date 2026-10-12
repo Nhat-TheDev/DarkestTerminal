@@ -51,6 +51,9 @@ const RECENT_STEPS = 50;
 const SOFT_LOCK_STEPS = 300;
 const LOOP_BREAK_STEPS = 30;
 const SENSIBLE_CHANCE = 0.7;
+/** While looping: chance to back out of a screen that offers Esc, and how much likelier a digit or Enter is than any other footer key. */
+const LOOP_ESCAPE_CHANCE = 0.5;
+const LOOP_PROGRESS_WEIGHT = 8;
 const HIDDEN_KEY_PROBE_CHANCE = 0.1;
 const SAVE_ROUND_TRIP_CHANCE = { combat: 0.05, other: 0.02 };
 const RESIZE_CHANCE = 0.05;
@@ -110,6 +113,22 @@ function sensibleKey(app: App, footer: FooterInfo): string | null {
     if (idx >= 0 && offer(String(idx + 1))) return String(idx + 1);
   }
   return offer("1") ?? offer("RETURN");
+}
+
+/**
+ * A looping bot is usually stuck in a submenu that never changes the run (character sheet, log, save menu…),
+ * so it backs out and favours the keys that move a run forward over global ones like [b] [l] [s].
+ */
+export function loopBreakKey(rng: Rng, footer: FooterInfo): string {
+  if (footer.keys.length === 0) return pick(rng, ["RETURN", "ESCAPE", "1"]);
+  if (footer.keys.includes("ESCAPE") && rng.next() < LOOP_ESCAPE_CHANCE) return "ESCAPE";
+  const weight = (key: string) => (/^\d$/.test(key) || key === "RETURN" ? LOOP_PROGRESS_WEIGHT : 1);
+  let roll = rng.next() * footer.keys.reduce((sum, key) => sum + weight(key), 0);
+  for (const key of footer.keys) {
+    roll -= weight(key);
+    if (roll < 0) return key;
+  }
+  return footer.keys[footer.keys.length - 1]!;
 }
 
 function saveFileStamp(): number {
@@ -245,10 +264,13 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       if (maxDigit > 0 && maxDigit < 9 && rng.next() < HIDDEN_KEY_PROBE_CHANCE) {
         key = String(maxDigit + 1);
       } else {
-        // The cautious choice can loop on a screen (re-picking the shown tab); once nothing has moved for a while, explore instead.
-        const looping = step - lastProgressStep >= LOOP_BREAK_STEPS;
-        const sensible = !looping && rng.next() < SENSIBLE_CHANCE ? sensibleKey(app, footer) : null;
-        key = sensible ?? (footer.keys.length > 0 ? pick(rng, footer.keys) : pick(rng, ["RETURN", "ESCAPE", "1"]));
+        // The cautious choice can loop on a screen (re-picking the shown tab); once nothing has moved for a while, break out instead.
+        if (step - lastProgressStep >= LOOP_BREAK_STEPS) {
+          key = loopBreakKey(rng, footer);
+        } else {
+          const sensible = rng.next() < SENSIBLE_CHANCE ? sensibleKey(app, footer) : null;
+          key = sensible ?? (footer.keys.length > 0 ? pick(rng, footer.keys) : pick(rng, ["RETURN", "ESCAPE", "1"]));
+        }
       }
       const advertised = footer.keys.includes(key);
 

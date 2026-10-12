@@ -30,17 +30,19 @@ bun run random-play  # dev tool: a bot plays seeded runs through the headless UI
 `bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR`) drives the real
 `App` with simulated keypresses, the way `test/ui.test.ts` does, but for many seeds, a random
 4-class party, a random start depth and party level (via `applyDump`), and a mix of cautious and
-random keys taken from the footer on screen. Every run plays at a height of 70 rows and widths
-120/160/220, so the whole party and every panel is visible; each new screen is also redrawn once
-at the minimum supported size, 120×40. Along the way it saves and reloads (more often mid-combat)
-and occasionally resizes. It reports:
+random keys taken from the footer on screen. Once the run has not changed for a while it stops
+picking cautiously, backs out of any screen that offers Esc and favours digits and Enter over the
+global keys, so it does not idle in the character sheet or the log. Every run plays at a height of
+70 rows and widths 120/160/220, so the whole party and every panel is visible; each new screen is
+also redrawn once at the minimum supported size, 120×40. Along the way it saves and reloads (more
+often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
 - **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
 - **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 120×40;
-- **softLock** — 300 keypresses without the run changing.
+- **softLock** — 300 keypresses without the run changing, even while trying to back out and move on.
 
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50

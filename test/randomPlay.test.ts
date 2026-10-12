@@ -11,7 +11,8 @@ import {
   findLayoutIssues,
 } from "../tools/random-play/checks";
 import { spansToHtml } from "../tools/random-play/report";
-import { playRun } from "../tools/random-play/bot";
+import { playRun, loopBreakKey } from "../tools/random-play/bot";
+import { Rng } from "../src/engine/rng";
 
 const FOOTER = "[1-2] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit";
 
@@ -110,4 +111,25 @@ describe("random-play bot", () => {
     // Only the known 120x40 layout gap may show up; anything else means the bot or the game broke.
     expect(result.failures.filter((f) => !(f.type === "panelMissing" && f.size === "120x40"))).toEqual([]);
   }, 30000);
+
+  test("a looping bot backs out of submenus and favours progress keys, but never leaves the footer", () => {
+    const rng = new Rng(1);
+    const count = (footer: string, n = 2000) => {
+      const info = parseFooter(footer);
+      const tally: Record<string, number> = {};
+      for (let i = 0; i < n; i++) {
+        const key = loopBreakKey(rng, info);
+        tally[key] = (tally[key] ?? 0) + 1;
+      }
+      return tally;
+    };
+    const submenu = count("[1-3] Tab   [Esc] Back   │   [b] Party   [l] Log   [q] Save   [s] Quicksave");
+    expect(submenu.ESCAPE!).toBeGreaterThan(900);
+    const room = count(FOOTER);
+    expect(Object.keys(room).sort()).toEqual(["1", "2", "b", "l", "q", "s"]);
+    // Each digit is 8x as likely as each global key, so the two digits take 16 of every 20 presses.
+    expect(room["1"]! + room["2"]!).toBeGreaterThan(1400);
+    // With nothing but global keys on offer it still only presses those, so a screen where no key acts still runs into softLock.
+    expect(Object.keys(count("[b] Party   [l] Log")).sort()).toEqual(["b", "l"]);
+  });
 });
