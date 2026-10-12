@@ -26,13 +26,14 @@ export type StatusRole = "buff" | "debuff" | "heal";
 /**
  * What a status is on the battlefield. A status that changes a stat is a buff or a debuff (by the
  * direction of the change); a stun and a blind are debuffs of their own, though they change no stat;
- * one that restores HP or MP over time is a heal; everything else — damage over time, vulnerability,
- * stealth, a stance — is neither.
+ * a dodge chance is a buff; one that restores HP or MP over time is a heal; everything else — damage
+ * over time, vulnerability, stealth, a stance — is neither.
  */
 export function statusRole(def: StatusEffectDefinition): StatusRole | null {
   const statChanges = def.perTurnEffects.filter((e) => e.kind === "modifyCombatStat");
   if (statChanges.length > 0) return statChanges.some((e) => statDirection(e) < 0) ? "debuff" : "buff";
   if (def.stuns || def.accuracyPenaltyPercent) return "debuff";
+  if (def.dodgePercent) return "buff";
   if (def.perTurnEffects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "heal";
   return null;
 }
@@ -292,9 +293,10 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
       const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
+      const landedOf = isPlayerSide(source) !== isPlayerSide(target) ? (isSummon(target) ? target.ownerId : target.id) : undefined;
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
-        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns);
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
       return 0;
     }
     case "removeStatusEffect": {
@@ -372,6 +374,26 @@ function modifyCombatStatEffects(def: StatusEffectDefinition, override: StatusMa
     .map((e) => (override ? { ...e, amount: override.amount ?? e.amount, minPercent: override.minPercent ?? e.minPercent } : e));
 }
 
+/**
+ * A status whose only effect is damage ticks the target's race fully resists would sit on it doing
+ * nothing, so it never lands. One that also stuns, blinds, changes a stat or grants a dodge still does.
+ */
+function isImmuneToStatus(actor: Actor, def: StatusEffectDefinition): boolean {
+  return (
+    statusRole(def) === null &&
+    def.perTurnEffects.length > 0 &&
+    def.perTurnEffects.every((e) => e.kind === "damage" && raceMultiplierFor(actor, e.damageType ?? "physical") === 0)
+  );
+}
+
+/** Marks the line of a debuff or damage-over-time landing on the opposing side, so the battlefield can show it on the unit `landedOf`. */
+function statusLandedTag(def: StatusEffectDefinition, landedOf: Id | undefined): Pick<LogEntry, "statusLandedOf" | "statusLanded"> {
+  if (landedOf === undefined) return {};
+  if (statusRole(def) === "debuff") return { statusLandedOf: landedOf, statusLanded: "debuff" };
+  if (def.perTurnEffects.some((e) => e.kind === "damage")) return { statusLandedOf: landedOf, statusLanded: "dot" };
+  return {};
+}
+
 function applyStatusEffectToActor(
   actor: Actor,
   statusEffectId: string,
@@ -380,9 +402,18 @@ function applyStatusEffectToActor(
   magnitudeOverride?: StatusMagnitudeOverride,
   linkedSummonId?: Id,
   casterMagicPower?: number,
-  onHitDurationTurns?: number
+  onHitDurationTurns?: number,
+  landedOf?: Id
 ): void {
   const def = getStatusEffect(statusEffectId);
+  if (isImmuneToStatus(actor, def)) {
+    ctx.log.push({
+      text: t("resolver.statusImmune", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+      kind: "info",
+      ...(landedOf !== undefined ? { statusImmuneOf: landedOf } : {}),
+    });
+    return;
+  }
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
@@ -422,6 +453,7 @@ function applyStatusEffectToActor(
         ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stackedAfter })
         : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }),
       kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
+      ...statusLandedTag(def, landedOf),
     });
     return;
   }
@@ -440,7 +472,11 @@ function applyStatusEffectToActor(
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
-  ctx.log.push({ text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }), kind: isHelpfulStatusEffect(def) ? "buff" : "debuff" });
+  ctx.log.push({
+    text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }),
+    kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
+    ...statusLandedTag(def, landedOf),
+  });
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {

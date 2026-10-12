@@ -168,6 +168,8 @@ function closeRun(combat: CombatState, run: Run): void {
       addUnique(run.session.buffLostIds, entry.buffLostOf);
       if (entry.buffLostOfSummon) addUnique(run.session.summonIds, entry.buffLostOf);
     }
+    if (entry.statusLandedOf) addUnique(entry.statusLanded === "dot" ? run.session.dotLandedIds : run.session.debuffLandedIds, entry.statusLandedOf);
+    if (entry.statusImmuneOf) addUnique(run.session.immuneIds, entry.statusImmuneOf);
     if (run.snapshot) entry.snapshot = snapshot ??= run.snapshot();
   }
   run.from = combat.log.length;
@@ -200,6 +202,9 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
     summonIds: options.bySummon && actorId !== null ? [actorId] : [],
     affectedIds: [...(options.affectedIds ?? [])],
     fearChangedIds: [],
+    debuffLandedIds: [],
+    dotLandedIds: [],
+    immuneIds: [],
     ...(options.cause ? { cause: options.cause } : {}),
   };
   const run: Run = { session, from: combat.log.length, snapshot: options.snapshot };

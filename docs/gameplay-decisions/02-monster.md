@@ -70,8 +70,11 @@ game percent-scales speed), clamped to a minimum of 1 so a heavily-`speedFlat`-s
 effect's `damageType` (defaults to `"physical"` when the effect doesn't declare one). A 100%
 resist yields **exactly 0 damage** — not the usual floor-of-1 every other damage instance gets —
 this is what makes an undead Skeletal archetype (full bleed resist) genuinely immune to bleeding
-out, instead of still losing 1 HP/turn. Resist/weak never applies to a `Character` target, only a
-`Monster`.
+out, instead of still losing 1 HP/turn. A damage-over-time status whose every tick the target
+fully resists (Bleeding on a Skeletal monster) is not applied at all: the log says
+`resolver.statusImmune` ("Skeleton is immune to Bleeding.") and the hit wears no ⁂. A status that
+does anything besides that damage (Agony also cuts a stat) still lands. Resist/weak never applies
+to a `Character` target, only a `Monster`.
 
 ### Floor-depth buff
 

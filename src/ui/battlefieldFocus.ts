@@ -16,7 +16,7 @@ export interface FocusIcon {
 export interface UnitFocus {
   dim: boolean;
   icons: FocusIcon[];
-  /** The session's outcome for the unit once it lands: "-12", "+8" or "miss", written after the icons. */
+  /** The session's outcome for the unit once it lands: "-12", "+8", "miss" or "immune", written after the icons. */
   marker: FocusIcon | null;
 }
 
@@ -28,7 +28,7 @@ export const FOCUS_GLYPH = {
   heal: "✚",
   support: "⚚",
   skip: "⊘",
-  dot: "☣",
+  dot: "⁂",
   dying: "☠",
   artifact: "✦",
   lifesteal: "♥",
@@ -91,8 +91,14 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   const healed = session.healedIds.includes(id);
 
   if (session.actorId === id) {
-    // A debuff that every target threw off leaves only a miss behind, and it was still an attack.
-    if (session.attackedIds.length > 0 || session.debuffedIds.length > 0 || session.missedIds.length > 0) icons.push(icon(FOCUS_GLYPH.sword));
+    // A debuff every target threw off, or a damage-over-time status every target was immune to, was still an attack.
+    const harmed =
+      session.attackedIds.length > 0 ||
+      session.debuffedIds.length > 0 ||
+      session.missedIds.length > 0 ||
+      session.dotLandedIds.length > 0 ||
+      session.immuneIds.length > 0;
+    if (harmed) icons.push(icon(FOCUS_GLYPH.sword));
     if (session.buffedIds.length > 0 || session.healedIds.length > 0) icons.push(icon(FOCUS_GLYPH.support));
   }
   if (session.lifestealIds.includes(id)) icons.push(icon(FOCUS_GLYPH.lifesteal));
@@ -105,12 +111,18 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     else if (session.cause === "fear") icons.push(icon(FOCUS_GLYPH.fear));
   }
   const attacked = session.attackedIds.includes(id);
+  const debuffLanded = session.debuffLandedIds.includes(id);
+  const dotLanded = session.dotLandedIds.includes(id);
+  // `debuffedIds` is the aim of a debuff-only skill; beside an attack only a debuff that landed shows.
+  const debuffed = (session.debuffedIds.includes(id) && !attacked) || debuffLanded;
   if (attacked) icons.push(icon(FOCUS_GLYPH.shield));
-  else if (session.debuffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.debuff));
+  // A hit that leaves a debuff or a damage-over-time status behind wears it after ⛨ (`⛨▼`, `⛨⁂`).
+  if (debuffed) icons.push(icon(FOCUS_GLYPH.debuff));
+  if (dotLanded) icons.push(icon(FOCUS_GLYPH.dot));
   if (session.buffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.buff));
   if (session.lostTurnIds.includes(id)) icons.push(icon(FOCUS_GLYPH.skip));
   // Losing a buff reads like being debuffed: the same glyph, once.
-  if (session.buffLostIds.includes(id) && !session.debuffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.debuff));
+  if (session.buffLostIds.includes(id) && !debuffed) icons.push(icon(FOCUS_GLYPH.debuff));
   if (healed) icons.push(icon(FOCUS_GLYPH.heal));
   // The unit is drawn for its owner: this says the action belongs to, or lands on, the summon.
   if (session.summonIds.includes(id)) icons.push(icon(FOCUS_GLYPH.summon));
@@ -120,7 +132,9 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     attacked ||
     delta !== 0 ||
     summon.delta !== 0 ||
-    session.debuffedIds.includes(id) ||
+    debuffed ||
+    dotLanded ||
+    session.immuneIds.includes(id) ||
     session.buffedIds.includes(id) ||
     session.buffLostIds.includes(id) ||
     session.lostTurnIds.includes(id) ||
@@ -167,7 +181,8 @@ function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: numbe
   if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon);
   if (delta !== 0) return hpMarker(delta, side);
   if (summon.delta !== 0) return hpMarker(summon.delta, side);
-  return session.missedIds.includes(id) ? { glyph: t("ui.focusMiss"), color: MARKER_COLOR.miss } : null;
+  if (session.missedIds.includes(id)) return { glyph: t("ui.focusMiss"), color: MARKER_COLOR.miss };
+  return session.immuneIds.includes(id) ? { glyph: t("ui.focusImmune"), color: MARKER_COLOR.miss } : null;
 }
 
 export interface BattlefieldUnit {
