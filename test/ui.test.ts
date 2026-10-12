@@ -14,6 +14,7 @@ import { t } from "../src/data/strings";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
+import * as artifactsScreen from "../src/ui/screens/artifacts";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
@@ -528,6 +529,13 @@ describe("Rest room runner screens", () => {
     expect(room.cleared).toBe(true);
     expect(game.state.restRunner).toBeNull();
     expect(app.debugUiState.kind).toBe("campReflection"); // the reflection comes after the choice
+  });
+
+  test("an artifact's detail view offers Back as its only option", () => {
+    const artifact = ARTIFACTS[0]!;
+    const text = artifactsScreen.renderMain(new Game(7), { kind: "artifactDetail", artifactId: artifact.id, origin: { kind: "owned", characterId: "x" } });
+    expect(text).toContain(artifact.name);
+    expect(text.split("\n").at(-1)).toBe("  [1] Back");
   });
 
   test("each shop offer shows what the item does", async () => {
