@@ -23,7 +23,31 @@ bun test        # unit tests for the engine (resolver, combat, aggro, level, flo
 bun run typecheck
 bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
 bun run docs:sync    # rewrite the doc numbers that mirror data/balance-config.json (--check only verifies; bun test runs the check)
+bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/)
 ```
+
+<!-- docs:intent-begin -->
+`bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR`) drives the real
+`App` with simulated keypresses, the way `test/ui.test.ts` does, but for many seeds, a random
+4-class party, a random start depth and party level (via `applyDump`), and a mix of cautious and
+random keys taken from the footer on screen. Every run plays at a height of 70 rows and widths
+120/160/220, so the whole party and every panel is visible; each new screen is also redrawn once
+at the minimum supported size, 120×40. Along the way it saves and reloads (more often mid-combat)
+and occasionally resizes. It reports:
+
+- **crash** — an exception, including one OpenTUI's key handler catches and only logs;
+- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
+- **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
+- **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
+- **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 120×40;
+- **softLock** — 300 keypresses without the run changing.
+
+A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
+border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
+steps and a colour capture of the screen; `--game-seed X --bot-seed Y` replays one run exactly.
+`report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
+when it finds a failure.
+<!-- docs:intent-end -->
 
 ## ✅ Implementation overview
 
@@ -483,9 +507,11 @@ src/
 tools/
   game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
+  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless smoke test: boot + play a full run via simulated keyboard input, incl. a regression test for the post-victory artifact-decision/floor-advance ordering
+  randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting
   resolver.test.ts     # the shared SkillEffect resolver + status-effect cleanup when a room is cleared

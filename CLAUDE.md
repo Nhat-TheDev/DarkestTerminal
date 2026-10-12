@@ -22,6 +22,7 @@ bun run typecheck              # tsc --noEmit (strict mode)
 bun run game-editor         # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills
 bun run dump-save           # dev tool: web UI to generate a save at any level/floor/room/event (dev-mode only)
 bun run docs:sync           # rewrite the doc tables and numbers that mirror data/*.json (--check only verifies, --coverage lists unprotected numbers; `bun test` runs the check)
+bun run random-play         # dev tool: a bot plays seeded runs through the headless UI and writes report.html (crashes, invariants, footer keys, layout at 120x40, screen gallery)
 
 bun run build            # compile a standalone release binary (--define __DEV__=false)
 ```
@@ -42,7 +43,7 @@ Tests redirect `DARKEST_TERMINAL_SAVE_DIR` to a fresh temp directory (`test/setu
 
 **Key hints are generated, not hand-typed per screen.** Every screen's footer (`[1-n] Move   [i] Items`) follows a fixed grammar enforced by `test/keyHints.test.ts` and derived centrally in `src/ui/keyHints.ts` (`digitHint`, `globalHints`, `composeFooter`) — see the "Key hints" section of `docs/developer-guide.md` before adding a new screen or footer string.
 
-**`tools/`** holds standalone Bun-server dev tools (`game-editor` — sprites, balance rebalancing, and CRUD for monsters/artifacts/items/status effects/monster skills; `dev-save-dump`) — each is `server.ts` (Bun.serve, reads/writes the same `data/*.json` or engine code the game itself uses) + `index.html`, run independently of `src/main.ts`.
+**`tools/`** holds standalone Bun-server dev tools (`game-editor` — sprites, balance rebalancing, and CRUD for monsters/artifacts/items/status effects/monster skills; `dev-save-dump`) — each is `server.ts` (Bun.serve, reads/writes the same `data/*.json` or engine code the game itself uses) + `index.html`, run independently of `src/main.ts`. `random-play` is the exception: a CLI that drives the real `App` headlessly and writes a report file.
 
 ## Conventions from working on this project
 
