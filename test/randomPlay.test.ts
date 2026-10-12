@@ -13,6 +13,9 @@ import {
 import { spansToHtml } from "../tools/random-play/report";
 import { playRun, loopBreakKey } from "../tools/random-play/bot";
 import { Rng } from "../src/engine/rng";
+import { mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const FOOTER = "[1-2] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit";
 
@@ -108,8 +111,7 @@ describe("random-play bot", () => {
     expect(result.steps).toBeGreaterThan(50);
     expect(result.gallery.length).toBeGreaterThan(3);
     expect(result.gallery.every((g) => g.size.endsWith("x70"))).toBe(true);
-    // Only the known 120x40 layout gap may show up; anything else means the bot or the game broke.
-    expect(result.failures.filter((f) => !(f.type === "panelMissing" && f.size === "120x40"))).toEqual([]);
+    expect(result.failures).toEqual([]);
   }, 30000);
 
   test("a looping bot backs out of submenus and favours progress keys, but never leaves the footer", () => {
@@ -131,5 +133,30 @@ describe("random-play bot", () => {
     expect(room["1"]! + room["2"]!).toBeGreaterThan(1400);
     // With nothing but global keys on offer it still only presses those, so a screen where no key acts still runs into softLock.
     expect(Object.keys(count("[b] Party   [l] Log")).sort()).toEqual(["b", "l"]);
+  });
+});
+
+describe("random-play CLI", () => {
+  /** Runs the CLI as CI does, with its temp files kept in a directory of their own. */
+  function cli(...args: string[]) {
+    const tmp = mkdtempSync(join(tmpdir(), "random-play-cli-"));
+    const run = Bun.spawnSync(["bun", "run", "tools/random-play/run.ts", ...args], { env: { ...process.env, TMPDIR: tmp }, stdout: "pipe", stderr: "pipe" });
+    return { exitCode: run.exitCode, stdout: run.stdout.toString(), stderr: run.stderr.toString(), created: readdirSync(tmp) };
+  }
+
+  test("--report none prints the result, exits 0 when nothing failed and writes no report", () => {
+    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("0 failures");
+    expect(stdout).not.toContain("report:");
+    // Only the throwaway save directory every run needs.
+    expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
+  }, 30000);
+
+  test("an unknown --report value is refused before any run", () => {
+    const { exitCode, stdout, stderr } = cli("--runs", "1", "--report", "pdf");
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("--report must be html or none");
+    expect(stdout).not.toContain("run 1/1");
   });
 });

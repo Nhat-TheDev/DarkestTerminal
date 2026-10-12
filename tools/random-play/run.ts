@@ -15,8 +15,9 @@ const maxSteps = Number(args["max-steps"] ?? 2000);
 const single = args["game-seed"] !== undefined;
 const runs = single ? 1 : Number(args.runs ?? 20);
 const seedStart = Number(args["seed-start"] ?? 1);
-const outDir = args.out ? resolve(args.out) : mkdtempSync(join(tmpdir(), "darkest-terminal-random-play-"));
-mkdirSync(outDir, { recursive: true });
+// "none" skips report.html and failures.json: the failure list printed below and the exit code are the whole result (CI).
+const reportMode = args.report ?? "html";
+if (reportMode !== "html" && reportMode !== "none") throw new Error(`--report must be html or none, not "${reportMode}"`);
 
 const report: ReportInput = {
   generatedAt: new Date().toISOString(),
@@ -51,9 +52,26 @@ for (let i = 0; i < runs; i++) {
 
 report.gallery = [...gallery.values()];
 report.durationSec = (performance.now() - startedAt) / 1000;
-writeFileSync(join(outDir, "report.html"), renderReport(report));
-writeFileSync(join(outDir, "failures.json"), JSON.stringify(report.failures.map(({ frame: _frame, ...rest }) => rest), null, 2));
 
-console.log(`\n${report.failures.length} failures, ${report.warnings.length} warnings, ${report.gallery.length} screens in the gallery`);
-console.log(`report: ${join(outDir, "report.html")}`);
+const groups = new Map<string, ReportInput["failures"]>();
+for (const f of report.failures) {
+  const key = `${f.type}: ${f.detail}`;
+  groups.set(key, [...(groups.get(key) ?? []), f]);
+}
+for (const [key, found] of groups) {
+  const first = found[0]!;
+  console.log(`\nFAIL ${key}  (x${found.length})`);
+  console.log(`  screens: ${[...new Set(found.map((f) => `${f.uiKind}@${f.size}`))].join(", ")}`);
+  console.log(`  replay:  ${first.reproduce}`);
+  if (first.stack) console.log(first.stack.split("\n").slice(0, 4).map((line) => `  ${line.trim()}`).join("\n"));
+}
+
+console.log(`\n${report.failures.length} failures, ${report.warnings.length} warnings, ${report.gallery.length} screens reached in ${report.durationSec.toFixed(0)} s`);
+if (reportMode === "html") {
+  const outDir = args.out ? resolve(args.out) : mkdtempSync(join(tmpdir(), "darkest-terminal-random-play-"));
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, "report.html"), renderReport(report));
+  writeFileSync(join(outDir, "failures.json"), JSON.stringify(report.failures.map(({ frame: _frame, ...rest }) => rest), null, 2));
+  console.log(`report: ${join(outDir, "report.html")}`);
+}
 process.exit(report.failures.length > 0 ? 1 : 0);

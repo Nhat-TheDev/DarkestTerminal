@@ -27,15 +27,15 @@ bun run random-play  # dev tool: a bot plays seeded runs through the headless UI
 ```
 
 <!-- docs:intent-begin -->
-`bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR`) drives the real
-`App` with simulated keypresses, the way `test/ui.test.ts` does, but for many seeds, a random
-4-class party, a random start depth and party level (via `applyDump`), and a mix of cautious and
-random keys taken from the footer on screen. Once the run has not changed for a while it stops
-picking cautiously, backs out of any screen that offers Esc and favours digits and Enter over the
-global keys, so it does not idle in the character sheet or the log. Every run plays at a height of
-70 rows and widths 120/160/220, so the whole party and every panel is visible; each new screen is
-also redrawn once at the minimum supported size, 120×40. Along the way it saves and reloads (more
-often mid-combat) and occasionally resizes. It reports:
+`bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR --report html|none`)
+drives the real `App` with simulated keypresses, the way `test/ui.test.ts` does, but for many
+seeds, a random 4-class party, a random start depth and party level (via `applyDump`), and a mix
+of cautious and random keys taken from the footer on screen. Once the run has not changed for a
+while it stops picking cautiously, backs out of any screen that offers Esc and favours digits and
+Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
+at a height of 70 rows and widths 120/160/220, so the whole party and every panel is visible; each
+new screen is also redrawn once at the minimum supported size, 120×40. Along the way it saves and
+reloads (more often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
 - **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
@@ -48,7 +48,10 @@ A digit that does nothing (re-picking the tab already shown) and text touching a
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
 steps and a colour capture of the screen; `--game-seed X --bot-seed Y` replays one run exactly.
 `report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
-when it finds a failure.
+when it finds a failure, and prints each kind of failure with the screens it hit and a command that
+replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
+and the exit code are the whole result. Every pull request runs 10 fixed seeds this way
+(`.github/workflows/random-play.yml`).
 <!-- docs:intent-end -->
 
 ## ✅ Implementation overview
@@ -524,7 +527,7 @@ tools/
   random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
-  ui.test.ts           # headless smoke test: boot + play a full run via simulated keyboard input, incl. a regression test for the post-victory artifact-decision/floor-advance ordering
+  ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the compact layout
   randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting

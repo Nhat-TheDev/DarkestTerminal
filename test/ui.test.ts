@@ -5,7 +5,7 @@ import { Game } from "../src/engine/game";
 import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
-import { getActorByRef, startCombat } from "../src/engine/combat";
+import { startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -23,60 +23,6 @@ import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
-  test("plays a scripted run via keypresses without crashing", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
-    const app = new App(renderer, new Game(7));
-    await renderOnce();
-
-    const firstFrame = captureCharFrame();
-    expect(firstFrame).toContain("DARKEST-TERMINAL");
-    const startingDepth = app.debugGame.state.floor.depth;
-
-    let guard = 0;
-    while (app.debugUiState.kind !== "gameover" && guard < 800) {
-      guard++;
-      const ui = app.debugUiState;
-
-      if (ui.kind === "roomReward" || ui.kind === "skillDetail" || ui.kind === "runnerNotice" || ui.kind === "runnerShop") {
-        mockInput.pressKey("RETURN");
-        await renderOnce();
-        continue;
-      }
-
-      let key = "1";
-      if (ui.kind === "room") {
-        const choices = app.debugGame.connectedRoomChoices();
-        const idx = choices.findIndex((r) => !r.cleared);
-        key = String((idx >= 0 ? idx : 0) + 1);
-      } else if (ui.kind === "pickAction") {
-        key = "1";
-      } else if (ui.kind === "pickSkill") {
-        const actor = getActorByRef(ui.actorRef, app.debugGame.ctx) as Character;
-        const skills = actor.unlockedSkillIds.map(getSkill);
-        const attackIdx = skills.findIndex((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost);
-        key = String((attackIdx >= 0 ? attackIdx : 0) + 1);
-      } else if (ui.kind === "pickTarget") {
-        key = "1";
-      } else {
-        key = "1";
-      }
-
-      mockInput.pressKey(key);
-      await renderOnce();
-    }
-
-    const outcome = app.debugGame.state.gameOver;
-    expect(outcome).not.toBe("victory");
-    if (outcome === null) {
-      expect(app.debugGame.state.floor.depth).toBeGreaterThan(startingDepth);
-    } else {
-      expect(outcome).toBe("defeat");
-    }
-
-    const finalFrame = captureCharFrame();
-    expect(finalFrame.length).toBeGreaterThan(0);
-  }, 20000);
-
   test("a boss kill's pending artifact decision surfaces before the floor advances", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
     const game = new Game(7);
