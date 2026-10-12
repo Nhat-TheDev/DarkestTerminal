@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolveRenderLib } from "@opentui/core";
 import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
 import { t } from "../src/data/strings";
 import { ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
@@ -6,7 +7,7 @@ import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow,
 import type { LogSession } from "../src/types";
 
 function session(partial: Partial<LogSession>): LogSession {
-  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearChangedIds: [], ...partial };
+  return { id: 1, actorId: null, attackedIds: [], debuffedIds: [], buffedIds: [], healedIds: [], missedIds: [], lifestealIds: [], tickDamageIds: [], buffLostIds: [], lostTurnIds: [], summonIds: [], affectedIds: [], fearChangedIds: [], debuffLandedIds: [], dotLandedIds: [], immuneIds: [], ...partial };
 }
 const glyphs = (icons: { glyph: string }[]) => icons.map((i) => i.glyph);
 const textOf = (line: { text: string }[]) => line.map((c) => c.text).join("");
@@ -28,6 +29,18 @@ describe("dimSprite", () => {
     const dimmed = dimSprite(sprite);
     expect(dimmed.rows).toEqual(sprite.rows);
     for (const color of Object.values(dimmed.palette)) expect(color).toMatch(/^#([0-9a-f]{2})\1\1$/);
+  });
+});
+
+describe("FOCUS_GLYPH", () => {
+  // The renderer skips the cell after a glyph it measures 2 wide, so a terminal that draws it 1 wide keeps the previous frame's character there.
+  test("every glyph is one cell wide to the renderer", () => {
+    const lib = resolveRenderLib();
+    for (const glyph of Object.values(FOCUS_GLYPH)) {
+      const encoded = lib.encodeUnicode(glyph, "unicode")!;
+      expect({ glyph, widths: encoded.data.map((c) => c.width) }).toEqual({ glyph, widths: [1] });
+      lib.freeUnicode(encoded);
+    }
   });
 });
 
@@ -73,6 +86,39 @@ describe("unitFocus", () => {
     const s = session({ actorId: "m1", missedIds: ["p1"], affectedIds: ["p1"] });
     expect(glyphs(unitFocus("m1", "monster", s).icons)).toEqual([FOCUS_GLYPH.sword]);
     expect(unitFocus("p1", "party", s).dim).toBe(false);
+  });
+
+  test("a hit that leaves a debuff or a damage-over-time status wears it after the shield", () => {
+    const s = session({ actorId: "p1", attackedIds: ["m1", "m2", "m3"], debuffLandedIds: ["m1"], dotLandedIds: ["m2"] });
+    expect(glyphs(unitFocus("m1", "monster", s).icons)).toEqual([FOCUS_GLYPH.shield, FOCUS_GLYPH.debuff]);
+    expect(glyphs(unitFocus("m2", "monster", s).icons)).toEqual([FOCUS_GLYPH.shield, FOCUS_GLYPH.dot]);
+    expect(glyphs(unitFocus("m3", "monster", s).icons)).toEqual([FOCUS_GLYPH.shield]);
+  });
+
+  test("a landed debuff shows one debuff glyph, also when the unit lost a buff in the same session", () => {
+    const s = session({ actorId: "m1", debuffedIds: ["p1"], debuffLandedIds: ["p1"], buffLostIds: ["p1"] });
+    expect(glyphs(unitFocus("p1", "party", s).icons)).toEqual([FOCUS_GLYPH.debuff]);
+  });
+
+  test("a damage-over-time status that lands without a hit lights its target with the dot glyph", () => {
+    const s = session({ actorId: "p1", affectedIds: ["m1"], dotLandedIds: ["m1"] });
+    expect(unitFocus("m1", "monster", s)).toMatchObject({ dim: false, icons: [{ glyph: FOCUS_GLYPH.dot, color: FOCUS_COLOR.monster }] });
+  });
+
+  test("a damage-over-time status its target was immune to: the caster has a sword, the target reads immune", () => {
+    const s = session({ actorId: "p1", affectedIds: ["m1"], immuneIds: ["m1"] });
+    expect(glyphs(unitFocus("p1", "party", s).icons)).toEqual([FOCUS_GLYPH.sword]);
+    expect(unitFocus("m1", "monster", s, 0, true)).toEqual({ dim: false, icons: [], marker: { glyph: t("ui.focusImmune"), color: MARKER_COLOR.miss } });
+  });
+
+  test("an immune target that still lost HP shows its number, not immune", () => {
+    const s = session({ actorId: "p1", attackedIds: ["m1"], immuneIds: ["m1"] });
+    expect(unitFocus("m1", "monster", s, -14, true).marker?.glyph).toBe("-14");
+  });
+
+  test("the caster of a damage-over-time status that landed has a sword", () => {
+    const s = session({ actorId: "p1", affectedIds: ["m1"], dotLandedIds: ["m1"] });
+    expect(glyphs(unitFocus("p1", "party", s).icons)).toEqual([FOCUS_GLYPH.sword]);
   });
 
   test("a bystander is dimmed and has no icons", () => {

@@ -801,6 +801,12 @@ export interface LogSession {
   affectedIds: Id[];
   /** Characters whose fear rose or fell in this session; the battlefield shows it a beat after their other changes. */
   fearChangedIds: Id[];
+  /** Opposing-side units a debuff actually landed on (not missed or thrown off), filled from the entries' `statusLandedOf`. */
+  debuffLandedIds: Id[];
+  /** Opposing-side units a damage-over-time status actually landed on, filled from the entries' `statusLandedOf`. */
+  dotLandedIds: Id[];
+  /** Opposing-side units a damage-over-time status could not land on because their race fully resists it, filled from the entries' `statusImmuneOf`. */
+  immuneIds: Id[];
   /** What an actor-less session was, so its lit units can wear the matching icon. */
   cause?: "dot" | "dying" | "artifact" | "fear";
 }
@@ -813,10 +819,16 @@ export interface LogEntry {
   session?: LogSession;
   /** Carries a session that has no line to show (party-wide fear at the end of a round or on a victory); never rendered in a log. */
   hidden?: true;
-  /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff", i.e. one that raises a stat, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
+  /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff": one that raises a stat or grants a dodge chance, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
   buffLostOf?: Id;
   /** Set with `buffLostOf` when the unit that lost the buff is a summon. */
   buffLostOfSummon?: true;
+  /** Set on the line that reports a debuff or damage-over-time status landing on the opposing side: the battlefield unit it landed on (a summon's owner). */
+  statusLandedOf?: Id;
+  /** Which kind of status `statusLandedOf` received. */
+  statusLanded?: "debuff" | "dot";
+  /** Set on the line that reports an opposing-side unit immune to a damage-over-time status: the battlefield unit it was aimed at. */
+  statusImmuneOf?: Id;
 }
 
 export interface CombatState {

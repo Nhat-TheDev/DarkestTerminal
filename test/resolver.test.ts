@@ -6,6 +6,7 @@ import { Game } from "../src/engine/game";
 import { startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
+import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { BALANCE } from "../src/data/balanceConfig";
 
 describe("resolver", () => {
@@ -447,6 +448,43 @@ describe("race resist/weak in resolveSkillEffect", () => {
     const physicalEffect: SkillEffect = { kind: "damage", amount: 10 };
     const physicalDealt = resolveSkillEffect(physicalEffect, source, targetB, { log: [] });
     expect(dealt).toBeLessThan(physicalDealt);
+  });
+
+  test("a damage-over-time status whose every tick the target fully resists never lands", () => {
+    const { ctx } = makeCtx();
+    const target = spawnMonster("skeleton", 1); // Skeletal subRace: resistPercent.bleed = 100
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, ctx.party[0]!, target, { log });
+    expect(target.activeStatusEffects).toHaveLength(0);
+    expect(log.map((l) => l.text)).toEqual([`${target.name} is immune to Bleeding.`]);
+  });
+
+  test("a status that also does something besides fully resisted damage still lands", () => {
+    const { ctx } = makeCtx();
+    const target = spawnMonster("fire-elemental", 1); // resistPercent.fire = 100; Agony also cuts a stat
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "agony", durationTurns: 3 }, ctx.party[0]!, target, { log: [] });
+    expect(target.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["agony"]);
+  });
+
+  test("a fully resisted damage-over-time status that also stuns still lands", () => {
+    const { ctx } = makeCtx();
+    const target = spawnMonster("skeleton", 1);
+    const def = getStatusEffect("bleeding");
+    const stunningBleed: StatusEffectDefinition = { ...def, id: "t-stunning-bleed", stuns: true };
+    STATUS_EFFECTS.push(stunningBleed);
+    try {
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: stunningBleed.id, durationTurns: 2 }, ctx.party[0]!, target, { log: [] });
+      expect(target.activeStatusEffects.map((s) => s.statusEffectId)).toEqual([stunningBleed.id]);
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.indexOf(stunningBleed), 1);
+    }
+  });
+
+  test("a damage-over-time status lands on a Character whatever the source's race", () => {
+    const { ctx } = makeCtx();
+    const target = ctx.party[1]!;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, spawnMonster("skeleton", 1), target, { log: [] });
+    expect(target.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["bleeding"]);
   });
 
   test("a Character target is never affected by race resist/weak lookups", () => {

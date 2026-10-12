@@ -421,6 +421,70 @@ describe("applySkillEffects notes its targets", () => {
   });
 });
 
+describe("a status that lands on the opposing side", () => {
+  const bleed: SkillEffect = { kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 2 };
+  const cast = (effects: SkillEffect[]) => {
+    const { ctx, combat, vanguard, goblin } = setup();
+    ctx.rng.next = () => 0;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects }), vanguard, [goblin], combat, ctx, combat.log));
+    return { session: combat.log.at(-1)!.session!, goblin };
+  };
+
+  test("a debuff that lands with a hit is noted beside the attack", () => {
+    const { session, goblin } = cast([damage, weakenDebuff]);
+    expect(session).toMatchObject({ attackedIds: [goblin.id], debuffLandedIds: [goblin.id], dotLandedIds: [] });
+  });
+
+  test("a damage-over-time status that lands with a hit is noted as such", () => {
+    const { session, goblin } = cast([damage, bleed]);
+    expect(session).toMatchObject({ attackedIds: [goblin.id], debuffLandedIds: [], dotLandedIds: [goblin.id] });
+  });
+
+  test("a damage-over-time status that stacks on a unit already carrying it is still noted", () => {
+    const { ctx, combat, vanguard, goblin } = setup();
+    ctx.rng.next = () => 0;
+    const bleedSkill = skill({ target: "singleEnemy", effects: [bleed] });
+    runInSession(combat, vanguard.id, () => applySkillEffects(bleedSkill, vanguard, [goblin], combat, ctx, combat.log));
+    runInSession(combat, vanguard.id, () => applySkillEffects(bleedSkill, vanguard, [goblin], combat, ctx, combat.log));
+    const second = combat.log.at(-1)!;
+    expect(second.text).toContain("stacks to 2");
+    expect(second.session).toMatchObject({ dotLandedIds: [goblin.id] });
+  });
+
+  test("a status whose chance fails is not noted", () => {
+    const { session, goblin } = cast([damage, { ...bleed, chance: 0 }]);
+    expect(session).toMatchObject({ attackedIds: [goblin.id], debuffLandedIds: [], dotLandedIds: [] });
+  });
+
+  test("a debuff the target throws off is not noted", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    vanguard.equippedArtifactIds.push("bitter-root-charm");
+    ctx.rng.next = () => 1 - debuffResistPercent(vanguard) / 200;
+    runInSession(combat, goblin.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [weakenDebuff] }), goblin, [vanguard], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ debuffLandedIds: [], missedIds: [vanguard.id] });
+  });
+
+  test("a debuff a skill puts on its own side is a cost, not a landed debuff", () => {
+    const { ctx, combat, vanguard } = setup();
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "self", effects: [weakenDebuff] }), vanguard, [vanguard], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ debuffLandedIds: [], dotLandedIds: [] });
+  });
+
+  test("a damage-over-time status the target is immune to is noted as immune, not landed", () => {
+    const { ctx, combat, vanguard } = setup();
+    const skeleton = spawnInto(ctx, "skeleton");
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [bleed] }), vanguard, [skeleton], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ immuneIds: [skeleton.id], dotLandedIds: [] });
+  });
+
+  test("a dodge-chance status on an ally is a buff", () => {
+    const { ctx, combat, vanguard, acolyte } = setup();
+    const smoke: SkillEffect = { kind: "applyStatusEffect", statusEffectId: "smoke-cover", durationTurns: 2 };
+    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [smoke] }), acolyte, [vanguard], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ buffedIds: [vanguard.id] });
+  });
+});
+
 describe("resolveRound tags what a round logs", () => {
   function fight(seed = 11) {
     const { ctx } = makeCtx(seed);
@@ -1128,7 +1192,7 @@ describe("a unit that loses its turn is recorded in its own session", () => {
   });
 });
 
-describe("statusRole: only a stat change is a buff or a debuff", () => {
+describe("statusRole: a stat change or a dodge chance is a buff or a debuff", () => {
   const role = (id: string) => statusRole(getStatusEffect(id));
   test("stat modifiers are buffs or debuffs by the direction of the change", () => {
     for (const id of ["guard", "rallied", "fortify", "empower", "totems-strength", "whetstones-edge"]) expect(role(id)).toBe("buff");
@@ -1147,6 +1211,9 @@ describe("statusRole: only a stat change is a buff or a debuff", () => {
   });
   test("a status that also deals damage and cuts a stat is a debuff", () => {
     expect(role("agony")).toBe("debuff");
+  });
+  test("a dodge chance is a buff", () => {
+    for (const id of ["smoke-cover", "smoke-cover-ii", "smoke-cover-iii"]) expect(role(id)).toBe("buff");
   });
   test("a heal-over-time is a heal, not a buff", () => {
     for (const id of ["mending", "mending-iii", "regeneration", "bandage-rolls-mend", "knitting-iii"]) expect(role(id)).toBe("heal");

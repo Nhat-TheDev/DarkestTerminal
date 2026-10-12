@@ -139,7 +139,10 @@ frame (`ICON_BAND_ROWS`, `src/ui/layout.ts`); the battlefield always reserves th
 centred over the unit's own sprite (`spriteSlotLayout`, `src/ui/sprites.ts`). While a round resolves,
 every unit outside the action being narrated is rendered grey (`dimColor`/`dimSprite`,
 `src/ui/battlefieldFocus.ts`) and the participants wear icons — ⚔ attacker (also the caster of
-a debuff-only skill), ⛨ attacked (hit or missed), ▼ debuffed by a skill with no damage or a unit
+a skill that only debuffs or only applies damage over time), ⛨ attacked (hit or missed), followed by ▼ when a debuff landed with the hit or
+⁂ when a damage-over-time status did (`LogSession.debuffLandedIds`/`dotLandedIds`, filled from the
+`statusLandedOf` that `applyStatusEffectToActor` puts on its line when the status lands on the
+opposing side; one that missed, failed its chance or was thrown off adds nothing), ▼ debuffed by a skill with no damage or a unit
 that lost a buff (it ran out, was removed or was spent — `LogSession.buffLostIds`, filled from the
 `buffLostOf` of the line `expireStatusEffect` logs), ▲ buffed, ✚ healed (a heal-over-time such as
 Mending counts here too, applied or expired), ⚚ caster of a buff/heal, ⊘ a unit whose turn was
@@ -151,13 +154,14 @@ worn after the role icons it comes with. Blue marks the party, red the monsters,
 unit wearing the icon.
 A status that changes a stat is a buff or a debuff, by the direction of the change
 (`statusRole`, `src/engine/resolver.ts`); a stun and a blind are debuffs of their own, though they
-change no stat; one that restores HP or MP over time is a heal; damage over time, vulnerability,
-stealth and a stance such as Overwatch are neither, so casting or losing one lights the unit
-without a ▲ or ▼.
+change no stat; a dodge chance such as Smoke Cover is a buff; one that restores HP or MP over time
+is a heal; damage over time, vulnerability, stealth and a stance such as Overwatch are neither, so
+casting or losing one lights the unit without a ▲ or ▼ (a damage-over-time status that lands on
+the opposing side still shows ⁂).
 Who those units are comes from `LogEntry.session` (`LogSession`, built in
 `src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
 because it has no sprite. Round-start and round-end ticks are one actor-less session per block
-that lights the units whose tick logged; its `cause` picks their icon — ☣ a damage-over-time tick
+that lights the units whose tick logged; its `cause` picks their icon — ⁂ a damage-over-time tick
 (`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
 unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
 auto-damage (its target wears ⛨), ◉ a character whose fear changed at the end of the round or on a victory; a stat-mod expiry block shows only the ▼ of the units that lost a
@@ -166,9 +170,11 @@ item touches without helping (an aggro drop, say) is lit without an icon.
 
 After the icons comes the unit's outcome for the session, from its impact on: its HP change
 (`-12`, `+8`), or `miss` for a target whose attack or debuff missed or was dodged
-(`LogSession.missedIds`) and lost no HP. Damage is white on a monster and red on a character; a
+(`LogSession.missedIds`) and lost no HP, or `immune` for one that lost no HP because its race fully
+resists a damage-over-time status aimed at it (`LogSession.immuneIds`, filled from the
+`statusImmuneOf` on the `resolver.statusImmune` line; see `docs/gameplay-decisions/02-monster.md`). Damage is white on a monster and red on a character; a
 heal is green, lighter on a character and deeper on a monster (`MARKER_COLOR`, taking its colours
-from `PALETTE` in `src/ui/theme.ts`; the word `miss` is `ui.focusMiss` in `data/strings.json`).
+from `PALETTE` in `src/ui/theme.ts`; the words are `ui.focusMiss` and `ui.focusImmune` in `data/strings.json`).
 The change is the difference between the HP on screen when the session lights up and its own
 snapshot: each run of a session's entries carries the combatant state as of the end of that run
 (`runInSession`'s `snapshot` option), so a session never shows a change that belongs to the next
