@@ -42,7 +42,7 @@ import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { composeFooter } from "./keyHints";
-import type { ScreenContext } from "./screens/context";
+import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
 import * as combatScreen from "./screens/combat";
@@ -385,6 +385,15 @@ export class App implements ScreenContext {
       }
       if (room.type === "event" && !room.cleared && room.rolledEventId) {
         this.ui = eventUiState(room.rolledEventId);
+        return;
+      }
+      // A cleared boss room is only ever left by the floor advance. The camp offer and the advance
+      // are held here rather than in the save, so a run reloaded between the boss kill and the
+      // advance picks the post-victory sequence back up instead of stranding the party.
+      if (room.type === "boss" && room.cleared) {
+        this.pendingCampOffer = true;
+        this.pendingFloorAdvance = true;
+        proceedAfterVictory(this);
         return;
       }
       this.ui = { kind: "room" };

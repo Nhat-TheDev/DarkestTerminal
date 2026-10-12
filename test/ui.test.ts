@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
+import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
@@ -111,6 +112,62 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     expect(game.state.floor.depth).toBe(2); // now it advances
+  }, 20000);
+
+  // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
+  // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
+  async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
+    let game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    game.currentSaveSlot = "slot1";
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "boss";
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = 1;
+    game.ctx.monsters.push(boss);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+    let setup = await createTestRenderer({ width: 100, height: 40 });
+    let app = new App(setup.renderer, game);
+    await setup.renderOnce();
+
+    for (let guard = 0; app.debugUiState.kind !== stopAt && guard < 40; guard++) {
+      const kind = app.debugUiState.kind;
+      setup.mockInput.pressKey(kind === "roomReward" || kind === "skillDetail" ? "RETURN" : "1");
+      await setup.renderOnce();
+    }
+    expect(app.debugUiState.kind).toBe(stopAt);
+
+    saveRun(game);
+    game = gameFromSave(loadSave("slot1"), "slot1", 7);
+    setup = await createTestRenderer({ width: 100, height: 40 });
+    app = new App(setup.renderer, game);
+    await setup.renderOnce();
+    return { game, app, setup };
+  }
+
+  test("a run reloaded on a boss kill's artifact decision still offers Camp and advances the floor", async () => {
+    const { game, app, setup } = await bossKilledThenReloadedAt("artifactDecision");
+    expect(app.debugUiState.kind).toBe("artifactDecision");
+
+    setup.mockInput.pressKey("2"); // Discard
+    await setup.renderOnce();
+    expect(app.debugUiState.kind).toBe("campPrompt");
+    expect(game.state.floor.depth).toBe(1);
+
+    setup.mockInput.pressKey("RETURN"); // skip Camp
+    await setup.renderOnce();
+    expect(game.state.floor.depth).toBe(2);
+  }, 20000);
+
+  test("a run reloaded on the post-boss Camp offer is offered Camp again and then advances", async () => {
+    const { game, app, setup } = await bossKilledThenReloadedAt("campPrompt");
+    expect(app.debugUiState.kind).toBe("campPrompt");
+    expect(game.state.floor.depth).toBe(1);
+
+    setup.mockInput.pressKey("RETURN"); // skip Camp
+    await setup.renderOnce();
+    expect(game.state.floor.depth).toBe(2);
   }, 20000);
 
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
