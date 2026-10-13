@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FEAR_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
+import { FEAR_BEAT_TICKS, HIT_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
@@ -182,5 +182,80 @@ describe("RevealQueue", () => {
     q.enqueue(entries("n", 1));
     const steps = drain(q);
     expect(steps.findIndex((s) => s.texts.includes("n0"))).toBeGreaterThan(0);
+  });
+});
+
+/** One damage line per amount, each a direct hit on `targetId`. */
+function hitEntries(s: LogSession, targetId: string, amounts: number[]): LogEntry[] {
+  return amounts.map((amount, i) => ({ text: `hit${i}`, kind: "attack" as const, session: s, hit: { targetId, amount } }));
+}
+
+describe("RevealQueue hit beats", () => {
+  /** Per tick of the lit session: the step, in the order the ticks ran. */
+  function stepsOf(q: RevealQueue) {
+    const steps: number[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) steps.push(q.hitStep);
+    }
+    return steps;
+  }
+
+  test("a unit hit three times steps to the next hit every HIT_BEAT_TICKS from the impact and holds the last", () => {
+    const q = new RevealQueue();
+    q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([53, 52, 54]);
+    const steps = stepsOf(q);
+    steps.unshift(0); // the tick taken above
+    expect(steps.indexOf(1)).toBe(IMPACT_TICKS + HIT_BEAT_TICKS);
+    expect(steps.indexOf(2)).toBe(IMPACT_TICKS + 2 * HIT_BEAT_TICKS);
+    expect(steps.slice(0, IMPACT_TICKS + HIT_BEAT_TICKS).every((step) => step === 0)).toBe(true);
+    expect(steps.at(-1)).toBe(2);
+  });
+
+  test("the session runs one HIT_BEAT_TICKS longer for each hit past the first", () => {
+    const length = (amounts: number[]) => {
+      const q = new RevealQueue();
+      q.enqueue(hitEntries(session(1), "m1", amounts));
+      return stepsOf(q).length;
+    };
+    expect(length([53])).toBe(SESSION_MIN_TICKS);
+    expect(length([53, 52])).toBe(SESSION_MIN_TICKS + HIT_BEAT_TICKS);
+    expect(length([53, 52, 54])).toBe(SESSION_MIN_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+
+  test("the most-hit unit sets the pace; units hit once keep one number", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([...hitEntries(s, "m1", [10, 11]), ...hitEntries(s, "m2", [30])]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([10, 11]);
+    expect(q.focusHits.get("m2")).toEqual([30]);
+    expect(stepsOf(q).at(-1)).toBe(1);
+  });
+
+  test("a summon's number waits for the last hit", () => {
+    const q = new RevealQueue();
+    q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) beat.push(q.summonBeat);
+    }
+    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+
+  test("with no hits nothing changes: step 0, no hits, the usual summon beat", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("a", 2, session(1)));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      expect(q.hitStep).toBe(0);
+      expect(q.focusHits.size).toBe(0);
+      if (q.focus) beat.push(q.summonBeat);
+    }
+    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolveRenderLib } from "@opentui/core";
-import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
+import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, markerAmount, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
 import { t } from "../src/data/strings";
 import { ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
@@ -435,5 +435,31 @@ describe("layout", () => {
   test("the unit block makes room for the icon band", () => {
     expect(ICON_BAND_ROWS).toBe(2);
     expect(UNIT_BLOCK_HEIGHT).toBe(ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3);
+  });
+});
+
+describe("markerAmount", () => {
+  test("one hit, or no hit data, keeps the net change", () => {
+    expect(markerAmount(undefined, -53, 0)).toBe(-53);
+    expect(markerAmount([], -53, 0)).toBe(-53);
+    expect(markerAmount([53], -53, 0)).toBe(-53);
+  });
+
+  test("2 or more hits that add up to the change read one at a time, the last held", () => {
+    expect(markerAmount([53, 52], -105, 0)).toBe(-53);
+    expect(markerAmount([53, 52], -105, 1)).toBe(-52);
+    expect(markerAmount([53, 52], -105, 7)).toBe(-52);
+    expect(markerAmount([20, 21, 22], -63, 2)).toBe(-22);
+  });
+
+  test("hits that do not account for the whole change leave the net (a heal on the same unit)", () => {
+    expect(markerAmount([53, 52], -90, 1)).toBe(-90);
+    expect(markerAmount([53, 52], 0, 1)).toBe(0);
+  });
+
+  test("each hit reads as its own damage marker", () => {
+    const s = session({ actorId: "a", attackedIds: ["m1"] });
+    expect(unitFocus("m1", "monster", s, markerAmount([53, 52], -105, 0), true).marker?.glyph).toBe("-53");
+    expect(unitFocus("m1", "monster", s, markerAmount([53, 52], -105, 1), true).marker?.glyph).toBe("-52");
   });
 });

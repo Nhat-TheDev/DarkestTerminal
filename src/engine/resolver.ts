@@ -246,6 +246,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               varianceMultiplier
           );
       const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
+      const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
       const isCrit = !isSelfTick && ctx.isCrit;
@@ -253,7 +254,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         !isSelfTick && ctx.skillName
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
-      ctx.log.push({ text: damageText, kind: "attack" });
+      const hpLost = hpBefore - target.hp;
+      ctx.log.push({ text: damageText, kind: "attack", ...(!isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: hpLost } } : {}) });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && effect.lifestealPercent) {

@@ -684,3 +684,40 @@ describe("damage variance (combat.damageVariancePercent)", () => {
     }
   });
 });
+
+describe("LogEntry.hit on a damage line", () => {
+  function dealt(effect: SkillEffect, target: ReturnType<typeof makeCtx>["ctx"]["party"][number], source = target) {
+    const log: LogEntry[] = [];
+    resolveSkillEffect(effect, source, target, { log });
+    return log.find((e) => e.kind === "attack")!;
+  }
+
+  test("a direct hit names the actor it landed on and the HP it took", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.hp = target.maxHp;
+    const before = target.hp;
+    const entry = dealt({ kind: "damage", amount: 10 }, target, attacker);
+    expect(entry.hit).toEqual({ targetId: target.id, amount: before - target.hp });
+  });
+
+  test("a killing blow counts only the HP that was left, not the overkill", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.hp = 3;
+    const entry = dealt({ kind: "damage", amount: 500 }, target, attacker);
+    expect(entry.hit).toEqual({ targetId: target.id, amount: 3 });
+  });
+
+  test("a damage-over-time tick and a hit that did no damage carry none", () => {
+    const { ctx } = makeCtx();
+    const bearer = ctx.party[0]!;
+    expect(dealt({ kind: "damage", amount: 7 }, bearer).hit).toBeUndefined();
+    const attacker = ctx.party[1]!;
+    const target = ctx.party[2]!;
+    target.hp = 0;
+    expect(dealt({ kind: "damage", amount: 10 }, target, attacker).hit).toBeUndefined();
+  });
+});

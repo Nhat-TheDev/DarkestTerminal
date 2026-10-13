@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { applySkillEffects, queueAction, resolveRound, snapshotCombatants, startCombat } from "../src/engine/combat";
-import { hpDeltas } from "../src/ui/battlefieldFocus";
+import { hpDeltas, markerAmount } from "../src/ui/battlefieldFocus";
+import { RevealQueue } from "../src/ui/revealQueue";
 import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -1271,5 +1272,35 @@ describe("noteSkillTarget reads statuses by what they change", () => {
       expect(session.debuffedIds).toEqual([]);
       expect(session.affectedIds).toEqual([target.id]);
     }
+  });
+});
+
+describe("a multi-hit skill, from the engine to the marker", () => {
+  const threeHits: SkillDefinition = {
+    id: "test-three-hits",
+    name: "Three Hits",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+    slot: 0,
+    unlockLevel: 1,
+  };
+
+  test("the queue holds each hit and the marker reads them one by one, adding up to the net change", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.hp = goblin.maxHp = 9999;
+    goblin.defense = 0;
+    const before = snapshotCombatants(combat, ctx);
+    runInSession(combat, vanguard.id, () => applySkillEffects(threeHits, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
+
+    const queue = new RevealQueue();
+    queue.enqueue(combat.log.filter((e) => e.session));
+    queue.tick();
+    const hits = queue.focusHits.get(goblin.id)!;
+    expect(hits).toHaveLength(3);
+    expect(hits.reduce((sum, hit) => sum + hit, 0)).toBe(-net);
+    expect([0, 1, 2].map((step) => markerAmount(hits, net, step))).toEqual(hits.map((hit) => -hit));
   });
 });

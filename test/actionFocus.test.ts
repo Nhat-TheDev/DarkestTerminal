@@ -4,13 +4,14 @@ import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { CLASSES } from "../src/data/classes";
 import { getRoom } from "../src/engine/dungeon";
-import { startCombat } from "../src/engine/combat";
+import { applySkillEffects, getActorByRef, snapshotCombatants, startCombat } from "../src/engine/combat";
+import { runInSession } from "../src/engine/logSession";
 import { spawnMonster } from "../src/data/monsters";
 import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
 import { monsterStyle } from "../src/ui/layout";
 import { t } from "../src/data/strings";
 import { gameFromSave, loadSave } from "../src/engine/save";
-import type { Id } from "../src/types";
+import type { Id, Monster, SkillDefinition } from "../src/types";
 
 const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
@@ -176,6 +177,46 @@ describe("battlefield and log stay in step", () => {
     }
     expect(impacts).toBeGreaterThan(0);
     expect(fearBeats).toBeGreaterThan(0);
+  }, 30000);
+
+  test("a unit hit three times wears each hit's number in turn, never their sum", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      slot: 0,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+
+    app.tickReveal(); // render once so the app picks up the new lines and starts revealing them
+    await fight.renderOnce();
+    expect(app.debugRevealActive).toBe(true);
+    const seen: number[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} -(\\d+)`));
+      if (match && !app.debugRevealHolding) {
+        const amount = Number(match[1]);
+        if (seen.at(-1) !== amount) seen.push(amount);
+      }
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    const compressed = hits.filter((hit, i) => i === 0 || hit !== hits[i - 1]);
+    expect(seen).toEqual(compressed);
   }, 30000);
 
   test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {

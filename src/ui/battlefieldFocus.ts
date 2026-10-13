@@ -168,6 +168,16 @@ export function fearDeltas(before: CombatantSnapshot[] | null, after: CombatantS
   return deltas;
 }
 
+/**
+ * The HP change a unit's marker reads at hit `step`: with 2 or more direct hits, each one in turn (the
+ * last held), instead of their sum. Only when the hits account for the whole change (`net`); a heal on
+ * the same unit in the same session leaves the net, which is then all there is to show.
+ */
+export function markerAmount(hits: readonly number[] | undefined, net: number, step: number): number {
+  if (!hits || hits.length < 2 || hits.reduce((sum, hit) => sum + hit, 0) !== -net) return net;
+  return -hits[Math.min(step, hits.length - 1)]!;
+}
+
 function hpMarker(amount: number, side: UnitSide, prefix = ""): FocusIcon {
   return amount < 0 ? { glyph: `${prefix}-${-amount}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}`, color: MARKER_COLOR.heal[side] };
 }

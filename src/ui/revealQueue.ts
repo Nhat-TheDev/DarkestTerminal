@@ -1,4 +1,4 @@
-import type { CombatantSnapshot, LogEntry, LogSession } from "../types";
+import type { CombatantSnapshot, Id, LogEntry, LogSession } from "../types";
 
 /** One reveal step. Every pacing number below is a multiple of it. */
 export const REVEAL_TICK_MS = 100;
@@ -14,6 +14,8 @@ export const IMPACT_TICKS = 5;
 export const SUMMON_BEAT_TICKS = 5;
 /** Ticks a fear change (`◉ +2.1`, `◉ -15`) stays up once it replaces a unit's other icons: 5 × 100 ms = 0.5 s. */
 export const FEAR_BEAT_TICKS = 5;
+/** Ticks each hit of a multi-hit action stays up as its own number before the next replaces it: 5 × 100 ms = 0.5 s. */
+export const HIT_BEAT_TICKS = 5;
 
 interface Group {
   entries: LogEntry[];
@@ -22,6 +24,10 @@ interface Group {
   span: number;
   /** The tick its fear change shows from, or null when no character's fear changed. */
   fearStart: number | null;
+  /** Each unit's direct hits in the order they landed, as the HP each took. */
+  hits: Map<Id, number[]>;
+  /** Extra beats the session runs for its most-hit unit: its hits minus one. */
+  hitBeats: number;
 }
 
 /** Consecutive entries with the same session id form one group; consecutive session-less entries form one too. */
@@ -30,20 +36,29 @@ function toGroups(entries: LogEntry[]): Group[] {
   for (const entry of entries) {
     const last = groups[groups.length - 1];
     if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
-    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null });
+    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null, hits: new Map(), hitBeats: 0 });
   }
   for (const group of groups) {
+    for (const { hit } of group.entries) {
+      if (!hit) continue;
+      const taken = group.hits.get(hit.targetId) ?? [];
+      taken.push(hit.amount);
+      group.hits.set(hit.targetId, taken);
+      group.hitBeats = Math.max(group.hitBeats, taken.length - 1);
+    }
     if (!group.session) {
       group.span = group.entries.length;
       continue;
     }
     // Party-wide fear (end of round, victory) has nothing else to show, so it starts at the impact; otherwise it follows the session's own hold.
-    const hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1);
+    const hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) + group.hitBeats * HIT_BEAT_TICKS;
     group.fearStart = group.session.fearChangedIds.length > 0 ? hold : null;
     group.span = group.fearStart === null ? hold : group.fearStart + FEAR_BEAT_TICKS;
   }
   return groups;
 }
+
+const NO_HITS: ReadonlyMap<Id, number[]> = new Map();
 
 /**
  * The single clock behind the log reveal and the battlefield highlight. `tick()` is called once per
@@ -81,9 +96,21 @@ export class RevealQueue {
     return this.current?.session != null && this.ticks <= IMPACT_TICKS;
   }
 
-  /** True once the lit session has run a beat past its impact: the owner's number gives way to its summon's. */
+  /** True once the lit session has run a beat past its impact and past its last hit: the owner's number gives way to its summon's. */
   get summonBeat(): boolean {
-    return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS;
+    return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS + this.current.hitBeats * HIT_BEAT_TICKS;
+  }
+
+  /** Each unit's direct hits in the lit session, in order, as the HP each took; empty when nothing is lit. */
+  get focusHits(): ReadonlyMap<Id, number[]> {
+    return this.current?.session ? this.current.hits : NO_HITS;
+  }
+
+  /** Which of a unit's hits the battlefield shows: 0 from the impact, one more every HIT_BEAT_TICKS, held on the last. */
+  get hitStep(): number {
+    const group = this.current;
+    if (!group?.session || this.ticks <= IMPACT_TICKS) return 0;
+    return Math.min(group.hitBeats, Math.floor((this.ticks - IMPACT_TICKS - 1) / HIT_BEAT_TICKS));
   }
 
   /** True once the lit session's fear change replaces everything else its characters wear. */

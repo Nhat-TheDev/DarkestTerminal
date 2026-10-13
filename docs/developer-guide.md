@@ -230,6 +230,18 @@ is not one. The label under a party member's sprite carries one ♙ per living s
 (`NJ ♙♙`), counted from the replayed snapshot so a summon spawned later in the round appears with
 its own action.
 
+A unit that took 2 or more direct hits in one session shows them one at a time instead of their sum:
+`-53` at the impact, then `-52` a beat later. Each damage line of a direct hit carries the actor it
+landed on and the HP it actually took (`LogEntry.hit`, set in `resolveSkillEffect`; a
+damage-over-time tick has none, and a killing blow's overkill is not counted). `RevealQueue` collects
+them per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS` from the impact
+(`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each hit past the
+first; a summon's number waits for the last hit. `markerAmount` picks the number, and only when the
+hits add up to the unit's whole HP change: a heal landing on the same unit in the same session leaves
+the net on screen. The HP bar still moves once, at the impact. A single hit, an area attack (one hit
+per target) and the damage a summon takes (it is added to its owner's number, as above) read as
+before.
+
 A character whose fear changed in a session (`LogSession.fearChangedIds`, noted by `noteFearChange`
 when a monster's hit lands, a skill or item's `modifyStat` moves it, the round ends, or the fight is
 won) shows the change once everything else it wears has had its time: the reveal holds the session
