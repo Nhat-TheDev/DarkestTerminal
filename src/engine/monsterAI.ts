@@ -17,6 +17,7 @@ import {
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
+import { advanceShellAfterOwnTurn } from "./monsterShell";
 
 type Targetable = Character | Summon;
 
@@ -187,6 +188,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     takeMonsterTurn(actor, combat, ctx);
   } finally {
     advanceMonsterCooldowns(actor);
+    advanceShellAfterOwnTurn(actor, ctx.rng, { log: combat.log });
   }
 }
 

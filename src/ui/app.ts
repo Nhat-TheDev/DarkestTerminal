@@ -1110,6 +1110,15 @@ export class App implements ScreenContext {
         colorChunk(t("ui.statValueSuffix", { cur: hp, max: m.maxHp }), hpColorFor(hp, m.maxHp)),
       ]);
       const activeStatusEffects = hpOverride?.get(m.id)?.activeStatusEffects ?? m.activeStatusEffects;
+      const shell = hpOverride?.get(m.id)?.shell ?? m.shell;
+      if (shell) {
+        lines.push([
+          plainChunk("  "),
+          shell.state === "intact"
+            ? colorChunk(t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
+            : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
+        ]);
+      }
       for (const eff of activeStatusEffects) {
         const def = getStatusEffect(eff.statusEffectId);
         const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;

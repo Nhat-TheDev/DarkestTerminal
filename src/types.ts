@@ -701,6 +701,8 @@ export interface CombatantSnapshot {
   /** Characters only. */
   fear?: number;
   activeStatusEffects?: ActiveStatusEffect[];
+  /** Monsters only: the state of a shell bearer's shell. */
+  shell?: MonsterShellState;
 }
 
 export interface PartyStateSnapshot {

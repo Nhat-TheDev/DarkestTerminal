@@ -5,6 +5,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
 import { getClass, passiveRankDef } from "../data/classes";
 import { adjustFear, formatFear, resistedFearGain } from "./survival";
+import { noteShellHit, shellAdjustedDamage } from "./monsterShell";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.harmful) return false;
@@ -231,7 +232,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               raceMultiplier *
               varianceMultiplier
           );
-      const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
+      const isStatusTick = isSelfTick && ctx.statusEffectName !== undefined;
+      const finalDamage = shellAdjustedDamage(target, raceMultiplier === 0 ? 0 : Math.max(1, rawDamage), isStatusTick);
       const critMark = isCrit ? { crit: true as const } : {};
       if (ctx.unapplied && !isSelfTick) {
         const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
@@ -241,6 +243,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
+      if (!isSelfTick) noteShellHit(target, ctx);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
       const damageText =
         !isSelfTick && ctx.skillName
@@ -398,7 +401,7 @@ function statusLandedTag(def: StatusEffectDefinition, landedOf: Id | undefined):
   return {};
 }
 
-function applyStatusEffectToActor(
+export function applyStatusEffectToActor(
   actor: Actor,
   statusEffectId: string,
   durationTurns: number | undefined,
