@@ -13,7 +13,8 @@ export type SkillEffectKind =
   | "removeStatusEffect"
   | "modifyStat"
   | "modifyCombatStat"
-  | "summon";
+  | "summon"
+  | "summonMonster";
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
@@ -70,6 +71,10 @@ export interface SkillEffect {
   /** Excludes `Summon` targets from this specific effect within an `allAllies`/`allAlliesAndEnemies`
    *  resolution — Totem Recall's buff reaches party members but not the caster's own minions. */
   excludesSummonTargets?: boolean;
+  /** For `summonMonster`: the normal-role archetype spawned into the running combat. */
+  monsterArchetypeId?: Id;
+  /** For `summonMonster`: how many to spawn, before the per-summoner cap. */
+  count?: number;
 }
 
 /** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
@@ -137,6 +142,49 @@ export interface SkillRankDefinition {
   effects?: SkillEffect[];
 }
 
+/** Conditions a monster skill's `aiCondition` / `aiRules[].if` / `targetRules[].if` can test; every field present must hold (`monsterAiRules.ts`). */
+export interface MonsterAiPredicate {
+  selfHpBelowPercent?: number;
+  selfHasStatusId?: Id;
+  selfLacksStatusId?: Id;
+  targetHasStatusId?: Id;
+  targetLacksStatusId?: Id;
+  targetHpBelowPercent?: number;
+  targetsBelowHpPercent?: number;
+  atLeast?: number;
+  alliesFewerThan?: number;
+}
+
+/** Multiplies a candidate's weight by `weightMultiplier` while `if` holds. */
+export interface MonsterAiRule {
+  if: MonsterAiPredicate;
+  weightMultiplier: number;
+}
+
+/** From `hpBelowPercent` of max HP down, `weights` replace the tier's action table; `onEnterSkillId` is cast on the turn the phase is entered. */
+export interface MonsterPhase {
+  tier: MonsterTier;
+  hpBelowPercent: number;
+  weights: Record<string, number>;
+  onEnterSkillId?: Id;
+}
+
+/** A breakable shell: while intact each direct hit is capped at a share of max HP and counts toward breaking it; breaking stuns the bearer, and it reforms later (`monsterShell.ts`). */
+export interface MonsterShellDefinition {
+  hitsToBreak: { min: number; max: number };
+  hitDamageCapMaxHpPercent: number;
+  breakStatusId: Id;
+  breakDurationTurns: number;
+  reformAfterOwnTurns: number;
+}
+
+/** The runtime state of a monster's shell. */
+export interface MonsterShellState {
+  state: "intact" | "broken";
+  hitsLeft: number;
+  ownTurnsSinceBreak: number;
+}
+
 export interface SkillDefinition {
   id: Id;
   name: string;
@@ -160,6 +208,20 @@ export interface SkillDefinition {
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
   /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. Distinct from the unrelated Boss "Execute" charge-up mechanic (`Monster.executeCooldownTurns`). */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+  /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
+  aiCondition?: MonsterAiPredicate;
+  /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
+  aiRules?: MonsterAiRule[];
+  /** Monster skills only: each matching rule multiplies a candidate target's weight. */
+  targetRules?: MonsterAiRule[];
+  /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
+  telegraph?: boolean;
+  /** Monster skills only: effects resolved on the caster during a telegraph's charge turn. */
+  chargeEffects?: SkillEffect[];
+  /** Monster skills only, on a `singleEnemy` skill: hits this many distinct enemies. */
+  targetCount?: { min: number; max: number };
+  /** Monster skills only: the cooldown the skill starts the fight on, so it cannot open the fight. */
+  initialCooldownTurns?: number;
 }
 
 /** One class's mechanic fields, all optional since a given class's passive only ever reads its
@@ -291,6 +353,10 @@ export interface StatusEffectDefinition {
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
   /** While active, every enemy attack aimed at the bearer has this percent chance to be dodged, rolled through `rollDodge` alongside Artifact and passive dodge. */
   dodgePercent?: number;
+  /** Shown as a debuff and cleansable even when the status changes no stat, ticks or stuns (a tag such as `marked`). */
+  harmful?: boolean;
+  /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
+  reflectDamagePercent?: number;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -642,6 +708,12 @@ export interface MonsterArchetype {
   /** The charged finisher: telegraphs for a turn, then always releases, then cools down. Outside
    *  the weighted roll entirely, which is why it is a field of its own rather than a skillIds entry. */
   executeSkillId?: Id;
+  /** Elite/boss phases: each replaces its tier's weights once HP falls below its threshold. */
+  phases?: MonsterPhase[];
+  /** `"random"`: targets are picked uniformly, ignoring aggro. */
+  targeting?: "random";
+  /** A breakable shell the monster carries from spawn. */
+  shell?: MonsterShellDefinition;
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: `"basicAttack"` plus any id from `skillIds`, mapped to its relative weight. Keys are
    *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of
@@ -677,6 +749,18 @@ export interface Monster {
   executeCooldownTurns?: number;
   isChargingExecute?: boolean;
   executeTargetId?: Id;
+  /** Turns left on each skill's cooldown. */
+  skillCooldowns?: Record<Id, number>;
+  /** How many times each skill with `usesPerCombat` has been cast. */
+  skillUses?: Record<Id, number>;
+  /** Indexes into the archetype's `phases` already entered. */
+  enteredPhaseIndexes?: number[];
+  /** The telegraphed skill being charged and the targets it locked. */
+  charging?: { skillId: Id; targetIds: Id[] };
+  /** The monster that summoned this one; it falls when its summoner does. */
+  summonerId?: Id;
+  /** Present on a shell bearer. */
+  shell?: MonsterShellState;
 }
 
 /**

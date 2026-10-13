@@ -380,10 +380,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       return 0;
     }
-    case "summon": {
+    case "summon":
+    case "summonMonster": {
       // Spawning a combatant needs CombatState/EngineContext (to register it in `combat.combatants`
-      // and `ctx.summons`), which this function doesn't have — `applySkillEffects` (combat.ts)
-      // intercepts a "summon" effect before it ever reaches here.
+      // and `ctx.summons`/`ctx.monsters`), which this function doesn't have — `applySkillEffects`
+      // (combat.ts) intercepts a "summon"/"summonMonster" effect before it ever reaches here.
       return 0;
     }
   }
