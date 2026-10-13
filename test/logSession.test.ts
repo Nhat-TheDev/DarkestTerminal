@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { applySkillEffects, queueAction, resolveRound, snapshotCombatants, startCombat } from "../src/engine/combat";
-import { hpDeltas, markerAmount } from "../src/ui/battlefieldFocus";
+import { hpDeltas, markerReading } from "../src/ui/battlefieldFocus";
 import { RevealQueue } from "../src/ui/revealQueue";
 import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
@@ -1300,7 +1300,7 @@ describe("a multi-hit skill, from the engine to the marker", () => {
     queue.tick();
     const hits = queue.focusHits.get(goblin.id)!;
     expect(hits).toHaveLength(3);
-    expect(hits.reduce((sum, hit) => sum + hit, 0)).toBe(-net);
-    expect([0, 1, 2].map((step) => markerAmount(hits, net, step))).toEqual(hits.map((hit) => -hit));
+    expect(hits.reduce((sum, hit) => sum + hit.amount, 0)).toBe(-net);
+    expect([0, 1, 2].map((step) => markerReading(hits, net, step).amount)).toEqual(hits.map((hit) => -hit.amount));
   });
 });

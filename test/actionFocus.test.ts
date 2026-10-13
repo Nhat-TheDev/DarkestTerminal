@@ -219,6 +219,41 @@ describe("battlefield and log stay in step", () => {
     expect(seen).toEqual(compressed);
   }, 30000);
 
+  test("a hit that crit wears its number with a !, and one that did not does not", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const strike = (critChance: number): SkillDefinition => ({
+      id: "test-strike",
+      name: "Test Strike",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, critChance }],
+      slot: 1,
+      unlockLevel: 1,
+    });
+    const markerOf = async (critChance: number) => {
+      combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+      runInSession(combat, caster.id, () => applySkillEffects(strike(critChance), caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+      app.tickReveal();
+      await fight.renderOnce();
+      let marker: string | null = null;
+      let guard = 0;
+      while (app.debugRevealActive && guard++ < 400) {
+        const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} -(\\d+)(!?)`));
+        if (match && !app.debugRevealHolding) marker = match[0];
+        app.tickReveal();
+        await fight.renderOnce();
+      }
+      return marker;
+    };
+    expect(await markerOf(1)).toMatch(/^⛨ -\d+!$/);
+    expect(await markerOf(0)).toMatch(/^⛨ -\d+$/);
+  }, 30000);
+
   test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {
     const fight = await openFight();
     fight.game.state.party[0]!.survival.fear = 39.9;

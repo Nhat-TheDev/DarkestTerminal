@@ -913,3 +913,32 @@ describe("crit and variance inside a cast", () => {
     });
   });
 });
+
+describe("LogEntry crit marks", () => {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 1 });
+
+  test("a critical hit's line carries crit in hit, and a plain hit's does not", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.maxHp = target.hp = 1_000_000;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 100 }, attacker, target, { log, rollDamage: () => 0 });
+    resolveSkillEffect({ kind: "damage", amount: 100 }, attacker, target, { log, rollDamage: () => 0.5 });
+    expect(log[0]!.hit).toEqual({ targetId: target.id, amount: log[0]!.hit!.amount, crit: true });
+    expect(log[1]!.hit).toEqual({ targetId: target.id, amount: log[1]!.hit!.amount });
+  });
+
+  test("a critical heal's line names the unit it landed on; a plain heal and a heal-over-time tick carry nothing", () => {
+    const { ctx } = makeCtx();
+    const healer = ctx.party[0]!;
+    const patient = ctx.party[1]!;
+    patient.maxHp = 1000;
+    patient.hp = 100;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "heal", amount: 20 }, healer, patient, { log, rollDamage: () => 0 });
+    resolveSkillEffect({ kind: "heal", amount: 20 }, healer, patient, { log, rollDamage: () => 0.5 });
+    resolveSkillEffect({ kind: "heal", amount: 20 }, patient, patient, { log });
+    expect(log.map((e) => e.healCritOf)).toEqual([patient.id, undefined, undefined]);
+  });
+});

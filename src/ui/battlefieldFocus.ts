@@ -1,5 +1,5 @@
 import type { TextChunk } from "@opentui/core";
-import type { CombatantSnapshot, Id, LogSession, MonsterTier } from "../types";
+import type { CombatantSnapshot, HitMark, Id, LogSession, MonsterTier } from "../types";
 import { ICON_BAND_ROWS } from "./layout";
 import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, spriteWidth, type Sprite } from "./sprites";
 import { t } from "../data/strings";
@@ -36,9 +36,10 @@ export const FOCUS_GLYPH = {
   fear: "◉",
 } as const;
 
-/** The HP change of the summons a unit owns over the lit session, and whether the beat that shows it after the owner's own has come. */
+/** The HP change of the summons a unit owns over the lit session, whether one of them was hit or healed critically, and whether the beat that shows it after the owner's own has come. */
 export interface SummonFocus {
   delta: number;
+  crit?: boolean;
   beat: boolean;
 }
 
@@ -78,8 +79,9 @@ export function dimSprite(sprite: Sprite): Sprite {
  * `delta` is the unit's HP change over the session (known from its start, so a DoT tick can pick its
  * icon at once); the marker that prints it appears only once `impact` is reached. `fearChange` is passed
  * only once the session's fear beat has come: it then replaces everything else the unit wears (`◉ +2.1`, `◉ -15`).
+ * `crit` ends the HP number with "!" (`-80!`): what `delta` reads was a critical hit or heal.
  */
-export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearChange = 0): UnitFocus {
+export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearChange = 0, crit = false): UnitFocus {
   if (!session) return { dim: false, icons: [], marker: null };
   const color = FOCUS_COLOR[side];
   const icon = (glyph: string): FocusIcon => ({ glyph, color });
@@ -140,7 +142,7 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     session.lostTurnIds.includes(id) ||
     healed ||
     session.affectedIds.includes(id);
-  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, summon) : null };
+  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, summon, crit) : null };
 }
 
 /** Each unit's change in `read` from `before` to `after`, skipping units where either side has no value. */
@@ -168,18 +170,29 @@ export function fearDeltas(before: CombatantSnapshot[] | null, after: CombatantS
   return deltas;
 }
 
-/**
- * The HP change a unit's marker reads at hit `step`: with 2 or more direct hits, each one in turn (the
- * last held), instead of their sum. Only when the hits account for the whole change (`net`); a heal on
- * the same unit in the same session leaves the net, which is then all there is to show.
- */
-export function markerAmount(hits: readonly number[] | undefined, net: number, step: number): number {
-  if (!hits || hits.length < 2 || hits.reduce((sum, hit) => sum + hit, 0) !== -net) return net;
-  return -hits[Math.min(step, hits.length - 1)]!;
+/** What a unit's marker reads: the HP change, and whether it was a critical hit or heal. */
+export interface MarkerReading {
+  amount: number;
+  crit: boolean;
 }
 
-function hpMarker(amount: number, side: UnitSide, prefix = ""): FocusIcon {
-  return amount < 0 ? { glyph: `${prefix}-${-amount}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}`, color: MARKER_COLOR.heal[side] };
+/**
+ * The HP change a unit's marker reads at hit `step`: with 2 or more direct hits, each one in turn (the
+ * last held, each with its own crit), instead of their sum. Only when the hits account for the whole
+ * change (`net`); a heal on the same unit in the same session leaves the net, which is then all there is
+ * to show, and it is a crit when any hit on the unit, or a heal that landed on it (`healCrit`), was.
+ */
+export function markerReading(hits: readonly HitMark[] | undefined, net: number, step: number, healCrit = false): MarkerReading {
+  if (hits && hits.length >= 2 && hits.reduce((sum, hit) => sum + hit.amount, 0) === -net) {
+    const hit = hits[Math.min(step, hits.length - 1)]!;
+    return { amount: -hit.amount, crit: hit.crit === true };
+  }
+  return { amount: net, crit: healCrit || (hits?.some((hit) => hit.crit) ?? false) };
+}
+
+function hpMarker(amount: number, side: UnitSide, prefix = "", crit = false): FocusIcon {
+  const mark = crit ? "!" : "";
+  return amount < 0 ? { glyph: `${prefix}-${-amount}${mark}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}${mark}`, color: MARKER_COLOR.heal[side] };
 }
 
 /**
@@ -187,10 +200,10 @@ function hpMarker(amount: number, side: UnitSide, prefix = ""): FocusIcon {
  * shown there too: alone it reads like the owner's; when the owner changed as well, the owner's
  * number comes first and the summon's replaces it a beat later, led by the summon icon.
  */
-function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, summon: SummonFocus): FocusIcon | null {
-  if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon);
-  if (delta !== 0) return hpMarker(delta, side);
-  if (summon.delta !== 0) return hpMarker(summon.delta, side);
+function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, summon: SummonFocus, crit: boolean): FocusIcon | null {
+  if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon, summon.crit);
+  if (delta !== 0) return hpMarker(delta, side, "", crit);
+  if (summon.delta !== 0) return hpMarker(summon.delta, side, "", summon.crit);
   if (session.missedIds.includes(id)) return { glyph: t("ui.focusMiss"), color: MARKER_COLOR.miss };
   return session.immuneIds.includes(id) ? { glyph: t("ui.focusImmune"), color: MARKER_COLOR.miss } : null;
 }

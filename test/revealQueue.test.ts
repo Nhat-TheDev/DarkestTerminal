@@ -205,7 +205,7 @@ describe("RevealQueue hit beats", () => {
     const q = new RevealQueue();
     q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
     q.tick();
-    expect(q.focusHits.get("m1")).toEqual([53, 52, 54]);
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 53 }, { amount: 52 }, { amount: 54 }]);
     const steps = stepsOf(q);
     steps.unshift(0); // the tick taken above
     expect(steps.indexOf(1)).toBe(IMPACT_TICKS + HIT_BEAT_TICKS);
@@ -230,8 +230,8 @@ describe("RevealQueue hit beats", () => {
     const s = session(1);
     q.enqueue([...hitEntries(s, "m1", [10, 11]), ...hitEntries(s, "m2", [30])]);
     q.tick();
-    expect(q.focusHits.get("m1")).toEqual([10, 11]);
-    expect(q.focusHits.get("m2")).toEqual([30]);
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 10 }, { amount: 11 }]);
+    expect(q.focusHits.get("m2")).toEqual([{ amount: 30 }]);
     expect(stepsOf(q).at(-1)).toBe(1);
   });
 
@@ -257,5 +257,29 @@ describe("RevealQueue hit beats", () => {
       if (q.focus) beat.push(q.summonBeat);
     }
     expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
+  });
+});
+
+describe("RevealQueue crit marks", () => {
+  test("each hit keeps its own crit flag, in the order the hits landed", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([
+      { text: "a", kind: "attack", session: s, hit: { targetId: "m1", amount: 53 } },
+      { text: "b", kind: "attack", session: s, hit: { targetId: "m1", amount: 80, crit: true } },
+      { text: "c", kind: "attack", session: s, hit: { targetId: "m1", amount: 52 } },
+    ]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 53 }, { amount: 80, crit: true }, { amount: 52 }]);
+  });
+
+  test("a critical heal is remembered by the unit it landed on, only while its session is lit", () => {
+    const q = new RevealQueue();
+    q.enqueue([{ text: "heal", kind: "heal", session: session(1), healCritOf: "p1" }]);
+    expect(q.focusHealCrits.size).toBe(0);
+    q.tick();
+    expect([...q.focusHealCrits]).toEqual(["p1"]);
+    while (q.active) q.tick();
+    expect(q.focusHealCrits.size).toBe(0);
   });
 });

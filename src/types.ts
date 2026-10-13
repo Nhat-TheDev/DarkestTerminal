@@ -813,6 +813,12 @@ export interface LogSession {
   cause?: "dot" | "dying" | "artifact" | "fear";
 }
 
+/** One direct hit as the battlefield shows it: the HP it took, and whether it was a critical hit. */
+export interface HitMark {
+  amount: number;
+  crit?: true;
+}
+
 export interface LogEntry {
   text: string;
   kind: LogEntryKind;
@@ -822,7 +828,9 @@ export interface LogEntry {
   /** Carries a session that has no line to show (party-wide fear at the end of a round or on a victory); never rendered in a log. */
   hidden?: true;
   /** Set on the line of a direct hit (not a damage-over-time tick): the actor it landed on and the HP it actually took, so a killing blow's overkill is not counted. */
-  hit?: { targetId: Id; amount: number };
+  hit?: HitMark & { targetId: Id };
+  /** Set on the line of a critical heal: the actor it landed on. */
+  healCritOf?: Id;
   /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff": one that raises a stat or grants a dodge chance, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
   buffLostOf?: Id;
   /** Set with `buffLostOf` when the unit that lost the buff is a summon. */

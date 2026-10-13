@@ -1,4 +1,4 @@
-import type { CombatantSnapshot, Id, LogEntry, LogSession } from "../types";
+import type { CombatantSnapshot, HitMark, Id, LogEntry, LogSession } from "../types";
 
 /** One reveal step. Every pacing number below is a multiple of it. */
 export const REVEAL_TICK_MS = 100;
@@ -24,8 +24,10 @@ interface Group {
   span: number;
   /** The tick its fear change shows from, or null when no character's fear changed. */
   fearStart: number | null;
-  /** Each unit's direct hits in the order they landed, as the HP each took. */
-  hits: Map<Id, number[]>;
+  /** Each unit's direct hits in the order they landed, as the HP each took and whether it crit. */
+  hits: Map<Id, HitMark[]>;
+  /** Units a critical heal landed on. */
+  healCrits: Set<Id>;
   /** Extra beats the session runs for its most-hit unit: its hits minus one. */
   hitBeats: number;
 }
@@ -36,13 +38,14 @@ function toGroups(entries: LogEntry[]): Group[] {
   for (const entry of entries) {
     const last = groups[groups.length - 1];
     if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
-    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null, hits: new Map(), hitBeats: 0 });
+    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null, hits: new Map(), healCrits: new Set(), hitBeats: 0 });
   }
   for (const group of groups) {
-    for (const { hit } of group.entries) {
+    for (const { hit, healCritOf } of group.entries) {
+      if (healCritOf) group.healCrits.add(healCritOf);
       if (!hit) continue;
       const taken = group.hits.get(hit.targetId) ?? [];
-      taken.push(hit.amount);
+      taken.push({ amount: hit.amount, ...(hit.crit ? { crit: true as const } : {}) });
       group.hits.set(hit.targetId, taken);
       group.hitBeats = Math.max(group.hitBeats, taken.length - 1);
     }
@@ -58,7 +61,8 @@ function toGroups(entries: LogEntry[]): Group[] {
   return groups;
 }
 
-const NO_HITS: ReadonlyMap<Id, number[]> = new Map();
+const NO_HITS: ReadonlyMap<Id, HitMark[]> = new Map();
+const NO_HEAL_CRITS: ReadonlySet<Id> = new Set();
 
 /**
  * The single clock behind the log reveal and the battlefield highlight. `tick()` is called once per
@@ -101,9 +105,14 @@ export class RevealQueue {
     return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS + this.current.hitBeats * HIT_BEAT_TICKS;
   }
 
-  /** Each unit's direct hits in the lit session, in order, as the HP each took; empty when nothing is lit. */
-  get focusHits(): ReadonlyMap<Id, number[]> {
+  /** Each unit's direct hits in the lit session, in order, as the HP each took and whether it crit; empty when nothing is lit. */
+  get focusHits(): ReadonlyMap<Id, HitMark[]> {
     return this.current?.session ? this.current.hits : NO_HITS;
+  }
+
+  /** The units a critical heal landed on in the lit session; empty when nothing is lit. */
+  get focusHealCrits(): ReadonlySet<Id> {
+    return this.current?.session ? this.current.healCrits : NO_HEAL_CRITS;
   }
 
   /** Which of a unit's hits the battlefield shows: 0 from the impact, one more every HIT_BEAT_TICKS, held on the last. */

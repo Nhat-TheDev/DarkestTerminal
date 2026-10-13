@@ -262,7 +262,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
       const hpLost = hpBefore - target.hp;
-      ctx.log.push({ text: damageText, kind: "attack", ...(!isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: hpLost } } : {}) });
+      ctx.log.push({ text: damageText, kind: "attack", ...(!isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: hpLost, ...(isCrit ? { crit: true as const } : {}) } } : {}) });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && effect.lifestealPercent) {
@@ -291,7 +291,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const critMultiplier = crit ? (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100 : 1;
       target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost * critMultiplier));
       const healed = target.hp - before;
-      ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
+      ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
       return healed;
     }
     case "restoreMp": {

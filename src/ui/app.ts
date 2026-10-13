@@ -38,7 +38,7 @@ import {
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
-import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerAmount, FOCUS_GLYPH, type BattlefieldUnit, type SummonFocus } from "./battlefieldFocus";
+import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
@@ -818,17 +818,22 @@ export class App implements ScreenContext {
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
   }
 
-  /** A unit's HP change as its marker reads right now: its hits one by one when it took several, else the net. */
-  private markerDelta(id: Id): number | undefined {
+  /** A unit's HP change as its marker reads right now: its hits one by one when it took several, else the net; and whether that was a crit. */
+  private markerFor(id: Id): MarkerReading | undefined {
     const net = this.focusDeltas.get(id);
-    return net === undefined ? undefined : markerAmount(this.reveal.focusHits.get(id), net, this.reveal.hitStep);
+    return net === undefined ? undefined : markerReading(this.reveal.focusHits.get(id), net, this.reveal.hitStep, this.reveal.focusHealCrits.has(id));
   }
 
   /** What the summons `ownerId` owns did to their HP over the lit session; they are drawn as the owner. */
   private summonFocus(ownerId: Id): SummonFocus {
     let delta = 0;
-    for (const summon of this.game.ctx.summons) if (summon.ownerId === ownerId) delta += this.focusDeltas.get(summon.id) ?? 0;
-    return { delta, beat: this.reveal.summonBeat };
+    let crit = false;
+    for (const summon of this.game.ctx.summons) {
+      if (summon.ownerId !== ownerId) continue;
+      delta += this.focusDeltas.get(summon.id) ?? 0;
+      crit ||= this.reveal.focusHealCrits.has(summon.id) || (this.reveal.focusHits.get(summon.id)?.some((hit) => hit.crit) ?? false);
+    }
+    return { delta, crit, beat: this.reveal.summonBeat };
   }
 
   /**
@@ -1046,7 +1051,8 @@ export class App implements ScreenContext {
       const isAlive = view?.isAlive ?? c.isAlive;
       const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
       const fearChange = this.reveal.fearBeat && focus?.fearChangedIds.includes(c.id) ? (this.focusFearDeltas.get(c.id) ?? 0) : 0;
-      const lens = unitFocus(c.id, "party", focus, this.markerDelta(c.id), impact, this.summonFocus(c.id), fearChange);
+      const mark = this.markerFor(c.id);
+      const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       // One pawn per living summon, read from the replayed snapshot so a clone spawned later in the round isn't shown early.
@@ -1073,7 +1079,8 @@ export class App implements ScreenContext {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
-          const lens = unitFocus(m.id, "monster", focus, this.markerDelta(m.id), impact);
+          const mark = this.markerFor(m.id);
+          const lens = unitFocus(m.id, "monster", focus, mark?.amount, impact, undefined, 0, mark?.crit);
           const frameHeight = tierFrameHeight(m.tier);
           if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
