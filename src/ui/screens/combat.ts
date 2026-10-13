@@ -332,7 +332,9 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
       const sourceTarget = ui.source.kind === "skill" ? ui.source.skill.target : ui.source.item.target;
       const effects = ui.source.kind === "skill" ? ui.source.skill.effects ?? [] : ui.source.item.effects;
       const candidates = ui.candidates.map((ref) => ({ ref, actor: getActorByRef(ref, game.ctx) }));
-      return joinLines([[plainChunk(t("ui.chooseTargetFor", { source: sourceName }))], ...targetChoiceLines(candidates, effects, sourceTarget === "singleAllyOrEnemy")]);
+      // Every enemy can be untargetable at once (an airborne Dragon): say so rather than show an empty list.
+      const unreachable: TextChunk[][] = candidates.length === 0 ? [[colorChunk(t("ui.noTargetReachable"), PALETTE.dim)]] : [];
+      return joinLines([[plainChunk(t("ui.chooseTargetFor", { source: sourceName }))], ...targetChoiceLines(candidates, effects, sourceTarget === "singleAllyOrEnemy"), ...unreachable]);
     }
   }
 }

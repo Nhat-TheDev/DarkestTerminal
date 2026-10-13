@@ -332,6 +332,7 @@
   "ui.turnOfChooseSkill": "{{actor}}'s turn — choose a skill:",
   "ui.usesLeftSuffix": ", {{count}} uses left this battle",
   "ui.chooseTargetFor": "Choose a target for {{source}}:",
+  "ui.noTargetReachable": "Nothing is in reach this turn.",
   "ui.allySidePrefix": "[Ally] ",
   "ui.enemySidePrefix": "[Enemy] ",
   "ui.merchantOffers": "The merchant lays out:",

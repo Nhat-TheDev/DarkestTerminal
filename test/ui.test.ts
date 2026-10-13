@@ -150,6 +150,17 @@ describe("headless UI smoke test", () => {
     }
   }, 20000);
 
+  test("a target prompt with nothing in reach says so instead of showing an empty list", () => {
+    const game = new Game(7);
+    const actor = game.state.party[0]!;
+    const skill = getSkill(actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!.id);
+    const out = renderCombat(game, { kind: "pickTarget", actorRef: { kind: "character", id: actor.id }, source: { kind: "skill", skill }, candidates: [] }) as unknown as {
+      chunks: { text: string }[];
+    };
+    const text = out.chunks.map((c) => c.text).join("");
+    expect(text).toContain(t("ui.noTargetReachable"));
+  });
+
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
     const game = new Game(7);
