@@ -961,14 +961,14 @@
       },
       "elite": {
         "basicAttack": 15,
-        "hold-the-line": 20,
-        "shield-bash": 65
+        "hold-the-line": 40,
+        "shield-bash": 45
       },
       "boss": {
         "basicAttack": 10,
         "hold-the-line": 45,
         "shield-bash": 60,
-        "riposte-stance": 6,
+        "riposte-stance": 40,
         "overhead-cut": 150
       }
     },
@@ -1034,7 +1034,8 @@
           "basicAttack": 8,
           "venom-bite": 35,
           "feed": 30,
-          "cocoon": 100
+          "cocoon": 100,
+          "web-barrage": 10
         },
         "onEnterSkillId": "into-the-rafters"
       }
@@ -1118,12 +1119,12 @@
       "elite": {
         "basicAttack": 15,
         "diseased-blade": 60,
-        "guard-position": 25
+        "guard-position": 40
       },
       "boss": {
         "basicAttack": 10,
         "diseased-blade": 45,
-        "guard-position": 10,
+        "guard-position": 40,
         "undying": 60,
         "rotting-embrace": 100
       }
@@ -1166,7 +1167,7 @@
       },
       "boss": {
         "basicAttack": 10,
-        "salute": 10,
+        "salute": 40,
         "measured-cut": 50,
         "parry-stance": 8,
         "dread-presence": 8,
@@ -1189,7 +1190,7 @@
         "hpBelowPercent": 50,
         "weights": {
           "basicAttack": 8,
-          "salute": 10,
+          "salute": 40,
           "measured-cut": 50,
           "parry-stance": 8,
           "dread-presence": 8,
@@ -1335,7 +1336,7 @@
         "basicAttack": 10,
         "grasping-remnants": 25,
         "unravelling-tide": 20,
-        "old-work": 15,
+        "old-work": 5,
         "subsume": 15
       }
     },
@@ -1372,7 +1373,7 @@
       "elite": {
         "basicAttack": 15,
         "stoneshear": 45,
-        "tremor": 40
+        "tremor": 25
       },
       "boss": {
         "basicAttack": 10,
@@ -1396,9 +1397,9 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 8,
-          "stoneshear": 45,
-          "tremor": 30,
+          "basicAttack": 5,
+          "stoneshear": 70,
+          "tremor": 15,
           "sealing-blow": 100
         },
         "onEnterSkillId": "crumbling-shell"
@@ -1406,13 +1407,13 @@
     ],
     "shell": {
       "hitsToBreak": {
-        "min": 3,
-        "max": 4
+        "min": 2,
+        "max": 3
       },
-      "hitDamageCapMaxHpPercent": 4,
+      "hitDamageCapMaxHpPercent": 9,
       "breakStatusId": "stunned",
       "breakDurationTurns": 1,
-      "reformAfterOwnTurns": 4
+      "reformAfterOwnTurns": 6
     }
   },
   {
@@ -1441,9 +1442,9 @@
       },
       "boss": {
         "basicAttack": 10,
-        "withering-touch": 40,
+        "withering-touch": 80,
         "raise-the-dead": 12,
-        "ledger-mark": 8,
+        "ledger-mark": 20,
         "name-struck-out": 100
       }
     },
@@ -1460,9 +1461,9 @@
         "hpBelowPercent": 50,
         "weights": {
           "basicAttack": 8,
-          "withering-touch": 40,
+          "withering-touch": 80,
           "raise-the-dead": 12,
-          "ledger-mark": 8,
+          "ledger-mark": 20,
           "name-struck-out": 100
         },
         "onEnterSkillId": "unhurried"
@@ -1473,7 +1474,7 @@
     "id": "the-founder",
     "name": "What's Left of Him",
     "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
-    "baseHp": 160,
+    "baseHp": 166,
     "baseAttack": 37,
     "baseDefense": 3,
     "baseSpeed": 10,

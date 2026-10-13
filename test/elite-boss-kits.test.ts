@@ -39,6 +39,14 @@ describe("elite/boss kits", () => {
       const boss = new Set(Object.keys(a.actionWeights!.boss!));
       for (const id of elite) expect(boss.has(id)).toBe(true);
       for (const id of elite) expect(getMonsterSkill(id).telegraph ?? false).toBe(false);
+      for (const phase of a.phases ?? []) expect(phase.tier).toBe("boss");
+    }
+  });
+  test("a telegraph aimed by a status tag is aimed only at the tagged", () => {
+    for (const [skillId, tag] of [["name-struck-out", "marked"], ["abyssal-judgment", "challenged"]] as const) {
+      const skill = getMonsterSkill(skillId);
+      expect(skill.aiCondition?.targetHasStatusId).toBe(tag);
+      expect(skill.targetRules?.some((r) => r.if.targetLacksStatusId === tag && r.weightMultiplier === 0)).toBe(true);
     }
   });
   test("no two telegraphs share a cadence, and only Orc Chieftain and Void Amalgamation have none", () => {

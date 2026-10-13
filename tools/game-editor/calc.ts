@@ -190,8 +190,6 @@ export interface MonsterComputation {
     basicAttack: { amount: number };
     /** Skills at any tier; one is reachable at this tier only if `actionWeights` lists it. */
     skills: SkillDefinition[];
-    /** The archetype's telegraph skill: charges a turn, then releases on its locked target, and cools down by its own `cooldownTurns`. Boss tier only. */
-    execute: SkillDefinition | null;
   };
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
   /** The phases of this tier, in the order they are entered. */
@@ -238,8 +236,7 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     isBossFloor: depth % BOSS_FLOOR_INTERVAL === 0,
     skillKit: {
       basicAttack: { amount: 0 },
-      skills: archetype.skillIds.map(getMonsterSkill).filter((s) => !s.telegraph),
-      execute: archetype.skillIds.map(getMonsterSkill).find((s) => s.telegraph) ?? null,
+      skills: archetype.skillIds.map(getMonsterSkill),
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
     /** The phases this tier enters, in order: each one's weights replace the tier's table once HP falls below its threshold. */
@@ -447,9 +444,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     if (!weights || weights[skill.id] === undefined) continue;
     incoming.push({ ...previewSkillDamage(skill, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent(skill.id) });
   }
-  if (opts.tier === "boss" && monster.skillKit.execute) {
-    incoming.push({ ...previewSkillDamage(monster.skillKit.execute, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: null });
-  }
 
   const rollingActions = incoming.filter((a) => a.actionWeightPercent !== null && a.actionWeightPercent > 0);
   const expectedDamagePerRoundFromRolling = rollingActions.reduce((sum, a) => sum + a.totalExpectedDamage * ((a.actionWeightPercent ?? 0) / 100), 0);
@@ -460,10 +454,15 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     outgoing,
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
-    executeCycleNote: monster.skillKit.execute
-      ? `${monster.skillKit.execute.name} is a telegraph, shown on its own row rather than in the roll above — it charges for 1 turn, releases on the next, and can charge again ${monster.skillKit.execute.cooldownTurns ?? 0} turns after it first charged.`
-      : null,
+    telegraphNote: telegraphNote(monster.skillKit.skills.filter((s) => s.telegraph && weights?.[s.id] !== undefined)),
   };
+}
+
+/** A telegraph is rolled like any other skill; what sets it apart is the charge turn and the cooldown it starts there. */
+export function telegraphNote(telegraphs: SkillDefinition[]): string | null {
+  if (telegraphs.length === 0) return null;
+  const list = telegraphs.map((s) => `${s.name} (cooldown ${s.cooldownTurns ?? 0})`).join(", ");
+  return `${list}: a telegraph is rolled like any other skill. When it comes up it spends that turn charging and locks its target, releases on the next turn, and can be picked again once its cooldown, counted from the charge, runs out.`;
 }
 
 export interface LevelByDepthRow {

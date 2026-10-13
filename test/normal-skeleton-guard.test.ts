@@ -10,6 +10,7 @@ describe("normal-tier Skeleton Guard keeps its plain behaviour", () => {
       for (const lowHp of [false, true]) {
         const { guard, log } = runNormalSkeletonGuardFight(seed, 8, lowHp);
         const own = log.filter((l) => l.startsWith(guard.name));
+        expect(own.some((l) => l.startsWith(`${guard.name} attacks`))).toBe(true);
         for (const name of kitNames()) expect(own.some((l) => l.includes(name))).toBe(false);
       }
     }

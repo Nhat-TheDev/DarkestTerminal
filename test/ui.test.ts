@@ -142,6 +142,7 @@ describe("headless UI smoke test", () => {
       };
       expect(await frameWith(0)).toContain("Shell (3 hits)");
       expect(await frameWith(1)).toContain("Shell (2 hits)");
+      expect(await frameWith(2)).toContain("Shell (1 hit)");
       const broken = await frameWith(3);
       expect(broken).toContain("Shell broken");
       expect(broken).not.toContain("Shell (");

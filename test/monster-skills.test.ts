@@ -1,11 +1,11 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
-import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../src/data/monsters";
+import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import type { MonsterArchetype } from "../src/types";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
-import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { makeCtx, spawnInto, pickAnyAction, sk, withFixture } from "./helpers";
 
 describe("elite/boss skill kit", () => {
   function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
@@ -67,7 +67,7 @@ describe("elite/boss skill kit", () => {
     }
     expect(charged).toBe(true);
     expect(boss.charging!.skillId).toBe("overhead-cut");
-    expect(combat.log.some((l) => l.text.includes("gathers itself for Overhead Cut"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("draws back for Overhead Cut"))).toBe(true);
 
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
@@ -488,20 +488,6 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
 
 
 describe("monster AI rules, driven by fixture kits", () => {
-  const sk = (id: string, over: object = {}) => ({ id, name: id, description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, ...over });
-
-  function withFixture(skills: any[], archetypeOver: any, body: () => void) {
-    const base = structuredClone(MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!);
-    const archetype = { ...base, id: "fixture-boss", skillIds: skills.map((x) => x.id), ...archetypeOver };
-    MONSTER_SKILLS.push(...skills);
-    MONSTER_ARCHETYPES.push(archetype);
-    try {
-      body();
-    } finally {
-      for (const x of skills) MONSTER_SKILLS.splice(MONSTER_SKILLS.findIndex((y) => y.id === x.id), 1);
-      MONSTER_ARCHETYPES.splice(MONSTER_ARCHETYPES.findIndex((a) => a.id === "fixture-boss"), 1);
-    }
-  }
 
   function bossFight(seed = 1) {
     const { ctx } = makeCtx(seed);
@@ -599,7 +585,7 @@ describe("monster AI rules, driven by fixture kits", () => {
       const hp = () => ctx.party.map((c) => c.hp);
       const before = hp();
       turn();
-      expect(combat.log.some((l) => l.text.includes("gathers itself for fx-t"))).toBe(true);
+      expect(combat.log.some((l) => l.text.includes("draws back for fx-t"))).toBe(true);
       expect(hp()).toEqual(before);
       expect(boss.charging!.skillId).toBe("fx-t");
       expect(boss.charging!.targetIds.length).toBe(1);
@@ -658,7 +644,7 @@ describe("monster AI rules, driven by fixture kits", () => {
       expect(uses("fx-a")).toBe(1);
       boss.hp = boss.maxHp * 0.4;
       turn();
-      expect(combat.log.some((l) => l.text.includes("stops holding anything back"))).toBe(true);
+      expect(combat.log.some((l) => l.text.includes("fights has changed"))).toBe(true);
       expect(uses("fx-p")).toBe(1);
       for (let i = 0; i < 5; i++) turn();
       expect(uses("fx-p")).toBe(1);
@@ -693,6 +679,21 @@ describe("monster AI rules, driven by fixture kits", () => {
       const all = combat.log.filter((l) => l.text.includes(" attacks ") || l.text.includes("misses its attack"));
       expect(all.length).toBeGreaterThan(100);
       expect(aimed.length / all.length).toBeLessThan(0.5);
+    });
+  });
+});
+
+describe("a monster's area skill that deals no damage", () => {
+  test("logs as a plain use, not as a sweep across the party", () => {
+    const cry = sk("fx-cry", { target: "allEnemies", effects: [{ kind: "modifyStat", stat: "fear", amount: 1 }] });
+    withFixture([cry], { actionWeights: { boss: { "fx-cry": 100 } } }, () => {
+      const { ctx } = makeCtx(1);
+      const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+      ctx.monsters.push(boss);
+      const combat = startCombat("r1", [boss.id], ctx, true);
+      runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+      expect(combat.log.some((l) => l.text === `${boss.name} uses fx-cry.`)).toBe(true);
+      expect(combat.log.some((l) => l.text.includes("sweeping the whole party"))).toBe(false);
     });
   });
 });

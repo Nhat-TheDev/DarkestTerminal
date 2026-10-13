@@ -1081,15 +1081,13 @@ function buildMonActionsCard(monData, charData, tier) {
   for (const skill of monData.skillKit.skills) {
     if (!weights || weights[skill.id] === undefined) continue;
     rolledSkillCount++;
-    row(skill.name + (skill.target === "allEnemies" ? " (AoE)" : ""), weightTotal > 0 ? (weights[skill.id] / weightTotal) * 100 : null, skill);
-  }
-  if (tier === "boss" && monData.skillKit.execute) {
-    row(`${monData.skillKit.execute.name} (telegraph, cooldown ${monData.skillKit.execute.cooldownTurns || 0})`, null, monData.skillKit.execute);
+    const tags = (skill.target === "allEnemies" ? " (AoE)" : "") + (skill.telegraph ? ` (telegraph, cooldown ${skill.cooldownTurns || 0})` : "");
+    row(skill.name + tags, weightTotal > 0 ? (weights[skill.id] / weightTotal) * 100 : null, skill);
   }
 
   card.appendChild(table);
   // A phase replaces the tier's whole table once HP falls below its threshold; each is listed under the tier it belongs to.
-  const skillById = new Map([...monData.skillKit.skills, ...(monData.skillKit.execute ? [monData.skillKit.execute] : [])].map((s) => [s.id, s]));
+  const skillById = new Map(monData.skillKit.skills.map((s) => [s.id, s]));
   for (const [i, phase] of (monData.phases || []).entries()) {
     const total = Object.values(phase.weights).reduce((a, b) => a + (b || 0), 0);
     const entered = phase.onEnterSkillId ? `, casts ${(skillById.get(phase.onEnterSkillId) || { name: phase.onEnterSkillId }).name} on entering` : "";
@@ -1104,8 +1102,8 @@ function buildMonActionsCard(monData, charData, tier) {
   if (rolledSkillCount === 0) {
     card.appendChild(el("p", { class: "hint", text: "No skill carries an action weight at this tier, so it only ever does the basic attack here." }));
   }
-  if (tier === "boss" && monData.skillKit.execute) {
-    card.appendChild(el("p", { class: "hint", html: `The charged row isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, and can charge again <b>${monData.skillKit.execute.cooldownTurns || 0}</b> turns after it first charged. It's shown here on its own cadence, not the weight column.` }));
+  if (monData.skillKit.skills.some((s) => s.telegraph && weights && weights[s.id] !== undefined)) {
+    card.appendChild(el("p", { class: "hint", text: "A telegraph is rolled like any other skill. When it comes up it spends that turn charging and locks its target, releases on the next turn, and can be picked again once its cooldown, counted from the charge, runs out." }));
   }
   card.appendChild(el("div", { id: "mon-actions-preview-output" }));
   return card;
@@ -1124,7 +1122,7 @@ async function renderRoundSummary(classId, level, archetypeId, depth, tier) {
     const p = el("p", { class: "hint" });
     p.innerHTML = `Expected damage/round from the monster's weighted roll (excludes Execute): <b>${fmt(data.expectedDamagePerRoundFromRolling, 1)}</b> ≈ character dies to this alone in <b>${Math.ceil(data.character.final.maxHp / Math.max(1, data.expectedDamagePerRoundFromRolling))}</b> rounds if unhealed.`;
     out.appendChild(p);
-    if (data.executeCycleNote) out.appendChild(el("p", { class: "hint", text: data.executeCycleNote }));
+    if (data.telegraphNote) out.appendChild(el("p", { class: "hint", text: data.telegraphNote }));
   } catch (err) {
     out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
   }

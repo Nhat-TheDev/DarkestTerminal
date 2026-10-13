@@ -297,10 +297,8 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "guard-iii",
-        "durationTurns": 3,
-        "amount": 10,
-        "minPercent": 220
+        "statusEffectId": "held-ground",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
@@ -315,7 +313,7 @@
       }
     ],
     "aiCondition": {
-      "selfLacksStatusId": "guard-iii"
+      "selfLacksStatusId": "held-ground"
     }
   },
   {
@@ -328,7 +326,7 @@
       {
         "kind": "damage",
         "amount": 18,
-        "offenseMultiplierPercent": 130
+        "offenseMultiplierPercent": 170
       },
       {
         "kind": "applyStatusEffect",
@@ -368,7 +366,7 @@
         "kind": "damage",
         "amount": 55,
         "ignoreDefensePercent": 40,
-        "offenseMultiplierPercent": 70
+        "offenseMultiplierPercent": 90
       }
     ],
     "slot": 0,
@@ -451,7 +449,7 @@
       {
         "kind": "damage",
         "amount": 30,
-        "offenseMultiplierPercent": 135
+        "offenseMultiplierPercent": 150
       },
       {
         "kind": "applyStatusEffect",
@@ -488,7 +486,7 @@
       {
         "kind": "damage",
         "amount": 24,
-        "offenseMultiplierPercent": 85
+        "offenseMultiplierPercent": 110
       }
     ],
     "slot": 0,
@@ -521,8 +519,8 @@
     "effects": [
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "smoke-cover-ii",
-        "durationTurns": 3
+        "statusEffectId": "airborne",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
@@ -692,7 +690,7 @@
   {
     "id": "undying",
     "name": "Undying",
-    "description": "It goes down, and then it is getting up, in no hurry about it.",
+    "description": "It goes down, and then it is getting up again, as if the first time did not count.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -782,7 +780,7 @@
         "kind": "damage",
         "amount": 26,
         "critChance": 0.25,
-        "offenseMultiplierPercent": 170
+        "offenseMultiplierPercent": 230
       }
     ],
     "slot": 0,
@@ -840,7 +838,7 @@
       {
         "kind": "damage",
         "amount": 60,
-        "offenseMultiplierPercent": 210
+        "offenseMultiplierPercent": 235
       },
       {
         "kind": "applyStatusEffect",
@@ -859,9 +857,9 @@
     "targetRules": [
       {
         "if": {
-          "targetHasStatusId": "challenged"
+          "targetLacksStatusId": "challenged"
         },
-        "weightMultiplier": 8
+        "weightMultiplier": 0
       }
     ]
   },
@@ -1189,7 +1187,7 @@
     ],
     "slot": 0,
     "unlockLevel": 1,
-    "cooldownTurns": 3
+    "cooldownTurns": 5
   },
   {
     "id": "subsume",
@@ -1268,7 +1266,7 @@
   {
     "id": "crumbling-shell",
     "name": "Crumbling Shell",
-    "description": "Pieces of it come away, and what is underneath moves faster.",
+    "description": "Pieces of it come away, and what is underneath hits harder.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -1311,12 +1309,12 @@
     "effects": [
       {
         "kind": "summonMonster",
-        "monsterArchetypeId": "skeleton",
+        "monsterArchetypeId": "skeleton-mage",
         "count": 1
       },
       {
         "kind": "summonMonster",
-        "monsterArchetypeId": "skeleton-mage",
+        "monsterArchetypeId": "skeleton",
         "count": 1
       }
     ],
@@ -1350,12 +1348,20 @@
         },
         "weightMultiplier": 5
       }
+    ],
+    "aiRules": [
+      {
+        "if": {
+          "targetHasStatusId": "marked"
+        },
+        "weightMultiplier": 0.2
+      }
     ]
   },
   {
     "id": "name-struck-out",
     "name": "Name Struck Out",
-    "description": "Regards one of them the way a clerk regards a line about to be crossed through.",
+    "description": "Regards one of you the way a clerk regards a line about to be crossed through.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -1380,9 +1386,9 @@
     "targetRules": [
       {
         "if": {
-          "targetHasStatusId": "marked"
+          "targetLacksStatusId": "marked"
         },
-        "weightMultiplier": 8
+        "weightMultiplier": 0
       }
     ]
   },
@@ -1401,7 +1407,7 @@
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "skeleton",
-        "count": 3
+        "count": 2
       }
     ],
     "slot": 0,
@@ -1410,7 +1416,7 @@
   {
     "id": "paid-in-full",
     "name": "Paid In Full",
-    "description": "Ropes of tissue snap out of the dark, one for each of you it can reach.",
+    "description": "Ropes of tissue snap out of the dark, two or three of them, each finding someone.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [

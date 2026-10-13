@@ -1115,7 +1115,7 @@ export class App implements ScreenContext {
         lines.push([
           plainChunk("  "),
           shell.state === "intact"
-            ? colorChunk(t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
+            ? colorChunk(shell.hitsLeft === 1 ? t("ui.shellIntactOne") : t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
             : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
         ]);
       }

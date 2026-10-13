@@ -35,6 +35,7 @@ export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, d
 }
 
 export function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
+  if (!bearer.isAlive) return;
   const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
   if (healed <= 0) return;
   const before = bearer.hp;
