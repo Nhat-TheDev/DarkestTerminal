@@ -960,16 +960,16 @@
         "basicAttack": 100
       },
       "elite": {
-        "basicAttack": 30,
-        "hold-the-line": 30,
-        "shield-bash": 40
+        "basicAttack": 15,
+        "hold-the-line": 20,
+        "shield-bash": 65
       },
       "boss": {
-        "basicAttack": 20,
-        "hold-the-line": 20,
-        "shield-bash": 30,
-        "riposte-stance": 15,
-        "overhead-cut": 100
+        "basicAttack": 10,
+        "hold-the-line": 45,
+        "shield-bash": 60,
+        "riposte-stance": 6,
+        "overhead-cut": 150
       }
     },
     "roles": [
@@ -988,8 +988,8 @@
     "id": "giant-spider",
     "name": "Giant Spider",
     "description": "The strands across the doorway are thick enough to lean on. What it has wrapped and set aside is overhead; enough of it has kept its shape that the limbs can be counted from where you are standing.",
-    "baseHp": 125,
-    "baseAttack": 30,
+    "baseHp": 150,
+    "baseAttack": 24,
     "baseDefense": 8,
     "baseSpeed": 14,
     "monsterType": "glass",
@@ -1004,12 +1004,12 @@
     "expReward": 16,
     "actionWeights": {
       "elite": {
-        "basicAttack": 30,
+        "basicAttack": 15,
         "web-barrage": 35,
         "venom-bite": 35
       },
       "boss": {
-        "basicAttack": 20,
+        "basicAttack": 10,
         "web-barrage": 25,
         "venom-bite": 25,
         "feed": 15,
@@ -1031,7 +1031,7 @@
         "tier": "boss",
         "hpBelowPercent": 40,
         "weights": {
-          "basicAttack": 15,
+          "basicAttack": 8,
           "venom-bite": 35,
           "feed": 30,
           "cocoon": 100
@@ -1060,12 +1060,12 @@
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
+        "basicAttack": 15,
         "claw-rake": 35,
         "dragon-fire-breath": 25
       },
       "boss": {
-        "basicAttack": 25,
+        "basicAttack": 10,
         "claw-rake": 25,
         "dragon-fire-breath": 20,
         "brand": 15,
@@ -1087,7 +1087,7 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 20,
+          "basicAttack": 8,
           "claw-rake": 20,
           "dragon-fire-breath": 30,
           "brand": 10,
@@ -1116,14 +1116,14 @@
     "expReward": 17,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "diseased-blade": 35,
+        "basicAttack": 15,
+        "diseased-blade": 60,
         "guard-position": 25
       },
       "boss": {
-        "basicAttack": 25,
-        "diseased-blade": 25,
-        "guard-position": 15,
+        "basicAttack": 10,
+        "diseased-blade": 45,
+        "guard-position": 10,
         "undying": 60,
         "rotting-embrace": 100
       }
@@ -1160,16 +1160,16 @@
     "expReward": 18,
     "actionWeights": {
       "elite": {
-        "basicAttack": 30,
-        "salute": 30,
-        "measured-cut": 40
+        "basicAttack": 15,
+        "salute": 20,
+        "measured-cut": 65
       },
       "boss": {
-        "basicAttack": 20,
-        "salute": 15,
-        "measured-cut": 25,
-        "parry-stance": 15,
-        "dread-presence": 10,
+        "basicAttack": 10,
+        "salute": 10,
+        "measured-cut": 50,
+        "parry-stance": 8,
+        "dread-presence": 8,
         "abyssal-judgment": 100
       }
     },
@@ -1188,11 +1188,11 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 20,
-          "salute": 15,
-          "measured-cut": 25,
-          "parry-stance": 15,
-          "dread-presence": 10,
+          "basicAttack": 8,
+          "salute": 10,
+          "measured-cut": 50,
+          "parry-stance": 8,
+          "dread-presence": 8,
           "abyssal-judgment": 100
         },
         "onEnterSkillId": "second-salute"
@@ -1219,12 +1219,12 @@
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 35,
+        "basicAttack": 15,
         "skullsplitter": 35,
         "call-the-warband": 30
       },
       "boss": {
-        "basicAttack": 20,
+        "basicAttack": 10,
         "skullsplitter": 25,
         "call-the-warband": 15,
         "war-cry": 15,
@@ -1246,7 +1246,7 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 15,
+          "basicAttack": 8,
           "skullsplitter": 40,
           "call-the-warband": 10,
           "war-cry": 15,
@@ -1275,12 +1275,12 @@
     "expReward": 22,
     "actionWeights": {
       "elite": {
-        "basicAttack": 35,
+        "basicAttack": 15,
         "crimson-talon": 40,
         "drink": 25
       },
       "boss": {
-        "basicAttack": 20,
+        "basicAttack": 10,
         "crimson-talon": 25,
         "drink": 25,
         "bat-swarm": 15,
@@ -1299,7 +1299,7 @@
         "tier": "boss",
         "hpBelowPercent": 40,
         "weights": {
-          "basicAttack": 15,
+          "basicAttack": 8,
           "crimson-talon": 20,
           "drink": 75,
           "bat-swarm": 15,
@@ -1327,12 +1327,12 @@
     "expReward": 25,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
+        "basicAttack": 15,
         "grasping-remnants": 35,
         "unravelling-tide": 25
       },
       "boss": {
-        "basicAttack": 25,
+        "basicAttack": 10,
         "grasping-remnants": 25,
         "unravelling-tide": 20,
         "old-work": 15,
@@ -1355,9 +1355,9 @@
     "id": "ancient-golem",
     "name": "Ancient Golem",
     "description": "Older than the cut of the stone around it, and standing here when these walls were something else entirely. Nobody has told it they changed. It still guards a doorway that is no longer in the wall.",
-    "baseHp": 105,
-    "baseAttack": 22,
-    "baseDefense": 18,
+    "baseHp": 180,
+    "baseAttack": 28,
+    "baseDefense": 2,
     "baseSpeed": 5,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
@@ -1370,14 +1370,14 @@
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "stoneshear": 35,
-        "tremor": 25
+        "basicAttack": 15,
+        "stoneshear": 45,
+        "tremor": 40
       },
       "boss": {
-        "basicAttack": 30,
-        "stoneshear": 30,
-        "tremor": 20,
+        "basicAttack": 10,
+        "stoneshear": 45,
+        "tremor": 30,
         "sealing-blow": 100
       }
     },
@@ -1396,9 +1396,9 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 20,
-          "stoneshear": 30,
-          "tremor": 15,
+          "basicAttack": 8,
+          "stoneshear": 45,
+          "tremor": 30,
           "sealing-blow": 100
         },
         "onEnterSkillId": "crumbling-shell"
@@ -1406,13 +1406,13 @@
     ],
     "shell": {
       "hitsToBreak": {
-        "min": 6,
-        "max": 8
+        "min": 3,
+        "max": 4
       },
       "hitDamageCapMaxHpPercent": 4,
       "breakStatusId": "stunned",
       "breakDurationTurns": 1,
-      "reformAfterOwnTurns": 2
+      "reformAfterOwnTurns": 4
     }
   },
   {
@@ -1435,15 +1435,15 @@
     "expReward": 24,
     "actionWeights": {
       "elite": {
-        "basicAttack": 35,
+        "basicAttack": 15,
         "withering-touch": 35,
         "raise-the-dead": 30
       },
       "boss": {
-        "basicAttack": 20,
-        "withering-touch": 20,
-        "raise-the-dead": 15,
-        "ledger-mark": 20,
+        "basicAttack": 10,
+        "withering-touch": 40,
+        "raise-the-dead": 12,
+        "ledger-mark": 8,
         "name-struck-out": 100
       }
     },
@@ -1459,10 +1459,10 @@
         "tier": "boss",
         "hpBelowPercent": 50,
         "weights": {
-          "basicAttack": 20,
-          "withering-touch": 20,
-          "raise-the-dead": 15,
-          "ledger-mark": 20,
+          "basicAttack": 8,
+          "withering-touch": 40,
+          "raise-the-dead": 12,
+          "ledger-mark": 8,
           "name-struck-out": 100
         },
         "onEnterSkillId": "unhurried"
@@ -1475,7 +1475,7 @@
     "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
     "baseHp": 160,
     "baseAttack": 37,
-    "baseDefense": 11,
+    "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "sentinel",
     "aiPattern": "aggressive",
@@ -1490,7 +1490,7 @@
     "expReward": 20,
     "actionWeights": {
       "boss": {
-        "basicAttack": 15,
+        "basicAttack": 10,
         "paid-in-full": 25,
         "the-same-price": 20,
         "whats-left-listening": 25,
@@ -1508,7 +1508,7 @@
         "tier": "boss",
         "hpBelowPercent": 60,
         "weights": {
-          "basicAttack": 15,
+          "basicAttack": 8,
           "paid-in-full": 25,
           "the-same-price": 20,
           "whats-left-listening": 25,
@@ -1520,7 +1520,7 @@
         "tier": "boss",
         "hpBelowPercent": 25,
         "weights": {
-          "basicAttack": 10,
+          "basicAttack": 8,
           "paid-in-full": 20,
           "the-same-price": 15,
           "whats-left-listening": 40,

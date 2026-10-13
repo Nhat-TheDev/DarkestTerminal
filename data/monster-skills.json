@@ -298,7 +298,9 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "guard-iii",
-        "durationTurns": 2
+        "durationTurns": 3,
+        "amount": 10,
+        "minPercent": 220
       }
     ],
     "slot": 0,
@@ -311,7 +313,10 @@
         },
         "weightMultiplier": 3
       }
-    ]
+    ],
+    "aiCondition": {
+      "selfLacksStatusId": "guard-iii"
+    }
   },
   {
     "id": "shield-bash",
@@ -322,7 +327,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 18
+        "amount": 18,
+        "offenseMultiplierPercent": 130
       },
       {
         "kind": "applyStatusEffect",
@@ -361,14 +367,15 @@
       {
         "kind": "damage",
         "amount": 55,
-        "ignoreDefensePercent": 40
+        "ignoreDefensePercent": 40,
+        "offenseMultiplierPercent": 70
       }
     ],
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
     "cooldownTurns": 5,
-    "initialCooldownTurns": 4
+    "initialCooldownTurns": 1
   },
   {
     "id": "web-barrage",
@@ -379,7 +386,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 10,
+        "offenseMultiplierPercent": 40
       },
       {
         "kind": "applyStatusEffect",
@@ -413,7 +421,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 22
+        "amount": 22,
+        "offenseMultiplierPercent": 60
       },
       {
         "kind": "applyStatusEffect",
@@ -441,7 +450,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 30
+        "amount": 30,
+        "offenseMultiplierPercent": 135
       },
       {
         "kind": "applyStatusEffect",
@@ -477,7 +487,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 24
+        "amount": 24,
+        "offenseMultiplierPercent": 85
       }
     ],
     "slot": 0,
@@ -530,7 +541,8 @@
         "hitCountRange": {
           "min": 1,
           "max": 2
-        }
+        },
+        "offenseMultiplierPercent": 65
       }
     ],
     "slot": 0,
@@ -545,7 +557,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 10,
+        "offenseMultiplierPercent": 55
       },
       {
         "kind": "applyStatusEffect",
@@ -576,7 +589,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12
+        "amount": 12,
+        "offenseMultiplierPercent": 90
       },
       {
         "kind": "applyStatusEffect",
@@ -604,7 +618,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 34
+        "amount": 34,
+        "offenseMultiplierPercent": 130
       }
     ],
     "slot": 0,
@@ -645,7 +660,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 24
+        "amount": 24,
+        "offenseMultiplierPercent": 285
       },
       {
         "kind": "applyStatusEffect",
@@ -702,7 +718,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 50
+        "amount": 50,
+        "offenseMultiplierPercent": 225
       },
       {
         "kind": "applyStatusEffect",
@@ -764,7 +781,8 @@
       {
         "kind": "damage",
         "amount": 26,
-        "critChance": 0.25
+        "critChance": 0.25,
+        "offenseMultiplierPercent": 170
       }
     ],
     "slot": 0,
@@ -821,7 +839,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 60
+        "amount": 60,
+        "offenseMultiplierPercent": 210
       },
       {
         "kind": "applyStatusEffect",
@@ -884,7 +903,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 28
+        "amount": 28,
+        "offenseMultiplierPercent": 120
       }
     ],
     "slot": 0,
@@ -956,7 +976,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 16
+        "amount": 16,
+        "offenseMultiplierPercent": 70
       },
       {
         "kind": "applyStatusEffect",
@@ -1009,7 +1030,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 20,
+        "offenseMultiplierPercent": 80
       },
       {
         "kind": "applyStatusEffect",
@@ -1034,7 +1056,8 @@
         "scalesWithStatusStacks": {
           "statusEffectId": "bleeding",
           "percentPerStack": 20
-        }
+        },
+        "offenseMultiplierPercent": 85
       }
     ],
     "slot": 0,
@@ -1086,7 +1109,8 @@
       {
         "kind": "damage",
         "amount": 45,
-        "lifestealPercent": 100
+        "lifestealPercent": 100,
+        "offenseMultiplierPercent": 140
       }
     ],
     "slot": 0,
@@ -1112,7 +1136,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 14
+        "amount": 14,
+        "offenseMultiplierPercent": 70
       },
       {
         "kind": "applyStatusEffect",
@@ -1136,7 +1161,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12
+        "amount": 12,
+        "offenseMultiplierPercent": 65
       },
       {
         "kind": "applyStatusEffect",
@@ -1175,7 +1201,8 @@
       {
         "kind": "damage",
         "amount": 40,
-        "lifestealPercent": 50
+        "lifestealPercent": 50,
+        "offenseMultiplierPercent": 145
       }
     ],
     "slot": 0,
@@ -1191,7 +1218,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 34
+        "amount": 34,
+        "offenseMultiplierPercent": 315
       }
     ],
     "slot": 0,
@@ -1206,7 +1234,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12
+        "amount": 12,
+        "offenseMultiplierPercent": 155
       },
       {
         "kind": "applyStatusEffect",
@@ -1226,7 +1255,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 75
+        "amount": 75,
+        "offenseMultiplierPercent": 310
       }
     ],
     "slot": 0,
@@ -1260,7 +1290,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 22
+        "amount": 22,
+        "offenseMultiplierPercent": 135
       },
       {
         "kind": "applyStatusEffect",
@@ -1330,7 +1361,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 65
+        "amount": 65,
+        "offenseMultiplierPercent": 140
       },
       {
         "kind": "removeStatusEffect",
@@ -1384,7 +1416,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 20
+        "amount": 20,
+        "offenseMultiplierPercent": 115
       }
     ],
     "slot": 0,
@@ -1404,7 +1437,8 @@
       {
         "kind": "damage",
         "amount": 16,
-        "ignoreDefensePercent": 100
+        "ignoreDefensePercent": 100,
+        "offenseMultiplierPercent": 100
       }
     ],
     "slot": 0,
@@ -1419,7 +1453,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 22
+        "amount": 22,
+        "offenseMultiplierPercent": 155
       },
       {
         "kind": "applyStatusEffect",
@@ -1445,7 +1480,8 @@
       {
         "kind": "damage",
         "amount": 70,
-        "ignoreDefensePercent": 40
+        "ignoreDefensePercent": 40,
+        "offenseMultiplierPercent": 235
       }
     ],
     "slot": 0,
@@ -1464,7 +1500,7 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "knitting-ii",
-        "durationTurns": 99
+        "durationTurns": 6
       }
     ],
     "slot": 0,

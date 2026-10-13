@@ -222,7 +222,8 @@ describe("untargetable monsters", () => {
       resolveRound(combat, ctx);
       expect(boss.hp).toBe(before);
       expect(combat.log.some((l) => l.text.includes("fires from Overwatch") || l.text.includes("Overwatch shot misses"))).toBe(false);
-      expect(combat.log.some((l) => l.text.startsWith(`${boss.name} attacks`) || l.text.startsWith(`${boss.name} misses`))).toBe(true);
+      const acted = new RegExp(`^${boss.name.replace(/[()]/g, "\\$&")} (uses|attacks|misses|gathers|unleashes) `);
+      expect(combat.log.some((l) => acted.test(l.text))).toBe(true);
       expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(true);
     });
   });
