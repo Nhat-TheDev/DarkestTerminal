@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
-import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../src/data/monsters";
+import { runMonsterTurn } from "../src/engine/monsterAI";
 import type { MonsterArchetype } from "../src/types";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
@@ -51,36 +52,30 @@ describe("elite/boss skill kit", () => {
     expect(monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
   });
 
-  test("boss telegraphs Finishing Blow 1 turn ahead, then releases a flat hit", () => {
+  test("a boss's converted Finishing Blow charges one turn, then releases on its locked target", () => {
     const { ctx } = makeCtx();
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
-
     boss.maxHp = 1000;
     boss.hp = 1000;
     ctx.monsters.push(boss);
     const combat = startCombat("r1", [boss.id], ctx, false);
 
     let charged = false;
-    for (let round = 0; round < 10 && combat.phase !== "over" && !charged; round++) {
+    for (let round = 0; round < 12 && combat.phase !== "over" && !charged; round++) {
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      charged = combat.log.some((l) => l.text.includes("begins charging"));
+      charged = boss.charging !== undefined;
     }
     expect(charged).toBe(true);
-    expect(boss.isChargingExecute).toBe(true);
-    const markedTarget = ctx.party.find((p) => p.id === boss.executeTargetId);
-    expect(markedTarget).toBeDefined();
-    markedTarget!.hp = markedTarget!.maxHp;
+    expect(boss.charging!.skillId).toBe("boss-execute-skeleton-guard");
+    expect(combat.log.some((l) => l.text.includes("gathers itself for Finishing Blow"))).toBe(true);
+    const locked = ctx.party.find((p) => p.id === boss.charging!.targetIds[0])!;
+    expect(locked).toBeDefined();
 
-    const hpBefore = markedTarget!.hp;
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("unleashes its charged finishing blow") && l.text.includes(markedTarget!.name))).toBe(true);
-
-    const damageDealt = Math.max(0, hpBefore - markedTarget!.hp);
-    expect(damageDealt).toBeGreaterThan(markedTarget!.maxHp * 0.5);
-    expect(boss.isChargingExecute).toBe(false);
-    expect(boss.executeCooldownTurns).toBeGreaterThan(0);
+    expect(combat.log.some((l) => l.text.includes("unleashes Finishing Blow"))).toBe(true);
+    expect(boss.charging).toBeUndefined();
   });
 
   test("elite cleave damages every living character when it fires", () => {
@@ -129,7 +124,7 @@ describe("elite/boss skill kit", () => {
       for (const [id, tier] of [["dungeon-rat", "normal"], ["skeleton-guard", "boss"]] as const) {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
-        monster.executeCooldownTurns = 99;
+        monster.skillCooldowns = { "boss-execute-skeleton-guard": 99 };
         // makeCtx's party has 1 character per class — their combined opening damage would otherwise
         // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
         // which is what this test is actually checking for.
@@ -151,8 +146,8 @@ describe("elite/boss skill kit", () => {
 
   test("the-founder carries the full strike/cleave/execute/debuff kit, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.skillIds).toEqual(["elite-strike-the-founder", "elite-cleave-the-founder", "boss-debuff-the-founder"]);
-    expect(founder.executeSkillId).toBe("boss-execute-the-founder");
+    expect(founder.skillIds).toEqual(["elite-strike-the-founder", "elite-cleave-the-founder", "boss-debuff-the-founder", "boss-execute-the-founder"]);
+    expect(getMonsterSkill("boss-execute-the-founder").telegraph).toBe(true);
     expect(getMonsterSkill("elite-strike-the-founder").target).toBe("singleEnemy");
     expect(getMonsterSkill("elite-cleave-the-founder").target).toBe("allEnemies");
     expect(founder.actionWeights?.boss).toEqual({
@@ -160,6 +155,7 @@ describe("elite/boss skill kit", () => {
       "elite-strike-the-founder": 20,
       "elite-cleave-the-founder": 15,
       "boss-debuff-the-founder": 35,
+      "boss-execute-the-founder": 100,
     });
     // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
     expect(founder.actionWeights?.elite).toBeUndefined();
@@ -173,10 +169,10 @@ describe("elite/boss skill kit", () => {
       ctx.monsters.push(monster);
       const combat = startCombat("r1", [monster.id], ctx, false);
       for (let round = 0; round < 6 && seen.size < 2; round++) {
-        // Execute charges/releases on its own cycle and bypasses the weighted pool entirely;
-        // hold it off so every boss turn goes through pickMonsterAction().
-        monster.executeCooldownTurns = 99;
-        monster.isChargingExecute = false;
+        // The telegraph charges/releases on its own cycle; hold it off so every boss turn
+        // goes through the strike/cleave roll.
+        monster.skillCooldowns = { "boss-execute-the-founder": 99 };
+        monster.charging = undefined;
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         if (combat.log.some((l) => l.text.includes("Paid In Full"))) seen.add("strike");
@@ -247,8 +243,8 @@ describe("regular monster skills", () => {
   test("Skeleton Guard does nothing but a basic attack at normal tier, and has its full kit above it", () => {
     const guard = getArchetype("skeleton-guard");
     expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100 });
-    expect(guard.skillIds).toEqual(["elite-strike-skeleton-guard", "elite-cleave-skeleton-guard", "boss-debuff-skeleton-guard"]);
-    expect(guard.executeSkillId).toBe("boss-execute-skeleton-guard");
+    expect(guard.skillIds).toEqual(["elite-strike-skeleton-guard", "elite-cleave-skeleton-guard", "boss-debuff-skeleton-guard", "boss-execute-skeleton-guard"]);
+    expect(getMonsterSkill("boss-execute-skeleton-guard").telegraph).toBe(true);
   });
 
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
@@ -511,5 +507,216 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
       resolveRound(combat, ctx);
       expect(combat.log.some((l) => l.text.includes(survivor.name))).toBe(true);
     }
+  });
+});
+
+
+describe("monster AI rules, driven by fixture kits", () => {
+  const sk = (id: string, over: object = {}) => ({ id, name: id, description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, ...over });
+
+  function withFixture(skills: any[], archetypeOver: any, body: () => void) {
+    const base = structuredClone(MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!);
+    const archetype = { ...base, id: "fixture-boss", skillIds: skills.map((x) => x.id), ...archetypeOver };
+    MONSTER_SKILLS.push(...skills);
+    MONSTER_ARCHETYPES.push(archetype);
+    try {
+      body();
+    } finally {
+      for (const x of skills) MONSTER_SKILLS.splice(MONSTER_SKILLS.findIndex((y) => y.id === x.id), 1);
+      MONSTER_ARCHETYPES.splice(MONSTER_ARCHETYPES.findIndex((a) => a.id === "fixture-boss"), 1);
+    }
+  }
+
+  function bossFight(seed = 1) {
+    const { ctx } = makeCtx(seed);
+    const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+    boss.maxHp = 100000;
+    boss.hp = 100000;
+    ctx.monsters.push(boss);
+    for (const c of ctx.party) {
+      c.maxHp = 1e9;
+      c.hp = 1e9;
+    }
+    const combat = startCombat("r1", [boss.id], ctx, true);
+    const turn = () => runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+    const uses = (name: string) => combat.log.filter((l) => l.text.includes(`uses ${name}`)).length;
+    return { ctx, boss, combat, turn, uses };
+  }
+  const kill = (c: { hp: number; isAlive: boolean }) => {
+    c.hp = 0;
+    c.isAlive = false;
+  };
+  const targetsOf = (text: string, skill: string) =>
+    text
+      .slice(text.indexOf(`uses ${skill} on `) + `uses ${skill} on `.length)
+      .replace(/\.$/, "")
+      .split(/, | and /);
+
+  test("a skill's cooldown holds it back for exactly that many of the monster's own turns", () => {
+    withFixture([sk("fx-a", { cooldownTurns: 2 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      expect(boss.skillCooldowns!["fx-a"]).toBe(1);
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      turn();
+      expect(uses("fx-a")).toBe(2);
+    });
+  });
+
+  test("initialCooldownTurns keeps a skill out of the opening turns", () => {
+    withFixture([sk("fx-a", { initialCooldownTurns: 2 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { turn, uses } = bossFight();
+      turn();
+      turn();
+      expect(uses("fx-a")).toBe(0);
+      turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("usesPerCombat caps how often a skill fires", () => {
+    withFixture([sk("fx-a", { usesPerCombat: 1 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { turn, uses } = bossFight();
+      for (let i = 0; i < 10; i++) turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("aiCondition makes a skill a candidate only while it holds", () => {
+    withFixture([sk("fx-a", { aiCondition: { selfHpBelowPercent: 50 } })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      for (let i = 0; i < 20; i++) turn();
+      expect(uses("fx-a")).toBe(0);
+      boss.hp = boss.maxHp * 0.4;
+      turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("an aiRule that multiplies a weight to 0 removes the skill from the pick", () => {
+    const rule = { if: { selfHpBelowPercent: 50 }, weightMultiplier: 0 };
+    withFixture([sk("fx-a", { aiRules: [rule] })], { actionWeights: { boss: { basicAttack: 50, "fx-a": 50 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      boss.hp = boss.maxHp * 0.4;
+      for (let i = 0; i < 30; i++) turn();
+      expect(uses("fx-a")).toBe(0);
+    });
+  });
+
+  test("targetRules steer a single-target skill toward the matching target", () => {
+    const rule = { if: { targetHasStatusId: "bleeding" }, weightMultiplier: 1000 };
+    withFixture([sk("fx-a", { targetRules: [rule] })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      const marked = ctx.party[2]!;
+      marked.activeStatusEffects.push({ statusEffectId: "bleeding", turnsRemaining: 99 });
+      for (let i = 0; i < 20; i++) turn();
+      const onMarked = combat.log.filter((l) => l.text.includes(`uses fx-a on ${marked.name}.`)).length;
+      expect(onMarked).toBeGreaterThanOrEqual(18);
+    });
+  });
+
+  test("a telegraph charges without dealing damage, then releases on the locked target", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, effects: [{ kind: "damage", amount: 50 }] })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { ctx, boss, combat, turn } = bossFight();
+      const hp = () => ctx.party.map((c) => c.hp);
+      const before = hp();
+      turn();
+      expect(combat.log.some((l) => l.text.includes("gathers itself for fx-t"))).toBe(true);
+      expect(hp()).toEqual(before);
+      expect(boss.charging!.skillId).toBe("fx-t");
+      expect(boss.charging!.targetIds.length).toBe(1);
+      expect(boss.skillCooldowns!["fx-t"]).toBe(3);
+      const lockedId = boss.charging!.targetIds[0]!;
+      turn();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+      expect(boss.charging).toBeUndefined();
+      const changed = ctx.party.filter((c, i) => c.hp !== before[i]);
+      expect(changed.map((c) => c.id)).toEqual([lockedId]);
+    });
+  });
+
+  test("a telegraph whose locked target died re-picks a living one", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { ctx, boss, combat, turn } = bossFight();
+      turn();
+      const locked = ctx.party.find((c) => c.id === boss.charging!.targetIds[0])!;
+      kill(locked);
+      turn();
+      expect(boss.charging).toBeUndefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+    });
+  });
+
+  test("a stun delays a charged release instead of cancelling it", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 6 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { boss, combat, turn } = bossFight();
+      turn();
+      boss.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+      turn();
+      expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
+      expect(boss.charging).toBeDefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(false);
+      boss.activeStatusEffects = [];
+      turn();
+      expect(boss.charging).toBeUndefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+    });
+  });
+
+  test("chargeEffects resolve on the caster during the charge turn", () => {
+    const charge = [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }];
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, chargeEffects: charge })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { boss, turn } = bossFight();
+      turn();
+      expect(boss.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+    });
+  });
+
+  test("a phase is entered once, casts its onEnterSkillId, and replaces the weights", () => {
+    const phases = [{ tier: "boss", hpBelowPercent: 50, weights: { "fx-b": 1 }, onEnterSkillId: "fx-p" }];
+    withFixture([sk("fx-a"), sk("fx-b"), sk("fx-p", { target: "self", effects: [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }] })], { phases, actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, combat, turn, uses } = bossFight();
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      boss.hp = boss.maxHp * 0.4;
+      turn();
+      expect(combat.log.some((l) => l.text.includes("stops holding anything back"))).toBe(true);
+      expect(uses("fx-p")).toBe(1);
+      for (let i = 0; i < 5; i++) turn();
+      expect(uses("fx-p")).toBe(1);
+      expect(uses("fx-a")).toBe(1);
+      expect(uses("fx-b")).toBe(5);
+      expect(boss.enteredPhaseIndexes).toEqual([0]);
+    });
+  });
+
+  test("targetCount hits that many distinct enemies, capped at the living count", () => {
+    withFixture([sk("fx-m", { targetCount: { min: 3, max: 3 } })], { actionWeights: { boss: { "fx-m": 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      turn();
+      const first = combat.log.find((l) => l.text.includes("uses fx-m on"))!;
+      const names = targetsOf(first.text, "fx-m");
+      expect(names.length).toBe(3);
+      expect(new Set(names).size).toBe(3);
+      for (const c of ctx.party.slice(2)) kill(c);
+      turn();
+      const second = combat.log.filter((l) => l.text.includes("uses fx-m on")).at(-1)!;
+      expect(targetsOf(second.text, "fx-m").length).toBe(2);
+    });
+  });
+
+  test('targeting "random" ignores aggro', () => {
+    withFixture([], { targeting: "random", skillIds: [], actionWeights: { boss: { basicAttack: 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      const loud = ctx.party[0]!;
+      loud.aggro = 10000;
+      for (let i = 0; i < 200; i++) turn();
+      const aimed = combat.log.filter((l) => l.text.includes(`attacks ${loud.name}.`) || l.text.includes(`on ${loud.name}.`) || l.text.includes(`attack on ${loud.name} out`));
+      const all = combat.log.filter((l) => l.text.includes(" attacks ") || l.text.includes("misses its attack"));
+      expect(all.length).toBeGreaterThan(100);
+      expect(aimed.length / all.length).toBeLessThan(0.5);
+    });
   });
 });

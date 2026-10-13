@@ -950,7 +950,8 @@
     "skillIds": [
       "elite-strike-skeleton-guard",
       "elite-cleave-skeleton-guard",
-      "boss-debuff-skeleton-guard"
+      "boss-debuff-skeleton-guard",
+      "boss-execute-skeleton-guard"
     ],
     "expReward": 15,
     "powerTier": "strong",
@@ -967,10 +968,10 @@
         "basicAttack": 40,
         "elite-strike-skeleton-guard": 20,
         "elite-cleave-skeleton-guard": 15,
-        "boss-debuff-skeleton-guard": 25
+        "boss-debuff-skeleton-guard": 25,
+        "boss-execute-skeleton-guard": 100
       }
     },
-    "executeSkillId": "boss-execute-skeleton-guard",
     "roles": [
       "normal",
       "elite",
@@ -996,7 +997,8 @@
     "skillIds": [
       "elite-strike-giant-spider",
       "elite-cleave-giant-spider",
-      "boss-debuff-giant-spider"
+      "boss-debuff-giant-spider",
+      "boss-execute-giant-spider"
     ],
     "expReward": 16,
     "actionWeights": {
@@ -1009,10 +1011,10 @@
         "basicAttack": 40,
         "elite-strike-giant-spider": 20,
         "elite-cleave-giant-spider": 15,
-        "boss-debuff-giant-spider": 25
+        "boss-debuff-giant-spider": 25,
+        "boss-execute-giant-spider": 100
       }
     },
-    "executeSkillId": "boss-execute-giant-spider",
     "roles": [
       "elite",
       "boss"
@@ -1037,7 +1039,8 @@
     "skillIds": [
       "elite-strike-dragon",
       "elite-cleave-dragon",
-      "boss-debuff-dragon"
+      "boss-debuff-dragon",
+      "boss-execute-dragon"
     ],
     "expReward": 20,
     "actionWeights": {
@@ -1050,10 +1053,10 @@
         "basicAttack": 40,
         "elite-strike-dragon": 20,
         "elite-cleave-dragon": 15,
-        "boss-debuff-dragon": 25
+        "boss-debuff-dragon": 25,
+        "boss-execute-dragon": 100
       }
     },
-    "executeSkillId": "boss-execute-dragon",
     "roles": [
       "elite",
       "boss"
@@ -1078,7 +1081,8 @@
     "skillIds": [
       "elite-strike-zombie-knight",
       "elite-cleave-zombie-knight",
-      "boss-debuff-zombie-knight"
+      "boss-debuff-zombie-knight",
+      "boss-execute-zombie-knight"
     ],
     "expReward": 17,
     "actionWeights": {
@@ -1091,10 +1095,10 @@
         "basicAttack": 40,
         "elite-strike-zombie-knight": 20,
         "elite-cleave-zombie-knight": 15,
-        "boss-debuff-zombie-knight": 25
+        "boss-debuff-zombie-knight": 25,
+        "boss-execute-zombie-knight": 100
       }
     },
-    "executeSkillId": "boss-execute-zombie-knight",
     "roles": [
       "elite",
       "boss"
@@ -1119,7 +1123,8 @@
     "skillIds": [
       "elite-strike-dark-knight",
       "elite-cleave-dark-knight",
-      "boss-debuff-dark-knight"
+      "boss-debuff-dark-knight",
+      "boss-execute-dark-knight"
     ],
     "expReward": 18,
     "actionWeights": {
@@ -1132,10 +1137,10 @@
         "basicAttack": 40,
         "elite-strike-dark-knight": 20,
         "elite-cleave-dark-knight": 15,
-        "boss-debuff-dark-knight": 25
+        "boss-debuff-dark-knight": 25,
+        "boss-execute-dark-knight": 100
       }
     },
-    "executeSkillId": "boss-execute-dark-knight",
     "roles": [
       "elite",
       "boss"
@@ -1160,7 +1165,8 @@
     "skillIds": [
       "elite-strike-orc-chieftain",
       "elite-cleave-orc-chieftain",
-      "boss-debuff-orc-chieftain"
+      "boss-debuff-orc-chieftain",
+      "boss-execute-orc-chieftain"
     ],
     "expReward": 20,
     "actionWeights": {
@@ -1173,10 +1179,10 @@
         "basicAttack": 40,
         "elite-strike-orc-chieftain": 20,
         "elite-cleave-orc-chieftain": 15,
-        "boss-debuff-orc-chieftain": 25
+        "boss-debuff-orc-chieftain": 25,
+        "boss-execute-orc-chieftain": 100
       }
     },
-    "executeSkillId": "boss-execute-orc-chieftain",
     "roles": [
       "elite",
       "boss"
@@ -1201,7 +1207,8 @@
     "skillIds": [
       "elite-strike-vampire-lord",
       "elite-cleave-vampire-lord",
-      "boss-debuff-vampire-lord"
+      "boss-debuff-vampire-lord",
+      "boss-execute-vampire-lord"
     ],
     "expReward": 22,
     "actionWeights": {
@@ -1214,10 +1221,10 @@
         "basicAttack": 40,
         "elite-strike-vampire-lord": 20,
         "elite-cleave-vampire-lord": 15,
-        "boss-debuff-vampire-lord": 25
+        "boss-debuff-vampire-lord": 25,
+        "boss-execute-vampire-lord": 100
       }
     },
-    "executeSkillId": "boss-execute-vampire-lord",
     "roles": [
       "elite",
       "boss"
@@ -1239,7 +1246,8 @@
     "skillIds": [
       "elite-strike-void",
       "elite-cleave-void",
-      "boss-debuff-void"
+      "boss-debuff-void",
+      "boss-execute-void"
     ],
     "expReward": 25,
     "actionWeights": {
@@ -1252,10 +1260,10 @@
         "basicAttack": 40,
         "elite-strike-void": 20,
         "elite-cleave-void": 15,
-        "boss-debuff-void": 25
+        "boss-debuff-void": 25,
+        "boss-execute-void": 100
       }
     },
-    "executeSkillId": "boss-execute-void",
     "roles": [
       "elite",
       "boss"
@@ -1280,7 +1288,8 @@
     "skillIds": [
       "elite-strike-ancient-golem",
       "elite-cleave-ancient-golem",
-      "boss-debuff-ancient-golem"
+      "boss-debuff-ancient-golem",
+      "boss-execute-ancient-golem"
     ],
     "expReward": 20,
     "actionWeights": {
@@ -1293,10 +1302,10 @@
         "basicAttack": 40,
         "elite-strike-ancient-golem": 20,
         "elite-cleave-ancient-golem": 15,
-        "boss-debuff-ancient-golem": 25
+        "boss-debuff-ancient-golem": 25,
+        "boss-execute-ancient-golem": 100
       }
     },
-    "executeSkillId": "boss-execute-ancient-golem",
     "roles": [
       "elite",
       "boss"
@@ -1321,7 +1330,8 @@
     "skillIds": [
       "elite-strike-lich",
       "elite-cleave-lich",
-      "boss-debuff-lich"
+      "boss-debuff-lich",
+      "boss-execute-lich"
     ],
     "expReward": 24,
     "actionWeights": {
@@ -1334,10 +1344,10 @@
         "basicAttack": 40,
         "elite-strike-lich": 20,
         "elite-cleave-lich": 15,
-        "boss-debuff-lich": 25
+        "boss-debuff-lich": 25,
+        "boss-execute-lich": 100
       }
     },
-    "executeSkillId": "boss-execute-lich",
     "roles": [
       "elite",
       "boss"
@@ -1359,7 +1369,8 @@
     "skillIds": [
       "elite-strike-the-founder",
       "elite-cleave-the-founder",
-      "boss-debuff-the-founder"
+      "boss-debuff-the-founder",
+      "boss-execute-the-founder"
     ],
     "expReward": 20,
     "actionWeights": {
@@ -1367,10 +1378,10 @@
         "basicAttack": 30,
         "elite-strike-the-founder": 20,
         "elite-cleave-the-founder": 15,
-        "boss-debuff-the-founder": 35
+        "boss-debuff-the-founder": 35,
+        "boss-execute-the-founder": 100
       }
     },
-    "executeSkillId": "boss-execute-the-founder",
     "roles": [
       "boss"
     ],

@@ -1091,8 +1091,8 @@ function buildMonActionsCard(monData, charData, tier) {
   if (rolledSkillCount === 0) {
     card.appendChild(el("p", { class: "hint", text: "No skill carries an action weight at this tier, so it only ever does the basic attack here." }));
   }
-  if (tier === "boss") {
-    card.appendChild(el("p", { class: "hint", html: `The charged row isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, then cools down for <b>${META.levelGrowth.executeCooldownTurns}</b> turns before it can charge again (~1 every ${META.levelGrowth.executeCooldownTurns + 2} rounds). It's shown here on its own cadence, not the weight column.` }));
+  if (tier === "boss" && monData.skillKit.execute) {
+    card.appendChild(el("p", { class: "hint", html: `The charged row isn't part of the weighted roll above — it charges for 1 turn (telegraphing its target), then always releases on the next turn, and can charge again <b>${monData.skillKit.execute.cooldownTurns || 0}</b> turns after it first charged. It's shown here on its own cadence, not the weight column.` }));
   }
   card.appendChild(el("div", { id: "mon-actions-preview-output" }));
   return card;
@@ -1733,7 +1733,7 @@ function renderOther() {
       "Combat / AI misc",
       "data/balance-config.json",
       "combat",
-      ["executeCooldownTurns", "defensiveLowHpSkillChance"].map((key) => ({ key, value: b.combat[key] })),
+      ["defensiveLowHpSkillChance"].map((key) => ({ key, value: b.combat[key] })),
       renderOther
     )
   );
@@ -2619,7 +2619,6 @@ boot();
     const subRace = selectInput([""], entry.subRace || "");
     const traitIds = checkboxGroup(monsterTraits.map((t) => t.id), entry.traitIds || []);
     const skillIds = checkboxGroup(monsterSkillsCatalog.map((s) => s.id), entry.skillIds || []);
-    const executeSkillId = selectInput(["", ...monsterSkillsCatalog.map((s) => s.id)], entry.executeSkillId || "");
 
     function refreshSubRaces() {
       const r = monsterRaces.find((r) => r.id === race.value);
@@ -2678,7 +2677,7 @@ boot();
       el("div", { class: "row" }, [field("Race", race), field("Sub-race", subRace)]),
       el("fieldset", {}, [el("legend", { text: "Roles" }), roles, finalBoss]),
       el("fieldset", {}, [el("legend", { text: "Traits" }), traitIds]),
-      el("fieldset", {}, [el("legend", { text: "Skills this monster can use" }), skillIds, field("Execute skill (charged finisher, optional)", executeSkillId)]),
+      el("fieldset", {}, [el("legend", { text: "Skills this monster can use" }), skillIds]),
       actionWeightsWrap
     );
 
@@ -2694,7 +2693,6 @@ boot();
         if (subRace.value) out.subRace = subRace.value;
         if (traitIds._values().length) out.traitIds = traitIds._values();
         if (powerTier.value) out.powerTier = powerTier.value;
-        if (executeSkillId.value) out.executeSkillId = executeSkillId.value;
         if (finalBoss._checkbox.checked) {
           out.finalBoss = true;
           if (minFloor.value !== "") throw new Error("Final boss archetypes must not set Min floor.");

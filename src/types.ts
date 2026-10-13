@@ -206,7 +206,7 @@ export interface SkillDefinition {
   isMagic?: boolean;
   ranks?: SkillRankDefinition[];
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
-  /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. Distinct from the unrelated Boss "Execute" charge-up mechanic (`Monster.executeCooldownTurns`). */
+  /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
   /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
   aiCondition?: MonsterAiPredicate;
@@ -702,12 +702,9 @@ export interface MonsterArchetype {
   finalBoss?: boolean;
   /** Every skill this archetype can roll, at any tier. Which tier each one is usable at, and how
    *  often, is `actionWeights` — a skill is available at a tier exactly when that tier's weights
-   *  name it. Does not include `executeSkillId`, which never goes through the weighted roll. */
+   *  name it. */
   skillIds: Id[];
   expReward: number;
-  /** The charged finisher: telegraphs for a turn, then always releases, then cools down. Outside
-   *  the weighted roll entirely, which is why it is a field of its own rather than a skillIds entry. */
-  executeSkillId?: Id;
   /** Elite/boss phases: each replaces its tier's weights once HP falls below its threshold. */
   phases?: MonsterPhase[];
   /** `"random"`: targets are picked uniformly, ignoring aggro. */
@@ -746,9 +743,6 @@ export interface Monster {
   traitIds?: Id[];
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;
-  executeCooldownTurns?: number;
-  isChargingExecute?: boolean;
-  executeTargetId?: Id;
   /** Turns left on each skill's cooldown. */
   skillCooldowns?: Record<Id, number>;
   /** How many times each skill with `usesPerCombat` has been cast. */
