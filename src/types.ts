@@ -840,6 +840,8 @@ export interface CombatantSnapshot {
   /** Characters only. */
   fear?: number;
   activeStatusEffects?: ActiveStatusEffect[];
+  /** Monsters only: the state of a shell bearer's shell. */
+  shell?: MonsterShellState;
 }
 
 /** Party-wide stats (not per-combatant) captured alongside a log entry, so the reveal can freeze coins/EXP/satiety in sync with the log the same way CombatantSnapshot freezes HP/MP/level/status. */

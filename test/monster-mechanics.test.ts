@@ -8,8 +8,11 @@ import {
   livingTargetableMonsterRefs,
   autoResolveTargets,
   dismissOrphanedMonsterSummons,
+  applySkillEffects,
 } from "../src/engine/combat";
 import { STATUS_EFFECTS } from "../src/data/statusEffects";
+import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
+import { applyArtifactReflectDamage } from "../src/engine/combatHooks";
 import type { CombatantRef } from "../src/types";
 import { MONSTER_SKILLS, MONSTER_ARCHETYPES, spawnMonster } from "../src/data/monsters";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -221,6 +224,138 @@ describe("untargetable monsters", () => {
       expect(combat.log.some((l) => l.text.includes("fires from Overwatch") || l.text.includes("Overwatch shot misses"))).toBe(false);
       expect(combat.log.some((l) => l.text.startsWith(`${boss.name} attacks`) || l.text.startsWith(`${boss.name} misses`))).toBe(true);
       expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(true);
+    });
+  });
+});
+
+describe("breakable shell", () => {
+  const shell = { hitsToBreak: { min: 3, max: 3 }, hitDamageCapMaxHpPercent: 5, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+
+  function withShell(skills: any[], archetypeOver: any, body: () => void) {
+    withFixture(skills, { shell, actionWeights: { boss: { basicAttack: 100 } }, ...archetypeOver }, body);
+  }
+
+  function shellFight() {
+    const { ctx } = makeCtx(1);
+    const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+    boss.maxHp = 1000;
+    boss.hp = 1000;
+    ctx.monsters.push(boss);
+    const combat = startCombat("r1", [boss.id], ctx, true);
+    const hitter = ctx.party[0]!;
+    const hit = (amount = 400) => {
+      const before = boss.hp;
+      resolveSkillEffect({ kind: "damage", amount }, hitter, boss, { log: combat.log });
+      return before - boss.hp;
+    };
+    const turn = () => runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+    const lines = (text: string) => combat.log.filter((l) => l.text.includes(text)).length;
+    const status = (id: string) => ({ statusEffectId: id, turnsRemaining: 5 });
+    return { ctx, boss, combat, hitter, hit, turn, lines, status };
+  }
+
+  test("a shell bearer starts the fight with its shell intact and a rolled hit count", () => {
+    withShell([], {}, () => {
+      const { boss } = shellFight();
+      expect(boss.shell).toEqual({ state: "intact", hitsLeft: 3, ownTurnsSinceBreak: 0 });
+    });
+  });
+
+  test("an intact shell caps a direct hit at its share of max HP and counts it", () => {
+    withShell([], {}, () => {
+      const { boss, hit } = shellFight();
+      expect(hit(400)).toBe(50);
+      expect(boss.shell!.hitsLeft).toBe(2);
+    });
+  });
+
+  test("an intact shell turns a status tick away", () => {
+    withShell([], {}, () => {
+      const { boss, combat } = shellFight();
+      boss.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 3 });
+      tickDotEffects(boss, { log: combat.log });
+      expect(boss.hp).toBe(1000);
+    });
+  });
+
+  test("a multi-hit counts every hit, an area skill counts the bearer once", () => {
+    withShell([], {}, () => {
+      const { ctx, boss, combat, hitter } = shellFight();
+      const multi = { id: "fx-multi", name: "fx-multi", description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1, hitCountRange: { min: 3, max: 3 } }], slot: 0, unlockLevel: 1 } as any;
+      applySkillEffects(multi, hitter, [boss], combat, ctx, combat.log);
+      expect(boss.shell!.state).toBe("broken");
+    });
+    withShell([], {}, () => {
+      const { ctx, boss, combat, hitter } = shellFight();
+      const rat = spawnInto(ctx, "dungeon-rat");
+      combat.combatants.push({ ref: { kind: "monster", id: rat.id }, speed: rat.speed });
+      const area = { id: "fx-area", name: "fx-area", description: "x", mpCost: 0, target: "allEnemies", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1 } as any;
+      applySkillEffects(area, hitter, [boss, rat], combat, ctx, combat.log);
+      expect(boss.shell!.hitsLeft).toBe(2);
+    });
+  });
+
+  test("breaking stuns the bearer once, lifts the cap and lets ticks bite", () => {
+    withShell([], {}, () => {
+      const { boss, hit, lines, combat } = shellFight();
+      hit();
+      hit();
+      hit();
+      expect(boss.shell!.state).toBe("broken");
+      expect(boss.activeStatusEffects.some((s) => s.statusEffectId === "stunned")).toBe(true);
+      expect(lines("shell cracks open")).toBe(1);
+      expect(hit(400)).toBeGreaterThan(50);
+      boss.hp = 1000;
+      boss.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 3 });
+      tickDotEffects(boss, { log: combat.log });
+      expect(boss.hp).toBeLessThan(1000);
+    });
+  });
+
+  test("it re-forms after the configured own turn, shedding debuffs and keeping buffs", () => {
+    withShell([], {}, () => {
+      const { boss, hit, turn, lines, status } = shellFight();
+      hit();
+      hit();
+      hit();
+      boss.activeStatusEffects.push(status("burning"), status("weakened"), status("empower"));
+      turn();
+      expect(boss.shell!.state).toBe("broken");
+      turn();
+      expect(boss.shell).toEqual({ state: "intact", hitsLeft: 3, ownTurnsSinceBreak: 0 });
+      expect(lines("shell closes over again")).toBe(1);
+      expect(boss.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["empower"]);
+    });
+  });
+
+  test("a break while charging delays the release instead of losing it", () => {
+    const telegraph = { id: "fx-t", name: "fx-t", description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, telegraph: true, cooldownTurns: 6 };
+    withShell([telegraph], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { boss, combat, hit, turn, lines } = shellFight();
+      turn();
+      expect(boss.charging).toBeDefined();
+      hit();
+      hit();
+      hit();
+      turn();
+      expect(lines("is stunned")).toBe(1);
+      expect(boss.charging).toBeDefined();
+      boss.activeStatusEffects = boss.activeStatusEffects.filter((s) => s.statusEffectId !== "stunned");
+      turn();
+      expect(boss.charging).toBeUndefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+      expect(boss.skillCooldowns!["fx-t"]).toBe(3);
+    });
+  });
+
+  test("an artifact's reflect is capped by the intact shell and does not count as a hit", () => {
+    withShell([], {}, () => {
+      const { boss, hitter, combat } = shellFight();
+      hitter.equippedArtifactIds.push("spiked-cloak");
+      const before = boss.hp;
+      applyArtifactReflectDamage(hitter, boss, 5000, combat.log);
+      expect(before - boss.hp).toBe(50);
+      expect(boss.shell!.hitsLeft).toBe(3);
     });
   });
 });

@@ -24,6 +24,7 @@ import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
 import { spawnMonster } from "../data/monsters";
+import { formShell } from "./monsterShell";
 import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent, combinePercents } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
@@ -105,6 +106,7 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
       return { ref: { kind: "monster" as const, id: m.id }, speed: m.speed };
     }),
   ];
+  for (const id of monsterIds) formShell(ctx.monsters.find((m) => m.id === id)!, ctx.rng);
   return {
     roomId,
     combatants,
@@ -290,6 +292,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       maxMp: isCharacter ? (actor as Character).maxMp : undefined,
       fear: isCharacter ? (actor as Character).survival.fear : undefined,
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
+      shell: c.ref.kind === "monster" && (actor as Monster).shell ? { ...(actor as Monster).shell! } : undefined,
     };
   });
   return [...present, ...departed];

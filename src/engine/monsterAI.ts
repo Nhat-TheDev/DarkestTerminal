@@ -17,6 +17,7 @@ import {
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
+import { advanceShellAfterOwnTurn } from "./monsterShell";
 
 /** A monster's targeting pool: every living character/summon not currently `untargetable` (a stealthed Ninja). */
 type Targetable = Character | Summon;
@@ -190,6 +191,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     takeMonsterTurn(actor, combat, ctx);
   } finally {
     advanceMonsterCooldowns(actor);
+    advanceShellAfterOwnTurn(actor, ctx.rng, { log: combat.log });
   }
 }
 

@@ -5,6 +5,7 @@ import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffec
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
+import { shellAdjustedDamage } from "./monsterShell";
 import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
@@ -27,7 +28,8 @@ export function applyOnHitRider(source: Character, target: Actor, log: LogEntry[
 
 export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
   const percent = totalReflectDamagePercent(bearer);
-  const reflected = Math.round(damageDealt * (percent / 100));
+  // An intact shell caps what a reflect does to it, but a reflect is not a hit that wears it down.
+  const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100)), false);
   if (reflected <= 0) return;
   attacker.hp = Math.max(0, attacker.hp - reflected);
   log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
