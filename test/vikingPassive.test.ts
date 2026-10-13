@@ -4,7 +4,7 @@ import { resolveSkillEffect } from "../src/engine/resolver";
 import { getClass } from "../src/data/classes";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { spawnMonster } from "../src/data/monsters";
-import { makeCtx } from "./helpers";
+import { makeCtx, withoutDamageVariance } from "./helpers";
 import type { LogEntry, SkillDefinition } from "../src/types";
 
 function attackSkill(overrides: Partial<SkillDefinition> = {}): SkillDefinition {
@@ -22,6 +22,7 @@ function attackSkill(overrides: Partial<SkillDefinition> = {}): SkillDefinition 
 }
 
 describe("Viking passive: low-HP damage buff with self-cost", () => {
+  withoutDamageVariance();
   test("below the HP threshold, outgoing damage is boosted by the rank's percent", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;

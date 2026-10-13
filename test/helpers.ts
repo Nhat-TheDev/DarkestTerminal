@@ -1,3 +1,5 @@
+import { afterAll, beforeAll } from "bun:test";
+import { BALANCE } from "../src/data/balanceConfig";
 import { CLASSES, getSkill } from "../src/data/classes";
 import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
@@ -34,4 +36,16 @@ export function pickAnyAction(
   const skill = actor.unlockedSkillIds.map(getSkill)[0]!;
   const targets = autoResolveTargets(skill.target, ref, combat, ctx) ?? [ref];
   return { skillId: skill.id, targets };
+}
+
+/** Pins `combat.damageVariancePercent` to 0 for the enclosing describe: a test that asserts an exact damage or rng-draw count is about the formula, not the roll. */
+export function withoutDamageVariance(): void {
+  let saved = BALANCE.combat.damageVariancePercent;
+  beforeAll(() => {
+    saved = BALANCE.combat.damageVariancePercent;
+    BALANCE.combat.damageVariancePercent = 0;
+  });
+  afterAll(() => {
+    BALANCE.combat.damageVariancePercent = saved;
+  });
 }

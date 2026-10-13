@@ -9,6 +9,8 @@ interface BalanceConfig {
     defensiveLowHpSkillChance: number;
     /** Shared crit-damage multiplier (as a %) for any `SkillEffect.critChance` that doesn't set its own `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
+    /** Every direct damage hit is scaled by a random factor within ±this %, rounded at random so a small hit still moves; 0 turns it off. */
+    damageVariancePercent: number;
     /** A normal-tier defensive monster below this share of max HP reaches for its self-targeted skill. */
     defensiveLowHpThresholdFraction: number;
     /** Added to a character's speed for turn order when its queued skill is `isBuff` (and not a summon). */

@@ -603,3 +603,84 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
   });
 });
 
+
+describe("damage variance (combat.damageVariancePercent)", () => {
+  function setup() {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.maxHp = target.hp = 1_000_000;
+    const base = 100 + mitigatedOffense(attacker.attack, target.defense);
+    const hit = (rollVariance?: () => number, source = attacker, victim = target) => {
+      victim.hp = victim.maxHp;
+      resolveSkillEffect({ kind: "damage", amount: 100 }, source, victim, { log: [], rollVariance });
+      return victim.maxHp - victim.hp;
+    };
+    return { ctx, attacker, target, base, hit };
+  }
+
+  test("every hit lands within ±damageVariancePercent of the unvaried damage, and the average stays on it", () => {
+    const { ctx, base, hit } = setup();
+    const p = BALANCE.combat.damageVariancePercent / 100;
+    const trials = 4000;
+    let sum = 0;
+    let below = false;
+    let above = false;
+    for (let i = 0; i < trials; i++) {
+      const dealt = hit(() => ctx.rng.next());
+      expect(dealt).toBeGreaterThanOrEqual(Math.floor(base * (1 - p)));
+      expect(dealt).toBeLessThanOrEqual(Math.ceil(base * (1 + p)));
+      if (dealt < Math.round(base)) below = true;
+      if (dealt > Math.round(base)) above = true;
+      sum += dealt;
+    }
+    expect(below && above).toBe(true);
+    expect(Math.abs(sum / trials - base)).toBeLessThan(base * 0.002);
+  });
+
+  test("a hit draws twice: the factor first, then the rounding", () => {
+    const { base, hit } = setup();
+    const p = BALANCE.combat.damageVariancePercent / 100;
+    const draws = [0, 0];
+    expect(hit(() => draws.shift()!)).toBe(Math.floor(base * (1 - p)));
+    expect(draws.length).toBe(0);
+    const high = [1 - 1e-9, 1 - 1e-9];
+    expect(hit(() => high.shift()!)).toBe(Math.floor(base * (1 + p) + (1 - 1e-9)));
+  });
+
+  test("rounding is stochastic: a hit near 10 moves to 9 or 11 instead of always reading 10", () => {
+    const { ctx, attacker, target } = setup();
+    const seen = new Set<number>();
+    for (let i = 0; i < 400; i++) {
+      target.hp = target.maxHp;
+      const effect: SkillEffect = { kind: "damage", amount: 10 - mitigatedOffense(attacker.attack, target.defense) };
+      resolveSkillEffect(effect, attacker, target, { log: [], rollVariance: () => ctx.rng.next() });
+      seen.add(target.maxHp - target.hp);
+    }
+    expect([...seen].sort((a, b) => a - b)).toEqual([9, 10, 11]);
+  });
+
+  test("a damage-over-time tick is never varied and spends no draw", () => {
+    const { ctx } = makeCtx();
+    const bearer = ctx.party[0]!;
+    let draws = 0;
+    const before = bearer.hp;
+    resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log: [], rollVariance: () => (draws++, 0.99) });
+    expect(before - bearer.hp).toBe(7);
+    expect(draws).toBe(0);
+  });
+
+  test("no rollVariance, or a variance of 0, leaves the hit exact and spends no draw", () => {
+    const { base, hit } = setup();
+    expect(hit()).toBe(Math.round(base));
+    const saved = BALANCE.combat.damageVariancePercent;
+    BALANCE.combat.damageVariancePercent = 0;
+    try {
+      let draws = 0;
+      expect(hit(() => (draws++, 0.99))).toBe(Math.round(base));
+      expect(draws).toBe(0);
+    } finally {
+      BALANCE.combat.damageVariancePercent = saved;
+    }
+  });
+});

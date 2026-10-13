@@ -187,6 +187,8 @@ export interface ResolveContext {
   linkedSummonId?: Id;
   /** Called by a damage/heal-over-time tick when one of its effects actually moved the bearer's HP, so the caller can record each kind of tick, not just the net change. */
   onDotEffect?: (kind: "damage" | "heal") => void;
+  /** A uniform draw in [0, 1). Set by the caller that owns the rng; a direct hit draws twice (the ±`damageVariancePercent` factor, then the rounding). Absent: the hit is not varied. */
+  rollVariance?: () => number;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -226,9 +228,13 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const executeFlat = isExecuteTarget ? ctx.executeBonus?.bonusDamageFlat ?? 0 : 0;
       const bonusMultiplier = !isSelfTick && ctx.bonusDamagePercent ? 1 + ctx.bonusDamagePercent / 100 : 1;
       const raceMultiplier = raceMultiplierFor(target, effect.damageType ?? "physical");
+      const variancePercent = !isSelfTick && ctx.rollVariance ? BALANCE.combat.damageVariancePercent : 0;
+      const varianceMultiplier = variancePercent > 0 ? 1 + ((ctx.rollVariance!() * 2 - 1) * variancePercent) / 100 : 1;
+      // A varied hit rounds up with the odds of its fraction, so a small hit still moves and the average stays exact.
+      const roundDamage = (value: number) => (variancePercent > 0 ? Math.floor(value + ctx.rollVariance!()) : Math.round(value));
       const rawDamage = isSelfTick
         ? Math.round((effect.amount ?? 0) * raceMultiplier)
-        : Math.round(
+        : roundDamage(
             ((effect.amount ?? 0) +
               executeFlat +
               mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
@@ -236,7 +242,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               critMultiplier *
               executeMultiplier *
               bonusMultiplier *
-              raceMultiplier
+              raceMultiplier *
+              varianceMultiplier
           );
       const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
       target.hp = Math.max(0, target.hp - finalDamage);

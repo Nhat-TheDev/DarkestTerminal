@@ -344,7 +344,13 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
               { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
               character,
               target,
-              { log: combat.log, isMagic: effect.isMagic, skillName: sourceName, offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack }
+              {
+                log: combat.log,
+                isMagic: effect.isMagic,
+                skillName: sourceName,
+                offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack,
+                rollVariance: () => ctx.rng.next(),
+              }
             );
             continue;
           }
@@ -393,6 +399,7 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
       combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
       resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
         log: combat.log,
+        rollVariance: () => ctx.rng.next(),
       });
       expireStatusEffect(watcher, active, { log: combat.log });
       // The monster's turn is discarded, not just delayed (a killed monster has no turn left to lose).
@@ -637,7 +644,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
         },
         source,
         enemy,
-        { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " ") }
+        { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " "), rollVariance: () => ctx.rng.next() }
       );
     }
   }
@@ -776,6 +783,7 @@ function resolveOneDamageEffect(
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
       castByOwnClassSkill,
       linkedSummonId,
+      rollVariance: () => ctx.rng.next(),
     }
   );
 }
@@ -974,7 +982,7 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
           { kind: "damage", amount: burst.amount, offenseMultiplierPercent: burst.offenseMultiplierPercent },
           summon,
           target,
-          { log, offensiveStatOverride: burst.offensiveStatOverride }
+          { log, offensiveStatOverride: burst.offensiveStatOverride, rollVariance: () => ctx.rng.next() }
         );
         if (burst.statusEffectId && ctx.rng.chance(burst.statusEffectChance)) {
           resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: burst.statusEffectId, durationTurns: burst.durationTurns }, summon, target, { log });
@@ -1100,7 +1108,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
       combat.log.push({ text: t("combat.missedFear", { source: summon.name, target: target.name }), kind: "info" });
     } else {
       combat.log.push({ text: t("combat.basicAttack", { actor: summon.name, target: target.name }), kind: "attack" });
-      resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log });
+      resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log, rollVariance: () => ctx.rng.next() });
       const onHit = archetype.basicAttackOnHit;
       if (onHit && isActorAlive(target) && ctx.rng.chance(onHit.chance)) {
         resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: onHit.statusEffectId, durationTurns: onHit.durationTurns }, summon, target, { log: combat.log });
