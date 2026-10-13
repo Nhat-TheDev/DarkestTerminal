@@ -1,9 +1,20 @@
 import { describe, test, expect } from "bun:test";
-import { startCombat, queueAction, resolveRound, livingCharacterRefs, dismissOrphanedMonsterSummons, type EngineContext } from "../src/engine/combat";
+import {
+  startCombat,
+  queueAction,
+  resolveRound,
+  livingCharacterRefs,
+  livingMonsterRefs,
+  livingTargetableMonsterRefs,
+  autoResolveTargets,
+  dismissOrphanedMonsterSummons,
+} from "../src/engine/combat";
+import { STATUS_EFFECTS } from "../src/data/statusEffects";
+import type { CombatantRef } from "../src/types";
 import { MONSTER_SKILLS, MONSTER_ARCHETYPES, spawnMonster } from "../src/data/monsters";
 import { BALANCE } from "../src/data/balanceConfig";
 import { runMonsterTurn } from "../src/engine/monsterAI";
-import { makeCtx, pickAnyAction } from "./helpers";
+import { makeCtx, pickAnyAction, spawnInto } from "./helpers";
 
 const sk = (id: string, over: object = {}) => ({ id, name: id, description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, ...over });
 
@@ -118,6 +129,98 @@ describe("summonMonster", () => {
       round();
       expect(combat.outcome).toBe("victory");
       expect(addsOf().every((a) => a.hp === 0)).toBe(true);
+    });
+  });
+});
+
+describe("untargetable monsters", () => {
+  function withAirborne(body: () => void) {
+    STATUS_EFFECTS.push({ id: "fx-airborne", name: "Airborne", description: "x", perTurnEffects: [], untargetable: true } as any);
+    try {
+      body();
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === "fx-airborne"), 1);
+    }
+  }
+  const airborne = { statusEffectId: "fx-airborne", turnsRemaining: 99 };
+
+  function airborneFight() {
+    const { ctx } = makeCtx(1);
+    const boss = spawnMonster("giant-spider", 1, { tier: "boss" });
+    boss.hp = boss.maxHp = 100000;
+    boss.speed = 1;
+    boss.activeStatusEffects.push({ ...airborne });
+    ctx.monsters.push(boss);
+    const combat = startCombat("r1", [boss.id], ctx, true);
+    const ref = (classId: string): CombatantRef => ({ kind: "character", id: ctx.party.find((p) => p.classId === classId)!.id });
+    return { ctx, boss, combat, ref };
+  }
+
+  test("is left out of the party's target pool and its area targeting", () => {
+    withAirborne(() => {
+      const { ctx, boss, combat, ref } = airborneFight();
+      expect(livingMonsterRefs(combat, ctx).some((r) => r.id === boss.id)).toBe(true);
+      expect(livingTargetableMonsterRefs(combat, ctx)).toEqual([]);
+      expect(autoResolveTargets("allEnemies", ref("vanguard"), combat, ctx)).toEqual([]);
+    });
+  });
+
+  test("a single-target attack on it fizzles while a self-buff still resolves", () => {
+    withAirborne(() => {
+      const { ctx, boss, combat, ref } = airborneFight();
+      const archer = ref("archer");
+      const attack = pickAnyAction(ctx, combat, archer);
+      queueAction(combat, archer, attack.skillId, attack.targets, ctx);
+      queueAction(combat, ref("vanguard"), "shield-guard", [ref("vanguard")], ctx);
+      const before = boss.hp;
+      resolveRound(combat, ctx);
+      expect(boss.hp).toBe(before);
+      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+      expect(combat.log.some((l) => l.text === `${vanguard.name} gains the Guard effect.`)).toBe(true);
+    });
+  });
+
+  test("an area attack skips it and the round still finishes", () => {
+    withAirborne(() => {
+      const { ctx, boss, combat, ref } = airborneFight();
+      const mage = ref("mage");
+      queueAction(combat, mage, "fire-pillar", [{ kind: "monster", id: boss.id }], ctx);
+      const before = boss.hp;
+      resolveRound(combat, ctx);
+      expect(boss.hp).toBe(before);
+      expect(combat.roundNumber).toBe(2);
+      expect(combat.outcome).toBeUndefined();
+    });
+  });
+
+  test("a single-target attack aimed at it lands on a targetable monster instead", () => {
+    withAirborne(() => {
+      const { ctx, boss, ref } = airborneFight();
+      const rat = spawnInto(ctx, "dungeon-rat");
+      rat.hp = rat.maxHp = 9999;
+      const combat = startCombat("r1", [boss.id, rat.id], ctx, true);
+      const archer = ref("archer");
+      queueAction(combat, archer, pickAnyAction(ctx, combat, archer).skillId, [{ kind: "monster", id: boss.id }], ctx);
+      const bossBefore = boss.hp;
+      resolveRound(combat, ctx);
+      expect(boss.hp).toBe(bossBefore);
+      expect(rat.hp).toBeLessThan(9999);
+    });
+  });
+
+  test("Overwatch holds its shot: no shot at it, its turn goes ahead, the watcher stays primed", () => {
+    withAirborne(() => {
+      const { ctx, boss, combat, ref } = airborneFight();
+      boss.attack = 0;
+      const archer = ctx.party.find((p) => p.classId === "archer")!;
+      // Primed for several rounds, so what is under test is the hold itself, not the status running out.
+      archer.activeStatusEffects.push({ statusEffectId: "overwatched", turnsRemaining: 5 });
+      const before = boss.hp;
+      resolveRound(combat, ctx);
+      expect(boss.hp).toBe(before);
+      expect(combat.log.some((l) => l.text.includes("fires from Overwatch") || l.text.includes("Overwatch shot misses"))).toBe(false);
+      expect(combat.log.some((l) => l.text.startsWith(`${boss.name} attacks`) || l.text.startsWith(`${boss.name} misses`))).toBe(true);
+      expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(true);
     });
   });
 });

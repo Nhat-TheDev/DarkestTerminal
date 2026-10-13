@@ -7,6 +7,7 @@ import { getClass, passiveRankDef } from "../data/classes";
 import { adjustFear, formatFear, resistedFearGain } from "./survival";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
+  if (def.harmful) return false;
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
   if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && statDirection(e) < 0)) return false;
@@ -251,6 +252,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       ctx.log.push({ text: damageText, kind: "attack", ...hit });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
+      if (!isSelfTick && finalDamage > 0) reflectDamage(target, source, finalDamage, ctx);
       if (!isSelfTick && effect.lifestealPercent) {
         const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
         if (healed > 0) {
@@ -348,6 +350,17 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
   }
+}
+
+/** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
+function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
+  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0);
+  const amount = Math.round((damage * percent) / 100);
+  if (amount <= 0 || attacker === bearer) return;
+  attacker.hp = Math.max(0, attacker.hp - amount);
+  ctx.log.push({ text: t("combat.statusReflectDamage", { attacker: nameOf(attacker), amount, bearer: nameOf(bearer) }), kind: "attack" });
+  if (attacker.hp <= 0 && isCharacter(attacker)) attacker.isAlive = false;
+  if (attacker.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(attacker) }), kind: "death" });
 }
 
 function clamp(value: number, min: number, max: number): number {

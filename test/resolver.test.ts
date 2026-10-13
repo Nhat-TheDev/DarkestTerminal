@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory } from "../src/engine/resolver";
+import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory, isHelpfulStatusEffect } from "../src/engine/resolver";
 import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
 import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
@@ -76,10 +76,12 @@ describe("resolver", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;
     const target = ctx.party[1]!;
+    STATUS_EFFECTS.push({ id: "test-stacked", name: "Test Stacked", description: "x", perTurnEffects: [] } as StatusEffectDefinition);
     target.activeStatusEffects.push({ statusEffectId: "test-stacked", turnsRemaining: 3, stacks: 4 });
     const before = target.hp;
     const scalesWithStatusStacks = { statusEffectId: "test-stacked", percentPerStack: 5 };
     resolveSkillEffect({ kind: "damage", amount: 0, scalesWithStatusStacks }, attacker, target, { log: [] });
+    STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === "test-stacked"), 1);
     const dealt = before - target.hp;
     // 4 stacks * 5%/stack = +20% on top of the normal 100% offense multiplier.
     const expected = Math.max(1, Math.round(mitigatedOffense(attacker.attack * 1.2, target.defense)));
@@ -1060,5 +1062,97 @@ describe("over-time ticks through a real round", () => {
       expect(heal.text.startsWith("Critical")).toBe(false);
       expect(heal.healCritOf).toBeUndefined();
     }
+  });
+});
+
+describe("harmful tags and reflect", () => {
+  function withStatus(def: object, body: () => void) {
+    STATUS_EFFECTS.push({ name: "x", description: "x", perTurnEffects: [], ...def } as unknown as StatusEffectDefinition);
+    try {
+      body();
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === (def as { id: string }).id), 1);
+    }
+  }
+  const status = (id: string) => ({ statusEffectId: id, turnsRemaining: 3 });
+
+  test("a status tagged harmful is not helpful, so a no-id cleanse removes it and keeps the buff", () => {
+    withStatus({ id: "fixture-mark", harmful: true }, () => {
+      expect(isHelpfulStatusEffect(getStatusEffect("fixture-mark"))).toBe(false);
+      const { ctx } = makeCtx();
+      const bearer = ctx.party[0]!;
+      bearer.activeStatusEffects.push(status("guard"), status("fixture-mark"));
+      resolveSkillEffect({ kind: "removeStatusEffect" }, ctx.party[1]!, bearer, { log: [] });
+      expect(bearer.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["guard"]);
+    });
+  });
+
+  test("a tag with no harmful flag still reads as helpful", () => {
+    withStatus({ id: "fixture-plain" }, () => {
+      expect(isHelpfulStatusEffect(getStatusEffect("fixture-plain"))).toBe(true);
+    });
+  });
+
+  test("a hit on a reflect bearer turns that share back on the attacker, once", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const attacker = ctx.party[0]!;
+      const bearer = spawnMonster("dungeon-rat", 1);
+      bearer.defense = 0;
+      bearer.hp = bearer.maxHp = 9999;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      const attackerBefore = attacker.hp;
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, attacker, bearer, { log });
+      const dealt = 9999 - bearer.hp;
+      expect(dealt).toBeGreaterThan(0);
+      expect(attackerBefore - attacker.hp).toBe(Math.round(dealt / 2));
+      expect(log.filter((l) => l.text.includes("turned back by")).length).toBe(1);
+    });
+  });
+
+  test("a damage-over-time tick on a reflect bearer reflects nothing", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const bearer = ctx.party[0]!;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      const before = bearer.hp;
+      resolveSkillEffect({ kind: "damage", amount: 10 }, bearer, bearer, { log });
+      expect(before - bearer.hp).toBe(10);
+      expect(log.some((l) => l.text.includes("turned back by"))).toBe(false);
+    });
+  });
+
+  test("a reflect that kills the attacker marks it dead and logs the defeat", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 100 }, () => {
+      const { ctx } = makeCtx();
+      const attacker = ctx.party[0]!;
+      attacker.hp = 1;
+      const bearer = spawnMonster("dungeon-rat", 1);
+      bearer.defense = 0;
+      bearer.hp = bearer.maxHp = 9999;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, attacker, bearer, { log });
+      expect(attacker.hp).toBe(0);
+      expect(attacker.isAlive).toBe(false);
+      expect(log.some((l) => l.kind === "death" && l.text.includes(attacker.name))).toBe(true);
+    });
+  });
+
+  test("two reflect bearers hitting each other reflect once per hit, never in a chain", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const a = ctx.party[0]!;
+      const b = ctx.party[1]!;
+      a.defense = 0;
+      b.defense = 0;
+      a.activeStatusEffects.push(status("fixture-riposte"));
+      b.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, a, b, { log });
+      expect(log.filter((l) => l.text.includes("turned back by")).length).toBe(1);
+    });
   });
 });
