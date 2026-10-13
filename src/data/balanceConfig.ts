@@ -8,6 +8,8 @@ interface BalanceConfig {
     defenseMitigationX: number;
     defenseMitigationY: number;
     defensiveLowHpSkillChance: number;
+    /** The most living monsters one summoner can have summoned at once. */
+    maxSummonedMonsters: number;
     /** Used when an effect sets no `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
     /** Added to every direct hit's and heal's own `critChance`; 0 disables. */

@@ -92,6 +92,8 @@
   "combat.telegraphChargeAoe": "{{actor}} gathers itself for {{skill}}!",
   "combat.telegraphRelease": "{{actor}} unleashes {{skill}}!",
   "combat.monsterPhase": "{{actor}} stops holding anything back.",
+  "combat.monsterSummoned": "{{actor}} calls up {{summon}}.",
+  "combat.summonedMonsterFalls": "{{summon}} comes apart without {{actor}}.",
   "combat.monsterSkillOnTargets": "{{actor}} uses {{skill}} on {{targets}}.",
   "combat.targetListJoiner": " and ",
   "combat.monsterSkillAoe": "{{actor}} uses {{skill}}, sweeping the whole party!",

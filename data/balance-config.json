@@ -4,6 +4,7 @@
     "defenseMitigationX": 40,
     "defenseMitigationY": 10,
     "defensiveLowHpSkillChance": 0.7,
+    "maxSummonedMonsters": 2,
     "defaultCritMultiplierPercent": 150,
     "baseCritChancePercent": 1,
     "damageVariancePercent": 3,

@@ -23,6 +23,7 @@ import { characterBaseStats, activeStatusCombatStatSum } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
+import { spawnMonster } from "../data/monsters";
 import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent, combinePercents } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
@@ -960,6 +961,40 @@ function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry
     const summon = ctx.summons.find((s) => s.id === c.ref.id);
     if (summon) expireSummonIfDone(summon, combat, ctx, log);
   }
+  dismissOrphanedMonsterSummons(combat, ctx, log);
+}
+
+/**
+ * Spawns up to `effect.count` of the named normal archetype next to the summoner, scaled to the
+ * current floor depth, stopping at the cap on adds it already has alive. The add takes its first
+ * turn next round (this round's turn queue was built before it existed). Its id is derived from
+ * the summoner's: `spawnMonster`'s counter restarts after a save is loaded, so a counter id could
+ * collide with a monster the floor already holds.
+ */
+function spawnMonsterSummons(effect: SkillEffect, summoner: Monster, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  const alive = livingMonsterRefs(combat, ctx).filter((r) => (getActorByRef(r, ctx) as Monster).summonerId === summoner.id);
+  const count = Math.min(effect.count ?? 1, BALANCE.combat.maxSummonedMonsters - alive.length);
+  for (let i = 0; i < count; i++) {
+    const add = spawnMonster(effect.monsterArchetypeId!, ctx.floorDepth ?? 1);
+    add.id = `${add.archetypeId}-${summoner.id}-${ctx.monsters.filter((m) => m.summonerId === summoner.id).length + 1}`;
+    add.summonerId = summoner.id;
+    add.expReward = 0;
+    ctx.monsters.push(add);
+    combat.combatants.push({ ref: { kind: "monster", id: add.id }, speed: add.speed });
+    log.push({ text: t("combat.monsterSummoned", { actor: summoner.name, summon: add.name }), kind: "info" });
+  }
+}
+
+/** A summoned monster does not outlive the monster that called it, so killing the summoner always ends the fight. */
+export function dismissOrphanedMonsterSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  for (const ref of livingMonsterRefs(combat, ctx)) {
+    const add = getActorByRef(ref, ctx) as Monster;
+    if (add.summonerId === undefined) continue;
+    const summoner = ctx.monsters.find((m) => m.id === add.summonerId);
+    if (summoner && isActorAlive(summoner)) continue;
+    add.hp = 0;
+    log.push({ text: t("combat.summonedMonsterFalls", { summon: add.name, actor: summoner?.name ?? "" }), kind: "death" });
+  }
 }
 
 function pickLowestHpCharacter(combat: CombatState, ctx: EngineContext): CombatantRef | null {
@@ -1054,7 +1089,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
   // An effect with its own `target`, and every `summon` effect (it lands on the caster), resolves here
   // against its own population, before the per-target loop below, which skips it.
-  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
+  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || e.kind === "summonMonster" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
   // Damage reaching the opposing side marks every opposing target as attacked, whatever its own effects.
   // `appliesToRelation` names a board side ("ally" = the player's side), not one relative to the caster.
@@ -1069,6 +1104,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         ? { kind: "summon", id: source.id }
         : { kind: "monster", id: source.id };
     for (const effect of overrideEffects) {
+      if (effect.kind === "summonMonster") {
+        if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
+        continue;
+      }
       const overrideTarget = effect.kind === "summon" ? (effect.target ?? "self") : effect.target!;
       const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
       for (const resolved of overrideTargets) {
