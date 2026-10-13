@@ -4,7 +4,7 @@ import { CLASSES, getSkill } from "../src/data/classes";
 import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
 import { Rng } from "../src/engine/rng";
-import { getActorByRef, startCombat, autoResolveTargets, livingMonsterRefs, type EngineContext } from "../src/engine/combat";
+import { getActorByRef, startCombat, autoResolveTargets, livingMonsterRefs, livingCharacterRefs, queueAction, resolveRound, isCombatOver, type EngineContext } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef } from "../src/types";
 
@@ -52,4 +52,22 @@ export function pinCombatBalance(values: Partial<typeof BALANCE.combat>): void {
 /** A describe that asserts an exact damage, heal or rng-draw count is about the formula, not the dice: no variance and no base crit. */
 export function withoutDamageRolls(): void {
   pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
+}
+
+/** A normal-tier Skeleton Guard against the default party: `rounds` rounds, or until the fight ends. `lowHp` starts it under the defensive low-HP threshold. */
+export function runNormalSkeletonGuardFight(seed: number, rounds: number, lowHp = false) {
+  const { ctx } = makeCtx(seed);
+  const guard = spawnMonster("skeleton-guard", 1);
+  guard.maxHp = 5000;
+  guard.hp = lowHp ? 400 : 5000;
+  ctx.monsters.push(guard);
+  const combat = startCombat("r1", [guard.id], ctx, false);
+  for (let r = 0; r < rounds && !isCombatOver(combat, ctx); r++) {
+    for (const ref of livingCharacterRefs(combat, ctx)) {
+      const { skillId, targets } = pickAnyAction(ctx, combat, ref);
+      queueAction(combat, ref, skillId, targets, ctx);
+    }
+    resolveRound(combat, ctx);
+  }
+  return { guard, log: combat.log.map((l) => l.text) };
 }
