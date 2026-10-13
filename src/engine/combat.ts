@@ -31,7 +31,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
-import { runMonsterTurn } from "./monsterAI";
+import { runMonsterTurn, finishMonsterTurn } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
@@ -444,13 +444,15 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   );
   runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
   runArtifactAutoDamage(combat, ctx);
+  // Auto-damage can kill a summoner before anyone acts; its adds fall before they get a turn.
+  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
 
   const actedRefs: CombatantRef[] = [];
   for (const ref of combat.turnQueue) {
     const actor = getActorByRef(ref, ctx);
     if (!isActorAlive(actor)) continue;
 
-    const eligibleSpecial = specialStatusSnapshot(actor);
+    let eligibleSpecial = specialStatusSnapshot(actor);
     runInSession(
       combat,
       unitId(actor),
@@ -460,8 +462,16 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
           actedRefs.push(ref);
         } else if (ref.kind === "summon") {
           runSummonTurn(ref, combat, ctx);
-        } else if (!tryTriggerOverwatch(ref, combat, ctx)) {
-          runMonsterTurn(ref, combat, ctx);
+        } else {
+          // An Overwatch shot lands before the monster's own turn, so a status it causes (a broken
+          // shell's stun) already counts as present for that turn.
+          const interrupted = tryTriggerOverwatch(ref, combat, ctx);
+          eligibleSpecial = specialStatusSnapshot(actor);
+          if (interrupted) {
+            if (isActorAlive(actor)) finishMonsterTurn(actor as Monster, combat, ctx);
+          } else {
+            runMonsterTurn(ref, combat, ctx);
+          }
         }
         if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
         pruneDeadSummons(combat, ctx, combat.log);
@@ -1263,7 +1273,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     }
   }
 
+  // A party-side caster can fall mid-cast to damage turned back on it (riposte); the cast stops
+  // there. Monsters are exempt: Self-Destruct's self-hit resolves before its area hit by design.
+  const sourceFell = () => isPlayerSide(source) && !isActorAlive(source);
+
   for (const target of targets) {
+    if (sourceFell()) break;
     const isEnemyFacing = isPlayerSide(source) !== isPlayerSide(target);
     // Before the accuracy roll: a missed or dodged target is still the one the action was aimed at.
     noteSkillTarget(
@@ -1289,6 +1304,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     let resisted = false;
     let landed = false;
     for (const effect of activeEffects) {
+      if (sourceFell()) break;
       if (effect.appliesToRelation) {
         const targetIsAlly = isPlayerSide(target);
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
@@ -1332,10 +1348,11 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
       };
       for (let hit = 0; hit < hitCount; hit++) {
+        if (sourceFell()) break;
         appliedAmount += swing();
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) appliedAmount += swing();
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && !sourceFell()) appliedAmount += swing();
         }
       }
       if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);
@@ -1359,12 +1376,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     if (resisted && !landed) noteResisted(combat, target);
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
-  if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && vikingBuffActive) {
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) applyOnHitAoeDamage(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && vikingBuffActive && !sourceFell()) {
     const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
-  if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
   return spawnedSummon;
 }

@@ -137,6 +137,7 @@ function joinNames(actors: Actor[]): string {
 }
 
 function monsterSkillLogLine(actor: Monster, skill: SkillDefinition, targets: Actor[]): string {
+  if (skill.target === "allEnemies" && !(skill.effects ?? []).some((e) => e.kind === "damage")) return t("combat.useSkillPlain", { actor: actor.name, skill: skill.name });
   if (skill.target === "allEnemies") return t("combat.monsterSkillAoe", { actor: actor.name, skill: skill.name });
   if (skill.target === "self" || skill.target === "allAllies") return t("combat.useSkillPlain", { actor: actor.name, skill: skill.name });
   return t("combat.monsterSkillOnTargets", { actor: actor.name, skill: skill.name, targets: joinNames(targets) });
@@ -190,9 +191,14 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
   try {
     takeMonsterTurn(actor, combat, ctx);
   } finally {
-    advanceMonsterCooldowns(actor);
-    advanceShellAfterOwnTurn(actor, ctx.rng, { log: combat.log });
+    finishMonsterTurn(actor, combat, ctx);
   }
+}
+
+/** What passes with every one of a monster's own turns, whether it acted, was stunned, or lost the turn to an Overwatch shot. */
+export function finishMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext): void {
+  advanceMonsterCooldowns(actor);
+  advanceShellAfterOwnTurn(actor, ctx.rng, { log: combat.log });
 }
 
 function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext): void {

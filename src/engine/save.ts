@@ -7,7 +7,7 @@ import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
-import { MONSTER_SKILLS } from "../data/monsters";
+import { MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
@@ -142,7 +142,8 @@ function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
 }
 
 const isCount = (n: unknown): boolean => Number.isInteger(n) && (n as number) >= 0;
-const areCounts = (record: Record<Id, number> | undefined): boolean => record === undefined || Object.values(record).every(isCount);
+const isRecord = (v: unknown): boolean => typeof v === "object" && v !== null;
+const areCounts = (record: Record<Id, number> | undefined): boolean => record === undefined || (isRecord(record) && Object.values(record).every(isCount));
 
 /**
  * The per-fight state a guard-room monster carries (`charging`, entered phases, skill cooldowns and
@@ -156,10 +157,12 @@ export function isSaveMonstersValid(monsters: Monster[]): boolean {
     if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
     if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
     if (m.charging !== undefined) {
-      if (!existsInCatalog(MONSTER_SKILLS, m.charging.skillId)) return false;
+      if (!isRecord(m.charging) || !existsInCatalog(MONSTER_SKILLS, m.charging.skillId)) return false;
       if (!Array.isArray(m.charging.targetIds) || !m.charging.targetIds.every((id) => typeof id === "string")) return false;
     }
     if (m.shell !== undefined) {
+      // A shell only means anything on a guard-room monster whose archetype declares one.
+      if (!isRecord(m.shell) || m.tier === "normal" || !MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.shell) return false;
       if (m.shell.state !== "intact" && m.shell.state !== "broken") return false;
       if (!isCount(m.shell.hitsLeft) || !isCount(m.shell.ownTurnsSinceBreak)) return false;
     }

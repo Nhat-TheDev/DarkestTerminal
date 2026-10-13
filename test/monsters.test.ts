@@ -188,4 +188,36 @@ describe("assertMonsterKitConsistent", () => {
     const b = { ...base(), shell: { hitsToBreak: { min: 6, max: 8 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "nope", breakDurationTurns: 1, reformAfterOwnTurns: 2 } };
     expect(() => assertMonsterKitConsistent(withReplaced(b), MONSTER_SKILLS)).toThrow(/nope/);
   });
+  test("rejects shell turn counts below 1 and a cap of 0", () => {
+    const shell = { hitsToBreak: { min: 6, max: 8 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+    for (const over of [{ reformAfterOwnTurns: 0 }, { breakDurationTurns: 1.5 }, { hitDamageCapMaxHpPercent: 0 }]) {
+      const a = { ...base(), shell: { ...shell, ...over } };
+      expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/shell/);
+    }
+  });
+  test("rejects cooldowns and uses that would not save as counts", () => {
+    for (const over of [{ cooldownTurns: 1.5 }, { initialCooldownTurns: -1 }, { usesPerCombat: 0 }]) {
+      expect(() => assertMonsterKitConsistent([kitOf() as any], [skill(over) as any])).toThrow(/cooldownTurns|initialCooldownTurns|usesPerCombat/);
+    }
+  });
+  test("rejects damage in chargeEffects and an unknown status in effects or chargeEffects", () => {
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ telegraph: true, chargeEffects: [{ kind: "damage", amount: 1 }] }) as any])).toThrow(/chargeEffects/);
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ effects: [{ kind: "applyStatusEffect", statusEffectId: "nope", durationTurns: 1 }] }) as any])).toThrow(/nope/);
+    const charge = [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1, alsoApplyStatusEffectIds: ["nope-too"] }];
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ telegraph: true, chargeEffects: charge }) as any])).toThrow(/nope-too/);
+  });
+  test("rejects phases out of range or out of order", () => {
+    for (const hpBelowPercent of [0, 120]) {
+      const a = { ...base(), phases: [{ tier: "boss", hpBelowPercent, weights: { basicAttack: 1 } }] };
+      expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/hpBelowPercent/);
+    }
+    const unordered = { ...base(), phases: [25, 60].map((hpBelowPercent) => ({ tier: "boss", hpBelowPercent, weights: { basicAttack: 1 } })) };
+    expect(() => assertMonsterKitConsistent(withReplaced(unordered), MONSTER_SKILLS)).toThrow(/lower hpBelowPercent/);
+  });
+  test("rejects a telegraph at elite tier or as a phase's entry skill", () => {
+    const telegraph = skill({ telegraph: true });
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [telegraph as any])).toThrow(/elite weights/);
+    const onEnter = kitOf({ actionWeights: { normal: { basicAttack: 1 }, elite: { basicAttack: 1 }, boss: { "x-skill": 1 } }, phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 }, onEnterSkillId: "x-skill" }] });
+    expect(() => assertMonsterKitConsistent([onEnter as any], [telegraph as any])).toThrow(/onEnterSkillId/);
+  });
 });

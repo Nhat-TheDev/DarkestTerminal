@@ -39,6 +39,19 @@
     ]
   },
   {
+    "id": "held-ground",
+    "name": "Held Ground",
+    "description": "Raises defense far past what a guard should hold.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 10,
+        "minPercent": 220
+      }
+    ]
+  },
+  {
     "id": "taunt",
     "name": "Taunt",
     "description": "Raises aggro for the duration.",

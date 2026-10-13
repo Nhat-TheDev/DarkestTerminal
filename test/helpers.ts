@@ -5,7 +5,7 @@ import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
 import { Rng } from "../src/engine/rng";
 import { getActorByRef, startCombat, autoResolveTargets, livingMonsterRefs, livingCharacterRefs, queueAction, resolveRound, isCombatOver, type EngineContext } from "../src/engine/combat";
-import { spawnMonster } from "../src/data/monsters";
+import { spawnMonster, MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../src/data/monsters";
 import type { Character, CombatantRef } from "../src/types";
 
 export function makeCtx(seed = 1) {
@@ -71,4 +71,24 @@ export function runNormalSkeletonGuardFight(seed: number, rounds: number, lowHp 
     resolveRound(combat, ctx);
   }
   return { guard, log: combat.log.map((l) => l.text) };
+}
+
+/** A monster skill for fixture kits: a 1-damage single-target hit unless `over` says otherwise. */
+export const sk = (id: string, over: object = {}) => ({ id, name: id, description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, ...over });
+
+/**
+ * Runs `body` with a guard-room archetype "fixture-boss" (Giant Spider's stats and roles, none of its
+ * phases) and the given skills in the catalog, removing both afterwards even if `body` throws.
+ */
+export function withFixture(skills: any[], archetypeOver: any, body: () => void) {
+  const base = structuredClone(MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!);
+  const archetype = { ...base, id: "fixture-boss", skillIds: skills.map((x) => x.id), phases: undefined, ...archetypeOver };
+  MONSTER_SKILLS.push(...skills);
+  MONSTER_ARCHETYPES.push(archetype);
+  try {
+    body();
+  } finally {
+    for (const x of skills) MONSTER_SKILLS.splice(MONSTER_SKILLS.findIndex((y) => y.id === x.id), 1);
+    MONSTER_ARCHETYPES.splice(MONSTER_ARCHETYPES.findIndex((a) => a.id === "fixture-boss"), 1);
+  }
 }

@@ -494,12 +494,14 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     boss.skillUses = { "name-struck-out": 1 };
     game.ctx.monsters.push(boss, add);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
-    room.monsterIds = [boss.id];
+    // A second guard whose archetype does declare a shell; startCombat forms it, then it is set mid-break.
+    const golem = spawnMonster("ancient-golem", 1, { tier: "boss" });
+    game.ctx.monsters.push(golem);
+    room.monsterIds = [boss.id, golem.id];
     room.cleared = false;
-    game.state.combat = startCombat(room.id, [boss.id, add.id], game.ctx, true);
-    // Lich has no shell of its own; one is set after startCombat (which forms real shells) to exercise the field.
-    boss.shell = { state: "broken", hitsLeft: 0, ownTurnsSinceBreak: 1 };
-    return { boss, add };
+    game.state.combat = startCombat(room.id, [boss.id, add.id, golem.id], game.ctx, true);
+    golem.shell = { state: "broken", hitsLeft: 0, ownTurnsSinceBreak: 1 };
+    return { boss, add, golem };
   }
   const roundTrip = (game: Game) => {
     saveRun(game);
@@ -508,18 +510,25 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
 
   test("charging, phase, cooldowns, uses, shell and summoner all come back", () => {
     withGame(14, (game) => {
-      const { boss, add } = midFight(game);
+      const { boss, add, golem } = midFight(game);
       const resumed = roundTrip(game);
       expect(resumed.ctx.monsters.find((m) => m.id === boss.id)).toEqual(boss);
       expect(resumed.ctx.monsters.find((m) => m.id === add.id)).toEqual(add);
+      expect(resumed.ctx.monsters.find((m) => m.id === golem.id)).toEqual(golem);
       expect(resumed.state.combat!.combatants).toEqual(game.state.combat!.combatants);
     });
   });
 
   type Saved = ReturnType<typeof spawnMonster>;
-  const corruptions: [string, (boss: Saved, add: Saved) => void][] = [
-    ["a shell in an unknown state", (m) => { (m.shell as any).state = "cracked"; }],
-    ["a shell with a fractional hit count", (m) => { m.shell!.hitsLeft = 1.5; }],
+  const shell = { state: "intact" as const, hitsLeft: 3, ownTurnsSinceBreak: 0 };
+  const corruptions: [string, (boss: Saved, add: Saved, golem: Saved) => void][] = [
+    ["a shell in an unknown state", (_b, _a, g) => { (g.shell as any).state = "cracked"; }],
+    ["a shell with a fractional hit count", (_b, _a, g) => { g.shell!.hitsLeft = 1.5; }],
+    ["a shell on a monster whose archetype has none", (m) => { m.shell = { ...shell }; }],
+    ["a shell on a normal-tier monster", (_boss, add) => { add.shell = { ...shell }; }],
+    ["a null shell", (_b, _a, g) => { (g as any).shell = null; }],
+    ["a null charge", (m) => { (m as any).charging = null; }],
+    ["null cooldowns", (m) => { (m as any).skillCooldowns = null; }],
     ["a charge on a skill that does not exist", (m) => { m.charging!.skillId = "nope"; }],
     ["a charge with a non-string target", (m) => { (m.charging as any).targetIds = [7]; }],
     ["a negative cooldown", (m) => { m.skillCooldowns!["ledger-mark"] = -1; }],
@@ -530,10 +539,11 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
   for (const [label, corrupt] of corruptions) {
     test(`a save with ${label} is refused, and its slot reads as empty`, () => {
       withGame(15, (game) => {
-        const { boss, add } = midFight(game);
+        const { boss, add, golem } = midFight(game);
         saveRun(game);
         const save = loadSave("slot1");
-        corrupt(save.monsters.find((m) => m.id === boss.id)!, save.monsters.find((m) => m.id === add.id)!);
+        const saved = (id: string) => save.monsters.find((m) => m.id === id)!;
+        corrupt(saved(boss.id), saved(add.id), saved(golem.id));
         expect(() => gameFromSave(save, "slot1")).toThrow(/validation/);
         writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
         expect(listSlots().find((slot) => slot.id === "slot1")!.meta).toBeNull();

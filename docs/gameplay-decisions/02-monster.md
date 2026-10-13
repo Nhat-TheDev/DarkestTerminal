@@ -212,15 +212,15 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `guard-stance` | Guard Stance | self | status guard (2 turns) | Skeleton Warrior (defensive), Armored Beetle (defensive), Lesser Golem (defensive) |
 | `bone-breaker` | Bone Breaker | singleEnemy | damage 14 + 100% ATK; status weakened (2 turns, 50% chance) | Orc Brute (aggressive) |
 | `maul` | Maul | singleEnemy | damage 13 + 100% ATK; status bleeding (3 turns, 50% chance) | Cave Bear (aggressive) |
-| `hold-the-line` | Hold the Line | self | status guard-iii (3 turns, min 220%, amount 10) | Skeleton Guard (defensive) |
-| `shield-bash` | Shield Bash | singleEnemy | damage 18 + 130% ATK; status enfeebled (2 turns, 50% chance) | Skeleton Guard (defensive) |
+| `hold-the-line` | Hold the Line | self | status held-ground (3 turns) | Skeleton Guard (defensive) |
+| `shield-bash` | Shield Bash | singleEnemy | damage 18 + 170% ATK; status enfeebled (2 turns, 50% chance) | Skeleton Guard (defensive) |
 | `riposte-stance` | Riposte Stance | self | status riposte (1 turn) | Skeleton Guard (defensive) |
-| `overhead-cut` | Overhead Cut | singleEnemy | damage 55 + 70% ATK (ignores 40% defense) | Skeleton Guard (defensive) |
+| `overhead-cut` | Overhead Cut | singleEnemy | damage 55 + 90% ATK (ignores 40% defense) | Skeleton Guard (defensive) |
 | `web-barrage` | Web Barrage | singleEnemy | damage 10 + 40% ATK; status webbed (2 turns, 60% chance) | Giant Spider (aggressive) |
 | `venom-bite` | Venom Bite | singleEnemy | damage 22 + 60% ATK; status poisoned-ii (3 turns) | Giant Spider (aggressive) |
-| `cocoon` | Cocoon | singleEnemy | damage 30 + 135% ATK; status stunned (1 turn); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
-| `feed` | Feed | singleEnemy | damage 24 + 85% ATK | Giant Spider (aggressive) |
-| `into-the-rafters` | Into the Rafters | self | status smoke-cover-ii (3 turns) | Giant Spider (aggressive) |
+| `cocoon` | Cocoon | singleEnemy | damage 30 + 150% ATK; status stunned (1 turn); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
+| `feed` | Feed | singleEnemy | damage 24 + 110% ATK | Giant Spider (aggressive) |
+| `into-the-rafters` | Into the Rafters | self | status airborne (1 turn) | Giant Spider (aggressive) |
 | `claw-rake` | Claw Rake | singleEnemy | damage 14 + 65% ATK (1–2 hits) | Dragon (aggressive) |
 | `dragon-fire-breath` | Fire Breath | allEnemies | damage 10 + 55% ATK; status burning (2 turns, 50% chance) | Dragon (aggressive) |
 | `brand` | Brand | singleEnemy | damage 12 + 90% ATK; status burning-vulnerable (3 turns) | Dragon (aggressive) |
@@ -231,10 +231,10 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `undying` | Undying | self | heal 0 + 100% MAG (35% max HP) | Zombie Knight (defensive) |
 | `rotting-embrace` | Rotting Embrace | singleEnemy | damage 50 + 225% ATK; status agony (3 turns) | Zombie Knight (defensive) |
 | `salute` | Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
-| `measured-cut` | Measured Cut | singleEnemy | damage 26 + 170% ATK (crit 25%) | Dark Knight (defensive) |
+| `measured-cut` | Measured Cut | singleEnemy | damage 26 + 230% ATK (crit 25%) | Dark Knight (defensive) |
 | `parry-stance` | Parry Stance | self | status fortify (2 turns) | Dark Knight (defensive) |
 | `dread-presence` | Dread Presence | allEnemies | fear 6 | Dark Knight (defensive) |
-| `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 60 + 210% ATK; status stunned (1 turn) | Dark Knight (defensive) |
+| `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 60 + 235% ATK; status stunned (1 turn) | Dark Knight (defensive) |
 | `second-salute` | Second Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
 | `skullsplitter` | Skullsplitter | singleEnemy | damage 28 + 120% ATK | Orc Chieftain (aggressive) |
 | `call-the-warband` | Call the Warband | self | summonMonster (monsterArchetypeId goblin, count 1) | Orc Chieftain (aggressive) |
@@ -254,10 +254,10 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `sealing-blow` | Sealing Blow | singleEnemy | damage 75 + 310% ATK | Ancient Golem (defensive) |
 | `crumbling-shell` | Crumbling Shell | self | status empower (99 turns) | Ancient Golem (defensive) |
 | `withering-touch` | Withering Touch | singleEnemy | damage 22 + 135% ATK; status withered (3 turns) | Lich (opportunistic) |
-| `raise-the-dead` | Raise the Dead | self | summonMonster (monsterArchetypeId skeleton, count 1); summonMonster (monsterArchetypeId skeleton-mage, count 1) | Lich (opportunistic) |
+| `raise-the-dead` | Raise the Dead | self | summonMonster (monsterArchetypeId skeleton-mage, count 1); summonMonster (monsterArchetypeId skeleton, count 1) | Lich (opportunistic) |
 | `ledger-mark` | Ledger Mark | singleEnemy | status marked (4 turns) | Lich (opportunistic) |
 | `name-struck-out` | Name Struck Out | singleEnemy | damage 65 + 140% ATK; remove marked | Lich (opportunistic) |
-| `unhurried` | Unhurried | allEnemies | status marked (4 turns); summonMonster (monsterArchetypeId skeleton, count 3) | Lich (opportunistic) |
+| `unhurried` | Unhurried | allEnemies | status marked (4 turns); summonMonster (monsterArchetypeId skeleton, count 2) | Lich (opportunistic) |
 | `paid-in-full` | Paid In Full | singleEnemy | damage 20 + 115% ATK | What's Left of Him (aggressive) |
 | `the-same-price` | The Same Price | allEnemies | damage 16 + 100% ATK (ignores 100% defense) | What's Left of Him (aggressive) |
 | `whats-left-listening` | What's Left Listening | singleEnemy | damage 22 + 155% ATK; status blinded (2 turns); fear 8 | What's Left of Him (aggressive) |

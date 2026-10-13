@@ -82,8 +82,11 @@ describe("resolver", () => {
     target.activeStatusEffects.push({ statusEffectId: "test-stacked", turnsRemaining: 3, stacks: 4 });
     const before = target.hp;
     const scalesWithStatusStacks = { statusEffectId: "test-stacked", percentPerStack: 5 };
-    resolveSkillEffect({ kind: "damage", amount: 0, scalesWithStatusStacks }, attacker, target, { log: [] });
-    STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === "test-stacked"), 1);
+    try {
+      resolveSkillEffect({ kind: "damage", amount: 0, scalesWithStatusStacks }, attacker, target, { log: [] });
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === "test-stacked"), 1);
+    }
     const dealt = before - target.hp;
     // 4 stacks * 5%/stack = +20% on top of the normal 100% offense multiplier.
     const expected = Math.max(1, Math.round(mitigatedOffense(attacker.attack * 1.2, target.defense)));

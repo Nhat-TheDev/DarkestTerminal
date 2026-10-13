@@ -136,6 +136,22 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
     assertPredicate(`${where} aiCondition`, skill.aiCondition);
     assertRules(`${where} aiRules`, skill.aiRules);
     assertRules(`${where} targetRules`, skill.targetRules);
+    // Cooldowns and uses land in the saved Monster as counts; a fraction or a negative would make that save unloadable.
+    for (const field of ["cooldownTurns", "initialCooldownTurns"] as const) {
+      const value = skill[field];
+      if (value !== undefined && !(Number.isInteger(value) && value >= 0)) throw new Error(`${where}: ${field} must be a non-negative integer`);
+    }
+    if (skill.usesPerCombat !== undefined && !(Number.isInteger(skill.usesPerCombat) && skill.usesPerCombat >= 1)) {
+      throw new Error(`${where}: usesPerCombat must be a positive integer`);
+    }
+    if ((skill.chargeEffects ?? []).some((e) => e.kind === "damage")) {
+      throw new Error(`${where}: chargeEffects resolve on the caster, so they must not deal damage`);
+    }
+    for (const effect of [...(skill.effects ?? []), ...(skill.chargeEffects ?? [])]) {
+      for (const id of [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])]) {
+        if (id !== undefined && !STATUS_EFFECTS.some((st) => st.id === id)) throw new Error(`${where}: status "${id}" is not in data/status-effects.json`);
+      }
+    }
     if (skill.targetCount) {
       const { min, max } = skill.targetCount;
       if (skill.target !== "singleEnemy" || !(min >= 1 && min <= max)) {
@@ -154,9 +170,24 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
   for (const archetype of archetypes) {
     const where = `data/monsters.json: "${archetype.id}"`;
     const declared = new Set(archetype.skillIds);
+    const isTelegraph = (id: string) => byId.get(id)?.telegraph === true;
+    for (const key of Object.keys(archetype.actionWeights?.elite ?? {})) {
+      if (isTelegraph(key)) throw new Error(`${where}: telegraph "${key}" is in its elite weights; telegraphs are boss-only`);
+    }
+    const lastThreshold: Partial<Record<string, number>> = {};
     for (const [i, phase] of (archetype.phases ?? []).entries()) {
       if (!archetype.roles.includes(phase.tier)) {
         throw new Error(`${where}: phase ${i} is for tier "${phase.tier}", which is not in its roles`);
+      }
+      if (!(phase.hpBelowPercent > 0 && phase.hpBelowPercent <= 100)) throw new Error(`${where}: phase ${i} hpBelowPercent must be in (0, 100]`);
+      // The latest entered phase of a tier sets the weights, so a tier's phases must be listed in the order they are entered.
+      const previous = lastThreshold[phase.tier];
+      if (previous !== undefined && !(phase.hpBelowPercent < previous)) {
+        throw new Error(`${where}: phase ${i} must have a lower hpBelowPercent than the ${phase.tier} phase before it`);
+      }
+      lastThreshold[phase.tier] = phase.hpBelowPercent;
+      if (phase.onEnterSkillId !== undefined && isTelegraph(phase.onEnterSkillId)) {
+        throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is a telegraph`);
       }
       for (const key of Object.keys(phase.weights)) {
         if (key !== "basicAttack" && !declared.has(key)) {
@@ -168,7 +199,11 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
       }
     }
     if (archetype.shell) {
-      const { hitsToBreak, breakStatusId } = archetype.shell;
+      const { hitsToBreak, breakStatusId, hitDamageCapMaxHpPercent, breakDurationTurns, reformAfterOwnTurns } = archetype.shell;
+      if (!(hitDamageCapMaxHpPercent > 0)) throw new Error(`${where}: shell hitDamageCapMaxHpPercent must be above 0`);
+      for (const [field, value] of [["breakDurationTurns", breakDurationTurns], ["reformAfterOwnTurns", reformAfterOwnTurns]] as const) {
+        if (!(Number.isInteger(value) && value >= 1)) throw new Error(`${where}: shell ${field} must be a positive integer`);
+      }
       if (!(hitsToBreak.min >= 1 && hitsToBreak.min <= hitsToBreak.max)) {
         throw new Error(`${where}: shell hitsToBreak needs 1 <= min <= max`);
       }

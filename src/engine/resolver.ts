@@ -288,7 +288,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && finalDamage > 0) reflectDamage(target, source, finalDamage, ctx);
-      if (!isSelfTick && effect.lifestealPercent) {
+      if (!isSelfTick && effect.lifestealPercent && isActorAlive(source)) {
         const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
         if (healed > 0) {
           source.hp += healed;
