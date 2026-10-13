@@ -7,6 +7,7 @@ import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
+import { MONSTER_SKILLS } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
@@ -124,6 +125,27 @@ function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
   return catalog.some((entry) => entry.id === id);
 }
 
+const isCount = (n: unknown): boolean => Number.isInteger(n) && (n as number) >= 0;
+const areCounts = (record: Record<Id, number> | undefined): boolean => record === undefined || Object.values(record).every(isCount);
+
+/** Refuses a hand-edited or truncated guard-room monster state here rather than on some later turn. */
+export function isSaveMonstersValid(monsters: Monster[]): boolean {
+  const ids = new Set(monsters.map((m) => m.id));
+  return monsters.every((m) => {
+    if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
+    if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
+    if (m.charging !== undefined) {
+      if (!existsInCatalog(MONSTER_SKILLS, m.charging.skillId)) return false;
+      if (!Array.isArray(m.charging.targetIds) || !m.charging.targetIds.every((id) => typeof id === "string")) return false;
+    }
+    if (m.shell !== undefined) {
+      if (m.shell.state !== "intact" && m.shell.state !== "broken") return false;
+      if (!isCount(m.shell.hitsLeft) || !isCount(m.shell.ownTurnsSinceBreak)) return false;
+    }
+    return m.summonerId === undefined || ids.has(m.summonerId);
+  });
+}
+
 // Inventory item ids aren't checked: migrateGameState prunes unknown ones.
 export function isSaveStateValid(state: GameState): boolean {
   if (state.party.length !== BALANCE.party.size) return false;
@@ -166,7 +188,11 @@ export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
     try {
       const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
-      const loadable = isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion));
+      const loadable =
+        isSaveVersionAllowed(save.meta.saveVersion) &&
+        isDevDumpAllowed(save.meta) &&
+        isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion)) &&
+        isSaveMonstersValid(save.monsters ?? []);
       return { id, meta: loadable ? save.meta : null };
     } catch {
       return { id, meta: null };
@@ -204,6 +230,7 @@ export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   const state = migrateGameState(save.state, save.meta.saveVersion);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
   const monsters = migrateMonsters(save.monsters);
+  if (!isSaveMonstersValid(monsters)) throw new Error("Save state failed validation");
   const summons = migrateSummons(save.summons ?? []);
   pruneOrphanedSummonRefs(state, summons);
   const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
