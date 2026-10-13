@@ -948,10 +948,10 @@
     "monsterType": "sentinel",
     "aiPattern": "defensive",
     "skillIds": [
-      "elite-strike-skeleton-guard",
-      "elite-cleave-skeleton-guard",
-      "boss-debuff-skeleton-guard",
-      "boss-execute-skeleton-guard"
+      "hold-the-line",
+      "shield-bash",
+      "riposte-stance",
+      "overhead-cut"
     ],
     "expReward": 15,
     "powerTier": "strong",
@@ -960,16 +960,16 @@
         "basicAttack": 100
       },
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 35,
-        "elite-cleave-skeleton-guard": 25
+        "basicAttack": 30,
+        "hold-the-line": 30,
+        "shield-bash": 40
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 20,
-        "elite-cleave-skeleton-guard": 15,
-        "boss-debuff-skeleton-guard": 25,
-        "boss-execute-skeleton-guard": 100
+        "basicAttack": 20,
+        "hold-the-line": 20,
+        "shield-bash": 30,
+        "riposte-stance": 15,
+        "overhead-cut": 100
       }
     },
     "roles": [
@@ -995,24 +995,25 @@
     "monsterType": "glass",
     "aiPattern": "aggressive",
     "skillIds": [
-      "elite-strike-giant-spider",
-      "elite-cleave-giant-spider",
-      "boss-debuff-giant-spider",
-      "boss-execute-giant-spider"
+      "web-barrage",
+      "venom-bite",
+      "cocoon",
+      "feed",
+      "into-the-rafters"
     ],
     "expReward": 16,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-giant-spider": 35,
-        "elite-cleave-giant-spider": 25
+        "basicAttack": 30,
+        "web-barrage": 35,
+        "venom-bite": 35
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-giant-spider": 20,
-        "elite-cleave-giant-spider": 15,
-        "boss-debuff-giant-spider": 25,
-        "boss-execute-giant-spider": 100
+        "basicAttack": 20,
+        "web-barrage": 25,
+        "venom-bite": 25,
+        "feed": 15,
+        "cocoon": 100
       }
     },
     "roles": [
@@ -1024,7 +1025,20 @@
     "traitIds": [
       "venomous"
     ],
-    "minFloor": 20
+    "minFloor": 20,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 40,
+        "weights": {
+          "basicAttack": 15,
+          "venom-bite": 35,
+          "feed": 30,
+          "cocoon": 100
+        },
+        "onEnterSkillId": "into-the-rafters"
+      }
+    ]
   },
   {
     "id": "dragon",
@@ -1037,24 +1051,25 @@
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
     "skillIds": [
-      "elite-strike-dragon",
-      "elite-cleave-dragon",
-      "boss-debuff-dragon",
-      "boss-execute-dragon"
+      "claw-rake",
+      "dragon-fire-breath",
+      "brand",
+      "inferno",
+      "old-fire-wakes"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "elite-strike-dragon": 35,
-        "elite-cleave-dragon": 25
+        "claw-rake": 35,
+        "dragon-fire-breath": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-dragon": 20,
-        "elite-cleave-dragon": 15,
-        "boss-debuff-dragon": 25,
-        "boss-execute-dragon": 100
+        "basicAttack": 25,
+        "claw-rake": 25,
+        "dragon-fire-breath": 20,
+        "brand": 15,
+        "inferno": 100
       }
     },
     "roles": [
@@ -1066,7 +1081,21 @@
     "traitIds": [
       "flying"
     ],
-    "minFloor": 100
+    "minFloor": 100,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 20,
+          "claw-rake": 20,
+          "dragon-fire-breath": 30,
+          "brand": 10,
+          "inferno": 100
+        },
+        "onEnterSkillId": "old-fire-wakes"
+      }
+    ]
   },
   {
     "id": "zombie-knight",
@@ -1079,24 +1108,24 @@
     "monsterType": "armored",
     "aiPattern": "defensive",
     "skillIds": [
-      "elite-strike-zombie-knight",
-      "elite-cleave-zombie-knight",
-      "boss-debuff-zombie-knight",
-      "boss-execute-zombie-knight"
+      "diseased-blade",
+      "guard-position",
+      "undying",
+      "rotting-embrace"
     ],
     "expReward": 17,
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "elite-strike-zombie-knight": 35,
-        "elite-cleave-zombie-knight": 25
+        "diseased-blade": 35,
+        "guard-position": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-zombie-knight": 20,
-        "elite-cleave-zombie-knight": 15,
-        "boss-debuff-zombie-knight": 25,
-        "boss-execute-zombie-knight": 100
+        "basicAttack": 25,
+        "diseased-blade": 25,
+        "guard-position": 15,
+        "undying": 60,
+        "rotting-embrace": 100
       }
     },
     "roles": [
@@ -1121,24 +1150,27 @@
     "monsterType": "balanced",
     "aiPattern": "defensive",
     "skillIds": [
-      "elite-strike-dark-knight",
-      "elite-cleave-dark-knight",
-      "boss-debuff-dark-knight",
-      "boss-execute-dark-knight"
+      "salute",
+      "measured-cut",
+      "parry-stance",
+      "dread-presence",
+      "abyssal-judgment",
+      "second-salute"
     ],
     "expReward": 18,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-dark-knight": 35,
-        "elite-cleave-dark-knight": 25
+        "basicAttack": 30,
+        "salute": 30,
+        "measured-cut": 40
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-dark-knight": 20,
-        "elite-cleave-dark-knight": 15,
-        "boss-debuff-dark-knight": 25,
-        "boss-execute-dark-knight": 100
+        "basicAttack": 20,
+        "salute": 15,
+        "measured-cut": 25,
+        "parry-stance": 15,
+        "dread-presence": 10,
+        "abyssal-judgment": 100
       }
     },
     "roles": [
@@ -1150,7 +1182,22 @@
     "traitIds": [
       "plated"
     ],
-    "minFloor": 60
+    "minFloor": 60,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 20,
+          "salute": 15,
+          "measured-cut": 25,
+          "parry-stance": 15,
+          "dread-presence": 10,
+          "abyssal-judgment": 100
+        },
+        "onEnterSkillId": "second-salute"
+      }
+    ]
   },
   {
     "id": "orc-chieftain",
@@ -1163,24 +1210,25 @@
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
     "skillIds": [
-      "elite-strike-orc-chieftain",
-      "elite-cleave-orc-chieftain",
-      "boss-debuff-orc-chieftain",
-      "boss-execute-orc-chieftain"
+      "skullsplitter",
+      "call-the-warband",
+      "war-cry",
+      "rout",
+      "gets-up"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-orc-chieftain": 35,
-        "elite-cleave-orc-chieftain": 25
+        "basicAttack": 35,
+        "skullsplitter": 35,
+        "call-the-warband": 30
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-orc-chieftain": 20,
-        "elite-cleave-orc-chieftain": 15,
-        "boss-debuff-orc-chieftain": 25,
-        "boss-execute-orc-chieftain": 100
+        "basicAttack": 20,
+        "skullsplitter": 25,
+        "call-the-warband": 15,
+        "war-cry": 15,
+        "rout": 25
       }
     },
     "roles": [
@@ -1192,7 +1240,21 @@
     "traitIds": [
       "massive"
     ],
-    "minFloor": 40
+    "minFloor": 40,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 15,
+          "skullsplitter": 40,
+          "call-the-warband": 10,
+          "war-cry": 15,
+          "rout": 20
+        },
+        "onEnterSkillId": "gets-up"
+      }
+    ]
   },
   {
     "id": "vampire-lord",
@@ -1205,24 +1267,24 @@
     "monsterType": "striker",
     "aiPattern": "opportunistic",
     "skillIds": [
-      "elite-strike-vampire-lord",
-      "elite-cleave-vampire-lord",
-      "boss-debuff-vampire-lord",
-      "boss-execute-vampire-lord"
+      "crimson-talon",
+      "drink",
+      "bat-swarm",
+      "final-draught"
     ],
     "expReward": 22,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-vampire-lord": 35,
-        "elite-cleave-vampire-lord": 25
+        "basicAttack": 35,
+        "crimson-talon": 40,
+        "drink": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-vampire-lord": 20,
-        "elite-cleave-vampire-lord": 15,
-        "boss-debuff-vampire-lord": 25,
-        "boss-execute-vampire-lord": 100
+        "basicAttack": 20,
+        "crimson-talon": 25,
+        "drink": 25,
+        "bat-swarm": 15,
+        "final-draught": 100
       }
     },
     "roles": [
@@ -1231,7 +1293,20 @@
     ],
     "race": "undead",
     "subRace": "vampiric",
-    "minFloor": 50
+    "minFloor": 50,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 40,
+        "weights": {
+          "basicAttack": 15,
+          "crimson-talon": 20,
+          "drink": 75,
+          "bat-swarm": 15,
+          "final-draught": 100
+        }
+      }
+    ]
   },
   {
     "id": "void-amalgamation",
@@ -1244,24 +1319,24 @@
     "monsterType": "balanced",
     "aiPattern": "aggressive",
     "skillIds": [
-      "elite-strike-void",
-      "elite-cleave-void",
-      "boss-debuff-void",
-      "boss-execute-void"
+      "grasping-remnants",
+      "unravelling-tide",
+      "old-work",
+      "subsume"
     ],
     "expReward": 25,
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "elite-strike-void": 35,
-        "elite-cleave-void": 25
+        "grasping-remnants": 35,
+        "unravelling-tide": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-void": 20,
-        "elite-cleave-void": 15,
-        "boss-debuff-void": 25,
-        "boss-execute-void": 100
+        "basicAttack": 25,
+        "grasping-remnants": 25,
+        "unravelling-tide": 20,
+        "old-work": 15,
+        "subsume": 15
       }
     },
     "roles": [
@@ -1273,7 +1348,8 @@
     ],
     "race": "shadow-creature",
     "subRace": "void",
-    "minFloor": 70
+    "minFloor": 70,
+    "targeting": "random"
   },
   {
     "id": "ancient-golem",
@@ -1286,24 +1362,23 @@
     "monsterType": "sentinel",
     "aiPattern": "defensive",
     "skillIds": [
-      "elite-strike-ancient-golem",
-      "elite-cleave-ancient-golem",
-      "boss-debuff-ancient-golem",
-      "boss-execute-ancient-golem"
+      "stoneshear",
+      "tremor",
+      "sealing-blow",
+      "crumbling-shell"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
         "basicAttack": 40,
-        "elite-strike-ancient-golem": 35,
-        "elite-cleave-ancient-golem": 25
+        "stoneshear": 35,
+        "tremor": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-ancient-golem": 20,
-        "elite-cleave-ancient-golem": 15,
-        "boss-debuff-ancient-golem": 25,
-        "boss-execute-ancient-golem": 100
+        "basicAttack": 30,
+        "stoneshear": 30,
+        "tremor": 20,
+        "sealing-blow": 100
       }
     },
     "roles": [
@@ -1315,7 +1390,30 @@
     "traitIds": [
       "massive"
     ],
-    "minFloor": 90
+    "minFloor": 90,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 20,
+          "stoneshear": 30,
+          "tremor": 15,
+          "sealing-blow": 100
+        },
+        "onEnterSkillId": "crumbling-shell"
+      }
+    ],
+    "shell": {
+      "hitsToBreak": {
+        "min": 6,
+        "max": 8
+      },
+      "hitDamageCapMaxHpPercent": 4,
+      "breakStatusId": "stunned",
+      "breakDurationTurns": 1,
+      "reformAfterOwnTurns": 2
+    }
   },
   {
     "id": "lich",
@@ -1328,24 +1426,25 @@
     "monsterType": "glass",
     "aiPattern": "opportunistic",
     "skillIds": [
-      "elite-strike-lich",
-      "elite-cleave-lich",
-      "boss-debuff-lich",
-      "boss-execute-lich"
+      "withering-touch",
+      "raise-the-dead",
+      "ledger-mark",
+      "name-struck-out",
+      "unhurried"
     ],
     "expReward": 24,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-lich": 35,
-        "elite-cleave-lich": 25
+        "basicAttack": 35,
+        "withering-touch": 35,
+        "raise-the-dead": 30
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-lich": 20,
-        "elite-cleave-lich": 15,
-        "boss-debuff-lich": 25,
-        "boss-execute-lich": 100
+        "basicAttack": 20,
+        "withering-touch": 20,
+        "raise-the-dead": 15,
+        "ledger-mark": 20,
+        "name-struck-out": 100
       }
     },
     "roles": [
@@ -1354,7 +1453,21 @@
     ],
     "race": "undead",
     "subRace": "skeletal",
-    "minFloor": 80
+    "minFloor": 80,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 20,
+          "withering-touch": 20,
+          "raise-the-dead": 15,
+          "ledger-mark": 20,
+          "name-struck-out": 100
+        },
+        "onEnterSkillId": "unhurried"
+      }
+    ]
   },
   {
     "id": "the-founder",
@@ -1367,19 +1480,21 @@
     "monsterType": "sentinel",
     "aiPattern": "aggressive",
     "skillIds": [
-      "elite-strike-the-founder",
-      "elite-cleave-the-founder",
-      "boss-debuff-the-founder",
-      "boss-execute-the-founder"
+      "paid-in-full",
+      "the-same-price",
+      "whats-left-listening",
+      "everything-you-asked-for",
+      "hung-lower",
+      "the-last-of-it"
     ],
     "expReward": 20,
     "actionWeights": {
       "boss": {
-        "basicAttack": 30,
-        "elite-strike-the-founder": 20,
-        "elite-cleave-the-founder": 15,
-        "boss-debuff-the-founder": 35,
-        "boss-execute-the-founder": 100
+        "basicAttack": 15,
+        "paid-in-full": 25,
+        "the-same-price": 20,
+        "whats-left-listening": 25,
+        "everything-you-asked-for": 100
       }
     },
     "roles": [
@@ -1387,6 +1502,32 @@
     ],
     "finalBoss": true,
     "race": "undead",
-    "subRace": "rotting"
+    "subRace": "rotting",
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 60,
+        "weights": {
+          "basicAttack": 15,
+          "paid-in-full": 25,
+          "the-same-price": 20,
+          "whats-left-listening": 25,
+          "everything-you-asked-for": 100
+        },
+        "onEnterSkillId": "hung-lower"
+      },
+      {
+        "tier": "boss",
+        "hpBelowPercent": 25,
+        "weights": {
+          "basicAttack": 10,
+          "paid-in-full": 20,
+          "the-same-price": 15,
+          "whats-left-listening": 40,
+          "everything-you-asked-for": 100
+        },
+        "onEnterSkillId": "the-last-of-it"
+      }
+    ]
   }
 ]

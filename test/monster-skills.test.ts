@@ -16,7 +16,7 @@ describe("elite/boss skill kit", () => {
   }
 
   test("elite/boss pick from a weighted action pool; skill kit and basic attack are both reachable", () => {
-
+    const kitNames = getArchetype("skeleton-guard").skillIds.map((id) => getMonsterSkill(id).name);
     let sawNamedKit = false;
     let sawBasicAttack = false;
     for (let seed = 0; seed < 30 && !(sawNamedKit && sawBasicAttack); seed++) {
@@ -28,9 +28,7 @@ describe("elite/boss skill kit", () => {
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
-        if (monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave") || l.text.includes("finishing blow") || l.text.includes("Crush"))) {
-          sawNamedKit = true;
-        }
+        if (monsterLines.some((l) => kitNames.some((name) => l.text.includes(name)))) sawNamedKit = true;
         if (monsterLines.some((l) => l.text.includes("attacks"))) sawBasicAttack = true;
       }
     }
@@ -49,82 +47,79 @@ describe("elite/boss skill kit", () => {
     resolveRound(combat, ctx);
     const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
     expect(monsterLines.some((l) => l.text.includes("attacks"))).toBe(true);
-    expect(monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
+    const kitNames = getArchetype("skeleton-guard").skillIds.map((id) => getMonsterSkill(id).name);
+    expect(monsterLines.some((l) => kitNames.some((name) => l.text.includes(name)))).toBe(false);
   });
 
-  test("a boss's converted Finishing Blow charges one turn, then releases on its locked target", () => {
+  test("a boss's telegraph charges one turn, then releases on its locked target", () => {
     const { ctx } = makeCtx();
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
-    boss.maxHp = 1000;
-    boss.hp = 1000;
+    boss.maxHp = 5000;
+    boss.hp = 5000;
     ctx.monsters.push(boss);
     const combat = startCombat("r1", [boss.id], ctx, false);
 
     let charged = false;
-    for (let round = 0; round < 12 && combat.phase !== "over" && !charged; round++) {
+    for (let round = 0; round < 20 && combat.phase !== "over" && !charged; round++) {
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
       charged = boss.charging !== undefined;
     }
     expect(charged).toBe(true);
-    expect(boss.charging!.skillId).toBe("boss-execute-skeleton-guard");
-    expect(combat.log.some((l) => l.text.includes("gathers itself for Finishing Blow"))).toBe(true);
-    const locked = ctx.party.find((p) => p.id === boss.charging!.targetIds[0])!;
-    expect(locked).toBeDefined();
+    expect(boss.charging!.skillId).toBe("overhead-cut");
+    expect(combat.log.some((l) => l.text.includes("gathers itself for Overhead Cut"))).toBe(true);
 
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("unleashes Finishing Blow"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("unleashes Overhead Cut"))).toBe(true);
     expect(boss.charging).toBeUndefined();
   });
 
-  test("elite cleave damages every living character when it fires", () => {
+  test("an elite's area skill damages every living character when it fires", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
-      const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
+      const elite = spawnMonster("dragon", 1, { tier: "elite" });
+      elite.maxHp = elite.hp = 5000;
       ctx.monsters.push(elite);
       const combat = startCombat("r1", [elite.id], ctx, false);
       queueTrivialActions(ctx, combat);
       const hpBefore = new Map(ctx.party.filter((c) => c.isAlive).map((c) => [c.id, c.hp]));
       resolveRound(combat, ctx);
-      if (!combat.log.some((l) => l.text.includes("Sweeping Cleave"))) continue;
+      if (!combat.log.some((l) => l.text.includes("uses Fire Breath"))) continue;
       found = true;
-      const hitCount = [...hpBefore.entries()].filter(([id, hp]) => {
-        const c = ctx.party.find((p) => p.id === id)!;
-        return c.hp < hp;
-      }).length;
+      const hitCount = [...hpBefore.entries()].filter(([id, hp]) => ctx.party.find((p) => p.id === id)!.hp < hp).length;
       expect(hitCount).toBe(hpBefore.size);
     }
     expect(found).toBe(true);
   });
 
-  test("boss debuff (Crush) applies weakened, weakening the target's defense", () => {
+  test("a boss skill's status lands on the target it names", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
-      const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      const boss = spawnMonster("zombie-knight", 1, { tier: "boss" });
+      boss.maxHp = boss.hp = 5000;
       ctx.monsters.push(boss);
       const combat = startCombat("r1", [boss.id], ctx, false);
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      if (!combat.log.some((l) => l.text.includes("Crush"))) continue;
+      if (!combat.log.some((l) => l.text.includes("uses Diseased Blade"))) continue;
       found = true;
-      const debuffed = ctx.party.find((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "weakened"));
-      expect(debuffed).toBeDefined();
+      expect(ctx.party.some((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "enfeebled"))).toBe(true);
     }
     expect(found).toBe(true);
   });
 
   test("every monster skill log line derives from the skill's own target, not from which weight key rolled it", () => {
-    // Single-target skills all name their target now, whatever tier or weight key produced them —
-    // a plain monster's skill and a boss's debuff used to print without one.
+    // Single-target skills all name their target now, whatever tier or weight key produced them.
     const lines: string[] = [];
     for (let seed = 0; seed < 40; seed++) {
-      for (const [id, tier] of [["dungeon-rat", "normal"], ["skeleton-guard", "boss"]] as const) {
+      for (const [id, tier] of [["dungeon-rat", "normal"], ["dragon", "boss"]] as const) {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
-        monster.skillCooldowns = { "boss-execute-skeleton-guard": 99 };
+        // The telegraph is held off so every boss turn goes through the plain roll.
+        monster.skillCooldowns = { inferno: 99 };
         // makeCtx's party has 1 character per class — their combined opening damage would otherwise
         // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
         // which is what this test is actually checking for.
@@ -137,31 +132,26 @@ describe("elite/boss skill kit", () => {
       }
     }
     const bite = lines.find((l) => l.includes("uses Bite"));
-    const crush = lines.find((l) => l.includes("uses Crush"));
-    const cleave = lines.find((l) => l.includes("Sweeping Cleave"));
+    const rake = lines.find((l) => l.includes("uses Claw Rake"));
+    const breath = lines.find((l) => l.includes("uses Fire Breath"));
     expect(bite).toMatch(/^Dungeon Rat uses Bite on .+\.$/);
-    expect(crush).toMatch(/^Skeleton Guard \(Boss\) uses Crush on .+\.$/);
-    expect(cleave).toBe("Skeleton Guard (Boss) uses Sweeping Cleave, sweeping the whole party!");
+    expect(rake).toMatch(/^Dragon \(Boss\) uses Claw Rake on .+\.$/);
+    expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party!");
   });
 
-  test("the-founder carries the full strike/cleave/execute/debuff kit, weighted for boss tier only", () => {
+  test("the-founder carries its own kit and two phases, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.skillIds).toEqual(["elite-strike-the-founder", "elite-cleave-the-founder", "boss-debuff-the-founder", "boss-execute-the-founder"]);
-    expect(getMonsterSkill("boss-execute-the-founder").telegraph).toBe(true);
-    expect(getMonsterSkill("elite-strike-the-founder").target).toBe("singleEnemy");
-    expect(getMonsterSkill("elite-cleave-the-founder").target).toBe("allEnemies");
-    expect(founder.actionWeights?.boss).toEqual({
-      basicAttack: 30,
-      "elite-strike-the-founder": 20,
-      "elite-cleave-the-founder": 15,
-      "boss-debuff-the-founder": 35,
-      "boss-execute-the-founder": 100,
-    });
+    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "hung-lower", "the-last-of-it"]);
+    expect(getMonsterSkill("everything-you-asked-for").telegraph).toBe(true);
+    expect(getMonsterSkill("paid-in-full").targetCount).toEqual({ min: 2, max: 3 });
+    expect(getMonsterSkill("the-same-price").target).toBe("allEnemies");
+    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "everything-you-asked-for", "paid-in-full", "the-same-price", "whats-left-listening"]);
+    expect(founder.phases!.map((p) => p.onEnterSkillId)).toEqual(["hung-lower", "the-last-of-it"]);
     // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });
 
-  test("the-founder actually reaches its strike and cleave in combat", () => {
+  test("the-founder actually reaches its multi-target strike and its area skill in combat", () => {
     const seen = new Set<string>();
     for (let seed = 0; seed < 80 && seen.size < 2; seed++) {
       const { ctx } = makeCtx(seed);
@@ -171,7 +161,7 @@ describe("elite/boss skill kit", () => {
       for (let round = 0; round < 6 && seen.size < 2; round++) {
         // The telegraph charges/releases on its own cycle; hold it off so every boss turn
         // goes through the strike/cleave roll.
-        monster.skillCooldowns = { "boss-execute-the-founder": 99 };
+        monster.skillCooldowns = { "everything-you-asked-for": 99 };
         monster.charging = undefined;
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
@@ -243,8 +233,8 @@ describe("regular monster skills", () => {
   test("Skeleton Guard does nothing but a basic attack at normal tier, and has its full kit above it", () => {
     const guard = getArchetype("skeleton-guard");
     expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100 });
-    expect(guard.skillIds).toEqual(["elite-strike-skeleton-guard", "elite-cleave-skeleton-guard", "boss-debuff-skeleton-guard", "boss-execute-skeleton-guard"]);
-    expect(getMonsterSkill("boss-execute-skeleton-guard").telegraph).toBe(true);
+    expect(guard.skillIds).toEqual(["hold-the-line", "shield-bash", "riposte-stance", "overhead-cut"]);
+    expect(getMonsterSkill("overhead-cut").telegraph).toBe(true);
   });
 
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
@@ -312,13 +302,13 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
     expect(attackCount).toBeGreaterThan(0);
   });
 
-  test("a defensive archetype whose only skills target enemies never turns one on itself below 40% HP", () => {
-    // Skeleton Guard is defensive, spawns at normal tier in ordinary combat rooms, and since
-    // skillIds became "every skill at any tier" its first entry is Cleaving Strike. Picking by
-    // position instead of by target would have it hitting itself.
+  test("a defensive archetype never reaches for a kit its normal weights do not name, below 40% HP", () => {
+    // Skeleton Guard is defensive and spawns at normal tier in ordinary combat rooms, while its
+    // skillIds hold its guard-room kit — self-targeted guard skills included. The low-HP branch
+    // only considers a self skill the tier's own weights name, so the normal tier never reaches them.
     const guard = getArchetype("skeleton-guard");
-    expect(guard.skillIds.length).toBeGreaterThan(0);
-    expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(false);
+    expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(true);
+    expect(Object.keys(guard.actionWeights!.normal!)).toEqual(["basicAttack"]);
 
     for (let seed = 0; seed < 30; seed++) {
       const { ctx } = makeCtx(seed);
@@ -328,7 +318,8 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
       const hpBefore = monster.hp;
       resolveRound(combat, ctx);
       expect(monster.hp).toBe(hpBefore);
-      expect(combat.log.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
+      const kitNames = guard.skillIds.map((id) => getMonsterSkill(id).name);
+      expect(combat.log.some((l) => kitNames.some((name) => l.text.includes(name)))).toBe(false);
     }
   });
 
