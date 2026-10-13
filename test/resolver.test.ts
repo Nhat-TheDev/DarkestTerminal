@@ -703,13 +703,17 @@ describe("LogEntry.hit on a damage line", () => {
     expect(entry.hit).toEqual({ targetId: target.id, amount: before - target.hp });
   });
 
-  test("a killing blow counts only the HP that was left, not the overkill", () => {
+  test("a killing blow keeps its full damage and names the overkill the target had no HP to take", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;
     const target = ctx.party[1]!;
     target.hp = 3;
     const entry = dealt({ kind: "damage", amount: 500 }, target, attacker);
-    expect(entry.hit).toEqual({ targetId: target.id, amount: 3 });
+    const full = entry.hit!.amount;
+    expect(full).toBeGreaterThanOrEqual(500);
+    expect(entry.hit).toEqual({ targetId: target.id, amount: full, overkill: full - 3 });
+    expect(entry.text).toContain(`takes ${full} damage`);
+    expect(target.hp).toBe(0);
   });
 
   test("a damage-over-time tick and a hit that did no damage carry none", () => {
@@ -940,5 +944,41 @@ describe("LogEntry crit marks", () => {
     resolveSkillEffect({ kind: "heal", amount: 20 }, healer, patient, { log, rollDamage: () => 0.5 });
     resolveSkillEffect({ kind: "heal", amount: 20 }, patient, patient, { log });
     expect(log.map((e) => e.healCritOf)).toEqual([patient.id, undefined, undefined]);
+  });
+});
+
+describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
+  pinCombatBalance({ damageVariancePercent: 3, baseCritChancePercent: 1 });
+
+  test("rolls crit and variance like a real hit, deals and heals nothing, and leaves only a hidden entry", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.hp = 0;
+    attacker.maxHp = 1000;
+    attacker.hp = 500;
+    const base = 100 + mitigatedOffense(attacker.attack, target.defense);
+    const draws = [0, 0.5, 0.5];
+    const log: LogEntry[] = [];
+    const dealtNow = resolveSkillEffect({ kind: "damage", amount: 100, lifestealPercent: 50 }, attacker, target, { log, rollDamage: () => draws.shift()!, unapplied: true });
+    expect(dealtNow).toBe(0);
+    expect(draws).toHaveLength(0);
+    expect(target.hp).toBe(0);
+    expect(attacker.hp).toBe(500);
+    expect(log).toHaveLength(1);
+    const entry = log[0]!;
+    expect(entry.hidden).toBe(true);
+    const amount = Math.floor(base * 1.5 + 0.5);
+    expect(entry.hit).toEqual({ targetId: target.id, amount, overkill: amount, crit: true });
+  });
+
+  test("a damage-over-time tick is never shown that way", () => {
+    const { ctx } = makeCtx();
+    const bearer = ctx.party[0]!;
+    const before = bearer.hp;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log, unapplied: true });
+    expect(before - bearer.hp).toBe(7);
+    expect(log[0]!.hidden).toBeUndefined();
   });
 });

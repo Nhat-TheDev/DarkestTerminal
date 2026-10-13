@@ -24,7 +24,7 @@ interface Group {
   span: number;
   /** The tick its fear change shows from, or null when no character's fear changed. */
   fearStart: number | null;
-  /** Each unit's direct hits in the order they landed, as the HP each took and whether it crit. */
+  /** Each unit's direct hits in the order they landed, as each one's full damage, its overkill and whether it crit. */
   hits: Map<Id, HitMark[]>;
   /** Units a critical heal landed on. */
   healCrits: Set<Id>;
@@ -45,7 +45,7 @@ function toGroups(entries: LogEntry[]): Group[] {
       if (healCritOf) group.healCrits.add(healCritOf);
       if (!hit) continue;
       const taken = group.hits.get(hit.targetId) ?? [];
-      taken.push({ amount: hit.amount, ...(hit.crit ? { crit: true as const } : {}) });
+      taken.push({ amount: hit.amount, ...(hit.overkill ? { overkill: hit.overkill } : {}), ...(hit.crit ? { crit: true as const } : {}) });
       group.hits.set(hit.targetId, taken);
       group.hitBeats = Math.max(group.hitBeats, taken.length - 1);
     }
@@ -105,7 +105,7 @@ export class RevealQueue {
     return this.current?.session != null && this.ticks > IMPACT_TICKS + SUMMON_BEAT_TICKS + this.current.hitBeats * HIT_BEAT_TICKS;
   }
 
-  /** Each unit's direct hits in the lit session, in order, as the HP each took and whether it crit; empty when nothing is lit. */
+  /** Each unit's direct hits in the lit session, in order, as each one's full damage, its overkill and whether it crit; empty when nothing is lit. */
   get focusHits(): ReadonlyMap<Id, HitMark[]> {
     return this.current?.session ? this.current.hits : NO_HITS;
   }

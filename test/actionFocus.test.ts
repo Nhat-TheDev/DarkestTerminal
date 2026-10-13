@@ -254,6 +254,45 @@ describe("battlefield and log stay in step", () => {
     expect(await markerOf(0)).toMatch(/^⛨ -\d+$/);
   }, 30000);
 
+  test("a target with 24 HP left still reads every hit of a crit multi-hit at its full damage", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    goblin.hp = 24;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, critChance: 1, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+    expect(goblin.hp).toBe(0);
+
+    app.tickReveal();
+    await fight.renderOnce();
+    const seen: string[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} (-\\d+!?)`));
+      if (match && !app.debugRevealHolding && seen.at(-1) !== match[1]) seen.push(match[1]!);
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    const expected = hits.map((hit) => `-${hit}!`).filter((text, i, all) => i === 0 || text !== all[i - 1]);
+    expect(seen).toEqual(expected);
+    expect(seen).not.toContain("-24!");
+  }, 30000);
+
   test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {
     const fight = await openFight();
     fight.game.state.party[0]!.survival.fear = 39.9;

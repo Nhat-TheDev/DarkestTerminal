@@ -177,13 +177,15 @@ export interface MarkerReading {
 }
 
 /**
- * The HP change a unit's marker reads at hit `step`: with 2 or more direct hits, each one in turn (the
- * last held, each with its own crit), instead of their sum. Only when the hits account for the whole
- * change (`net`); a heal on the same unit in the same session leaves the net, which is then all there is
- * to show, and it is a crit when any hit on the unit, or a heal that landed on it (`healCrit`), was.
+ * The HP change a unit's marker reads at hit `step`: each direct hit in turn at its full damage, the
+ * last held and each with its own crit, so a hit that was more than the unit had left still reads in
+ * full and the hits that came after it fell are not skipped. Only when the hits account for the whole
+ * change (`net`, which stops at 0 HP); a heal on the same unit in the same session leaves the net, which
+ * is then all there is to show, and it is a crit when any hit on the unit, or a heal that landed on it
+ * (`healCrit`), was.
  */
 export function markerReading(hits: readonly HitMark[] | undefined, net: number, step: number, healCrit = false): MarkerReading {
-  if (hits && hits.length >= 2 && hits.reduce((sum, hit) => sum + hit.amount, 0) === -net) {
+  if (hits && hits.length > 0 && hits.reduce((sum, hit) => sum + hit.amount - (hit.overkill ?? 0), 0) === -net) {
     const hit = hits[Math.min(step, hits.length - 1)]!;
     return { amount: -hit.amount, crit: hit.crit === true };
   }

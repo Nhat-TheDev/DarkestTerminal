@@ -232,15 +232,19 @@ its own action.
 
 A unit that took 2 or more direct hits in one session shows them one at a time instead of their sum:
 `-53` at the impact, then `-52` a beat later. Each damage line of a direct hit carries the actor it
-landed on and the HP it actually took (`LogEntry.hit`, set in `resolveSkillEffect`; a
-damage-over-time tick has none, and a killing blow's overkill is not counted). `RevealQueue` collects
-them per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS` from the impact
-(`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each hit past the
-first; a summon's number waits for the last hit. `markerAmount` picks the number, and only when the
-hits add up to the unit's whole HP change: a heal landing on the same unit in the same session leaves
-the net on screen. The HP bar still moves once, at the impact. A single hit, an area attack (one hit
-per target) and the damage a summon takes (it is added to its owner's number, as above) read as
-before.
+landed on, its full damage and the overkill the actor had no HP left to take (`LogEntry.hit`, set in
+`resolveSkillEffect`; a damage-over-time tick has none). The marker reads the full damage, so a crit of
+52 on a unit with 24 HP left is `-52!`, not `-24!`. The hits of a multi-hit cast that come after the
+target has fallen are rolled for crit and variance like any other and recorded as hidden entries
+(`ResolveContext.unapplied`, set by the hit loop in `applySkillEffects`): nothing is dealt, healed,
+hooked or logged for them, but the battlefield still reads every hit of the cast, `-52!`, `-49`, `-51`.
+`RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
+from the impact (`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each
+hit past the first; a summon's number waits for the last hit. `markerReading` picks the number, and
+only when the HP the hits took (their damage less their overkill) adds up to the unit's whole HP
+change: a heal landing on the same unit in the same session leaves the net on screen. The HP bar still
+moves once, at the impact. An area attack (one hit per target) reads as before, and so does the damage
+a summon takes (it is added to its owner's number, as above).
 
 A critical hit or critical heal ends its number with `!` (`-80!`, `+30!`). The damage line of a hit
 carries `crit` in `LogEntry.hit` and a critical heal's line carries `healCritOf`, set in

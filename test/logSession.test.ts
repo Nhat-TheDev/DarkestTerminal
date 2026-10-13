@@ -1304,3 +1304,68 @@ describe("a multi-hit skill, from the engine to the marker", () => {
     expect([0, 1, 2].map((step) => markerReading(hits, net, step).amount)).toEqual(hits.map((hit) => -hit.amount));
   });
 });
+
+describe("a multi-hit skill that does more than the target had left", () => {
+  const cast = (amount: number, extra: Partial<SkillEffect> = {}): SkillDefinition => ({
+    id: "test-overkill",
+    name: "Test Overkill",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 }, ...extra }],
+    slot: 0,
+    unlockLevel: 1,
+  });
+
+  function run(skill: SkillDefinition, hp = 24) {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.maxHp = 9999;
+    goblin.hp = hp;
+    goblin.defense = 0;
+    vanguard.maxHp = 1000;
+    vanguard.hp = 500;
+    const before = snapshotCombatants(combat, ctx);
+    const first = combat.log.length;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    const entries = combat.log.slice(first);
+    const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
+    return { ctx, combat, goblin, vanguard, entries, net };
+  }
+
+  test("every hit of the cast is recorded at its full damage, the first with its overkill, the rest all of it", () => {
+    const { goblin, entries, net } = run(cast(40));
+    const hits = entries.flatMap((e) => (e.hit ? [e.hit] : []));
+    expect(hits).toHaveLength(3);
+    expect(goblin.hp).toBe(0);
+    expect(net).toBe(-24);
+    expect(hits[0]!.overkill).toBe(hits[0]!.amount - 24);
+    for (const later of hits.slice(1)) expect(later.overkill).toBe(later.amount);
+    for (const hit of hits) expect(hit.amount).toBeGreaterThanOrEqual(38);
+  });
+
+  test("only the hit that landed has a line in the log, the target is defeated once, and nothing else of the rest takes effect", () => {
+    const { vanguard, entries } = run(cast(40, { lifestealPercent: 100 }));
+    expect(entries.filter((e) => e.kind === "attack" && !e.hidden)).toHaveLength(1);
+    expect(entries.filter((e) => e.kind === "death")).toHaveLength(1);
+    const firstHit = entries.find((e) => e.hit)!.hit!;
+    // Lifesteal reads the damage of the one hit that landed, not of the three shown.
+    expect(vanguard.hp - 500).toBe(firstHit.amount);
+  });
+
+  test("the marker reads all three at full damage, though the target only had 24", () => {
+    const { goblin, entries, net } = run(cast(40));
+    const queue = new RevealQueue();
+    queue.enqueue(entries.filter((e) => e.session));
+    queue.tick();
+    const hits = queue.focusHits.get(goblin.id)!;
+    expect(hits).toHaveLength(3);
+    expect([0, 1, 2].map((step) => markerReading(hits, net, step).amount)).toEqual(hits.map((hit) => -hit.amount));
+  });
+
+  test("a bonus hit that comes after the kill is shown too", () => {
+    const { entries } = run({ ...cast(40), effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, extraHitChance: 1 }] });
+    const hits = entries.flatMap((e) => (e.hit ? [e.hit] : []));
+    expect(hits).toHaveLength(2);
+    expect(hits[1]!.overkill).toBe(hits[1]!.amount);
+  });
+});

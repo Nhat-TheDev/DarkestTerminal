@@ -189,6 +189,8 @@ export interface ResolveContext {
   onDotEffect?: (kind: "damage" | "heal") => void;
   /** A uniform draw in [0, 1) from the rng of a caller making a direct hit or heal: the base crit chance, then for damage the ±`damageVariancePercent` factor and its rounding. Absent (a damage- or heal-over-time tick): no crit and no variance. */
   rollDamage?: () => number;
+  /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and recorded for the battlefield, but nothing is dealt, healed or logged. */
+  unapplied?: true;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -254,6 +256,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               varianceMultiplier
           );
       const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
+      const critMark = isCrit ? { crit: true as const } : {};
+      if (ctx.unapplied && !isSelfTick) {
+        ctx.log.push({ text: "", kind: "attack", hidden: true, hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
+        return 0;
+      }
       const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
@@ -262,7 +269,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
       const hpLost = hpBefore - target.hp;
-      ctx.log.push({ text: damageText, kind: "attack", ...(!isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: hpLost, ...(isCrit ? { crit: true as const } : {}) } } : {}) });
+      const overkill = finalDamage - hpLost;
+      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
+      ctx.log.push({ text: damageText, kind: "attack", ...hit });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && effect.lifestealPercent) {

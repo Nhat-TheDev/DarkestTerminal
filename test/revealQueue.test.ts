@@ -283,3 +283,23 @@ describe("RevealQueue crit marks", () => {
     expect(q.focusHealCrits.size).toBe(0);
   });
 });
+
+describe("RevealQueue overkill", () => {
+  test("a hit keeps its overkill, and the hits shown after the kill count towards the session's hold", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([
+      { text: "a", kind: "attack", session: s, hit: { targetId: "m1", amount: 52, overkill: 28, crit: true } },
+      { text: "", kind: "attack", session: s, hidden: true, hit: { targetId: "m1", amount: 49, overkill: 49 } },
+      { text: "", kind: "attack", session: s, hidden: true, hit: { targetId: "m1", amount: 51, overkill: 51 } },
+    ]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 52, overkill: 28, crit: true }, { amount: 49, overkill: 49 }, { amount: 51, overkill: 51 }]);
+    let lit = 1;
+    while (q.active) {
+      q.tick();
+      if (q.focus) lit++;
+    }
+    expect(lit).toBe(SESSION_MIN_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+});

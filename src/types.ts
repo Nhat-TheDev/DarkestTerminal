@@ -813,9 +813,11 @@ export interface LogSession {
   cause?: "dot" | "dying" | "artifact" | "fear";
 }
 
-/** One direct hit as the battlefield shows it: the HP it took, and whether it was a critical hit. */
+/** One direct hit as the battlefield shows it: its full damage, the part of it the target had no HP left to take, and whether it was a critical hit. */
 export interface HitMark {
   amount: number;
+  /** Absent when the target took all of `amount`; a hit that comes after the target has fallen is all overkill. */
+  overkill?: number;
   crit?: true;
 }
 
@@ -827,7 +829,7 @@ export interface LogEntry {
   session?: LogSession;
   /** Carries a session that has no line to show (party-wide fear at the end of a round or on a victory); never rendered in a log. */
   hidden?: true;
-  /** Set on the line of a direct hit (not a damage-over-time tick): the actor it landed on and the HP it actually took, so a killing blow's overkill is not counted. */
+  /** Set on the line of a direct hit (not a damage-over-time tick): the actor it landed on and its full damage, with the overkill the target had no HP to take. */
   hit?: HitMark & { targetId: Id };
   /** Set on the line of a critical heal: the actor it landed on. */
   healCritOf?: Id;

@@ -760,7 +760,8 @@ function resolveOneDamageEffect(
   ctx: EngineContext,
   log: LogEntry[],
   stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
-  linkedSummonId?: Id
+  linkedSummonId?: Id,
+  unapplied = false
 ): number {
   // An item's effects never crit; the Archer's passive lifts damage only, not a heal.
   const archerRank = effect.kind === "damage" && isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
@@ -787,6 +788,7 @@ function resolveOneDamageEffect(
       castByOwnClassSkill,
       linkedSummonId,
       rollDamage: () => ctx.rng.next(),
+      ...(unapplied ? { unapplied: true as const } : {}),
     }
   );
 }
@@ -1254,13 +1256,14 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
       // a multi-hit skill actually dealt this cast, not just its final swing.
       let appliedAmount = 0;
+      // A hit that comes after the target has fallen is shown, not dealt (`ResolveContext.unapplied`): the
+      // battlefield reads every hit of the cast at its full damage, and nothing else of it takes effect.
       for (let hit = 0; hit < hitCount; hit++) {
-        if (!isActorAlive(target)) break;
-        appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+        appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, undefined, !isActorAlive(target));
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && isActorAlive(target)) {
-            appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) {
+            appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, undefined, !isActorAlive(target));
           }
         }
       }

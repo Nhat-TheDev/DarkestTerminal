@@ -459,6 +459,22 @@ describe("markerReading", () => {
     expect(markerReading([hit(53), hit(52)], 0, 1).amount).toBe(0);
   });
 
+  test("a hit that was more than the unit had left reads at its full damage, and so does each hit after it", () => {
+    const killing = { amount: 52, overkill: 28, crit: true as const };
+    expect(markerReading([killing], -24, 0)).toEqual({ amount: -52, crit: true });
+    const run = [killing, { amount: 49, overkill: 49 }, { amount: 51, overkill: 51 }];
+    expect([0, 1, 2, 3].map((step) => markerReading(run, -24, step))).toEqual([
+      { amount: -52, crit: true },
+      { amount: -49, crit: false },
+      { amount: -51, crit: false },
+      { amount: -51, crit: false },
+    ]);
+  });
+
+  test("hits whose taken HP is not the unit's change (a heal landed too) leave the net", () => {
+    expect(markerReading([{ amount: 52, overkill: 28 }], -10, 0)).toEqual({ amount: -10, crit: false });
+  });
+
   test("a hit that crit reads with a crit, and in a run of hits only its own beat does", () => {
     expect(markerReading([hit(80, true)], -80, 0)).toEqual({ amount: -80, crit: true });
     const run = [hit(53), hit(80, true), hit(52)];
