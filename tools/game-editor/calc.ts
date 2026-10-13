@@ -1,6 +1,6 @@
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
-import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
+import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
 import { resolveRaceProfile } from "../../src/data/monsterRaces";
 import {
   growthBonus,
@@ -87,7 +87,6 @@ export function getCatalog() {
       bossMultiplier: BOSS_MULTIPLIER,
       expRewardDepthRate: EXP_REWARD_DEPTH_RATE,
       bossFloorInterval: BOSS_FLOOR_INTERVAL,
-      executeCooldownTurns: EXECUTE_COOLDOWN_TURNS,
       monsterTypeMultiplier: MONSTER_TYPE_MULTIPLIER,
     },
     balance: BALANCE,
@@ -237,8 +236,8 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     isBossFloor: depth % BOSS_FLOOR_INTERVAL === 0,
     skillKit: {
       basicAttack: { amount: 0 },
-      skills: archetype.skillIds.map(getMonsterSkill),
-      execute: archetype.executeSkillId ? getMonsterSkill(archetype.executeSkillId) : null,
+      skills: archetype.skillIds.map(getMonsterSkill).filter((s) => !s.telegraph),
+      execute: archetype.skillIds.map(getMonsterSkill).find((s) => s.telegraph) ?? null,
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
   };
@@ -458,7 +457,7 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
     executeCycleNote: monster.skillKit.execute
-      ? `${monster.skillKit.execute.name} isn't part of the weighted roll — it fires once every ~${EXECUTE_COOLDOWN_TURNS + 2} rounds (1 charge turn + 1 release turn + ${EXECUTE_COOLDOWN_TURNS} cooldown turns), always for its own row's damage regardless of the roll above.`
+      ? `${monster.skillKit.execute.name} is a telegraph, shown on its own row rather than in the roll above — it charges for 1 turn, releases on the next, and can charge again ${monster.skillKit.execute.cooldownTurns ?? 0} turns after it first charged.`
       : null,
   };
 }

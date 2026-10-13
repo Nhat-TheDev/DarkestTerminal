@@ -7,7 +7,6 @@ interface BalanceConfig {
     statusLastsFightFromTurns: number;
     defenseMitigationX: number;
     defenseMitigationY: number;
-    executeCooldownTurns: number;
     defensiveLowHpSkillChance: number;
     /** Used when an effect sets no `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;

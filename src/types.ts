@@ -578,11 +578,9 @@ export interface MonsterArchetype {
   roles: MonsterTier[];
   /** Never enters any random roll. */
   finalBoss?: boolean;
-  /** A skill is usable at a tier when that tier's `actionWeights` name it; excludes `executeSkillId`. */
+  /** A skill is usable at a tier when that tier's `actionWeights` name it. */
   skillIds: Id[];
   expReward: number;
-  /** Charged finisher outside the weighted roll: telegraphs a turn, always releases, then cools down. */
-  executeSkillId?: Id;
   /** Elite/boss phases: each replaces its tier's weights once HP falls below its threshold. */
   phases?: MonsterPhase[];
   /** `"random"`: targets are picked uniformly, ignoring aggro. */
@@ -618,9 +616,6 @@ export interface Monster {
   traitIds?: Id[];
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;
-  executeCooldownTurns?: number;
-  isChargingExecute?: boolean;
-  executeTargetId?: Id;
   /** Turns left on each skill's cooldown. */
   skillCooldowns?: Record<Id, number>;
   /** How many times each skill with `usesPerCombat` has been cast. */

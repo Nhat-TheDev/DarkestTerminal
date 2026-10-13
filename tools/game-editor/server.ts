@@ -44,7 +44,7 @@ function applyNumericPatch(target: Record<string, unknown>, patch: Record<string
 const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const;
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
 const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed", "expReward"] as const;
-const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "executeCooldownTurns", "defensiveLowHpSkillChance"] as const;
+const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "defensiveLowHpSkillChance"] as const;
 const BALANCE_SURVIVAL_FIELDS = [
   "initialFear", "initialSatiety", "satietyDrainCombat", "satietyDrainEvent", "exhaustedThreshold",
   "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",

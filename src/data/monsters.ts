@@ -77,9 +77,7 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
       throw new Error(`data/monsters.json: "${archetype.id}" has no role "normal" so it must not set "powerTier"`);
     }
     const declared = new Set(archetype.skillIds);
-    for (const id of archetype.executeSkillId ? [...archetype.skillIds, archetype.executeSkillId] : archetype.skillIds) {
-      getMonsterSkill(id);
-    }
+    for (const id of archetype.skillIds) getMonsterSkill(id);
     for (const [tier, weights] of Object.entries(archetype.actionWeights ?? {})) {
       for (const key of Object.keys(weights)) {
         if (key !== "basicAttack" && !declared.has(key)) {
@@ -193,7 +191,6 @@ let monsterCounter = 0;
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
 const TIER_NAME_SUFFIX = { elite: t("monster.eliteNameSuffix"), boss: t("monster.bossNameSuffix") };
 
-export const EXECUTE_COOLDOWN_TURNS = BALANCE.combat.executeCooldownTurns;
 export const MONSTER_TYPE_MULTIPLIER = GROWTH_WEIGHTS.monsterGrowthWeights;
 
 export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { tier?: MonsterTier }): Monster {
@@ -231,6 +228,17 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
       (1 + race.statBuff.defensePercent / 100)
   );
   const speed = Math.max(1, archetype.baseSpeed + race.statBuff.speedFlat);
+  // A telegraph can declare an opening delay so it never opens the fight; a normal-tier monster
+  // never carries guard-room state.
+  const skillCooldowns =
+    tier === "normal"
+      ? undefined
+      : Object.fromEntries(
+          archetype.skillIds
+            .map(getMonsterSkill)
+            .filter((s) => s.initialCooldownTurns)
+            .map((s) => [s.id, s.initialCooldownTurns!])
+        );
 
   monsterCounter += 1;
   return {
@@ -250,7 +258,6 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     traitIds: archetype.traitIds,
     activeStatusEffects: [],
     expReward: tierMultiplier ? Math.round(scaledExp * tierMultiplier.exp) : scaledExp,
-    executeCooldownTurns: tier === "boss" ? EXECUTE_COOLDOWN_TURNS : undefined,
-    isChargingExecute: false,
+    skillCooldowns,
   };
 }

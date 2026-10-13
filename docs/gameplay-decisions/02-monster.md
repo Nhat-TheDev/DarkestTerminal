@@ -215,47 +215,47 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `elite-strike-skeleton-guard` | Cleaving Strike | singleEnemy | damage 26 + 100% ATK | Skeleton Guard (defensive) |
 | `elite-cleave-skeleton-guard` | Sweeping Cleave | allEnemies | damage 13 + 100% ATK | Skeleton Guard (defensive) |
 | `boss-debuff-skeleton-guard` | Crush | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Skeleton Guard (defensive) |
-| `boss-execute-skeleton-guard` | Finishing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-skeleton-guard` | Finishing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Skeleton Guard (defensive) |
 | `elite-strike-giant-spider` | Venomous Bite | singleEnemy | damage 26 + 100% ATK | Giant Spider (aggressive) |
 | `elite-cleave-giant-spider` | Web Barrage | allEnemies | damage 13 + 100% ATK | Giant Spider (aggressive) |
 | `boss-debuff-giant-spider` | Web Trap | singleEnemy | damage 24 + 100% ATK; status poisoned (3 turns) | Giant Spider (aggressive) |
-| `boss-execute-giant-spider` | Death Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-giant-spider` | Death Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Giant Spider (aggressive) |
 | `elite-strike-dragon` | Claw Rake | singleEnemy | damage 26 + 100% ATK | Dragon (aggressive) |
 | `elite-cleave-dragon` | Fire Breath | allEnemies | damage 13 + 100% ATK | Dragon (aggressive) |
 | `boss-debuff-dragon` | Scorching Breath | singleEnemy | damage 24 + 100% ATK; status burning (2 turns) | Dragon (aggressive) |
-| `boss-execute-dragon` | Inferno Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-dragon` | Inferno Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Dragon (aggressive) |
 | `elite-strike-zombie-knight` | Rusted Blade | singleEnemy | damage 26 + 100% ATK | Zombie Knight (defensive) |
 | `elite-cleave-zombie-knight` | Rotting Swing | allEnemies | damage 13 + 100% ATK | Zombie Knight (defensive) |
 | `boss-debuff-zombie-knight` | Diseased Strike | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Zombie Knight (defensive) |
-| `boss-execute-zombie-knight` | Grave Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-zombie-knight` | Grave Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Zombie Knight (defensive) |
 | `elite-strike-dark-knight` | Shadow Slash | singleEnemy | damage 26 + 100% ATK | Dark Knight (defensive) |
 | `elite-cleave-dark-knight` | Dark Wave | allEnemies | damage 13 + 100% ATK | Dark Knight (defensive) |
 | `boss-debuff-dark-knight` | Crushing Blow | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Dark Knight (defensive) |
-| `boss-execute-dark-knight` | Abyssal Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-dark-knight` | Abyssal Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Dark Knight (defensive) |
 | `elite-strike-orc-chieftain` | Skullsplitter | singleEnemy | damage 26 + 100% ATK | Orc Chieftain (aggressive) |
 | `elite-cleave-orc-chieftain` | Rout | allEnemies | damage 13 + 100% ATK | Orc Chieftain (aggressive) |
 | `boss-debuff-orc-chieftain` | Helm Crusher | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Orc Chieftain (aggressive) |
-| `boss-execute-orc-chieftain` | The Last Trophy | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-orc-chieftain` | The Last Trophy | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Orc Chieftain (aggressive) |
 | `elite-strike-vampire-lord` | Crimson Talon | singleEnemy | damage 26 + 100% ATK | Vampire Lord (opportunistic) |
 | `elite-cleave-vampire-lord` | Scarlet Mist | allEnemies | damage 13 + 100% ATK | Vampire Lord (opportunistic) |
 | `boss-debuff-vampire-lord` | Opened Vein | singleEnemy | damage 24 + 100% ATK; status bleeding (3 turns) | Vampire Lord (opportunistic) |
-| `boss-execute-vampire-lord` | Final Draught | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-vampire-lord` | Final Draught | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Vampire Lord (opportunistic) |
 | `elite-strike-void` | Grasping Remnant | singleEnemy | damage 26 + 100% ATK | Void Amalgamation (aggressive) |
 | `elite-cleave-void` | Unravelling Tide | allEnemies | damage 13 + 100% ATK | Void Amalgamation (aggressive) |
 | `boss-debuff-void` | Dissolution | singleEnemy | damage 24 + 100% ATK; status corroded (2 turns) | Void Amalgamation (aggressive) |
-| `boss-execute-void` | Subsumed | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-void` | Subsumed | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Void Amalgamation (aggressive) |
 | `elite-strike-ancient-golem` | Stoneshear | singleEnemy | damage 26 + 100% ATK | Ancient Golem (defensive) |
 | `elite-cleave-ancient-golem` | Tremor | allEnemies | damage 13 + 100% ATK | Ancient Golem (defensive) |
 | `boss-debuff-ancient-golem` | Grinding Weight | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Ancient Golem (defensive) |
-| `boss-execute-ancient-golem` | Sealing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-ancient-golem` | Sealing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Ancient Golem (defensive) |
 | `elite-strike-lich` | Withering Touch | singleEnemy | damage 26 + 100% ATK | Lich (opportunistic) |
 | `elite-cleave-lich` | Grave Wind | allEnemies | damage 13 + 100% ATK | Lich (opportunistic) |
 | `boss-debuff-lich` | Hollow Sight | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | Lich (opportunistic) |
-| `boss-execute-lich` | Name Struck Out | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-lich` | Name Struck Out | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | Lich (opportunistic) |
 | `elite-strike-the-founder` | Paid In Full | singleEnemy | damage 26 + 100% ATK | What's Left of Him (aggressive) |
 | `elite-cleave-the-founder` | The Same Price | allEnemies | damage 13 + 100% ATK | What's Left of Him (aggressive) |
 | `boss-debuff-the-founder` | What's Left Listening | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | What's Left of Him (aggressive) |
-| `boss-execute-the-founder` | Everything You Asked For | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `boss-execute-the-founder` | Everything You Asked For | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | What's Left of Him (aggressive) |
 | `self-destruct` | Self-Destruct | allEnemies | damage 30 + 200% ATK (ignores 30% defense); damage 99999 + 100% ATK (target self) | Lava Slime (defensive) |
 <!-- docs:end -->
 
