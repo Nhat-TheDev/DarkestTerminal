@@ -480,3 +480,64 @@ describe("Loading a save after a data change", () => {
     expect(migrated.shownFloorMilestoneIds).toEqual([omenId]);
   });
 });
+
+describe("a save taken mid-fight keeps a guard-room monster's state", () => {
+  function midFight(game: Game) {
+    game.currentSaveSlot = "slot1";
+    const boss = spawnMonster("lich", 1, { tier: "boss" });
+    const add = spawnMonster("skeleton", 1);
+    add.summonerId = boss.id;
+    add.expReward = 0;
+    boss.charging = { skillId: "name-struck-out", targetIds: [game.state.party[0]!.id] };
+    boss.enteredPhaseIndexes = [0];
+    boss.skillCooldowns = { "ledger-mark": 2, "name-struck-out": 3 };
+    boss.skillUses = { "name-struck-out": 1 };
+    game.ctx.monsters.push(boss, add);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id, add.id], game.ctx, true);
+    // Lich has no shell of its own; one is set after startCombat (which forms real shells) to exercise the field.
+    boss.shell = { state: "broken", hitsLeft: 0, ownTurnsSinceBreak: 1 };
+    return { boss, add };
+  }
+  const roundTrip = (game: Game) => {
+    saveRun(game);
+    return gameFromSave(loadSave("slot1"), "slot1");
+  };
+
+  test("charging, phase, cooldowns, uses, shell and summoner all come back", () => {
+    withGame(14, (game) => {
+      const { boss, add } = midFight(game);
+      const resumed = roundTrip(game);
+      expect(resumed.ctx.monsters.find((m) => m.id === boss.id)).toEqual(boss);
+      expect(resumed.ctx.monsters.find((m) => m.id === add.id)).toEqual(add);
+      expect(resumed.state.combat!.combatants).toEqual(game.state.combat!.combatants);
+    });
+  });
+
+  type Saved = ReturnType<typeof spawnMonster>;
+  const corruptions: [string, (boss: Saved, add: Saved) => void][] = [
+    ["a shell in an unknown state", (m) => { (m.shell as any).state = "cracked"; }],
+    ["a shell with a fractional hit count", (m) => { m.shell!.hitsLeft = 1.5; }],
+    ["a charge on a skill that does not exist", (m) => { m.charging!.skillId = "nope"; }],
+    ["a charge with a non-string target", (m) => { (m.charging as any).targetIds = [7]; }],
+    ["a negative cooldown", (m) => { m.skillCooldowns!["ledger-mark"] = -1; }],
+    ["a negative use count", (m) => { m.skillUses!["name-struck-out"] = -1; }],
+    ["a phase index that is not an integer", (m) => { (m.enteredPhaseIndexes as any) = ["first"]; }],
+    ["a summoner that is not in the saved list", (_boss, add) => { add.summonerId = "no-such-monster"; }],
+  ];
+  for (const [label, corrupt] of corruptions) {
+    test(`a save with ${label} is refused, and its slot reads as empty`, () => {
+      withGame(15, (game) => {
+        const { boss, add } = midFight(game);
+        saveRun(game);
+        const save = loadSave("slot1");
+        corrupt(save.monsters.find((m) => m.id === boss.id)!, save.monsters.find((m) => m.id === add.id)!);
+        expect(() => gameFromSave(save, "slot1")).toThrow(/validation/);
+        writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+        expect(listSlots().find((slot) => slot.id === "slot1")!.meta).toBeNull();
+      });
+    });
+  }
+});

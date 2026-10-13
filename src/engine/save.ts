@@ -7,6 +7,7 @@ import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
+import { MONSTER_SKILLS } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
@@ -140,6 +141,32 @@ function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
   return catalog.some((entry) => entry.id === id);
 }
 
+const isCount = (n: unknown): boolean => Number.isInteger(n) && (n as number) >= 0;
+const areCounts = (record: Record<Id, number> | undefined): boolean => record === undefined || Object.values(record).every(isCount);
+
+/**
+ * The per-fight state a guard-room monster carries (`charging`, entered phases, skill cooldowns and
+ * uses, `shell`, `summonerId`) is saved with the run and read back mid-fight, so a hand-edited or
+ * truncated file is refused here rather than failing on some later turn. A monster without any of
+ * these fields (every normal-tier monster) passes untouched.
+ */
+export function isSaveMonstersValid(monsters: Monster[]): boolean {
+  const ids = new Set(monsters.map((m) => m.id));
+  return monsters.every((m) => {
+    if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
+    if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
+    if (m.charging !== undefined) {
+      if (!existsInCatalog(MONSTER_SKILLS, m.charging.skillId)) return false;
+      if (!Array.isArray(m.charging.targetIds) || !m.charging.targetIds.every((id) => typeof id === "string")) return false;
+    }
+    if (m.shell !== undefined) {
+      if (m.shell.state !== "intact" && m.shell.state !== "broken") return false;
+      if (!isCount(m.shell.hitsLeft) || !isCount(m.shell.ownTurnsSinceBreak)) return false;
+    }
+    return m.summonerId === undefined || ids.has(m.summonerId);
+  });
+}
+
 // Skips inventory item-id existence on purpose — migrateGameState already prunes unknown ids on
 // load, so checking here would hide old-but-valid saves that migration would fix cleanly.
 export function isSaveStateValid(state: GameState): boolean {
@@ -184,7 +211,11 @@ export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
     try {
       const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
-      const loadable = isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state));
+      const loadable =
+        isSaveVersionAllowed(save.meta.saveVersion) &&
+        isDevDumpAllowed(save.meta) &&
+        isSaveStateValid(migrateGameState(save.state)) &&
+        isSaveMonstersValid(save.monsters ?? []);
       return { id, meta: loadable ? save.meta : null };
     } catch {
       return { id, meta: null };
@@ -225,6 +256,7 @@ export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   const state = migrateGameState(save.state);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
   const monsters = migrateMonsters(save.monsters);
+  if (!isSaveMonstersValid(monsters)) throw new Error("Save state failed validation");
   const summons = migrateSummons(save.summons ?? []);
   pruneOrphanedSummonRefs(state, summons);
   const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
