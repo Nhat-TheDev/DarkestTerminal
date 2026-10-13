@@ -38,14 +38,19 @@ export function pickAnyAction(
   return { skillId: skill.id, targets };
 }
 
-/** Pins `combat.damageVariancePercent` to 0 for the enclosing describe: a test that asserts an exact damage or rng-draw count is about the formula, not the roll. */
-export function withoutDamageVariance(): void {
-  let saved = BALANCE.combat.damageVariancePercent;
+/** Pins fields of `BALANCE.combat` for the enclosing describe and puts them back after it. */
+export function pinCombatBalance(values: Partial<typeof BALANCE.combat>): void {
+  const saved: Partial<typeof BALANCE.combat> = {};
   beforeAll(() => {
-    saved = BALANCE.combat.damageVariancePercent;
-    BALANCE.combat.damageVariancePercent = 0;
+    Object.assign(saved, Object.fromEntries(Object.keys(values).map((key) => [key, BALANCE.combat[key as keyof typeof BALANCE.combat]])));
+    Object.assign(BALANCE.combat, values);
   });
   afterAll(() => {
-    BALANCE.combat.damageVariancePercent = saved;
+    Object.assign(BALANCE.combat, saved);
   });
+}
+
+/** A describe that asserts an exact damage, heal or rng-draw count is about the formula, not the dice: no variance and no base crit. */
+export function withoutDamageRolls(): void {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
 }

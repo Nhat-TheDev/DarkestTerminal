@@ -149,6 +149,8 @@ export interface SkillDefinition {
   effects?: SkillEffect[];
   slot: 0 | 1 | 2 | 3 | 4 | 5;
   unlockLevel: number;
+  /** Set only on the stand-in skill built for a used item (`actionDefinition`): an item's damage and heal never crit. */
+  fromItem?: true;
   usesPerCombat?: number;
   cooldownTurns?: number;
   isUltimate?: boolean;

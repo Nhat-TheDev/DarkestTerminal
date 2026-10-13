@@ -3,7 +3,7 @@ import { applySkillEffects, startCombat } from "../src/engine/combat";
 import { getSkill, getEffectiveSkill } from "../src/data/classes";
 import { mitigatedOffense } from "../src/engine/resolver";
 import { spawnMonster } from "../src/data/monsters";
-import { makeCtx, withoutDamageVariance } from "./helpers";
+import { makeCtx, withoutDamageRolls } from "./helpers";
 
 /** A floor-1 monster's HP pool is far too small to survive a high-level Archer's hit at all,
  *  crit or not — every trial would one-shot and clamp `dealt` to the same maxHp value regardless
@@ -16,7 +16,7 @@ function tankyTarget() {
 }
 
 describe("Archer passive: character-level crit", () => {
-  withoutDamageVariance();
+  withoutDamageRolls();
   test("quick-shot (no innate crit) can now crit at a level-35 Archer's +8% rate", () => {
     const skill = getSkill("quick-shot");
     const trials = 2000;

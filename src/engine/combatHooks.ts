@@ -90,7 +90,7 @@ const healOnKillHook: SkillEffectHooks = {
  *  `data/status-effects.json`'s "poisoned-ii"/"-iii" `rankOf: "poisoned"`). The flat term is fixed,
  *  not attack-scaled (confirmed). */
 const roguePoisonBonusHook: SkillEffectHooks = {
-  onDamageDealt(source, target, damage, _ctx, log) {
+  onDamageDealt(source, target, damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "rogue") return;
     const passive = getClass("rogue").passiveSkill;
     if (!passive.requiresTargetStatusId) return;
@@ -109,7 +109,7 @@ const roguePoisonBonusHook: SkillEffectHooks = {
       { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,
       target,
-      { log }
+      { log, rollDamage: () => ctx.rng.next() }
     );
   },
 };

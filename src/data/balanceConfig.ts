@@ -9,6 +9,8 @@ interface BalanceConfig {
     defensiveLowHpSkillChance: number;
     /** Shared crit-damage multiplier (as a %) for any `SkillEffect.critChance` that doesn't set its own `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
+    /** Chance (as a %) every direct damage hit and heal has to crit, added to the skill's own `critChance`; 0 turns it off. A crit multiplies by `defaultCritMultiplierPercent` unless the effect sets its own. */
+    baseCritChancePercent: number;
     /** Every direct damage hit is scaled by a random factor within ±this %, rounded at random so a small hit still moves; 0 turns it off. */
     damageVariancePercent: number;
     /** A normal-tier defensive monster below this share of max HP reaches for its self-targeted skill. */

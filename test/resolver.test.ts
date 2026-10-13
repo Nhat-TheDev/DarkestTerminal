@@ -1,9 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory } from "../src/engine/resolver";
-import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillEffect } from "../src/types";
-import { makeCtx } from "./helpers";
+import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
+import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
-import { startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
+import { applySkillEffects, startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
@@ -605,15 +605,16 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
 
 
 describe("damage variance (combat.damageVariancePercent)", () => {
+  pinCombatBalance({ baseCritChancePercent: 0 });
   function setup() {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;
     const target = ctx.party[1]!;
     target.maxHp = target.hp = 1_000_000;
     const base = 100 + mitigatedOffense(attacker.attack, target.defense);
-    const hit = (rollVariance?: () => number, source = attacker, victim = target) => {
+    const hit = (rollDamage?: () => number, source = attacker, victim = target) => {
       victim.hp = victim.maxHp;
-      resolveSkillEffect({ kind: "damage", amount: 100 }, source, victim, { log: [], rollVariance });
+      resolveSkillEffect({ kind: "damage", amount: 100 }, source, victim, { log: [], rollDamage });
       return victim.maxHp - victim.hp;
     };
     return { ctx, attacker, target, base, hit };
@@ -654,7 +655,7 @@ describe("damage variance (combat.damageVariancePercent)", () => {
     for (let i = 0; i < 400; i++) {
       target.hp = target.maxHp;
       const effect: SkillEffect = { kind: "damage", amount: 10 - mitigatedOffense(attacker.attack, target.defense) };
-      resolveSkillEffect(effect, attacker, target, { log: [], rollVariance: () => ctx.rng.next() });
+      resolveSkillEffect(effect, attacker, target, { log: [], rollDamage: () => ctx.rng.next() });
       seen.add(target.maxHp - target.hp);
     }
     expect([...seen].sort((a, b) => a - b)).toEqual([9, 10, 11]);
@@ -665,12 +666,12 @@ describe("damage variance (combat.damageVariancePercent)", () => {
     const bearer = ctx.party[0]!;
     let draws = 0;
     const before = bearer.hp;
-    resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log: [], rollVariance: () => (draws++, 0.99) });
+    resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log: [], rollDamage: () => (draws++, 0.99) });
     expect(before - bearer.hp).toBe(7);
     expect(draws).toBe(0);
   });
 
-  test("no rollVariance, or a variance of 0, leaves the hit exact and spends no draw", () => {
+  test("no rollDamage, or a variance of 0, leaves the hit exact and spends no draw", () => {
     const { base, hit } = setup();
     expect(hit()).toBe(Math.round(base));
     const saved = BALANCE.combat.damageVariancePercent;
@@ -719,5 +720,196 @@ describe("LogEntry.hit on a damage line", () => {
     const target = ctx.party[2]!;
     target.hp = 0;
     expect(dealt({ kind: "damage", amount: 10 }, target, attacker).hit).toBeUndefined();
+  });
+});
+
+describe("base crit (combat.baseCritChancePercent)", () => {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 1 });
+
+  function setup() {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.maxHp = target.hp = 1_000_000;
+    const base = 100 + mitigatedOffense(attacker.attack, target.defense);
+    const hit = (caller: { isCrit?: boolean; rollDamage?: () => number }, effect: SkillEffect = { kind: "damage", amount: 100 }) => {
+      target.hp = target.maxHp;
+      const log: LogEntry[] = [];
+      resolveSkillEffect(effect, attacker, target, { log, ...caller });
+      return { dealt: target.maxHp - target.hp, text: log[0]!.text };
+    };
+    return { ctx, attacker, target, base, hit };
+  }
+
+  test("a hit crits when the draw falls under the base chance, at the default crit multiplier", () => {
+    const { base, hit } = setup();
+    const crit = hit({ rollDamage: () => 0.0099 });
+    expect(crit.dealt).toBe(Math.round(base * (BALANCE.combat.defaultCritMultiplierPercent / 100)));
+    expect(crit.text.startsWith("Critical Hit!")).toBe(true);
+    const plain = hit({ rollDamage: () => 0.0101 });
+    expect(plain.dealt).toBe(Math.round(base));
+    expect(plain.text.startsWith("Critical Hit!")).toBe(false);
+  });
+
+  test("an effect's own critMultiplierPercent replaces the default on a base crit", () => {
+    const { base, hit } = setup();
+    expect(hit({ rollDamage: () => 0 }, { kind: "damage", amount: 100, critMultiplierPercent: 200 }).dealt).toBe(Math.round(base * 2));
+  });
+
+  test("a caller that already rolled is not rolled for again, and no callback means no crit", () => {
+    const { base, hit } = setup();
+    let draws = 0;
+    const counted = () => (draws++, 0);
+    expect(hit({ isCrit: false, rollDamage: counted }).dealt).toBe(Math.round(base));
+    expect(hit({ isCrit: true, rollDamage: counted }).dealt).toBe(Math.round(base * 1.5));
+    expect(draws).toBe(0);
+    expect(hit({}).dealt).toBe(Math.round(base));
+  });
+
+  test("a base chance of 0 spends no draw", () => {
+    const { base, hit } = setup();
+    const saved = BALANCE.combat.baseCritChancePercent;
+    BALANCE.combat.baseCritChancePercent = 0;
+    try {
+      let draws = 0;
+      expect(hit({ rollDamage: () => (draws++, 0) }).dealt).toBe(Math.round(base));
+      expect(draws).toBe(0);
+    } finally {
+      BALANCE.combat.baseCritChancePercent = saved;
+    }
+  });
+
+  test("a damage-over-time tick never crits, even with a callback that would", () => {
+    const { ctx } = makeCtx();
+    const bearer = ctx.party[0]!;
+    const before = bearer.hp;
+    let draws = 0;
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log, rollDamage: () => (draws++, 0) });
+    expect(before - bearer.hp).toBe(7);
+    expect(draws).toBe(0);
+    expect(log[0]!.text.startsWith("Critical")).toBe(false);
+  });
+
+  test("a direct heal crits at the same chance and multiplier, with its own log line, and has no variance", () => {
+    const { ctx } = makeCtx();
+    const healer = ctx.party[0]!;
+    const patient = ctx.party[1]!;
+    const heal = (roll: number) => {
+      patient.maxHp = 1000;
+      patient.hp = 100;
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "heal", amount: 20 }, healer, patient, { log, rollDamage: () => roll });
+      return { healed: patient.hp - 100, text: log[0]!.text };
+    };
+    const crit = heal(0);
+    expect(crit.healed).toBe(Math.round(20 * (BALANCE.combat.defaultCritMultiplierPercent / 100)));
+    expect(crit.text).toBe(`Critical Heal! ${patient.name} recovers ${crit.healed} HP.`);
+    expect(heal(0.5)).toEqual({ healed: 20, text: `${patient.name} recovers 20 HP.` });
+  });
+
+  test("a heal-over-time tick never crits, but a healer healing itself with a skill can", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.maxHp = 1000;
+    c.hp = 100;
+    resolveSkillEffect({ kind: "heal", amount: 20 }, c, c, { log: [] });
+    expect(c.hp).toBe(120);
+    c.hp = 100;
+    resolveSkillEffect({ kind: "heal", amount: 20 }, c, c, { log: [], rollDamage: () => 0 });
+    expect(c.hp).toBe(130);
+  });
+});
+
+describe("crit and variance inside a cast", () => {
+  const strike = (extra: Partial<SkillDefinition> = {}, effect: Partial<SkillEffect> = {}): SkillDefinition => ({
+    id: "test-strike",
+    name: "Test Strike",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, ...effect }],
+    slot: 1,
+    unlockLevel: 1,
+    ...extra,
+  });
+
+  function cast(skill: SkillDefinition, rng: () => number, who: (ctx: ReturnType<typeof makeCtx>["ctx"]) => ReturnType<typeof makeCtx>["ctx"]["party"][number] = (ctx) => ctx.party.find((p) => p.classId === "vanguard")!) {
+    const { ctx } = makeCtx();
+    const source = who(ctx);
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.hp = rat.maxHp = 1_000_000;
+    rat.defense = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    ctx.rng.next = rng;
+    const log: LogEntry[] = [];
+    applySkillEffects(skill, source, [rat], combat, ctx, log);
+    return log.filter((l) => l.kind === "attack").map((l) => l.text);
+  }
+  const crits = (lines: string[]) => lines.filter((l) => l.startsWith("Critical Hit!")).length;
+
+  describe("with the base chance in play", () => {
+    pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 1 });
+
+    test("the base chance adds to a skill's own critChance", () => {
+      expect(crits(cast(strike({}, { critChance: 0.3 }), () => 0.305))).toBe(1);
+      expect(crits(cast(strike({}, { critChance: 0.3 }), () => 0.315))).toBe(0);
+    });
+
+    test("an item's damage never crits, whatever its chance or the draw", () => {
+      expect(crits(cast(strike({}, { critChance: 1 }), () => 0))).toBe(1);
+      expect(crits(cast(strike({ fromItem: true }, { critChance: 1 }), () => 0))).toBe(0);
+    });
+
+    test("the Archer's passive lifts a damage crit but not a heal", () => {
+      const archer = (ctx: ReturnType<typeof makeCtx>["ctx"]) => {
+        const a = ctx.party.find((p) => p.classId === "archer")!;
+        a.level = 35;
+        return a;
+      };
+      expect(crits(cast(strike(), () => 0.05, archer))).toBe(1);
+      const { ctx } = makeCtx();
+      const a = archer(ctx);
+      a.maxHp = 1000;
+      a.hp = 100;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      ctx.rng.next = () => 0.05;
+      const log: LogEntry[] = [];
+      applySkillEffects({ ...strike(), target: "self", effects: [{ kind: "heal", amount: 20 }] }, a, [a], combat, ctx, log);
+      expect(a.hp).toBe(120);
+      expect(log.some((l) => l.text.startsWith("Critical"))).toBe(false);
+    });
+  });
+
+  describe("with both rolls wide open", () => {
+    pinCombatBalance({ damageVariancePercent: 3, baseCritChancePercent: 50 });
+
+    test("each hit of a multi-hit skill and each target rolls its own crit and variance", () => {
+      const { ctx } = makeCtx(11);
+      const source = ctx.party.find((p) => p.classId === "vanguard")!;
+      const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
+      for (const r of rats) {
+        r.hp = r.maxHp = 1_000_000;
+        r.defense = 0;
+      }
+      const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+      const log: LogEntry[] = [];
+      const skill = strike({ target: "allEnemies" }, { amount: 100, hitCountRange: { min: 3, max: 3 } });
+      applySkillEffects(skill, source, rats, combat, ctx, log);
+      const lines = log.filter((l) => l.kind === "attack");
+      expect(lines).toHaveLength(9);
+      const crit = lines.filter((l) => l.text.startsWith("Critical Hit!"));
+      expect(crit.length).toBeGreaterThan(0);
+      expect(crit.length).toBeLessThan(lines.length);
+      for (const rat of rats) {
+        const hits = log.filter((l) => l.hit?.targetId === rat.id);
+        expect(hits).toHaveLength(3);
+      }
+      const plain = lines.filter((l) => !l.text.startsWith("Critical Hit!")).map((l) => l.hit!.amount);
+      expect(new Set(plain).size).toBeGreaterThan(1);
+      for (const amount of plain) expect(amount).toBeGreaterThanOrEqual(97 - 1);
+      for (const amount of plain) expect(amount).toBeLessThanOrEqual(103 + 1);
+    });
   });
 });

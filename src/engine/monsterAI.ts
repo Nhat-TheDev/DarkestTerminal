@@ -118,7 +118,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     return;
   }
   combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: target.name }), kind: "attack" });
-  const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log, rollVariance: () => ctx.rng.next() });
+  const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log, rollDamage: () => ctx.rng.next() });
   if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
   if (damageDealt > 0) applyMonsterHitFear(actor, target, combat, ctx);
 }

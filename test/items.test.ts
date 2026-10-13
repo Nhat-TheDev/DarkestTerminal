@@ -8,7 +8,7 @@ import { BALANCE } from "../src/data/balanceConfig";
 import { getArchetype } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
 import type { CombatantRef, ItemDefinition, StatusEffectDefinition } from "../src/types";
-import { makeCtx, spawnInto } from "./helpers";
+import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { STATUS_EFFECTS, COMBAT_STAT_LABEL, formatStatusEffectMechanics, statusMechanicsParts } from "../src/data/statusEffects";
 
 describe("items", () => {
@@ -417,5 +417,47 @@ describe("status effect mechanics text", () => {
     const totem = STATUS_EFFECTS.find((d) => d.id === "totems-strength")!;
     expect(formatStatusEffectMechanics(totem, { applied: { attack: 8 } })).toBe("+8 attack");
     expect(formatStatusEffectMechanics(totem)).toBe("+0 attack");
+  });
+});
+
+describe("items never crit", () => {
+  pinCombatBalance({ baseCritChancePercent: 100, damageVariancePercent: 0 });
+
+  test("a health potion heals its exact amount and a bomb deals its exact damage, with every crit chance at 100%", () => {
+    const bomb: ItemDefinition = {
+      id: "test-bomb",
+      name: "Test Bomb",
+      description: "",
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 30, damageType: "fire", offenseMultiplierPercent: 0 }],
+      tier: "common",
+    };
+    ITEMS.push(bomb);
+    try {
+      const { ctx } = makeCtx();
+      const vanguard = ctx.party[0]!;
+      vanguard.hp = vanguard.maxHp - 30;
+      ctx.inventory["small-health-potion"] = 1;
+      ctx.inventory[bomb.id] = 1;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      rat.attack = 0;
+      rat.defense = 0;
+      rat.hp = rat.maxHp = 500;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const self: CombatantRef = { kind: "character", id: vanguard.id };
+      const target: CombatantRef = { kind: "monster", id: rat.id };
+      expect(queueItemAction(combat, self, "small-health-potion", [self], ctx)).toBeNull();
+      expect(queueItemAction(combat, { kind: "character", id: ctx.party[1]!.id }, bomb.id, [target], ctx)).toBeNull();
+      resolveRound(combat, ctx);
+      expect(combat.log.some((l) => l.text.includes("recovers 30 HP"))).toBe(true);
+      expect(rat.hp).toBe(500 - 30);
+      const bombLines = combat.log.filter((l) => l.kind === "attack" && l.text.includes("Test Bomb"));
+      expect(bombLines).toHaveLength(1);
+      expect(bombLines[0]!.text.startsWith("Critical")).toBe(false);
+      // The rat's own attack is a direct hit and does crit at 100%: only the items are exempt.
+      expect(combat.log.some((l) => l.text.startsWith("Critical Hit!"))).toBe(true);
+    } finally {
+      ITEMS.splice(ITEMS.indexOf(bomb), 1);
+    }
   });
 });

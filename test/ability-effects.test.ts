@@ -10,7 +10,7 @@ import { ABILITIES, getAbility, rollAbility, formatAbilityEffect } from "../src/
 import { loadProfile, saveProfile, unlockAbility, lockAbility, isAbilityUnlocked, type Profile } from "../src/engine/profile";
 import { Game } from "../src/engine/game";
 import { BALANCE } from "../src/data/balanceConfig";
-import { makeCtx, spawnInto, withoutDamageVariance } from "./helpers";
+import { makeCtx, spawnInto, withoutDamageRolls } from "./helpers";
 import { migrateGameState } from "../src/engine/migration";
 import { CLASSES } from "../src/data/classes";
 import { buildRewardEntries } from "../src/ui/state";
@@ -83,7 +83,7 @@ describe("Abilities: stat boosts", () => {
 });
 
 describe("Abilities: healOnKill and autoDamage scale off the bearer's base stats", () => {
-  withoutDamageVariance();
+  withoutDamageRolls();
   test("healOnKill takes the larger of the flat amount and minPercent of the bearer's base max HP", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
@@ -534,7 +534,7 @@ describe("Abilities: old saves", () => {
 });
 
 describe("Abilities: alwaysHit rng cost", () => {
-  withoutDamageVariance();
+  withoutDamageRolls();
   test("a character with no alwaysHit Ability spends no rng draw on the alwaysHit roll", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;

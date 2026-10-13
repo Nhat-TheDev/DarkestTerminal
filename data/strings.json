@@ -122,6 +122,7 @@
   "resolver.damageWithSkillCrit": "Critical Hit! {{target}} takes {{amount}} damage from {{source}}'s {{skill}}.",
   "resolver.defeated": "{{target}} is defeated.",
   "resolver.heal": "{{target}} recovers {{amount}} HP.",
+  "resolver.healCrit": "Critical Heal! {{target}} recovers {{amount}} HP.",
   "resolver.restoreMp": "{{target}} recovers {{amount}} MP.",
   "resolver.statChange": "{{target}} {{verb}} {{amount}} {{stat}}.",
   "resolver.statusRefresh": "{{actor}} refreshes the {{effect}} effect.",

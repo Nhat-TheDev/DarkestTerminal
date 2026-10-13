@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { applySkillEffects, startCombat, spawnAdditionalSummon } from "../src/engine/combat";
 import { getSkill } from "../src/data/classes";
 import { spawnMonster } from "../src/data/monsters";
-import { makeCtx, withoutDamageVariance } from "./helpers";
+import { makeCtx, withoutDamageRolls } from "./helpers";
 import type { LogEntry } from "../src/types";
 
 function aliveNinjaClones(ctx: ReturnType<typeof makeCtx>["ctx"], ownerId: string) {
@@ -10,7 +10,7 @@ function aliveNinjaClones(ctx: ReturnType<typeof makeCtx>["ctx"], ownerId: strin
 }
 
 describe("Ninja passive: 2nd clone on hit", () => {
-  withoutDamageVariance();
+  withoutDamageRolls();
   test("a Ninja attack landing has a chance to spawn a 2nd shadow clone", () => {
     const trials = 300;
     let spawned = 0;
