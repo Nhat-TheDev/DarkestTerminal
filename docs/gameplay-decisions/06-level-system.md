@@ -112,28 +112,94 @@ DoT (Poisoned/Burning — `effect.amount` fixed, not reduced by defense, `src/en
 
 There's no boss-phase mini-game. See §6.12 for Elite/Boss's own skillset. As with §6.7, a TTK comparison between Elite and Boss on the same floor is something to (re-)run against current data rather than read off a static table here.
 
-### 6.12 Elite/Boss have their own skills — AoE, finishers, random debuffs
+### 6.12 Elite/Boss kits — one kit per guard-room archetype
 
-Elite and real Boss (not applicable to regular monsters, including a guard-room archetype when it spawns in a regular combat room) have a skillset that activates automatically on their own turn (not through `queueAction`/MP/cooldown like the player — monsters are always "free" and always hit, preserving the existing invariant in `resolver.ts`). The skill table applies to every guard-room archetype (`data/monster-skills.json`), each archetype having its own name per its flavor but sharing the same set of trigger mechanics — only the debuff status differs, to give each archetype its own identity (the exact archetype → debuff-status mapping: `data/monster-skills.json`):
+Elite and real Boss monsters (not regular monsters, including a guard-room archetype when it spawns in an ordinary combat room) fight with a **kit** declared in data: a handful of skills in `data/monster-skills.json`, listed in the archetype's `skillIds`, with per-tier weights in `data/monsters.json` (`actionWeights.elite` / `actionWeights.boss`). Every guard-room archetype — Skeleton Guard, the nine guard-only archetypes and The Founder — has its own kit built around what its `description` says it does; there is no shared strike/cleave/debuff/finisher template any more. Monsters do not go through `queueAction`/MP/cooldowns like the player (they are always "free" and always hit — the invariant in `resolver.ts`); a kit is resolved on the monster's own turn by `runMonsterTurn` (`src/engine/monsterAI.ts`).
 
-| Skill (generic name) | Tier | Target | Effect (shape) | Weight |
-|---|---|---|---|---|
-| **Basic Attack** (unscaled) | Elite + Boss | 1 enemy, target chosen via `aiPattern` like a regular monster (`02-monster.md` section 2) | ordinary attack, no elite/boss bonus | `actionWeights.elite.basicAttack` / `actionWeights.boss.basicAttack` |
-| **Strike** (e.g. Cleaving Strike — Skeleton Guard) | Elite + Boss | 1 enemy | `damage`, magnitude per `data/monster-skills.json` | its own skill id under `actionWeights.elite` / `actionWeights.boss` |
-| **Cleave** (e.g. Sweeping Cleave) | Elite + Boss | Whole party | `damage`, magnitude per `data/monster-skills.json` | its own skill id under `actionWeights.elite` / `actionWeights.boss` |
-| **Execute/Finishing Blow** | Boss only | 1 enemy | Large `damage` + partial defense-ignore (`ignoreDefensePercent`), both fields on the execute entry in `data/monster-skills.json` | None — it is `executeSkillId`, a field of its own, precisely because it never goes through the weighted roll. See the charge-up mechanic below; **not** based on the target's %HP |
-| **Debuff** (e.g. Crush — Skeleton Guard) | Boss only | 1 enemy | `damage` + applies 1 archetype-specific debuff status (`weakened`/`poisoned`/`burning`/`stunned`/`blinded`) | its own skill id under `actionWeights.boss` only, so it is unreachable at Elite tier; rolled only on turns the Boss isn't charging up or unleashing Execute |
+Design rules the data keeps (the kit data test under `test/` enforces them):
 
-**Weights are data-driven, not hardcoded**: each archetype's `actionWeights.elite`/`actionWeights.boss` in `data/monsters.json` maps `"basicAttack"` plus each usable skill id to its weight, resolved by weighted-random pick in `pickMonsterAction` (`src/engine/monsterAI.ts`). There is no separate "is this skill allowed at this tier" flag — a skill is usable at a tier exactly when that tier's weights name it, which is why the same Strike appears under both `elite` and `boss` while Debuff appears only under `boss` — read the current weights there rather than trusting a hand-copied percentage here, since the field allows per-archetype tuning. Note that **Basic Attack is always a real, non-trivial possibility on both Elite and Boss turns** (it carries its own weight, not merely a rare fallback) — any damage-verification table covering only Strike/Cleave/Execute understates the actual average damage variance per turn.
+- **Behaviour first.** An archetype differs from the others in what it does, not only in which status its hit applies.
+- **The elite tier is a reduced subset of its own boss kit.** Meeting the elite teaches the party how the monster fights; the boss adds its signature — a telegraph, one or more phases, extra skills. Every skill named at elite tier is also named at boss tier, and no telegraph or phase is reachable at elite tier.
+- **No status effect or damage mechanic appears in more than two archetypes' kits.** Monster summoning is the one deliberate exception (three archetypes use it, each differently). Turn structure — telegraphs, phases, cooldowns, AI rules — and target shape (`targetCount`) are the frame the kits are built in and do not count.
+- **No two telegraphs share a cadence** (`cooldownTurns` together with `initialCooldownTurns`), and two archetypes (Orc Chieftain, Void Amalgamation) have no telegraph at all.
+- **Everything is data.** The engine names no archetype and no skill; a new kit is an edit to `data/*.json`.
 
-The Boss's per-turn priority order: **currently charging?** → unleash Execute → otherwise, **Execute off cooldown?** → start charging (skipping every other action that turn) → otherwise, weighted-random pick over whatever `actionWeights.boss` names. Elite: the same pick over `actionWeights.elite`, which names no Debuff and has no Execute to charge. Once a skill is picked, who it hits and how it reads in the log both come from that skill's own `target` field — the engine has no per-role branch (`docs/technical-decisions.md` §5).
+#### The kits
 
-**Execute — the "charge up, then unleash 1 massive blow" mechanic** (not triggered by target %HP):
+| Archetype | How it fights |
+|---|---|
+| Skeleton Guard | Holds its ground and answers what hits it: a guard stance it recasts when it lapses, a shield bash that can enfeeble, and — boss only — a riposte stance (an attacker takes part of its own hit back) and a telegraphed overhead cut that ignores part of the target's defense. |
+| Giant Spider | Binds first, feeds later: multi-target web barrages that prefer targets not yet webbed, venom that prefers a webbed target, and — boss — a telegraphed cocoon on a webbed target and a feed that punishes the poisoned and the weak. Below a share of its HP it goes into the rafters (smoke cover) and leans on its bites. |
+| Dragon | Fire that wears the party down, then takes to the air: claws, a cooling-down breath that burns everyone (more likely when several are low), a brand that prefers a burning target, and — boss — a telegraphed inferno whose charge turn makes the Dragon untargetable. Its second phase empowers it. |
+| Zombie Knight | Works through its guards, gets back up once: a diseased blade, a guard position on a cooldown for a near-regular rhythm, and — boss — one heal of a large share of its HP below a threshold, and a telegraphed embrace. |
+| Dark Knight | Complete in attack and defence, picks one opponent: a salute that challenges a target (aggro up, fear up), cuts that strongly prefer the challenged target, a parry stance, a fear-raising presence, and a telegraph that is only available once someone is challenged and is aimed at them. Its second phase challenges a new opponent. |
+| Orc Chieftain | A warband leader, no patience, no telegraph: skullsplitter that punishes the weakened, a call that keeps at most one Goblin up, a war cry for the whole warband, a rout across several targets, and — in its second phase — it gets up, enraged, with an Orc Brute. |
+| Vampire Lord | Opens wounds, drinks from them, calls the flock when pressed: bleeding talons, a drink that scales with the target's bleeding stacks, a bat swarm weighted up when low on HP, and a telegraphed lifesteal draught on a bleeding target. |
+| Void Amalgamation | No intent: picks targets uniformly (`targeting: "random"`), reaches for several at once, spills across everyone, mends itself, and subsumes one target for a lifesteal hit. No telegraph, no phase. |
+| Ancient Golem | Cannot be broken quickly: a breakable shell (below), heavy single hits, a slowing tremor, and — boss — a telegraphed sealing blow; its second phase empowers it. |
+| Lich | Arranged the room, raises the dead, strikes a name: withering touch (max HP down), raising skeletons gated on its ally count, a ledger mark that tags a target, and a telegraph that is only available while someone is marked and is aimed at them (and removes the mark on hit). Its second phase marks everyone and raises to the cap. |
+| The Founder | Boss only, two phases, fear that climbs: ropes that reach several targets, one that strikes everyone through defense, a gaze that blinds and raises fear, a telegraphed heavy hit; it knits itself together for a few turns in the first phase and, last, lets the ropes go slack and raises fear across the party. |
 
-- **Its own dedicated trigger mechanism, not a `chance()` roll like Debuff/Cleave**: the Boss tracks `executeCooldownTurns` (initialized to `EXECUTE_COOLDOWN_TURNS` on spawn — `data/balance-config.json` field `combat.executeCooldownTurns`, `src/data/monsters.ts`). When the cooldown hits 0, that turn the Boss **charges up** instead of attacking — it picks 1 target right then (still following `aggro` as normal, via `pickAggroWeighted`) and **locks it in** (`Monster.executeTargetId`), logging a warning naming the target, dealing no damage that turn. On the Boss's next turn, regardless of any other cooldown/roll, it **always** unleashes Execute on exactly the locked-in target (read back from `executeTargetId`, not recalculated), then resets the cooldown.
-- **Damage is nearly fixed, only partially reduced by the target's defense**: the execute skill's base `amount` plus the Boss's `attack`, minus the target's `defense` reduced by its `ignoreDefensePercent` — both fields live on the execute entry in `data/monster-skills.json`.
-- **Target locked at the moment of charging**: the target is chosen based on `aggro` at the moment of charging — a Taunt used before the Boss's charge-up turn in the same round (the `taunt` status's aggro buff, `01-class-skill.md` section 1) can affect who gets locked in. Once locked, changing aggro/taunt on the following round doesn't affect the already-chosen target. A warning log naming the target appears the instant it's locked in.
+The generated skill table in `02-monster.md` lists every skill, its effects and its owners.
 
-`weakened` (`data/status-effects.json`) can be cleared by the Acolyte's Purify (ally branch = `removeStatusEffect`). The remaining guard-room archetypes use their own debuff statuses instead of `weakened` — see `data/monster-skills.json`.
+#### How an elite or boss turn is chosen
 
-**Numeric verification**: re-run the resolver's formula against the current `data/monsters.json`/`data/monster-skills.json`/`data/level-growth.json`/`data/classes.json` (a script, or a balance-oriented test) to see Strike/Cleave/Execute as a % of a given class's `maxHp` at any floor depth — this document intentionally no longer hand-maintains that table.
+Each turn runs in this order (`takeMonsterTurn`, `src/engine/monsterAI.ts`). Stun handling stays first, unchanged: a stunned monster loses the turn.
+
+1. **Release.** If a telegraphed skill is charging, release it: on the target(s) it locked (any that died are re-picked by the skill's target rules), or on everyone alive for an area telegraph. The turn ends there.
+2. **Phase entry.** If HP has crossed below the threshold of a phase not yet entered, enter it. If that phase names an `onEnterSkillId`, that skill is cast this turn and the turn ends.
+3. **Filter.** Build the candidates from the current weights (`"basicAttack"` plus skill ids). Drop a skill that is on cooldown, out of `usesPerCombat`, or whose `aiCondition` fails.
+4. **Score.** Multiply each candidate's weight by every matching `aiRules` entry's `weightMultiplier`.
+5. **Pick** by weighted random over the scored weights; with no candidate left the monster basic-attacks.
+6. **Target.** A single-target skill (and each pick of a `targetCount` skill) draws from the party weighted by the archetype's `aiPattern` aggro rule, multiplied by every matching `targetRules` entry. An archetype with `targeting: "random"` skips both and picks uniformly.
+7. **Act.** A `telegraph` skill locks its target(s), resolves its `chargeEffects`, logs the warning and deals nothing this turn. Any other skill resolves at once. Using a skill starts its cooldown and spends one of its uses.
+
+Cooldowns count down at the end of each of the monster's own turns, stunned or not — the same once-per-round pace a character's cooldowns run at. `initialCooldownTurns` is the cooldown a skill starts the fight on, so a telegraph cannot open the fight.
+
+**Predicates.** `aiCondition`, `aiRules[].if` and `targetRules[].if` share one vocabulary, and an entry passes only when every field in it holds:
+
+| Field | Evaluated against |
+|---|---|
+| `selfHpBelowPercent` | the acting monster |
+| `selfHasStatusId` / `selfLacksStatusId` | the acting monster |
+| `targetHpBelowPercent` | `targetRules` only: the candidate target |
+| `targetHasStatusId` / `targetLacksStatusId` | in `targetRules`: the candidate target. In `aiCondition`/`aiRules`: true if any living enemy matches |
+| `targetsBelowHpPercent` + `atLeast` | how many living enemies are under the HP percentage |
+| `alliesFewerThan` | how many living monster-side allies (the acting monster excluded) there are — used to gate summoning |
+
+A status check matches the status's rank family (a `poisoned` check matches `poisoned-iii`), the same way `conditionalBonus` does. The ids `guard-ii`/`guard-iii` carry no rank family, so a rule on `guard` matches only `guard` itself.
+
+#### The normal tier is untouched
+
+A normal-tier monster behaves exactly as it always did, down to the order of its RNG draws: it rolls only `actionWeights.normal`, and no cooldown, phase, charge or shell state is created for it. The `defensive` low-HP branch only considers a self-targeted skill that the current tier's weights name. This matters for Skeleton Guard, the one triple-role archetype: its `skillIds` hold self-targeted guard-room skills, its normal weights name only the basic attack, so the normal-tier Skeleton Guard never reaches them. `test/normal-skeleton-guard.test.ts` pins this (behaviour at full and low HP, no guard-room state, base stats and normal weights).
+
+#### Mechanics the kits are built on
+
+Each is generic: any archetype could declare it in JSON.
+
+- **`summonMonster`** (a `SkillEffect.kind`). Spawns monsters of the named normal-role archetype into the running combat, scaled to the current floor depth. They join the turn order next round, carry the id of their summoner, give no EXP and no loot, do not count as room monsters, and **fall when their summoner does** — killing the summoner always ends the fight. A summoner can have at most `combat.maxSummonedMonsters` (2) adds alive; re-raising after an add dies is just another cast.
+- **`reflectDamagePercent` on a status** (Skeleton Guard's `riposte`). When the bearer takes direct damage it deals that share back to the attacker, for any actor. Status ticks are never reflected, and a reflect is never itself reflected.
+- **`shell` on an archetype** (Ancient Golem, at elite and boss tier alike). Intact: every direct hit is capped at a share of the bearer's max HP and counts toward breaking it (a multi-hit counts each hit, an area hit counts once), and status ticks deal nothing. Breaking: the last counted hit stuns the bearer for a turn and lifts both rules. Re-forming: at the end of the configured own turn after breaking (the stunned turn counts as the first), every debuff on the bearer is removed — buffs stay — and the hit count is re-rolled. A telegraph being charged is delayed by the stun, not cancelled. The intact shell and the broken state show in the monster's status row; breaking and re-forming each write a log line. An artifact's reflect is capped by an intact shell but is not a counted hit.
+- **`untargetable` on the monster side** (Dragon `airborne`). The party's target pool, its `allEnemies` and every automatic party-side attack (summons, artifact auto-damage, on-hit area damage, Overwatch) exclude an untargetable monster. A queued single-target attack on it redirects to a targetable monster, or fizzles if there is none; Overwatch holds its shot and stays primed. Self and ally actions still work.
+- **`targeting: "random"`** (Void Amalgamation). Picks targets uniformly and ignores aggro.
+- **`targetCount: { min, max }`** on a `singleEnemy` monster skill. Each cast hits that many distinct targets (capped at the living, targetable ones), picked one at a time from the weighted pool; each rolls accuracy on its own, and the log names every target. A telegraph with `targetCount` locks all of them on its charge turn.
+- **`harmful: true` on a status.** A status with no stat change, tick, stun or blind would otherwise count as a buff and be skipped by cleanses; `marked` and `challenged` set it so they read as debuffs and a cleanse can remove them. A cleanse with no named status removes the first debuff it finds, so a party member carrying several may need more than one to clear a specific mark.
+
+#### Difficulty by `minFloor`
+
+Measured on the old shared kit, difficulty did not follow `minFloor`: a floor-80 archetype hit hardest, a floor-90 one hit softest, and the two earliest guards died in about two rounds — too short for a telegraph, a phase or a summon to show. Difficulty is now balanced on two axes — damage and durability — against a curve of four bands plus the final boss, by `minFloor`:
+
+- **Band I** — Skeleton Guard, Giant Spider. Teaches reading a telegraph and a status. Lowest damage, shortest fights, but long enough for the boss to telegraph at least once.
+- **Band II** — Zombie Knight, Orc Chieftain, Vampire Lord. Summons and self-healing appear.
+- **Band III** — Dark Knight, Void Amalgamation, Lich. Mechanics combine; phases matter.
+- **Band IV** — Ancient Golem, Dragon. The full test.
+- **The Founder** — the top of the curve.
+
+Each band rises over the previous one in average damage taken per round (as a share of the party's total HP), in rounds the party needs to win, and in the cap on one telegraph's single-target damage (as a share of the lowest-HP class's max HP). The boss tier lasts longer than the elite tier inside every band, and no action from any archetype reaches the lowest-HP class's max HP. The levers are the kit — skill amounts, the share of the monster's attack a hit uses (`offenseMultiplierPercent`), weights and cooldowns — plus, for guard-only archetypes, `baseHp`/`baseAttack`/`baseDefense` reshaped with Monster Balance Points kept inside the Elite/Boss band. Skeleton Guard is triple-role, so its base stats never change (the normal-tier version shares them); its guard-room durability comes from its defensive kit.
+
+`test/elite-boss-balance.test.ts` simulates real engine fights at each archetype's first elite floor and first boss floor, over several seeds and three party compositions (class stats at the average level for that depth, no artifacts or abilities, restored to full HP between rounds so damage taken in a round and the length of the fight are measured apart) and pins the ordering above. The target ranges are constants of that test, not of this document. One thing it makes visible: monster HP and defense at depth outgrow a level-capped party (§6.10), so the deepest archetypes (Ancient Golem, The Founder, the Dragon boss) are marathons in that harness — far longer than every other archetype — and base-stat reshaping cannot change that, because depth growth dominates a monster's stats there.
+
+`weakened` (`data/status-effects.json`) can be cleared by the Acolyte's Purify (ally branch = `removeStatusEffect`).
+
+**Numeric verification**: re-run `bun test test/elite-boss-balance.test.ts` with `BALANCE_REPORT=1` for a table of damage taken per round and rounds to win for every archetype and tier — this document intentionally does not hand-maintain those numbers.
+

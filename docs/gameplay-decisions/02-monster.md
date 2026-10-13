@@ -142,11 +142,11 @@ Default rule (used by `aggressive` and `defensive`): **weighted random** over ev
 Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
 ### AI patterns (`MonsterAiPattern`)
-- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/monsterAI.ts`).
-- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
+- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`aggroWeight`, `src/engine/monsterAI.ts`).
+- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below the threshold defined in code, it uses a self-targeted skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and chance rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
 
-  This only takes effect for archetypes that (a) are `aiPattern: "defensive"` and (b) have at least 1 entry in `skillIds` — that's Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The branch looks for a skill whose `target` is `self`, not for the first entry in `skillIds` — since `skillIds` holds every skill an archetype can roll at any tier, a positional pick would have a normal-tier Skeleton Guard swinging its own Cleaving Strike at itself. The other `defensive` archetypes (Zombie Knight, Dark Knight, Skeleton Guard) own no self-targeted skill, so it's a no-op for them.
-- **`opportunistic`**: the **mirror** of the default rule. Every living character's `aggro` is reflected across the party's own current range — `weight = max(1, (highest aggro + lowest aggro) - X.aggro)` — so the quietest character is picked as often as the loudest would otherwise have been. `pickInverseAggroWeighted`, `src/engine/monsterAI.ts`.
+  The branch looks for a skill whose `target` is `self` **and whose id is a key of the tier's own `actionWeights`** (a weight of 0 still counts: Zombie and Skeleton Warrior keep their skill at weight 0, so it fires only from this branch). It does not take the first entry of `skillIds`: that list holds every skill an archetype can roll at any tier, so a positional pick would reach into the guard-room kit. Skeleton Guard is the case that matters — its `skillIds` hold self-targeted guard-room skills (a guard stance, a riposte stance), but its normal weights name only the basic attack, so a normal-tier Skeleton Guard never reaches them. In practice the branch is live for Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The guard-room `defensive` archetypes (Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem) use their self-targeted skills through their elite/boss weights and AI rules instead (`06-level-system.md` §6.12).
+- **`opportunistic`**: the **mirror** of the default rule. Every living character's `aggro` is reflected across the party's own current range — `weight = max(1, (highest aggro + lowest aggro) - X.aggro)` — so the quietest character is picked as often as the loudest would otherwise have been. `aggroWeight`, `src/engine/monsterAI.ts`.
 
   Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
 
@@ -158,9 +158,9 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
 - **`opportunistic`** — it has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, it is incorporeal, or it is intelligent enough to choose. Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Vampire Bat, Snake, Ghost, Skeleton Archer, Wraith, Vampire Lord, Lich.
 - **`aggressive`** — it goes at whatever is most in front of it: mindless, slow, or simply a straightforward brawler. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
-- **`defensive`** — it owns a self-targeted skill and turtles with it (see the low-HP branch above).
+- **`defensive`** — it owns a self-targeted skill and turtles with it (the low-HP branch above for a regular monster; guard stances and heals in a guard-room kit).
 
- Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between.
+ Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules, phases and telegraphs on top of the weights — `06-level-system.md` §6.12.
 
 ### Archetype roles — normal / guard / triple / final boss
 
@@ -342,7 +342,7 @@ player will actually read.
 
 ### Guard-room archetypes (elite/boss)
 
-Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — currently 9: Giant Spider, Dragon, Zombie Knight, Dark Knight, Orc Chieftain, Vampire Lord, Void Amalgamation, Ancient Golem, and Lich — each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
+Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — currently 9: Giant Spider, Dragon, Zombie Knight, Dark Knight, Orc Chieftain, Vampire Lord, Void Amalgamation, Ancient Golem, and Lich — each with its own elite/boss kit (`skillIds` + `actionWeights.elite`/`actionWeights.boss`, optional `phases`, `targeting`, `shell`; skills in `data/monster-skills.json`). The kit is built around what the archetype's `description` says it does, and the elite tier runs a reduced subset of its boss kit. The kits, the AI turn flow, the mechanics they use (telegraphs, phases, summoning, riposte, the breakable shell) and the difficulty curve by `minFloor` are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
 
 ### Monster Balance Points
 
