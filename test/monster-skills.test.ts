@@ -104,7 +104,7 @@ describe("elite/boss skill kit", () => {
       const combat = startCombat("r1", [boss.id], ctx, false);
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      if (!combat.log.some((l) => l.text.includes("uses Diseased Blade"))) continue;
+      if (!combat.log.some((l) => l.text.includes("gains the Enfeebled effect"))) continue;
       found = true;
       expect(ctx.party.some((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "enfeebled"))).toBe(true);
     }
