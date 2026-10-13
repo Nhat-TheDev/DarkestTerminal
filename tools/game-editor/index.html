@@ -1084,10 +1084,23 @@ function buildMonActionsCard(monData, charData, tier) {
     row(skill.name + (skill.target === "allEnemies" ? " (AoE)" : ""), weightTotal > 0 ? (weights[skill.id] / weightTotal) * 100 : null, skill);
   }
   if (tier === "boss" && monData.skillKit.execute) {
-    row(monData.skillKit.execute.name + " (charged)", null, monData.skillKit.execute);
+    row(`${monData.skillKit.execute.name} (telegraph, cooldown ${monData.skillKit.execute.cooldownTurns || 0})`, null, monData.skillKit.execute);
   }
 
   card.appendChild(table);
+  // A phase replaces the tier's whole table once HP falls below its threshold; each is listed under the tier it belongs to.
+  const skillById = new Map([...monData.skillKit.skills, ...(monData.skillKit.execute ? [monData.skillKit.execute] : [])].map((s) => [s.id, s]));
+  for (const [i, phase] of (monData.phases || []).entries()) {
+    const total = Object.values(phase.weights).reduce((a, b) => a + (b || 0), 0);
+    const entered = phase.onEnterSkillId ? `, casts ${(skillById.get(phase.onEnterSkillId) || { name: phase.onEnterSkillId }).name} on entering` : "";
+    card.appendChild(el("h4", { text: `Phase ${i + 1} — below ${phase.hpBelowPercent}% HP${entered}` }));
+    const phaseTable = el("table", {}, [el("tr", {}, [el("th", { text: "Action" }), el("th", { class: "num", text: "Weight %" })])]);
+    for (const [key, weight] of Object.entries(phase.weights)) {
+      const label = key === "basicAttack" ? "Basic Attack" : (skillById.get(key) || { name: key }).name;
+      phaseTable.appendChild(el("tr", {}, [el("td", { text: label }), el("td", { class: "num", text: total > 0 ? fmt((weight / total) * 100) + "%" : "—" })]));
+    }
+    card.appendChild(phaseTable);
+  }
   if (rolledSkillCount === 0) {
     card.appendChild(el("p", { class: "hint", text: "No skill carries an action weight at this tier, so it only ever does the basic attack here." }));
   }
@@ -2315,7 +2328,7 @@ boot();
   const ITEM_TIERS = ["common", "uncommon", "rare", "unique", "epic", "legendary"];
   const DAMAGE_TYPES = ["physical", "magic", "fire", "ice", "lightning", "poison", "bleed", "holy"];
   const COMBAT_STATS = ["attack", "defense", "aggro", "speed", "magicPower", "maxHp"];
-  const SKILL_EFFECT_KINDS = ["damage", "heal", "restoreMp", "applyStatusEffect", "removeStatusEffect", "modifyStat", "modifyCombatStat", "summon"];
+  const SKILL_EFFECT_KINDS = ["damage", "heal", "restoreMp", "applyStatusEffect", "removeStatusEffect", "modifyStat", "modifyCombatStat", "summon", "summonMonster"];
   const SKILL_EFFECT_FIELDS = {
     damage: ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent"],
     heal: ["amount", "chance", "target", "offenseMultiplierPercent", "maxHpPercent"],
@@ -2325,6 +2338,7 @@ boot();
     modifyStat: ["stat", "amount", "chance", "target"],
     modifyCombatStat: ["combatStat", "amount", "minPercent", "chance", "target"],
     summon: ["target"],
+    summonMonster: ["monsterArchetypeId", "count"],
   };
   const ARTIFACT_EFFECT_KINDS = [
     "statBoost", "reflectDamage", "poisonOnHit", "lifesteal", "dodgeChance", "healOnKill",
@@ -2464,6 +2478,8 @@ boot();
     const lifestealPercent = numberInput(effect.lifestealPercent, "1");
     const maxHpPercent = numberInput(effect.maxHpPercent, "0.1");
     const alsoApplyStatusEffectIds = textInput((effect.alsoApplyStatusEffectIds || []).join(", "));
+    const monsterArchetypeId = textInput(effect.monsterArchetypeId || "");
+    const count = numberInput(effect.count, "1");
 
     const row = el("div", { class: "effect-row" });
     const removeBtn = el("button", { class: "action", type: "button", text: "Remove" });
@@ -2485,6 +2501,8 @@ boot();
       field("Lifesteal %", lifestealPercent, "lifestealPercent"),
       field("Max HP % bonus", maxHpPercent, "maxHpPercent"),
       field("Also apply status ids (comma-separated)", alsoApplyStatusEffectIds, "alsoApplyStatusEffectIds"),
+      field("Monster archetype id", monsterArchetypeId, "monsterArchetypeId"),
+      field("Count", count, "count"),
     ]);
     row.appendChild(body);
 
@@ -2492,28 +2510,34 @@ boot();
     kind.addEventListener("change", refresh);
     refresh();
 
+    // The row renders only some of an effect's fields; the rest (hitCountRange, critChance,
+    // scalesWithStatusStacks, ...) are carried over from the effect as it was loaded.
+    const RENDERED = ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "stat", "combatStat", "statusEffectId", "durationTurns", "onHitDurationTurns", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent", "alsoApplyStatusEffectIds", "monsterArchetypeId", "count"];
     row._collect = () => {
-      const out = { kind: kind.value };
+      const out = { ...effect, kind: kind.value };
       const visible = SKILL_EFFECT_FIELDS[kind.value] || [];
-      if (visible.includes("amount")) out.amount = numOrUndefined(amount);
-      if (visible.includes("chance")) out.chance = numOrUndefined(chance);
-      if (visible.includes("target") && target.value) out.target = target.value;
-      if (visible.includes("offenseMultiplierPercent")) out.offenseMultiplierPercent = numOrUndefined(offenseMultiplierPercent);
-      if (visible.includes("minPercent")) out.minPercent = numOrUndefined(minPercent);
-      if (visible.includes("damageType") && damageType.value) out.damageType = damageType.value;
-      if (visible.includes("stat") && stat.value) out.stat = stat.value;
-      if (visible.includes("combatStat") && combatStat.value) out.combatStat = combatStat.value;
-      if (visible.includes("statusEffectId")) out.statusEffectId = strOrUndefined(statusEffectId);
-      if (visible.includes("durationTurns")) out.durationTurns = numOrUndefined(durationTurns);
-      if (visible.includes("onHitDurationTurns")) out.onHitDurationTurns = numOrUndefined(onHitDurationTurns);
-      if (visible.includes("ignoreDefensePercent")) out.ignoreDefensePercent = numOrUndefined(ignoreDefensePercent);
-      if (visible.includes("lifestealPercent")) out.lifestealPercent = numOrUndefined(lifestealPercent);
-      if (visible.includes("maxHpPercent")) out.maxHpPercent = numOrUndefined(maxHpPercent);
+      const next = {};
+      if (visible.includes("amount")) next.amount = numOrUndefined(amount);
+      if (visible.includes("chance")) next.chance = numOrUndefined(chance);
+      if (visible.includes("target") && target.value) next.target = target.value;
+      if (visible.includes("offenseMultiplierPercent")) next.offenseMultiplierPercent = numOrUndefined(offenseMultiplierPercent);
+      if (visible.includes("minPercent")) next.minPercent = numOrUndefined(minPercent);
+      if (visible.includes("damageType") && damageType.value) next.damageType = damageType.value;
+      if (visible.includes("stat") && stat.value) next.stat = stat.value;
+      if (visible.includes("combatStat") && combatStat.value) next.combatStat = combatStat.value;
+      if (visible.includes("statusEffectId")) next.statusEffectId = strOrUndefined(statusEffectId);
+      if (visible.includes("durationTurns")) next.durationTurns = numOrUndefined(durationTurns);
+      if (visible.includes("onHitDurationTurns")) next.onHitDurationTurns = numOrUndefined(onHitDurationTurns);
+      if (visible.includes("ignoreDefensePercent")) next.ignoreDefensePercent = numOrUndefined(ignoreDefensePercent);
+      if (visible.includes("lifestealPercent")) next.lifestealPercent = numOrUndefined(lifestealPercent);
+      if (visible.includes("maxHpPercent")) next.maxHpPercent = numOrUndefined(maxHpPercent);
       if (visible.includes("alsoApplyStatusEffectIds")) {
         const ids = alsoApplyStatusEffectIds.value.split(",").map((s) => s.trim()).filter(Boolean);
-        out.alsoApplyStatusEffectIds = ids.length ? ids : undefined;
+        next.alsoApplyStatusEffectIds = ids.length ? ids : undefined;
       }
-      for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
+      if (visible.includes("monsterArchetypeId")) next.monsterArchetypeId = strOrUndefined(monsterArchetypeId);
+      if (visible.includes("count")) next.count = numOrUndefined(count);
+      for (const k of RENDERED) setOrDelete(out, k, next[k]);
       return out;
     };
     return row;
@@ -2588,6 +2612,41 @@ boot();
 
   // --- per-type form renderers ---
 
+  // Writes `value` into `out[key]` in place, or removes the key when there is no value, so an entry that
+  // is saved without changes keeps its key order and the file diff stays empty.
+  function setOrDelete(out, key, value) {
+    if (value === undefined) delete out[key];
+    else out[key] = value;
+  }
+
+  // Fields of an elite/boss kit the forms do not render as inputs: kept as they were loaded, and
+  // editable here as JSON. A bad value is rejected when the game data next loads (the loader checks them).
+  const AI_MONSTER_KEYS = ["phases", "targeting", "shell"];
+  const AI_SKILL_KEYS = ["aiCondition", "aiRules", "targetRules", "telegraph", "chargeEffects", "targetCount", "initialCooldownTurns", "executeBonus"];
+  function aiJsonBox(entry, keys) {
+    const picked = {};
+    for (const k of keys) if (entry[k] !== undefined) picked[k] = entry[k];
+    const input = el("textarea", { rows: "8", style: "width:100%; font-family: monospace;" }, [document.createTextNode(JSON.stringify(picked, null, 2))]);
+    const wrap = el("fieldset", {}, [
+      el("legend", { text: "AI & mechanics (JSON)" }),
+      el("p", { class: "hint", text: "Allowed fields: " + keys.join(", ") + ". Everything else on this entry is kept as it is." }),
+      input,
+    ]);
+    wrap._read = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(input.value.trim() || "{}");
+      } catch (err) {
+        throw new Error("AI & mechanics (JSON): " + err.message);
+      }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("AI & mechanics (JSON) must be an object.");
+      const unknown = Object.keys(parsed).filter((k) => !keys.includes(k));
+      if (unknown.length) throw new Error("AI & mechanics (JSON): not an AI/mechanics field: " + unknown.join(", ") + ".");
+      return parsed;
+    };
+    return wrap;
+  }
+
   function renderMonsterForm(entry) {
     entry = entry || {};
     const id = textInput(entry.id);
@@ -2654,6 +2713,7 @@ boot();
     }
     roles.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { collectActionWeights(); renderActionWeights(); }));
     skillIds.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { collectActionWeights(); renderActionWeights(); }));
+    const aiBox = aiJsonBox(entry, AI_MONSTER_KEYS);
     function collectActionWeights() {
       const next = {};
       for (const fieldset of actionWeightsWrap.children) {
@@ -2678,32 +2738,40 @@ boot();
       el("fieldset", {}, [el("legend", { text: "Roles" }), roles, finalBoss]),
       el("fieldset", {}, [el("legend", { text: "Traits" }), traitIds]),
       el("fieldset", {}, [el("legend", { text: "Skills this monster can use" }), skillIds]),
-      actionWeightsWrap
+      actionWeightsWrap,
+      aiBox
     );
 
     return {
       collect() {
         collectActionWeights();
+        // Start from the entry as loaded, so a field this form has no input for is kept; the optional
+        // fields it does manage are dropped first and re-added below only when set.
         const out = {
+          ...entry,
           id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
           baseHp: Number(baseHp.value), baseAttack: Number(baseAttack.value), baseDefense: Number(baseDefense.value), baseSpeed: Number(baseSpeed.value),
           monsterType: monsterType.value, aiPattern: aiPattern.value, roles: roles._values(), skillIds: skillIds._values(), expReward: Number(expReward.value),
           race: race.value,
         };
-        if (subRace.value) out.subRace = subRace.value;
-        if (traitIds._values().length) out.traitIds = traitIds._values();
-        if (powerTier.value) out.powerTier = powerTier.value;
+        const optional = {};
+        if (subRace.value) optional.subRace = subRace.value;
+        if (traitIds._values().length) optional.traitIds = traitIds._values();
+        if (powerTier.value) optional.powerTier = powerTier.value;
         if (finalBoss._checkbox.checked) {
-          out.finalBoss = true;
+          optional.finalBoss = true;
           if (minFloor.value !== "") throw new Error("Final boss archetypes must not set Min floor.");
         } else {
           const mf = minFloor.value === "" ? NaN : Number(minFloor.value);
           if (!Number.isFinite(mf) || mf < 0 || mf % 10 !== 0) {
             throw new Error("Min floor is required and must be a non-negative multiple of 10 (unless Final boss is checked).");
           }
-          out.minFloor = mf;
+          optional.minFloor = mf;
         }
-        if (Object.keys(actionWeightsState).length) out.actionWeights = actionWeightsState;
+        if (Object.keys(actionWeightsState).length) optional.actionWeights = actionWeightsState;
+        const ai = aiBox._read();
+        for (const k of ["subRace", "traitIds", "powerTier", "finalBoss", "minFloor", "actionWeights"]) setOrDelete(out, k, optional[k]);
+        for (const k of AI_MONSTER_KEYS) setOrDelete(out, k, ai[k]);
         return out;
       },
     };
@@ -2776,6 +2844,8 @@ boot();
     const stuns = checkboxField("Stuns (skips the bearer's turn)", entry.stuns);
     const triggersOverwatch = checkboxField("Triggers overwatch", entry.triggersOverwatch);
     const untargetable = checkboxField("Untargetable while active", entry.untargetable);
+    const harmful = checkboxField("Harmful (a debuff, cleansable, even with no stat change or tick)", entry.harmful);
+    const reflectDamagePercent = numberInput(entry.reflectDamagePercent, "1");
     const stackable = checkboxField("Stackable", entry.stackable);
     const maxStacks = numberInput(entry.maxStacks, "1");
     const perStackBonusPercent = numberInput(entry.perStackBonusPercent, "1");
@@ -2801,7 +2871,8 @@ boot();
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
       field("Description", description),
-      el("fieldset", {}, [el("legend", { text: "Flags" }), stuns, triggersOverwatch, untargetable]),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), stuns, triggersOverwatch, untargetable, harmful]),
+      field("Reflect % of direct damage back at the attacker (optional)", reflectDamagePercent),
       el("div", { class: "row" }, [field("Stackable", stackable), field("Max stacks", maxStacks), field("Per-stack bonus %", perStackBonusPercent), field("Accuracy penalty %", accuracyPenaltyPercent), field("On-hit status (optional)", onHitStatusEffectId)]),
       el("fieldset", {}, [
         el("legend", { text: "Rank (optional — for a status that's a higher-rank variant of another, e.g. \"poisoned-ii\" of \"poisoned\")" }),
@@ -2837,34 +2908,42 @@ boot();
 
     return {
       collect() {
-        const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), perTurnEffects: effectsEditor._collect() };
-        if (stuns._checkbox.checked) out.stuns = true;
-        if (triggersOverwatch._checkbox.checked) out.triggersOverwatch = true;
-        if (overwatchShotAmount.value !== "") out.overwatchShot = { amount: Number(overwatchShotAmount.value), offenseMultiplierPercent: Number(overwatchShotOffenseMult.value) || 100 };
-        if (interruptChance.value !== "") out.interruptChance = Number(interruptChance.value);
-        if (untargetable._checkbox.checked) out.untargetable = true;
-        if (stackable._checkbox.checked) out.stackable = true;
-        if (maxStacks.value !== "") out.maxStacks = Number(maxStacks.value);
-        if (perStackBonusPercent.value !== "") out.perStackBonusPercent = Number(perStackBonusPercent.value);
-        if (accuracyPenaltyPercent.value !== "") out.accuracyPenaltyPercent = Number(accuracyPenaltyPercent.value);
-        if (onHitStatusEffectId.value) out.onHitStatusEffectId = onHitStatusEffectId.value;
-        if (rankOf.value.trim()) out.rankOf = rankOf.value.trim();
-        if (rankLevel.value !== "") out.rankLevel = Number(rankLevel.value);
-        if (tickCategory.value.trim()) out.tickCategory = tickCategory.value.trim();
-        if (vulnerableToId.value.trim()) out.vulnerableTo = { statusEffectId: vulnerableToId.value.trim(), multiplier: Number(vulnerableToMultiplier.value) || 0 };
+        // Same as the monster form: fields this form has no input for survive a save, and the ones it
+        // does manage are written in place so an unchanged entry keeps its key order.
+        const out = { ...entry, id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), perTurnEffects: effectsEditor._collect() };
+        const optional = {};
+        if (stuns._checkbox.checked) optional.stuns = true;
+        if (harmful._checkbox.checked) optional.harmful = true;
+        if (reflectDamagePercent.value !== "") optional.reflectDamagePercent = Number(reflectDamagePercent.value);
+        if (triggersOverwatch._checkbox.checked) optional.triggersOverwatch = true;
+        if (overwatchShotAmount.value !== "") optional.overwatchShot = { amount: Number(overwatchShotAmount.value), offenseMultiplierPercent: Number(overwatchShotOffenseMult.value) || 100 };
+        if (interruptChance.value !== "") optional.interruptChance = Number(interruptChance.value);
+        if (untargetable._checkbox.checked) optional.untargetable = true;
+        if (stackable._checkbox.checked) optional.stackable = true;
+        if (maxStacks.value !== "") optional.maxStacks = Number(maxStacks.value);
+        if (perStackBonusPercent.value !== "") optional.perStackBonusPercent = Number(perStackBonusPercent.value);
+        if (accuracyPenaltyPercent.value !== "") optional.accuracyPenaltyPercent = Number(accuracyPenaltyPercent.value);
+        if (onHitStatusEffectId.value) optional.onHitStatusEffectId = onHitStatusEffectId.value;
+        if (rankOf.value.trim()) optional.rankOf = rankOf.value.trim();
+        if (rankLevel.value !== "") optional.rankLevel = Number(rankLevel.value);
+        if (tickCategory.value.trim()) optional.tickCategory = tickCategory.value.trim();
+        if (vulnerableToId.value.trim()) optional.vulnerableTo = { statusEffectId: vulnerableToId.value.trim(), multiplier: Number(vulnerableToMultiplier.value) || 0 };
         if (onHitAoeAmount.value !== "") {
           const onHitAoeDamage = { amount: Number(onHitAoeAmount.value) };
           if (onHitAoeIsMagic._checkbox.checked) onHitAoeDamage.isMagic = true;
           if (onHitAoeIgnoreDefense.value !== "") onHitAoeDamage.ignoreDefensePercent = Number(onHitAoeIgnoreDefense.value);
           if (onHitAoeOffenseMult.value !== "") onHitAoeDamage.offenseMultiplierPercent = Number(onHitAoeOffenseMult.value);
           if (onHitAoeDamageType.value.trim()) onHitAoeDamage.damageType = onHitAoeDamageType.value.trim();
-          out.onHitAoeDamage = onHitAoeDamage;
+          optional.onHitAoeDamage = onHitAoeDamage;
         }
         if (breakBonusCrit._checkbox.checked || breakBonusSkillDmg.value !== "") {
           const breakBonus = {};
           if (breakBonusCrit._checkbox.checked) breakBonus.basicAttackGuaranteedCrit = true;
           if (breakBonusSkillDmg.value !== "") breakBonus.skillDamageBonusPercent = Number(breakBonusSkillDmg.value);
-          out.breakBonus = breakBonus;
+          optional.breakBonus = breakBonus;
+        }
+        for (const k of ["stuns", "triggersOverwatch", "overwatchShot", "interruptChance", "untargetable", "harmful", "reflectDamagePercent", "stackable", "maxStacks", "perStackBonusPercent", "accuracyPenaltyPercent", "onHitStatusEffectId", "rankOf", "rankLevel", "tickCategory", "vulnerableTo", "onHitAoeDamage", "breakBonus"]) {
+          setOrDelete(out, k, optional[k]);
         }
         return out;
       },
@@ -2887,28 +2966,35 @@ boot();
     const isBuff = checkboxField("Buff (turn-priority)", entry.isBuff);
     const isMagic = checkboxField("Magic (scales off magicPower)", entry.isMagic);
     const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
+    const aiBox = aiJsonBox(entry, AI_SKILL_KEYS);
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Short description", shortDescription)]),
       field("Description", description),
       el("div", { class: "row" }, [field("MP cost", mpCost), field("Target", target), field("Slot", slot), field("Unlock level", unlockLevel), field("Uses per combat (optional)", usesPerCombat), field("Cooldown turns (optional)", cooldownTurns)]),
       el("fieldset", {}, [el("legend", { text: "Flags" }), isUltimate, isBuff, isMagic]),
-      effectsEditor
+      effectsEditor,
+      aiBox
     );
 
     return {
       collect() {
         const out = {
+          ...entry,
           id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
           mpCost: Number(mpCost.value), target: target.value, slot: Number(slot.value), unlockLevel: Number(unlockLevel.value),
           effects: effectsEditor._collect(),
         };
-        if (shortDescription.value.trim()) out.shortDescription = shortDescription.value.trim();
-        if (usesPerCombat.value !== "") out.usesPerCombat = Number(usesPerCombat.value);
-        if (cooldownTurns.value !== "") out.cooldownTurns = Number(cooldownTurns.value);
-        if (isUltimate._checkbox.checked) out.isUltimate = true;
-        if (isBuff._checkbox.checked) out.isBuff = true;
-        if (isMagic._checkbox.checked) out.isMagic = true;
+        const optional = {};
+        if (shortDescription.value.trim()) optional.shortDescription = shortDescription.value.trim();
+        if (usesPerCombat.value !== "") optional.usesPerCombat = Number(usesPerCombat.value);
+        if (cooldownTurns.value !== "") optional.cooldownTurns = Number(cooldownTurns.value);
+        if (isUltimate._checkbox.checked) optional.isUltimate = true;
+        if (isBuff._checkbox.checked) optional.isBuff = true;
+        if (isMagic._checkbox.checked) optional.isMagic = true;
+        const ai = aiBox._read();
+        for (const k of ["shortDescription", "usesPerCombat", "cooldownTurns", "isUltimate", "isBuff", "isMagic"]) setOrDelete(out, k, optional[k]);
+        for (const k of AI_SKILL_KEYS) setOrDelete(out, k, ai[k]);
         return out;
       },
     };

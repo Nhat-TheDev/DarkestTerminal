@@ -29,7 +29,7 @@ import { Rng } from "../../src/engine/rng";
 import { STATUS_EFFECTS, getStatusEffect } from "../../src/data/statusEffects";
 import { BALANCE } from "../../src/data/balanceConfig";
 import { t } from "../../src/data/strings";
-import type { CharacterClass, MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
+import type { CharacterClass, MonsterArchetype, MonsterPhase, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
 
 const GROWTH_STATS: GrowthStat[] = ["attack", "defense", "maxHp", "maxMp", "magicPower"];
 
@@ -222,10 +222,12 @@ export interface MonsterComputation {
     /** Every skill the archetype can roll, at any tier. Whether one is reachable at the tier being
      *  computed is `actionWeights` — it is listed there exactly when it is. */
     skills: SkillDefinition[];
-    /** Outside the weighted roll: charges a turn, then always releases. Boss tier only. */
+    /** The archetype's telegraph skill: charges a turn, then releases on its locked target, and cools down by its own `cooldownTurns`. Boss tier only. */
     execute: SkillDefinition | null;
   };
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
+  /** The phases of this tier, in the order they are entered. */
+  phases: MonsterPhase[];
 }
 
 export function computeMonster(archetypeId: string, depth: number, tier: MonsterTier): MonsterComputation | { error: string } {
@@ -272,6 +274,8 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
       execute: archetype.skillIds.map(getMonsterSkill).find((s) => s.telegraph) ?? null,
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
+    /** The phases this tier enters, in order: each one's weights replace the tier's table once HP falls below its threshold. */
+    phases: (archetype.phases ?? []).filter((p) => p.tier === tier),
   };
 }
 
