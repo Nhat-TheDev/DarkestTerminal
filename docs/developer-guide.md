@@ -253,8 +253,10 @@ carries `crit` in `LogEntry.hit` and a critical heal's line carries `healCritOf`
 `resolveSkillEffect`; `RevealQueue` keeps them with the hits (`focusHits`, `focusHealCrits`) and
 `markerReading` picks the number and its crit together, so in a run of hits only the beats of hits that
 crit carry the `!`. When the hits do not add up to the unit's change, the net reads with `!` if any hit
-on the unit or any heal that landed on it was a crit. A summon's number, which a beat later replaces its
-owner's, carries its own `!`. Colour and timing are unchanged.
+on the unit or any heal that landed on it was a crit. A summon's number is read the same way
+(`markerReading` over the hits that landed on the summon, so it too is the full damage and carries its
+own `!`); when its owner took hits in the same session it replaces the owner's number a beat later,
+after the owner's run of hits, and then reads its last hit. Colour and timing are unchanged.
 
 A character whose fear changed in a session (`LogSession.fearChangedIds`, noted by `noteFearChange`
 when a monster's hit lands, a skill or item's `modifyStat` moves it, the round ends, or the fight is

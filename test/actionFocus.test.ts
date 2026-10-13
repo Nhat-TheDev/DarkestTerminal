@@ -11,7 +11,7 @@ import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
 import { monsterStyle } from "../src/ui/layout";
 import { t } from "../src/data/strings";
 import { gameFromSave, loadSave } from "../src/engine/save";
-import type { Id, Monster, SkillDefinition } from "../src/types";
+import type { Id, Monster, SkillDefinition, Summon } from "../src/types";
 
 const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
@@ -291,6 +291,65 @@ describe("battlefield and log stay in step", () => {
     const expected = hits.map((hit) => `-${hit}!`).filter((text, i, all) => i === 0 || text !== all[i - 1]);
     expect(seen).toEqual(expected);
     expect(seen).not.toContain("-24!");
+  }, 30000);
+
+  test("a summon that took more than it had left reads each hit at its full damage, with its crit", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const owner = game.state.party[0]!;
+    const clone: Summon = {
+      id: `${owner.id}-test-clone-1`,
+      ownerId: owner.id,
+      archetypeId: "shadow-clone",
+      name: "Test Clone",
+      hp: 10,
+      maxHp: 10,
+      attack: 0,
+      defense: 0,
+      magicPower: 0,
+      aggro: 0,
+      speed: 1,
+      activeStatusEffects: [],
+      actionsTaken: 0,
+      maxActions: 3,
+    };
+    game.ctx.summons.push(clone);
+    combat.combatants.push({ ref: { kind: "summon", id: clone.id }, speed: clone.speed });
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, critChance: 1, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, goblin.id, () => applySkillEffects(threeHits, goblin, [clone], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+    expect(clone.hp).toBe(0);
+
+    app.tickReveal();
+    await fight.renderOnce();
+    const seen: string[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      // A unit whose summon took part also wears the summon glyph beside the shield.
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield}${FOCUS_GLYPH.summon}? (-\\d+!?)`));
+      if (match && !app.debugRevealHolding && seen.at(-1) !== match[1]) seen.push(match[1]!);
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(seen).not.toContain("-10!");
+    expect(seen).not.toContain("-10");
+    expect(seen.length).toBeGreaterThan(0);
+    for (const reading of seen) expect(reading).toMatch(/^-\d+!$/);
+    expect(Number(seen[0]!.slice(1, -1))).toBe(hits[0]!);
   }, 30000);
 
   test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {

@@ -102,9 +102,9 @@ const roguePoisonBonusHook: SkillEffectHooks = {
     if (percent === 0 && flat === 0) return;
     const bonusAmount = Math.round(damage * (percent / 100)) + flat;
     // ignoreDefensePercent: 100 + offenseMultiplierPercent: 0 together zero out
-    // mitigatedOffense(...) entirely (see resolver.ts), leaving finalDamage as exactly
-    // bonusAmount (times race resist/weak and the source's fear-tier penalty, nothing else) — a
-    // true flat bonus, not bonusAmount re-added to a full attack-vs-defense roll.
+    // mitigatedOffense(...) entirely (see resolver.ts), so the bonus is bonusAmount times race
+    // resist/weak and the source's fear-tier penalty, then the crit and variance every direct
+    // hit rolls (`rollDamage`) — not bonusAmount re-added to a full attack-vs-defense roll.
     resolveSkillEffect(
       { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,

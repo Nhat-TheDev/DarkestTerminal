@@ -830,8 +830,11 @@ export class App implements ScreenContext {
     let crit = false;
     for (const summon of this.game.ctx.summons) {
       if (summon.ownerId !== ownerId) continue;
-      delta += this.focusDeltas.get(summon.id) ?? 0;
-      crit ||= this.reveal.focusHealCrits.has(summon.id) || (this.reveal.focusHits.get(summon.id)?.some((hit) => hit.crit) ?? false);
+      const net = this.focusDeltas.get(summon.id);
+      if (net === undefined) continue;
+      const reading = markerReading(this.reveal.focusHits.get(summon.id), net, this.reveal.hitStep, this.reveal.focusHealCrits.has(summon.id));
+      delta += reading.amount;
+      crit ||= reading.crit;
     }
     return { delta, crit, beat: this.reveal.summonBeat };
   }

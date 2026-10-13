@@ -5,6 +5,7 @@ import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/c
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
 import { signed } from "../../data/items";
+import { BALANCE } from "../../data/balanceConfig";
 import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
@@ -115,7 +116,7 @@ function summonEffectLine(castId: string): string {
   return skills.length > 0 ? `${head}\n${t("ui.skillEffectSummonSkills", { skills: skills.join(", ") })}` : head;
 }
 
-/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and each distinct `critChance` among its damage effects. */
+/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and each distinct crit chance (the effect's own plus the base chance every hit has, at most 100%) among its damage effects. */
 export function skillMechanicLines(sk: SkillDefinition): string[] {
   const lines: string[] = [];
   if (sk.isUltimate) lines.push(t("ui.skillUltimateLine"));
@@ -129,7 +130,11 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
     lines.push(t("ui.skillConditionalBonusLine", { percent: sk.conditionalBonus.ignoreDefensePercentBonus, status }));
     if (sk.conditionalBonus.consumesStatus) lines.push(t("ui.skillConsumesStatusLine", { status }));
   }
-  const critPercents = new Set((sk.effects ?? []).filter((e) => e.kind === "damage" && (e.critChance ?? 0) > 0).map((e) => Math.round((e.critChance ?? 0) * 100)));
+  const critPercents = new Set(
+    (sk.effects ?? [])
+      .filter((e) => e.kind === "damage" && (e.critChance ?? 0) > 0)
+      .map((e) => Math.min(100, Math.round((e.critChance ?? 0) * 100 + BALANCE.combat.baseCritChancePercent)))
+  );
   for (const percent of critPercents) lines.push(t("ui.skillCritChanceLine", { percent }));
   return lines;
 }
