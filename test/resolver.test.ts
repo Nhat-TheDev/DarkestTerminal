@@ -3,7 +3,7 @@ import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tick
 import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
 import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
-import { applySkillEffects, startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
+import { applySkillEffects, resolveRound, startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
@@ -1002,5 +1002,68 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     resolveSkillEffect({ kind: "damage", amount: 7 }, bearer, bearer, { log, unapplied: true });
     expect(before - bearer.hp).toBe(7);
     expect(log[0]!.hidden).toBeUndefined();
+  });
+});
+
+describe("executeHpFraction", () => {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
+
+  test("replaces the target's current HP when testing the execute bonus", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.maxHp = 100;
+    const executeBonus = { hpPercentThreshold: 30, bonusDamageFlat: 20 };
+    const hit = (executeHpFraction?: number) => {
+      target.hp = 0;
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 60, offenseMultiplierPercent: 0 }, attacker, target, { log, executeBonus, executeHpFraction, unapplied: true });
+      return log[0]!.hit!.amount;
+    };
+    const base = hit(0.5);
+    expect(hit()).toBe(base + 20);
+    expect(hit(0.1)).toBe(base + 20);
+    expect(hit(0.5)).toBe(base);
+  });
+});
+
+describe("over-time ticks through a real round", () => {
+  pinCombatBalance({ damageVariancePercent: 3, baseCritChancePercent: 100 });
+
+  test("a poison tick never crits or varies even when every direct hit would", () => {
+    const { ctx } = makeCtx();
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 500;
+    rat.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 5 });
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const first = combat.log.length;
+    resolveRound(combat, ctx);
+    resolveRound(combat, ctx);
+    const ticks = combat.log.slice(first).filter((l) => l.kind === "attack" && l.text.includes("Poisoned"));
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    for (const tick of ticks) expect(tick.text.startsWith("Critical")).toBe(false);
+    expect(new Set(ticks.map((t) => t.text)).size).toBe(1);
+    expect(ticks.every((l) => l.hit === undefined)).toBe(true);
+  });
+
+  test("a heal-over-time tick never crits even when every direct heal would", () => {
+    const { ctx } = makeCtx();
+    const patient = ctx.party[0]!;
+    patient.maxHp = 1000;
+    patient.hp = 100;
+    patient.activeStatusEffects.push({ statusEffectId: "mending", turnsRemaining: 5 });
+    const rat = spawnInto(ctx, "dungeon-rat");
+    rat.attack = 0;
+    rat.hp = rat.maxHp = 500;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const first = combat.log.length;
+    resolveRound(combat, ctx);
+    const heals = combat.log.slice(first).filter((l) => l.kind === "heal");
+    expect(heals.length).toBeGreaterThan(0);
+    for (const heal of heals) {
+      expect(heal.text.startsWith("Critical")).toBe(false);
+      expect(heal.healCritOf).toBeUndefined();
+    }
   });
 });

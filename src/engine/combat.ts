@@ -752,6 +752,15 @@ function findBreakBonusStatus(source: Actor) {
 /** Archer's passive (§11 of the design spec) — a character-level crit chance/multiplier, unlocked
  *  at level 5/20/35, that adds on top of (not replaces) whatever crit a skill's own effect already
  *  carries: chance is additive, multiplier is whichever of the two is larger. */
+interface OneHitOptions {
+  /** For an `applyStatusEffect` with `linksToCasterSummon`: the summon its expiry is tied to. */
+  linkedSummonId?: Id;
+  /** The hit comes after the target fell: shown, not dealt (`ResolveContext.unapplied`). */
+  unapplied?: boolean;
+  /** `ResolveContext.executeHpFraction`: the share of max HP an `unapplied` hit tests `executeBonus` against. */
+  executeHpFraction?: number;
+}
+
 function resolveOneDamageEffect(
   effect: SkillEffect,
   skill: SkillDefinition,
@@ -760,8 +769,7 @@ function resolveOneDamageEffect(
   ctx: EngineContext,
   log: LogEntry[],
   stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
-  linkedSummonId?: Id,
-  unapplied = false
+  options: OneHitOptions = {}
 ): number {
   // An item's effects never crit; the Archer's passive lifts damage only, not a heal.
   const archerRank = effect.kind === "damage" && isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
@@ -786,9 +794,9 @@ function resolveOneDamageEffect(
       executeBonus: skill.executeBonus,
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
       castByOwnClassSkill,
-      linkedSummonId,
+      linkedSummonId: options.linkedSummonId,
       rollDamage: () => ctx.rng.next(),
-      ...(unapplied ? { unapplied: true as const } : {}),
+      ...(options.unapplied ? { unapplied: true as const, executeHpFraction: options.executeHpFraction } : {}),
     }
   );
 }
@@ -1192,7 +1200,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
           ctx,
           log,
           { guaranteedCrit: false, damageBonusPercent: 0 },
-          effect.linksToCasterSummon ? spawnedSummonId : undefined
+          { linkedSummonId: effect.linksToCasterSummon ? spawnedSummonId : undefined }
         );
       }
     }
@@ -1257,14 +1265,20 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       // a multi-hit skill actually dealt this cast, not just its final swing.
       let appliedAmount = 0;
       // A hit that comes after the target has fallen is shown, not dealt (`ResolveContext.unapplied`): the
-      // battlefield reads every hit of the cast at its full damage, and nothing else of it takes effect.
+      // battlefield reads every hit of the cast at its full damage, and nothing else of it takes effect. Its
+      // execute bonus is tested against the share of HP the target had before the hit that felled it, so it
+      // reads like that hit.
+      let hpFraction = target.hp / target.maxHp;
+      const swing = (): number => {
+        const fallen = !isActorAlive(target);
+        if (!fallen) hpFraction = target.hp / target.maxHp;
+        return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
+      };
       for (let hit = 0; hit < hitCount; hit++) {
-        appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, undefined, !isActorAlive(target));
+        appliedAmount += swing();
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) {
-            appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, undefined, !isActorAlive(target));
-          }
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) appliedAmount += swing();
         }
       }
       if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);

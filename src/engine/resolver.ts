@@ -191,6 +191,8 @@ export interface ResolveContext {
   rollDamage?: () => number;
   /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and it is logged as overkill and recorded for the battlefield, but nothing is dealt or healed. */
   unapplied?: true;
+  /** The share of its max HP (0-1) to test `executeBonus` against, instead of the target's current HP: an `unapplied` hit reads the share the target had just before the hit that felled it, so it matches that hit. */
+  executeHpFraction?: number;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
@@ -203,6 +205,11 @@ function critRolled(ctx: ResolveContext): boolean {
   if (ctx.isCrit !== undefined) return ctx.isCrit;
   const chance = BALANCE.combat.baseCritChancePercent / 100;
   return ctx.rollDamage !== undefined && chance > 0 && ctx.rollDamage() < chance;
+}
+
+/** The multiplier of a crit: the effect's own `critMultiplierPercent`, else the shared default. */
+function critMultiplierOf(effect: SkillEffect): number {
+  return (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100;
 }
 
 export function mitigatedOffense(off: number, def: number): number {
@@ -226,14 +233,14 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const isSelfTick = source === target;
       const effectiveDefense = target.defense * (1 - (effect.ignoreDefensePercent ?? 0) / 100);
       const isCrit = !isSelfTick && critRolled(ctx);
-      const critMultiplier = isCrit ? (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100 : 1;
+      const critMultiplier = isCrit ? critMultiplierOf(effect) : 1;
       const stacks = effect.scalesWithStatusStacks
         ? target.activeStatusEffects.find((s) => s.statusEffectId === effect.scalesWithStatusStacks!.statusEffectId)?.stacks ?? 0
         : 0;
       const stackOffenseBonusPercent = effect.scalesWithStatusStacks ? stacks * effect.scalesWithStatusStacks.percentPerStack : 0;
       const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent) / 100;
       const isExecuteTarget =
-        !isSelfTick && ctx.executeBonus !== undefined && target.hp / target.maxHp < ctx.executeBonus.hpPercentThreshold / 100;
+        !isSelfTick && ctx.executeBonus !== undefined && (ctx.executeHpFraction ?? target.hp / target.maxHp) < ctx.executeBonus.hpPercentThreshold / 100;
       const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
       const executeFlat = isExecuteTarget ? ctx.executeBonus?.bonusDamageFlat ?? 0 : 0;
       const bonusMultiplier = !isSelfTick && ctx.bonusDamagePercent ? 1 + ctx.bonusDamagePercent / 100 : 1;
@@ -299,7 +306,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       // on a flat number that gets proportionally weaker every time maxHp grows.
       const baseHeal = Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100);
       const crit = critRolled(ctx);
-      const critMultiplier = crit ? (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100 : 1;
+      const critMultiplier = crit ? critMultiplierOf(effect) : 1;
       target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost * critMultiplier));
       const healed = target.hp - before;
       ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });

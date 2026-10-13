@@ -11,7 +11,7 @@ import { getStatusEffect } from "../src/data/statusEffects";
 import { noteAffected, noteBasicAttack, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
 import { expireStatusEffect, statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
-import { makeCtx, spawnInto } from "./helpers";
+import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 
 function setup() {
   const { ctx } = makeCtx(5);
@@ -1371,5 +1371,40 @@ describe("a multi-hit skill that does more than the target had left", () => {
     const hits = entries.flatMap((e) => (e.hit ? [e.hit] : []));
     expect(hits).toHaveLength(2);
     expect(hits[1]!.overkill).toBe(hits[1]!.amount);
+  });
+});
+
+describe("the execute bonus of an overkill hit", () => {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
+
+  /** A 3-hit skill of 60 flat damage per hit with +20 flat under 30% HP, against a 100 max HP target at `hp`. */
+  function amountsAt(hp: number): number[] {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.maxHp = 100;
+    goblin.hp = hp;
+    goblin.defense = 0;
+    const skill: SkillDefinition = {
+      id: "test-execute",
+      name: "Test Execute",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 60, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      executeBonus: { hpPercentThreshold: 30, bonusDamageFlat: 20 },
+      slot: 1,
+      unlockLevel: 1,
+    };
+    const first = combat.log.length;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    return combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+  }
+
+  test("hits after the kill read like the hit that felled the target, not as if it were at 0 HP", () => {
+    // 50% HP is above the threshold: the killing hit has no bonus, so neither do the overkill hits.
+    expect(amountsAt(50)).toEqual([60, 60, 60]);
+  });
+
+  test("when the killing hit had the bonus, so do the hits after it", () => {
+    expect(amountsAt(20)).toEqual([80, 80, 80]);
   });
 });

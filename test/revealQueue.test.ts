@@ -303,3 +303,61 @@ describe("RevealQueue overkill", () => {
     expect(lit).toBe(SESSION_MIN_TICKS + 2 * HIT_BEAT_TICKS);
   });
 });
+
+describe("RevealQueue paces a session's lines by hit beat", () => {
+  const hit = (text: string, targetId: string, s: LogSession, extra: Partial<LogEntry> = {}): LogEntry => ({ text, kind: "attack", session: s, hit: { targetId, amount: 50 }, ...extra });
+  const plain = (text: string, s: LogSession): LogEntry => ({ text, kind: "info", session: s });
+
+  /** The tick each line is revealed on, by text. */
+  function revealTicks(queue: RevealQueue): Record<string, number> {
+    const at: Record<string, number> = {};
+    for (let tick = 0; queue.active && tick < 200; tick++) for (const entry of queue.tick()) at[entry.text] = tick;
+    return at;
+  }
+
+  test("one unit hit three times: each hit line, with the line after it, is up at its own beat", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("hit 1", "m1", s), plain("defeated", s), hit("overkill 2", "m1", s), hit("overkill 3", "m1", s)]);
+    expect(revealTicks(q)).toEqual({
+      announce: 0,
+      "hit 1": IMPACT_TICKS,
+      defeated: IMPACT_TICKS + 1,
+      "overkill 2": IMPACT_TICKS + HIT_BEAT_TICKS,
+      "overkill 3": IMPACT_TICKS + 2 * HIT_BEAT_TICKS,
+    });
+  });
+
+  test("several units hit more than once are interleaved by beat, the log's own order kept within a beat", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("A2", "a", s), hit("B1", "b", s), hit("B2", "b", s)]);
+    const order: string[] = [];
+    while (q.active) for (const entry of q.tick()) order.push(entry.text);
+    expect(order).toEqual(["announce", "A1", "B1", "A2", "B2"]);
+  });
+
+  test("the whole run still fits inside the session's hold", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("h1", "m1", s), hit("h2", "m1", s), hit("h3", "m1", s)]);
+    const shown: string[] = [];
+    while (q.active) for (const entry of q.tick()) shown.push(entry.text);
+    expect(shown).toEqual(["announce", "h1", "h2", "h3"]);
+  });
+
+  test("a session with no unit hit twice keeps the plain pace", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("B1", "b", s)]);
+    expect(revealTicks(q)).toEqual({ announce: 0, A1: IMPACT_TICKS, B1: IMPACT_TICKS + 1 });
+  });
+
+  test("skipping hands back what was not revealed yet, in the order it would have shown", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("A2", "a", s), hit("B1", "b", s), hit("B2", "b", s)]);
+    q.tick();
+    expect(q.flush().map((e) => e.text)).toEqual(["A1", "B1", "A2", "B2"]);
+  });
+});

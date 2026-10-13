@@ -242,7 +242,11 @@ crit prefix when it crit; the line never says the unit takes damage). The battle
 hit of the cast, `-52!`, `-49`, `-51`.
 `RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
 from the impact (`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each
-hit past the first; a summon's number waits for the last hit. `markerReading` picks the number, and
+hit past the first; a summon's number waits for the last hit. The log keeps that pace: the line of a
+unit's k-th hit, with the lines that follow it ("is defeated"), is revealed at beat k (`paceByBeat`), so
+the log names a hit when its number is up. When several units are hit more than once the lines of the
+same beat are revealed together, interleaved by beat rather than grouped per unit; the stored
+`combat.log` keeps the order they were logged in. `markerReading` picks the number, and
 only when the HP the hits took (their damage less their overkill) adds up to the unit's whole HP
 change: a heal landing on the same unit in the same session leaves the net on screen. The HP bar still
 moves once, at the impact. An area attack (one hit per target) reads as before, and so does the damage

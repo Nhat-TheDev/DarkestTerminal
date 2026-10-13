@@ -8,6 +8,7 @@ import { applySkillEffects, getActorByRef, snapshotCombatants, startCombat } fro
 import { runInSession } from "../src/engine/logSession";
 import { spawnMonster } from "../src/data/monsters";
 import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
+import { HIT_BEAT_TICKS, IMPACT_TICKS } from "../src/ui/revealQueue";
 import { monsterStyle } from "../src/ui/layout";
 import { t } from "../src/data/strings";
 import { gameFromSave, loadSave } from "../src/engine/save";
@@ -217,6 +218,42 @@ describe("battlefield and log stay in step", () => {
     }
     const compressed = hits.filter((hit, i) => i === 0 || hit !== hits[i - 1]);
     expect(seen).toEqual(compressed);
+  }, 30000);
+
+  test("the log names each hit when the marker steps to it, not before", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+
+    const hitLines = () => app.debugRunLog.filter((e) => e.hit !== undefined).length;
+    app.tickReveal(); // render once so the app picks up the new lines and starts revealing them
+    await fight.renderOnce();
+    expect(app.debugRevealActive).toBe(true);
+    // The session's first line is a hit, shown at once; the next two come a beat apart.
+    const expectedAt = (tick: number) => [0, IMPACT_TICKS + HIT_BEAT_TICKS, IMPACT_TICKS + 2 * HIT_BEAT_TICKS].filter((due) => due <= tick).length;
+    let tick = 0;
+    expect(hitLines()).toBe(expectedAt(tick));
+    while (app.debugRevealActive && tick < 60) {
+      app.tickReveal();
+      await fight.renderOnce();
+      tick++;
+      expect(hitLines()).toBe(expectedAt(tick));
+    }
+    expect(hitLines()).toBe(3);
   }, 30000);
 
   test("a hit that crit wears its number with a !, and one that did not does not", async () => {

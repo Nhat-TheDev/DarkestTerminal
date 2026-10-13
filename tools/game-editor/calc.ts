@@ -293,6 +293,9 @@ export interface DamageBreakdown {
   rawTotal: number;
   fearDamageMultiplier: number;
   finalDamage: number;
+  /** The range one hit reads over, by `combat.damageVariancePercent`: what a single swing can show, not an average. */
+  finalDamageMin: number;
+  finalDamageMax: number;
   percentOfTargetMaxHp: number | null;
   hitsToKill: number | null;
   hitChancePercent: number | null;
@@ -318,6 +321,9 @@ export function computeDamage(opts: {
   const fearDamageMultiplier = sourceIsCharacter ? 1 - getFearDamagePenalty(fearTier) : 1;
   const rawTotal = (amount + mo) * fearDamageMultiplier;
   const finalDamage = Math.max(1, Math.round(rawTotal));
+  const variance = BALANCE.combat.damageVariancePercent / 100;
+  const finalDamageMin = Math.max(1, Math.floor(rawTotal * (1 - variance)));
+  const finalDamageMax = Math.max(1, Math.ceil(rawTotal * (1 + variance)));
   // "Original" damage = the same hit against 0 defense; the gap to finalDamage is what defense removed.
   const unmitigatedTotal = (amount + offense) * fearDamageMultiplier;
   const defenseReductionPercent = unmitigatedTotal > 0 ? Math.max(0, (1 - rawTotal / unmitigatedTotal) * 100) : 0;
@@ -335,6 +341,8 @@ export function computeDamage(opts: {
     rawTotal,
     fearDamageMultiplier,
     finalDamage,
+    finalDamageMin,
+    finalDamageMax,
     percentOfTargetMaxHp: targetMaxHp ? Number(((finalDamage / targetMaxHp) * 100).toFixed(1)) : null,
     hitsToKill: targetMaxHp ? Math.ceil(targetMaxHp / finalDamage) : null,
     hitChancePercent,

@@ -19,6 +19,10 @@ export const HIT_BEAT_TICKS = 5;
 
 interface Group {
   entries: LogEntry[];
+  /** The order the lines are revealed in: `entries`, except that a session with a unit hit more than once is revealed beat by beat. */
+  order: LogEntry[];
+  /** The tick each line of `order` is due, or null for the plain pace (the first line at once, the rest from the impact, one per tick). */
+  dueAt: number[] | null;
   session: LogSession | null;
   /** Ticks the group occupies, counting the tick that shows its first line. */
   span: number;
@@ -38,7 +42,7 @@ function toGroups(entries: LogEntry[]): Group[] {
   for (const entry of entries) {
     const last = groups[groups.length - 1];
     if (last && last.session?.id === entry.session?.id) last.entries.push(entry);
-    else groups.push({ entries: [entry], session: entry.session ?? null, span: 0, fearStart: null, hits: new Map(), healCrits: new Set(), hitBeats: 0 });
+    else groups.push({ entries: [entry], order: [], dueAt: null, session: entry.session ?? null, span: 0, fearStart: null, hits: new Map(), healCrits: new Set(), hitBeats: 0 });
   }
   for (const group of groups) {
     for (const { hit, healCritOf } of group.entries) {
@@ -49,6 +53,8 @@ function toGroups(entries: LogEntry[]): Group[] {
       group.hits.set(hit.targetId, taken);
       group.hitBeats = Math.max(group.hitBeats, taken.length - 1);
     }
+    group.order = group.entries;
+    if (group.session && group.hitBeats > 0) paceByBeat(group);
     if (!group.session) {
       group.span = group.entries.length;
       continue;
@@ -59,6 +65,40 @@ function toGroups(entries: LogEntry[]): Group[] {
     group.span = group.fearStart === null ? hold : group.fearStart + FEAR_BEAT_TICKS;
   }
   return groups;
+}
+
+/**
+ * Reveals a session's lines in step with the battlefield's hit beats: a hit line, with the lines that
+ * follow it ("is defeated"), is due at the beat of its place among that unit's hits, so the log names a
+ * hit when its number is up. Units with several hits are interleaved by beat; the stored log is untouched.
+ */
+function paceByBeat(group: Group): void {
+  const units: { beat: number; lines: LogEntry[] }[] = [];
+  const rank = new Map<Id, number>();
+  for (const entry of group.entries) {
+    if (entry.hit) {
+      const beat = rank.get(entry.hit.targetId) ?? 0;
+      rank.set(entry.hit.targetId, beat + 1);
+      units.push({ beat, lines: [entry] });
+    } else if (units.length === 0) {
+      units.push({ beat: 0, lines: [entry] });
+    } else {
+      units[units.length - 1]!.lines.push(entry);
+    }
+  }
+  // Array.prototype.sort is stable: within a beat the lines keep the order they were logged in.
+  units.sort((a, b) => a.beat - b.beat);
+  const order: LogEntry[] = [];
+  const dueAt: number[] = [];
+  for (const unit of units) {
+    unit.lines.forEach((line, place) => {
+      const raw = IMPACT_TICKS + unit.beat * HIT_BEAT_TICKS + place;
+      order.push(line);
+      dueAt.push(dueAt.length === 0 ? 0 : Math.max(raw, dueAt[dueAt.length - 1]! + 1));
+    });
+  }
+  group.order = order;
+  group.dueAt = dueAt;
 }
 
 const NO_HITS: ReadonlyMap<Id, HitMark[]> = new Map();
@@ -138,18 +178,20 @@ export class RevealQueue {
       this.ticks = 0;
     }
     const revealed: LogEntry[] = [];
-    // A session shows its first line at once and the rest from its impact on; plain lines one per tick.
-    const due = !this.current.session || this.shown === 0 || this.ticks >= IMPACT_TICKS;
-    if (due && this.shown < this.current.entries.length) revealed.push(this.current.entries[this.shown++]!);
+    // A session shows its first line at once and the rest from its impact on, plain lines one per tick; a
+    // session with a unit hit more than once shows each line at the beat of its hit.
+    const dueTick = this.current.dueAt?.[this.shown] ?? IMPACT_TICKS;
+    const due = !this.current.session || this.shown === 0 || this.ticks >= dueTick;
+    if (due && this.shown < this.current.order.length) revealed.push(this.current.order[this.shown++]!);
     this.ticks++;
     // Lines with no session have nothing to hold: the group ends with its last line.
-    if (!this.current.session && this.shown >= this.current.entries.length) this.current = null;
+    if (!this.current.session && this.shown >= this.current.order.length) this.current = null;
     return revealed;
   }
 
   /** Skip: returns every line not yet revealed and leaves the queue idle. */
   flush(): LogEntry[] {
-    const rest = [...(this.current ? this.current.entries.slice(this.shown) : []), ...this.groups.flatMap((g) => g.entries)];
+    const rest = [...(this.current ? this.current.order.slice(this.shown) : []), ...this.groups.flatMap((g) => g.order)];
     this.current = null;
     this.groups = [];
     this.shown = 0;
