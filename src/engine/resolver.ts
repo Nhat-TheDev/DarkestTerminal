@@ -342,7 +342,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       return 0;
     }
-    case "summon": {
+    case "summon":
+    case "summonMonster": {
       // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register it.
       return 0;
     }

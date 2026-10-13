@@ -1,4 +1,4 @@
-import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
+import type { MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import {
@@ -12,6 +12,7 @@ import {
 import { BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 import { assertRaceDataConsistent, resolveRaceProfile } from "./monsterRaces";
+import { STATUS_EFFECTS } from "./statusEffects";
 
 import { GROWTH_WEIGHTS } from "./growthWeights";
 
@@ -98,7 +99,85 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
   if (!guardAtZero) throw new Error("data/monsters.json: at least 1 elite+boss-role archetype must have minFloor 0");
 }
 
+const PREDICATE_STATUS_FIELDS = ["selfHasStatusId", "selfLacksStatusId", "targetHasStatusId", "targetLacksStatusId"] as const;
+
+function assertPredicate(where: string, p: MonsterAiPredicate | undefined): void {
+  if (!p) return;
+  for (const field of PREDICATE_STATUS_FIELDS) {
+    const id = p[field];
+    if (id !== undefined && !STATUS_EFFECTS.some((s) => s.id === id)) {
+      throw new Error(`${where}: ${field} "${id}" is not a status in data/status-effects.json`);
+    }
+  }
+}
+
+function assertRules(where: string, rules: MonsterAiRule[] | undefined): void {
+  for (const [i, rule] of (rules ?? []).entries()) {
+    if (!(rule.weightMultiplier >= 0)) throw new Error(`${where}[${i}]: weightMultiplier must be >= 0`);
+    assertPredicate(`${where}[${i}].if`, rule.if);
+  }
+}
+
+/**
+ * The AI and mechanic fields a kit declares (`aiCondition`, `targetCount`, `summonMonster`,
+ * `phases`, `shell`) name statuses, archetypes and skills by id and carry ranges; a typo or an
+ * inverted range would otherwise surface mid-fight, so it is rejected here with the owner named.
+ */
+export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skills: SkillDefinition[]): void {
+  const byId = new Map(skills.map((s) => [s.id, s]));
+  for (const skill of skills) {
+    const where = `data/monster-skills.json: "${skill.id}"`;
+    assertPredicate(`${where} aiCondition`, skill.aiCondition);
+    assertRules(`${where} aiRules`, skill.aiRules);
+    assertRules(`${where} targetRules`, skill.targetRules);
+    if (skill.targetCount) {
+      const { min, max } = skill.targetCount;
+      if (skill.target !== "singleEnemy" || !(min >= 1 && min <= max)) {
+        throw new Error(`${where}: targetCount needs target "singleEnemy" and 1 <= min <= max`);
+      }
+    }
+    for (const effect of [...(skill.effects ?? []), ...(skill.chargeEffects ?? [])]) {
+      if (effect.kind !== "summonMonster") continue;
+      const summoned = archetypes.find((a) => a.id === effect.monsterArchetypeId);
+      if (!summoned || !summoned.roles.includes("normal")) {
+        throw new Error(`${where}: summonMonster "${effect.monsterArchetypeId}" must be an archetype with role "normal"`);
+      }
+      if (!(effect.count !== undefined && effect.count >= 1)) throw new Error(`${where}: summonMonster needs count >= 1`);
+    }
+  }
+  for (const archetype of archetypes) {
+    const where = `data/monsters.json: "${archetype.id}"`;
+    const declared = new Set(archetype.skillIds);
+    for (const [i, phase] of (archetype.phases ?? []).entries()) {
+      if (!archetype.roles.includes(phase.tier)) {
+        throw new Error(`${where}: phase ${i} is for tier "${phase.tier}", which is not in its roles`);
+      }
+      for (const key of Object.keys(phase.weights)) {
+        if (key !== "basicAttack" && !declared.has(key)) {
+          throw new Error(`${where}: phase ${i} weight key "${key}" is not in its skillIds`);
+        }
+      }
+      if (phase.onEnterSkillId !== undefined && !declared.has(phase.onEnterSkillId)) {
+        throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is not in its skillIds`);
+      }
+    }
+    if (archetype.shell) {
+      const { hitsToBreak, breakStatusId } = archetype.shell;
+      if (!(hitsToBreak.min >= 1 && hitsToBreak.min <= hitsToBreak.max)) {
+        throw new Error(`${where}: shell hitsToBreak needs 1 <= min <= max`);
+      }
+      if (!STATUS_EFFECTS.some((s) => s.id === breakStatusId)) {
+        throw new Error(`${where}: shell breakStatusId "${breakStatusId}" is not a status`);
+      }
+    }
+    for (const id of archetype.skillIds) {
+      if (!byId.has(id)) throw new Error(`${where}: skill "${id}" is not in data/monster-skills.json`);
+    }
+  }
+}
+
 assertMonsterDataConsistent(MONSTER_ARCHETYPES);
+assertMonsterKitConsistent(MONSTER_ARCHETYPES, MONSTER_SKILLS);
 assertRaceDataConsistent(MONSTER_ARCHETYPES);
 
 export const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("normal"));

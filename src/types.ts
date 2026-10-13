@@ -13,7 +13,8 @@ export type SkillEffectKind =
   | "removeStatusEffect"
   | "modifyStat"
   | "modifyCombatStat"
-  | "summon";
+  | "summon"
+  | "summonMonster";
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
@@ -61,6 +62,10 @@ export interface SkillEffect {
   /** The status expires with the summon this skill casts; the `summon` effect must resolve first. */
   linksToCasterSummon?: boolean;
   excludesSummonTargets?: boolean;
+  /** For `summonMonster`: the normal-role archetype spawned into the running combat. */
+  monsterArchetypeId?: Id;
+  /** For `summonMonster`: how many to spawn, before the per-summoner cap. */
+  count?: number;
 }
 
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
@@ -107,6 +112,49 @@ export interface SkillRankDefinition {
   effects?: SkillEffect[];
 }
 
+/** Conditions a monster skill's `aiCondition` / `aiRules[].if` / `targetRules[].if` can test; every field present must hold (`monsterAiRules.ts`). */
+export interface MonsterAiPredicate {
+  selfHpBelowPercent?: number;
+  selfHasStatusId?: Id;
+  selfLacksStatusId?: Id;
+  targetHasStatusId?: Id;
+  targetLacksStatusId?: Id;
+  targetHpBelowPercent?: number;
+  targetsBelowHpPercent?: number;
+  atLeast?: number;
+  alliesFewerThan?: number;
+}
+
+/** Multiplies a candidate's weight by `weightMultiplier` while `if` holds. */
+export interface MonsterAiRule {
+  if: MonsterAiPredicate;
+  weightMultiplier: number;
+}
+
+/** From `hpBelowPercent` of max HP down, `weights` replace the tier's action table; `onEnterSkillId` is cast on the turn the phase is entered. */
+export interface MonsterPhase {
+  tier: MonsterTier;
+  hpBelowPercent: number;
+  weights: Record<string, number>;
+  onEnterSkillId?: Id;
+}
+
+/** A breakable shell: while intact each direct hit is capped at a share of max HP and counts toward breaking it; breaking stuns the bearer, and it reforms later (`monsterShell.ts`). */
+export interface MonsterShellDefinition {
+  hitsToBreak: { min: number; max: number };
+  hitDamageCapMaxHpPercent: number;
+  breakStatusId: Id;
+  breakDurationTurns: number;
+  reformAfterOwnTurns: number;
+}
+
+/** The runtime state of a monster's shell. */
+export interface MonsterShellState {
+  state: "intact" | "broken";
+  hitsLeft: number;
+  ownTurnsSinceBreak: number;
+}
+
 export interface SkillDefinition {
   id: Id;
   name: string;
@@ -128,6 +176,20 @@ export interface SkillDefinition {
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
   /** Bonus damage while the target's HP is below `hpPercentThreshold` of its maxHp; unrelated to the Boss execute charge. */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+  /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
+  aiCondition?: MonsterAiPredicate;
+  /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
+  aiRules?: MonsterAiRule[];
+  /** Monster skills only: each matching rule multiplies a candidate target's weight. */
+  targetRules?: MonsterAiRule[];
+  /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
+  telegraph?: boolean;
+  /** Monster skills only: effects resolved on the caster during a telegraph's charge turn. */
+  chargeEffects?: SkillEffect[];
+  /** Monster skills only, on a `singleEnemy` skill: hits this many distinct enemies. */
+  targetCount?: { min: number; max: number };
+  /** Monster skills only: the cooldown the skill starts the fight on, so it cannot open the fight. */
+  initialCooldownTurns?: number;
 }
 
 export interface PassiveRankDefinition {
@@ -250,6 +312,10 @@ export interface StatusEffectDefinition {
   /** The status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
   dodgePercent?: number;
+  /** Shown as a debuff and cleansable even when the status changes no stat, ticks or stuns (a tag such as `marked`). */
+  harmful?: boolean;
+  /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
+  reflectDamagePercent?: number;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -517,6 +583,12 @@ export interface MonsterArchetype {
   expReward: number;
   /** Charged finisher outside the weighted roll: telegraphs a turn, always releases, then cools down. */
   executeSkillId?: Id;
+  /** Elite/boss phases: each replaces its tier's weights once HP falls below its threshold. */
+  phases?: MonsterPhase[];
+  /** `"random"`: targets are picked uniformly, ignoring aggro. */
+  targeting?: "random";
+  /** A breakable shell the monster carries from spawn. */
+  shell?: MonsterShellDefinition;
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
@@ -549,6 +621,18 @@ export interface Monster {
   executeCooldownTurns?: number;
   isChargingExecute?: boolean;
   executeTargetId?: Id;
+  /** Turns left on each skill's cooldown. */
+  skillCooldowns?: Record<Id, number>;
+  /** How many times each skill with `usesPerCombat` has been cast. */
+  skillUses?: Record<Id, number>;
+  /** Indexes into the archetype's `phases` already entered. */
+  enteredPhaseIndexes?: number[];
+  /** The telegraphed skill being charged and the targets it locked. */
+  charging?: { skillId: Id; targetIds: Id[] };
+  /** The monster that summoned this one; it falls when its summoner does. */
+  summonerId?: Id;
+  /** Present on a shell bearer. */
+  shell?: MonsterShellState;
 }
 
 /** Player-side combatant from a skill; gone once `actionsTaken` reaches `maxActions` (a stunned turn doesn't count) or `hp` hits 0. */
