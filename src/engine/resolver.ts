@@ -189,7 +189,7 @@ export interface ResolveContext {
   onDotEffect?: (kind: "damage" | "heal") => void;
   /** A uniform draw in [0, 1) from the rng of a caller making a direct hit or heal: the base crit chance, then for damage the ±`damageVariancePercent` factor and its rounding. Absent (a damage- or heal-over-time tick): no crit and no variance. */
   rollDamage?: () => number;
-  /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and recorded for the battlefield, but nothing is dealt, healed or logged. */
+  /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and it is logged as overkill and recorded for the battlefield, but nothing is dealt or healed. */
   unapplied?: true;
 }
 
@@ -258,7 +258,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
       const critMark = isCrit ? { crit: true as const } : {};
       if (ctx.unapplied && !isSelfTick) {
-        ctx.log.push({ text: "", kind: "attack", hidden: true, hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
+        const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
+        const text = t(overkillKey, { target: nameOf(target), amount: finalDamage, source: nameOf(source), skill: ctx.skillName ?? "" });
+        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
         return 0;
       }
       const hpBefore = target.hp;

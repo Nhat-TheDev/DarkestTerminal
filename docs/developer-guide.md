@@ -235,9 +235,11 @@ A unit that took 2 or more direct hits in one session shows them one at a time i
 landed on, its full damage and the overkill the actor had no HP left to take (`LogEntry.hit`, set in
 `resolveSkillEffect`; a damage-over-time tick has none). The marker reads the full damage, so a crit of
 52 on a unit with 24 HP left is `-52!`, not `-24!`. The hits of a multi-hit cast that come after the
-target has fallen are rolled for crit and variance like any other and recorded as hidden entries
-(`ResolveContext.unapplied`, set by the hit loop in `applySkillEffects`): nothing is dealt, healed,
-hooked or logged for them, but the battlefield still reads every hit of the cast, `-52!`, `-49`, `-51`.
+target has fallen are rolled for crit and variance like any other (`ResolveContext.unapplied`, set by
+the hit loop in `applySkillEffects`): nothing is dealt, healed or hooked for them, and each is logged
+after the "is defeated" line as `Overkill on Dungeon Rat: 49 from Vanguard's Frenzied Slash.` (with the
+crit prefix when it crit; the line never says the unit takes damage). The battlefield still reads every
+hit of the cast, `-52!`, `-49`, `-51`.
 `RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
 from the impact (`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each
 hit past the first; a summon's number waits for the last hit. `markerReading` picks the number, and

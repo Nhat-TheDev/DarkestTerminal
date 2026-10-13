@@ -950,7 +950,7 @@ describe("LogEntry crit marks", () => {
 describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
   pinCombatBalance({ damageVariancePercent: 3, baseCritChancePercent: 1 });
 
-  test("rolls crit and variance like a real hit, deals and heals nothing, and leaves only a hidden entry", () => {
+  test("rolls crit and variance like a real hit, deals and heals nothing, and is logged as overkill", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;
     const target = ctx.party[1]!;
@@ -967,9 +967,31 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     expect(attacker.hp).toBe(500);
     expect(log).toHaveLength(1);
     const entry = log[0]!;
-    expect(entry.hidden).toBe(true);
+    expect(entry.hidden).toBeUndefined();
     const amount = Math.floor(base * 1.5 + 0.5);
+    expect(entry.text).toBe(`Critical Hit! Overkill on ${target.name}: ${amount} from ${attacker.name}.`);
     expect(entry.hit).toEqual({ targetId: target.id, amount, overkill: amount, crit: true });
+  });
+
+  test("reads as overkill in each of its four forms, never as damage taken", () => {
+    const { ctx } = makeCtx();
+    const attacker = ctx.party[0]!;
+    const target = ctx.party[1]!;
+    target.hp = 0;
+    const line = (skillName: string | undefined, roll: number) => {
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 100 }, attacker, target, { log, skillName, rollDamage: () => roll, unapplied: true });
+      return { text: log[0]!.text, amount: log[0]!.hit!.amount };
+    };
+    const plain = line(undefined, 0.5);
+    expect(plain.text).toBe(`Overkill on ${target.name}: ${plain.amount} from ${attacker.name}.`);
+    const withSkill = line("Frenzied Slash", 0.5);
+    expect(withSkill.text).toBe(`Overkill on ${target.name}: ${withSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
+    const crit = line(undefined, 0);
+    expect(crit.text).toBe(`Critical Hit! Overkill on ${target.name}: ${crit.amount} from ${attacker.name}.`);
+    const critSkill = line("Frenzied Slash", 0);
+    expect(critSkill.text).toBe(`Critical Hit! Overkill on ${target.name}: ${critSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
+    for (const { text } of [plain, withSkill, crit, critSkill]) expect(text).not.toContain("takes");
   });
 
   test("a damage-over-time tick is never shown that way", () => {

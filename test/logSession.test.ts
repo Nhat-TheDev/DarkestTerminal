@@ -1343,9 +1343,13 @@ describe("a multi-hit skill that does more than the target had left", () => {
     for (const hit of hits) expect(hit.amount).toBeGreaterThanOrEqual(38);
   });
 
-  test("only the hit that landed has a line in the log, the target is defeated once, and nothing else of the rest takes effect", () => {
-    const { vanguard, entries } = run(cast(40, { lifestealPercent: 100 }));
-    expect(entries.filter((e) => e.kind === "attack" && !e.hidden)).toHaveLength(1);
+  test("the hits after the kill are logged as overkill after the one defeated line, and nothing else of them takes effect", () => {
+    const { goblin, vanguard, entries } = run(cast(40, { lifestealPercent: 100 }));
+    const texts = entries.filter((e) => e.kind === "attack" || e.kind === "death").map((e) => e.text);
+    expect(texts).toHaveLength(4);
+    expect(texts[0]).toMatch(/^.+ takes \d+ damage from /);
+    expect(texts[1]).toBe(`${goblin.name} is defeated.`);
+    for (const text of texts.slice(2)) expect(text).toMatch(new RegExp(`^Overkill on ${goblin.name}: \\d+ from `));
     expect(entries.filter((e) => e.kind === "death")).toHaveLength(1);
     const firstHit = entries.find((e) => e.hit)!.hit!;
     // Lifesteal reads the damage of the one hit that landed, not of the three shown.

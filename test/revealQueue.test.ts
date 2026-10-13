@@ -285,13 +285,13 @@ describe("RevealQueue crit marks", () => {
 });
 
 describe("RevealQueue overkill", () => {
-  test("a hit keeps its overkill, and the hits shown after the kill count towards the session's hold", () => {
+  test("a hit keeps its overkill, and the hits after the kill count towards the session's hold", () => {
     const q = new RevealQueue();
     const s = session(1);
     q.enqueue([
       { text: "a", kind: "attack", session: s, hit: { targetId: "m1", amount: 52, overkill: 28, crit: true } },
-      { text: "", kind: "attack", session: s, hidden: true, hit: { targetId: "m1", amount: 49, overkill: 49 } },
-      { text: "", kind: "attack", session: s, hidden: true, hit: { targetId: "m1", amount: 51, overkill: 51 } },
+      { text: "Overkill on Dungeon Rat: 49 from Vanguard.", kind: "attack", session: s, hit: { targetId: "m1", amount: 49, overkill: 49 } },
+      { text: "Overkill on Dungeon Rat: 51 from Vanguard.", kind: "attack", session: s, hit: { targetId: "m1", amount: 51, overkill: 51 } },
     ]);
     q.tick();
     expect(q.focusHits.get("m1")).toEqual([{ amount: 52, overkill: 28, crit: true }, { amount: 49, overkill: 49 }, { amount: 51, overkill: 51 }]);
