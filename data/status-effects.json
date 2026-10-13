@@ -1113,6 +1113,53 @@
     "rankLevel": 6
   },
   {
+    "id": "challenged",
+    "name": "Challenged",
+    "description": "Singled out. Draws more of the enemy's attention while it lasts.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": 30
+      }
+    ],
+    "harmful": true
+  },
+  {
+    "id": "marked",
+    "name": "Marked",
+    "description": "A name set down to be struck out. Does nothing on its own.",
+    "perTurnEffects": [],
+    "harmful": true
+  },
+  {
+    "id": "withered",
+    "name": "Withered",
+    "description": "Lowers max HP while it lasts.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "maxHp",
+        "amount": -20,
+        "minPercent": -10
+      }
+    ]
+  },
+  {
+    "id": "riposte",
+    "name": "Riposte",
+    "description": "Turns part of every direct hit back on whoever landed it.",
+    "perTurnEffects": [],
+    "reflectDamagePercent": 40
+  },
+  {
+    "id": "airborne",
+    "name": "Airborne",
+    "description": "Out of reach of every attack while it lasts.",
+    "perTurnEffects": [],
+    "untargetable": true
+  },
+  {
     "id": "blessed",
     "name": "Blessed",
     "description": "The words the gatekeeper said over you: raises defense, attack and magic power for the whole fight.",

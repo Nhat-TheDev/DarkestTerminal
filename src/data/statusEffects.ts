@@ -75,7 +75,9 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
     parts.push(t("item.effectVulnerable", { percent: Math.round((def.vulnerableTo.multiplier - 1) * 100), status: getStatusEffect(def.vulnerableTo.statusEffectId).name }));
   }
   if (def.stuns) parts.push(t("item.effectStuns"));
-  if (def.untargetable) parts.push(t("item.effectUntargetable"));
+  // Only a status with a `breakBonus` ends when its bearer attacks (Stealthed); any other lasts its duration (Airborne).
+  if (def.untargetable) parts.push(t(def.breakBonus ? "item.effectUntargetable" : "item.effectUntargetableTimed"));
+  if (def.reflectDamagePercent) parts.push(t("item.effectReflect", { percent: def.reflectDamagePercent }));
   if (def.dodgePercent) parts.push(t("artifact.effectDodgeChance", { chance: def.dodgePercent }));
   if (def.breakBonus?.basicAttackGuaranteedCrit) parts.push(t("item.effectBreakBonusCrit"));
   if (def.breakBonus?.skillDamageBonusPercent) parts.push(t("item.effectBreakBonusSkillPercent", { percent: def.breakBonus.skillDamageBonusPercent }));

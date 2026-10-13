@@ -167,18 +167,21 @@ describe("assertMonsterKitConsistent", () => {
     const s = skill({ target: "self", effects: [{ kind: "summonMonster", monsterArchetypeId: "dragon", count: 1 }] });
     expect(() => assertMonsterKitConsistent(MONSTER_ARCHETYPES, [s as any])).toThrow(/dragon/);
   });
+  // The rest of the catalog stays in the list: shipped skills summon archetypes that must resolve.
+  const withReplaced = (replacement: { id: string }) => MONSTER_ARCHETYPES.map((x) => (x.id === replacement.id ? (replacement as any) : x));
+
   test("rejects a phase weight key or onEnterSkillId outside skillIds, and a phase on a tier the archetype lacks", () => {
     const a = { ...base(), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { nope: 1 } }] };
-    expect(() => assertMonsterKitConsistent([a as any], MONSTER_SKILLS)).toThrow(/nope/);
+    expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/nope/);
     const b = { ...base(), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 }, onEnterSkillId: "nope" }] };
-    expect(() => assertMonsterKitConsistent([b as any], MONSTER_SKILLS)).toThrow(/nope/);
+    expect(() => assertMonsterKitConsistent(withReplaced(b), MONSTER_SKILLS)).toThrow(/nope/);
     const c = { ...structuredClone(MONSTER_ARCHETYPES.find((x) => x.id === "dungeon-rat")!), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 } }] };
-    expect(() => assertMonsterKitConsistent([c as any], MONSTER_SKILLS)).toThrow(/phase/);
+    expect(() => assertMonsterKitConsistent(withReplaced(c), MONSTER_SKILLS)).toThrow(/phase/);
   });
   test("rejects a shell with min > max hits or an unknown break status", () => {
     const a = { ...base(), shell: { hitsToBreak: { min: 8, max: 6 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 } };
-    expect(() => assertMonsterKitConsistent([a as any], MONSTER_SKILLS)).toThrow(/shell/);
+    expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/shell/);
     const b = { ...base(), shell: { hitsToBreak: { min: 6, max: 8 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "nope", breakDurationTurns: 1, reformAfterOwnTurns: 2 } };
-    expect(() => assertMonsterKitConsistent([b as any], MONSTER_SKILLS)).toThrow(/nope/);
+    expect(() => assertMonsterKitConsistent(withReplaced(b), MONSTER_SKILLS)).toThrow(/nope/);
   });
 });

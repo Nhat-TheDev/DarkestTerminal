@@ -491,6 +491,8 @@
   "item.effectVulnerable": "takes {{percent}}% more damage from {{status}} while active",
   "item.effectStuns": "skips the turn entirely",
   "item.effectUntargetable": "untargetable until an attack breaks it",
+  "item.effectUntargetableTimed": "untargetable while it lasts",
+  "item.effectReflect": "reflects {{percent}}% of direct damage back at the attacker",
   "item.effectBreakBonusCrit": "the basic attack that breaks it is a guaranteed critical hit",
   "item.effectBreakBonusSkillPercent": "the skill that breaks it deals {{percent}}% more damage",
   "item.effectOverwatch": "attacks the next monster to act before it does, once; a hit cancels that monster's turn",
