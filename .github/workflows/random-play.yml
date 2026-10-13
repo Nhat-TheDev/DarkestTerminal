@@ -1,0 +1,23 @@
+name: Random Play
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: random-play-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  random-play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      # Fixed seeds, so a red run means the code changed, not the dice. Each kind of failure in the
+      # log carries a command that replays it locally with the colour report.
+      - run: bun run random-play --runs 10 --max-steps 2000 --report none

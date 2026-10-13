@@ -2,9 +2,10 @@ import { describe, test, expect } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
+import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
-import { getActorByRef, startCombat } from "../src/engine/combat";
+import { startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -14,65 +15,14 @@ import { t } from "../src/data/strings";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import * as runnerScreen from "../src/ui/screens/runner";
+import * as artifactsScreen from "../src/ui/screens/artifacts";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
+import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
+import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
-  test("plays a scripted run via keypresses without crashing", async () => {
-    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
-    const app = new App(renderer, new Game(7));
-    await renderOnce();
-
-    const firstFrame = captureCharFrame();
-    expect(firstFrame).toContain("DARKEST-TERMINAL");
-    const startingDepth = app.debugGame.state.floor.depth;
-
-    let guard = 0;
-    while (app.debugUiState.kind !== "gameover" && guard < 800) {
-      guard++;
-      const ui = app.debugUiState;
-
-      if (ui.kind === "roomReward" || ui.kind === "skillDetail" || ui.kind === "runnerNotice" || ui.kind === "runnerShop") {
-        mockInput.pressKey("RETURN");
-        await renderOnce();
-        continue;
-      }
-
-      let key = "1";
-      if (ui.kind === "room") {
-        const choices = app.debugGame.connectedRoomChoices();
-        const idx = choices.findIndex((r) => !r.cleared);
-        key = String((idx >= 0 ? idx : 0) + 1);
-      } else if (ui.kind === "pickAction") {
-        key = "1";
-      } else if (ui.kind === "pickSkill") {
-        const actor = getActorByRef(ui.actorRef, app.debugGame.ctx) as Character;
-        const skills = actor.unlockedSkillIds.map(getSkill);
-        const attackIdx = skills.findIndex((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost);
-        key = String((attackIdx >= 0 ? attackIdx : 0) + 1);
-      } else if (ui.kind === "pickTarget") {
-        key = "1";
-      } else {
-        key = "1";
-      }
-
-      mockInput.pressKey(key);
-      await renderOnce();
-    }
-
-    const outcome = app.debugGame.state.gameOver;
-    expect(outcome).not.toBe("victory");
-    if (outcome === null) {
-      expect(app.debugGame.state.floor.depth).toBeGreaterThan(startingDepth);
-    } else {
-      expect(outcome).toBe("defeat");
-    }
-
-    const finalFrame = captureCharFrame();
-    expect(finalFrame.length).toBeGreaterThan(0);
-  }, 20000);
-
   test("a boss kill's pending artifact decision surfaces before the floor advances", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
     const game = new Game(7);
@@ -110,6 +60,62 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     expect(game.state.floor.depth).toBe(2); // now it advances
+  }, 20000);
+
+  // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
+  // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
+  async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
+    let game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    game.currentSaveSlot = "slot1";
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "boss";
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = 1;
+    game.ctx.monsters.push(boss);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+    let setup = await createTestRenderer({ width: 100, height: 40 });
+    let app = new App(setup.renderer, game);
+    await setup.renderOnce();
+
+    for (let guard = 0; app.debugUiState.kind !== stopAt && guard < 40; guard++) {
+      const kind = app.debugUiState.kind;
+      setup.mockInput.pressKey(kind === "roomReward" || kind === "skillDetail" ? "RETURN" : "1");
+      await setup.renderOnce();
+    }
+    expect(app.debugUiState.kind).toBe(stopAt);
+
+    saveRun(game);
+    game = gameFromSave(loadSave("slot1"), "slot1", 7);
+    setup = await createTestRenderer({ width: 100, height: 40 });
+    app = new App(setup.renderer, game);
+    await setup.renderOnce();
+    return { game, app, setup };
+  }
+
+  test("a run reloaded on a boss kill's artifact decision still offers Camp and advances the floor", async () => {
+    const { game, app, setup } = await bossKilledThenReloadedAt("artifactDecision");
+    expect(app.debugUiState.kind).toBe("artifactDecision");
+
+    setup.mockInput.pressKey("2"); // Discard
+    await setup.renderOnce();
+    expect(app.debugUiState.kind).toBe("campPrompt");
+    expect(game.state.floor.depth).toBe(1);
+
+    setup.mockInput.pressKey("RETURN"); // skip Camp
+    await setup.renderOnce();
+    expect(game.state.floor.depth).toBe(2);
+  }, 20000);
+
+  test("a run reloaded on the post-boss Camp offer is offered Camp again and then advances", async () => {
+    const { game, app, setup } = await bossKilledThenReloadedAt("campPrompt");
+    expect(app.debugUiState.kind).toBe("campPrompt");
+    expect(game.state.floor.depth).toBe(1);
+
+    setup.mockInput.pressKey("RETURN"); // skip Camp
+    await setup.renderOnce();
+    expect(game.state.floor.depth).toBe(2);
   }, 20000);
 
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
@@ -530,6 +536,13 @@ describe("Rest room runner screens", () => {
     expect(app.debugUiState.kind).toBe("campReflection"); // the reflection comes after the choice
   });
 
+  test("an artifact's detail view offers Back as its only option", () => {
+    const artifact = ARTIFACTS[0]!;
+    const text = artifactsScreen.renderMain(new Game(7), { kind: "artifactDetail", artifactId: artifact.id, origin: { kind: "owned", characterId: "x" } });
+    expect(text).toContain(artifact.name);
+    expect(text.split("\n").at(-1)).toBe("  [1] Back");
+  });
+
   test("each shop offer shows what the item does", async () => {
     const { game } = await restApp({ runner: true });
     const text = runnerScreen.renderMain(game, { kind: "runnerShop" });
@@ -643,7 +656,8 @@ describe("a panel scrolled with the mouse wheel", () => {
   };
 
   test("does not carry its offset into the next, shorter screen", async () => {
-    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 50 });
+    // Short enough that the shop overflows the Dungeon panel, so there is an offset to carry.
+    const { renderer, mockInput, mockMouse, renderOnce, captureCharFrame } = await createTestRenderer({ width: 160, height: 44 });
     const app = new App(renderer, gameInRunnerRoom(), { autoReveal: false });
     await renderOnce();
     const dungeon = () => dungeonOf(captureCharFrame());
@@ -687,5 +701,65 @@ describe("a panel scrolled with the mouse wheel", () => {
     app.tickReveal(); // a render with nothing new to show
     await renderOnce();
     expect(dungeonOf(captureCharFrame())).toBe(scrolled);
+  });
+});
+
+describe("layout below the full height", () => {
+  const panelRows = (frame: string, title: string) => panelContentRows(frame.split("\n"), title);
+
+  /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
+  async function openFight(width: number, height: number, boss = false) {
+    const game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    if (boss) {
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      game.ctx.monsters.push(monster);
+      room.monsterIds = [monster.id];
+      game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    }
+    const setup = await createTestRenderer({ width, height });
+    const app = new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    expect(app.debugUiState.kind).toBe("pickAction");
+    return { ...setup, game };
+  }
+
+  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel gets room for its choices", async () => {
+    const { captureCharFrame, game } = await openFight(120, 40);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
+    // Only blank rows above the sprites were trimmed: every character's name and HP row is still drawn.
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
+    for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
+    for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
+  });
+
+  test("at 120x40 a boss keeps the battlefield's full height, so its sprite is not cut", async () => {
+    const { captureCharFrame } = await openFight(120, 40, true);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+  });
+
+  test("at full height the layout is unchanged", async () => {
+    const { captureCharFrame } = await openFight(120, 70);
+    const frame = captureCharFrame();
+    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(6);
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(20);
+  });
+
+  test("resizing the terminal switches between the two layouts at once", async () => {
+    const { captureCharFrame, resize, renderOnce } = await openFight(120, 70);
+    resize(120, 40);
+    await renderOnce();
+    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
+    resize(120, 70);
+    await renderOnce();
+    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(20);
   });
 });

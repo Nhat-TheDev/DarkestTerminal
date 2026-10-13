@@ -404,7 +404,7 @@
   "ui.itemDetailBackOption": "  [2] Back",
   "ui.itemDetailBackOnlyOption": "  [1] Back",
   "ui.itemOutOfCombatViewOnlyHint": "This item can only be used in combat.",
-  "ui.artifactDetailBackOption": "  [2] Back",
+  "ui.artifactDetailBackOnlyOption": "  [1] Back",
   "ui.detailFooter": "[{{keys}}] Choose   [Esc] Back",
   "ui.roomRewardTitle": "You receive:",
   "ui.roomRewardItemLine": "  [{{i}}] {{name}} x{{qty}}",
