@@ -4,13 +4,15 @@ import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { CLASSES } from "../src/data/classes";
 import { getRoom } from "../src/engine/dungeon";
-import { startCombat } from "../src/engine/combat";
+import { applySkillEffects, getActorByRef, snapshotCombatants, startCombat } from "../src/engine/combat";
+import { runInSession } from "../src/engine/logSession";
 import { spawnMonster } from "../src/data/monsters";
 import { FOCUS_GLYPH } from "../src/ui/battlefieldFocus";
+import { HIT_BEAT_TICKS, IMPACT_TICKS } from "../src/ui/revealQueue";
 import { monsterStyle } from "../src/ui/layout";
 import { t } from "../src/data/strings";
 import { gameFromSave, loadSave } from "../src/engine/save";
-import type { Id } from "../src/types";
+import type { Id, Monster, SkillDefinition, Summon } from "../src/types";
 
 const PARTY = CLASSES.slice(0, 4).map((c) => c.id);
 const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
@@ -176,6 +178,215 @@ describe("battlefield and log stay in step", () => {
     }
     expect(impacts).toBeGreaterThan(0);
     expect(fearBeats).toBeGreaterThan(0);
+  }, 30000);
+
+  test("a unit hit three times wears each hit's number in turn, never their sum", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      slot: 0,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+
+    app.tickReveal(); // render once so the app picks up the new lines and starts revealing them
+    await fight.renderOnce();
+    expect(app.debugRevealActive).toBe(true);
+    const seen: number[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} -(\\d+)`));
+      if (match && !app.debugRevealHolding) {
+        const amount = Number(match[1]);
+        if (seen.at(-1) !== amount) seen.push(amount);
+      }
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    const compressed = hits.filter((hit, i) => i === 0 || hit !== hits[i - 1]);
+    expect(seen).toEqual(compressed);
+  }, 30000);
+
+  test("the log names each hit when the marker steps to it, not before", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+
+    const hitLines = () => app.debugRunLog.filter((e) => e.hit !== undefined).length;
+    app.tickReveal(); // render once so the app picks up the new lines and starts revealing them
+    await fight.renderOnce();
+    expect(app.debugRevealActive).toBe(true);
+    // The session's first line is a hit, shown at once; the next two come a beat apart.
+    const expectedAt = (tick: number) => [0, IMPACT_TICKS + HIT_BEAT_TICKS, IMPACT_TICKS + 2 * HIT_BEAT_TICKS].filter((due) => due <= tick).length;
+    let tick = 0;
+    expect(hitLines()).toBe(expectedAt(tick));
+    while (app.debugRevealActive && tick < 60) {
+      app.tickReveal();
+      await fight.renderOnce();
+      tick++;
+      expect(hitLines()).toBe(expectedAt(tick));
+    }
+    expect(hitLines()).toBe(3);
+  }, 30000);
+
+  test("a hit that crit wears its number with a !, and one that did not does not", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    const strike = (critChance: number): SkillDefinition => ({
+      id: "test-strike",
+      name: "Test Strike",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, critChance }],
+      slot: 1,
+      unlockLevel: 1,
+    });
+    const markerOf = async (critChance: number) => {
+      combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+      runInSession(combat, caster.id, () => applySkillEffects(strike(critChance), caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+      app.tickReveal();
+      await fight.renderOnce();
+      let marker: string | null = null;
+      let guard = 0;
+      while (app.debugRevealActive && guard++ < 400) {
+        const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} -(\\d+)(!?)`));
+        if (match && !app.debugRevealHolding) marker = match[0];
+        app.tickReveal();
+        await fight.renderOnce();
+      }
+      return marker;
+    };
+    expect(await markerOf(1)).toMatch(/^⛨ -\d+!$/);
+    expect(await markerOf(0)).toMatch(/^⛨ -\d+$/);
+  }, 30000);
+
+  test("a target with 24 HP left still reads every hit of a crit multi-hit at its full damage", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const caster = game.state.party[0]!;
+    goblin.hp = 24;
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, critChance: 1, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, caster.id, () => applySkillEffects(threeHits, caster, [goblin], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+    expect(goblin.hp).toBe(0);
+
+    app.tickReveal();
+    await fight.renderOnce();
+    const seen: string[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield} (-\\d+!?)`));
+      if (match && !app.debugRevealHolding && seen.at(-1) !== match[1]) seen.push(match[1]!);
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    const expected = hits.map((hit) => `-${hit}!`).filter((text, i, all) => i === 0 || text !== all[i - 1]);
+    expect(seen).toEqual(expected);
+    expect(seen).not.toContain("-24!");
+  }, 30000);
+
+  test("a summon that took more than it had left reads each hit at its full damage, with its crit", async () => {
+    const fight = await openFight();
+    const { game, app } = fight;
+    const combat = game.state.combat!;
+    const goblin = getActorByRef(combat.combatants.find((c) => c.ref.kind === "monster")!.ref, game.ctx) as Monster;
+    const owner = game.state.party[0]!;
+    const clone: Summon = {
+      id: `${owner.id}-test-clone-1`,
+      ownerId: owner.id,
+      archetypeId: "shadow-clone",
+      name: "Test Clone",
+      hp: 10,
+      maxHp: 10,
+      attack: 0,
+      defense: 0,
+      magicPower: 0,
+      aggro: 0,
+      speed: 1,
+      activeStatusEffects: [],
+      actionsTaken: 0,
+      maxActions: 3,
+    };
+    game.ctx.summons.push(clone);
+    combat.combatants.push({ ref: { kind: "summon", id: clone.id }, speed: clone.speed });
+    const threeHits: SkillDefinition = {
+      id: "test-three-hits",
+      name: "Three Hits",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, critChance: 1, hitCountRange: { min: 3, max: 3 } }],
+      slot: 1,
+      unlockLevel: 1,
+    };
+    combat.roundStartSnapshot = snapshotCombatants(combat, game.ctx);
+    const first = combat.log.length;
+    runInSession(combat, goblin.id, () => applySkillEffects(threeHits, goblin, [clone], combat, game.ctx, combat.log), { snapshot: () => snapshotCombatants(combat, game.ctx) });
+    const hits = combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+    expect(hits).toHaveLength(3);
+    expect(clone.hp).toBe(0);
+
+    app.tickReveal();
+    await fight.renderOnce();
+    const seen: string[] = [];
+    let guard = 0;
+    while (app.debugRevealActive && guard++ < 400) {
+      // A unit whose summon took part also wears the summon glyph beside the shield.
+      const match = fight.captureCharFrame().match(new RegExp(`${FOCUS_GLYPH.shield}${FOCUS_GLYPH.summon}? (-\\d+!?)`));
+      if (match && !app.debugRevealHolding && seen.at(-1) !== match[1]) seen.push(match[1]!);
+      app.tickReveal();
+      await fight.renderOnce();
+    }
+    expect(seen).not.toContain("-10!");
+    expect(seen).not.toContain("-10");
+    expect(seen.length).toBeGreaterThan(0);
+    for (const reading of seen) expect(reading).toMatch(/^-\d+!$/);
+    expect(Number(seen[0]!.slice(1, -1))).toBe(hits[0]!);
   }, 30000);
 
   test("the party panel shows fear rounded down, so the number never runs ahead of its tier", async () => {

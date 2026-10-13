@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FEAR_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
+import { FEAR_BEAT_TICKS, HIT_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
@@ -182,5 +182,182 @@ describe("RevealQueue", () => {
     q.enqueue(entries("n", 1));
     const steps = drain(q);
     expect(steps.findIndex((s) => s.texts.includes("n0"))).toBeGreaterThan(0);
+  });
+});
+
+/** One damage line per amount, each a direct hit on `targetId`. */
+function hitEntries(s: LogSession, targetId: string, amounts: number[]): LogEntry[] {
+  return amounts.map((amount, i) => ({ text: `hit${i}`, kind: "attack" as const, session: s, hit: { targetId, amount } }));
+}
+
+describe("RevealQueue hit beats", () => {
+  /** Per tick of the lit session: the step, in the order the ticks ran. */
+  function stepsOf(q: RevealQueue) {
+    const steps: number[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) steps.push(q.hitStep);
+    }
+    return steps;
+  }
+
+  test("a unit hit three times steps to the next hit every HIT_BEAT_TICKS from the impact and holds the last", () => {
+    const q = new RevealQueue();
+    q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 53 }, { amount: 52 }, { amount: 54 }]);
+    const steps = stepsOf(q);
+    steps.unshift(0); // the tick taken above
+    expect(steps.indexOf(1)).toBe(IMPACT_TICKS + HIT_BEAT_TICKS);
+    expect(steps.indexOf(2)).toBe(IMPACT_TICKS + 2 * HIT_BEAT_TICKS);
+    expect(steps.slice(0, IMPACT_TICKS + HIT_BEAT_TICKS).every((step) => step === 0)).toBe(true);
+    expect(steps.at(-1)).toBe(2);
+  });
+
+  test("the session runs one HIT_BEAT_TICKS longer for each hit past the first", () => {
+    const length = (amounts: number[]) => {
+      const q = new RevealQueue();
+      q.enqueue(hitEntries(session(1), "m1", amounts));
+      return stepsOf(q).length;
+    };
+    expect(length([53])).toBe(SESSION_MIN_TICKS);
+    expect(length([53, 52])).toBe(SESSION_MIN_TICKS + HIT_BEAT_TICKS);
+    expect(length([53, 52, 54])).toBe(SESSION_MIN_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+
+  test("the most-hit unit sets the pace; units hit once keep one number", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([...hitEntries(s, "m1", [10, 11]), ...hitEntries(s, "m2", [30])]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 10 }, { amount: 11 }]);
+    expect(q.focusHits.get("m2")).toEqual([{ amount: 30 }]);
+    expect(stepsOf(q).at(-1)).toBe(1);
+  });
+
+  test("a summon's number waits for the last hit", () => {
+    const q = new RevealQueue();
+    q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      if (q.focus) beat.push(q.summonBeat);
+    }
+    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+
+  test("with no hits nothing changes: step 0, no hits, the usual summon beat", () => {
+    const q = new RevealQueue();
+    q.enqueue(entries("a", 2, session(1)));
+    const beat: boolean[] = [];
+    while (q.active) {
+      q.tick();
+      expect(q.hitStep).toBe(0);
+      expect(q.focusHits.size).toBe(0);
+      if (q.focus) beat.push(q.summonBeat);
+    }
+    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
+  });
+});
+
+describe("RevealQueue crit marks", () => {
+  test("each hit keeps its own crit flag, in the order the hits landed", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([
+      { text: "a", kind: "attack", session: s, hit: { targetId: "m1", amount: 53 } },
+      { text: "b", kind: "attack", session: s, hit: { targetId: "m1", amount: 80, crit: true } },
+      { text: "c", kind: "attack", session: s, hit: { targetId: "m1", amount: 52 } },
+    ]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 53 }, { amount: 80, crit: true }, { amount: 52 }]);
+  });
+
+  test("a critical heal is remembered by the unit it landed on, only while its session is lit", () => {
+    const q = new RevealQueue();
+    q.enqueue([{ text: "heal", kind: "heal", session: session(1), healCritOf: "p1" }]);
+    expect(q.focusHealCrits.size).toBe(0);
+    q.tick();
+    expect([...q.focusHealCrits]).toEqual(["p1"]);
+    while (q.active) q.tick();
+    expect(q.focusHealCrits.size).toBe(0);
+  });
+});
+
+describe("RevealQueue overkill", () => {
+  test("a hit keeps its overkill, and the hits after the kill count towards the session's hold", () => {
+    const q = new RevealQueue();
+    const s = session(1);
+    q.enqueue([
+      { text: "a", kind: "attack", session: s, hit: { targetId: "m1", amount: 52, overkill: 28, crit: true } },
+      { text: "Overkill on Dungeon Rat: 49 from Vanguard.", kind: "attack", session: s, hit: { targetId: "m1", amount: 49, overkill: 49 } },
+      { text: "Overkill on Dungeon Rat: 51 from Vanguard.", kind: "attack", session: s, hit: { targetId: "m1", amount: 51, overkill: 51 } },
+    ]);
+    q.tick();
+    expect(q.focusHits.get("m1")).toEqual([{ amount: 52, overkill: 28, crit: true }, { amount: 49, overkill: 49 }, { amount: 51, overkill: 51 }]);
+    let lit = 1;
+    while (q.active) {
+      q.tick();
+      if (q.focus) lit++;
+    }
+    expect(lit).toBe(SESSION_MIN_TICKS + 2 * HIT_BEAT_TICKS);
+  });
+});
+
+describe("RevealQueue paces a session's lines by hit beat", () => {
+  const hit = (text: string, targetId: string, s: LogSession, extra: Partial<LogEntry> = {}): LogEntry => ({ text, kind: "attack", session: s, hit: { targetId, amount: 50 }, ...extra });
+  const plain = (text: string, s: LogSession): LogEntry => ({ text, kind: "info", session: s });
+
+  /** The tick each line is revealed on, by text. */
+  function revealTicks(queue: RevealQueue): Record<string, number> {
+    const at: Record<string, number> = {};
+    for (let tick = 0; queue.active && tick < 200; tick++) for (const entry of queue.tick()) at[entry.text] = tick;
+    return at;
+  }
+
+  test("one unit hit three times: each hit line, with the line after it, is up at its own beat", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("hit 1", "m1", s), plain("defeated", s), hit("overkill 2", "m1", s), hit("overkill 3", "m1", s)]);
+    expect(revealTicks(q)).toEqual({
+      announce: 0,
+      "hit 1": IMPACT_TICKS,
+      defeated: IMPACT_TICKS + 1,
+      "overkill 2": IMPACT_TICKS + HIT_BEAT_TICKS,
+      "overkill 3": IMPACT_TICKS + 2 * HIT_BEAT_TICKS,
+    });
+  });
+
+  test("several units hit more than once are interleaved by beat, the log's own order kept within a beat", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("A2", "a", s), hit("B1", "b", s), hit("B2", "b", s)]);
+    const order: string[] = [];
+    while (q.active) for (const entry of q.tick()) order.push(entry.text);
+    expect(order).toEqual(["announce", "A1", "B1", "A2", "B2"]);
+  });
+
+  test("the whole run still fits inside the session's hold", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("h1", "m1", s), hit("h2", "m1", s), hit("h3", "m1", s)]);
+    const shown: string[] = [];
+    while (q.active) for (const entry of q.tick()) shown.push(entry.text);
+    expect(shown).toEqual(["announce", "h1", "h2", "h3"]);
+  });
+
+  test("a session with no unit hit twice keeps the plain pace", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("B1", "b", s)]);
+    expect(revealTicks(q)).toEqual({ announce: 0, A1: IMPACT_TICKS, B1: IMPACT_TICKS + 1 });
+  });
+
+  test("skipping hands back what was not revealed yet, in the order it would have shown", () => {
+    const s = session(1);
+    const q = new RevealQueue();
+    q.enqueue([plain("announce", s), hit("A1", "a", s), hit("A2", "a", s), hit("B1", "b", s), hit("B2", "b", s)]);
+    q.tick();
+    expect(q.flush().map((e) => e.text)).toEqual(["A1", "B1", "A2", "B2"]);
   });
 });

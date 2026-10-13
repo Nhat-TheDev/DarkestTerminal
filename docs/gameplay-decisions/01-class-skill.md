@@ -762,6 +762,8 @@ All 7 mechanics below are implemented.
 
 New optional fields on `SkillEffect`: `critChance?: number` (0-1, rolled independently of the accuracy roll, same pattern as an `applyStatusEffect` proc `chance`) and `critMultiplierPercent?: number` (shared default multiplier across every crit-capable skill unless a skill overrides it). Used by Archer's Aimed Shot, Arrow-adjacent AoE (Volley Shot does not itself crit per-skill in the current draft — only Aimed Shot/Deadeye Shot/Arrow-rain-style AoE crit), Deadeye Shot (100% `critChance`), and Ninja's stealth-break basic-attack guarantee (1.10.1).
 
+**Base crit.** Every character, monster and summon also has `combat.baseCritChancePercent` (1)% to crit on each direct hit and each direct heal, added to the skill's own `critChance` and to the Archer's passive, so every crit-capable skill rises by that amount. A crit multiplies by `combat.defaultCritMultiplierPercent` (150)% unless the effect sets its own `critMultiplierPercent`. A multi-hit skill rolls once per hit and an area skill once per target, each with its own variance. Items, damage- and heal-over-time ticks, and the `autoDamage` of artifacts and abilities never crit; neither do HP costs (Dying, event costs, the Viking's self-damage).
+
 #### 1.12.2 Overwatch / interrupt — see 1.9.1 for the full mechanic
 
 The first reactive (non-caster-turn) character mechanic in the game. Requires a hook in `resolveRound` (`src/engine/combat.ts`) that checks, before each monster's queued action resolves, whether any living character currently carries `overwatched`.

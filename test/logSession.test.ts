@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { applySkillEffects, queueAction, resolveRound, snapshotCombatants, startCombat } from "../src/engine/combat";
-import { hpDeltas } from "../src/ui/battlefieldFocus";
+import { hpDeltas, markerReading } from "../src/ui/battlefieldFocus";
+import { RevealQueue } from "../src/ui/revealQueue";
 import { Game } from "../src/engine/game";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -10,7 +11,7 @@ import { getStatusEffect } from "../src/data/statusEffects";
 import { noteAffected, noteBasicAttack, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
 import { expireStatusEffect, statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
-import { makeCtx, spawnInto } from "./helpers";
+import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 
 function setup() {
   const { ctx } = makeCtx(5);
@@ -1271,5 +1272,139 @@ describe("noteSkillTarget reads statuses by what they change", () => {
       expect(session.debuffedIds).toEqual([]);
       expect(session.affectedIds).toEqual([target.id]);
     }
+  });
+});
+
+describe("a multi-hit skill, from the engine to the marker", () => {
+  const threeHits: SkillDefinition = {
+    id: "test-three-hits",
+    name: "Three Hits",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount: 20, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+    slot: 0,
+    unlockLevel: 1,
+  };
+
+  test("the queue holds each hit and the marker reads them one by one, adding up to the net change", () => {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.hp = goblin.maxHp = 9999;
+    goblin.defense = 0;
+    const before = snapshotCombatants(combat, ctx);
+    runInSession(combat, vanguard.id, () => applySkillEffects(threeHits, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
+
+    const queue = new RevealQueue();
+    queue.enqueue(combat.log.filter((e) => e.session));
+    queue.tick();
+    const hits = queue.focusHits.get(goblin.id)!;
+    expect(hits).toHaveLength(3);
+    expect(hits.reduce((sum, hit) => sum + hit.amount, 0)).toBe(-net);
+    expect([0, 1, 2].map((step) => markerReading(hits, net, step).amount)).toEqual(hits.map((hit) => -hit.amount));
+  });
+});
+
+describe("a multi-hit skill that does more than the target had left", () => {
+  const cast = (amount: number, extra: Partial<SkillEffect> = {}): SkillDefinition => ({
+    id: "test-overkill",
+    name: "Test Overkill",
+    description: "",
+    mpCost: 0,
+    target: "singleEnemy",
+    effects: [{ kind: "damage", amount, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 }, ...extra }],
+    slot: 0,
+    unlockLevel: 1,
+  });
+
+  function run(skill: SkillDefinition, hp = 24) {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.maxHp = 9999;
+    goblin.hp = hp;
+    goblin.defense = 0;
+    vanguard.maxHp = 1000;
+    vanguard.hp = 500;
+    const before = snapshotCombatants(combat, ctx);
+    const first = combat.log.length;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    const entries = combat.log.slice(first);
+    const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
+    return { ctx, combat, goblin, vanguard, entries, net };
+  }
+
+  test("every hit of the cast is recorded at its full damage, the first with its overkill, the rest all of it", () => {
+    const { goblin, entries, net } = run(cast(40));
+    const hits = entries.flatMap((e) => (e.hit ? [e.hit] : []));
+    expect(hits).toHaveLength(3);
+    expect(goblin.hp).toBe(0);
+    expect(net).toBe(-24);
+    expect(hits[0]!.overkill).toBe(hits[0]!.amount - 24);
+    for (const later of hits.slice(1)) expect(later.overkill).toBe(later.amount);
+    for (const hit of hits) expect(hit.amount).toBeGreaterThanOrEqual(38);
+  });
+
+  test("the hits after the kill are logged as overkill after the one defeated line, and nothing else of them takes effect", () => {
+    const { goblin, vanguard, entries } = run(cast(40, { lifestealPercent: 100 }));
+    const texts = entries.filter((e) => e.kind === "attack" || e.kind === "death").map((e) => e.text);
+    expect(texts).toHaveLength(4);
+    expect(texts[0]).toMatch(/^.+ takes \d+ damage from /);
+    expect(texts[1]).toBe(`${goblin.name} is defeated.`);
+    for (const text of texts.slice(2)) expect(text).toMatch(new RegExp(`^Overkill on ${goblin.name}: \\d+ from `));
+    expect(entries.filter((e) => e.kind === "death")).toHaveLength(1);
+    const firstHit = entries.find((e) => e.hit)!.hit!;
+    // Lifesteal reads the damage of the one hit that landed, not of the three shown.
+    expect(vanguard.hp - 500).toBe(firstHit.amount);
+  });
+
+  test("the marker reads all three at full damage, though the target only had 24", () => {
+    const { goblin, entries, net } = run(cast(40));
+    const queue = new RevealQueue();
+    queue.enqueue(entries.filter((e) => e.session));
+    queue.tick();
+    const hits = queue.focusHits.get(goblin.id)!;
+    expect(hits).toHaveLength(3);
+    expect([0, 1, 2].map((step) => markerReading(hits, net, step).amount)).toEqual(hits.map((hit) => -hit.amount));
+  });
+
+  test("a bonus hit that comes after the kill is shown too", () => {
+    const { entries } = run({ ...cast(40), effects: [{ kind: "damage", amount: 40, offenseMultiplierPercent: 0, extraHitChance: 1 }] });
+    const hits = entries.flatMap((e) => (e.hit ? [e.hit] : []));
+    expect(hits).toHaveLength(2);
+    expect(hits[1]!.overkill).toBe(hits[1]!.amount);
+  });
+});
+
+describe("the execute bonus of an overkill hit", () => {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
+
+  /** A 3-hit skill of 60 flat damage per hit with +20 flat under 30% HP, against a 100 max HP target at `hp`. */
+  function amountsAt(hp: number): number[] {
+    const { ctx, combat, goblin, vanguard } = setup();
+    goblin.maxHp = 100;
+    goblin.hp = hp;
+    goblin.defense = 0;
+    const skill: SkillDefinition = {
+      id: "test-execute",
+      name: "Test Execute",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "damage", amount: 60, offenseMultiplierPercent: 0, hitCountRange: { min: 3, max: 3 } }],
+      executeBonus: { hpPercentThreshold: 30, bonusDamageFlat: 20 },
+      slot: 1,
+      unlockLevel: 1,
+    };
+    const first = combat.log.length;
+    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    return combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
+  }
+
+  test("hits after the kill read like the hit that felled the target, not as if it were at 0 HP", () => {
+    // 50% HP is above the threshold: the killing hit has no bonus, so neither do the overkill hits.
+    expect(amountsAt(50)).toEqual([60, 60, 60]);
+  });
+
+  test("when the killing hit had the bonus, so do the hits after it", () => {
+    expect(amountsAt(20)).toEqual([80, 80, 80]);
   });
 });

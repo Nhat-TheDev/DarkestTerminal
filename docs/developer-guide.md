@@ -230,6 +230,38 @@ is not one. The label under a party member's sprite carries one ♙ per living s
 (`NJ ♙♙`), counted from the replayed snapshot so a summon spawned later in the round appears with
 its own action.
 
+A unit that took 2 or more direct hits in one session shows them one at a time instead of their sum:
+`-53` at the impact, then `-52` a beat later. Each damage line of a direct hit carries the actor it
+landed on, its full damage and the overkill the actor had no HP left to take (`LogEntry.hit`, set in
+`resolveSkillEffect`; a damage-over-time tick has none). The marker reads the full damage, so a crit of
+52 on a unit with 24 HP left is `-52!`, not `-24!`. The hits of a multi-hit cast that come after the
+target has fallen are rolled for crit and variance like any other (`ResolveContext.unapplied`, set by
+the hit loop in `applySkillEffects`): nothing is dealt, healed or hooked for them, and each is logged
+after the "is defeated" line as `Overkill on Dungeon Rat: 49 from Vanguard's Frenzied Slash.` (with the
+crit prefix when it crit; the line never says the unit takes damage). The battlefield still reads every
+hit of the cast, `-52!`, `-49`, `-51`.
+`RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
+from the impact (`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each
+hit past the first; a summon's number waits for the last hit. The log keeps that pace: the line of a
+unit's k-th hit, with the lines that follow it ("is defeated"), is revealed at beat k (`paceByBeat`), so
+the log names a hit when its number is up. When several units are hit more than once the lines of the
+same beat are revealed together, interleaved by beat rather than grouped per unit; the stored
+`combat.log` keeps the order they were logged in. `markerReading` picks the number, and
+only when the HP the hits took (their damage less their overkill) adds up to the unit's whole HP
+change: a heal landing on the same unit in the same session leaves the net on screen. The HP bar still
+moves once, at the impact. An area attack (one hit per target) reads as before, and so does the damage
+a summon takes (it is added to its owner's number, as above).
+
+A critical hit or critical heal ends its number with `!` (`-80!`, `+30!`). The damage line of a hit
+carries `crit` in `LogEntry.hit` and a critical heal's line carries `healCritOf`, set in
+`resolveSkillEffect`; `RevealQueue` keeps them with the hits (`focusHits`, `focusHealCrits`) and
+`markerReading` picks the number and its crit together, so in a run of hits only the beats of hits that
+crit carry the `!`. When the hits do not add up to the unit's change, the net reads with `!` if any hit
+on the unit or any heal that landed on it was a crit. A summon's number is read the same way
+(`markerReading` over the hits that landed on the summon, so it too is the full damage and carries its
+own `!`); when its owner took hits in the same session it replaces the owner's number a beat later,
+after the owner's run of hits, and then reads its last hit. Colour and timing are unchanged.
+
 A character whose fear changed in a session (`LogSession.fearChangedIds`, noted by `noteFearChange`
 when a monster's hit lands, a skill or item's `modifyStat` moves it, the round ends, or the fight is
 won) shows the change once everything else it wears has had its time: the reveal holds the session

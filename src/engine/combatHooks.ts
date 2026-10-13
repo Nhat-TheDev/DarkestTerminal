@@ -90,7 +90,7 @@ const healOnKillHook: SkillEffectHooks = {
  *  `data/status-effects.json`'s "poisoned-ii"/"-iii" `rankOf: "poisoned"`). The flat term is fixed,
  *  not attack-scaled (confirmed). */
 const roguePoisonBonusHook: SkillEffectHooks = {
-  onDamageDealt(source, target, damage, _ctx, log) {
+  onDamageDealt(source, target, damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "rogue") return;
     const passive = getClass("rogue").passiveSkill;
     if (!passive.requiresTargetStatusId) return;
@@ -102,14 +102,14 @@ const roguePoisonBonusHook: SkillEffectHooks = {
     if (percent === 0 && flat === 0) return;
     const bonusAmount = Math.round(damage * (percent / 100)) + flat;
     // ignoreDefensePercent: 100 + offenseMultiplierPercent: 0 together zero out
-    // mitigatedOffense(...) entirely (see resolver.ts), leaving finalDamage as exactly
-    // bonusAmount (times race resist/weak and the source's fear-tier penalty, nothing else) — a
-    // true flat bonus, not bonusAmount re-added to a full attack-vs-defense roll.
+    // mitigatedOffense(...) entirely (see resolver.ts), so the bonus is bonusAmount times race
+    // resist/weak and the source's fear-tier penalty, then the crit and variance every direct
+    // hit rolls (`rollDamage`) — not bonusAmount re-added to a full attack-vs-defense roll.
     resolveSkillEffect(
       { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,
       target,
-      { log }
+      { log, rollDamage: () => ctx.rng.next() }
     );
   },
 };

@@ -6,7 +6,7 @@ import { createCharacter } from "../src/engine/party";
 import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTargets, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
 import { mitigatedOffense, getFearTier, rollHits, getFearAccuracyPenalty, isHelpfulStatusEffect, resolveSkillEffect } from "../src/engine/resolver";
 import type { CombatantRef, LogEntry, SkillDefinition, Character } from "../src/types";
-import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { makeCtx, spawnInto, pickAnyAction, withoutDamageRolls } from "./helpers";
 import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from "../src/data/summons";
 
 // Several tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills to exercise new mechanics.
@@ -424,6 +424,7 @@ describe("skill rank resolution", () => {
 
 
 describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPercent", () => {
+  withoutDamageRolls();
   test("onHitAoeDamage: a landed hit splashes AoE damage to every living enemy", () => {
     STATUS_EFFECTS.push({
       id: "test-storm-empowered",
@@ -914,6 +915,7 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
 
 
 describe("Viking class", () => {
+  withoutDamageRolls();
   test("Viking has valid base stats, growth weights, and 6 skills", () => {
     const viking = getClass("viking");
     expectValidCharacterBase(viking);

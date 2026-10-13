@@ -1617,8 +1617,9 @@ function renderDefense() {
     const targetMaxHp = targetMaxHpRaw ? Number(targetMaxHpRaw) : null;
     const fearInfo = META.fearTiers.find((f) => f.tier === fearTier()) || { accuracyPenaltyPercent: 0, damagePenaltyPercent: 0 };
 
-    // Mirrors mitigatedOffense()/computeDamage() in src/engine/resolver.ts + calc.ts exactly, just
-    // parameterized on the live (possibly-unsaved) X/Y instead of the imported balance-config.json.
+    // Mirrors mitigatedOffense()/computeDamage() in src/engine/resolver.ts + calc.ts for the unvaried hit,
+    // parameterized on the live (possibly-unsaved) X/Y instead of the imported balance-config.json. The range
+    // row adds the ±combat.damageVariancePercent a real swing rolls; crit (base chance and multiplier) is not modelled.
     const effectiveDefense = defense * (1 - ignorePercent / 100);
     const defenseTerm = x + effectiveDefense > 0 ? offense * (effectiveDefense / (x + effectiveDefense)) : 0;
     const flatTerm = y > 0 ? effectiveDefense / y : 0;
@@ -1630,12 +1631,16 @@ function renderDefense() {
     const defenseReductionPercent = unmitigatedTotal > 0 ? Math.max(0, (1 - rawTotal / unmitigatedTotal) * 100) : 0;
     const hitChancePercent = sourceIsCharacter ? (1 - fearInfo.accuracyPenaltyPercent / 100) * 100 : 100;
     const expectedDamage = finalDamage * (hitChancePercent / 100);
+    const variancePercent = META.balance.combat.damageVariancePercent;
+    const finalDamageMin = Math.max(1, Math.floor(rawTotal * (1 - variancePercent / 100)));
+    const finalDamageMax = Math.max(1, Math.ceil(rawTotal * (1 + variancePercent / 100)));
 
     dmgPreviewOutput.innerHTML = "";
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: fmt(unmitigatedTotal, 2) }), "raw dmg (no defense)"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { class: "big", text: "−" + fmt(defenseReductionPercent, 1) + "%" }), "reduction from defense"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: fmt(mitigated, 2) }), "mitigatedOffense(off, def)"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { class: "big", text: fmt(finalDamage) }), "final damage"]));
+    dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: finalDamageMin + "–" + finalDamageMax }), "range (±" + fmt(variancePercent, 1) + "% variance)"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: targetMaxHp ? fmt((finalDamage / targetMaxHp) * 100, 1) + "%" : "—" }), "% of target maxHp"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: targetMaxHp ? String(Math.ceil(targetMaxHp / finalDamage)) : "—" }), "hits to kill"]));
     dmgPreviewOutput.appendChild(el("div", {}, [el("b", { text: fmt(hitChancePercent, 1) + "%" }), "hit chance"]));

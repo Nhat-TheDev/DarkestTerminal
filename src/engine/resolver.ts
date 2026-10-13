@@ -171,7 +171,7 @@ export interface ResolveContext {
   isMagic?: boolean;
   /** Required for a `modifyStat` effect targeting `"satiety"` — that stat lives on GameState (party-wide), not on the Character. */
   gameState?: GameState;
-  /** Set by the caller (after rolling `effect.critChance`) to apply this damage effect's crit multiplier. */
+  /** Set by the caller (after rolling `effect.critChance`) to apply this effect's crit multiplier. Left undefined, a caller that passes `rollDamage` gets the base crit chance rolled for it. */
   isCrit?: boolean;
   /** The casting skill's own `SkillDefinition.executeBonus` (a `SkillDefinition`-level field, so the caller threads it through same as `skillName`/`isMagic`). */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
@@ -187,11 +187,29 @@ export interface ResolveContext {
   linkedSummonId?: Id;
   /** Called by a damage/heal-over-time tick when one of its effects actually moved the bearer's HP, so the caller can record each kind of tick, not just the net change. */
   onDotEffect?: (kind: "damage" | "heal") => void;
+  /** A uniform draw in [0, 1) from the rng of a caller making a direct hit or heal: the base crit chance, then for damage the ±`damageVariancePercent` factor and its rounding. Absent (a damage- or heal-over-time tick): no crit and no variance. */
+  rollDamage?: () => number;
+  /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and it is logged as overkill and recorded for the battlefield, but nothing is dealt or healed. */
+  unapplied?: true;
+  /** The share of its max HP (0-1) to test `executeBonus` against, instead of the target's current HP: an `unapplied` hit reads the share the target had just before the hit that felled it, so it matches that hit. */
+  executeHpFraction?: number;
 }
 
 function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
   if (isMagic && (isCharacter(source) || isSummon(source))) return source.magicPower;
   return source.attack;
+}
+
+/** Whether a direct hit or heal crits: the caller's own roll when it made one, else the base chance every actor has. Draws only for a caller that passes `rollDamage`, so an over-time tick never crits. */
+function critRolled(ctx: ResolveContext): boolean {
+  if (ctx.isCrit !== undefined) return ctx.isCrit;
+  const chance = BALANCE.combat.baseCritChancePercent / 100;
+  return ctx.rollDamage !== undefined && chance > 0 && ctx.rollDamage() < chance;
+}
+
+/** The multiplier of a crit: the effect's own `critMultiplierPercent`, else the shared default. */
+function critMultiplierOf(effect: SkillEffect): number {
+  return (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100;
 }
 
 export function mitigatedOffense(off: number, def: number): number {
@@ -214,21 +232,26 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     case "damage": {
       const isSelfTick = source === target;
       const effectiveDefense = target.defense * (1 - (effect.ignoreDefensePercent ?? 0) / 100);
-      const critMultiplier = !isSelfTick && ctx.isCrit ? (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100 : 1;
+      const isCrit = !isSelfTick && critRolled(ctx);
+      const critMultiplier = isCrit ? critMultiplierOf(effect) : 1;
       const stacks = effect.scalesWithStatusStacks
         ? target.activeStatusEffects.find((s) => s.statusEffectId === effect.scalesWithStatusStacks!.statusEffectId)?.stacks ?? 0
         : 0;
       const stackOffenseBonusPercent = effect.scalesWithStatusStacks ? stacks * effect.scalesWithStatusStacks.percentPerStack : 0;
       const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent) / 100;
       const isExecuteTarget =
-        !isSelfTick && ctx.executeBonus !== undefined && target.hp / target.maxHp < ctx.executeBonus.hpPercentThreshold / 100;
+        !isSelfTick && ctx.executeBonus !== undefined && (ctx.executeHpFraction ?? target.hp / target.maxHp) < ctx.executeBonus.hpPercentThreshold / 100;
       const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
       const executeFlat = isExecuteTarget ? ctx.executeBonus?.bonusDamageFlat ?? 0 : 0;
       const bonusMultiplier = !isSelfTick && ctx.bonusDamagePercent ? 1 + ctx.bonusDamagePercent / 100 : 1;
       const raceMultiplier = raceMultiplierFor(target, effect.damageType ?? "physical");
+      const variancePercent = !isSelfTick && ctx.rollDamage ? BALANCE.combat.damageVariancePercent : 0;
+      const varianceMultiplier = variancePercent > 0 ? 1 + ((ctx.rollDamage!() * 2 - 1) * variancePercent) / 100 : 1;
+      // A varied hit rounds up with the odds of its fraction, so a small hit still moves and the average stays exact.
+      const roundDamage = (value: number) => (variancePercent > 0 ? Math.floor(value + ctx.rollDamage!()) : Math.round(value));
       const rawDamage = isSelfTick
         ? Math.round((effect.amount ?? 0) * raceMultiplier)
-        : Math.round(
+        : roundDamage(
             ((effect.amount ?? 0) +
               executeFlat +
               mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
@@ -236,17 +259,28 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               critMultiplier *
               executeMultiplier *
               bonusMultiplier *
-              raceMultiplier
+              raceMultiplier *
+              varianceMultiplier
           );
       const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
+      const critMark = isCrit ? { crit: true as const } : {};
+      if (ctx.unapplied && !isSelfTick) {
+        const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
+        const text = t(overkillKey, { target: nameOf(target), amount: finalDamage, source: nameOf(source), skill: ctx.skillName ?? "" });
+        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
+        return 0;
+      }
+      const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
-      const isCrit = !isSelfTick && ctx.isCrit;
       const damageText =
         !isSelfTick && ctx.skillName
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
-      ctx.log.push({ text: damageText, kind: "attack" });
+      const hpLost = hpBefore - target.hp;
+      const overkill = finalDamage - hpLost;
+      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
+      ctx.log.push({ text: damageText, kind: "attack", ...hit });
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
       if (!isSelfTick && effect.lifestealPercent) {
@@ -271,9 +305,11 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       // pace with the target's maxHp growth across levels/floors sets maxHpPercent instead of relying
       // on a flat number that gets proportionally weaker every time maxHp grows.
       const baseHeal = Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100);
-      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost));
+      const crit = critRolled(ctx);
+      const critMultiplier = crit ? critMultiplierOf(effect) : 1;
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost * critMultiplier));
       const healed = target.hp - before;
-      ctx.log.push({ text: t("resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal" });
+      ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
       return healed;
     }
     case "restoreMp": {

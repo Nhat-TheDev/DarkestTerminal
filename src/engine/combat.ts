@@ -66,7 +66,7 @@ function actionDefinition(source: ActionSource, actor?: Actor): SkillDefinition 
     return actor && isCharacter(actor) ? getEffectiveSkill(skill, actor.level) : skill;
   }
   const item = getItem(source.itemId);
-  return { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0, unlockLevel: 0 };
+  return { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0, unlockLevel: 0, fromItem: true };
 }
 
 export function getActorByRef(ref: CombatantRef, ctx: EngineContext): Actor {
@@ -344,7 +344,14 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
               { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
               character,
               target,
-              { log: combat.log, isMagic: effect.isMagic, skillName: sourceName, offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack }
+              {
+                log: combat.log,
+                isMagic: effect.isMagic,
+                skillName: sourceName,
+                offensiveStatOverride: effect.isMagic ? base.magicPower : base.attack,
+                isCrit: false,
+                rollDamage: () => ctx.rng.next(),
+              }
             );
             continue;
           }
@@ -393,6 +400,7 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
       combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
       resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
         log: combat.log,
+        rollDamage: () => ctx.rng.next(),
       });
       expireStatusEffect(watcher, active, { log: combat.log });
       // The monster's turn is discarded, not just delayed (a killed monster has no turn left to lose).
@@ -637,7 +645,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
         },
         source,
         enemy,
-        { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " ") }
+        { log, isMagic: def.onHitAoeDamage.isMagic, skillName: statusDisplayName(def).replace(/-/g, " "), rollDamage: () => ctx.rng.next() }
       );
     }
   }
@@ -744,6 +752,15 @@ function findBreakBonusStatus(source: Actor) {
 /** Archer's passive (§11 of the design spec) — a character-level crit chance/multiplier, unlocked
  *  at level 5/20/35, that adds on top of (not replaces) whatever crit a skill's own effect already
  *  carries: chance is additive, multiplier is whichever of the two is larger. */
+interface OneHitOptions {
+  /** For an `applyStatusEffect` with `linksToCasterSummon`: the summon its expiry is tied to. */
+  linkedSummonId?: Id;
+  /** The hit comes after the target fell: shown, not dealt (`ResolveContext.unapplied`). */
+  unapplied?: boolean;
+  /** `ResolveContext.executeHpFraction`: the share of max HP an `unapplied` hit tests `executeBonus` against. */
+  executeHpFraction?: number;
+}
+
 function resolveOneDamageEffect(
   effect: SkillEffect,
   skill: SkillDefinition,
@@ -752,14 +769,16 @@ function resolveOneDamageEffect(
   ctx: EngineContext,
   log: LogEntry[],
   stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
-  linkedSummonId?: Id
+  options: OneHitOptions = {}
 ): number {
-  const archerRank = isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
+  // An item's effects never crit; the Archer's passive lifts damage only, not a heal.
+  const archerRank = effect.kind === "damage" && isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
   const archerBonus = {
     critChancePercent: archerRank?.critChancePercent ?? 0,
     critMultiplierPercent: archerRank?.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent,
   };
-  const totalCritChance = (effect.critChance ?? 0) + archerBonus.critChancePercent / 100;
+  const baseCritChance = (effect.kind === "damage" || effect.kind === "heal") && !skill.fromItem ? BALANCE.combat.baseCritChancePercent / 100 : 0;
+  const totalCritChance = skill.fromItem ? 0 : (effect.critChance ?? 0) + archerBonus.critChancePercent / 100 + baseCritChance;
   const isCrit = stealthBreak.guaranteedCrit || (totalCritChance > 0 && ctx.rng.chance(totalCritChance));
   const effectiveCritMultiplierPercent = Math.max(effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent, archerBonus.critMultiplierPercent);
   const castByOwnClassSkill = isCharacter(source) && getClass(source.classId).skills.some((s) => s.id === skill.id);
@@ -775,7 +794,9 @@ function resolveOneDamageEffect(
       executeBonus: skill.executeBonus,
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
       castByOwnClassSkill,
-      linkedSummonId,
+      linkedSummonId: options.linkedSummonId,
+      rollDamage: () => ctx.rng.next(),
+      ...(options.unapplied ? { unapplied: true as const, executeHpFraction: options.executeHpFraction } : {}),
     }
   );
 }
@@ -974,7 +995,7 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
           { kind: "damage", amount: burst.amount, offenseMultiplierPercent: burst.offenseMultiplierPercent },
           summon,
           target,
-          { log, offensiveStatOverride: burst.offensiveStatOverride }
+          { log, offensiveStatOverride: burst.offensiveStatOverride, rollDamage: () => ctx.rng.next() }
         );
         if (burst.statusEffectId && ctx.rng.chance(burst.statusEffectChance)) {
           resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: burst.statusEffectId, durationTurns: burst.durationTurns }, summon, target, { log });
@@ -1100,7 +1121,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
       combat.log.push({ text: t("combat.missedFear", { source: summon.name, target: target.name }), kind: "info" });
     } else {
       combat.log.push({ text: t("combat.basicAttack", { actor: summon.name, target: target.name }), kind: "attack" });
-      resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log });
+      resolveSkillEffect({ kind: "damage", amount: 0 }, summon, target, { log: combat.log, rollDamage: () => ctx.rng.next() });
       const onHit = archetype.basicAttackOnHit;
       if (onHit && isActorAlive(target) && ctx.rng.chance(onHit.chance)) {
         resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: onHit.statusEffectId, durationTurns: onHit.durationTurns }, summon, target, { log: combat.log });
@@ -1125,7 +1146,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
   const vikingBuffActive = !skill.isBuff && syncVikingBloodFury(source, log);
   const stealthBreak = {
-    guaranteedCrit: skill.slot === 0 ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
+    guaranteedCrit: skill.slot === 0 && !skill.fromItem ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
     damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
   };
   let brokeStealthThisCast = false;
@@ -1179,7 +1200,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
           ctx,
           log,
           { guaranteedCrit: false, damageBonusPercent: 0 },
-          effect.linksToCasterSummon ? spawnedSummonId : undefined
+          { linkedSummonId: effect.linksToCasterSummon ? spawnedSummonId : undefined }
         );
       }
     }
@@ -1243,14 +1264,21 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
       // a multi-hit skill actually dealt this cast, not just its final swing.
       let appliedAmount = 0;
+      // A hit that comes after the target has fallen is shown, not dealt (`ResolveContext.unapplied`): the
+      // battlefield reads every hit of the cast at its full damage, and nothing else of it takes effect. Its
+      // execute bonus is tested against the share of HP the target had before the hit that felled it, so it
+      // reads like that hit.
+      let hpFraction = target.hp / target.maxHp;
+      const swing = (): number => {
+        const fallen = !isActorAlive(target);
+        if (!fallen) hpFraction = target.hp / target.maxHp;
+        return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
+      };
       for (let hit = 0; hit < hitCount; hit++) {
-        if (!isActorAlive(target)) break;
-        appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
+        appliedAmount += swing();
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && isActorAlive(target)) {
-            appliedAmount += resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak);
-          }
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) appliedAmount += swing();
         }
       }
       if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);

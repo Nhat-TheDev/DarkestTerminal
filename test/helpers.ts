@@ -1,3 +1,5 @@
+import { afterAll, beforeAll } from "bun:test";
+import { BALANCE } from "../src/data/balanceConfig";
 import { CLASSES, getSkill } from "../src/data/classes";
 import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
@@ -34,4 +36,21 @@ export function pickAnyAction(
   const skill = actor.unlockedSkillIds.map(getSkill)[0]!;
   const targets = autoResolveTargets(skill.target, ref, combat, ctx) ?? [ref];
   return { skillId: skill.id, targets };
+}
+
+/** Pins fields of `BALANCE.combat` for the enclosing describe and puts them back after it. */
+export function pinCombatBalance(values: Partial<typeof BALANCE.combat>): void {
+  const saved: Partial<typeof BALANCE.combat> = {};
+  beforeAll(() => {
+    Object.assign(saved, Object.fromEntries(Object.keys(values).map((key) => [key, BALANCE.combat[key as keyof typeof BALANCE.combat]])));
+    Object.assign(BALANCE.combat, values);
+  });
+  afterAll(() => {
+    Object.assign(BALANCE.combat, saved);
+  });
+}
+
+/** A describe that asserts an exact damage, heal or rng-draw count is about the formula, not the dice: no variance and no base crit. */
+export function withoutDamageRolls(): void {
+  pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 0 });
 }

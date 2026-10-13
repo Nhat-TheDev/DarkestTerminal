@@ -5,6 +5,8 @@
     "executeCooldownTurns": 3,
     "defensiveLowHpSkillChance": 0.7,
     "defaultCritMultiplierPercent": 150,
+    "baseCritChancePercent": 1,
+    "damageVariancePercent": 3,
     "defensiveLowHpThresholdFraction": 0.4,
     "buffTurnOrderSpeedBonus": 20,
     "eliteBossDotMultiplier": 0.8,

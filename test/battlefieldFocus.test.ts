@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolveRenderLib } from "@opentui/core";
-import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
+import { FOCUS_COLOR, FOCUS_GLYPH, MARKER_COLOR, blankIconBand, buildSideSpriteArea, dimColor, dimSprite, fearDeltas, focusedUnit, markerReading, tierFrameHeight, unitFocus, type FocusIcon } from "../src/ui/battlefieldFocus";
 import { t } from "../src/data/strings";
 import { ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { MAX_BOSS_HEIGHT, MAX_ELITE_HEIGHT, MAX_UNIT_HEIGHT, compositeSpriteRow, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
@@ -435,5 +435,75 @@ describe("layout", () => {
   test("the unit block makes room for the icon band", () => {
     expect(ICON_BAND_ROWS).toBe(2);
     expect(UNIT_BLOCK_HEIGHT).toBe(ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3);
+  });
+});
+
+describe("markerReading", () => {
+  const hit = (amount: number, crit = false) => (crit ? { amount, crit: true as const } : { amount });
+
+  test("one hit, or no hit data, keeps the net change", () => {
+    expect(markerReading(undefined, -53, 0)).toEqual({ amount: -53, crit: false });
+    expect(markerReading([], -53, 0)).toEqual({ amount: -53, crit: false });
+    expect(markerReading([hit(53)], -53, 0)).toEqual({ amount: -53, crit: false });
+  });
+
+  test("2 or more hits that add up to the change read one at a time, the last held", () => {
+    expect(markerReading([hit(53), hit(52)], -105, 0).amount).toBe(-53);
+    expect(markerReading([hit(53), hit(52)], -105, 1).amount).toBe(-52);
+    expect(markerReading([hit(53), hit(52)], -105, 7).amount).toBe(-52);
+    expect(markerReading([hit(20), hit(21), hit(22)], -63, 2).amount).toBe(-22);
+  });
+
+  test("hits that do not account for the whole change leave the net (a heal on the same unit)", () => {
+    expect(markerReading([hit(53), hit(52)], -90, 1).amount).toBe(-90);
+    expect(markerReading([hit(53), hit(52)], 0, 1).amount).toBe(0);
+  });
+
+  test("a hit that was more than the unit had left reads at its full damage, and so does each hit after it", () => {
+    const killing = { amount: 52, overkill: 28, crit: true as const };
+    expect(markerReading([killing], -24, 0)).toEqual({ amount: -52, crit: true });
+    const run = [killing, { amount: 49, overkill: 49 }, { amount: 51, overkill: 51 }];
+    expect([0, 1, 2, 3].map((step) => markerReading(run, -24, step))).toEqual([
+      { amount: -52, crit: true },
+      { amount: -49, crit: false },
+      { amount: -51, crit: false },
+      { amount: -51, crit: false },
+    ]);
+  });
+
+  test("hits whose taken HP is not the unit's change (a heal landed too) leave the net", () => {
+    expect(markerReading([{ amount: 52, overkill: 28 }], -10, 0)).toEqual({ amount: -10, crit: false });
+  });
+
+  test("a hit that crit reads with a crit, and in a run of hits only its own beat does", () => {
+    expect(markerReading([hit(80, true)], -80, 0)).toEqual({ amount: -80, crit: true });
+    const run = [hit(53), hit(80, true), hit(52)];
+    expect([0, 1, 2].map((step) => markerReading(run, -185, step))).toEqual([
+      { amount: -53, crit: false },
+      { amount: -80, crit: true },
+      { amount: -52, crit: false },
+    ]);
+  });
+
+  test("a net that falls back is a crit when any hit on the unit, or a heal that landed on it, was", () => {
+    expect(markerReading([hit(53), hit(80, true)], -90, 0)).toEqual({ amount: -90, crit: true });
+    expect(markerReading(undefined, 30, 0, true)).toEqual({ amount: 30, crit: true });
+    expect(markerReading(undefined, 20, 0, false)).toEqual({ amount: 20, crit: false });
+  });
+
+  test("each reading is its own marker, with a ! only on a crit", () => {
+    const s = session({ actorId: "a", attackedIds: ["m1"] });
+    const glyph = (reading: { amount: number; crit: boolean }) => unitFocus("m1", "monster", s, reading.amount, true, undefined, 0, reading.crit).marker?.glyph;
+    expect(glyph(markerReading([hit(53), hit(80, true)], -133, 0))).toBe("-53");
+    expect(glyph(markerReading([hit(53), hit(80, true)], -133, 1))).toBe("-80!");
+    expect(glyph(markerReading(undefined, 30, 0, true))).toBe("+30!");
+    expect(glyph(markerReading(undefined, 30, 0))).toBe("+30");
+  });
+
+  test("a summon's number carries its own !, and the owner's does not borrow it", () => {
+    const s = session({ actorId: "m1", attackedIds: ["a"] });
+    expect(unitFocus("a", "party", s, -5, true, { delta: -12, crit: true, beat: false }).marker?.glyph).toBe("-5");
+    expect(unitFocus("a", "party", s, -5, true, { delta: -12, crit: true, beat: true }).marker?.glyph).toBe(`${FOCUS_GLYPH.summon}-12!`);
+    expect(unitFocus("a", "party", s, 0, true, { delta: -12, crit: true, beat: false }).marker?.glyph).toBe("-12!");
   });
 });

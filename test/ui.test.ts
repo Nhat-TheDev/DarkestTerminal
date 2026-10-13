@@ -14,6 +14,7 @@ import { showSlotSelect } from "../src/ui/saveSelect";
 import { t } from "../src/data/strings";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
+import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
 import { getStatusEffect } from "../src/data/statusEffects";
@@ -358,9 +359,17 @@ describe("skillMechanicLines: skill-level mechanics derived from the skill's own
     expect(skillMechanicLines(getSkill("thunder-gods-fury"))).toContain("  • Consumes Storm-Empowered");
   });
 
-  test("a damage effect's critChance is shown as a percent", () => {
+  test("a damage effect's critChance is shown with the base chance every hit has", () => {
+    const { critChance } = getSkill("aimed-shot").effects!.find((e) => e.kind === "damage")!;
+    const percent = Math.round(critChance! * 100) + BALANCE.combat.baseCritChancePercent;
+    expect(percent).toBeGreaterThan(Math.round(critChance! * 100));
+    expect(skillMechanicLines(getSkill("aimed-shot"))).toContain(`  • Critical chance: ${percent}%`);
+  });
+
+  test("a skill that always crits reads 100%, not more", () => {
     const { critChance } = getSkill("deadeye-shot").effects!.find((e) => e.kind === "damage")!;
-    expect(skillMechanicLines(getSkill("deadeye-shot"))).toContain(`  • Critical chance: ${Math.round(critChance! * 100)}%`);
+    expect(critChance).toBe(1);
+    expect(skillMechanicLines(getSkill("deadeye-shot"))).toContain("  • Critical chance: 100%");
   });
 
   test("a skill with none of these mechanics yields no lines", () => {
