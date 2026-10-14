@@ -48,9 +48,10 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       head = `heal ${amount()} + ${multiplier()}% MAG`;
       break;
     case "applyStatusEffect": {
-      used.add("statusEffectId").add("alsoApplyStatusEffectIds");
+      used.add("statusEffectId").add("alsoApplyStatusEffectIds").add("randomStatusEffectIds");
+      const random = across((effect) => effect.randomStatusEffectIds?.join(" / "));
       const ids = across((effect) => [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])].join(" + "));
-      head = `status ${ids}`;
+      head = random !== undefined ? `status, one at random of ${random}` : `status ${ids}`;
       break;
     }
     case "modifyStat":
@@ -64,6 +65,9 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       break;
     case "summon":
       head = `summon ${field("summonCastId", String)}`;
+      break;
+    case "commandSummons":
+      head = "every minion acts once more, boosted";
       break;
     default:
       head = `${first.kind}${first.amount === undefined ? "" : ` ${amount()}`}`;
@@ -81,6 +85,8 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     rate("extraHitChance", (joined) => `${joined}% extra hit`),
     field("hitCountRange", ({ min, max }) => `${min}–${max} hits`),
     field("scalesWithStatusStacks", ({ statusEffectId, percentPerStack }) => `+${formatNumber(percentPerStack)}% per ${statusEffectId} stack`),
+    field("scalesWithDebuffCount", ({ percentPerDebuff }) => `+${formatNumber(percentPerDebuff)}% per debuff on the target`),
+    field("damageRollRange", ({ minPercent, maxPercent }) => `rolls ${formatNumber(minPercent)}–${formatNumber(maxPercent)}%`),
     amountOf("ignoreDefensePercent", (joined) => `ignores ${joined}% defense`),
     amountOf("lifestealPercent", (joined) => `${joined}% lifesteal`),
     amountOf("maxHpPercent", (joined) => `${joined}% max HP`),

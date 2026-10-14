@@ -224,6 +224,74 @@
         "B": "#6e8782",
         "D": "#4f793e"
       }
+    },
+    "jester": {
+      "rows": [
+        ".Y.......Y...",
+        ".RR.....KK...",
+        "..RRR.KKK....",
+        "....SSSS.....",
+        "....SSES.....",
+        "...RKRKRK..W.",
+        "..SKRKRKRSWW.",
+        "...RKRKRK....",
+        "...KKK.RRR..."
+      ],
+      "palette": {
+        "Y": "#d8b84a",
+        "R": "#9a2a3a",
+        "K": "#1e1a22",
+        "S": "#f2ce9c",
+        "E": "#2a1f18",
+        "W": "#c9d8e8"
+      }
+    },
+    "paladin": {
+      "rows": [
+        "......PP......",
+        ".....HHHH.....",
+        ".....HHVH.....",
+        ".GWG.AAAAA..M.",
+        ".WWW.ACCCA.MMM",
+        ".GWGAAACAAS.W.",
+        ".GWG.AACAA..W.",
+        "..G..AAAAA....",
+        ".....NN.NN...."
+      ],
+      "palette": {
+        "P": "#b03030",
+        "H": "#c9c2b0",
+        "V": "#2a1f18",
+        "A": "#d8d2c0",
+        "C": "#9a2a2a",
+        "G": "#3a5a8a",
+        "W": "#e8d070",
+        "M": "#8a8579",
+        "S": "#f2ce9c",
+        "N": "#3a3028"
+      }
+    },
+    "warlock": {
+      "rows": [
+        "....HHHH.....",
+        "...HHHHHH....",
+        "...HHNNGN..O.",
+        "...HHNNNN.OGO",
+        "..HAAAAAAH.O.",
+        "..AACAAACAS..",
+        "..AAACACAA...",
+        "..AAAACAAAA..",
+        ".AAAAACAAAAA."
+      ],
+      "palette": {
+        "H": "#2a2a3a",
+        "N": "#121018",
+        "G": "#7ad070",
+        "O": "#4aa060",
+        "A": "#3a3a5a",
+        "C": "#7a2a3a",
+        "S": "#bfae8a"
+      }
     }
   },
   "monsters": {

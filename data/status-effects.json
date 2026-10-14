@@ -1173,6 +1173,268 @@
     "untargetable": true
   },
   {
+    "id": "retaliating",
+    "name": "Retaliating",
+    "description": "Answers a monster's blow with a sweep at every enemy, twice a round at most.",
+    "perTurnEffects": [],
+    "counterAttack": {
+      "maxPerRound": 2,
+      "amount": 8,
+      "offenseMultiplierPercent": 50
+    }
+  },
+  {
+    "id": "retaliating-ii",
+    "name": "Retaliating II",
+    "description": "Answers a monster's blow with a harder sweep at every enemy, twice a round at most.",
+    "perTurnEffects": [],
+    "counterAttack": {
+      "maxPerRound": 2,
+      "amount": 12,
+      "offenseMultiplierPercent": 60
+    },
+    "rankOf": "retaliating",
+    "rankLevel": 2
+  },
+  {
+    "id": "retaliating-iii",
+    "name": "Retaliating III",
+    "description": "Answers a monster's blow with a heavy sweep at every enemy, twice a round at most.",
+    "perTurnEffects": [],
+    "counterAttack": {
+      "maxPerRound": 2,
+      "amount": 16,
+      "offenseMultiplierPercent": 70
+    },
+    "rankOf": "retaliating",
+    "rankLevel": 3
+  },
+  {
+    "id": "sanctified",
+    "name": "Sanctified",
+    "description": "Restores a little HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 6,
+        "offenseMultiplierPercent": 35
+      }
+    ]
+  },
+  {
+    "id": "sanctified-ii",
+    "name": "Sanctified II",
+    "description": "Restores HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 9,
+        "offenseMultiplierPercent": 40
+      }
+    ],
+    "rankOf": "sanctified",
+    "rankLevel": 2
+  },
+  {
+    "id": "sanctified-iii",
+    "name": "Sanctified III",
+    "description": "Restores a lot of HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 12,
+        "offenseMultiplierPercent": 45
+      }
+    ],
+    "rankOf": "sanctified",
+    "rankLevel": 3
+  },
+  {
+    "id": "steadfast",
+    "name": "Steadfast",
+    "description": "Most of the fear that would land is shrugged off.",
+    "perTurnEffects": [],
+    "fearResistPercent": 70
+  },
+  {
+    "id": "netted",
+    "name": "Netted",
+    "description": "Every move pulls the barbs deeper; acting may open a fresh bleed.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "onActStatus": {
+      "statusEffectId": "bleeding",
+      "chance": 0.8,
+      "durationTurns": 3
+    }
+  },
+  {
+    "id": "ballad",
+    "name": "Ballad",
+    "description": "Mildly raises speed for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": 4
+      }
+    ]
+  },
+  {
+    "id": "ballad-ii",
+    "name": "Ballad II",
+    "description": "Moderately raises speed for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": 6
+      }
+    ],
+    "rankOf": "ballad",
+    "rankLevel": 2
+  },
+  {
+    "id": "ballad-iii",
+    "name": "Ballad III",
+    "description": "Sharply raises speed for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": 8
+      }
+    ],
+    "rankOf": "ballad",
+    "rankLevel": 3
+  },
+  {
+    "id": "fortune",
+    "name": "Fortune",
+    "description": "Every lost wager is owed back; the next gamble lands harder for each stack.",
+    "perTurnEffects": [],
+    "tickCategory": "special",
+    "stackable": true,
+    "maxStacks": 3
+  },
+  {
+    "id": "martyrs-resolve",
+    "name": "Martyr's Resolve",
+    "description": "Greatly raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 12,
+        "minPercent": 50
+      }
+    ]
+  },
+  {
+    "id": "martyrs-resolve-ii",
+    "name": "Martyr's Resolve II",
+    "description": "Greatly raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 16,
+        "minPercent": 60
+      }
+    ],
+    "rankOf": "martyrs-resolve",
+    "rankLevel": 2
+  },
+  {
+    "id": "martyrs-resolve-iii",
+    "name": "Martyr's Resolve III",
+    "description": "Massively raises defense for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 20,
+        "minPercent": 70
+      }
+    ],
+    "rankOf": "martyrs-resolve",
+    "rankLevel": 3
+  },
+  {
+    "id": "hexed",
+    "name": "Hexed",
+    "description": "A curse that eats at the body each turn and saps attack; stacks up to 3 times.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 4,
+        "maxHpPercent": 1.5,
+        "damageType": "magic"
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": -3,
+        "minPercent": -4
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 3,
+    "perStackBonusPercent": 100
+  },
+  {
+    "id": "pact",
+    "name": "Pact",
+    "description": "Mildly raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 5,
+        "minPercent": 20
+      }
+    ]
+  },
+  {
+    "id": "pact-ii",
+    "name": "Pact II",
+    "description": "Moderately raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 7,
+        "minPercent": 27
+      }
+    ],
+    "rankOf": "pact",
+    "rankLevel": 2
+  },
+  {
+    "id": "pact-iii",
+    "name": "Pact III",
+    "description": "Sharply raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 9,
+        "minPercent": 35
+      }
+    ],
+    "rankOf": "pact",
+    "rankLevel": 3
+  },
+  {
+    "id": "silenced",
+    "name": "Silenced",
+    "description": "Cannot use skills; only a basic attack is left.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "silences": true,
+    "eliteBossMaxTurns": 1
+  },
+  {
     "id": "blessed",
     "name": "Blessed",
     "description": "The words the gatekeeper said over you: raises defense, attack and magic power for the whole fight.",

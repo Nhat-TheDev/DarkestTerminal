@@ -12,8 +12,11 @@ import {
   hasStunningStatus,
   applySkillEffects,
   applyMonsterHitFear,
+  applyOnActStatuses,
+  triggerCounterAttack,
   type EngineContext,
 } from "./combat";
+import { getStatusEffect } from "../data/statusEffects";
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
@@ -208,6 +211,9 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const living = livingPlayerSideEnemyFacingRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Targetable);
   if (living.length === 0) return;
 
+  applyOnActStatuses(actor, combat, ctx);
+  if (actor.hp <= 0) return;
+
   const archetype = getArchetype(actor.archetypeId);
   const view = monsterAiView(actor, combat, ctx);
 
@@ -221,8 +227,11 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
     if (onEnter !== undefined) return useMonsterSkill(getMonsterSkill(onEnter), archetype, actor, living, view, combat, ctx);
   }
 
+  // A silenced monster still crosses into a new phase, but every skill of its own choosing is locked.
+  const silenced = actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).silences);
+
   // skillIds spans every tier, so this must pick a self-targeted skill, not just the first one.
-  if (actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
+  if (!silenced && actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
     const tierWeights = currentWeights(archetype, actor) ?? {};
     const selfSkillId = archetype.skillIds.find((id) => id in tierWeights && getMonsterSkill(id).target === "self");
     if (selfSkillId !== undefined && ctx.rng.chance(BALANCE.combat.defensiveLowHpSkillChance)) {
@@ -233,7 +242,7 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
     }
   }
 
-  const skillId = pickMonsterAction(archetype, actor, view, ctx.rng);
+  const skillId = silenced ? null : pickMonsterAction(archetype, actor, view, ctx.rng);
   if (skillId !== null) return useMonsterSkill(getMonsterSkill(skillId), archetype, actor, living, view, combat, ctx);
 
   const target = pickTargets(null, archetype, actor, living, view, ctx.rng)[0]!;
@@ -252,4 +261,5 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log, rollDamage: () => ctx.rng.next() });
   if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
   if (damageDealt > 0) applyMonsterHitFear(actor, target, combat, ctx);
+  if (damageDealt > 0) triggerCounterAttack(target, combat, ctx);
 }

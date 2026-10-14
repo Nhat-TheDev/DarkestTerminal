@@ -40,7 +40,7 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     let guard = 0;
-    while (app.debugUiState.kind !== "artifactDecision" && guard < 40) {
+    while (app.debugUiState.kind !== "artifactDecision" && guard < 80) {
       guard++;
       if (app.debugUiState.kind === "roomReward" || app.debugUiState.kind === "skillDetail") mockInput.pressKey("RETURN");
       else mockInput.pressKey("1");

@@ -131,6 +131,22 @@ const plagueDoctorDebuffProcHook: SkillEffectHooks = {
   },
 };
 
+/** Warlock's passive — a kill restores a share of the Warlock's max MP and max HP, unlocked at level 5/20/35. */
+const warlockSoulFeastHook: SkillEffectHooks = {
+  onKill(source, _target, log) {
+    if (!isCharacter(source) || source.classId !== "warlock" || !source.isAlive) return;
+    const rankDef = passiveRankDef(getClass("warlock").passiveSkill, source.level);
+    if (!rankDef) return;
+    const mpBefore = source.mp;
+    const hpBefore = source.hp;
+    source.mp = Math.min(source.maxMp, source.mp + Math.round((source.maxMp * (rankDef.killRestoreMpPercent ?? 0)) / 100));
+    source.hp = Math.min(source.maxHp, source.hp + Math.round((source.maxHp * (rankDef.killRestoreHpPercent ?? 0)) / 100));
+    if (source.mp > mpBefore || source.hp > hpBefore) {
+      log.push({ text: t("combat.soulFeast", { bearer: source.name, hp: source.hp - hpBefore, mp: source.mp - mpBefore }), kind: "heal" });
+    }
+  },
+};
+
 // Execution order matters.
 export const combatHooks: SkillEffectHooks[] = [
   onHitStatusRiderHook,
@@ -141,4 +157,5 @@ export const combatHooks: SkillEffectHooks[] = [
   roguePoisonBonusHook,
   mageShredHook,
   plagueDoctorDebuffProcHook,
+  warlockSoulFeastHook,
 ];

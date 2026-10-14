@@ -37,6 +37,9 @@ export const CLASS_STYLE: Record<string, { abbr: string; color: string }> = {
   archer: { abbr: "AR", color: "#4a6b3a" },
   ninja: { abbr: "NJ", color: "#5a5a5a" },
   summoner: { abbr: "SM", color: "#5a3a8a" },
+  jester: { abbr: "JS", color: "#9a3a4a" },
+  paladin: { abbr: "PL", color: "#b8a46a" },
+  warlock: { abbr: "WL", color: "#3a5a5a" },
 };
 
 export const MONSTER_STYLE: Record<string, { abbr: string; color: string }> = {

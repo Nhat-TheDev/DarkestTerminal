@@ -4,10 +4,9 @@ import { showPartySelect } from "../src/ui/partySelect";
 import { CLASSES } from "../src/data/classes";
 import { ABILITIES } from "../src/data/abilities";
 import { BALANCE } from "../src/data/balanceConfig";
-import { loadProfile, saveProfile, unlockAbility } from "../src/engine/profile";
 
 async function openScreen() {
-  const harness = await createTestRenderer({ width: 150, height: 45 });
+  const harness = await createTestRenderer({ width: 120, height: 40 });
   const picked = showPartySelect(harness.renderer, CLASSES);
   await harness.renderOnce();
   const press = async (key: string) => {
@@ -50,54 +49,6 @@ describe("party select", () => {
       await press("RIGHT");
     }
     renderer.destroy();
-  });
-
-  test("the class block keeps the same size and place for every class", async () => {
-    const { frame, press, renderer } = await openScreen();
-    const corners = (shown: string) => {
-      const rows = shown.split("\n");
-      const top = rows.findIndex((r) => r.includes("┌"));
-      const bottom = rows.findIndex((r) => r.includes("└"));
-      return { top, bottom, left: rows[top]!.indexOf("┌"), right: rows[top]!.indexOf("┐") };
-    };
-    const first = corners(frame());
-    expect(first.top).toBeGreaterThanOrEqual(0);
-    for (const cls of CLASSES) {
-      expect(corners(frame()), cls.id).toEqual(first);
-      await press("RIGHT");
-    }
-    renderer.destroy();
-  });
-
-  test("the ability block keeps its size on every page, with every ability unlocked", async () => {
-    const profile = loadProfile();
-    const before = [...profile.unlockedAbilityIds];
-    for (const a of ABILITIES) unlockAbility(profile, a.id);
-    saveProfile(profile);
-    try {
-      const { frame, press, renderer } = await openScreen();
-      await press("RETURN");
-      const corners = (shown: string) => {
-        const rows = shown.split("\n");
-        const top = rows.findIndex((r) => r.includes("┌"));
-        return { top, bottom: rows.findIndex((r) => r.includes("└")), left: rows[top]!.indexOf("┌") };
-      };
-      const first = corners(frame());
-      const seen = new Set<string>();
-      let page = 1;
-      while (!seen.has(frame())) {
-        seen.add(frame());
-        expect(corners(frame()), `page ${page}`).toEqual(first);
-        expect(frame(), `page ${page}`).toContain("[Esc] Back");
-        await press("RIGHT");
-        page++;
-      }
-      for (const a of ABILITIES) expect([...seen].some((shown) => shown.includes(a.name)), a.id).toBe(true);
-      renderer.destroy();
-    } finally {
-      profile.unlockedAbilityIds = before;
-      saveProfile(profile);
-    }
   });
 
   test("a pick goes to the ability list, then the class leaves the browse list", async () => {

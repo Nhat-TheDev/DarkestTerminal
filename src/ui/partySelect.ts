@@ -4,23 +4,19 @@ import { ABILITIES, formatAbilityEffect, getAbility } from "../data/abilities";
 import { loadProfile } from "../engine/profile";
 import { PALETTE, CLASS_STYLE, chip, colorChunk, boldColorChunk, plainChunk, joinLines, highlightKeyHints } from "./theme";
 import { joinHints, withPageHint, digitHint } from "./keyHints";
-import { spriteForClass, renderSpriteInSlot, spriteHeight } from "./sprites";
-import { wrapText } from "./layout";
+import { spriteForClass, renderSpriteInSlot, spriteHeight, spriteWidth } from "./sprites";
+import { wrapText, mergeBlocksHorizontally } from "./layout";
+import { formatPassiveEffect } from "./screens/characterInfo";
+import { skillEffectLine, skillMechanicLines } from "./screens/combat";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
 const PARTY_SIZE = BALANCE.party.size;
 const ABILITY_PAGE_SIZE = 9;
-/** Rows of the Ability list: nine entries whose effect fits on one line. A page holds fewer entries when longer effects wrap, so the block never grows. */
-const ABILITY_LIST_ROWS = 18;
+/** Width of the text column beside the sprite, and of every wrapped line below it. */
+const TEXT_WIDTH = 76;
 /** The class skills shown on the browse screen: the two a level-1 character starts with. */
 const PREVIEW_SLOTS = [1, 2];
-/** Inner size of the sprite box on the browse screen. */
-const SPRITE_BOX_WIDTH = 15;
-const SPRITE_BOX_HEIGHT = 10;
-/** Inner width of the browse block's full-width panels; the stats box takes what the sprite box leaves. */
-const BLOCK_INNER_WIDTH = 86;
-const STATS_WIDTH = BLOCK_INNER_WIDTH - SPRITE_BOX_WIDTH - 1;
 
 export interface PartyPick {
   classId: Id;
@@ -33,6 +29,10 @@ type Step = { kind: "browse"; index: number } | { kind: "ability"; classId: Id; 
 function selectableAbilities(taken: Id[]): AbilityDefinition[] {
   const profile = loadProfile();
   return ABILITIES.filter((a) => (a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id)) && !taken.includes(a.id));
+}
+
+function textLines(text: string, color: string, indent = ""): TextChunk[][] {
+  return wrapText(text, TEXT_WIDTH - indent.length).map((line) => [colorChunk(indent + line, color)]);
 }
 
 /** The party so far, one bracket per seat: class and ability for a filled one, empty for the rest. */
@@ -54,139 +54,66 @@ function partyLine(picks: PartyPick[], classes: CharacterClass[]): TextChunk[] {
   return chunks;
 }
 
-function chunksWidth(row: TextChunk[]): number {
-  return row.reduce((sum, chunk) => sum + chunk.text.length, 0);
-}
-
-/** `rows` as exactly `height` rows (extra ones dropped, missing ones blank), each padded out to `width` columns, so a panel never changes size. */
-function fitBlock(rows: TextChunk[][], width: number, height: number): TextChunk[][] {
-  const out: TextChunk[][] = [];
-  for (let i = 0; i < height; i++) {
-    const row = rows[i] ?? [];
-    out.push([...row, plainChunk(" ".repeat(Math.max(0, width - chunksWidth(row))))]);
-  }
-  return out;
-}
-
-const border = (text: string) => colorChunk(text, PALETTE.border);
-
-/** Panel text wrapped to the panel's width, with a one-column margin on each side. */
-function panelText(text: string, color: string, width: number, indent = ""): TextChunk[][] {
-  return wrapText(text, width - 2 - indent.length).map((line) => [colorChunk(` ${indent}${line}`, color)]);
-}
-
-function previewSkills(cls: CharacterClass): SkillDefinition[] {
-  return PREVIEW_SLOTS.map((slot) => cls.skills.find((s) => s.slot === slot)).filter((s): s is SkillDefinition => s !== undefined);
-}
-
-function skillsPanel(cls: CharacterClass): TextChunk[][] {
-  return previewSkills(cls).flatMap((skill) => [
-    [boldColorChunk(` ${skill.name}`, PALETTE.text)],
-    ...(skill.shortDescription ? panelText(skill.shortDescription, PALETTE.dim, BLOCK_INNER_WIDTH, "  ") : []),
-  ]);
-}
-
-function passivePanel(cls: CharacterClass): TextChunk[][] {
-  const passive = cls.passiveSkill;
-  return [
-    [boldColorChunk(` ${t("partySelect.passiveLine", { name: passive.name })}`, PALETTE.title)],
-    ...panelText(passive.description, PALETTE.dim, BLOCK_INNER_WIDTH, "  "),
-  ];
-}
-
-function statsPanel(cls: CharacterClass): TextChunk[][] {
-  const pad = (value: number) => String(value).padStart(3);
-  return [
-    [boldColorChunk(` ${cls.name.toUpperCase()}`, PALETTE.title)],
-    ...panelText(cls.roleTags.join(" · "), PALETTE.dim, STATS_WIDTH),
-    [],
-    [colorChunk(` ${t("partySelect.statsRow1", { hp: pad(cls.baseMaxHp), attack: pad(cls.baseAttack), magic: pad(cls.baseMagicPower), aggro: pad(cls.baseAggro) })}`, PALETTE.text)],
-    [colorChunk(` ${t("partySelect.statsRow2", { mp: pad(cls.baseMaxMp), defense: pad(cls.baseDefense), speed: pad(cls.baseSpeed) })}`, PALETTE.text)],
-  ];
-}
-
-/** The rows each full-width panel gets: enough for the longest class, so browsing never resizes the block. */
-function panelHeights(classes: CharacterClass[]) {
-  const max = (panel: (cls: CharacterClass) => TextChunk[][]) => Math.max(...classes.map((cls) => panel(cls).length));
-  return {
-    description: max((cls) => panelText(cls.description, PALETTE.text, BLOCK_INNER_WIDTH)),
-    skills: max(skillsPanel),
-    passive: max(passivePanel),
-  };
-}
-
-/** The top of a class block: the sprite box beside the stats box, opened by the block's top border. */
-function classHeader(cls: CharacterClass): TextChunk[][] {
+/** The sprite on the left, `right` beside it; the shorter of the two is padded so the rows line up. */
+function besideSprite(cls: CharacterClass, right: TextChunk[][]): TextChunk[][] {
   const sprite = spriteForClass(cls.id);
-  const spriteRows = renderSpriteInSlot(sprite, Math.min(spriteHeight(sprite), SPRITE_BOX_HEIGHT), SPRITE_BOX_WIDTH);
-  const topPad = Math.floor((SPRITE_BOX_HEIGHT - spriteRows.length) / 2);
-  const spriteBox = fitBlock([...Array.from({ length: topPad }, () => []), ...spriteRows], SPRITE_BOX_WIDTH, SPRITE_BOX_HEIGHT);
-  const statsBox = fitBlock(statsPanel(cls), STATS_WIDTH, SPRITE_BOX_HEIGHT);
-  const rule = (left: string, mid: string, right: string) =>
-    [border(left + "─".repeat(SPRITE_BOX_WIDTH) + mid + "─".repeat(STATS_WIDTH) + right)];
-  return [
-    rule("┌", "┬", "┐"),
-    ...spriteBox.map((row, i) => [border("│"), ...row, border("│"), ...statsBox[i]!, border("│")]),
-    rule("├", "┴", "┤"),
-  ];
+  const slotWidth = spriteWidth(sprite) + 2;
+  const height = Math.max(spriteHeight(sprite), right.length);
+  const left = renderSpriteInSlot(sprite, spriteHeight(sprite), slotWidth);
+  const pad = (block: TextChunk[][], width: number) => {
+    const out = block.map((row) => row);
+    while (out.length < height) out.push([plainChunk(" ".repeat(width))]);
+    return out;
+  };
+  return mergeBlocksHorizontally([pad(left, slotWidth), pad(right, 0)], 2);
 }
 
-const fullRule = (left: string, right: string) => [border(left + "─".repeat(BLOCK_INNER_WIDTH) + right)];
-const framed = (rows: TextChunk[][], height: number) =>
-  fitBlock(rows, BLOCK_INNER_WIDTH, height).map((row) => [border("│"), ...row, border("│")]);
-
-/** The class as one fixed-size bordered block: sprite | stats, then description, skills and passive. */
-function classDetail(cls: CharacterClass, heights: ReturnType<typeof panelHeights>): TextChunk[][] {
-  return [
-    ...classHeader(cls),
-    ...framed(panelText(cls.description, PALETTE.text, BLOCK_INNER_WIDTH), heights.description),
-    fullRule("├", "┤"),
-    ...framed(skillsPanel(cls), heights.skills),
-    fullRule("├", "┤"),
-    ...framed(passivePanel(cls), heights.passive),
-    fullRule("└", "┘"),
-  ];
-}
-
-function abilityEntry(ability: AbilityDefinition, i: number): TextChunk[][] {
-  return [
-    [colorChunk(t("partySelect.abilityLine", { i: i + 1, name: ability.name, rarity: ability.rarity }), PALETTE.text)],
-    ...panelText(formatAbilityEffect(ability), PALETTE.dim, BLOCK_INNER_WIDTH, "     "),
-  ];
-}
-
-/** `options` split into pages of at most `ABILITY_PAGE_SIZE` entries that fit `ABILITY_LIST_ROWS` rows; always at least one page. */
-function abilityPages(options: AbilityDefinition[]): AbilityDefinition[][] {
-  const pages: AbilityDefinition[][] = [[]];
-  let rows = 0;
-  for (const ability of options) {
-    const height = abilityEntry(ability, 0).length;
-    const page = pages[pages.length - 1]!;
-    if (page.length > 0 && (page.length >= ABILITY_PAGE_SIZE || rows + height > ABILITY_LIST_ROWS)) {
-      pages.push([ability]);
-      rows = height;
-    } else {
-      page.push(ability);
-      rows += height;
-    }
+function skillPreview(skill: SkillDefinition): TextChunk[][] {
+  const lines: TextChunk[][] = [[boldColorChunk(t("partySelect.skillLine", { name: skill.name, mp: skill.mpCost }), PALETTE.text)]];
+  if (skill.shortDescription) lines.push(...textLines(skill.shortDescription, PALETTE.dim, "  "));
+  for (const effect of skill.effects ?? []) {
+    const line = skillEffectLine(effect, skill);
+    if (line) for (const part of line.split("\n")) lines.push([colorChunk(part, PALETTE.dim)]);
   }
-  return pages;
+  for (const line of skillMechanicLines(skill)) lines.push([colorChunk(line, PALETTE.dim)]);
+  return lines;
 }
 
-/** The class header, then one page of Abilities and the skip/page line, at a fixed size. */
-function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], page: number, totalPages: number): TextChunk[][] {
-  const list = pageOptions.flatMap((ability, i) => abilityEntry(ability, i));
-  if (pageOptions.length === 0) list.push([colorChunk(t("partySelect.noAbilities"), PALETTE.dim)]);
-  const skip = t("partySelect.skipAbility");
-  const pageTag = totalPages > 1 ? `${t("partySelect.pageTag", { page: page + 1, total: totalPages })} ` : "";
-  const gap = " ".repeat(Math.max(1, BLOCK_INNER_WIDTH - skip.length - pageTag.length));
-  return [
-    ...classHeader(cls),
-    ...framed(list, ABILITY_LIST_ROWS),
-    fullRule("├", "┤"),
-    ...framed([[colorChunk(skip, PALETTE.dim), plainChunk(gap), colorChunk(pageTag, PALETTE.dim)]], 1),
-    fullRule("└", "┘"),
+function classDetail(cls: CharacterClass): TextChunk[][] {
+  const right: TextChunk[][] = [
+    [boldColorChunk(cls.name.toUpperCase(), PALETTE.title)],
+    ...textLines(cls.description, PALETTE.text),
+    [colorChunk(cls.roleTags.join(" · "), PALETTE.dim)],
+    [],
+    [
+      colorChunk(
+        t("partySelect.stats", {
+          hp: cls.baseMaxHp,
+          mp: cls.baseMaxMp,
+          attack: cls.baseAttack,
+          defense: cls.baseDefense,
+          magic: cls.baseMagicPower,
+          speed: cls.baseSpeed,
+          aggro: cls.baseAggro,
+        }),
+        PALETTE.text
+      ),
+    ],
   ];
+  const passive = cls.passiveSkill;
+  const lines: TextChunk[][] = [
+    ...besideSprite(cls, right),
+    [],
+    [boldColorChunk(t("partySelect.passiveLine", { name: passive.name, levels: passive.ranks.map((r) => r.unlockLevel).join(" / ") }), PALETTE.title)],
+    ...textLines(passive.description, PALETTE.dim, "  "),
+    ...textLines(formatPassiveEffect(passive, passive.ranks[0]!), PALETTE.text, "  "),
+  ];
+  for (const slot of PREVIEW_SLOTS) {
+    const skill = cls.skills.find((s) => s.slot === slot);
+    if (!skill) continue;
+    lines.push([], ...skillPreview(skill));
+  }
+  return lines;
 }
 
 /**
@@ -213,7 +140,6 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     const footer = new TextRenderable(renderer, { id: "partyselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
     root.add(footer);
 
-    const heights = panelHeights(classes);
     const picks: PartyPick[] = [];
     let step: Step = { kind: "browse", index: 0 };
 
@@ -228,7 +154,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
         partyLine(picks, classes),
         [],
         [colorChunk(t("partySelect.browsePosition", { index: index + 1, total: pool.length }), PALETTE.dim)],
-        ...classDetail(cls, heights),
+        ...classDetail(cls),
       ];
       body.content = joinLines(lines);
       footer.content = joinLines([highlightKeyHints(joinHints(t("partySelect.browseHint"), picks.length > 0 ? t("partySelect.undoHint") : null))]);
@@ -236,14 +162,24 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
 
     const renderAbility = (classId: Id, page: number) => {
       const cls = classes.find((c) => c.id === classId)!;
-      const pages = abilityPages(abilityOptions());
-      const totalPages = pages.length;
-      const pageOptions = pages[page] ?? [];
+      const options = abilityOptions();
+      const totalPages = Math.max(1, Math.ceil(options.length / ABILITY_PAGE_SIZE));
+      const pageOptions = options.slice(page * ABILITY_PAGE_SIZE, (page + 1) * ABILITY_PAGE_SIZE);
+      const list: TextChunk[][] = [];
+      pageOptions.forEach((ability, i) => {
+        list.push([colorChunk(t("partySelect.abilityLine", { i: i + 1, name: ability.name, rarity: ability.rarity }), PALETTE.text)]);
+        list.push(...textLines(formatAbilityEffect(ability), PALETTE.dim, "      "));
+      });
+      if (pageOptions.length === 0) list.push([colorChunk(t("partySelect.noAbilities"), PALETTE.dim)]);
+      list.push([], [colorChunk(t("partySelect.skipAbility"), PALETTE.dim)]);
+      if (totalPages > 1) list.push([colorChunk(t("partySelect.pageTag", { page: page + 1, total: totalPages }), PALETTE.dim)]);
       const lines: TextChunk[][] = [
         [colorChunk(t("partySelect.abilityTitle", { name: cls.name, count: picks.length + 1, total: PARTY_SIZE }), PALETTE.title)],
         partyLine(picks, classes),
         [],
-        ...abilityDetail(cls, pageOptions, page, totalPages),
+        ...besideSprite(cls, [[boldColorChunk(cls.name.toUpperCase(), PALETTE.title)], [colorChunk(cls.roleTags.join(" · "), PALETTE.dim)]]),
+        [],
+        ...list,
       ];
       body.content = joinLines(lines);
       const contextual = joinHints(digitHint("partySelect.abilityHint", pageOptions.length, "partySelect.abilityHintSkipOnly"), t("partySelect.abilityBackHint"));
@@ -274,8 +210,8 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
         return;
       }
 
-      const pages = abilityPages(abilityOptions());
-      const totalPages = pages.length;
+      const options = abilityOptions();
+      const totalPages = Math.max(1, Math.ceil(options.length / ABILITY_PAGE_SIZE));
       if ((key.name === "left" || key.name === "right") && totalPages > 1) {
         step = { ...step, page: (step.page + (key.name === "right" ? 1 : -1) + totalPages) % totalPages };
         render();
@@ -291,7 +227,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
       if (key.name === "0") abilityId = null;
       else {
         const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
-        const chosen = digit !== null ? pages[step.page]?.[digit - 1] : undefined;
+        const chosen = digit !== null ? options.slice(step.page * ABILITY_PAGE_SIZE, (step.page + 1) * ABILITY_PAGE_SIZE)[digit - 1] : undefined;
         if (!chosen) return;
         abilityId = chosen.id;
       }

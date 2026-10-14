@@ -12,6 +12,9 @@ function normalizeRankedSkill(skill: SkillDefinition): SkillDefinition {
 
 export const CLASSES = classesJson as unknown as CharacterClass[];
 
+/** The basic attack (slot 0), 5 class skills (slots 1-5) and the ultimate (slot 6). */
+export const SKILLS_PER_CLASS = 7;
+
 export function validatePassiveStatusIds(classId: string, passive: PassiveSkillDefinition): void {
   const check = (where: string, field: string, ids: Id[]) => {
     for (const id of ids) {
@@ -31,8 +34,8 @@ export function validatePassiveStatusIds(classId: string, passive: PassiveSkillD
 
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");
 for (const cls of CLASSES) {
-  if (cls.skills.length !== 6) {
-    throw new Error(`data/classes.json: class "${cls.id}" must have exactly 6 skills (has ${cls.skills.length})`);
+  if (cls.skills.length !== SKILLS_PER_CLASS) {
+    throw new Error(`data/classes.json: class "${cls.id}" must have exactly ${SKILLS_PER_CLASS} skills (has ${cls.skills.length})`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
 

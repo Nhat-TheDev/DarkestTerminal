@@ -414,6 +414,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
 
   const combatActors = () => combat.combatants.map((c) => getActorByRef(c.ref, ctx));
   const snapshot = sessionSnapshot(combat, ctx);
+  for (const actor of combatActors()) for (const active of actor.activeStatusEffects) delete active.countersThisRound;
 
   runTicksInSession(
     combat,
@@ -534,6 +535,9 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
     return;
   }
 
+  applyOnActStatuses(actor, combat, ctx);
+  if (!isActorAlive(actor)) return;
+
   const skill = actionDefinition(queued.source, actor);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
@@ -577,6 +581,71 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
       { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
     );
   }
+  if ((skill.effects ?? []).some((e) => e.kind === "commandSummons")) commandOwnedSummons(actor, combat, ctx);
+}
+
+/**
+ * `commandSummons`: every minion the caster has out that takes turns acts once more right away, with
+ * its signature skill boosted by its archetype's `commandBoostPercent`. The extra action does not count
+ * toward the minion's `maxActions`. Each runs in its own session, like a minion's first turn after a cast.
+ */
+function commandOwnedSummons(owner: Character, combat: CombatState, ctx: EngineContext): void {
+  for (const summon of ownedSummons(owner.id, ctx)) {
+    if (isCombatOver(combat, ctx)) return;
+    const archetype = getSummonArchetype(summon.archetypeId);
+    if (archetype.passive || !combat.combatants.some((c) => c.ref.kind === "summon" && c.ref.id === summon.id)) continue;
+    runInSession(
+      combat,
+      owner.id,
+      () => {
+        runSummonTurn({ kind: "summon", id: summon.id }, combat, ctx, { boostPercent: archetype.commandBoostPercent ?? 0 });
+        pruneDeadSummons(combat, ctx, combat.log);
+      },
+      { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
+    );
+  }
+}
+
+/** Each status with `onActStatus` on an actor that is about to act rolls to put its status on that actor. */
+export function applyOnActStatuses(actor: Actor, combat: CombatState, ctx: EngineContext): void {
+  for (const active of [...actor.activeStatusEffects]) {
+    const onAct = getStatusEffect(active.statusEffectId).onActStatus;
+    if (!onAct || !isActorAlive(actor) || !ctx.rng.chance(onAct.chance)) continue;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: onAct.statusEffectId, durationTurns: onAct.durationTurns }, actor, actor, { log: combat.log });
+  }
+}
+
+/**
+ * A monster's direct hit landed on `bearer`: a status with `counterAttack` strikes every targetable
+ * enemy back, up to its `maxPerRound` counters a round. The counter is the bearer's own action.
+ */
+export function triggerCounterAttack(bearer: Actor, combat: CombatState, ctx: EngineContext): void {
+  if (!isCharacter(bearer) || !isActorAlive(bearer)) return;
+  const active = bearer.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).counterAttack);
+  if (!active) return;
+  const def = getStatusEffect(active.statusEffectId);
+  const counter = def.counterAttack!;
+  if ((active.countersThisRound ?? 0) >= counter.maxPerRound) return;
+  const enemies = livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx));
+  if (enemies.length === 0) return;
+  active.countersThisRound = (active.countersThisRound ?? 0) + 1;
+  runInSession(
+    combat,
+    bearer.id,
+    () => {
+      combat.log.push({ text: t("combat.counterAttack", { actor: bearer.name, status: statusDisplayName(def) }), kind: "attack" });
+      for (const enemy of enemies) {
+        if (!isActorAlive(enemy)) continue;
+        noteBasicAttack(combat, bearer, enemy);
+        resolveSkillEffect({ kind: "damage", amount: counter.amount, offenseMultiplierPercent: counter.offenseMultiplierPercent }, bearer, enemy, {
+          log: combat.log,
+          skillName: statusDisplayName(def),
+          rollDamage: () => ctx.rng.next(),
+        });
+      }
+    },
+    { snapshot: sessionSnapshot(combat, ctx) }
+  );
 }
 
 type ExecutionTargets = Actor[] | "fizzle";
@@ -729,6 +798,36 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
     fromPassive: true,
     logKey: "combat.passiveCloneSpawned",
   });
+}
+
+/** A skill whose damage is left to chance: a `coinFlip`, or a `damageRollRange` on one of its effects. */
+function isGambleSkill(skill: SkillDefinition): boolean {
+  return skill.coinFlip !== undefined || (skill.effects ?? []).some((e) => e.damageRollRange !== undefined);
+}
+
+interface JesterFortune {
+  statusEffectId: Id;
+  bonusPercent: number;
+}
+
+/** Jester's passive — the stacks of `gambleStatusEffectId` the Jester carries, each worth the rank's `gambleBonusPercentPerStack` on this gamble, unlocked at level 5/20/35. */
+function jesterFortune(source: Actor): JesterFortune | null {
+  if (!isCharacter(source) || source.classId !== "jester") return null;
+  const passive = getClass("jester").passiveSkill;
+  const rankDef = passiveRankDef(passive, source.level);
+  if (!rankDef || !passive.gambleStatusEffectId) return null;
+  const stacks = source.activeStatusEffects.find((s) => s.statusEffectId === passive.gambleStatusEffectId)?.stacks ?? 0;
+  return { statusEffectId: passive.gambleStatusEffectId, bonusPercent: stacks * (rankDef.gambleBonusPercentPerStack ?? 0) };
+}
+
+/** A lost gamble adds a stack of the Jester's fortune status; a won one spends every stack it had. */
+function settleJesterFortune(source: Actor, fortune: JesterFortune, lost: boolean, log: LogEntry[]): void {
+  if (lost) {
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: fortune.statusEffectId, durationTurns: 99 }, source, source, { log });
+    return;
+  }
+  const active = source.activeStatusEffects.find((s) => s.statusEffectId === fortune.statusEffectId);
+  if (active) expireStatusEffect(source, active, { log });
 }
 
 function findBreakBonusStatus(source: Actor) {
@@ -933,6 +1032,13 @@ function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng:
   return rng.weightedPick(candidates, ([, weight]) => weight)[0];
 }
 
+/** A commanded minion's action: one of its signature skills by their own weights, or its basic attack when it has none. */
+function pickCommandedSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng: Rng): Id | null {
+  const signature = (archetype.signatureSkillIds ?? []).map((id): [Id, number] => [id, archetype.actionWeights?.[id] ?? 1]).filter(([, w]) => w > 0);
+  if (signature.length === 0) return null;
+  return rng.weightedPick(signature, ([, weight]) => weight)[0];
+}
+
 /** Fires once, right before the summon leaves, off the owner's stat frozen at spawn. */
 function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const burst = summon.deathBurst;
@@ -1060,7 +1166,18 @@ function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, co
   return [];
 }
 
-function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
+/** A commanded minion's signature skill: every damage and heal effect scaled up by `boostPercent`. */
+function boostedSummonSkill(skill: SkillDefinition, boostPercent: number): SkillDefinition {
+  if (boostPercent === 0) return skill;
+  const scale = (v: number | undefined) => (v === undefined ? v : Math.round(v * (1 + boostPercent / 100)));
+  return {
+    ...skill,
+    effects: (skill.effects ?? []).map((e) => (e.kind === "damage" || e.kind === "heal" ? { ...e, amount: scale(e.amount), offenseMultiplierPercent: scale(e.offenseMultiplierPercent ?? 100) } : e)),
+  };
+}
+
+/** `command`: an extra action ordered by the owner (`commandSummons`) — the minion picks among its signature skills only, boosted, and the action is not counted against `maxActions`. */
+function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext, command?: { boostPercent: number }): void {
   const summon = getActorByRef(ref, ctx) as Summon;
   if (hasStunningStatus(summon)) {
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: summon.name }), kind: "info" });
@@ -1069,9 +1186,11 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   }
   const archetype = getSummonArchetype(summon.archetypeId);
   if (archetype.passive) return;
-  const skillId = pickSummonAction(archetype, ctx.rng);
+  applyOnActStatuses(summon, combat, ctx);
+  if (!isActorAlive(summon)) return;
+  const skillId = command ? pickCommandedSummonAction(archetype, ctx.rng) : pickSummonAction(archetype, ctx.rng);
   if (skillId !== null) {
-    const skill = getSummonSkill(skillId);
+    const skill = command ? boostedSummonSkill(getSummonSkill(skillId), command.boostPercent) : getSummonSkill(skillId);
     const targets = resolveSummonSkillTargets(skill, ref, combat, ctx).map((r) => getActorByRef(r, ctx));
     if (targets.length === 0) return;
     combat.log.push({ text: t("combat.monsterSkillOnTarget", { actor: summon.name, skill: skill.name, target: targets[0]!.name }), kind: "attack" });
@@ -1093,7 +1212,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
       }
     }
   }
-  summon.actionsTaken += 1;
+  if (!command) summon.actionsTaken += 1;
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
@@ -1109,15 +1228,20 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
   const vikingBuffActive = !skill.isBuff && syncVikingBloodFury(source, log);
+  const gamble = isGambleSkill(skill) ? jesterFortune(source) : null;
   const stealthBreak = {
     guaranteedCrit: skill.slot === 0 && !skill.fromItem ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
-    damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
+    damageBonusPercent: (skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0) + (gamble?.bonusPercent ?? 0),
   };
+  // One roll for the whole cast, before any target is hit.
+  const coinWon = skill.coinFlip ? ctx.rng.chance(skill.coinFlip.winChance) : undefined;
+  let lostGamble = coinWon === false;
+  const casterLowHp = skill.casterHpBelowBonus !== undefined && source.hp / source.maxHp < skill.casterHpBelowBonus.hpPercentThreshold / 100;
   let brokeStealthThisCast = false;
 
   // An effect with its own `target`, and every `summon` effect (it lands on the caster), resolves here
   // against its own population, before the per-target loop below, which skips it.
-  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || e.kind === "summonMonster" || (e.target !== undefined && e.target !== skill.target);
+  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || e.kind === "summonMonster" || e.kind === "commandSummons" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
   // Damage reaching the opposing side marks every opposing target as attacked, whatever its own effects.
   // `appliesToRelation` names a board side ("ally" = the player's side), not one relative to the caster.
@@ -1132,6 +1256,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         ? { kind: "summon", id: source.id }
         : { kind: "monster", id: source.id };
     for (const effect of overrideEffects) {
+      // Resolved by the caller once this cast is over (`runCharacterTurn`).
+      if (effect.kind === "commandSummons") continue;
       if (effect.kind === "summonMonster") {
         if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
         continue;
@@ -1198,8 +1324,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     // A target that threw off a status and took nothing else from the action counts as missed.
     let resisted = false;
     let landed = false;
-    for (const effect of activeEffects) {
+    for (const rawEffect of activeEffects) {
       if (sourceFell()) break;
+      const effect = rawEffect.randomStatusEffectIds?.length ? { ...rawEffect, statusEffectId: ctx.rng.pick(rawEffect.randomStatusEffectIds) } : rawEffect;
       if (effect.appliesToRelation) {
         const targetIsAlly = isPlayerSide(target);
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
@@ -1222,7 +1349,20 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         }
       } else if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
       landed = true;
-      const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect, hasBonus);
+      let rolledEffect = effect;
+      if (effect.kind === "damage") {
+        let offense = effect.offenseMultiplierPercent ?? 100;
+        if (skill.coinFlip) offense = coinWon ? skill.coinFlip.winOffenseMultiplierPercent : skill.coinFlip.loseOffenseMultiplierPercent;
+        if (effect.damageRollRange) {
+          const rollPercent = effect.damageRollRange.minPercent + ctx.rng.next() * (effect.damageRollRange.maxPercent - effect.damageRollRange.minPercent);
+          if (rollPercent < 100) lostGamble = true;
+          offense = Math.round((offense * rollPercent) / 100);
+        }
+        if (casterLowHp) offense += skill.casterHpBelowBonus!.offenseMultiplierPercentBonus;
+        const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
+        rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollRange: undefined };
+      }
+      const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
 
       const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
       const wasAliveBefore = isActorAlive(target);
@@ -1256,6 +1396,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       if (finalEffect.kind === "damage" && appliedAmount > 0) {
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         applyMonsterHitFear(source, target, combat, ctx);
+        if (isMonster(source)) triggerCounterAttack(target, combat, ctx);
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (wasAliveBefore && !isActorAlive(target)) {
@@ -1272,6 +1413,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     source.hp = Math.max(1, source.hp - selfDamage);
   }
   if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
+  if (coinWon === false && skill.coinFlip?.loseSelfStatusEffectId && !sourceFell()) {
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: skill.coinFlip.loseSelfStatusEffectId, durationTurns: skill.coinFlip.loseSelfDurationTurns }, source, source, { log });
+  }
+  if (gamble && !sourceFell()) settleJesterFortune(source, gamble, lostGamble, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
   return spawnedSummon;
 }

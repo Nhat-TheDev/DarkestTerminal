@@ -14,7 +14,8 @@ export type SkillEffectKind =
   | "modifyStat"
   | "modifyCombatStat"
   | "summon"
-  | "summonMonster";
+  | "summonMonster"
+  | "commandSummons";
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
@@ -66,6 +67,12 @@ export interface SkillEffect {
   monsterArchetypeId?: Id;
   /** For `summonMonster`: how many to spawn, before the per-summoner cap. */
   count?: number;
+  /** For a `damage` effect: adds `percentPerDebuff` to its offense multiplier for each harmful status the target carries when the hit lands (a stackable status counts once). */
+  scalesWithDebuffCount?: { percentPerDebuff: number };
+  /** For a `damage` effect: its offense multiplier is scaled by a percent rolled uniformly in `[minPercent, maxPercent]`, once per target. A roll below 100 is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`). */
+  damageRollRange?: { minPercent: number; maxPercent: number };
+  /** For `applyStatusEffect`: the status is picked at random from this pool, once per target, in place of `statusEffectId`. */
+  randomStatusEffectIds?: Id[];
 }
 
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
@@ -163,7 +170,7 @@ export interface SkillDefinition {
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
-  slot: 0 | 1 | 2 | 3 | 4 | 5;
+  slot: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   unlockLevel: number;
   /** Set only on the stand-in skill for a used item: item damage and heals never crit. */
   fromItem?: true;
@@ -176,6 +183,10 @@ export interface SkillDefinition {
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
   /** Bonus damage while the target's HP is below `hpPercentThreshold` of its maxHp; unrelated to the Boss execute charge. */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+  /** While the caster's HP is below `hpPercentThreshold` (of its own maxHp) when the skill resolves, every `damage` effect gains `offenseMultiplierPercentBonus` and heals the caster for `lifestealPercent` of what it deals. */
+  casterHpBelowBonus?: { hpPercentThreshold: number; offenseMultiplierPercentBonus: number; lifestealPercent?: number };
+  /** One roll per cast: on a win every `damage` effect uses `winOffenseMultiplierPercent`, on a loss `loseOffenseMultiplierPercent`, and a loss also puts `loseSelfStatusEffectId` on the caster. A loss is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`). */
+  coinFlip?: { winChance: number; winOffenseMultiplierPercent: number; loseOffenseMultiplierPercent: number; loseSelfStatusEffectId?: Id; loseSelfDurationTurns?: number };
   /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
   aiCondition?: MonsterAiPredicate;
   /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
@@ -214,6 +225,10 @@ export interface PassiveRankDefinition {
   minionMaxHpPercent?: number;
   minionAttackPercent?: number;
   maxActiveMinions?: number;
+  gambleBonusPercentPerStack?: number;
+  reflectPercent?: number;
+  killRestoreMpPercent?: number;
+  killRestoreHpPercent?: number;
 }
 
 export interface PassiveSkillDefinition {
@@ -228,6 +243,7 @@ export interface PassiveSkillDefinition {
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
   debuffPool?: Id[];
+  gambleStatusEffectId?: Id; // the stackable status a lost gamble adds and a won gamble spends
 }
 
 export interface GrowthWeights {
@@ -316,6 +332,16 @@ export interface StatusEffectDefinition {
   harmful?: boolean;
   /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
   reflectDamagePercent?: number;
+  /** When a monster's direct hit lands on the bearer, the bearer strikes back at every enemy, at most `maxPerRound` times a round. */
+  counterAttack?: { maxPerRound: number; amount: number; offenseMultiplierPercent: number };
+  /** Reduces every fear gain on the bearer by this percent, combined with its fearResist. */
+  fearResistPercent?: number;
+  /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
+  onActStatus?: { statusEffectId: Id; chance: number; durationTurns: number };
+  /** The bearer can only use its basic attack. An elite or boss still releases a charged telegraph. */
+  silences?: boolean;
+  /** On an elite or boss, no application of this status lasts longer than this many turns. */
+  eliteBossMaxTurns?: number;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -480,6 +506,8 @@ export interface ActiveStatusEffect {
   /** Caster's magicPower at application, so `heal` ticks scale off the caster rather than the bearer. */
   sourceMagicPower?: number;
   onHitDurationTurns?: number;
+  /** For a status with `counterAttack`: how many counters it has struck this round, cleared at the start of every round. */
+  countersThisRound?: number;
 }
 
 export interface ShopOffer {
@@ -671,6 +699,8 @@ export interface SummonArchetype {
   passive?: boolean;
   /** `chance` is 0-1. */
   basicAttackOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
+  /** When its owner commands it (`commandSummons`), its signature skill's damage and healing gain this percent. */
+  commandBoostPercent?: number;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };

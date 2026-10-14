@@ -84,6 +84,16 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   if (rankDef.maxActiveMinions !== undefined) {
     parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
   }
+  if (rankDef.gambleBonusPercentPerStack !== undefined) {
+    const fortune = passive.gambleStatusEffectId ? getStatusEffect(passive.gambleStatusEffectId) : undefined;
+    parts.push(t("passive.jesterFortune", { percent: rankDef.gambleBonusPercentPerStack, max: fortune?.maxStacks ?? 1 }));
+  }
+  if (rankDef.reflectPercent !== undefined) {
+    parts.push(t("passive.paladinReflect", { percent: rankDef.reflectPercent }));
+  }
+  if (rankDef.killRestoreMpPercent !== undefined || rankDef.killRestoreHpPercent !== undefined) {
+    parts.push(t("passive.warlockSoulFeast", { mp: rankDef.killRestoreMpPercent ?? 0, hp: rankDef.killRestoreHpPercent ?? 0 }));
+  }
   return parts.join(" ");
 }
 

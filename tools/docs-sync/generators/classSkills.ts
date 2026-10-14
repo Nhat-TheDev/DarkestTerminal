@@ -17,6 +17,16 @@ function modifiers(skill: SkillDefinition): string[] {
     if (execute.bonusDamagePercent !== undefined) bonus.push(`+${formatNumber(execute.bonusDamagePercent)}% damage`);
     out.push(`below ${formatNumber(execute.hpPercentThreshold)}% HP: ${bonus.join(", ")}`);
   }
+  const lowHp = skill.casterHpBelowBonus;
+  if (lowHp) {
+    const lifesteal = lowHp.lifestealPercent ? `, ${formatNumber(lowHp.lifestealPercent)}% lifesteal` : "";
+    out.push(`caster below ${formatNumber(lowHp.hpPercentThreshold)}% HP: +${formatNumber(lowHp.offenseMultiplierPercentBonus)}% offense${lifesteal}`);
+  }
+  const coin = skill.coinFlip;
+  if (coin) {
+    const lose = coin.loseSelfStatusEffectId ? `, and status ${coin.loseSelfStatusEffectId} on the caster (${formatNumber(coin.loseSelfDurationTurns ?? 1)} turns)` : "";
+    out.push(`coin flip: ${formatNumber(coin.winChance * 100)}% for ${formatNumber(coin.winOffenseMultiplierPercent)}% offense, else ${formatNumber(coin.loseOffenseMultiplierPercent)}%${lose}`);
+  }
   return out;
 }
 

@@ -1,5 +1,5 @@
 import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
-import { getStatusEffect, statusDisplayName, COMBAT_STAT_LABEL } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
@@ -208,7 +208,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ? target.activeStatusEffects.find((s) => s.statusEffectId === effect.scalesWithStatusStacks!.statusEffectId)?.stacks ?? 0
         : 0;
       const stackOffenseBonusPercent = effect.scalesWithStatusStacks ? stacks * effect.scalesWithStatusStacks.percentPerStack : 0;
-      const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent) / 100;
+      const debuffOffenseBonusPercent = effect.scalesWithDebuffCount ? harmfulStatusCount(target) * effect.scalesWithDebuffCount.percentPerDebuff : 0;
+      const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent + debuffOffenseBonusPercent) / 100;
       const isExecuteTarget =
         !isSelfTick && ctx.executeBonus !== undefined && (ctx.executeHpFraction ?? target.hp / target.maxHp) < ctx.executeBonus.hpPercentThreshold / 100;
       const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
@@ -348,8 +349,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
     case "summon":
-    case "summonMonster": {
-      // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register it.
+    case "summonMonster":
+    case "commandSummons": {
+      // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register or run it.
       return 0;
     }
   }
@@ -357,13 +359,24 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
 
 /** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
 function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
-  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0);
+  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + paladinReflectPercent(bearer);
   const amount = Math.round((damage * percent) / 100);
   if (amount <= 0 || attacker === bearer) return;
   attacker.hp = Math.max(0, attacker.hp - amount);
   ctx.log.push({ text: t("combat.statusReflectDamage", { attacker: nameOf(attacker), amount, bearer: nameOf(bearer) }), kind: "attack" });
   if (attacker.hp <= 0 && isCharacter(attacker)) attacker.isAlive = false;
   if (attacker.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(attacker) }), kind: "death" });
+}
+
+/** Paladin's passive — a share of every direct hit taken goes back to the attacker, unlocked at level 5/20/35. */
+function paladinReflectPercent(bearer: Actor): number {
+  if (!isCharacter(bearer) || bearer.classId !== "paladin") return 0;
+  return passiveRankDef(getClass("paladin").passiveSkill, bearer.level)?.reflectPercent ?? 0;
+}
+
+/** Harmful statuses on `actor`, each counted once however many stacks it has. */
+export function harmfulStatusCount(actor: Actor): number {
+  return actor.activeStatusEffects.filter((s) => !isHelpfulStatusEffect(getStatusEffect(s.statusEffectId))).length;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -413,6 +426,9 @@ export function applyStatusEffectToActor(
   landedOf?: Id
 ): void {
   const def = getStatusEffect(statusEffectId);
+  if (def.eliteBossMaxTurns !== undefined && durationTurns !== undefined && isMonster(actor) && actor.tier !== "normal") {
+    durationTurns = Math.min(durationTurns, def.eliteBossMaxTurns);
+  }
   if (isImmuneToStatus(actor, def)) {
     ctx.log.push({
       text: t("resolver.statusImmune", { actor: nameOf(actor), effect: statusDisplayName(def) }),
@@ -508,7 +524,7 @@ function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   let multiplier = 1;
   for (const active of actor.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
-    if (def.vulnerableTo?.statusEffectId === statusEffectId) multiplier *= def.vulnerableTo.multiplier;
+    if (def.vulnerableTo && statusSatisfiesRequirement(statusEffectId, def.vulnerableTo.statusEffectId)) multiplier *= def.vulnerableTo.multiplier;
   }
   return multiplier;
 }

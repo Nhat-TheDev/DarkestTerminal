@@ -84,6 +84,11 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       body = `${signed(e.amount ?? 0)} ${e.combatStat ? COMBAT_STAT_LABEL[e.combatStat] : ""}`;
       break;
     case "applyStatusEffect": {
+      if (e.randomStatusEffectIds?.length) {
+        const statuses = e.randomStatusEffectIds.map((id) => statusDisplayName(getStatusEffect(id))).join(", ");
+        const applied = `${t("ui.skillEffectApplyRandomStatus", { statuses })} (${e.durationTurns ?? 1}t)`;
+        return t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
+      }
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
       const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
@@ -94,6 +99,8 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     case "removeStatusEffect":
       body = t("ui.skillEffectRemoveStatus");
       break;
+    case "commandSummons":
+      return t("ui.skillEffectCommandSummons");
     default:
       body = null;
   }
@@ -129,6 +136,23 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
       .map((e) => Math.min(100, Math.round((e.critChance ?? 0) * 100 + BALANCE.combat.baseCritChancePercent)))
   );
   for (const percent of critPercents) lines.push(t("ui.skillCritChanceLine", { percent }));
+  for (const e of sk.effects ?? []) {
+    if (e.kind !== "damage") continue;
+    if (e.damageRollRange) lines.push(t("ui.skillDamageRollLine", { min: e.damageRollRange.minPercent, max: e.damageRollRange.maxPercent }));
+    if (e.hitCountRange) lines.push(t("ui.skillHitCountLine", { min: e.hitCountRange.min, max: e.hitCountRange.max }));
+    if (e.scalesWithDebuffCount) lines.push(t("ui.skillDebuffScalingLine", { percent: e.scalesWithDebuffCount.percentPerDebuff }));
+    if (e.ignoreDefensePercent) lines.push(t("ui.skillIgnoreDefenseLine", { percent: e.ignoreDefensePercent }));
+    if (e.lifestealPercent) lines.push(t("ui.skillLifestealLine", { percent: e.lifestealPercent }));
+  }
+  if (sk.coinFlip) {
+    const { winChance, winOffenseMultiplierPercent, loseOffenseMultiplierPercent, loseSelfStatusEffectId } = sk.coinFlip;
+    lines.push(t("ui.skillCoinFlipLine", { chance: Math.round(winChance * 100), win: winOffenseMultiplierPercent, lose: loseOffenseMultiplierPercent }));
+    if (loseSelfStatusEffectId) lines.push(t("ui.skillCoinFlipLoseLine", { status: statusDisplayName(getStatusEffect(loseSelfStatusEffectId)) }));
+  }
+  if (sk.casterHpBelowBonus) {
+    const { hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent } = sk.casterHpBelowBonus;
+    lines.push(t(lifestealPercent ? "ui.skillCasterLowHpLifestealLine" : "ui.skillCasterLowHpLine", { threshold: hpPercentThreshold, percent: offenseMultiplierPercentBonus, lifesteal: lifestealPercent ?? 0 }));
+  }
   return lines;
 }
 
