@@ -4,7 +4,7 @@
 
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
-import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
+import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
 import { resolveRaceProfile } from "../../src/data/monsterRaces";
 import {
   growthBonus,
@@ -29,7 +29,7 @@ import { Rng } from "../../src/engine/rng";
 import { STATUS_EFFECTS, getStatusEffect } from "../../src/data/statusEffects";
 import { BALANCE } from "../../src/data/balanceConfig";
 import { t } from "../../src/data/strings";
-import type { CharacterClass, MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
+import type { CharacterClass, MonsterArchetype, MonsterPhase, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
 
 const GROWTH_STATS: GrowthStat[] = ["attack", "defense", "maxHp", "maxMp", "magicPower"];
 
@@ -101,7 +101,6 @@ export function getCatalog() {
       bossMultiplier: BOSS_MULTIPLIER,
       expRewardDepthRate: EXP_REWARD_DEPTH_RATE,
       bossFloorInterval: BOSS_FLOOR_INTERVAL,
-      executeCooldownTurns: EXECUTE_COOLDOWN_TURNS,
       monsterTypeMultiplier: MONSTER_TYPE_MULTIPLIER,
     },
     balance: BALANCE,
@@ -223,10 +222,10 @@ export interface MonsterComputation {
     /** Every skill the archetype can roll, at any tier. Whether one is reachable at the tier being
      *  computed is `actionWeights` — it is listed there exactly when it is. */
     skills: SkillDefinition[];
-    /** Outside the weighted roll: charges a turn, then always releases. Boss tier only. */
-    execute: SkillDefinition | null;
   };
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
+  /** The phases of this tier, in the order they are entered. */
+  phases: MonsterPhase[];
 }
 
 export function computeMonster(archetypeId: string, depth: number, tier: MonsterTier): MonsterComputation | { error: string } {
@@ -270,9 +269,10 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     skillKit: {
       basicAttack: { amount: 0 },
       skills: archetype.skillIds.map(getMonsterSkill),
-      execute: archetype.executeSkillId ? getMonsterSkill(archetype.executeSkillId) : null,
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
+    /** The phases this tier enters, in order: each one's weights replace the tier's table once HP falls below its threshold. */
+    phases: (archetype.phases ?? []).filter((p) => p.tier === tier),
   };
 }
 
@@ -503,9 +503,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     if (!weights || weights[skill.id] === undefined) continue;
     incoming.push({ ...previewSkillDamage(skill, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent(skill.id) });
   }
-  if (opts.tier === "boss" && monster.skillKit.execute) {
-    incoming.push({ ...previewSkillDamage(monster.skillKit.execute, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: null });
-  }
 
   const rollingActions = incoming.filter((a) => a.actionWeightPercent !== null && a.actionWeightPercent > 0);
   const expectedDamagePerRoundFromRolling = rollingActions.reduce((sum, a) => sum + a.totalExpectedDamage * ((a.actionWeightPercent ?? 0) / 100), 0);
@@ -516,10 +513,15 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     outgoing,
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
-    executeCycleNote: monster.skillKit.execute
-      ? `${monster.skillKit.execute.name} isn't part of the weighted roll — it fires once every ~${EXECUTE_COOLDOWN_TURNS + 2} rounds (1 charge turn + 1 release turn + ${EXECUTE_COOLDOWN_TURNS} cooldown turns), always for its own row's damage regardless of the roll above.`
-      : null,
+    telegraphNote: telegraphNote(monster.skillKit.skills.filter((s) => s.telegraph && weights?.[s.id] !== undefined)),
   };
+}
+
+/** A telegraph is rolled like any other skill; what sets it apart is the charge turn and the cooldown it starts there. */
+export function telegraphNote(telegraphs: SkillDefinition[]): string | null {
+  if (telegraphs.length === 0) return null;
+  const list = telegraphs.map((s) => `${s.name} (cooldown ${s.cooldownTurns ?? 0})`).join(", ");
+  return `${list}: a telegraph is rolled like any other skill. When it comes up it spends that turn charging and locks its target, releases on the next turn, and can be picked again once its cooldown, counted from the charge, runs out.`;
 }
 
 // ---------------------------------------------------------------------------

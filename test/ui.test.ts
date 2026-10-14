@@ -5,8 +5,9 @@ import { Game } from "../src/engine/game";
 import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
-import { startCombat } from "../src/engine/combat";
-import { spawnMonster } from "../src/data/monsters";
+import { getActorByRef, startCombat } from "../src/engine/combat";
+import { spawnMonster, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { resolveSkillEffect } from "../src/engine/resolver";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
@@ -118,6 +119,48 @@ describe("headless UI smoke test", () => {
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
   }, 20000);
+
+  test("the monster panel shows a shell bearer's shell: hits left while intact, broken after the break", async () => {
+    // A real archetype (the panel needs its sprite) given a shell for the length of the test.
+    const spider = MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!;
+    spider.shell = { hitsToBreak: { min: 3, max: 3 }, hitDamageCapMaxHpPercent: 5, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+    try {
+      const frameWith = async (hits: number) => {
+        const { renderer, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
+        const game = new Game(7);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.type = "boss";
+        const boss = spawnMonster("giant-spider", 1, { tier: "boss" });
+        game.ctx.monsters.push(boss);
+        room.monsterIds = [boss.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+        for (let i = 0; i < hits; i++) resolveSkillEffect({ kind: "damage", amount: 1 }, game.state.party[0]!, boss, { log: [] });
+        new App(renderer, game);
+        await renderOnce();
+        return captureCharFrame();
+      };
+      expect(await frameWith(0)).toContain("Shell (3 hits)");
+      expect(await frameWith(1)).toContain("Shell (2 hits)");
+      expect(await frameWith(2)).toContain("Shell (1 hit)");
+      const broken = await frameWith(3);
+      expect(broken).toContain("Shell broken");
+      expect(broken).not.toContain("Shell (");
+    } finally {
+      delete spider.shell;
+    }
+  }, 20000);
+
+  test("a target prompt with nothing in reach says so instead of showing an empty list", () => {
+    const game = new Game(7);
+    const actor = game.state.party[0]!;
+    const skill = getSkill(actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!.id);
+    const out = renderCombat(game, { kind: "pickTarget", actorRef: { kind: "character", id: actor.id }, source: { kind: "skill", skill }, candidates: [] }) as unknown as {
+      chunks: { text: string }[];
+    };
+    const text = out.chunks.map((c) => c.text).join("");
+    expect(text).toContain(t("ui.noTargetReachable"));
+  });
 
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });

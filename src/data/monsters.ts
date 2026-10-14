@@ -1,4 +1,4 @@
-import type { MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
+import type { MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import {
@@ -12,6 +12,7 @@ import {
 import { BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 import { assertRaceDataConsistent, resolveRaceProfile } from "./monsterRaces";
+import { STATUS_EFFECTS } from "./statusEffects";
 
 import { GROWTH_WEIGHTS } from "./growthWeights";
 
@@ -84,9 +85,7 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
       throw new Error(`data/monsters.json: "${archetype.id}" has no role "normal" so it must not set "powerTier"`);
     }
     const declared = new Set(archetype.skillIds);
-    for (const id of archetype.executeSkillId ? [...archetype.skillIds, archetype.executeSkillId] : archetype.skillIds) {
-      getMonsterSkill(id); // throws on an unknown id
-    }
+    for (const id of archetype.skillIds) getMonsterSkill(id); // throws on an unknown id
     for (const [tier, weights] of Object.entries(archetype.actionWeights ?? {})) {
       for (const key of Object.keys(weights)) {
         if (key !== "basicAttack" && !declared.has(key)) {
@@ -106,7 +105,120 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
   if (!guardAtZero) throw new Error("data/monsters.json: at least 1 elite+boss-role archetype must have minFloor 0");
 }
 
+const PREDICATE_STATUS_FIELDS = ["selfHasStatusId", "selfLacksStatusId", "targetHasStatusId", "targetLacksStatusId"] as const;
+
+function assertPredicate(where: string, p: MonsterAiPredicate | undefined): void {
+  if (!p) return;
+  for (const field of PREDICATE_STATUS_FIELDS) {
+    const id = p[field];
+    if (id !== undefined && !STATUS_EFFECTS.some((s) => s.id === id)) {
+      throw new Error(`${where}: ${field} "${id}" is not a status in data/status-effects.json`);
+    }
+  }
+}
+
+function assertRules(where: string, rules: MonsterAiRule[] | undefined): void {
+  for (const [i, rule] of (rules ?? []).entries()) {
+    if (!(rule.weightMultiplier >= 0)) throw new Error(`${where}[${i}]: weightMultiplier must be >= 0`);
+    assertPredicate(`${where}[${i}].if`, rule.if);
+  }
+}
+
+/**
+ * The AI and mechanic fields a kit declares (`aiCondition`, `targetCount`, `summonMonster`,
+ * `phases`, `shell`) name statuses, archetypes and skills by id and carry ranges; a typo or an
+ * inverted range would otherwise surface mid-fight, so it is rejected here with the owner named.
+ */
+export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skills: SkillDefinition[]): void {
+  const byId = new Map(skills.map((s) => [s.id, s]));
+  for (const skill of skills) {
+    const where = `data/monster-skills.json: "${skill.id}"`;
+    assertPredicate(`${where} aiCondition`, skill.aiCondition);
+    assertRules(`${where} aiRules`, skill.aiRules);
+    assertRules(`${where} targetRules`, skill.targetRules);
+    // Cooldowns and uses land in the saved Monster as counts; a fraction or a negative would make that save unloadable.
+    for (const field of ["cooldownTurns", "initialCooldownTurns"] as const) {
+      const value = skill[field];
+      if (value !== undefined && !(Number.isInteger(value) && value >= 0)) throw new Error(`${where}: ${field} must be a non-negative integer`);
+    }
+    if (skill.usesPerCombat !== undefined && !(Number.isInteger(skill.usesPerCombat) && skill.usesPerCombat >= 1)) {
+      throw new Error(`${where}: usesPerCombat must be a positive integer`);
+    }
+    if ((skill.chargeEffects ?? []).some((e) => e.kind === "damage")) {
+      throw new Error(`${where}: chargeEffects resolve on the caster, so they must not deal damage`);
+    }
+    for (const effect of [...(skill.effects ?? []), ...(skill.chargeEffects ?? [])]) {
+      for (const id of [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])]) {
+        if (id !== undefined && !STATUS_EFFECTS.some((st) => st.id === id)) throw new Error(`${where}: status "${id}" is not in data/status-effects.json`);
+      }
+    }
+    if (skill.targetCount) {
+      const { min, max } = skill.targetCount;
+      if (skill.target !== "singleEnemy" || !(min >= 1 && min <= max)) {
+        throw new Error(`${where}: targetCount needs target "singleEnemy" and 1 <= min <= max`);
+      }
+    }
+    for (const effect of [...(skill.effects ?? []), ...(skill.chargeEffects ?? [])]) {
+      if (effect.kind !== "summonMonster") continue;
+      const summoned = archetypes.find((a) => a.id === effect.monsterArchetypeId);
+      if (!summoned || !summoned.roles.includes("normal")) {
+        throw new Error(`${where}: summonMonster "${effect.monsterArchetypeId}" must be an archetype with role "normal"`);
+      }
+      if (!(effect.count !== undefined && effect.count >= 1)) throw new Error(`${where}: summonMonster needs count >= 1`);
+    }
+  }
+  for (const archetype of archetypes) {
+    const where = `data/monsters.json: "${archetype.id}"`;
+    const declared = new Set(archetype.skillIds);
+    const isTelegraph = (id: string) => byId.get(id)?.telegraph === true;
+    for (const key of Object.keys(archetype.actionWeights?.elite ?? {})) {
+      if (isTelegraph(key)) throw new Error(`${where}: telegraph "${key}" is in its elite weights; telegraphs are boss-only`);
+    }
+    const lastThreshold: Partial<Record<string, number>> = {};
+    for (const [i, phase] of (archetype.phases ?? []).entries()) {
+      if (!archetype.roles.includes(phase.tier)) {
+        throw new Error(`${where}: phase ${i} is for tier "${phase.tier}", which is not in its roles`);
+      }
+      if (!(phase.hpBelowPercent > 0 && phase.hpBelowPercent <= 100)) throw new Error(`${where}: phase ${i} hpBelowPercent must be in (0, 100]`);
+      // The latest entered phase of a tier sets the weights, so a tier's phases must be listed in the order they are entered.
+      const previous = lastThreshold[phase.tier];
+      if (previous !== undefined && !(phase.hpBelowPercent < previous)) {
+        throw new Error(`${where}: phase ${i} must have a lower hpBelowPercent than the ${phase.tier} phase before it`);
+      }
+      lastThreshold[phase.tier] = phase.hpBelowPercent;
+      if (phase.onEnterSkillId !== undefined && isTelegraph(phase.onEnterSkillId)) {
+        throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is a telegraph`);
+      }
+      for (const key of Object.keys(phase.weights)) {
+        if (key !== "basicAttack" && !declared.has(key)) {
+          throw new Error(`${where}: phase ${i} weight key "${key}" is not in its skillIds`);
+        }
+      }
+      if (phase.onEnterSkillId !== undefined && !declared.has(phase.onEnterSkillId)) {
+        throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is not in its skillIds`);
+      }
+    }
+    if (archetype.shell) {
+      const { hitsToBreak, breakStatusId, hitDamageCapMaxHpPercent, breakDurationTurns, reformAfterOwnTurns } = archetype.shell;
+      if (!(hitDamageCapMaxHpPercent > 0)) throw new Error(`${where}: shell hitDamageCapMaxHpPercent must be above 0`);
+      for (const [field, value] of [["breakDurationTurns", breakDurationTurns], ["reformAfterOwnTurns", reformAfterOwnTurns]] as const) {
+        if (!(Number.isInteger(value) && value >= 1)) throw new Error(`${where}: shell ${field} must be a positive integer`);
+      }
+      if (!(hitsToBreak.min >= 1 && hitsToBreak.min <= hitsToBreak.max)) {
+        throw new Error(`${where}: shell hitsToBreak needs 1 <= min <= max`);
+      }
+      if (!STATUS_EFFECTS.some((s) => s.id === breakStatusId)) {
+        throw new Error(`${where}: shell breakStatusId "${breakStatusId}" is not a status`);
+      }
+    }
+    for (const id of archetype.skillIds) {
+      if (!byId.has(id)) throw new Error(`${where}: skill "${id}" is not in data/monster-skills.json`);
+    }
+  }
+}
+
 assertMonsterDataConsistent(MONSTER_ARCHETYPES);
+assertMonsterKitConsistent(MONSTER_ARCHETYPES, MONSTER_SKILLS);
 assertRaceDataConsistent(MONSTER_ARCHETYPES);
 
 /** Ordinary combat rooms: every archetype with a normal kit. */
@@ -125,7 +237,6 @@ let monsterCounter = 0;
 const TIER_MULTIPLIER = { elite: ELITE_MULTIPLIER, boss: BOSS_MULTIPLIER };
 const TIER_NAME_SUFFIX = { elite: t("monster.eliteNameSuffix"), boss: t("monster.bossNameSuffix") };
 
-export const EXECUTE_COOLDOWN_TURNS = BALANCE.combat.executeCooldownTurns;
 export const MONSTER_TYPE_MULTIPLIER = GROWTH_WEIGHTS.monsterGrowthWeights;
 
 export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { tier?: MonsterTier }): Monster {
@@ -166,6 +277,17 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
       (1 + race.statBuff.defensePercent / 100)
   );
   const speed = Math.max(1, archetype.baseSpeed + race.statBuff.speedFlat);
+  // A telegraph can declare an opening delay so it never opens the fight; a normal-tier monster
+  // never carries guard-room state.
+  const skillCooldowns =
+    tier === "normal"
+      ? undefined
+      : Object.fromEntries(
+          archetype.skillIds
+            .map(getMonsterSkill)
+            .filter((s) => s.initialCooldownTurns)
+            .map((s) => [s.id, s.initialCooldownTurns!])
+        );
 
   monsterCounter += 1;
   return {
@@ -185,7 +307,6 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
     traitIds: archetype.traitIds,
     activeStatusEffects: [],
     expReward: tierMultiplier ? Math.round(scaledExp * tierMultiplier.exp) : scaledExp,
-    executeCooldownTurns: tier === "boss" ? EXECUTE_COOLDOWN_TURNS : undefined,
-    isChargingExecute: false,
+    skillCooldowns,
   };
 }

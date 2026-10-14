@@ -22,7 +22,7 @@ import {
   resolveRound,
   startCombat,
   type QueueActionError,
-  livingMonsterRefs,
+  livingTargetableMonsterRefs,
   livingCharacterRefs,
   livingPlayerSideRefs,
   snapshotCombatants,
@@ -329,7 +329,7 @@ export class Game {
 
   livingEnemyRefs(): CombatantRef[] {
     if (!this.state.combat) return [];
-    return livingMonsterRefs(this.state.combat, this.ctx);
+    return livingTargetableMonsterRefs(this.state.combat, this.ctx);
   }
 
   livingAllyRefs(): CombatantRef[] {

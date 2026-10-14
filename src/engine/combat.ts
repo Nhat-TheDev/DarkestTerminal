@@ -23,13 +23,15 @@ import { characterBaseStats, activeStatusCombatStatSum } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
+import { spawnMonster } from "../data/monsters";
+import { formShell } from "./monsterShell";
 import { rollDodge, autoDamageEntries, totalCooldownReduction, alwaysHitChance, debuffResistPercent, combinePercents } from "./artifacts";
 import { Rng } from "./rng";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
-import { runMonsterTurn } from "./monsterAI";
+import { runMonsterTurn, finishMonsterTurn } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
@@ -104,6 +106,7 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
       return { ref: { kind: "monster" as const, id: m.id }, speed: m.speed };
     }),
   ];
+  for (const id of monsterIds) formShell(ctx.monsters.find((m) => m.id === id)!, ctx.rng);
   return {
     roomId,
     combatants,
@@ -150,10 +153,17 @@ export function livingMonsterRefs(combat: CombatState, ctx: EngineContext): Comb
  * player's own ally-targeting.
  */
 export function livingPlayerSideEnemyFacingRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
-  return livingPlayerSideRefs(combat, ctx).filter((ref) => {
-    const a = getActorByRef(ref, ctx);
-    return !a.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).untargetable);
-  });
+  return livingPlayerSideRefs(combat, ctx).filter((ref) => !isUntargetable(getActorByRef(ref, ctx)));
+}
+
+/** Whether the actor currently carries a status that excludes it from the opposing side's target picking (a stealthed Ninja, an airborne Dragon). */
+export function isUntargetable(actor: Actor): boolean {
+  return actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).untargetable);
+}
+
+/** `livingMonsterRefs` minus any monster currently `untargetable` — what the party can aim at. `isCombatOver` keeps using `livingMonsterRefs`: an airborne monster is still in the fight. */
+export function livingTargetableMonsterRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
+  return livingMonsterRefs(combat, ctx).filter((ref) => !isUntargetable(getActorByRef(ref, ctx)));
 }
 
 export function autoResolveTargets(target: SkillTarget, actor: CombatantRef, combat: CombatState, ctx: EngineContext): CombatantRef[] | null {
@@ -164,10 +174,10 @@ export function autoResolveTargets(target: SkillTarget, actor: CombatantRef, com
     case "allAllies":
       return actorIsPlayerSide ? livingPlayerSideRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
     case "allEnemies":
-      return actorIsPlayerSide ? livingMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
+      return actorIsPlayerSide ? livingTargetableMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
     case "allAlliesAndEnemies": {
       const allies = actorIsPlayerSide ? livingPlayerSideRefs(combat, ctx) : livingMonsterRefs(combat, ctx);
-      const enemies = actorIsPlayerSide ? livingMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
+      const enemies = actorIsPlayerSide ? livingTargetableMonsterRefs(combat, ctx) : livingPlayerSideEnemyFacingRefs(combat, ctx);
       return [...allies, ...enemies];
     }
     default:
@@ -282,6 +292,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       maxMp: isCharacter ? (actor as Character).maxMp : undefined,
       fear: isCharacter ? (actor as Character).survival.fear : undefined,
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
+      shell: c.ref.kind === "monster" && (actor as Monster).shell ? { ...(actor as Monster).shell! } : undefined,
     };
   });
   return [...present, ...departed];
@@ -333,7 +344,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
       for (const character of ctx.party) {
         if (!character.isAlive) continue;
         for (const { effect, sourceName } of autoDamageEntries(character)) {
-          const alive = livingMonsterRefs(combat, ctx);
+          const alive = livingTargetableMonsterRefs(combat, ctx);
           if (alive.length === 0) return;
           const target = getActorByRef(ctx.rng.pick(alive), ctx) as Monster;
           noteAffected(combat, character);
@@ -375,6 +386,8 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
 function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx: EngineContext): boolean {
   const watcher = ctx.party.find((c) => c.isAlive && c.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).triggersOverwatch));
   if (!watcher) return false;
+  // A monster that cannot be targeted (airborne) is not shot at, and the primed shot waits for one that can be.
+  if (isUntargetable(getActorByRef(monsterRef, ctx))) return false;
   const active = watcher.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).triggersOverwatch)!;
   const def = getStatusEffect(active.statusEffectId);
 
@@ -431,13 +444,15 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   );
   runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
   runArtifactAutoDamage(combat, ctx);
+  // Auto-damage can kill a summoner before anyone acts; its adds fall before they get a turn.
+  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
 
   const actedRefs: CombatantRef[] = [];
   for (const ref of combat.turnQueue) {
     const actor = getActorByRef(ref, ctx);
     if (!isActorAlive(actor)) continue;
 
-    const eligibleSpecial = specialStatusSnapshot(actor);
+    let eligibleSpecial = specialStatusSnapshot(actor);
     runInSession(
       combat,
       unitId(actor),
@@ -447,8 +462,16 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
           actedRefs.push(ref);
         } else if (ref.kind === "summon") {
           runSummonTurn(ref, combat, ctx);
-        } else if (!tryTriggerOverwatch(ref, combat, ctx)) {
-          runMonsterTurn(ref, combat, ctx);
+        } else {
+          // An Overwatch shot lands before the monster's own turn, so a status it causes (a broken
+          // shell's stun) already counts as present for that turn.
+          const interrupted = tryTriggerOverwatch(ref, combat, ctx);
+          eligibleSpecial = specialStatusSnapshot(actor);
+          if (interrupted) {
+            if (isActorAlive(actor)) finishMonsterTurn(actor as Monster, combat, ctx);
+          } else {
+            runMonsterTurn(ref, combat, ctx);
+          }
         }
         if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
         pruneDeadSummons(combat, ctx, combat.log);
@@ -582,8 +605,8 @@ type ExecutionTargets = Actor[] | "fizzle";
 function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, combat: CombatState, ctx: EngineContext): ExecutionTargets {
   if (skill.target === "singleEnemy") {
     const original = queued.targets[0];
-    if (original && isActorAlive(getActorByRef(original, ctx))) return [getActorByRef(original, ctx)];
-    const alive = livingMonsterRefs(combat, ctx);
+    if (original && isActorAlive(getActorByRef(original, ctx)) && !isUntargetable(getActorByRef(original, ctx))) return [getActorByRef(original, ctx)];
+    const alive = livingTargetableMonsterRefs(combat, ctx);
     if (alive.length === 0) return "fizzle";
     return [getActorByRef(ctx.rng.pick(alive), ctx)];
   }
@@ -594,16 +617,22 @@ function resolveExecutionTargets(skill: SkillDefinition, queued: QueuedAction, c
   }
   if (skill.target === "singleAllyOrEnemy") {
     const original = queued.targets[0];
-    if (original && isActorAlive(getActorByRef(original, ctx))) return [getActorByRef(original, ctx)];
+    if (original && isActorAlive(getActorByRef(original, ctx)) && !(original.kind === "monster" && isUntargetable(getActorByRef(original, ctx)))) {
+      return [getActorByRef(original, ctx)];
+    }
     if (!original) return "fizzle";
     if (original.kind === "monster") {
-      const alive = livingMonsterRefs(combat, ctx);
+      const alive = livingTargetableMonsterRefs(combat, ctx);
       if (alive.length === 0) return "fizzle";
       return [getActorByRef(ctx.rng.pick(alive), ctx)];
     }
     return "fizzle";
   }
-  const alive = queued.targets.filter((t) => isActorAlive(getActorByRef(t, ctx)));
+  // Only a monster can be untargetable to the party; a stealthed ally is still a valid ally target.
+  const alive = queued.targets.filter((t) => {
+    const actor = getActorByRef(t, ctx);
+    return isActorAlive(actor) && !(t.kind === "monster" && isUntargetable(actor));
+  });
   if (alive.length === 0) return "fizzle";
   return alive.map((t) => getActorByRef(t, ctx));
 }
@@ -632,7 +661,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
   for (const active of source.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
     if (!def.onHitAoeDamage) continue;
-    for (const ref of livingMonsterRefs(combat, ctx)) {
+    for (const ref of livingTargetableMonsterRefs(combat, ctx)) {
       const enemy = getActorByRef(ref, ctx);
       noteBasicAttack(combat, source, enemy);
       resolveSkillEffect(
@@ -981,7 +1010,7 @@ function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng:
 function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const burst = summon.deathBurst;
   if (!burst) return;
-  const targets = livingMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Monster);
+  const targets = livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Monster);
   if (targets.length === 0) return;
   // The owner's action, not part of whichever turn killed the summon.
   runInSession(
@@ -1049,12 +1078,46 @@ export function dismissSummonsAtCombatEnd(ctx: EngineContext): void {
   }
 }
 
-/** Sweeps every summon still in `combat.combatants` for one that just died (a hit, a DoT tick) or ran out of actions, and finalizes it (`expireSummonIfDone`). Called after every point in a round a summon could take lethal damage or use up its last action — see that function's own doc for why repeated calls are safe. */
+/** Sweeps every summon still in `combat.combatants` for one that just died (a hit, a DoT tick) or ran out of actions, and finalizes it (`expireSummonIfDone`); monster adds whose summoner just died fall with it. Called after every point in a round a summon could take lethal damage or use up its last action — see that function's own doc for why repeated calls are safe. */
 function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const c of combat.combatants) {
     if (c.ref.kind !== "summon") continue;
     const summon = ctx.summons.find((s) => s.id === c.ref.id);
     if (summon) expireSummonIfDone(summon, combat, ctx, log);
+  }
+  dismissOrphanedMonsterSummons(combat, ctx, log);
+}
+
+/**
+ * Spawns up to `effect.count` of the named normal archetype next to the summoner, scaled to the
+ * current floor depth, stopping at the cap on adds it already has alive. The add takes its first
+ * turn next round (this round's turn queue was built before it existed). Its id is derived from
+ * the summoner's: `spawnMonster`'s counter restarts after a save is loaded, so a counter id could
+ * collide with a monster the floor already holds.
+ */
+function spawnMonsterSummons(effect: SkillEffect, summoner: Monster, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  const alive = livingMonsterRefs(combat, ctx).filter((r) => (getActorByRef(r, ctx) as Monster).summonerId === summoner.id);
+  const count = Math.min(effect.count ?? 1, BALANCE.combat.maxSummonedMonsters - alive.length);
+  for (let i = 0; i < count; i++) {
+    const add = spawnMonster(effect.monsterArchetypeId!, ctx.floorDepth ?? 1);
+    add.id = `${add.archetypeId}-${summoner.id}-${ctx.monsters.filter((m) => m.summonerId === summoner.id).length + 1}`;
+    add.summonerId = summoner.id;
+    add.expReward = 0;
+    ctx.monsters.push(add);
+    combat.combatants.push({ ref: { kind: "monster", id: add.id }, speed: add.speed });
+    log.push({ text: t("combat.monsterSummoned", { actor: summoner.name, summon: add.name }), kind: "info" });
+  }
+}
+
+/** A summoned monster does not outlive the monster that called it, so killing the summoner always ends the fight. */
+export function dismissOrphanedMonsterSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  for (const ref of livingMonsterRefs(combat, ctx)) {
+    const add = getActorByRef(ref, ctx) as Monster;
+    if (add.summonerId === undefined) continue;
+    const summoner = ctx.monsters.find((m) => m.id === add.summonerId);
+    if (summoner && isActorAlive(summoner)) continue;
+    add.hp = 0;
+    log.push({ text: t("combat.summonedMonsterFalls", { summon: add.name, actor: summoner?.name ?? "" }), kind: "death" });
   }
 }
 
@@ -1085,7 +1148,7 @@ function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, co
     return isHealSkill(skill) ? auto.filter((r) => r.kind === "character") : auto;
   }
   if (skill.target === "singleEnemy") {
-    const enemies = livingMonsterRefs(combat, ctx);
+    const enemies = livingTargetableMonsterRefs(combat, ctx);
     return enemies.length > 0 ? [ctx.rng.pick(enemies)] : [];
   }
   if (skill.target === "singleAlly") {
@@ -1112,7 +1175,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
     combat.log.push({ text: t("combat.monsterSkillOnTarget", { actor: summon.name, skill: skill.name, target: targets[0]!.name }), kind: "attack" });
     applySkillEffects(skill, summon, targets, combat, ctx, combat.log);
   } else {
-    const enemies = livingMonsterRefs(combat, ctx);
+    const enemies = livingTargetableMonsterRefs(combat, ctx);
     if (enemies.length === 0) return;
     const target = getActorByRef(ctx.rng.pick(enemies), ctx) as Monster;
     noteBasicAttack(combat, summon, target);
@@ -1157,7 +1220,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   // per-target loop below (which skips every such effect via the `isOverrideEffect` check). A `summon`
   // effect is always treated as an override — even with no explicit `target` — since it must always
   // land on the caster regardless of what the skill's own target happens to be.
-  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
+  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || e.kind === "summonMonster" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
   // A property of the whole skill (not of one target): damage that reaches the opposing side makes every opposing target an attack target.
   // `appliesToRelation` names a side of the board ("ally" = the player's side), not a side relative to the caster.
@@ -1174,6 +1237,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         ? { kind: "summon", id: source.id }
         : { kind: "monster", id: source.id };
     for (const effect of overrideEffects) {
+      if (effect.kind === "summonMonster") {
+        if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
+        continue;
+      }
       const overrideTarget = effect.kind === "summon" ? (effect.target ?? "self") : effect.target!;
       const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
       for (const resolved of overrideTargets) {
@@ -1206,7 +1273,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     }
   }
 
+  // A party-side caster can fall mid-cast to damage turned back on it (riposte); the cast stops
+  // there. Monsters are exempt: Self-Destruct's self-hit resolves before its area hit by design.
+  const sourceFell = () => isPlayerSide(source) && !isActorAlive(source);
+
   for (const target of targets) {
+    if (sourceFell()) break;
     const isEnemyFacing = isPlayerSide(source) !== isPlayerSide(target);
     // Before the accuracy roll: a missed or dodged target is still the one the action was aimed at.
     noteSkillTarget(
@@ -1232,6 +1304,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     let resisted = false;
     let landed = false;
     for (const effect of activeEffects) {
+      if (sourceFell()) break;
       if (effect.appliesToRelation) {
         const targetIsAlly = isPlayerSide(target);
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
@@ -1275,10 +1348,11 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
       };
       for (let hit = 0; hit < hitCount; hit++) {
+        if (sourceFell()) break;
         appliedAmount += swing();
         if (finalEffect.kind === "damage") {
           brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance)) appliedAmount += swing();
+          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && !sourceFell()) appliedAmount += swing();
         }
       }
       if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);
@@ -1302,12 +1376,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     if (resisted && !landed) noteResisted(combat, target);
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
-  if (landedDamageHit && isCharacter(source)) applyOnHitAoeDamage(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && vikingBuffActive) {
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) applyOnHitAoeDamage(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && vikingBuffActive && !sourceFell()) {
     const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
-  if (landedDamageHit && isCharacter(source)) ninjaSecondCloneProc(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
   return spawnedSummon;
 }

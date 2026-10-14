@@ -5,8 +5,9 @@ interface BalanceConfig {
   combat: {
     defenseMitigationX: number;
     defenseMitigationY: number;
-    executeCooldownTurns: number;
     defensiveLowHpSkillChance: number;
+    /** The most living monsters one summoner can have summoned at once. */
+    maxSummonedMonsters: number;
     /** Shared crit-damage multiplier (as a %) for any `SkillEffect.critChance` that doesn't set its own `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
     /** Chance (as a %) every direct damage hit and heal has to crit, added to the skill's own `critChance`; 0 turns it off. A crit multiplies by `defaultCritMultiplierPercent` unless the effect sets its own. */

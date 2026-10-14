@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { spawnMonster, MONSTER_ARCHETYPES, MONSTER_TYPE_MULTIPLIER } from "../src/data/monsters";
+import { spawnMonster, MONSTER_ARCHETYPES, MONSTER_SKILLS, MONSTER_TYPE_MULTIPLIER, assertMonsterKitConsistent } from "../src/data/monsters";
 import { monsterGrowthBonus, monsterDepthBuffPercent, MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS } from "../src/data/levelGrowth";
 import { resolveRaceProfile } from "../src/data/monsterRaces";
 
@@ -148,5 +148,76 @@ describe("spawnMonster applies the floor-depth buff", () => {
     expect(goblin.maxHp).toBe(expectedMaxHp);
     expect(goblin.attack).toBe(expectedAttack);
     expect(goblin.defense).toBe(expectedDefense);
+  });
+});
+
+describe("assertMonsterKitConsistent", () => {
+  const base = () => structuredClone(MONSTER_ARCHETYPES.find((a) => a.id === "skeleton-guard")!);
+  const skill = (over: object) => ({ id: "x-skill", name: "X", description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, ...over });
+  const kitOf = (over: object = {}) => ({ ...base(), skillIds: ["x-skill"], actionWeights: { normal: { basicAttack: 1 }, elite: { "x-skill": 1 }, boss: { "x-skill": 1 } }, ...over });
+
+  test("the shipped catalog passes", () => {
+    expect(() => assertMonsterKitConsistent(MONSTER_ARCHETYPES, MONSTER_SKILLS)).not.toThrow();
+  });
+  test("rejects a predicate naming an unknown status", () => {
+    const s = skill({ aiCondition: { selfHasStatusId: "no-such-status" } });
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [s as any])).toThrow(/no-such-status/);
+  });
+  test("rejects targetCount on a non-singleEnemy skill or with min > max", () => {
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ target: "allEnemies", targetCount: { min: 2, max: 3 } }) as any])).toThrow(/targetCount/);
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ targetCount: { min: 3, max: 2 } }) as any])).toThrow(/targetCount/);
+  });
+  test("rejects a summon of a non-normal archetype", () => {
+    const s = skill({ target: "self", effects: [{ kind: "summonMonster", monsterArchetypeId: "dragon", count: 1 }] });
+    expect(() => assertMonsterKitConsistent(MONSTER_ARCHETYPES, [s as any])).toThrow(/dragon/);
+  });
+  // The rest of the catalog stays in the list: shipped skills summon archetypes that must resolve.
+  const withReplaced = (replacement: { id: string }) => MONSTER_ARCHETYPES.map((x) => (x.id === replacement.id ? (replacement as any) : x));
+
+  test("rejects a phase weight key or onEnterSkillId outside skillIds, and a phase on a tier the archetype lacks", () => {
+    const a = { ...base(), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { nope: 1 } }] };
+    expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/nope/);
+    const b = { ...base(), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 }, onEnterSkillId: "nope" }] };
+    expect(() => assertMonsterKitConsistent(withReplaced(b), MONSTER_SKILLS)).toThrow(/nope/);
+    const c = { ...structuredClone(MONSTER_ARCHETYPES.find((x) => x.id === "dungeon-rat")!), phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 } }] };
+    expect(() => assertMonsterKitConsistent(withReplaced(c), MONSTER_SKILLS)).toThrow(/phase/);
+  });
+  test("rejects a shell with min > max hits or an unknown break status", () => {
+    const a = { ...base(), shell: { hitsToBreak: { min: 8, max: 6 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 } };
+    expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/shell/);
+    const b = { ...base(), shell: { hitsToBreak: { min: 6, max: 8 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "nope", breakDurationTurns: 1, reformAfterOwnTurns: 2 } };
+    expect(() => assertMonsterKitConsistent(withReplaced(b), MONSTER_SKILLS)).toThrow(/nope/);
+  });
+  test("rejects shell turn counts below 1 and a cap of 0", () => {
+    const shell = { hitsToBreak: { min: 6, max: 8 }, hitDamageCapMaxHpPercent: 4, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+    for (const over of [{ reformAfterOwnTurns: 0 }, { breakDurationTurns: 1.5 }, { hitDamageCapMaxHpPercent: 0 }]) {
+      const a = { ...base(), shell: { ...shell, ...over } };
+      expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/shell/);
+    }
+  });
+  test("rejects cooldowns and uses that would not save as counts", () => {
+    for (const over of [{ cooldownTurns: 1.5 }, { initialCooldownTurns: -1 }, { usesPerCombat: 0 }]) {
+      expect(() => assertMonsterKitConsistent([kitOf() as any], [skill(over) as any])).toThrow(/cooldownTurns|initialCooldownTurns|usesPerCombat/);
+    }
+  });
+  test("rejects damage in chargeEffects and an unknown status in effects or chargeEffects", () => {
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ telegraph: true, chargeEffects: [{ kind: "damage", amount: 1 }] }) as any])).toThrow(/chargeEffects/);
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ effects: [{ kind: "applyStatusEffect", statusEffectId: "nope", durationTurns: 1 }] }) as any])).toThrow(/nope/);
+    const charge = [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1, alsoApplyStatusEffectIds: ["nope-too"] }];
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [skill({ telegraph: true, chargeEffects: charge }) as any])).toThrow(/nope-too/);
+  });
+  test("rejects phases out of range or out of order", () => {
+    for (const hpBelowPercent of [0, 120]) {
+      const a = { ...base(), phases: [{ tier: "boss", hpBelowPercent, weights: { basicAttack: 1 } }] };
+      expect(() => assertMonsterKitConsistent(withReplaced(a), MONSTER_SKILLS)).toThrow(/hpBelowPercent/);
+    }
+    const unordered = { ...base(), phases: [25, 60].map((hpBelowPercent) => ({ tier: "boss", hpBelowPercent, weights: { basicAttack: 1 } })) };
+    expect(() => assertMonsterKitConsistent(withReplaced(unordered), MONSTER_SKILLS)).toThrow(/lower hpBelowPercent/);
+  });
+  test("rejects a telegraph at elite tier or as a phase's entry skill", () => {
+    const telegraph = skill({ telegraph: true });
+    expect(() => assertMonsterKitConsistent([kitOf() as any], [telegraph as any])).toThrow(/elite weights/);
+    const onEnter = kitOf({ actionWeights: { normal: { basicAttack: 1 }, elite: { basicAttack: 1 }, boss: { "x-skill": 1 } }, phases: [{ tier: "boss", hpBelowPercent: 50, weights: { basicAttack: 1 }, onEnterSkillId: "x-skill" }] });
+    expect(() => assertMonsterKitConsistent([onEnter as any], [telegraph as any])).toThrow(/onEnterSkillId/);
   });
 });

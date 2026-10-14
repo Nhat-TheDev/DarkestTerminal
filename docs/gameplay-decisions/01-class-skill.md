@@ -16,7 +16,7 @@ Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below)
 
 - Vanguard has the highest `aggro` + `defense` + `maxHp`, and the lowest `speed` (a tank that acts late).
 - Mage has the lowest stats across the board on defense/aggro but decent `speed`, and is the only class with low `attack` and the highest `magicPower` — Mage's damage carry comes from its spell skills (section 1.2), not its basic attack.
-- Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical).
+- Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical), and is the party's main damage source (section 1.3).
 - Acolyte is balanced, with average `aggro` and decent `magicPower` (healing + secondary damage, lower than Mage's).
 - Viking is a hybrid physical/lightning berserker: high risk, extremely high damage, purely physical active skills — no skill scales off `magicPower` directly (section 1.5).
 - Plague Doctor is an AoE debuffer/support, favoring status effects (burn/poison/blind/weaken) over raw damage, plus a single-target heal and a dual heal+debuff ultimate (section 1.6).
@@ -179,6 +179,8 @@ How each skill works:
 *Mage is purely fire/lightning/ice, with a kit focused on damage plus burn/stun procs. Arcane Bolt (slot 0) covers the "free action when out of mana" role. MP costs, damage amounts, and proc chances: `data/classes.json`.*
 
 ### 1.3 Rogue — single-target burst, highest speed in the party
+
+The Rogue is the team's main damage source by design. Backstab and Flurry Assault are the burst; Poison Bomb and Poison Coat keep poison on the target, and Venomcraft adds to every hit on a poisoned target. Poison ticks off the target's max HP and skips defense (section 1.7.1), so the Rogue's lead over the rest of the party grows the deeper the run goes.
 
 <!-- docs:begin classSkills class=rogue -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -442,12 +444,14 @@ Exact magnitudes/durations/proc chances for every row above: `data/status-effect
 
 Where each comes from:
 
-- `poisoned` — Poison Coat, Poison Bomb (Rogue)
+- `poisoned` — Poison Coat, Poison Bomb (Rogue); Spreading Toxic Fog/Total Plague (Plague Doctor)
 - `poisoned-ii` — Poison Bomb rank 2
 - `poisoned-iii` — Poison Bomb rank 3
 - `burning` — Fireball/Fire Pillar (Mage); Fire Vial/Total Plague (Plague Doctor)
-- `bleeding` — Frenzied Slash/Spinning Axe (Viking) — see 1.12.6 for the stacking mechanic
+- `bleeding` — Frenzied Slash/Spinning Axe (Viking); Throwing Knives/Shuriken Storm/Death Mark (Ninja) — see 1.12.6 for the stacking mechanic
 - `acid-burn` — Acid Spit (Slime)
+
+**DoT carries the deep floors — by design.** A direct hit goes through the attack-vs-defense mitigation (`mitigatedOffense`, `src/engine/resolver.ts`), which takes a larger share of it as monster defense grows with depth (`06-level-system.md` §6.10). A DoT tick skips defense and grows with the target's max HP. The deeper the floor, the more of a party's damage comes from the classes that keep a DoT up: the Rogue first (poison plus Venomcraft, section 1.3), then the Ninja (stacking bleed) and the Plague Doctor (poison and burn); the Viking and the Mage only now and then, and the Vanguard, Archer and Acolyte not at all. This is intended: the Rogue is the party's main damage source, and the other classes are not given defense-ignoring scaling to close the gap.
 
 **Elite/Boss dampening — every DoT's total tick (flat + `maxHpPercent`) is multiplied by `combat.eliteBossDotMultiplier` (0.8) when the target's `tier` is `"elite"` or `"boss"`** (`Monster.tier`, `02-monster.md` §2's tier system). The tick still deals at least 1 damage unless the target's race is immune to its damage type, the same floor every hit gets in `resolveSkillEffect`. Exists specifically to keep `maxHpPercent` from becoming disproportionately strong against Elite/Boss's much larger HP pools — a flat-rate `%maxHp` tick would otherwise scale up faster on high-HP targets than intended. A DoT's status line says "(less on Elites and Bosses)" without the number.
 
