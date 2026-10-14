@@ -23,7 +23,8 @@
       },
       "signatureSkillIds": [
         "rock-throw"
-      ]
+      ],
+      "commandBoostPercent": 60
     },
     {
       "id": "stone-golem",
@@ -35,7 +36,8 @@
       },
       "signatureSkillIds": [
         "stomp"
-      ]
+      ],
+      "commandBoostPercent": 40
     },
     {
       "id": "hellfire-imp",
@@ -47,7 +49,8 @@
       },
       "signatureSkillIds": [
         "hellfire-strike"
-      ]
+      ],
+      "commandBoostPercent": 50
     },
     {
       "id": "healer-spirit",
@@ -60,7 +63,8 @@
       "signatureSkillIds": [
         "spirit-heal-single",
         "spirit-heal-party"
-      ]
+      ],
+      "commandBoostPercent": 50
     },
     {
       "id": "recall-totem",

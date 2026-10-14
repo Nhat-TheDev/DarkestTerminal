@@ -98,6 +98,15 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
     parts.push(chance === undefined ? t("item.effectOverwatch") : t("item.effectOverwatchChance", { percent: Math.round(chance * 100) }));
   }
   if (def.overwatchShot) parts.push(t("item.effectOverwatchShot", { amount: def.overwatchShot.amount, percent: def.overwatchShot.offenseMultiplierPercent }));
+  if (def.counterAttack) {
+    parts.push(t("item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxPerRound }));
+  }
+  if (def.fearResistPercent) parts.push(t("item.effectFearResist", { percent: def.fearResistPercent }));
+  if (def.onActStatus) {
+    parts.push(t("item.effectOnActStatus", { percent: Math.round(def.onActStatus.chance * 100), status: getStatusEffect(def.onActStatus.statusEffectId).name, turns: def.onActStatus.durationTurns }));
+  }
+  if (def.silences) parts.push(t("item.effectSilences"));
+  if (def.eliteBossMaxTurns !== undefined) parts.push(t("item.effectEliteBossMaxTurns", { turns: def.eliteBossMaxTurns }));
   if (def.stackable && (def.maxStacks ?? 1) > 1) parts.push(t("item.effectStacks", { max: def.maxStacks! }));
   if (def.stackable && def.perStackBonusPercent) parts.push(t("item.effectStackBonus", { percent: def.perStackBonusPercent }));
   return parts;

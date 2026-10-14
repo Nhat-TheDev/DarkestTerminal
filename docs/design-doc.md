@@ -15,7 +15,7 @@ existing gameplay.
 
 ### 1.1 Gameplay overview
 - Genre: roguelike dungeon crawler, running on a terminal (TUI)
-- A party of characters (fixed size, `PARTY_SIZE` in `src/ui/characterSelect.ts`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
+- A party of characters (fixed size, `party.size` in `data/balance-config.json`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
 - Main loop: fighting monsters (combat) — exploring (moving between rooms) — surviving (survival management)
 
 ### 1.2 Combat

@@ -3,7 +3,7 @@ import { describeEffects, joinRanks } from "../effects";
 import { formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** What a skill adds on top of its per-rank effects: a bonus that needs a status, and an execute bonus. */
+/** What a skill adds on top of its per-rank effects: a bonus that needs a status, an execute bonus, a low-HP caster bonus and a coin flip. */
 function modifiers(skill: SkillDefinition): string[] {
   const out: string[] = [];
   const conditional = skill.conditionalBonus;
@@ -17,6 +17,16 @@ function modifiers(skill: SkillDefinition): string[] {
     if (execute.bonusDamageFlat !== undefined) bonus.push(`+${formatNumber(execute.bonusDamageFlat)} damage`);
     if (execute.bonusDamagePercent !== undefined) bonus.push(`+${formatNumber(execute.bonusDamagePercent)}% damage`);
     out.push(`below ${formatNumber(execute.hpPercentThreshold)}% HP: ${bonus.join(", ")}`);
+  }
+  const lowHp = skill.casterHpBelowBonus;
+  if (lowHp) {
+    const lifesteal = lowHp.lifestealPercent ? `, ${formatNumber(lowHp.lifestealPercent)}% lifesteal` : "";
+    out.push(`caster below ${formatNumber(lowHp.hpPercentThreshold)}% HP: +${formatNumber(lowHp.offenseMultiplierPercentBonus)}% offense${lifesteal}`);
+  }
+  const coin = skill.coinFlip;
+  if (coin) {
+    const lose = coin.loseSelfStatusEffectId ? `, and status ${coin.loseSelfStatusEffectId} on the caster (${formatNumber(coin.loseSelfDurationTurns ?? 1)} turns)` : "";
+    out.push(`coin flip: ${formatNumber(coin.winChance * 100)}% for ${formatNumber(coin.winOffenseMultiplierPercent)}% offense, else ${formatNumber(coin.loseOffenseMultiplierPercent)}%${lose}`);
   }
   return out;
 }

@@ -9,7 +9,7 @@ logic lives in `src/engine/profile.ts` (persistent pool), `src/data/abilities.ts
 (catalog + roll), `src/engine/artifacts.ts` (shared effect hooks),
 `src/engine/combat.ts` (`alwaysHit`), and `src/engine/game.ts` (drop/grant on
 Elite/Boss kill, death-flow guaranteed loss + Stardust buyback). UI lives in
-`src/ui/abilitySelect.ts`, `src/ui/screens/abilityBuyback.ts`, and the
+`src/ui/partySelect.ts`, `src/ui/screens/abilityBuyback.ts`, and the
 Elite/Boss unlock reveal folded into `src/ui/screens/rewards.ts` alongside
 Item/Artifact drops.
 
@@ -225,11 +225,10 @@ above.
 
 ### Character-select flow
 
-Runs once, right after class selection and before the run's first floor
-generates (between `showCharacterSelect` resolving and `Game`'s
-constructor finishing, `src/ui/characterSelect.ts` /
-`src/engine/game.ts`). For each of the 4 chosen characters, in party
-order:
+Part of the party select screen (`src/ui/partySelect.ts`), before the
+run's first floor generates and `Game`'s constructor runs
+(`src/engine/game.ts`). Each time a class is recruited, the screen moves
+straight to that recruit's ability, before the next class is browsed:
 
 1. List every `common` ability, plus every non-common ability currently in
    `unlockedAbilityIds` — tagged with its rarity.
@@ -238,7 +237,8 @@ order:
 3. **No 2 characters in the party may end the screen with the same
    ability id equipped** (commons included — a party can't stack 4 copies
    of `battle-instinct` either). Once a character locks in an id, it drops
-   out of every later character's list for this screen. This applies only
+   out of every later character's list for this screen. Backing out of a
+   recruit (`Esc`) gives its ability back to the list. This applies only
    to *this run's* equip choices — it has no effect on `unlockedAbilityIds`
    itself, which stays a plain set with no notion of "who owns what."
 
