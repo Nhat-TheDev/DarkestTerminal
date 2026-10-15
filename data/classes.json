@@ -1117,7 +1117,7 @@
       {
         "id": "venom-brand",
         "name": "Venom Brand",
-        "description": "A shallow cut with a blade dipped in something that thins the blood, so the next poison goes further.",
+        "description": "A shallow cut with a blade dipped in bitter sap that thins the blood, so the next poison goes further.",
         "shortDescription": "Light cut that leaves the foe weak to poison.",
         "target": "singleEnemy",
         "slot": 5,
@@ -2043,7 +2043,7 @@
       {
         "id": "desperate-cleave",
         "name": "Desperate Cleave",
-        "description": "Swings like there will not be another chance, and when the blood is already running there is not.",
+        "description": "Swings as if there will not be another chance. With the blood already running, there may not be.",
         "shortDescription": "Heavy cut; harder and lifestealing below half HP.",
         "target": "singleEnemy",
         "slot": 5,
@@ -3433,7 +3433,7 @@
       {
         "id": "barbed-net",
         "name": "Barbed Net",
-        "description": "A weighted net strung with hooks, thrown wide, and every struggle against it opens something.",
+        "description": "A weighted net strung with hooks, thrown wide, and every struggle against it opens the skin a little more.",
         "shortDescription": "Nets all foes; acting makes them Bleed.",
         "target": "allEnemies",
         "slot": 5,
@@ -4271,7 +4271,7 @@
       {
         "id": "battle-ballad",
         "name": "Battle Ballad",
-        "description": "A quick, ugly song with a marching beat, and the rest of the party moves to it before the enemy does.",
+        "description": "A quick, ugly song with a marching beat. The rest of the party moves to it before the enemy does.",
         "shortDescription": "The rest of the party acts first and hits harder this turn.",
         "target": "allAllies",
         "slot": 3,
@@ -4458,7 +4458,7 @@
       {
         "id": "finale",
         "name": "Finale",
-        "description": "Every die the Jester has palmed all fight goes up at once, and comes down on the enemy like fireworks.",
+        "description": "Every die the Jester has palmed all fight, thrown up at once and left to fall on the enemy.",
         "shortDescription": "Throws every die in hand, physical and magic by turns. Always hits.",
         "target": "allEnemies",
         "slot": 6,
@@ -4672,7 +4672,7 @@
       {
         "id": "defiance",
         "name": "Defiance",
-        "description": "Strikes the shield and calls them on, and whoever answers leaves with a gap in their guard.",
+        "description": "Strikes the shield and calls them on. Whoever comes leaves with a gap in their guard.",
         "shortDescription": "Taunts; attackers who hit the Paladin are Weakened.",
         "target": "self",
         "slot": 2,
@@ -4735,7 +4735,7 @@
       {
         "id": "cross-slash",
         "name": "Cross Slash",
-        "description": "Two cuts with a blessed blade, one down and one across, and the mark they leave is the shape of a prayer.",
+        "description": "Two cuts with a blessed blade: one down, one across.",
         "shortDescription": "Two holy cuts on 1 foe.",
         "target": "singleEnemy",
         "slot": 3,
@@ -4852,7 +4852,7 @@
       {
         "id": "vigil",
         "name": "Vigil",
-        "description": "Kneels and lets the light out, and for as long as the Paladin stays kneeling the party mends and the enemy burns.",
+        "description": "Kneels and lets the light out. For as long as the Paladin stays kneeling, the party mends and the enemy burns.",
         "shortDescription": "A zone of light for 3 turns: heals and steadies allies, burns foes. The Paladin holds it instead of acting.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
@@ -5059,7 +5059,7 @@
       {
         "id": "eldritch-bolt",
         "name": "Eldritch Bolt",
-        "description": "A bolt of something older than magic — basic damage.",
+        "description": "A black bolt from an open hand — basic damage.",
         "shortDescription": "An eldritch bolt — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -5143,7 +5143,7 @@
       {
         "id": "blood-pact",
         "name": "Blood Pact",
-        "description": "Opens a palm and lets it run, and something on the other side drinks and pays; the less there is to give, the less it asks.",
+        "description": "Opens a palm and lets it run into the dark. What drinks there gives power back, and takes less from a body that has less.",
         "shortDescription": "Raises magic power; costs HP as well as MP.",
         "target": "self",
         "slot": 2,
@@ -5280,7 +5280,7 @@
       {
         "id": "soul-rend",
         "name": "Soul Rend",
-        "description": "Reaches into the curse already in the enemy and pulls, and what comes out keeps the Warlock standing.",
+        "description": "Takes hold of the curse in the enemy and pulls it out by the root. What comes with it keeps the Warlock standing.",
         "shortDescription": "Drains life, harder per Hexed stack; eats 1 stack.",
         "target": "singleEnemy",
         "slot": 4,
