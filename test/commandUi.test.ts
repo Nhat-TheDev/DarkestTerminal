@@ -8,6 +8,7 @@ import { spawnMonster } from "../src/data/monsters";
 import { getSkill, getEffectiveSkill } from "../src/data/classes";
 import { getRoom } from "../src/engine/dungeon";
 import { skillEntries } from "../src/ui/state";
+import { applyStatusEffectToActor } from "../src/engine/resolver";
 
 async function commandFight(withGoblin = true) {
   const harness = await createTestRenderer({ width: 130, height: 47 });
@@ -76,6 +77,17 @@ describe("Command on the combat screen", () => {
       await press("ESCAPE");
       expect(app.debugUiState.kind).toBe(kind);
     }
+    renderer.destroy();
+  });
+
+  test("a stunned minion is left off the list, so with no other minion Command is refused", async () => {
+    const { app, captureCharFrame, press, goblin, commandDigit, renderer } = await commandFight();
+    applyStatusEffectToActor(goblin!, "stunned", 1, { log: [] });
+    await press("1");
+    await press(commandDigit);
+    await press("RETURN");
+    expect(app.debugUiState.kind).toBe("skillDetail");
+    expect(captureCharFrame()).toContain("No minion able to take a command.");
     renderer.destroy();
   });
 
