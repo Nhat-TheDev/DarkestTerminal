@@ -1271,24 +1271,38 @@
   {
     "id": "ballad",
     "name": "Ballad",
-    "description": "Mildly raises speed for the duration.",
+    "description": "Mildly raises attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
-        "combatStat": "speed",
-        "amount": 4
+        "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 6,
+        "minPercent": 7.5
       }
     ]
   },
   {
     "id": "ballad-ii",
     "name": "Ballad II",
-    "description": "Moderately raises speed for the duration.",
+    "description": "Moderately raises attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
-        "combatStat": "speed",
-        "amount": 6
+        "combatStat": "attack",
+        "amount": 8,
+        "minPercent": 10
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 8,
+        "minPercent": 10
       }
     ],
     "rankOf": "ballad",
@@ -1297,12 +1311,19 @@
   {
     "id": "ballad-iii",
     "name": "Ballad III",
-    "description": "Sharply raises speed for the duration.",
+    "description": "Sharply raises attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
-        "combatStat": "speed",
-        "amount": 8
+        "combatStat": "attack",
+        "amount": 10,
+        "minPercent": 12.5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 10,
+        "minPercent": 12.5
       }
     ],
     "rankOf": "ballad",
@@ -1433,6 +1454,29 @@
     "harmful": true,
     "silences": true,
     "eliteBossMaxTurns": 1
+  },
+  {
+    "id": "provoked",
+    "name": "Provoked",
+    "description": "Has eyes for one target only: whoever goaded it.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "forcesTargetOnSource": true
+  },
+  {
+    "id": "confused",
+    "name": "Confused",
+    "description": "Cannot tell friend from foe; its blows often land on its own side.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "redirectToAlliesChance": 0.55
+  },
+  {
+    "id": "rigged",
+    "name": "Rigged",
+    "description": "A weighted coin is ready; the next toss is far more likely to land.",
+    "perTurnEffects": [],
+    "coinFlipWinChanceMultiplier": 2
   },
   {
     "id": "blessed",

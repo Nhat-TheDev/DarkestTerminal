@@ -298,7 +298,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
       const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
       const landedOf = isPlayerSide(source) !== isPlayerSide(target) ? (isSummon(target) ? target.ownerId : target.id) : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf, source.id);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
         applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
       return 0;
@@ -350,7 +350,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "summon":
     case "summonMonster":
-    case "commandSummons": {
+    case "commandSummons":
+    case "throwDice": {
       // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register or run it.
       return 0;
     }
@@ -423,7 +424,8 @@ export function applyStatusEffectToActor(
   linkedSummonId?: Id,
   casterMagicPower?: number,
   onHitDurationTurns?: number,
-  landedOf?: Id
+  landedOf?: Id,
+  sourceId?: Id
 ): void {
   const def = getStatusEffect(statusEffectId);
   if (def.eliteBossMaxTurns !== undefined && durationTurns !== undefined && isMonster(actor) && actor.tier !== "normal") {
@@ -464,6 +466,7 @@ export function applyStatusEffectToActor(
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
+      ...(def.forcesTargetOnSource ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     ctx.log.push({
       text: gainedANewStack
@@ -485,6 +488,7 @@ export function applyStatusEffectToActor(
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
+    ...(def.forcesTargetOnSource && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);

@@ -4,6 +4,7 @@ import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
+import { getClass } from "../data/classes";
 import { getEvent } from "../data/events";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
@@ -926,6 +927,8 @@ export class App implements ScreenContext {
     if (tier >= 2) {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
+    const hand = getClass(c.classId).dice;
+    if (hand && c.dice !== undefined) fearLine.push(plainChunk("   "), colorChunk(t("ui.diceStat", { count: c.dice, max: hand.maxCount }), PALETTE.title));
 
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);

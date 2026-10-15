@@ -15,7 +15,8 @@ export type SkillEffectKind =
   | "modifyCombatStat"
   | "summon"
   | "summonMonster"
-  | "commandSummons";
+  | "commandSummons"
+  | "throwDice";
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
@@ -69,10 +70,10 @@ export interface SkillEffect {
   count?: number;
   /** For a `damage` effect: adds `percentPerDebuff` to its offense multiplier for each harmful status the target carries when the hit lands (a stackable status counts once). */
   scalesWithDebuffCount?: { percentPerDebuff: number };
-  /** For a `damage` effect: its offense multiplier is scaled by a percent rolled uniformly in `[minPercent, maxPercent]`, once per target. A roll below 100 is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`). */
-  damageRollRange?: { minPercent: number; maxPercent: number };
-  /** For `applyStatusEffect`: the status is picked at random from this pool, once per target, in place of `statusEffectId`. */
-  randomStatusEffectIds?: Id[];
+  /** One die's faces, as percents of the offense multiplier. On a `damage` effect one face is rolled per target, and a face below 100 is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`); on a `throwDice` effect one face is rolled per die thrown. */
+  damageRollFaces?: number[];
+  /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
+  excludesCaster?: boolean;
 }
 
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
@@ -186,7 +187,11 @@ export interface SkillDefinition {
   /** While the caster's HP is below `hpPercentThreshold` (of its own maxHp) when the skill resolves, every `damage` effect gains `offenseMultiplierPercentBonus` and heals the caster for `lifestealPercent` of what it deals. */
   casterHpBelowBonus?: { hpPercentThreshold: number; offenseMultiplierPercentBonus: number; lifestealPercent?: number };
   /** One roll per cast: on a win every `damage` effect uses `winOffenseMultiplierPercent`, on a loss `loseOffenseMultiplierPercent`, and a loss also puts `loseSelfStatusEffectId` on the caster. A loss is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`). */
-  coinFlip?: { winChance: number; winOffenseMultiplierPercent: number; loseOffenseMultiplierPercent: number; loseSelfStatusEffectId?: Id; loseSelfDurationTurns?: number };
+  coinFlip?: CoinFlip;
+  /** Dice added to the caster's hand once the skill is cast (`CharacterClass.dice`), up to the hand's limit. */
+  grantsDice?: number;
+  /** While this skill is queued, every other character of the party gets this much speed for this round's turn order. */
+  allyTurnOrderBonus?: number;
   /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
   aiCondition?: MonsterAiPredicate;
   /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
@@ -201,6 +206,18 @@ export interface SkillDefinition {
   targetCount?: { min: number; max: number };
   /** Monster skills only: the cooldown the skill starts the fight on, so it cannot open the fight. */
   initialCooldownTurns?: number;
+}
+
+/**
+ * One roll per cast, at `winChance` times the caster's `coinFlipWinChanceMultiplier` statuses (at most 1).
+ * A win resolves the skill as written; a loss skips every `damage` effect, puts each `loseSelfStatuses`
+ * entry on the caster and, with `resetCooldownOnLose`, leaves the skill ready again. A loss is a lost
+ * gamble (`PassiveSkillDefinition.gambleStatusEffectId`).
+ */
+export interface CoinFlip {
+  winChance: number;
+  loseSelfStatuses?: { statusEffectId: Id; durationTurns: number }[];
+  resetCooldownOnLose?: boolean;
 }
 
 export interface PassiveRankDefinition {
@@ -273,6 +290,8 @@ export interface CharacterClass {
   baseMagicPower: number;
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
+  /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */
+  dice?: { startCount: number; maxCount: number; maxPerTarget: number };
 }
 
 export interface Character {
@@ -295,6 +314,8 @@ export interface Character {
   isAlive: boolean;
   usesRemainingThisCombat: Record<Id, number>;
   cooldownsRemaining: Record<Id, number>;
+  /** Dice in hand during a fight, for a class with `CharacterClass.dice`; absent outside combat. */
+  dice?: number;
   equippedArtifactIds: Id[];
   /** Fixed at character select for the whole run; `null`/absent = none. */
   equippedAbilityId?: Id | null;
@@ -342,6 +363,12 @@ export interface StatusEffectDefinition {
   silences?: boolean;
   /** On an elite or boss, no application of this status lasts longer than this many turns. */
   eliteBossMaxTurns?: number;
+  /** The bearer's single-target attacks all go to whoever applied the status, while that one can be targeted. */
+  forcesTargetOnSource?: boolean;
+  /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
+  redirectToAlliesChance?: number;
+  /** Multiplies the bearer's `coinFlip` win chance. */
+  coinFlipWinChanceMultiplier?: number;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -508,6 +535,8 @@ export interface ActiveStatusEffect {
   onHitDurationTurns?: number;
   /** For a status with `counterAttack`: how many counters it has struck this round, cleared at the start of every round. */
   countersThisRound?: number;
+  /** For a status with `forcesTargetOnSource`: the id of the actor that applied it. */
+  sourceId?: Id;
 }
 
 export interface ShopOffer {

@@ -470,7 +470,7 @@ Where each comes from:
 - `poisoned-ii` — Poison Bomb rank 2
 - `poisoned-iii` — Poison Bomb rank 3
 - `burning` — Fireball/Fire Pillar (Mage); Fire Vial/Total Plague (Plague Doctor)
-- `bleeding` — Frenzied Slash/Spinning Axe (Viking); Throwing Knives/Shuriken Storm/Death Mark/Barbed Net's `netted` (Ninja); Rigged Game's random pick (Jester); Blood Pact, on the Warlock itself — see 1.12.6 for the stacking mechanic
+- `bleeding` — Frenzied Slash/Spinning Axe (Viking); Throwing Knives/Shuriken Storm/Death Mark/Barbed Net's `netted` (Ninja); Blood Pact, on the Warlock itself — see 1.12.6 for the stacking mechanic
 - `acid-burn` — Acid Spit (Slime)
 - `hexed` — Hex/Withering Curse/Doom (Warlock); also lowers attack, stacks up to 3 times (section 1.17)
 
@@ -896,7 +896,7 @@ How each passive works:
 - **Archer — Deadly Precision.** Chance is additive on top of the skill's own `critChance` (so a skill with none, like Quick Shot, can still crit); multiplier is whichever of the skill's own and the passive's is larger (so a skill with no `critMultiplierPercent` of its own, or one below the passive's floor, still benefits). Engine hook: `resolveOneDamageEffect`, `src/engine/combat.ts`
 - **Ninja — Afterimage.** Dodge folds into `rollDodge` alongside equipped Artifact/Ability `dodgeChance`. The 2nd clone needed a new spawn path (`spawnAdditionalSummon`, `combat.ts`) — `spawnSummon`'s existing "recasting the same archetype replaces it" eviction rule would otherwise dismiss the first clone the instant a 2nd tried to spawn; `spawnAdditionalSummon` skips that rule entirely. The Ninja holds at most 1 clone of each origin: the passive spawns only while a cast clone is alive and no passive clone is (`Summon.fromPassive`), always named `secondCloneName`, and a recast replaces only the cast clone and leaves the passive's out of the minion cap, so it never evicts `Shadow Clone II`. Engine hook: `rollDodge`, `src/engine/artifacts.ts`; `applySkillEffects`, `src/engine/combat.ts`
 - **Summoner — Bound Legion.** Replaces the old cast-based Mastery Summoner skill (and its `minion-empowerment`/`-ii`/`-iii` statuses) entirely — both effects are purely level-gated now, applied automatically at spawn time and read directly off the passive rank, with no "cast the buff first" step. Engine hook: `empowermentBonusFor` / `maxActiveMinionsFor`, `src/engine/combat.ts`
-- **Jester — Fool's Fortune.** A lost gamble — a Loaded Dice roll under 100% (`damageRollRange`) or a lost Double or Nothing (`coinFlip`) — adds a stack of the status `gambleStatusEffectId` names (`fortune`, up to its `maxStacks`) to the Jester; the next gamble deals the rank's `gambleBonusPercentPerStack` more damage per stack, and a won gamble spends every stack. A gamble the Jester casts below rank 1 neither stores nor spends. Engine hook: `jesterFortune` / `settleJesterFortune`, `src/engine/combat.ts`
+- **Jester — Fool's Fortune.** A lost gamble — a Loaded Dice face that lowers the damage (`damageRollFaces`) or a lost Double or Nothing (`coinFlip`) — adds a stack of the status `gambleStatusEffectId` names (`fortune`, up to its `maxStacks`) to the Jester; the next gamble deals the rank's `gambleBonusPercentPerStack` more damage per stack, and a won gamble spends every stack. A gamble the Jester casts below rank 1 neither stores nor spends. Engine hook: `jesterFortune` / `settleJesterFortune`, `src/engine/combat.ts`
 - **Paladin — Retribution.** A share (`reflectPercent`) of every direct hit taken is dealt back to the attacker, added to any `reflectDamagePercent` status the Paladin carries; a status tick is never reflected. Engine hook: `paladinReflectPercent`, `src/engine/resolver.ts`
 - **Warlock — Soul Feast.** Each kill the Warlock lands restores `killRestoreMpPercent` of its max MP and `killRestoreHpPercent` of its max HP. Engine hook: `onKill` hook, `combatHooks.ts`
 
@@ -927,7 +927,7 @@ The mechanics these skills needed, all read from `data/*.json` (`src/types.ts`):
 - **`StatusEffectDefinition.counterAttack`** `{ maxPerRound, amount, offenseMultiplierPercent }` (Retaliate's `retaliating`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes every targetable enemy, no accuracy roll, at most `maxPerRound` times a round. The count lives on the active status (`ActiveStatusEffect.countersThisRound`) and is cleared at the start of every round. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
 - **`StatusEffectDefinition.fearResistPercent`** (Sanctuary's `steadfast`). Every fear gain on the bearer is cut by it, combined multiplicatively with its `fearResist` from Artifacts and Ability. Engine hook: `resistedFearGain`, `src/engine/survival.ts`.
 - **`SkillDefinition.casterHpBelowBonus`** `{ hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent? }` (Desperate Cleave). Checked once when the skill resolves: below the threshold, every `damage` effect gains the offense bonus and the lifesteal. Engine hook: `applySkillEffects`.
-- **`SkillEffect.scalesWithDebuffCount`** `{ percentPerDebuff }` (Volatile Flask, Finale). Each harmful status on the target when the hit lands adds to the offense multiplier, a stackable status counting once (`harmfulStatusCount`). With `hitCountRange`, every strike re-counts. Engine hook: the `"damage"` case of `resolveSkillEffect`, `src/engine/resolver.ts`.
+- **`SkillEffect.scalesWithDebuffCount`** `{ percentPerDebuff }` (Volatile Flask). Each harmful status on the target when the hit lands adds to the offense multiplier, a stackable status counting once (`harmfulStatusCount`). With `hitCountRange`, every strike re-counts. Engine hook: the `"damage"` case of `resolveSkillEffect`, `src/engine/resolver.ts`.
 - **`StatusEffectDefinition.onActStatus`** `{ statusEffectId, chance, durationTurns }` (Barbed Net's `netted`). Each time the bearer acts — not when stunned or interrupted — it rolls to put the status on itself. Engine hook: `applyOnActStatuses`, `src/engine/combat.ts`, at the top of a monster's, character's or summon's turn.
 - **`commandSummons`** (a `SkillEffect` kind, Command) and **`SummonArchetype.commandBoostPercent`** (`data/summons.json`). Once the cast is over, each of the caster's minions that takes turns acts once more, picking among its signature skills by their weights (its basic attack if it has none), with every damage and heal of that skill raised by its archetype's `commandBoostPercent`. The extra action is its own session and does not count toward `maxActions`. Engine hook: `commandOwnedSummons`, `src/engine/combat.ts`.
 
@@ -944,33 +944,45 @@ Basic attack (slot 0): **Knife Flick** (`knife-flick`), physical, sub-100% offen
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `loaded-dice` | Loaded Dice | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 108 / 116% ATK (rolls 40–180%) | — |
-| 2 | `jeer` | Jeer | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 4 / 6 / 8 + 50 / 55 / 60% ATK; status slowed (2 turns); status enfeebled (2 turns, 50 / 60 / 70% chance) | — |
-| 3 | `battle-ballad` | Battle Ballad | allAllies | 3 | 10 / 11 / 12 | 10 / 25 / 45 | status ballad / ballad-ii / ballad-iii (2 turns) | buff |
-| 4 | `rigged-game` | Rigged Game | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 6 / 8 / 10 + 45 / 50 / 55% ATK; status, one at random of slowed / enfeebled / weakened / blinded / burning / bleeding (2 turns) | — |
-| 5 | `double-or-nothing` | Double or Nothing | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 20 / 28 / 36 + 100% ATK; coin flip: 50% for 220% offense, else 30%, and status slowed on the caster (2 turns) | — |
-| 6 | `finale` | Finale | singleEnemy | 5 | 16 / 17 / 18 | 35 / 70 / 100 | damage 25 / 32 / 40 + 100 / 115 / 130% ATK (crit 50%, +15% per debuff on the target) | ultimate |
+| 1 | `loaded-dice` | Loaded Dice | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 108 / 116% ATK (die faces 30%/60%/90%/120%/150%/180%); +1 dice | — |
+| 2 | `jeer` | Jeer | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | status weakened (2 turns); status provoked (1 turn, 75 / 80 / 85% chance); +1 dice | — |
+| 3 | `battle-ballad` | Battle Ballad | allAllies | 2 | 10 / 11 / 12 | 10 / 25 / 45 | status ballad / ballad-ii / ballad-iii (1 turn, not on the caster, not on summons); the rest of the party +10 speed for turn order this round | buff |
+| 4 | `rigged-game` | Rigged Game | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 12 / 15 / 20 + 75 / 85 / 100% ATK; status confused (2 turns, 65 / 75 / 85% chance); +1 dice | — |
+| 5 | `double-or-nothing` | Double or Nothing | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 20 / 30 / 40 + 160 / 175 / 190% ATK; coin flip: 50% to resolve, on a loss no damage, status slowed on the caster (2 turns), status rigged on the caster (1 turns), cooldown reset; +2 dice | — |
+| 6 | `finale` | Finale | allEnemies | 5 | 16 / 17 / 18 | 35 / 70 / 100 | every die in hand: 10 / 12 / 15 + 40 / 50 / 60% ATK each (die faces 50%/75%/100%/125%/150%/175%) | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `loaded-dice` — `damage` whose offense multiplier is scaled by a roll in `damageRollRange` (a roll under 100% is a lost gamble)
-- `jeer` — light `damage` + a guaranteed `applyStatusEffect "slowed"` + chance to `applyStatusEffect "enfeebled"`
-- `battle-ballad` — `applyStatusEffect "ballad"` (rank variants `-ii`/`-iii`, a speed buff) on the party
-- `rigged-game` — light `damage`/enemy + an `applyStatusEffect` with `randomStatusEffectIds`: each enemy gets one status picked at random from the pool
-- `double-or-nothing` — `damage` with a `coinFlip`: a won flip uses its win offense multiplier, a lost one its lose multiplier and puts `slowed` on the Jester
-- `finale` — `damage` that grows per debuff on the target (`scalesWithDebuffCount`) + a crit chance — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula
+- `loaded-dice` — `damage` whose offense multiplier is scaled by one of six die faces (`damageRollFaces`, a face that lowers the damage is a lost gamble); adds 1 die to the hand
+- `jeer` — no damage: a guaranteed `applyStatusEffect "weakened"` + chance to `applyStatusEffect "provoked"` for 1 turn, which turns every single-target attack of the target on the Jester; adds 1 die
+- `battle-ballad` — `applyStatusEffect "ballad"` (rank variants `-ii`/`-iii`: attack and magic power for this round) on the rest of the party (`excludesCaster`), who also act ahead of their usual place this round (`allyTurnOrderBonus`)
+- `rigged-game` — `damage`/enemy + chance to `applyStatusEffect "confused"` for 2 turns, which sends part of the target's attacks to its own side; adds 1 die
+- `double-or-nothing` — heavy `damage` behind a `coinFlip`: a lost flip deals nothing, puts `slowed` and `rigged` (the next flip's win chance doubled) on the Jester and leaves the skill ready again; adds 2 dice either way
+- `finale` — `throwDice`: every die in hand bursts on a random enemy, each rolling one of the effect's faces to scale its damage — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula
 
-New mechanics: **`SkillEffect.damageRollRange`** `{ minPercent, maxPercent }`, rolled once per target; **`SkillDefinition.coinFlip`** `{ winChance, winOffenseMultiplierPercent, loseOffenseMultiplierPercent, loseSelfStatusEffectId?, loseSelfDurationTurns? }`, rolled once per cast; **`SkillEffect.randomStatusEffectIds`**, picked once per target in place of `statusEffectId`. All three resolve in `applySkillEffects`, `src/engine/combat.ts`. The passive (section 1.13) stores lost gambles as `fortune` stacks.
+New mechanics, all read from `data/*.json`:
 
-<!-- docs:begin statusEffects ids=ballad,ballad-ii,ballad-iii,fortune -->
+- **The dice hand** — `CharacterClass.dice` `{ startCount, maxCount, maxPerTarget }`. The Jester starts every fight with `startCount` dice (`Character.dice`, cleared when the fight ends); a skill's `grantsDice` adds to the hand once it is cast, up to `maxCount`. The party panel shows the hand beside fear. Engine hooks: `startCombat`, `addDice`, `clearCombatResources`, `src/engine/combat.ts`.
+- **`throwDice`** (a `SkillEffect` kind) — the whole hand is thrown; each die goes to a random enemy that has taken fewer than `maxPerTarget` this cast and rolls one of `damageRollFaces` to scale the effect's `amount` + `offenseMultiplierPercent`. Dice no enemy can take are lost with the rest. Engine hook: `throwDice`, `src/engine/combat.ts`.
+- **`SkillEffect.damageRollFaces`** — on a `damage` effect, one face is rolled per target and multiplies the offense multiplier.
+- **`SkillDefinition.coinFlip`** `{ winChance, loseSelfStatuses?, resetCooldownOnLose? }` — one roll per cast, at `winChance` times every `coinFlipWinChanceMultiplier` status on the caster (at most 1). A loss skips every `damage` effect, applies `loseSelfStatuses` to the caster and, with `resetCooldownOnLose`, clears the skill's cooldown.
+- **`SkillDefinition.allyTurnOrderBonus`** — while the skill is queued, every other character adds it to its speed when this round's turn order is built (`turnOrderSortKey`). **`SkillEffect.excludesCaster`** leaves the caster out of an effect its own target includes.
+- **`StatusEffectDefinition.forcesTargetOnSource`** (`provoked`) — the bearer's single-target attacks go to whoever applied the status (`ActiveStatusEffect.sourceId`) while that one can be targeted. **`StatusEffectDefinition.redirectToAlliesChance`** (`confused`) — each attack the bearer makes may go to every other monster (an area attack) or as many random ones as it had targets; a monster alone hits itself. A telegraph is aimed on its charge turn and is never turned. Engine hooks: `provokedBy`, `confusedTargets`, `src/engine/monsterAI.ts`.
+
+The passive (section 1.13) stores lost gambles as `fortune` stacks.
+
+<!-- docs:begin statusEffects ids=ballad,ballad-ii,ballad-iii,provoked,confused,rigged,fortune -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
-| `ballad` | Ballad | speed +4 |
-| `ballad-ii` | Ballad II | speed +6; rankOf ballad; rankLevel 2 |
-| `ballad-iii` | Ballad III | speed +8; rankOf ballad; rankLevel 3 |
+| `ballad` | Ballad | attack +6 (min 7.5%); magicPower +6 (min 7.5%) |
+| `ballad-ii` | Ballad II | attack +8 (min 10%); magicPower +8 (min 10%); rankOf ballad; rankLevel 2 |
+| `ballad-iii` | Ballad III | attack +10 (min 12.5%); magicPower +10 (min 12.5%); rankOf ballad; rankLevel 3 |
+| `provoked` | Provoked | harmful; forcesTargetOnSource |
+| `confused` | Confused | harmful; redirectToAlliesChance 0.55 |
+| `rigged` | Rigged | coinFlipWinChanceMultiplier 2 |
 | `fortune` | Fortune | tickCategory special; stackable; maxStacks 3 |
 <!-- docs:end -->
 

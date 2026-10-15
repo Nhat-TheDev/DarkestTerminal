@@ -48,10 +48,9 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       head = `heal ${amount()} + ${multiplier()}% MAG`;
       break;
     case "applyStatusEffect": {
-      used.add("statusEffectId").add("alsoApplyStatusEffectIds").add("randomStatusEffectIds");
-      const random = across((effect) => effect.randomStatusEffectIds?.join(" / "));
+      used.add("statusEffectId").add("alsoApplyStatusEffectIds");
       const ids = across((effect) => [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])].join(" + "));
-      head = random !== undefined ? `status, one at random of ${random}` : `status ${ids}`;
+      head = `status ${ids}`;
       break;
     }
     case "modifyStat":
@@ -68,6 +67,9 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       break;
     case "commandSummons":
       head = "every minion acts once more, boosted";
+      break;
+    case "throwDice":
+      head = `every die in hand: ${amount()} + ${multiplier()}% ${offenseStat} each`;
       break;
     default:
       head = `${first.kind}${first.amount === undefined ? "" : ` ${amount()}`}`;
@@ -86,7 +88,8 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     field("hitCountRange", ({ min, max }) => `${min}–${max} hits`),
     field("scalesWithStatusStacks", ({ statusEffectId, percentPerStack }) => `+${formatNumber(percentPerStack)}% per ${statusEffectId} stack`),
     field("scalesWithDebuffCount", ({ percentPerDebuff }) => `+${formatNumber(percentPerDebuff)}% per debuff on the target`),
-    field("damageRollRange", ({ minPercent, maxPercent }) => `rolls ${formatNumber(minPercent)}–${formatNumber(maxPercent)}%`),
+    field("damageRollFaces", (faces) => `die faces ${faces.map((face) => `${formatNumber(face)}%`).join("/")}`),
+    field("excludesCaster", (value) => (value ? "not on the caster" : "")),
     amountOf("ignoreDefensePercent", (joined) => `ignores ${joined}% defense`),
     amountOf("lifestealPercent", (joined) => `${joined}% lifesteal`),
     amountOf("maxHpPercent", (joined) => `${joined}% max HP`),
