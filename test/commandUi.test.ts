@@ -85,7 +85,7 @@ describe("Command on the combat screen", () => {
     await press(commandDigit);
     await press("RETURN");
     expect(app.debugUiState.kind).toBe("skillDetail");
-    expect(captureCharFrame()).toContain("No minion out to command.");
+    expect(captureCharFrame()).toContain("No minion able to take a command.");
     renderer.destroy();
   });
 });
