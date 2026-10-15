@@ -315,7 +315,6 @@ describe("Command (Summoner)", () => {
 
   test("a queued Command lands on the chosen target and costs the minion one action", () => {
     const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
-    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
     const before = goblin.actionsTaken;
     expect(queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx)).toBeNull();
     const from = combat.log.length;
@@ -326,13 +325,56 @@ describe("Command (Summoner)", () => {
     expect(summoner.cooldownsRemaining["command"]).toBeGreaterThan(0);
   });
 
-  test("a minion on its last action leaves once commanded", () => {
+  test("a commanded minion faster than the Summoner holds its turn for the order, then leaves on its last action", () => {
     const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
-    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
+    goblin.speed = 99;
+    summoner.speed = 1;
     goblin.actionsTaken = goblin.maxActions - 1;
     queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx);
+    const from = combat.log.length;
     resolveRound(combat, ctx);
+    const lines = combat.log.slice(from).map((l) => l.text);
+    expect(lines.some((l) => l.includes(`${goblin.name} holds still`))).toBe(true);
+    expect(lines.some((l) => l.includes(`${summoner.name} uses ${goblin.name}'s Rock Throw`))).toBe(true);
     expect(combat.combatants.some((c) => c.ref.id === goblin.id)).toBe(false);
+  });
+
+  test("a minion killed before the Summoner's turn wastes the order without spending MP or cooldown", () => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    const mpBefore = summoner.mp;
+    queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx);
+    goblin.hp = 0;
+    resolveRound(combat, ctx);
+    expect(summoner.mp).toBe(mpBefore);
+    expect(summoner.cooldownsRemaining["command"] ?? 0).toBe(0);
+    expect(rat.hp).toBe(rat.maxHp);
+  });
+
+  test("a stunned minion can't be picked for an order", () => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
+    expect(commandableSummons(summoner, combat, ctx)).toEqual([]);
+    expect(queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx)).not.toBeNull();
+  });
+
+  test.each([
+    ["moves first", 99, 1],
+    ["moves after the Summoner", 1, 99],
+  ])("a stunned minion that %s cancels the order, with no MP, cooldown or action spent", (_, goblinSpeed, summonerSpeed) => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    goblin.speed = goblinSpeed;
+    summoner.speed = summonerSpeed;
+    const mpBefore = summoner.mp;
+    const actionsBefore = goblin.actionsTaken;
+    queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx);
+    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
+    const from = combat.log.length;
+    resolveRound(combat, ctx);
+    expect(combat.log.slice(from).some((l) => l.text.includes(`${goblin.name} is stunned — the order is cancelled`))).toBe(true);
+    expect(summoner.mp).toBe(mpBefore);
+    expect(summoner.cooldownsRemaining["command"] ?? 0).toBe(0);
+    expect(goblin.actionsTaken).toBe(actionsBefore);
+    expect(rat.hp).toBe(rat.maxHp);
   });
 
   test("the totem can't be commanded, and Command can't be queued without a minion order", () => {

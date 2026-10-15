@@ -102,12 +102,17 @@ export function commandedSkill(command: SkillDefinition, summon: Summon, summonS
   };
 }
 
-/** The minions `owner` can Command: out in this fight, taking turns, with a signature skill to cast. */
-export function commandableSummons(owner: Character, combat: CombatState, ctx: EngineContext): Summon[] {
+/** `owner`'s minions an order can name: out in this fight, taking turns, with a signature skill to cast. */
+function orderableSummons(owner: Character, combat: CombatState, ctx: EngineContext): Summon[] {
   return ownedSummons(owner.id, ctx).filter((s) => {
     const archetype = getSummonArchetype(s.archetypeId);
     return !archetype.passive && (archetype.signatureSkillIds ?? []).length > 0 && combat.combatants.some((c) => c.ref.kind === "summon" && c.ref.id === s.id);
   });
+}
+
+/** The minions `owner` can Command right now: orderable and not stunned. */
+export function commandableSummons(owner: Character, combat: CombatState, ctx: EngineContext): Summon[] {
+  return orderableSummons(owner, combat, ctx).filter((s) => !hasStunningStatus(s));
 }
 
 /** A `basicAttackOverride` status on the character turns its basic attack into the status's strike. */
@@ -693,9 +698,14 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   if (!isActorAlive(actor)) return;
 
   const command = queued.source.kind === "skill" ? queued.source.command : undefined;
-  const commanded = command ? commandableSummons(actor, combat, ctx).find((s) => s.id === command.summonId) : undefined;
+  const commanded = command ? orderableSummons(actor, combat, ctx).find((s) => s.id === command.summonId) : undefined;
   if (command && !commanded) {
     combat.log.push({ text: t("combat.commandLost", { actor: actor.name }), kind: "info" });
+    return;
+  }
+  // A minion stunned by the time the order comes cancels it, with nothing paid.
+  if (commanded && hasStunningStatus(commanded)) {
+    combat.log.push({ text: t("combat.commandStunned", { actor: actor.name, summon: commanded.name }), kind: "info" });
     return;
   }
   const skill = actionDefinition(queued.source, actor, ctx);
@@ -1543,6 +1553,20 @@ function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, co
 
 function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const summon = getActorByRef(ref, ctx) as Summon;
+  // A minion named in a Command this round gives its turn to the caster: the order spends its action, whoever moves first.
+  const order = combat.queuedActions.find((qa) => qa.source.kind === "skill" && qa.source.command?.summonId === summon.id);
+  if (order) {
+    const owner = getActorByRef(order.actor, ctx);
+    if (hasStunningStatus(summon)) {
+      // The stun takes the turn the order was owed, so the order goes with it, unpaid.
+      combat.queuedActions = combat.queuedActions.filter((qa) => qa !== order);
+      combat.log.push({ text: t("combat.commandStunned", { actor: owner.name, summon: summon.name }), kind: "info" });
+      noteLostTurn(combat, summon);
+      return;
+    }
+    combat.log.push({ text: t("combat.summonAwaitsCommand", { summon: summon.name, owner: owner.name }), kind: "info" });
+    return;
+  }
   if (hasStunningStatus(summon)) {
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: summon.name }), kind: "info" });
     noteLostTurn(combat, summon);
