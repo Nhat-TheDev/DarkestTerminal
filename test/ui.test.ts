@@ -776,23 +776,22 @@ describe("layout below the full height", () => {
     return { ...setup, game };
   }
 
-  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel gets room for its choices", async () => {
+  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel keeps a row", async () => {
     const { captureCharFrame, game } = await openFight(120, 40);
     const frame = captureCharFrame();
     expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
     expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    // Only blank rows above the sprites were trimmed: every character's name and HP row is still drawn.
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
     for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
-  test("at 120x40 a boss keeps the battlefield's full height, so its sprite is not cut", async () => {
-    const { captureCharFrame } = await openFight(120, 40, true);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+  test("at 120x40 the battlefield is as tall in an ordinary fight as against a boss", async () => {
+    for (const boss of [false, true]) {
+      const { captureCharFrame, renderer } = await openFight(120, 40, boss);
+      expect(panelRows(captureCharFrame(), t("ui.panelBattlefield")), boss ? "boss" : "ordinary").toBe(UNIT_BLOCK_HEIGHT);
+      renderer.destroy();
+    }
   });
 
   test("at full height the layout is unchanged", async () => {
@@ -808,7 +807,7 @@ describe("layout below the full height", () => {
     resize(120, 40);
     await renderOnce();
     expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
     resize(120, 70);
     await renderOnce();
     expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);

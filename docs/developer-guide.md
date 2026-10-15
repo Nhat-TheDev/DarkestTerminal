@@ -148,12 +148,10 @@ footer and at least one row of the main (Dungeon) panel; the party list may scro
 `bun run random-play` checks this on every screen it reaches.
 
 Below 61 rows (`COMPACT_LAYOUT_BELOW_ROWS` in `src/ui/app.ts`) the layout goes compact so the <!-- docs:intent -->
-Dungeon panel keeps room for its choices: the Path panel is hidden, the Log keeps 3 lines, and the
-battlefield drops the blank rows it otherwise reserves above every sprite for the tallest one possible
-(a boss). It keeps only the band of icons above the tallest sprite actually on it, so a fight without
-a boss is 5 rows shorter, and a boss fight or a room with a full-height event sprite is not trimmed.
-At 120×40 that leaves the Dungeon panel 9 rows in an ordinary fight and 4 against a boss. From 61 <!-- docs:intent -->
-rows up the layout is unchanged, and resizing the terminal switches between the two at once.
+Dungeon panel keeps room for its choices: the Path panel is hidden and the Log keeps 3 lines. The
+battlefield keeps its full height (room for a boss sprite) in both layouts, so it never resizes from
+one room to the next. At 120×40 that leaves the Dungeon panel 4 rows, and a longer list scrolls. From <!-- docs:intent -->
+61 rows up the layout is unchanged, and resizing the terminal switches between the two at once.
 
 ### The "Battlefield" panel — pixel art
 

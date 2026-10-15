@@ -31,7 +31,6 @@ import {
   spriteForMonster,
   spriteForEvent,
   renderSpriteInSlot,
-  spriteHeight,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
@@ -83,9 +82,9 @@ const EXP_BAR_WIDTH = 24;
 
 const LOG_HEIGHT = 8;
 /** Below this many terminal rows the full layout can no longer show a 4-member party with no Ability
-    or status lines, so it goes compact: the Path panel is hidden, the Log keeps 3 lines and the
-    battlefield drops the blank rows it keeps for sprites taller than any on it — the Dungeon panel's
-    choices get that room. A party panel with more lines than that scrolls. */
+    or status lines, so it goes compact: the Path panel is hidden and the Log keeps 3 lines — the
+    Dungeon panel's choices get that room. The battlefield keeps its full height either way, so it
+    never resizes from room to room. A party panel with more lines than that scrolls. */
 const COMPACT_LAYOUT_BELOW_ROWS = 61;
 const COMPACT_LOG_HEIGHT = 5;
 
@@ -795,7 +794,7 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus, compact);
+    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
     this.battlefield.content = joinLines(battlefieldRows);
     if (this.battlefieldBox.height !== battlefieldRows.length + 2) this.battlefieldBox.height = battlefieldRows.length + 2;
     this.keepScrollInRange(this.battlefield);
@@ -1057,9 +1056,7 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  /** In the compact layout the rows above the tallest sprite on screen are dropped: every block is
-      bottom-aligned in a boss-height slot with its icons one band above its own frame, so those rows are always blank. */
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, compact: boolean): TextChunk[][] {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     const impact = focus !== null && !this.reveal.holding;
 
@@ -1087,7 +1084,6 @@ export class App implements ScreenContext {
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
-    let tallest = tierFrameHeight("party");
     if (combat) {
       const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
@@ -1105,18 +1101,13 @@ export class App implements ScreenContext {
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
-        tallest = Math.max(tallest, ...enemyUnits.map((u) => u.frameHeight));
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
-      tallest = Math.max(tallest, spriteHeight(CAMPFIRE_SPRITE));
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
-      tallest = Math.max(tallest, spriteHeight(TREASURE_CHEST_SPRITE));
     } else if (isEventRoom) {
       enemyBlock = this.buildEventBlock(room.rolledEventId!);
-      const eventSprite = spriteForEvent(room.rolledEventId!);
-      if (eventSprite) tallest = Math.max(tallest, spriteHeight(eventSprite));
     } else {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
@@ -1131,8 +1122,7 @@ export class App implements ScreenContext {
       );
     }
 
-    const rows = mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
-    return compact ? rows.slice(Math.max(0, MAX_BOSS_HEIGHT - tallest)) : rows;
+    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
   private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
