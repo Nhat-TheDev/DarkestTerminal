@@ -51,6 +51,23 @@ describe("party select", () => {
     renderer.destroy();
   });
 
+  test("the class block keeps the same size and place for every class", async () => {
+    const { frame, press, renderer } = await openScreen();
+    const corners = (shown: string) => {
+      const rows = shown.split("\n");
+      const top = rows.findIndex((r) => r.includes("┌"));
+      const bottom = rows.findIndex((r) => r.includes("└"));
+      return { top, bottom, left: rows[top]!.indexOf("┌"), right: rows[top]!.indexOf("┐") };
+    };
+    const first = corners(frame());
+    expect(first.top).toBeGreaterThanOrEqual(0);
+    for (const cls of CLASSES) {
+      expect(corners(frame()), cls.id).toEqual(first);
+      await press("RIGHT");
+    }
+    renderer.destroy();
+  });
+
   test("a pick goes to the ability list, then the class leaves the browse list", async () => {
     const { frame, press, renderer } = await openScreen();
     await press("RETURN");
