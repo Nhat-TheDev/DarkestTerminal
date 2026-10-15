@@ -12,6 +12,7 @@ import type {
   SummonStatFormula,
   SummonSourceStat,
   ActionSource,
+  CommandOrder,
   Id,
   LogEntry,
   LogEntryKind,
@@ -68,13 +69,57 @@ export interface EngineContext {
   floorDepth?: number;
 }
 
-function actionDefinition(source: ActionSource, actor?: Actor): SkillDefinition {
+function actionDefinition(source: ActionSource, actor?: Actor, ctx?: EngineContext): SkillDefinition {
   if (source.kind === "skill") {
     const skill = getSkill(source.skillId);
-    return actor && isCharacter(actor) ? getEffectiveSkill(skill, actor.level) : skill;
+    if (!actor || !isCharacter(actor)) return skill;
+    const effective = getEffectiveSkill(skill, actor.level);
+    const summon = source.command && ctx?.summons.find((s) => s.id === source.command!.summonId);
+    if (summon) return commandedSkill(effective, summon, source.command!.skillId);
+    return effective.slot === 0 ? withBasicAttackOverride(effective, actor) : effective;
   }
   const item = getItem(source.itemId);
   return { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0, unlockLevel: 0, fromItem: true };
+}
+
+/**
+ * A Command cast (`commandSummons`) as the caster's own skill: the Command's costs and cooldown, the
+ * minion skill's target and effects, its damage and healing at the cast's `powerPercent`, scaled off
+ * the caster's MAG in place of the minion's own stats.
+ */
+export function commandedSkill(command: SkillDefinition, summon: Summon, summonSkillId: Id): SkillDefinition {
+  const power = ((command.effects ?? []).find((e) => e.kind === "commandSummons")?.powerPercent ?? 100) / 100;
+  const minionSkill = getSummonSkill(summonSkillId);
+  const scale = (v: number) => Math.round(v * power);
+  return {
+    ...command,
+    name: t("combat.commandedSkillName", { summon: summon.name, skill: minionSkill.name }),
+    target: minionSkill.target,
+    isMagic: true,
+    effects: (minionSkill.effects ?? []).map((e) =>
+      e.kind === "damage" || e.kind === "heal" ? { ...e, amount: scale(e.amount ?? 0), offenseMultiplierPercent: scale(e.offenseMultiplierPercent ?? 100) } : e
+    ),
+  };
+}
+
+/** The minions `owner` can Command: out in this fight, taking turns, with a signature skill to cast. */
+export function commandableSummons(owner: Character, combat: CombatState, ctx: EngineContext): Summon[] {
+  return ownedSummons(owner.id, ctx).filter((s) => {
+    const archetype = getSummonArchetype(s.archetypeId);
+    return !archetype.passive && (archetype.signatureSkillIds ?? []).length > 0 && combat.combatants.some((c) => c.ref.kind === "summon" && c.ref.id === s.id);
+  });
+}
+
+/** A `basicAttackOverride` status on the character turns its basic attack into the status's strike. */
+export function withBasicAttackOverride(basic: SkillDefinition, actor: Character): SkillDefinition {
+  const override = actor.activeStatusEffects.map((s) => getStatusEffect(s.statusEffectId).basicAttackOverride).find((o) => o !== undefined);
+  if (!override) return basic;
+  return {
+    ...basic,
+    name: override.name,
+    isMagic: override.isMagic ?? basic.isMagic,
+    effects: [{ kind: "damage", amount: override.amount, offenseMultiplierPercent: override.offenseMultiplierPercent, damageType: override.damageType }],
+  };
 }
 
 export function getActorByRef(ref: CombatantRef, ctx: EngineContext): Actor {
@@ -223,11 +268,38 @@ export function queueAction(
   const err = checkSkillUsable(actor, skill);
   if (err) return err;
   if (skill.targetsOtherAlliesOnly && chosenTargets.some((t) => refEquals(t, actorRef))) return { reason: t("errors.cannotTargetSelf") };
+  if (isCommandSkill(skill)) return { reason: t("errors.commandNeedsMinion") };
 
   // mp/usesPerCombat/cooldown are committed when the skill actually executes in turn order
   // (runCharacterTurn), not here — otherwise a character's resources would look spent before
   // their turn has even come up during the round's reveal.
   combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId }, targets: chosenTargets });
+  return null;
+}
+
+export function isCommandSkill(skill: SkillDefinition): boolean {
+  return (skill.effects ?? []).some((e) => e.kind === "commandSummons");
+}
+
+/** Queues a Command cast (`commandSummons`): `order` names the caster's minion and the signature skill it casts, `chosenTargets` that skill's targets. */
+export function queueCommand(
+  combat: CombatState,
+  actorRef: CombatantRef,
+  skillId: string,
+  order: CommandOrder,
+  chosenTargets: CombatantRef[],
+  ctx: EngineContext
+): QueueActionError | null {
+  const actor = getActorByRef(actorRef, ctx);
+  if (!isCharacter(actor)) return { reason: t("errors.characterPhaseOnly") };
+  const skill = getEffectiveSkill(getSkill(skillId), actor.level);
+  const err = checkSkillUsable(actor, skill);
+  if (err) return err;
+  if (!isCommandSkill(skill)) return { reason: t("errors.notACommand") };
+  const summon = commandableSummons(actor, combat, ctx).find((s) => s.id === order.summonId);
+  if (!summon) return { reason: t("errors.commandNeedsMinion") };
+  if (!(getSummonArchetype(summon.archetypeId).signatureSkillIds ?? []).includes(order.skillId)) return { reason: t("errors.notMinionSkill") };
+  combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId, command: order }, targets: chosenTargets });
   return null;
 }
 
@@ -487,7 +559,6 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
 
   const combatActors = () => combat.combatants.map((c) => getActorByRef(c.ref, ctx));
   const snapshot = sessionSnapshot(combat, ctx);
-  for (const actor of combatActors()) for (const active of actor.activeStatusEffects) delete active.countersThisRound;
   for (const c of ctx.party) rollGrowthSwap(c, combat, ctx);
 
   runTicksInSession(
@@ -621,7 +692,13 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   applyOnActStatuses(actor, combat, ctx);
   if (!isActorAlive(actor)) return;
 
-  const skill = actionDefinition(queued.source, actor);
+  const command = queued.source.kind === "skill" ? queued.source.command : undefined;
+  const commanded = command ? commandableSummons(actor, combat, ctx).find((s) => s.id === command.summonId) : undefined;
+  if (command && !commanded) {
+    combat.log.push({ text: t("combat.commandLost", { actor: actor.name }), kind: "info" });
+    return;
+  }
+  const skill = actionDefinition(queued.source, actor, ctx);
   const targets = resolveExecutionTargets(skill, queued, combat, ctx);
   if (targets === "fizzle") {
     refundQueuedAction(queued, ctx);
@@ -668,28 +745,9 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
       { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
     );
   }
-  if ((skill.effects ?? []).some((e) => e.kind === "commandSummons")) commandOwnedSummons(actor, combat, ctx);
-}
-
-/**
- * `commandSummons`: every minion the caster has out that takes turns acts once more right away, with
- * its signature skill boosted by its archetype's `commandBoostPercent`. The extra action does not count
- * toward the minion's `maxActions`. Each runs in its own session, like a minion's first turn after a cast.
- */
-function commandOwnedSummons(owner: Character, combat: CombatState, ctx: EngineContext): void {
-  for (const summon of ownedSummons(owner.id, ctx)) {
-    if (isCombatOver(combat, ctx)) return;
-    const archetype = getSummonArchetype(summon.archetypeId);
-    if (archetype.passive || !combat.combatants.some((c) => c.ref.kind === "summon" && c.ref.id === summon.id)) continue;
-    runInSession(
-      combat,
-      owner.id,
-      () => {
-        runSummonTurn({ kind: "summon", id: summon.id }, combat, ctx, { boostPercent: archetype.commandBoostPercent ?? 0 });
-        pruneDeadSummons(combat, ctx, combat.log);
-      },
-      { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
-    );
+  if (commanded) {
+    commanded.actionsTaken += 1;
+    expireSummonIfDone(commanded, combat, ctx, combat.log);
   }
 }
 
@@ -714,7 +772,7 @@ export function onStruckByMonster(target: Actor, attacker: Monster, combat: Comb
 
 /**
  * A monster's direct hit landed on `bearer`: a status with `counterAttack` strikes every targetable
- * enemy back, up to its `maxPerRound` counters a round. The counter is the bearer's own action.
+ * enemy back; the status ends once it has struck its `maxCounters`. The counter is the bearer's own action.
  */
 function triggerCounterAttack(bearer: Actor, combat: CombatState, ctx: EngineContext): void {
   if (!isCharacter(bearer) || !isActorAlive(bearer)) return;
@@ -722,10 +780,10 @@ function triggerCounterAttack(bearer: Actor, combat: CombatState, ctx: EngineCon
   if (!active) return;
   const def = getStatusEffect(active.statusEffectId);
   const counter = def.counterAttack!;
-  if ((active.countersThisRound ?? 0) >= counter.maxPerRound) return;
+  if ((active.countersStruck ?? 0) >= counter.maxCounters) return;
   const enemies = livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx));
   if (enemies.length === 0) return;
-  active.countersThisRound = (active.countersThisRound ?? 0) + 1;
+  active.countersStruck = (active.countersStruck ?? 0) + 1;
   runInSession(
     combat,
     bearer.id,
@@ -743,6 +801,7 @@ function triggerCounterAttack(bearer: Actor, combat: CombatState, ctx: EngineCon
     },
     { snapshot: sessionSnapshot(combat, ctx) }
   );
+  if ((active.countersStruck ?? 0) >= counter.maxCounters && bearer.activeStatusEffects.includes(active)) expireStatusEffect(bearer, active, { log: combat.log });
 }
 
 type ExecutionTargets = Actor[] | "fizzle";
@@ -1330,13 +1389,6 @@ function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng:
   return rng.weightedPick(candidates, ([, weight]) => weight)[0];
 }
 
-/** A commanded minion's action: one of its signature skills by their own weights, or its basic attack when it has none. */
-function pickCommandedSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng: Rng): Id | null {
-  const signature = (archetype.signatureSkillIds ?? []).map((id): [Id, number] => [id, archetype.actionWeights?.[id] ?? 1]).filter(([, w]) => w > 0);
-  if (signature.length === 0) return null;
-  return rng.weightedPick(signature, ([, weight]) => weight)[0];
-}
-
 /** Fires a summon's `deathBurst` (Ninja's Shadow Clone) once, right before it leaves combat — an AoE hit to every living enemy plus a chance to apply its configured status, both computed off the owner's stat frozen at spawn time (`spawnSummon`), not whatever the summon or owner carries now. No-op for a summon with no `deathBurst` (every other archetype today). */
 function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const burst = summon.deathBurst;
@@ -1489,18 +1541,7 @@ function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, co
   return [];
 }
 
-/** A commanded minion's signature skill: every damage and heal effect scaled up by `boostPercent`. */
-function boostedSummonSkill(skill: SkillDefinition, boostPercent: number): SkillDefinition {
-  if (boostPercent === 0) return skill;
-  const scale = (v: number | undefined) => (v === undefined ? v : Math.round(v * (1 + boostPercent / 100)));
-  return {
-    ...skill,
-    effects: (skill.effects ?? []).map((e) => (e.kind === "damage" || e.kind === "heal" ? { ...e, amount: scale(e.amount), offenseMultiplierPercent: scale(e.offenseMultiplierPercent ?? 100) } : e)),
-  };
-}
-
-/** `command`: an extra action ordered by the owner (`commandSummons`) — the minion picks among its signature skills only, boosted, and the action is not counted against `maxActions`. */
-function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext, command?: { boostPercent: number }): void {
+function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContext): void {
   const summon = getActorByRef(ref, ctx) as Summon;
   if (hasStunningStatus(summon)) {
     combat.log.push({ text: t("combat.stunnedSkipTurn", { actor: summon.name }), kind: "info" });
@@ -1511,9 +1552,9 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   if (archetype.passive) return;
   applyOnActStatuses(summon, combat, ctx);
   if (!isActorAlive(summon)) return;
-  const skillId = command ? pickCommandedSummonAction(archetype, ctx.rng) : pickSummonAction(archetype, ctx.rng);
+  const skillId = pickSummonAction(archetype, ctx.rng);
   if (skillId !== null) {
-    const skill = command ? boostedSummonSkill(getSummonSkill(skillId), command.boostPercent) : getSummonSkill(skillId);
+    const skill = getSummonSkill(skillId);
     const targets = resolveSummonSkillTargets(skill, ref, combat, ctx).map((r) => getActorByRef(r, ctx));
     if (targets.length === 0) return;
     combat.log.push({ text: t("combat.monsterSkillOnTarget", { actor: summon.name, skill: skill.name, target: targets[0]!.name }), kind: "attack" });
@@ -1535,7 +1576,7 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
       }
     }
   }
-  if (!command) summon.actionsTaken += 1;
+  summon.actionsTaken += 1;
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
@@ -1585,7 +1626,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         ? { kind: "summon", id: source.id }
         : { kind: "monster", id: source.id };
     for (const effect of overrideEffects) {
-      // Resolved by the caller once this cast is over (`runCharacterTurn`).
+      // A Command cast is resolved as the minion skill it orders (`commandedSkill`); the marker effect itself does nothing.
       if (effect.kind === "commandSummons") continue;
       if (effect.kind === "throwDice") {
         if (isCharacter(source) && throwDice(effect, skill, source, combat, ctx, log)) landedDamageHit = true;

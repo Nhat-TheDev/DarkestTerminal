@@ -255,8 +255,8 @@
       {
         "id": "retaliate",
         "name": "Retaliate",
-        "description": "Plants the shield and dares them to swing, and every swing that lands is paid back across the whole line.",
-        "shortDescription": "Taunts; strikes back at all foes when hit.",
+        "description": "Plants the shield and dares them to swing, and the first blows that land are paid back across the whole line.",
+        "shortDescription": "Taunts for 1 turn; the first 2 hits taken are answered on every foe.",
         "target": "self",
         "slot": 5,
         "isBuff": true,
@@ -270,12 +270,12 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 3
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "retaliating",
-                "durationTurns": 3
+                "durationTurns": 1
               }
             ]
           },
@@ -287,12 +287,12 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 3
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "retaliating-ii",
-                "durationTurns": 3
+                "durationTurns": 1
               }
             ]
           },
@@ -304,12 +304,12 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 3
+                "durationTurns": 1
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "retaliating-iii",
-                "durationTurns": 3
+                "durationTurns": 1
               }
             ]
           }
@@ -708,7 +708,7 @@
         "id": "frost-lance",
         "name": "Frost Lance",
         "description": "A lance of ice drawn out of the air and thrown the length of the room.",
-        "shortDescription": "Heavy ice strike; may Slow.",
+        "shortDescription": "Heavy ice strike; always Chills.",
         "target": "singleEnemy",
         "slot": 5,
         "cooldownTurns": 3,
@@ -727,8 +727,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
-                "chance": 0.4,
+                "statusEffectId": "chilled",
                 "durationTurns": 2
               }
             ]
@@ -746,8 +745,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
-                "chance": 0.5,
+                "statusEffectId": "chilled",
                 "durationTurns": 2
               }
             ]
@@ -765,8 +763,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
-                "chance": 0.6,
+                "statusEffectId": "chilled",
                 "durationTurns": 2
               }
             ]
@@ -777,7 +774,7 @@
         "id": "ice-age",
         "name": "Ice Age",
         "description": "Frost crosses the floor and climbs every wall, and the torch flames lean away from it.",
-        "shortDescription": "Wide frost damage. Always hits.",
+        "shortDescription": "Wide frost damage that Chills every foe. Always hits.",
         "target": "allEnemies",
         "slot": 6,
         "isUltimate": true,
@@ -794,6 +791,11 @@
                 "amount": 20,
                 "offenseMultiplierPercent": 110,
                 "damageType": "ice"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "chilled",
+                "durationTurns": 2
               }
             ]
           },
@@ -807,6 +809,11 @@
                 "amount": 25,
                 "offenseMultiplierPercent": 120,
                 "damageType": "ice"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "chilled",
+                "durationTurns": 2
               }
             ]
           },
@@ -820,6 +827,11 @@
                 "amount": 35,
                 "offenseMultiplierPercent": 130,
                 "damageType": "ice"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "chilled",
+                "durationTurns": 2
               }
             ]
           }
@@ -1487,7 +1499,7 @@
         "id": "mass-heal",
         "name": "Mass Heal",
         "description": "A blessing spoken over the whole party; wounds close and breathing slows.",
-        "shortDescription": "Heals and calms the whole party.",
+        "shortDescription": "Heals the whole party and clears every damage over time.",
         "target": "allAllies",
         "slot": 4,
         "cooldownTurns": 2,
@@ -1500,13 +1512,12 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 15,
+                "amount": 20,
                 "offenseMultiplierPercent": 60
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -6
+                "kind": "removeStatusEffect",
+                "removesHarmfulDots": true
               }
             ]
           },
@@ -1517,13 +1528,12 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 20,
+                "amount": 25,
                 "offenseMultiplierPercent": 70
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -8
+                "kind": "removeStatusEffect",
+                "removesHarmfulDots": true
               }
             ]
           },
@@ -1534,13 +1544,12 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 25,
-                "offenseMultiplierPercent": 80
+                "amount": 35,
+                "offenseMultiplierPercent": 85
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -10
+                "kind": "removeStatusEffect",
+                "removesHarmfulDots": true
               }
             ]
           }
@@ -1550,7 +1559,7 @@
         "id": "sanctuary",
         "name": "Sanctuary",
         "description": "Marks a circle on the floor, and inside it the wounds close slowly and the dark seems farther off.",
-        "shortDescription": "Party heals over time and resists fear.",
+        "shortDescription": "Party heals over time and resists fear; the Acolyte's basic attack turns holy for 2 turns.",
         "target": "allAllies",
         "slot": 5,
         "isBuff": true,
@@ -1571,6 +1580,12 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "steadfast",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "cleansing-light",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -1588,6 +1603,12 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "steadfast",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "cleansing-light-ii",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
@@ -1605,6 +1626,12 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "steadfast",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "cleansing-light-iii",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           }
@@ -2025,6 +2052,10 @@
           "hpPercentThreshold": 50,
           "offenseMultiplierPercentBonus": 60,
           "lifestealPercent": 40
+        },
+        "conditionalBonus": {
+          "requiresStatusId": "storm-empowered",
+          "ignoreDefensePercentBonus": 30
         },
         "ranks": [
           {
@@ -3904,9 +3935,9 @@
       {
         "id": "command",
         "name": "Command",
-        "description": "Speaks one word through the totem, and everything bound to it moves at once.",
-        "shortDescription": "A strike; every minion acts at once, empowered.",
-        "target": "singleEnemy",
+        "description": "Speaks one word through the totem, and the thing bound to it moves with the Summoner's own strength behind it.",
+        "shortDescription": "Casts one minion's skill on its behalf.",
+        "target": "self",
         "slot": 5,
         "cooldownTurns": 3,
         "isMagic": true,
@@ -3917,14 +3948,9 @@
             "mpCost": 12,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 8,
-                "offenseMultiplierPercent": 70,
-                "damageType": "magic"
-              },
-              {
                 "kind": "commandSummons",
-                "target": "self"
+                "target": "self",
+                "powerPercent": 100
               }
             ]
           },
@@ -3934,14 +3960,9 @@
             "mpCost": 13,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 11,
-                "offenseMultiplierPercent": 80,
-                "damageType": "magic"
-              },
-              {
                 "kind": "commandSummons",
-                "target": "self"
+                "target": "self",
+                "powerPercent": 115
               }
             ]
           },
@@ -3951,14 +3972,9 @@
             "mpCost": 14,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 14,
-                "offenseMultiplierPercent": 90,
-                "damageType": "magic"
-              },
-              {
                 "kind": "commandSummons",
-                "target": "self"
+                "target": "self",
+                "powerPercent": 130
               }
             ]
           }

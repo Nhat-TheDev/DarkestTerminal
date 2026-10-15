@@ -1,7 +1,7 @@
 import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
 import type { Character, CombatantRef, CombatStat, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
-import { getActorByRef, checkSkillUsable, checkItemUsable, channelStatus } from "../../engine/combat";
+import { getActorByRef, checkSkillUsable, checkItemUsable, channelStatus, commandableSummons, commandedSkill, isCommandSkill } from "../../engine/combat";
 import { getSkill } from "../../data/classes";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
@@ -114,7 +114,7 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
           : t("ui.skillEffectRemoveStatus");
       break;
     case "commandSummons":
-      return t("ui.skillEffectCommandSummons");
+      return t("ui.skillEffectCommandSummons", { percent: e.powerPercent ?? 100 });
     case "throwDice":
       return t("ui.skillEffectThrowDice", { amount: e.amount ?? 0, percent: e.offenseMultiplierPercent ?? 100, statLabel: sk.isMagic ? "Magic Power" : "Attack" });
     default:
@@ -189,6 +189,8 @@ export type CombatUiState = Extract<
   | { kind: "pickAction" }
   | { kind: "pickSkill" }
   | { kind: "skillDetail" }
+  | { kind: "pickCommandMinion" }
+  | { kind: "pickCommandSkill" }
   | { kind: "pickItemInCombat" }
   | { kind: "pickTarget" }
   | { kind: "roundResolved" }
@@ -204,11 +206,31 @@ function skillMeta(actor: Character, sk: SkillDefinition): { dmgAmount: number |
   return { dmgAmount, usesLeft };
 }
 
+/** The minions the acting character can Command right now. */
+function commandMinions(game: Game, actorRef: CombatantRef) {
+  return game.state.combat ? commandableSummons(getActorByRef(actorRef, game.ctx) as Character, game.state.combat, game.ctx) : [];
+}
+
+/** The minion's signature skills, each as the caster would cast it through `command`. */
+function commandSkillChoices(game: Game, ui: Extract<UiState, { kind: "pickCommandSkill" }>) {
+  const summon = commandMinions(game, ui.actorRef).find((s) => s.id === ui.summonId);
+  if (!summon) return [];
+  return (getSummonArchetype(summon.archetypeId).signatureSkillIds ?? []).map((id) => ({ id, skill: commandedSkill(ui.skill, summon, id), base: getSummonSkill(id) }));
+}
+
 export function trySelectSkill(ctx: ScreenContext, actorRef: CombatantRef, skill: SkillDefinition): void {
   const actor = getActorByRef(actorRef, ctx.game.ctx);
   const unusable = checkSkillUsable(actor, skill);
   if (unusable) {
     ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: unusable.reason }));
+    return;
+  }
+  if (isCommandSkill(skill)) {
+    if (commandMinions(ctx.game, actorRef).length === 0) {
+      ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: t("errors.commandNeedsMinion") }));
+      return;
+    }
+    ctx.setUi({ kind: "pickCommandMinion", actorRef, skill });
     return;
   }
   if (skill.target === "singleEnemy" || skill.target === "singleAlly") {
@@ -292,6 +314,28 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
       if (key.name === "return") trySelectSkill(ctx, ui.actorRef, ui.skill);
       break;
     }
+    case "pickCommandMinion": {
+      if (digit === null) break;
+      const summon = commandMinions(ctx.game, ui.actorRef)[digit - 1];
+      if (summon) ctx.setUi({ kind: "pickCommandSkill", actorRef: ui.actorRef, skill: ui.skill, summonId: summon.id });
+      break;
+    }
+    case "pickCommandSkill": {
+      if (digit === null) break;
+      const choice = commandSkillChoices(ctx.game, ui)[digit - 1];
+      if (!choice) break;
+      const order = { summonId: ui.summonId, skillId: choice.id };
+      const target = choice.skill.target;
+      if (target === "singleEnemy" || target === "singleAlly") {
+        const candidates = target === "singleEnemy" ? ctx.game.livingEnemyRefs() : ctx.game.livingAllyRefs();
+        ctx.setUi({ kind: "pickTarget", actorRef: ui.actorRef, source: { kind: "command", skill: choice.skill, commandSkillId: ui.skill.id, order }, candidates });
+        break;
+      }
+      const err = ctx.game.queueCommand(ui.actorRef, ui.skill.id, order, ctx.game.autoTargets(target, ui.actorRef) ?? [ui.actorRef]);
+      if (err) ctx.reportUnusable(err.reason);
+      ctx.syncUiToGameState();
+      break;
+    }
     case "pickItemInCombat": {
       if (digit === null) break;
       const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
@@ -307,7 +351,9 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
       const err =
         ui.source.kind === "skill"
           ? ctx.game.queue(ui.actorRef, ui.source.skill.id, [target])
-          : ctx.game.queueItem(ui.actorRef, ui.source.item.id, [target]);
+          : ui.source.kind === "command"
+            ? ctx.game.queueCommand(ui.actorRef, ui.source.commandSkillId, ui.source.order, [target])
+            : ctx.game.queueItem(ui.actorRef, ui.source.item.id, [target]);
       if (err) ctx.reportUnusable(err.reason);
       ctx.syncUiToGameState();
       break;
@@ -395,6 +441,25 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
       return lines.join("\n");
     }
 
+    case "pickCommandMinion": {
+      const lines = [t("ui.chooseCommandMinion")];
+      commandMinions(game, ui.actorRef).forEach((summon, i) => lines.push(t("ui.commandMinionLine", { i: i + 1, name: summon.name, left: summon.maxActions - summon.actionsTaken })));
+      return lines.join("\n");
+    }
+
+    case "pickCommandSkill": {
+      const summon = game.ctx.summons.find((x) => x.id === ui.summonId);
+      const lines = [t("ui.chooseCommandSkill", { summon: summon?.name ?? "" })];
+      commandSkillChoices(game, ui).forEach(({ skill, base }, i) => {
+        lines.push(t("ui.commandSkillLine", { i: i + 1, name: base.name, desc: base.description }));
+        for (const effect of skill.effects ?? []) {
+          const line = skillEffectLine(effect, skill);
+          if (line) lines.push(line);
+        }
+      });
+      return lines.join("\n");
+    }
+
     case "pickItemInCombat": {
       const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
       const lines = [t("ui.chooseItemToUse")];
@@ -406,9 +471,9 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
     }
 
     case "pickTarget": {
-      const sourceName = ui.source.kind === "skill" ? ui.source.skill.name : ui.source.item.name;
-      const sourceTarget = ui.source.kind === "skill" ? ui.source.skill.target : ui.source.item.target;
-      const effects = ui.source.kind === "skill" ? ui.source.skill.effects ?? [] : ui.source.item.effects;
+      const sourceName = ui.source.kind === "item" ? ui.source.item.name : ui.source.skill.name;
+      const sourceTarget = ui.source.kind === "item" ? ui.source.item.target : ui.source.skill.target;
+      const effects = ui.source.kind === "item" ? ui.source.item.effects : ui.source.skill.effects ?? [];
       const candidates = ui.candidates.map((ref) => ({ ref, actor: getActorByRef(ref, game.ctx) }));
       // Every enemy can be untargetable at once (an airborne Dragon): say so rather than show an empty list.
       const unreachable: TextChunk[][] = candidates.length === 0 ? [[colorChunk(t("ui.noTargetReachable"), PALETTE.dim)]] : [];
@@ -429,6 +494,10 @@ export function renderFooter(ui: CombatUiState, game: Game, page = 0): string {
     }
     case "skillDetail":
       return t("ui.footerSkillDetail");
+    case "pickCommandMinion":
+      return digitHint("ui.footerChooseMinionEsc", commandMinions(game, ui.actorRef).length);
+    case "pickCommandSkill":
+      return digitHint("ui.footerChooseSkillEsc", commandSkillChoices(game, ui).length);
     case "pickItemInCombat": {
       const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
       return digitHint("ui.footerChooseItemEsc", pageItems.length);

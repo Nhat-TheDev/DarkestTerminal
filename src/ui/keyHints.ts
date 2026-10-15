@@ -20,6 +20,8 @@ const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "pickAction",
   "pickSkill",
   "skillDetail",
+  "pickCommandMinion",
+  "pickCommandSkill",
   "pickItemInCombat",
   "pickTarget",
   "roundResolved",

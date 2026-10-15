@@ -779,11 +779,12 @@ describe("Mage skill ranks", () => {
     });
   });
 
-  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100", () => {
+  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100, each chilling every target", () => {
     const skill = getSkill("ice-age");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }]);
+    const chill = { kind: "applyStatusEffect" as const, statusEffectId: "chilled", durationTurns: 2 };
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }, chill]);
   });
 });
 

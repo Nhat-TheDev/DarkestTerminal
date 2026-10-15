@@ -146,7 +146,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | 2 | `shield-throw` | Shield Throw | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% ATK | — |
 | 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
 | 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `retaliate` | Retaliate | self | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status taunt (3 turns); status retaliating / retaliating-ii / retaliating-iii (3 turns) | buff |
+| 5 | `retaliate` | Retaliate | self | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status taunt (1 turn); status retaliating / retaliating-ii / retaliating-iii (1 turn) | buff |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 
@@ -156,7 +156,7 @@ How each skill works:
 - `shield-throw` — `damage`
 - `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
 - `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
-- `retaliate` — `applyStatusEffect "taunt"` + `applyStatusEffect "retaliating"` (rank variants `-ii`/`-iii`) on the caster: while it lasts, every monster hit that lands on the Vanguard is answered with a sweep at every enemy, at most twice a round (`counterAttack`, section 1.14)
+- `retaliate` — `applyStatusEffect "taunt"` + `applyStatusEffect "retaliating"` (rank variants `-ii`/`-iii`) on the caster for 1 turn: while it lasts, every monster hit that lands on the Vanguard is answered with a sweep at every enemy; the second counter ends it at once (`counterAttack`, section 1.14)
 - `sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Shield Guard carries both the "aggro draw" role and the "defense" role, while Rally is a whole-party buff rather than just self-taunt. The Flags column marks skills that receive `isBuff: true` — see the `durationTurns`/cooldown/speed rules specific to buffs in section 1.7 and `docs/technical-decisions.md` §4.7. MP costs, effects and cooldowns are in the table above, generated from `data/classes.json`.*
@@ -174,8 +174,8 @@ How each skill works:
 | 2 | `lightning-bolt` | Lightning Bolt | singleEnemy | — | 6 / 7 / 8 | 1 / 7 / 15 | damage 12 / 15 / 19 + 100 / 110 / 115% MAG (lightning); status stunned (1 turn, 20 / 28 / 35% chance) | magic |
 | 3 | `fire-pillar` | Fire Pillar | allEnemies | 2 | 14 / 15 / 16 | 10 / 25 / 45 | damage 12 / 15 / 19 + 80 / 85 / 90% MAG (fire); status burning (2 turns, 50 / 60 / 70% chance) | magic |
 | 4 | `lightning-storm` | Lightning Storm | allEnemies | 3 | 16 / 17 / 18 | 15 / 40 / 65 | damage 15 / 20 / 30 + 80 / 90 / 100% MAG (lightning); status stunned (1 turn, 30 / 38 / 45% chance) | magic |
-| 5 | `frost-lance` | Frost Lance | singleEnemy | 3 | 15 / 16 / 17 | 25 / 50 / 75 | damage 16 / 22 / 28 + 120 / 135 / 150% MAG (ice); status slowed (2 turns, 40 / 50 / 60% chance) | magic |
-| 6 | `ice-age` | Ice Age | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 20 / 25 / 35 + 110 / 120 / 130% MAG (ice) | ultimate · magic |
+| 5 | `frost-lance` | Frost Lance | singleEnemy | 3 | 15 / 16 / 17 | 25 / 50 / 75 | damage 16 / 22 / 28 + 120 / 135 / 150% MAG (ice); status chilled (2 turns) | magic |
+| 6 | `ice-age` | Ice Age | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 20 / 25 / 35 + 110 / 120 / 130% MAG (ice); status chilled (2 turns) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
@@ -184,8 +184,8 @@ How each skill works:
 - `lightning-bolt` — `damage` + chance to `applyStatusEffect "stunned"`
 - `fire-pillar` — `damage`/enemy + chance to `applyStatusEffect "burning"` **per enemy** (rolled separately for each target, both accuracy and proc)
 - `lightning-storm` — `damage`/enemy + chance to `applyStatusEffect "stunned"` **per enemy**
-- `frost-lance` — heavy single-target `damage` (`ice`) + chance to `applyStatusEffect "slowed"`
-- `ice-age` — `damage`/enemy — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `frost-lance` — heavy single-target `damage` (`ice`) + a guaranteed `applyStatusEffect "chilled"`: a stackable speed cut; the second stack clears both and leaves the target `frozen`, which costs it its next turn like a stun (`onMaxStacks`, section 1.14)
+- `ice-age` — `damage`/enemy + a guaranteed `chilled` on each, stacking with Frost Lance's — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *All of Mage's skills are `isMagic: true`, so the engine substitutes `magicPower` for `attack` in the same formula (`amount + mitigatedOffense(magicPower * offenseMultiplier, defense)`) — see the "Reading the Effects column" note under section 1.1 for how `offenseMultiplier` is read per skill/rank from `data/classes.json`.*
 
@@ -231,8 +231,8 @@ How each skill works:
 | 1 | `prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -15 / -19 / -24; status fortify (2 turns) | — |
 | 2 | `heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG | magic |
 | 3 | `purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
-| 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 15 / 40 / 65 | heal 15 / 20 / 25 + 60 / 70 / 80% MAG; fear -6 / -8 / -10 | magic |
-| 5 | `sanctuary` | Sanctuary | allAllies | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status sanctified / sanctified-ii / sanctified-iii (3 turns); status steadfast (2 turns) | buff · magic |
+| 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 15 / 40 / 65 | heal 20 / 25 / 35 + 60 / 70 / 85% MAG; remove every harmful damage-over-time status | magic |
+| 5 | `sanctuary` | Sanctuary | allAllies | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status sanctified / sanctified-ii / sanctified-iii (3 turns); status steadfast (2 turns); status cleansing-light / cleansing-light-ii / cleansing-light-iii (2 turns, target self) | buff · magic |
 | 6 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies); fear -15 / -20 / -25 (on allies); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
 <!-- docs:end -->
 
@@ -241,8 +241,8 @@ How each skill works:
 - `prayer` — `modifyStat fear` + `applyStatusEffect "fortify"` (2 turns) on the same ally. Its cooldown lets one ally keep `fortify` up continuously when Prayer is recast every time it comes off cooldown
 - `heal` — `heal`
 - `purify` — targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage`
-- `mass-heal` — `heal` + `modifyStat fear`
-- `sanctuary` — every ally gets `sanctified` (a heal over time off the Acolyte's magic power, rank variants `-ii`/`-iii`) and `steadfast` (a `fearResistPercent` status, section 1.14)
+- `mass-heal` — `heal` + `removeStatusEffect` with `removesHarmfulDots`: every damage-over-time status on each ally goes
+- `sanctuary` — every ally gets `sanctified` (a heal over time off the Acolyte's magic power, rank variants `-ii`/`-iii`) and `steadfast` (a `fearResistPercent` status, section 1.14); the Acolyte also gets `cleansing-light` (rank variants `-ii`/`-iii`) for 2 turns, which turns its basic attack into Cleansing Smite, a holy strike off magic power (`basicAttackOverride`, section 1.14)
 - `divine-descent` — allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *None of Acolyte's skills carry the buff flag. Prayer's `fortify` is a stat modifier like any other, but Prayer itself resolves in plain speed order (Acolyte is slow), so on the round it's cast a faster monster can act before the ally is fortified.*
@@ -268,7 +268,7 @@ Basic attack (slot 0, same as every class — section 1.0): **Axe Slash** (`axe-
 | 2 | `frenzied-slash` | Frenzied Slash | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 9 / 12 / 15 + 95 / 100 / 105% ATK; status bleeding (3 turns, 50 / 60 / 70% chance); with status storm-empowered: ignores 30% defense | — |
 | 3 | `throw-axe` | Throw Axe | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 16 / 20 / 25 + 100 / 107 / 115% ATK; with status storm-empowered: ignores 30% defense | — |
 | 4 | `spinning-axe` | Spinning Axe | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 15 / 20 / 30 + 70 / 77 / 85% ATK; status bleeding (3 turns, 30 / 40 / 50% chance); with status storm-empowered: ignores 30% defense | — |
-| 5 | `desperate-cleave` | Desperate Cleave | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 14 / 19 / 24 + 110 / 125 / 140% ATK; caster below 50% HP: +60% offense, 40% lifesteal | — |
+| 5 | `desperate-cleave` | Desperate Cleave | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 14 / 19 / 24 + 110 / 125 / 140% ATK; with status storm-empowered: ignores 30% defense; caster below 50% HP: +60% offense, 40% lifesteal | — |
 | 6 | `thunder-gods-fury` | Thunder God's Fury | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 30 / 40 / 50 + 80 / 100 / 120% ATK (lightning); with status storm-empowered: ignores 60% defense, consumes it | ultimate |
 <!-- docs:end -->
 
@@ -278,7 +278,7 @@ How each skill works:
 - `frenzied-slash` — `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered`
 - `throw-axe` — `damage` (physical) — same `storm-empowered` conditionalBonus
 - `spinning-axe` — `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus
-- `desperate-cleave` — heavy single-target `damage`; while the Viking is below its `casterHpBelowBonus` threshold the hit gains extra offense and lifesteal (section 1.14)
+- `desperate-cleave` — heavy single-target `damage`; while the Viking is below its `casterHpBelowBonus` threshold the hit gains extra offense and lifesteal (section 1.14); under `storm-empowered` it also ignores part of the target's defense (`conditionalBonus`)
 - `thunder-gods-fury` — `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use
 
 *Skills 2-5 are all purely physical (not `isMagic`) — the Viking's magic damage only comes indirectly through the `storm-empowered` proc (1.5.2), not directly through the skill formula the way Mage/Acolyte work.*
@@ -716,7 +716,7 @@ Basic attack (slot 0): **Hollow Pulse** (`hollow-pulse`), magic (`isMagic`, scal
 | 2 | `summon-spirit` | Summon Spirit | self | 3 | 10 / 11 / 12 | 1 / 7 / 15 | summon summon-spirit; status spirit-bound (2 turns) | buff |
 | 3 | `summon-golem` | Summon Golem | singleEnemy | 4 | 12 / 13 / 14 | 10 / 25 / 45 | summon summon-golem (target self); damage 12 / 18 / 26 + 90 / 105 / 120% ATK; status stone-skin (2 turns, target self) | buff |
 | 4 | `totem-recall` | Totem Recall | self | 6 | 10 / 11 / 12 | 15 / 40 / 65 | summon totem-recall; status totems-strength (99 turns, target allAllies, min 10 / 15 / 20%, not on summons, lasts while the summon lives, amount 8 / 14 / 20) | buff |
-| 5 | `command` | Command | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 8 / 11 / 14 + 70 / 80 / 90% MAG (magic); every minion acts once more, boosted (target self) | magic |
+| 5 | `command` | Command | self | 3 | 12 / 13 / 14 | 25 / 50 / 75 | cast one minion's signature skill as your own, off MAG, at 100 / 115 / 130% of its damage and healing (target self) | magic |
 | 6 | `summon-hellfire-imp` | Summon Hellfire Imp | allEnemies | 4 | 20 / 21 / 22 | 35 / 70 / 100 | summon summon-hellfire-imp (target self); damage 8 / 13 / 18 + 80% MAG; status hellfire-kindled (2 turns, target self) | ultimate · magic |
 <!-- docs:end -->
 
@@ -727,7 +727,7 @@ How each skill works:
 - `summon-spirit` — summons `healer-spirit` — low HP/`aggro`. Each turn: by default heals the party character with the lowest %HP (never itself or another minion); it sometimes instead casts a party-wide heal (`allAllies`, characters only) that turn, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions.
 - `summon-golem` — summons `stone-golem` — high HP, moderate `attack`, **high `aggro`**. Each turn: Stomp (`damage`, allEnemies) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` directly to the chosen enemy**
 - `totem-recall` — Plants a passive totem (`recall-totem` — never acts, only leaves combat by actually dying; 1.13's `SummonArchetype.passive`) and applies an `attack` buff to every ally except summons, lasting **until the totem dies**, not a fixed duration — see 1.13 for the mechanism.
-- `command` — a magic `damage` hit + `commandSummons`: every minion the Summoner has out acts once more right away with a signature skill boosted by its archetype's `commandBoostPercent`, without spending one of its `maxActions` (section 1.14)
+- `command` — `commandSummons` only: the player picks one of the Summoner's minions, then one of its signature skills, and the Summoner casts that skill as its own, off its magic power, at the rank's `powerPercent`; the minion spends one of its `maxActions` and leaves if that was its last. The Recall Totem takes no turns and can't be commanded (section 1.14)
 - `summon-hellfire-imp` — summons `hellfire-imp` — moderate HP, high `attack`, low `aggro`; every attack it lands (basic or skill) has a chance to `applyStatusEffect "burning"`. Each turn: Hellfire Strike (high single-target `damage` + new status "agony" = DoT + `attack` debuff) or a basic attack, weighted as in the table in 1.11.1. Vanishes after its `maxActions` actions. **On cast, also deals `damage` to allEnemies directly** — **always hits** (isUltimate), effectiveness scales down with fear via the ultimate formula
 
 - Default cap (before the Bound Legion passive reaches its second rank, see 1.13): **1 minion** active at a time — casting a new summon skill dismisses whichever minion is currently active. Each later rank of the passive raises the cap (`maxActiveMinions` in the passive table in 1.13), for minions of **different types** simultaneously. Purely level-gated (the unlock levels are in that table), independent of anything being cast, with no separate "cast the buff to raise the cap" step (see 1.13 for the Bound Legion passive).
@@ -912,24 +912,27 @@ How each passive works:
 
 | Class | Slot 5 | What it does |
 |---|---|---|
-| Vanguard | Retaliate | Taunts and turns every monster hit on the Vanguard into a sweep at all enemies, at most twice a round |
-| Mage | Frost Lance | A heavy ice hit that may slow |
+| Vanguard | Retaliate | Taunts for a turn and answers monster hits with a sweep at all enemies, until it has struck twice |
+| Mage | Frost Lance | A heavy ice hit that chills; a second chill freezes the target solid |
 | Rogue | Venom Brand | A light cut that always leaves the target weak to poison |
-| Acolyte | Sanctuary | A heal over time and a fear resist on the whole party |
-| Viking | Desperate Cleave | A heavy hit that gains offense and lifesteal while the Viking is below half HP |
+| Acolyte | Sanctuary | A heal over time and a fear resist on the whole party; the Acolyte's basic attack turns holy for 2 turns |
+| Viking | Desperate Cleave | A heavy hit that gains offense and lifesteal while the Viking is below half HP, and ignores part of the defense while Storm-Empowered |
 | Plague Doctor | Volatile Flask | Bursts 2-6 times on every enemy, each burst harder per debuff on it |
 | Archer | Piercing Arrow | A hit that ignores part of the target's defense, with a crit chance |
 | Ninja | Barbed Net | Light damage on every enemy, a chance to stagger, and a net that bleeds them as they act |
-| Summoner | Command | A magic hit, then every minion out acts once more, boosted |
+| Summoner | Command | Casts one minion's skill as the Summoner's own, off its magic power |
 
 The mechanics these skills needed, all read from `data/*.json` (`src/types.ts`):
 
-- **`StatusEffectDefinition.counterAttack`** `{ maxPerRound, amount, offenseMultiplierPercent }` (Retaliate's `retaliating`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes every targetable enemy, no accuracy roll, at most `maxPerRound` times a round. The count lives on the active status (`ActiveStatusEffect.countersThisRound`) and is cleared at the start of every round. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
+- **`StatusEffectDefinition.counterAttack`** `{ maxCounters, amount, offenseMultiplierPercent }` (Retaliate's `retaliating`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes every targetable enemy, no accuracy roll. The count lives on the active status (`ActiveStatusEffect.countersStruck`); the counter that reaches `maxCounters` ends the status on the spot. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
 - **`StatusEffectDefinition.fearResistPercent`** (Sanctuary's `steadfast`). Every fear gain on the bearer is cut by it, combined multiplicatively with its `fearResist` from Artifacts and Ability. Engine hook: `resistedFearGain`, `src/engine/survival.ts`.
 - **`SkillDefinition.casterHpBelowBonus`** `{ hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent? }` (Desperate Cleave). Checked once when the skill resolves: below the threshold, every `damage` effect gains the offense bonus and the lifesteal. Engine hook: `applySkillEffects`.
 - **`SkillEffect.scalesWithDebuffCount`** `{ percentPerDebuff }` (Volatile Flask). Each harmful status on the target when the hit lands adds to the offense multiplier, a stackable status counting once (`harmfulStatusCount`). With `hitCountRange`, every strike re-counts. Engine hook: the `"damage"` case of `resolveSkillEffect`, `src/engine/resolver.ts`.
 - **`StatusEffectDefinition.onActStatus`** `{ statusEffectId, chance, durationTurns }` (Barbed Net's `netted`). Each time the bearer acts — not when stunned or interrupted — it rolls to put the status on itself. Engine hook: `applyOnActStatuses`, `src/engine/combat.ts`, at the top of a monster's, character's or summon's turn.
-- **`commandSummons`** (a `SkillEffect` kind, Command) and **`SummonArchetype.commandBoostPercent`** (`data/summons.json`). Once the cast is over, each of the caster's minions that takes turns acts once more, picking among its signature skills by their weights (its basic attack if it has none), with every damage and heal of that skill raised by its archetype's `commandBoostPercent`. The extra action is its own session and does not count toward `maxActions`. Engine hook: `commandOwnedSummons`, `src/engine/combat.ts`.
+- **`commandSummons`** (a `SkillEffect` kind, Command) with **`SkillEffect.powerPercent`**. A Command is queued with an order — `ActionSource.command` `{ summonId, skillId }`, through `queueCommand` (plain `queueAction` refuses it) — naming one of the caster's minions that takes turns (`commandableSummons`: not passive, with a signature skill, still in the fight) and one of that minion's `signatureSkillIds`. On the caster's turn it resolves as that skill cast by the caster (`commandedSkill`): the Command's MP cost and cooldown, the minion skill's target and effects, every `damage` and `heal` amount and offense multiplier at `powerPercent`, scaled off the caster's magic power. The minion then spends one action and leaves if it has none left (`expireSummonIfDone`). A minion gone before the caster's turn wastes the order, with nothing paid. The command screen walks minion → skill → target (`pickCommandMinion`, `pickCommandSkill`, `src/ui/screens/combat.ts`).
+- **`StatusEffectDefinition.onMaxStacks`** `{ statusEffectId, durationTurns }` (Frost Lance and Ice Age's `chilled`). The moment a stackable status reaches its `maxStacks`, every stack goes and the bearer gets the named status (`frozen`, a stun). Engine hook: `applyStatusEffectToActor`, `src/engine/resolver.ts`.
+- **`StatusEffectDefinition.basicAttackOverride`** `{ name, amount, offenseMultiplierPercent, damageType?, isMagic? }` (Sanctuary's `cleansing-light`/`-ii`/`-iii`). While the bearer carries it, its slot-0 skill is that strike instead, in the skill list and in combat (`withBasicAttackOverride`, `src/engine/combat.ts`).
+- **`SkillEffect.removesHarmfulDots`** (Mass Heal). A `removeStatusEffect` with it takes off every harmful damage-over-time status on the target. Engine hook: `removeStatusEffect`, `src/engine/resolver.ts`.
 
 ### 1.15 Jester — debuffs, speed, and damage left to chance
 
