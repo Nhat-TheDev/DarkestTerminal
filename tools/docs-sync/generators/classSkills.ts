@@ -3,7 +3,7 @@ import { describeEffects, joinRanks } from "../effects";
 import { formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** What a skill adds on top of its per-rank effects: a bonus that needs a status, an execute bonus, a low-HP caster bonus and a coin flip. */
+/** What a skill adds on top of its per-rank effects: a bonus that needs a status, an execute bonus, a low-HP caster bonus, a coin flip, dice it grants and a turn-order push for the party. */
 function modifiers(skill: SkillDefinition): string[] {
   const out: string[] = [];
   const conditional = skill.conditionalBonus;
@@ -25,9 +25,12 @@ function modifiers(skill: SkillDefinition): string[] {
   }
   const coin = skill.coinFlip;
   if (coin) {
-    const lose = coin.loseSelfStatusEffectId ? `, and status ${coin.loseSelfStatusEffectId} on the caster (${formatNumber(coin.loseSelfDurationTurns ?? 1)} turns)` : "";
-    out.push(`coin flip: ${formatNumber(coin.winChance * 100)}% for ${formatNumber(coin.winOffenseMultiplierPercent)}% offense, else ${formatNumber(coin.loseOffenseMultiplierPercent)}%${lose}`);
+    const statuses = (coin.loseSelfStatuses ?? []).map((s) => `status ${s.statusEffectId} on the caster (${formatNumber(s.durationTurns)} turns)`);
+    const lose = ["no damage", ...statuses, ...(coin.resetCooldownOnLose ? ["cooldown reset"] : [])].join(", ");
+    out.push(`coin flip: ${formatNumber(coin.winChance * 100)}% to resolve, on a loss ${lose}`);
   }
+  if (skill.grantsDice) out.push(`+${formatNumber(skill.grantsDice)} dice`);
+  if (skill.allyTurnOrderBonus) out.push(`the rest of the party +${formatNumber(skill.allyTurnOrderBonus)} speed for turn order this round`);
   return out;
 }
 

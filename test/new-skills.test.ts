@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { startCombat, queueAction, resolveRound, applySkillEffects, applyOnActStatuses } from "../src/engine/combat";
+import { startCombat, queueAction, resolveRound, applySkillEffects, applyOnActStatuses, clearCombatResources } from "../src/engine/combat";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulStatusCount } from "../src/engine/resolver";
 import { resistedFearGain } from "../src/engine/survival";
@@ -205,75 +205,141 @@ describe("Command (Summoner)", () => {
 describe("Jester", () => {
   withoutDamageRolls();
 
-  function jesterFight(level: number) {
+  function jesterFight(level: number, ratCount = 1) {
     const { ctx } = makeCtx();
     const jester = ctx.party.find((c) => c.classId === "jester")!;
-    unlock(jester, level, "double-or-nothing");
-    const target = tank(spawnInto(ctx, "dungeon-rat"));
-    const combat = startCombat("r1", [target.id], ctx, false);
-    const cast = () => {
-      const before = target.hp;
-      applySkillEffects(getEffectiveSkill(getSkill("double-or-nothing"), jester.level), jester, [target], combat, ctx, combat.log);
-      return before - target.hp;
+    unlock(jester, level, "jeer", "battle-ballad", "rigged-game", "double-or-nothing", "finale");
+    const rats = Array.from({ length: ratCount }, () => tank(spawnInto(ctx, "dungeon-rat")));
+    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+    const target = rats[0]!;
+    const cast = (skillId: string, targets: Monster[] = [target]) => {
+      const before = targets.map((t) => t.hp);
+      applySkillEffects(getEffectiveSkill(getSkill(skillId), jester.level), jester, targets, combat, ctx, combat.log);
+      return targets.reduce((sum, t, i) => sum + before[i]! - t.hp, 0);
     };
-    return { ctx, jester, cast };
+    return { ctx, jester, rats, target, combat, cast };
   }
 
-  test("a lost coin flip slows the Jester and stores Fortune; a won one spends it for more damage", () => {
+  test("a lost coin flip misses, slows the Jester, rigs the next toss, resets the cooldown and stores Fortune", () => {
+    const { ctx, jester, cast } = jesterFight(25);
+    const realChance = ctx.rng.chance.bind(ctx.rng);
+    ctx.rng.chance = () => false;
+    jester.cooldownsRemaining["double-or-nothing"] = 3;
+    expect(cast("double-or-nothing")).toBe(0);
+    for (const id of ["slowed", "rigged"]) expect(jester.activeStatusEffects.some((s) => s.statusEffectId === id)).toBe(true);
+    expect(jester.cooldownsRemaining["double-or-nothing"]).toBe(0);
+    expect(jester.activeStatusEffects.find((s) => s.statusEffectId === "fortune")?.stacks).toBe(1);
+
+    // Rigged doubles a 50% toss: the next one cannot lose.
+    ctx.rng.chance = realChance;
+    expect(cast("double-or-nothing")).toBeGreaterThan(0);
+    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
+  });
+
+  test("Fortune makes the winning toss hit harder, and below rank 1 nothing is stored", () => {
     const { ctx, jester, cast } = jesterFight(25);
     ctx.rng.chance = () => false;
-    cast();
-    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "slowed")).toBe(true);
-    expect(jester.activeStatusEffects.find((s) => s.statusEffectId === "fortune")?.stacks).toBe(1);
-    cast();
-    expect(jester.activeStatusEffects.find((s) => s.statusEffectId === "fortune")?.stacks).toBe(2);
-
+    cast("double-or-nothing");
+    cast("double-or-nothing");
     ctx.rng.chance = () => true;
-    const withFortune = cast();
-    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
-    const withoutFortune = cast();
+    const withFortune = cast("double-or-nothing");
+    const withoutFortune = cast("double-or-nothing");
     expect(withFortune).toBeGreaterThan(withoutFortune);
+
+    const low = jesterFight(1);
+    low.ctx.rng.chance = () => false;
+    low.cast("double-or-nothing");
+    expect(low.jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
   });
 
-  test("below the passive's first rank a lost gamble stores nothing", () => {
-    const { ctx, jester, cast } = jesterFight(1);
-    ctx.rng.chance = () => false;
-    cast();
-    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
-  });
-
-  test("Loaded Dice rolls its damage inside its range", () => {
-    const { ctx } = makeCtx();
-    const jester = ctx.party.find((c) => c.classId === "jester")!;
-    const target = tank(spawnInto(ctx, "dungeon-rat"));
+  test("Loaded Dice deals one of its six faces", () => {
+    const { jester, target, cast } = jesterFight(1);
     target.defense = 0;
-    const combat = startCombat("r1", [target.id], ctx, false);
-    const skill = getEffectiveSkill(getSkill("loaded-dice"), 1);
-    const range = skill.effects![0]!.damageRollRange!;
-    const hits = new Set<number>();
-    for (let i = 0; i < 40; i++) {
-      const before = target.hp;
-      applySkillEffects(skill, jester, [target], combat, ctx, combat.log);
-      hits.add(before - target.hp);
-    }
-    expect(hits.size).toBeGreaterThan(1);
-    const amount = skill.effects![0]!.amount!;
-    for (const hit of hits) {
-      expect(hit).toBeGreaterThanOrEqual(Math.floor(amount + (jester.attack * range.minPercent) / 100) - 1);
-      expect(hit).toBeLessThanOrEqual(Math.ceil(amount + (jester.attack * range.maxPercent) / 100) + 1);
-    }
+    const effect = getEffectiveSkill(getSkill("loaded-dice"), 1).effects![0]!;
+    const possible = new Set(effect.damageRollFaces!.map((face) => Math.round(effect.amount! + (jester.attack * Math.round((effect.offenseMultiplierPercent! * face) / 100)) / 100)));
+    const seen = new Set<number>();
+    for (let i = 0; i < 60; i++) seen.add(cast("loaded-dice"));
+    for (const hit of seen) expect(possible.has(hit)).toBe(true);
+    expect(seen.size).toBeGreaterThan(2);
   });
 
-  test("Rigged Game puts a debuff from its pool on every enemy", () => {
-    const { ctx } = makeCtx();
-    const jester = ctx.party.find((c) => c.classId === "jester")!;
-    unlock(jester, 15, "rigged-game");
-    const rats = [0, 1, 2].map(() => tank(spawnInto(ctx, "dungeon-rat")));
-    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
-    const skill = getEffectiveSkill(getSkill("rigged-game"), jester.level);
-    const pool = skill.effects!.find((e) => e.randomStatusEffectIds)!.randomStatusEffectIds!;
-    applySkillEffects(skill, jester, rats, combat, ctx, combat.log);
-    for (const rat of rats) expect(rat.activeStatusEffects.some((s) => pool.includes(s.statusEffectId))).toBe(true);
+  test("the hand starts at its startCount, grows with each casting skill up to its limit, and Finale throws it all", () => {
+    const { ctx, jester, rats, combat } = jesterFight(35, 2);
+    const hand = getClass("jester").dice!;
+    expect(jester.dice).toBe(hand.startCount);
+
+    queueAction(combat, ref(jester), "double-or-nothing", [monsterRef(rats[0]!)], ctx);
+    resolveRound(combat, ctx);
+    expect(jester.dice).toBe(hand.startCount + getSkill("double-or-nothing").grantsDice!);
+
+    jester.dice = hand.maxCount;
+    jester.cooldownsRemaining = {};
+    queueAction(combat, ref(jester), "loaded-dice", [monsterRef(rats[0]!)], ctx);
+    resolveRound(combat, ctx);
+    expect(jester.dice).toBe(hand.maxCount);
+
+    const from = combat.log.length;
+    const before = rats.map((r) => r.hp);
+    applySkillEffects(getEffectiveSkill(getSkill("finale"), jester.level), jester, rats, combat, ctx, combat.log);
+    expect(jester.dice).toBe(0);
+    rats.forEach((r, i) => expect(r.hp).toBeLessThan(before[i]!));
+    // 12 dice on 2 enemies, at most 6 each: every die lands.
+    const hits = combat.log.slice(from).filter((l) => l.hit !== undefined).length;
+    expect(hits).toBe(hand.maxPerTarget * rats.length);
+  });
+
+  test("dice leave with the fight", () => {
+    const { ctx, jester } = jesterFight(1);
+    clearCombatResources(ctx);
+    expect(jester.dice).toBeUndefined();
+  });
+
+  test("Jeer always weakens, and a Provoked monster's attacks all go to the Jester", () => {
+    const { ctx, jester, target, combat, cast } = jesterFight(15);
+    ctx.rng.chance = () => true;
+    cast("jeer");
+    expect(target.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
+    expect(target.activeStatusEffects.find((s) => s.statusEffectId === "provoked")?.sourceId).toBe(jester.id);
+    jester.maxHp = jester.hp = 1e6;
+    const others = ctx.party.filter((c) => c !== jester);
+    const hpBefore = others.map((c) => c.hp);
+    for (let i = 0; i < 6; i++) runMonsterTurn(monsterRef(target), combat, ctx);
+    others.forEach((c, i) => expect(c.hp).toBe(hpBefore[i]!));
+    expect(jester.hp).toBeLessThan(1e6);
+  });
+
+  test("a Confused monster turns on its own side, or on itself when alone", () => {
+    const { ctx, rats, combat } = jesterFight(15, 2);
+    const [confused, other] = rats as [Monster, Monster];
+    applyStatusEffectToActor(confused, "confused", 2, { log: [] });
+    ctx.rng.chance = () => true;
+    const partyHp = ctx.party.map((c) => c.hp);
+    runMonsterTurn(monsterRef(confused), combat, ctx);
+    expect(other.hp).toBeLessThan(other.maxHp);
+    ctx.party.forEach((c, i) => expect(c.hp).toBe(partyHp[i]!));
+
+    other.hp = 0;
+    const selfBefore = confused.hp;
+    runMonsterTurn(monsterRef(confused), combat, ctx);
+    expect(confused.hp).toBeLessThan(selfBefore);
+  });
+
+  test("Battle Ballad buffs the rest of the party, not the Jester, and moves them ahead in the turn order", () => {
+    const { ctx, jester, target, combat } = jesterFight(10);
+    const slowAlly = ctx.party.find((c) => c.classId === "vanguard")!;
+    slowAlly.speed = 1;
+    target.speed = 5;
+    queueAction(combat, ref(jester), "battle-ballad", ctx.party.map(ref), ctx);
+    queueAction(combat, ref(slowAlly), "slash", [monsterRef(target)], ctx);
+    resolveRound(combat, ctx);
+    const order = combat.turnQueue.map((r) => r.id);
+    expect(order.indexOf(slowAlly.id)).toBeLessThan(order.indexOf(target.id));
+    expect(order.indexOf(jester.id)).toBeLessThan(order.indexOf(slowAlly.id));
+
+    // The buff lasts this round only, so it is read straight off a cast outside the round.
+    applySkillEffects(getEffectiveSkill(getSkill("battle-ballad"), jester.level), jester, ctx.party, combat, ctx, combat.log);
+    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "ballad")).toBe(false);
+    for (const c of ctx.party.filter((p) => p !== jester)) expect(c.activeStatusEffects.some((s) => s.statusEffectId === "ballad"), c.classId).toBe(true);
   });
 });
 

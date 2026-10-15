@@ -29,6 +29,7 @@ import {
   tagLogRange,
   tagPartySnapshotRange,
   dismissSummonsAtCombatEnd,
+  clearCombatResources,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
@@ -204,6 +205,7 @@ export class Game {
   private endCombat(): void {
     if (!this.state.combat) return;
     dismissSummonsAtCombatEnd(this.ctx);
+    clearCombatResources(this.ctx);
     this.state.combat = null;
   }
 

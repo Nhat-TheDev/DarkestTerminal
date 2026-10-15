@@ -98,6 +98,9 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
     c.cooldownsRemaining = {};
+    const hand = getClass(c.classId).dice;
+    if (hand) c.dice = hand.startCount;
+    else delete c.dice;
   }
   const combatants: Combatant[] = [
     ...ctx.party.filter((c) => c.isAlive).map((c) => ({ ref: { kind: "character" as const, id: c.id }, speed: c.speed })),
@@ -257,11 +260,15 @@ function isSummonSkill(def: SkillDefinition): boolean {
 
 function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   if (c.ref.kind !== "character") return c.speed;
+  // An ally's queued `allyTurnOrderBonus` skill (Battle Ballad) moves the rest of the party up this round.
+  const allyBonus = combat.queuedActions
+    .filter((qa) => qa.actor.kind === "character" && !refEquals(qa.actor, c.ref))
+    .reduce((sum, qa) => sum + (actionDefinition(qa.source).allyTurnOrderBonus ?? 0), 0);
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
-  if (!queued) return c.speed;
+  if (!queued) return c.speed + allyBonus;
   const def = actionDefinition(queued.source);
-  if (def.isBuff && !isSummonSkill(def)) return c.speed + BALANCE.combat.buffTurnOrderSpeedBonus;
-  return c.speed;
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + allyBonus + BALANCE.combat.buffTurnOrderSpeedBonus;
+  return c.speed + allyBonus;
 }
 
 function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[] {
@@ -588,6 +595,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   });
   if (queued.source.kind === "item" && getItem(queued.source.itemId).effects.length === 0) combat.log.push({ text: t("game.itemNoEffect"), kind: "item" });
   const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
+  if (queued.source.kind === "skill" && skill.grantsDice && actor.isAlive) addDice(actor, skill.grantsDice, combat.log);
   // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed), so it acts
   // once right after being cast, whatever its speed, then takes its normal turns from next round on.
   // That turn is the summon's own session, as in `resolveRound`, not part of the cast.
@@ -842,9 +850,67 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
   });
 }
 
-/** A skill whose damage is left to chance: a `coinFlip`, or a `damageRollRange` on one of its effects. */
+/**
+ * `throwDice`: every die in the caster's hand is thrown, each at a random enemy that has taken fewer
+ * than the hand's `maxPerTarget` this cast, and each rolls one of the effect's `damageRollFaces` to
+ * scale the effect's own damage. Dice with no enemy left to take them are lost with the rest; the hand
+ * is empty afterwards. An ultimate's fear scaling applies to every die. Returns whether any die landed.
+ */
+function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): boolean {
+  const hand = getClass(source.classId).dice;
+  const count = source.dice ?? 0;
+  if (!hand || count === 0) {
+    log.push({ text: t("combat.diceHandEmpty", { actor: source.name }), kind: "info" });
+    return false;
+  }
+  source.dice = 0;
+  log.push({ text: t("combat.diceThrown", { actor: source.name, count }), kind: "attack" });
+  const faces = effect.damageRollFaces?.length ? effect.damageRollFaces : [100];
+  const base = skill.isUltimate ? scaleEffectForUltimate(effect, source) : effect;
+  const landedOn = new Map<Id, number>();
+  let landed = false;
+  for (let die = 0; die < count; die++) {
+    const open = livingTargetableMonsterRefs(combat, ctx).filter((r) => (landedOn.get(r.id) ?? 0) < hand.maxPerTarget);
+    if (open.length === 0 || !isActorAlive(source)) break;
+    const target = getActorByRef(ctx.rng.pick(open), ctx);
+    landedOn.set(target.id, (landedOn.get(target.id) ?? 0) + 1);
+    const face = ctx.rng.pick(faces);
+    const hit: SkillEffect = { kind: "damage", amount: base.amount, offenseMultiplierPercent: Math.round(((base.offenseMultiplierPercent ?? 100) * face) / 100), damageType: base.damageType };
+    noteSkillTarget(combat, source, target, [hit], true);
+    const wasAlive = isActorAlive(target);
+    const dealt = resolveOneDamageEffect(hit, skill, source, target, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
+    landed = true;
+    if (dealt > 0) {
+      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, dealt, ctx, log);
+      if (wasAlive && !isActorAlive(target)) for (const hook of combatHooks) hook.onKill?.(source, target, log);
+    }
+  }
+  return landed;
+}
+
+/** Puts `count` dice in the caster's hand, up to its limit — a no-op for a class without one. */
+function addDice(source: Character, count: number, log: LogEntry[]): void {
+  const hand = getClass(source.classId).dice;
+  if (!hand) return;
+  const before = source.dice ?? 0;
+  source.dice = Math.min(hand.maxCount, before + count);
+  if (source.dice > before) log.push({ text: t("combat.diceGained", { actor: source.name, count: source.dice - before, total: source.dice }), kind: "buff" });
+}
+
+/** Drops every combat-only resource the party carried through the fight that just ended. */
+export function clearCombatResources(ctx: EngineContext): void {
+  for (const c of ctx.party) delete c.dice;
+}
+
+/** A skill whose damage is left to chance: a `coinFlip`, or a `damage` effect that rolls `damageRollFaces`. */
 function isGambleSkill(skill: SkillDefinition): boolean {
-  return skill.coinFlip !== undefined || (skill.effects ?? []).some((e) => e.damageRollRange !== undefined);
+  return skill.coinFlip !== undefined || (skill.effects ?? []).some((e) => e.kind === "damage" && e.damageRollFaces !== undefined);
+}
+
+/** A `coinFlip`'s win chance for this caster: its own, times every `coinFlipWinChanceMultiplier` status the caster carries, at most 1. */
+function coinFlipWinChance(skill: SkillDefinition, source: Actor): number {
+  const multiplier = source.activeStatusEffects.reduce((mult, s) => mult * (getStatusEffect(s.statusEffectId).coinFlipWinChanceMultiplier ?? 1), 1);
+  return Math.min(1, skill.coinFlip!.winChance * multiplier);
 }
 
 interface JesterFortune {
@@ -1333,7 +1399,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     damageBonusPercent: (skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0) + (gamble?.bonusPercent ?? 0),
   };
   // One roll for the whole cast, before any target is hit.
-  const coinWon = skill.coinFlip ? ctx.rng.chance(skill.coinFlip.winChance) : undefined;
+  const coinWon = skill.coinFlip ? ctx.rng.chance(coinFlipWinChance(skill, source)) : undefined;
   let lostGamble = coinWon === false;
   const casterLowHp = skill.casterHpBelowBonus !== undefined && source.hp / source.maxHp < skill.casterHpBelowBonus.hpPercentThreshold / 100;
   let brokeStealthThisCast = false;
@@ -1345,7 +1411,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   // effect is always treated as an override — even with no explicit `target` — since it must always
   // land on the caster regardless of what the skill's own target happens to be.
   const isOverrideEffect = (e: SkillEffect) =>
-    e.kind === "summon" || e.kind === "summonMonster" || e.kind === "commandSummons" || (e.target !== undefined && e.target !== skill.target);
+    e.kind === "summon" || e.kind === "summonMonster" || e.kind === "commandSummons" || e.kind === "throwDice" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
   // A property of the whole skill (not of one target): damage that reaches the opposing side makes every opposing target an attack target.
   // `appliesToRelation` names a side of the board ("ally" = the player's side), not a side relative to the caster.
@@ -1364,6 +1430,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     for (const effect of overrideEffects) {
       // Resolved by the caller once this cast is over (`runCharacterTurn`).
       if (effect.kind === "commandSummons") continue;
+      if (effect.kind === "throwDice") {
+        if (isCharacter(source) && throwDice(effect, skill, source, combat, ctx, log)) landedDamageHit = true;
+        continue;
+      }
       if (effect.kind === "summonMonster") {
         if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
         continue;
@@ -1430,9 +1500,11 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     // A target that threw off a status and took nothing else from the action counts as missed.
     let resisted = false;
     let landed = false;
-    for (const rawEffect of activeEffects) {
+    for (const effect of activeEffects) {
       if (sourceFell()) break;
-      const effect = rawEffect.randomStatusEffectIds?.length ? { ...rawEffect, statusEffectId: ctx.rng.pick(rawEffect.randomStatusEffectIds) } : rawEffect;
+      if (effect.excludesCaster && target === source) continue;
+      if (effect.excludesSummonTargets && isSummon(target)) continue;
+      if (coinWon === false && effect.kind === "damage") continue;
       if (effect.appliesToRelation) {
         const targetIsAlly = isPlayerSide(target);
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
@@ -1458,15 +1530,15 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       let rolledEffect = effect;
       if (effect.kind === "damage") {
         let offense = effect.offenseMultiplierPercent ?? 100;
-        if (skill.coinFlip) offense = coinWon ? skill.coinFlip.winOffenseMultiplierPercent : skill.coinFlip.loseOffenseMultiplierPercent;
-        if (effect.damageRollRange) {
-          const rollPercent = effect.damageRollRange.minPercent + ctx.rng.next() * (effect.damageRollRange.maxPercent - effect.damageRollRange.minPercent);
-          if (rollPercent < 100) lostGamble = true;
-          offense = Math.round((offense * rollPercent) / 100);
+        if (effect.damageRollFaces?.length) {
+          const face = ctx.rng.pick(effect.damageRollFaces);
+          if (face < 100) lostGamble = true;
+          log.push({ text: t("combat.diceRolled", { actor: sourceName(source), face: effect.damageRollFaces.indexOf(face) + 1 }), kind: "info" });
+          offense = Math.round((offense * face) / 100);
         }
         if (casterLowHp) offense += skill.casterHpBelowBonus!.offenseMultiplierPercentBonus;
         const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
-        rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollRange: undefined };
+        rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollFaces: undefined };
       }
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
 
@@ -1524,8 +1596,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     source.hp = Math.max(1, source.hp - selfDamage);
   }
   if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
-  if (coinWon === false && skill.coinFlip?.loseSelfStatusEffectId && !sourceFell()) {
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: skill.coinFlip.loseSelfStatusEffectId, durationTurns: skill.coinFlip.loseSelfDurationTurns }, source, source, { log });
+  if (coinWon === false && !sourceFell()) {
+    log.push({ text: t("combat.coinFlipLost", { actor: sourceName(source), skill: skill.name }), kind: "info" });
+    for (const lose of skill.coinFlip!.loseSelfStatuses ?? []) {
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: lose.statusEffectId, durationTurns: lose.durationTurns }, source, source, { log });
+    }
+    if (skill.coinFlip!.resetCooldownOnLose && isCharacter(source)) source.cooldownsRemaining[skill.id] = 0;
   }
   if (gamble && !sourceFell()) settleJesterFortune(source, gamble, lostGamble, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);

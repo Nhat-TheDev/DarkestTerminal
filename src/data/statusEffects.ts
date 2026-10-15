@@ -107,6 +107,9 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   }
   if (def.silences) parts.push(t("item.effectSilences"));
   if (def.eliteBossMaxTurns !== undefined) parts.push(t("item.effectEliteBossMaxTurns", { turns: def.eliteBossMaxTurns }));
+  if (def.forcesTargetOnSource) parts.push(t("item.effectForcesTarget"));
+  if (def.redirectToAlliesChance) parts.push(t("item.effectRedirectToAllies", { percent: Math.round(def.redirectToAlliesChance * 100) }));
+  if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
   if (def.stackable && (def.maxStacks ?? 1) > 1) parts.push(t("item.effectStacks", { max: def.maxStacks! }));
   if (def.stackable && def.perStackBonusPercent) parts.push(t("item.effectStackBonus", { percent: def.perStackBonusPercent }));
   return parts;

@@ -4093,6 +4093,11 @@
     "baseAggro": 10,
     "baseSpeed": 18,
     "baseMagicPower": 0,
+    "dice": {
+      "startCount": 3,
+      "maxCount": 12,
+      "maxPerTarget": 6
+    },
     "skills": [
       {
         "id": "knife-flick",
@@ -4115,9 +4120,10 @@
         "id": "loaded-dice",
         "name": "Loaded Dice",
         "description": "Rolls the bones before the strike, and the strike goes however they land.",
-        "shortDescription": "A gamble: damage swings from weak to brutal.",
+        "shortDescription": "Rolls a die: damage from weak to brutal.",
         "target": "singleEnemy",
         "slot": 1,
+        "grantsDice": 1,
         "ranks": [
           {
             "rank": 1,
@@ -4128,10 +4134,14 @@
                 "kind": "damage",
                 "amount": 10,
                 "offenseMultiplierPercent": 100,
-                "damageRollRange": {
-                  "minPercent": 40,
-                  "maxPercent": 180
-                }
+                "damageRollFaces": [
+                  30,
+                  60,
+                  90,
+                  120,
+                  150,
+                  180
+                ]
               }
             ]
           },
@@ -4144,10 +4154,14 @@
                 "kind": "damage",
                 "amount": 13,
                 "offenseMultiplierPercent": 108,
-                "damageRollRange": {
-                  "minPercent": 40,
-                  "maxPercent": 180
-                }
+                "damageRollFaces": [
+                  30,
+                  60,
+                  90,
+                  120,
+                  150,
+                  180
+                ]
               }
             ]
           },
@@ -4160,10 +4174,14 @@
                 "kind": "damage",
                 "amount": 16,
                 "offenseMultiplierPercent": 116,
-                "damageRollRange": {
-                  "minPercent": 40,
-                  "maxPercent": 180
-                }
+                "damageRollFaces": [
+                  30,
+                  60,
+                  90,
+                  120,
+                  150,
+                  180
+                ]
               }
             ]
           }
@@ -4172,10 +4190,11 @@
       {
         "id": "jeer",
         "name": "Jeer",
-        "description": "A mocking bow and a cut to the hamstring while the enemy is still deciding whether to be insulted.",
-        "shortDescription": "Light hit; Slows, may Enfeeble.",
+        "description": "A mocking bow and a word about its mother, and the enemy forgets everyone else in the room.",
+        "shortDescription": "Lowers defense; may force the foe to attack the Jester.",
         "target": "singleEnemy",
         "slot": 2,
+        "grantsDice": 1,
         "ranks": [
           {
             "rank": 1,
@@ -4183,20 +4202,15 @@
             "mpCost": 5,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 4,
-                "offenseMultiplierPercent": 50
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
+                "statusEffectId": "weakened",
                 "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "enfeebled",
-                "chance": 0.5,
-                "durationTurns": 2
+                "statusEffectId": "provoked",
+                "chance": 0.75,
+                "durationTurns": 1
               }
             ]
           },
@@ -4206,20 +4220,15 @@
             "mpCost": 6,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 6,
-                "offenseMultiplierPercent": 55
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
+                "statusEffectId": "weakened",
                 "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "enfeebled",
-                "chance": 0.6,
-                "durationTurns": 2
+                "statusEffectId": "provoked",
+                "chance": 0.8,
+                "durationTurns": 1
               }
             ]
           },
@@ -4229,20 +4238,15 @@
             "mpCost": 7,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 8,
-                "offenseMultiplierPercent": 60
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "slowed",
+                "statusEffectId": "weakened",
                 "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "enfeebled",
-                "chance": 0.7,
-                "durationTurns": 2
+                "statusEffectId": "provoked",
+                "chance": 0.85,
+                "durationTurns": 1
               }
             ]
           }
@@ -4251,12 +4255,13 @@
       {
         "id": "battle-ballad",
         "name": "Battle Ballad",
-        "description": "A quick, ugly song with a marching beat, and everyone in earshot moves to it.",
-        "shortDescription": "Raises party speed for 2 turns.",
+        "description": "A quick, ugly song with a marching beat, and the rest of the party moves to it before the enemy does.",
+        "shortDescription": "The rest of the party acts first and hits harder this turn.",
         "target": "allAllies",
         "slot": 3,
         "isBuff": true,
-        "cooldownTurns": 3,
+        "cooldownTurns": 2,
+        "allyTurnOrderBonus": 10,
         "ranks": [
           {
             "rank": 1,
@@ -4266,7 +4271,9 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "ballad",
-                "durationTurns": 2
+                "durationTurns": 1,
+                "excludesCaster": true,
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -4278,7 +4285,9 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "ballad-ii",
-                "durationTurns": 2
+                "durationTurns": 1,
+                "excludesCaster": true,
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -4290,7 +4299,9 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "ballad-iii",
-                "durationTurns": 2
+                "durationTurns": 1,
+                "excludesCaster": true,
+                "excludesSummonTargets": true
               }
             ]
           }
@@ -4299,11 +4310,12 @@
       {
         "id": "rigged-game",
         "name": "Rigged Game",
-        "description": "Cards thrown into the enemy line, each one marked, and no two marked the same way.",
-        "shortDescription": "Hits all foes; each takes a random debuff.",
+        "description": "Cards thrown into the enemy line, each one marked, and the marks set them at each other's throats.",
+        "shortDescription": "Hits all foes; may turn them on each other.",
         "target": "allEnemies",
         "slot": 4,
         "cooldownTurns": 3,
+        "grantsDice": 1,
         "ranks": [
           {
             "rank": 1,
@@ -4312,19 +4324,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 6,
-                "offenseMultiplierPercent": 45
+                "amount": 12,
+                "offenseMultiplierPercent": 75
               },
               {
                 "kind": "applyStatusEffect",
-                "randomStatusEffectIds": [
-                  "slowed",
-                  "enfeebled",
-                  "weakened",
-                  "blinded",
-                  "burning",
-                  "bleeding"
-                ],
+                "statusEffectId": "confused",
+                "chance": 0.65,
                 "durationTurns": 2
               }
             ]
@@ -4336,19 +4342,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 8,
-                "offenseMultiplierPercent": 50
+                "amount": 15,
+                "offenseMultiplierPercent": 85
               },
               {
                 "kind": "applyStatusEffect",
-                "randomStatusEffectIds": [
-                  "slowed",
-                  "enfeebled",
-                  "weakened",
-                  "blinded",
-                  "burning",
-                  "bleeding"
-                ],
+                "statusEffectId": "confused",
+                "chance": 0.75,
                 "durationTurns": 2
               }
             ]
@@ -4360,19 +4360,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 10,
-                "offenseMultiplierPercent": 55
+                "amount": 20,
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
-                "randomStatusEffectIds": [
-                  "slowed",
-                  "enfeebled",
-                  "weakened",
-                  "blinded",
-                  "burning",
-                  "bleeding"
-                ],
+                "statusEffectId": "confused",
+                "chance": 0.85,
                 "durationTurns": 2
               }
             ]
@@ -4382,18 +4376,26 @@
       {
         "id": "double-or-nothing",
         "name": "Double or Nothing",
-        "description": "Calls the coin in the air, and either the blade goes in to the hilt or the Jester stumbles past.",
-        "shortDescription": "Coin flip: a huge hit, or a weak one and Slowed.",
+        "description": "Calls the coin in the air, and either the blade goes in to the hilt or the Jester stumbles past and palms a better coin.",
+        "shortDescription": "Coin flip: a heavy hit, or a miss and a rigged next toss.",
         "target": "singleEnemy",
         "slot": 5,
         "cooldownTurns": 3,
         "coinFlip": {
           "winChance": 0.5,
-          "winOffenseMultiplierPercent": 220,
-          "loseOffenseMultiplierPercent": 30,
-          "loseSelfStatusEffectId": "slowed",
-          "loseSelfDurationTurns": 2
+          "loseSelfStatuses": [
+            {
+              "statusEffectId": "slowed",
+              "durationTurns": 2
+            },
+            {
+              "statusEffectId": "rigged",
+              "durationTurns": 1
+            }
+          ],
+          "resetCooldownOnLose": true
         },
+        "grantsDice": 2,
         "ranks": [
           {
             "rank": 1,
@@ -4403,7 +4405,7 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 160
               }
             ]
           },
@@ -4414,8 +4416,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 28,
-                "offenseMultiplierPercent": 100
+                "amount": 30,
+                "offenseMultiplierPercent": 175
               }
             ]
           },
@@ -4426,8 +4428,8 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 36,
-                "offenseMultiplierPercent": 100
+                "amount": 40,
+                "offenseMultiplierPercent": 190
               }
             ]
           }
@@ -4436,9 +4438,9 @@
       {
         "id": "finale",
         "name": "Finale",
-        "description": "The last bow of the act, taken over whatever is left of the enemy.",
-        "shortDescription": "Final blow, harder per debuff on the foe. Always hits.",
-        "target": "singleEnemy",
+        "description": "Every die the Jester has palmed all fight goes up at once, and comes down on the enemy like fireworks.",
+        "shortDescription": "Throws every die in hand; each bursts on a foe. Always hits.",
+        "target": "allEnemies",
         "slot": 6,
         "isUltimate": true,
         "cooldownTurns": 5,
@@ -4449,13 +4451,17 @@
             "mpCost": 16,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 25,
-                "offenseMultiplierPercent": 100,
-                "scalesWithDebuffCount": {
-                  "percentPerDebuff": 15
-                },
-                "critChance": 0.5
+                "kind": "throwDice",
+                "amount": 10,
+                "offenseMultiplierPercent": 40,
+                "damageRollFaces": [
+                  50,
+                  75,
+                  100,
+                  125,
+                  150,
+                  175
+                ]
               }
             ]
           },
@@ -4465,13 +4471,17 @@
             "mpCost": 17,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 32,
-                "offenseMultiplierPercent": 115,
-                "scalesWithDebuffCount": {
-                  "percentPerDebuff": 15
-                },
-                "critChance": 0.5
+                "kind": "throwDice",
+                "amount": 12,
+                "offenseMultiplierPercent": 50,
+                "damageRollFaces": [
+                  50,
+                  75,
+                  100,
+                  125,
+                  150,
+                  175
+                ]
               }
             ]
           },
@@ -4481,13 +4491,17 @@
             "mpCost": 18,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 40,
-                "offenseMultiplierPercent": 130,
-                "scalesWithDebuffCount": {
-                  "percentPerDebuff": 15
-                },
-                "critChance": 0.5
+                "kind": "throwDice",
+                "amount": 15,
+                "offenseMultiplierPercent": 60,
+                "damageRollFaces": [
+                  50,
+                  75,
+                  100,
+                  125,
+                  150,
+                  175
+                ]
               }
             ]
           }
