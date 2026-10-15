@@ -78,9 +78,9 @@ Current values for every class, generated from `data/classes.json`:
 | Archer | 90 | 45 | 17 | 8 | 0 | 9 | 13 |
 | Ninja | 110 | 45 | 12 | 8 | 0 | 8 | 16 |
 | Summoner | 80 | 55 | 4 | 7 | 12 | 7 | 10 |
-| Jester | 95 | 40 | 9 | 6 | 9 | 10 | 18 |
-| Paladin | 125 | 38 | 10 | 10 | 8 | 16 | 5 |
-| Warlock | 85 | 50 | 3 | 6 | 15 | 9 | 10 |
+| Jester | 95 | 40 | 10 | 6 | 10 | 10 | 18 |
+| Paladin | 125 | 30 | 8 | 10 | 8 | 16 | 5 |
+| Warlock | 80 | 55 | 3 | 6 | 15 | 8 | 10 |
 <!-- docs:end -->
 
 Balance Points of each class against the roster average, scored with the formula above by `tools/game-editor/calc.ts`:
@@ -90,19 +90,19 @@ Balance Points of each class against the roster average, scored with the formula
 
 | Class | Balance points | Against the roster average |
 |---|---|---|
-| Vanguard | 24.5 | −0.9% |
-| Mage | 24.7 | −0.2% |
-| Rogue | 24.5 | −1.0% |
-| Acolyte | 24.8 | +0.5% |
-| Viking | 24.7 | +0.0% |
-| Plague Doctor | 24.6 | −0.4% |
-| Archer | 24.7 | −0.2% |
-| Ninja | 24.7 | −0.1% |
-| Summoner | 24.5 | −0.7% |
-| Jester | 24.0 | −3.1% |
-| Paladin | 26.7 | +7.9% |
-| Warlock | 24.2 | −1.9% |
-| Roster average | 24.7 | — |
+| Vanguard | 24.5 | −0.6% |
+| Mage | 24.7 | +0.1% |
+| Rogue | 24.5 | −0.7% |
+| Acolyte | 24.8 | +0.8% |
+| Viking | 24.7 | +0.3% |
+| Plague Doctor | 24.6 | −0.1% |
+| Archer | 24.7 | +0.1% |
+| Ninja | 24.7 | +0.2% |
+| Summoner | 24.5 | −0.4% |
+| Jester | 24.6 | −0.1% |
+| Paladin | 24.7 | +0.1% |
+| Warlock | 24.7 | +0.3% |
+| Roster average | 24.6 | — |
 <!-- docs:end -->
 
 **Writing `description` text for a skill**: see `02-monster.md`'s "Writing `description` text"
