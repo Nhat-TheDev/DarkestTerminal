@@ -79,7 +79,7 @@ Current values for every class, generated from `data/classes.json`:
 | Ninja | 110 | 45 | 12 | 8 | 0 | 8 | 16 |
 | Summoner | 80 | 55 | 4 | 7 | 12 | 7 | 10 |
 | Jester | 95 | 40 | 9 | 6 | 9 | 10 | 18 |
-| Paladin | 125 | 35 | 12 | 10 | 6 | 16 | 7 |
+| Paladin | 125 | 38 | 10 | 10 | 8 | 16 | 5 |
 | Warlock | 85 | 50 | 3 | 6 | 15 | 9 | 10 |
 <!-- docs:end -->
 
@@ -90,18 +90,18 @@ Balance Points of each class against the roster average, scored with the formula
 
 | Class | Balance points | Against the roster average |
 |---|---|---|
-| Vanguard | 24.5 | −0.8% |
-| Mage | 24.7 | −0.1% |
-| Rogue | 24.5 | −0.9% |
-| Acolyte | 24.8 | +0.6% |
-| Viking | 24.7 | +0.1% |
-| Plague Doctor | 24.6 | −0.2% |
-| Archer | 24.7 | −0.1% |
-| Ninja | 24.7 | −0.0% |
-| Summoner | 24.5 | −0.6% |
-| Jester | 24.0 | −3.0% |
-| Paladin | 26.3 | +6.7% |
-| Warlock | 24.2 | −1.8% |
+| Vanguard | 24.5 | −0.9% |
+| Mage | 24.7 | −0.2% |
+| Rogue | 24.5 | −1.0% |
+| Acolyte | 24.8 | +0.5% |
+| Viking | 24.7 | +0.0% |
+| Plague Doctor | 24.6 | −0.4% |
+| Archer | 24.7 | −0.2% |
+| Ninja | 24.7 | −0.1% |
+| Summoner | 24.5 | −0.7% |
+| Jester | 24.0 | −3.1% |
+| Paladin | 26.7 | +7.9% |
+| Warlock | 24.2 | −1.9% |
 | Roster average | 24.7 | — |
 <!-- docs:end -->
 
@@ -461,7 +461,7 @@ Exact magnitudes/durations/proc chances for every row above: `data/status-effect
 | `burning` | Burning | damage 6 or 3% max HP per turn |
 | `bleeding` | Bleeding | damage 6 or 2% max HP per turn; stackable; maxStacks 5; perStackBonusPercent 100 |
 | `acid-burn` | Acid Burn | damage 5 or 2.5% max HP per turn |
-| `hexed` | Hexed | damage 4 or 1.5% max HP per turn; attack -3 (min -4%); stackable; maxStacks 3; perStackBonusPercent 100 |
+| `hexed` | Hexed | damage 4 or 1.5% max HP per turn; attack -3 (min -4%); stackable; maxStacks 4; perStackBonusPercent 100 |
 <!-- docs:end -->
 
 Where each comes from:
@@ -881,8 +881,8 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 | Ninja | Afterimage | 5 / 20 / 35 | dodgePercent 5 / 10 / 15, secondCloneChancePercent 20 / 25 / 30 |
 | Summoner | Bound Legion | 5 / 20 / 35 | minionMaxHpPercent 20 / 25 / 30, minionAttackPercent 10 / 13 / 17, maxActiveMinions 1 / 2 / 3 |
 | Jester | Two-Faced | 5 / 20 / 35 | growthSwapWeights low 0.6, high 1.4 / low 0.55, high 1.5 / low 0.5, high 1.6 |
-| Paladin | Retribution | 5 / 20 / 35 | reflectPercent 8 / 12 / 16 |
-| Warlock | Soul Feast | 5 / 20 / 35 | killRestoreMpPercent 10 / 15 / 20, killRestoreHpPercent 5 / 8 / 10 |
+| Paladin | Retribution | 5 / 20 / 35 | reflectPercent 4 / 6 / 8 |
+| Warlock | Ripened Curse | 5 / 20 / 35 | stackBurstPowerPercent 80 / 90 / 100 |
 <!-- docs:end -->
 
 How each passive works:
@@ -896,9 +896,9 @@ How each passive works:
 - **Archer — Deadly Precision.** Chance is additive on top of the skill's own `critChance` (so a skill with none, like Quick Shot, can still crit); multiplier is whichever of the skill's own and the passive's is larger (so a skill with no `critMultiplierPercent` of its own, or one below the passive's floor, still benefits). Engine hook: `resolveOneDamageEffect`, `src/engine/combat.ts`
 - **Ninja — Afterimage.** Dodge folds into `rollDodge` alongside equipped Artifact/Ability `dodgeChance`. The 2nd clone needed a new spawn path (`spawnAdditionalSummon`, `combat.ts`) — `spawnSummon`'s existing "recasting the same archetype replaces it" eviction rule would otherwise dismiss the first clone the instant a 2nd tried to spawn; `spawnAdditionalSummon` skips that rule entirely. The Ninja holds at most 1 clone of each origin: the passive spawns only while a cast clone is alive and no passive clone is (`Summon.fromPassive`), always named `secondCloneName`, and a recast replaces only the cast clone and leaves the passive's out of the minion cap, so it never evicts `Shadow Clone II`. Engine hook: `rollDodge`, `src/engine/artifacts.ts`; `applySkillEffects`, `src/engine/combat.ts`
 - **Summoner — Bound Legion.** Replaces the old cast-based Mastery Summoner skill (and its `minion-empowerment`/`-ii`/`-iii` statuses) entirely — both effects are purely level-gated now, applied automatically at spawn time and read directly off the passive rank, with no "cast the buff first" step. Engine hook: `empowermentBonusFor` / `maxActiveMinionsFor`, `src/engine/combat.ts`
-- **Jester — Two-Faced.** At the start of every round — after the party's actions are chosen, so the player never knows which way it will go — the two `growthSwapStats` (attack and magic power) trade growth weights at random: one grows at the rank's `growthSwapWeights.high`, the other at its `low`, in place of the class's own even weights (`data/growth-weights.json`). The difference from the class's own growth goes straight onto the live stats and is kept in `Character.growthShift`; the Character Info screen counts it in the passive share, and the end of the fight takes it back off. At level 1 the class has no growth yet, so the swap moves nothing until levels add up. Engine hook: `rollGrowthSwap` / `setGrowthShift` (`resolveRound`, `clearCombatResources`), `src/engine/combat.ts`
-- **Paladin — Retribution.** A share (`reflectPercent`) of every direct hit taken is dealt back to the attacker, added to any `reflectDamagePercent` status the Paladin carries; a status tick is never reflected. Engine hook: `paladinReflectPercent`, `src/engine/resolver.ts`
-- **Warlock — Soul Feast.** Each kill the Warlock lands restores `killRestoreMpPercent` of its max MP and `killRestoreHpPercent` of its max HP. Engine hook: `onKill` hook, `combatHooks.ts`
+- **Jester — Two-Faced.** At the start of every round — after the party's actions are chosen, so the player never knows which way it will go — the two `growthSwapStats` (attack and magic power) trade growth weights at random: one grows at the rank's `growthSwapWeights.high`, the other at its `low`, in place of the class's own even weights (`data/growth-weights.json`). The log names the turn ("turns a new face") and each stat's difference from the class's own growth rides on a round-long status from `growthSwapStatusIds` (`sharp-face`/`dull-face` for attack, `bright-face`/`dim-face` for magic power), whose magnitude is that difference; the status ends with the round, or with the fight (`endsWithCombat`). The base stats, and the Character Info screen's base column, stay at the class's own 1:1 growth. At level 1 there is no growth yet, so the swap moves nothing until levels add up. Engine hook: `rollGrowthSwap` (`resolveRound`), `src/engine/combat.ts`
+- **Paladin — Retribution.** A share (`reflectPercent`) of every direct hit taken is dealt back to the attacker, added to any `reflectDamagePercent` status the Paladin carries; a status tick is never reflected. With `ignoresFearEffects`, fear still builds on the Paladin but none of its combat penalties apply from rank 1: no accuracy or damage penalty, no lost control, no weaker ultimate. Engine hooks: `paladinReflectPercent`, `ignoresFearEffects` / `combatFearTier`, `src/engine/resolver.ts`
+- **Warlock — Ripened Curse.** Once a target reaches `stackBurst.atStacks` of `hexed`, it loses `removeStacks` of them, then takes a free cast of `stackBurst.skillId` (Hex) at the rank's `stackBurstPowerPercent` of that skill's damage; the free cast cannot ripen the curse again. Engine hook: `stackBurst`, `src/engine/combat.ts`
 
 **The `minPercent`-override mechanic, used by Totem Recall**: a status normally applies its own fixed, JSON-declared `modifyCombatStat` magnitude — but Totem Recall (1.11, slot 4) needs **1 status id** to express **3 different magnitudes** (1 per skill rank), and adding 3 near-duplicate status ids was rejected as needless duplication (the same reasoning that keeps `guard`/`rallied` as 1 status each with rank variants only where the shape genuinely needs a distinct `tickCategory`, section 1.8). Instead, an `applyStatusEffect` `SkillEffect` may carry `amount`/`minPercent` directly (fields that already existed on `SkillEffect` for other kinds, reused here rather than adding new ones) to **override** the target status's own declared magnitude for that one application — `totems-strength`'s own JSON entry carries a placeholder magnitude that is never actually used unmodified; the real numbers live on Totem Recall's own rank effects in `data/classes.json`. Mage's and Viking's passives are the *other* shape this same problem can take — instead of 1 status id with an overridden magnitude, each names a genuinely different status id per rank (`onHitStatusEffectId` for Mage, `thresholdStatusEffectId` for Viking: `bloodrage` / `-ii` / `-iii`), matching Rogue's Poison Bomb, so the magnitude lives only on the status; the override mechanic here is for a case that doesn't otherwise need a distinct status identity per rank.
 
@@ -989,7 +989,7 @@ Rigged Game is the kit's magic skill (`isMagic`, `damageType: "magic"`), Loaded 
 
 **Status: implemented.**
 
-**Base stats (`data/classes.json`)**: see the class stats table in section 1 — high HP and defense, slow, a little magic power.
+**Base stats (`data/classes.json`)**: see the class stats table in section 1 — high HP and defense, the slowest class, a little magic power.
 
 Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 
@@ -998,31 +998,39 @@ Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `holy-strike` | Holy Strike | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 108 / 116% ATK (holy) | — |
-| 2 | `lay-on-hands` | Lay on Hands | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 12 / 16 / 20 + 100% MAG (10 / 12 / 14% max HP) | — |
-| 3 | `aegis` | Aegis | singleAlly | 3 | 9 / 10 / 11 | 10 / 25 / 45 | status guard / guard-ii / guard-iii (2 turns); status taunt (2 turns, target self) | buff |
-| 4 | `consecrate` | Consecrate | allEnemies | 3 | 13 / 14 / 15 | 15 / 40 / 65 | damage 12 / 16 / 20 + 65 / 72 / 80% ATK (holy); status weakened (2 turns, 40 / 50 / 60% chance) | — |
-| 5 | `vigil` | Vigil | allAllies | 4 | 13 / 14 / 15 | 25 / 50 / 75 | status knitting / knitting-ii / knitting-iii (3 turns); fear -5 / -7 / -9 | buff |
-| 6 | `martyrs-oath` | Martyr's Oath | self | 5 | 16 / 17 / 18 | 35 / 70 / 100 | status martyrs-resolve / martyrs-resolve-ii / martyrs-resolve-iii (2 turns); status taunt (2 turns); heal 20 / 28 / 36 + 100% MAG (target allAllies, 15 / 18 / 22% max HP) | ultimate |
+| 1 | `lay-on-hands` | Lay on Hands | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 10 / 12 / 15 (+10% of the caster's max HP / +11% of the caster's max HP / +12% of the caster's max HP, up to +40% as the target's HP falls to 20%) | — |
+| 2 | `defiance` | Defiance | self | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status taunt (1 turn); status defiance (1 turn) | buff |
+| 3 | `cross-slash` | Cross Slash | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 7 / 10 / 14 + 60 / 65 / 70% ATK (holy); damage 6 / 8 / 10 + 50 / 55 / 60% ATK (holy) | — |
+| 4 | `guardian-angel` | Guardian Angel | singleAlly | 5 | 12 / 13 / 14 | 15 / 40 / 65 | status guardian-angel / guardian-angel-ii / guardian-angel-iii (1 turn); not on the caster | buff |
+| 5 | `vigil` | Vigil | allAlliesAndEnemies | 4 | 15 / 16 / 17 | 25 / 50 / 75 | heal 10 / 12 / 15 (on allies, +3% of the caster's max HP / +3.5% of the caster's max HP / +4% of the caster's max HP); damage 8 / 12 / 16 + 60 / 70 / 80% MAG (on enemies, holy); status vigil-light (3 turns, on allies, not on summons); status vigil-channel (2 turns, target self); cannot miss or be dodged | magic |
+| 6 | `martyrs-oath` | Martyr's Oath | allAllies | 5 | 16 / 17 / 18 | 35 / 70 / 100 | status martyrs-grace / martyrs-grace-ii / martyrs-grace-iii (1 turn) | buff · ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
-- `holy-strike` — `damage` (`holy`)
-- `lay-on-hands` — `heal` with a `maxHpPercent` floor, so it keeps pace with the target's max HP rather than the Paladin's magic power
-- `aegis` — `applyStatusEffect "guard"` (rank variants `-ii`/`-iii`) on the chosen ally + `applyStatusEffect "taunt"` on the Paladin (an effect-level `target: "self"`)
-- `consecrate` — `damage`/enemy (`holy`) + chance to `applyStatusEffect "weakened"`
-- `vigil` — `applyStatusEffect "knitting"` (a heal over time off the bearer's max HP, rank variants `-ii`/`-iii`) + `modifyStat fear` on the party
-- `martyrs-oath` — `applyStatusEffect "martyrs-resolve"` (a large defense buff, rank variants `-ii`/`-iii`) + `taunt` on the Paladin, and a `heal` on the party (an effect-level `target: "allAllies"`) — **always hits** (isUltimate)
+- `lay-on-hands` — `heal` of a flat amount plus `casterMaxHpPercent` of the Paladin's max HP, raised by `lowHpHealBonus` the lower the recipient's HP (nothing at full HP, the full bonus at its threshold and below)
+- `defiance` — `taunt` + `defiance` on the Paladin for the round: a monster whose direct hit lands on the Paladin gets `weakened` (`debuffsAttackerOnHit`)
+- `cross-slash` — two `damage` hits (`holy`, attack-based) behind one accuracy roll
+- `guardian-angel` — `guardian-angel` (rank variants `-ii`/`-iii`) on another ally for the round (`targetsOtherAlliesOnly`): should the ally fall while it lasts, from any source, it rises at the status's `reviveHpPercent` of max HP and the status is spent
+- `vigil` — a zone: allies `heal` (a flat amount plus `casterMaxHpPercent` of the Paladin's max HP) and get `vigil-light` (`fearResistPercent`); enemies take `holy` magic `damage` that cannot miss or be dodged (`alwaysHits`). The Paladin gets `vigil-channel` (`channelSkillId`): on each of its next turns it repeats the skill's heal and damage instead of acting, so the zone pulses three times in all
+- `martyrs-oath` — `martyrs-grace` (rank variants `-ii`/`-iii`) on the party for the round: each direct hit an ally survives heals back the status's `healOnHitPercent` of the HP it took; a killing hit heals nothing (isUltimate)
 
-<!-- docs:begin statusEffects ids=martyrs-resolve,martyrs-resolve-ii,martyrs-resolve-iii -->
+**Channeling.** A character carrying a `channelSkillId` status needs no order: each round the command screen asks once — `[1] Hold` keeps it channeling (`holdChannel`), `[2] Break` ends the channel at once, takes the channeled skill's statuses off the party (`breakChannel`) and lets the character choose an action. Left alone, a channel holds; the engine counts a channeling character as ready (`allLivingCharactersHaveQueuedActions`) and runs the pulse on its turn (`runChannelPulse`, `src/engine/combat.ts`). A stunned channeler loses the pulse but not the channel's countdown. `vigil-channel` and `vigil-light` end with the fight (`endsWithCombat`).
+
+<!-- docs:begin statusEffects ids=defiance,guardian-angel,guardian-angel-ii,guardian-angel-iii,vigil-channel,vigil-light,martyrs-grace,martyrs-grace-ii,martyrs-grace-iii -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
-| `martyrs-resolve` | Martyr's Resolve | defense +12 (min 50%) |
-| `martyrs-resolve-ii` | Martyr's Resolve II | defense +16 (min 60%); rankOf martyrs-resolve; rankLevel 2 |
-| `martyrs-resolve-iii` | Martyr's Resolve III | defense +20 (min 70%); rankOf martyrs-resolve; rankLevel 3 |
+| `defiance` | Defiance | tickCategory statMod; debuffsAttackerOnHit statusEffectId weakened, durationTurns 2 |
+| `guardian-angel` | Guardian Angel | tickCategory statMod; reviveHpPercent 30 |
+| `guardian-angel-ii` | Guardian Angel | tickCategory statMod; reviveHpPercent 40; rankOf guardian-angel; rankLevel 2 |
+| `guardian-angel-iii` | Guardian Angel | tickCategory statMod; reviveHpPercent 50; rankOf guardian-angel; rankLevel 3 |
+| `vigil-channel` | Vigil | channelSkillId vigil; endsWithCombat |
+| `vigil-light` | Vigil's Light | fearResistPercent 80; endsWithCombat |
+| `martyrs-grace` | Martyr's Grace | tickCategory statMod; healOnHitPercent 90 |
+| `martyrs-grace-ii` | Martyr's Grace | tickCategory statMod; healOnHitPercent 110; rankOf martyrs-grace; rankLevel 2 |
+| `martyrs-grace-iii` | Martyr's Grace | tickCategory statMod; healOnHitPercent 130; rankOf martyrs-grace; rankLevel 3 |
 <!-- docs:end -->
 
 ### 1.17 Warlock — curses, damage over time, and silence
@@ -1039,21 +1047,23 @@ Basic attack (slot 0): **Eldritch Bolt** (`eldritch-bolt`), `isMagic: true` + `d
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `hex` | Hex | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 6 / 8 / 10 + 60 / 66 / 72% MAG (magic); status hexed (3 turns) | magic |
-| 2 | `blood-pact` | Blood Pact | self | 4 | 4 / 5 / 6 | 1 / 7 / 15 | status pact / pact-ii / pact-iii (3 turns); status bleeding (3 turns) | buff |
-| 3 | `bind-tongue` | Bind Tongue | singleEnemy | 4 | 10 / 11 / 12 | 10 / 25 / 45 | damage 6 / 8 / 10 + 50 / 55 / 60% MAG (magic); status silenced (2 turns) | magic |
-| 4 | `withering-curse` | Withering Curse | allEnemies | 3 | 13 / 14 / 15 | 15 / 40 / 65 | damage 8 / 11 / 14 + 45 / 50 / 55% MAG (magic); status hexed (3 turns, 70 / 80 / 90% chance); status enfeebled (2 turns, 40 / 50 / 60% chance) | magic |
-| 5 | `soul-rend` | Soul Rend | singleEnemy | 3 | 14 / 15 / 16 | 25 / 50 / 75 | damage 14 / 19 / 24 + 100 / 112 / 125% MAG (magic, +20% per hexed stack, 40% lifesteal) | magic |
-| 6 | `doom` | Doom | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 22 / 30 / 38 + 100 / 115 / 130% MAG (magic); status hexed (3 turns) | ultimate · magic |
+| 2 | `blood-pact` | Blood Pact | self | 4 | 4 / 5 / 6 | 1 / 7 / 15 | status pact / pact-ii / pact-iii (3 turns); HP cost 10% max HP at full health, down to 3% below 20% | buff |
+| 3 | `bind-tongue` | Bind Tongue | singleEnemy | 4 | 10 / 11 / 12 | 10 / 25 / 45 | damage 6 / 8 / 10 + 50 / 55 / 60% MAG (magic); status silenced (2 turns); status hexed (3 turns, 80% chance) | magic |
+| 4 | `soul-rend` | Soul Rend | singleEnemy | 3 | 13 / 14 / 15 | 15 / 40 / 65 | damage 12 / 16 / 20 + 90 / 100 / 115% MAG (magic, +15% per hexed stack, 40% lifesteal); remove hexed (1 stack) | magic |
+| 5 | `withering-curse` | Withering Curse | allEnemies | 3 | 14 / 15 / 16 | 25 / 50 / 75 | damage 10 / 15 / 20 + 60 / 70 / 80% MAG (magic); status hexed (3 turns, 1–2 stacks); status enfeebled (2 turns, 40 / 50 / 60% chance) | magic |
+| 6 | `doom` | Doom | singleEnemy | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 40 / 50 / 60 + 120 / 135 / 160% MAG (magic); status hexed (3 turns, 4 stacks, each stack past the cap strikes another enemy for 20 + 70% MAG, at most 2× each / each stack past the cap strikes another enemy for 25 + 75% MAG, at most 2× each / each stack past the cap strikes another enemy for 30 + 80% MAG, at most 2× each) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
-- `hex` — light `damage` + a guaranteed `applyStatusEffect "hexed"`: a stackable magic DoT that also lowers attack
-- `blood-pact` — `applyStatusEffect "pact"` (a magic power buff, rank variants `-ii`/`-iii`) + `applyStatusEffect "bleeding"`, both on the Warlock: the power is paid for in HP
-- `bind-tongue` — light `damage` + a guaranteed `applyStatusEffect "silenced"`
-- `withering-curse` — light `damage`/enemy + chances to `applyStatusEffect "hexed"` and `"enfeebled"`
-- `soul-rend` — `damage` that grows per `hexed` stack on the target (`scalesWithStatusStacks`) and heals the Warlock for part of it (`lifestealPercent`)
-- `doom` — `damage`/enemy + a guaranteed `hexed` — **always hits** (isUltimate)
+- `hex` — light `damage` + a guaranteed `applyStatusEffect "hexed"`: a stackable magic DoT that also lowers attack, up to 4 stacks; each new stack renews the whole stack's duration
+- `blood-pact` — `applyStatusEffect "pact"` (a magic power buff, rank variants `-ii`/`-iii`) on the Warlock, paid for with HP as well as MP (`hpCost`: a share of max HP that shrinks as the Warlock's HP falls, never below 1 HP left)
+- `bind-tongue` — light `damage` + a guaranteed `applyStatusEffect "silenced"` + a chance of `hexed`
+- `soul-rend` — `damage` that grows per `hexed` stack on the target (`scalesWithStatusStacks`) and heals the Warlock for part of it (`lifestealPercent`), then takes 1 `hexed` stack off (`removeStatusEffect` with `stacks`)
+- `withering-curse` — `damage`/enemy + 1-2 `hexed` stacks on each (`stackCount`) + a chance of `enfeebled`
+- `doom` — heavy single-target `damage` + 4 `hexed` stacks; each stack past the cap strikes another random enemy instead (`overflowDamage`, at most twice each, lost when the target stands alone) — **always hits** (isUltimate)
+
+**Stacks.** `SkillEffect.stackCount` makes one `applyStatusEffect` add several stacks; `overflowDamage` turns the ones past the status's `maxStacks` into strikes on other enemies (`applyStacks`, `src/engine/combat.ts`). `removeStatusEffect` with `stacks` takes that many off and undoes the matching share of the stat change they applied (`removeStatusStacks`, `src/engine/resolver.ts`). `SkillDefinition.hpCost` is paid with the MP when the skill executes (`payHpCost`).
 
 **Silence.** `StatusEffectDefinition.silences` locks every skill a monster would choose: a silenced monster uses its basic attack. A boss or elite still crosses into a new phase (and fires its phase-entry skill) and still releases a telegraph it charged before the silence landed. `StatusEffectDefinition.eliteBossMaxTurns` caps any application of the status on an elite or boss, whatever duration the skill asks for — `silenced` lasts at most 1 turn on them. Engine hooks: `takeMonsterTurn`, `src/engine/monsterAI.ts`; `applyStatusEffectToActor`, `src/engine/resolver.ts`.
 
@@ -1062,10 +1072,10 @@ How each skill works:
 
 | id | Name | Mechanics |
 |---|---|---|
-| `hexed` | Hexed | damage 4 or 1.5% max HP per turn; attack -3 (min -4%); stackable; maxStacks 3; perStackBonusPercent 100 |
-| `pact` | Pact | magicPower +5 (min 20%) |
-| `pact-ii` | Pact II | magicPower +7 (min 27%); rankOf pact; rankLevel 2 |
-| `pact-iii` | Pact III | magicPower +9 (min 35%); rankOf pact; rankLevel 3 |
+| `hexed` | Hexed | damage 4 or 1.5% max HP per turn; attack -3 (min -4%); stackable; maxStacks 4; perStackBonusPercent 100 |
+| `pact` | Pact | magicPower +6 (min 20%) |
+| `pact-ii` | Pact II | magicPower +9 (min 30%); rankOf pact; rankLevel 2 |
+| `pact-iii` | Pact III | magicPower +12 (min 40%); rankOf pact; rankLevel 3 |
 | `silenced` | Silenced | harmful; silences; eliteBossMaxTurns 1 |
 <!-- docs:end -->
 

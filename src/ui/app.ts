@@ -433,7 +433,7 @@ export class App implements ScreenContext {
     }
     const next = this.game
       .livingCharactersNeedingAction()
-      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind));
+      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind) && !combat.heldChannelIds?.includes(ref.id));
     this.ui = next ? { kind: "pickAction", actorRef: next } : { kind: "roundResolved" };
     if (!next && this.game.readyToResolve()) {
       this.game.resolve();

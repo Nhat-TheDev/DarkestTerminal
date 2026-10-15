@@ -83,6 +83,16 @@ export interface SkillEffect {
   damageRollFaces?: number[];
   /** For `throwDice`: every second die scales off magic power (`damageType: "magic"`) instead of attack. */
   alternatesWithMagic?: boolean;
+  /** For `applyStatusEffect`: how many stacks one application adds, rolled within the range (a stackable status). */
+  stackCount?: { min: number; max: number };
+  /** For `applyStatusEffect` with `stackCount`: each stack past the status's `maxStacks` strikes another random enemy instead, at most `maxHitsPerTarget` times each. */
+  overflowDamage?: { amount: number; offenseMultiplierPercent: number; maxHitsPerTarget: number };
+  /** For `removeStatusEffect`: takes off this many stacks of `statusEffectId` rather than the whole status. */
+  stacks?: number;
+  /** For `heal`: adds this percent of the caster's own max HP. */
+  casterMaxHpPercent?: number;
+  /** For `heal`: raises the heal by up to `maxBonusPercent`, growing evenly as the recipient's HP falls from full to `fullBonusBelowHpPercent` of its max. */
+  lowHpHealBonus?: { maxBonusPercent: number; fullBonusBelowHpPercent: number };
   /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
   excludesCaster?: boolean;
 }
@@ -226,6 +236,12 @@ export interface SkillDefinition {
   grantsDice?: number;
   /** While this skill is queued, every other character of the party gets this much speed for this round's turn order. */
   allyTurnOrderBonus?: number;
+  /** HP the cast costs on top of its MP, as a percent of max HP: `atFullHpPercent` at full HP, falling evenly to `atLowHpPercent` at `lowHpBelowPercent` of max HP and below. It never drops the caster below 1 HP. */
+  hpCost?: { atFullHpPercent: number; atLowHpPercent: number; lowHpBelowPercent: number };
+  /** Lands on enemies with no accuracy roll and cannot be dodged, without being an ultimate. */
+  alwaysHits?: boolean;
+  /** A `singleAlly` skill that cannot be cast on the caster. */
+  targetsOtherAlliesOnly?: boolean;
   /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
   aiCondition?: MonsterAiPredicate;
   /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
@@ -279,8 +295,7 @@ export interface PassiveRankDefinition {
   maxActiveMinions?: number; // Summoner
   growthSwapWeights?: { low: number; high: number }; // Jester — the two growth weights `growthSwapStats` trade between each round
   reflectPercent?: number; // Paladin — share of each direct hit taken that is dealt back to the attacker
-  killRestoreMpPercent?: number; // Warlock — share of max MP restored on a kill
-  killRestoreHpPercent?: number; // Warlock — share of max HP restored on a kill
+  stackBurstPowerPercent?: number; // Warlock — the free cast's power, as a percent of the skill's own damage
 }
 
 /** A stat a class passive can shift the level growth of mid-fight (`PassiveSkillDefinition.growthSwapStats`). */
@@ -298,7 +313,10 @@ export interface PassiveSkillDefinition {
   cloneSummonCastId?: Id; // Ninja — the summon cast (`data/summons.json` → `casts`) the second-clone proc spawns, and whose archetype `maxClones` counts
   secondCloneName?: string; // Ninja — the name the proc's clone carries, telling it apart from the one Shadow Clone casts
   debuffPool?: Id[]; // Plague Doctor — same pool at every rank
+  ignoresFearEffects?: boolean; // Paladin — fear still builds, but none of its combat penalties apply
+  stackBurst?: { statusEffectId: Id; atStacks: number; removeStacks: number; skillId: Id }; // Warlock — a target reaching `atStacks` of the status loses `removeStacks` of them and takes a free cast of `skillId`
   growthSwapStats?: [GrowthSwapStat, GrowthSwapStat]; // Jester — the two stats whose growth weights trade places at random each round
+  growthSwapStatusIds?: Record<GrowthSwapStat, { up: Id; down: Id }>; // Jester — the round-long statuses that carry each stat's shift, one per direction
 }
 
 export interface GrowthWeights {
@@ -357,8 +375,6 @@ export interface Character {
   cooldownsRemaining: Record<Id, number>;
   /** Dice in hand during a fight, for a class with `CharacterClass.dice`; absent outside combat. */
   dice?: number;
-  /** What a `growthSwapStats` passive currently adds to each stat on top of the class's own growth, for this round of the fight; absent outside combat. */
-  growthShift?: Partial<Record<GrowthSwapStat, number>>;
   equippedArtifactIds: Id[];
   /** Set once at character select, fixed for the whole run — `11-abilities.md` §11.1 "Character-select flow". `null`/absent = no ability equipped. */
   equippedAbilityId?: Id | null;
@@ -414,6 +430,16 @@ export interface StatusEffectDefinition {
   forcesTargetOnSource?: boolean;
   /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
   redirectToAlliesChance?: number;
+  /** When a monster's direct hit lands on the bearer, the attacker gets this status. */
+  debuffsAttackerOnHit?: { statusEffectId: Id; durationTurns: number };
+  /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
+  reviveHpPercent?: number;
+  /** Each direct hit the bearer survives heals it for this percent of the HP the hit took. */
+  healOnHitPercent?: number;
+  /** The bearer is channeling this skill: each of its own turns repeats the skill's heal and damage effects instead of acting, until the status ends or the channel is broken. */
+  channelSkillId?: Id;
+  /** Taken off the bearer when its fight ends, whatever turns it has left (a status that only means something inside a fight). */
+  endsWithCombat?: boolean;
   /** Multiplies the bearer's `coinFlip` win chance. */
   coinFlipWinChanceMultiplier?: number;
 }
@@ -1006,6 +1032,8 @@ export interface CombatState {
   departedSummons?: { id: Id; hp: number; maxHp: number }[];
   /** Transient: the session being built while an actor's turn runs (see `runInSession`). */
   activeSession?: LogSession;
+  /** Characters whose player chose, this round, to keep channeling rather than break the channel. */
+  heldChannelIds?: Id[];
   outcome?: "victory" | "defeat";
 }
 

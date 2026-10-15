@@ -33,6 +33,8 @@ export function validatePassiveStatusIds(classId: string, passive: PassiveSkillD
   }
   check("skill", "requiresTargetStatusId", passive.requiresTargetStatusId ? [passive.requiresTargetStatusId] : []);
   check("skill", "debuffPool", passive.debuffPool ?? []);
+  check("skill", "stackBurst.statusEffectId", passive.stackBurst ? [passive.stackBurst.statusEffectId] : []);
+  check("skill", "growthSwapStatusIds", Object.values(passive.growthSwapStatusIds ?? {}).flatMap((ids) => [ids.up, ids.down]));
   if (passive.cloneSummonCastId !== undefined && !SUMMON_CASTS.some((c) => c.id === passive.cloneSummonCastId)) {
     throw new Error(`data/classes.json: class "${classId}"'s passive names an unknown cloneSummonCastId "${passive.cloneSummonCastId}"`);
   }
