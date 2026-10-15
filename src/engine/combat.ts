@@ -17,8 +17,11 @@ import type {
   LogEntryKind,
   CombatantSnapshot,
   PartyStateSnapshot,
+  GrowthSwapStat,
 } from "../types";
 import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, passiveRankDef } from "../data/classes";
+import { classGrowthBonus } from "../data/levelGrowth";
+import { GROWTH_WEIGHTS } from "../data/growthWeights";
 import { characterBaseStats, activeStatusCombatStatSum } from "./party";
 import { getItem } from "../data/items";
 import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName } from "../data/statusEffects";
@@ -422,6 +425,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   const combatActors = () => combat.combatants.map((c) => getActorByRef(c.ref, ctx));
   const snapshot = sessionSnapshot(combat, ctx);
   for (const actor of combatActors()) for (const active of actor.activeStatusEffects) delete active.countersThisRound;
+  for (const c of ctx.party) rollGrowthSwap(c, ctx);
 
   runTicksInSession(
     combat,
@@ -811,8 +815,8 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
 /**
  * `throwDice`: every die in the caster's hand is thrown, each at a random enemy that has taken fewer
  * than the hand's `maxPerTarget` this cast, and each rolls one of the effect's `damageRollFaces` to
- * scale the effect's own damage. Dice with no enemy left to take them are lost with the rest; the hand
- * is empty afterwards. An ultimate's fear scaling applies to every die. Returns whether any die landed.
+ * scale the effect's own damage; with `alternatesWithMagic`, every second die scales off magic power.
+ * Dice with no enemy left to take them are lost with the rest; the hand is empty afterwards. An ultimate's fear scaling applies to every die. Returns whether any die landed.
  */
 function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): boolean {
   const hand = getClass(source.classId).dice;
@@ -833,10 +837,16 @@ function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Characte
     const target = getActorByRef(ctx.rng.pick(open), ctx);
     landedOn.set(target.id, (landedOn.get(target.id) ?? 0) + 1);
     const face = ctx.rng.pick(faces);
-    const hit: SkillEffect = { kind: "damage", amount: base.amount, offenseMultiplierPercent: Math.round(((base.offenseMultiplierPercent ?? 100) * face) / 100), damageType: base.damageType };
+    const magic = effect.alternatesWithMagic === true && die % 2 === 1;
+    const hit: SkillEffect = {
+      kind: "damage",
+      amount: base.amount,
+      offenseMultiplierPercent: Math.round(((base.offenseMultiplierPercent ?? 100) * face) / 100),
+      damageType: magic ? "magic" : base.damageType,
+    };
     noteSkillTarget(combat, source, target, [hit], true);
     const wasAlive = isActorAlive(target);
-    const dealt = resolveOneDamageEffect(hit, skill, source, target, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
+    const dealt = resolveOneDamageEffect(hit, { ...skill, isMagic: magic || (!effect.alternatesWithMagic && skill.isMagic) }, source, target, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
     landed = true;
     if (dealt > 0) {
       for (const hook of combatHooks) hook.onDamageDealt?.(source, target, dealt, ctx, log);
@@ -857,12 +867,10 @@ function addDice(source: Character, count: number, log: LogEntry[]): void {
 
 /** Drops every combat-only resource the party carried through the fight that just ended. */
 export function clearCombatResources(ctx: EngineContext): void {
-  for (const c of ctx.party) delete c.dice;
-}
-
-/** A skill whose damage is left to chance: a `coinFlip`, or a `damage` effect that rolls `damageRollFaces`. */
-function isGambleSkill(skill: SkillDefinition): boolean {
-  return skill.coinFlip !== undefined || (skill.effects ?? []).some((e) => e.kind === "damage" && e.damageRollFaces !== undefined);
+  for (const c of ctx.party) {
+    delete c.dice;
+    setGrowthShift(c, undefined);
+  }
 }
 
 /** A `coinFlip`'s win chance for this caster: its own, times every `coinFlipWinChanceMultiplier` status the caster carries, at most 1. */
@@ -871,29 +879,33 @@ function coinFlipWinChance(skill: SkillDefinition, source: Actor): number {
   return Math.min(1, skill.coinFlip!.winChance * multiplier);
 }
 
-interface JesterFortune {
-  statusEffectId: Id;
-  bonusPercent: number;
+/**
+ * Jester's passive — at the start of every round, once the party's actions are already chosen, the
+ * two `growthSwapStats` trade growth weights at random: one takes the rank's `high`, the other its
+ * `low`, in place of the class's own weights (`data/growth-weights.json`). The difference to the
+ * class's own growth is applied straight to the live stats and kept in `Character.growthShift`, so
+ * `characterStatBreakdown` counts it and `clearCombatResources` takes it back off. Unlocked at level 5/20/35.
+ */
+function rollGrowthSwap(character: Character, ctx: EngineContext): void {
+  const passive = getClass(character.classId).passiveSkill;
+  const rankDef = passiveRankDef(passive, character.level);
+  if (!passive.growthSwapStats || !rankDef?.growthSwapWeights || !character.isAlive) return;
+  const [first, second] = passive.growthSwapStats;
+  const { low, high } = rankDef.growthSwapWeights;
+  const firstHigh = ctx.rng.chance(0.5);
+  const classWeights = GROWTH_WEIGHTS.classGrowthWeights[character.classId]!;
+  const shift = (stat: GrowthSwapStat, weight: number) =>
+    classGrowthBonus(stat, character.level, { ...classWeights, [stat]: weight }) - classGrowthBonus(stat, character.level, classWeights);
+  setGrowthShift(character, { [first]: shift(first, firstHigh ? high : low), [second]: shift(second, firstHigh ? low : high) });
 }
 
-/** Jester's passive — the stacks of `gambleStatusEffectId` the Jester carries, each worth the rank's `gambleBonusPercentPerStack` on this gamble, unlocked at level 5/20/35. */
-function jesterFortune(source: Actor): JesterFortune | null {
-  if (!isCharacter(source) || source.classId !== "jester") return null;
-  const passive = getClass("jester").passiveSkill;
-  const rankDef = passiveRankDef(passive, source.level);
-  if (!rankDef || !passive.gambleStatusEffectId) return null;
-  const stacks = source.activeStatusEffects.find((s) => s.statusEffectId === passive.gambleStatusEffectId)?.stacks ?? 0;
-  return { statusEffectId: passive.gambleStatusEffectId, bonusPercent: stacks * (rankDef.gambleBonusPercentPerStack ?? 0) };
-}
-
-/** A lost gamble adds a stack of the Jester's fortune status; a won one spends every stack it had. */
-function settleJesterFortune(source: Actor, fortune: JesterFortune, lost: boolean, log: LogEntry[]): void {
-  if (lost) {
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: fortune.statusEffectId, durationTurns: 99 }, source, source, { log });
-    return;
+/** Moves the live stats from the character's current `growthShift` to `next`. */
+function setGrowthShift(character: Character, next: Partial<Record<GrowthSwapStat, number>> | undefined): void {
+  for (const stat of ["attack", "magicPower"] as const) {
+    character[stat] += (next?.[stat] ?? 0) - (character.growthShift?.[stat] ?? 0);
   }
-  const active = source.activeStatusEffects.find((s) => s.statusEffectId === fortune.statusEffectId);
-  if (active) expireStatusEffect(source, active, { log });
+  if (next) character.growthShift = next;
+  else delete character.growthShift;
 }
 
 function findBreakBonusStatus(source: Actor) {
@@ -1294,14 +1306,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
   const vikingBuffActive = !skill.isBuff && syncVikingBloodFury(source, log);
-  const gamble = isGambleSkill(skill) ? jesterFortune(source) : null;
   const stealthBreak = {
     guaranteedCrit: skill.slot === 0 && !skill.fromItem ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
-    damageBonusPercent: (skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0) + (gamble?.bonusPercent ?? 0),
+    damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
   };
   // One roll for the whole cast, before any target is hit.
   const coinWon = skill.coinFlip ? ctx.rng.chance(coinFlipWinChance(skill, source)) : undefined;
-  let lostGamble = coinWon === false;
   const casterLowHp = skill.casterHpBelowBonus !== undefined && source.hp / source.maxHp < skill.casterHpBelowBonus.hpPercentThreshold / 100;
   let brokeStealthThisCast = false;
 
@@ -1426,7 +1436,6 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         let offense = effect.offenseMultiplierPercent ?? 100;
         if (effect.damageRollFaces?.length) {
           const face = ctx.rng.pick(effect.damageRollFaces);
-          if (face < 100) lostGamble = true;
           log.push({ text: t("combat.diceRolled", { actor: sourceName(source), face: effect.damageRollFaces.indexOf(face) + 1 }), kind: "info" });
           offense = Math.round((offense * face) / 100);
         }
@@ -1492,7 +1501,6 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     }
     if (skill.coinFlip!.resetCooldownOnLose && isCharacter(source)) source.cooldownsRemaining[skill.id] = 0;
   }
-  if (gamble && !sourceFell()) settleJesterFortune(source, gamble, lostGamble, log);
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
   return spawnedSummon;
 }

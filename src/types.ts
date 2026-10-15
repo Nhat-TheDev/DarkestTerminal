@@ -70,8 +70,10 @@ export interface SkillEffect {
   count?: number;
   /** For a `damage` effect: adds `percentPerDebuff` to its offense multiplier for each harmful status the target carries when the hit lands (a stackable status counts once). */
   scalesWithDebuffCount?: { percentPerDebuff: number };
-  /** One die's faces, as percents of the offense multiplier. On a `damage` effect one face is rolled per target, and a face below 100 is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`); on a `throwDice` effect one face is rolled per die thrown. */
+  /** One die's faces, as percents of the offense multiplier. On a `damage` effect one face is rolled per target; on a `throwDice` effect one face is rolled per die thrown. */
   damageRollFaces?: number[];
+  /** For `throwDice`: every second die scales off magic power (`damageType: "magic"`) instead of attack. */
+  alternatesWithMagic?: boolean;
   /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
   excludesCaster?: boolean;
 }
@@ -211,8 +213,7 @@ export interface SkillDefinition {
 /**
  * One roll per cast, at `winChance` times the caster's `coinFlipWinChanceMultiplier` statuses (at most 1).
  * A win resolves the skill as written; a loss skips every `damage` effect, puts each `loseSelfStatuses`
- * entry on the caster and, with `resetCooldownOnLose`, leaves the skill ready again. A loss is a lost
- * gamble (`PassiveSkillDefinition.gambleStatusEffectId`).
+ * entry on the caster and, with `resetCooldownOnLose`, leaves the skill ready again.
  */
 export interface CoinFlip {
   winChance: number;
@@ -242,11 +243,14 @@ export interface PassiveRankDefinition {
   minionMaxHpPercent?: number;
   minionAttackPercent?: number;
   maxActiveMinions?: number;
-  gambleBonusPercentPerStack?: number;
+  growthSwapWeights?: { low: number; high: number }; // the two growth weights `growthSwapStats` trade between each round
   reflectPercent?: number;
   killRestoreMpPercent?: number;
   killRestoreHpPercent?: number;
 }
+
+/** A stat a class passive can shift the level growth of mid-fight (`PassiveSkillDefinition.growthSwapStats`). */
+export type GrowthSwapStat = "attack" | "magicPower";
 
 export interface PassiveSkillDefinition {
   id: Id;
@@ -260,7 +264,7 @@ export interface PassiveSkillDefinition {
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
   debuffPool?: Id[];
-  gambleStatusEffectId?: Id; // the stackable status a lost gamble adds and a won gamble spends
+  growthSwapStats?: [GrowthSwapStat, GrowthSwapStat]; // the two stats whose growth weights trade places at random each round
 }
 
 export interface GrowthWeights {
@@ -316,6 +320,8 @@ export interface Character {
   cooldownsRemaining: Record<Id, number>;
   /** Dice in hand during a fight, for a class with `CharacterClass.dice`; absent outside combat. */
   dice?: number;
+  /** What a `growthSwapStats` passive currently adds to each stat on top of the class's own growth, for this round of the fight; absent outside combat. */
+  growthShift?: Partial<Record<GrowthSwapStat, number>>;
   equippedArtifactIds: Id[];
   /** Fixed at character select for the whole run; `null`/absent = none. */
   equippedAbilityId?: Id | null;

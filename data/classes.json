@@ -4088,11 +4088,11 @@
     ],
     "baseMaxHp": 95,
     "baseMaxMp": 40,
-    "baseAttack": 15,
+    "baseAttack": 9,
     "baseDefense": 6,
     "baseAggro": 10,
     "baseSpeed": 18,
-    "baseMagicPower": 0,
+    "baseMagicPower": 9,
     "dice": {
       "startCount": 3,
       "maxCount": 12,
@@ -4316,6 +4316,7 @@
         "slot": 4,
         "cooldownTurns": 3,
         "grantsDice": 1,
+        "isMagic": true,
         "ranks": [
           {
             "rank": 1,
@@ -4325,7 +4326,8 @@
               {
                 "kind": "damage",
                 "amount": 12,
-                "offenseMultiplierPercent": 75
+                "offenseMultiplierPercent": 75,
+                "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
@@ -4343,7 +4345,8 @@
               {
                 "kind": "damage",
                 "amount": 15,
-                "offenseMultiplierPercent": 85
+                "offenseMultiplierPercent": 85,
+                "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
@@ -4361,7 +4364,8 @@
               {
                 "kind": "damage",
                 "amount": 20,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
@@ -4439,7 +4443,7 @@
         "id": "finale",
         "name": "Finale",
         "description": "Every die the Jester has palmed all fight goes up at once, and comes down on the enemy like fireworks.",
-        "shortDescription": "Throws every die in hand; each bursts on a foe. Always hits.",
+        "shortDescription": "Throws every die in hand, physical and magic by turns. Always hits.",
         "target": "allEnemies",
         "slot": 6,
         "isUltimate": true,
@@ -4461,7 +4465,8 @@
                   125,
                   150,
                   175
-                ]
+                ],
+                "alternatesWithMagic": true
               }
             ]
           },
@@ -4481,7 +4486,8 @@
                   125,
                   150,
                   175
-                ]
+                ],
+                "alternatesWithMagic": true
               }
             ]
           },
@@ -4501,7 +4507,8 @@
                   125,
                   150,
                   175
-                ]
+                ],
+                "alternatesWithMagic": true
               }
             ]
           }
@@ -4509,25 +4516,37 @@
       }
     ],
     "passiveSkill": {
-      "id": "fools-fortune",
-      "name": "Fool's Fortune",
-      "description": "Bad luck is only a debt, and the Jester always collects.",
-      "gambleStatusEffectId": "fortune",
+      "id": "two-faced",
+      "name": "Two-Faced",
+      "description": "Nobody, the Jester included, knows which face will show up to the next fight.",
+      "growthSwapStats": [
+        "attack",
+        "magicPower"
+      ],
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "gambleBonusPercentPerStack": 15
+          "growthSwapWeights": {
+            "low": 0.6,
+            "high": 1.4
+          }
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "gambleBonusPercentPerStack": 20
+          "growthSwapWeights": {
+            "low": 0.55,
+            "high": 1.5
+          }
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "gambleBonusPercentPerStack": 25
+          "growthSwapWeights": {
+            "low": 0.5,
+            "high": 1.6
+          }
         }
       ]
     }

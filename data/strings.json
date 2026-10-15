@@ -307,7 +307,7 @@
   "passive.ninjaSecondClone": "{{chance}}% chance per hit to summon a 2nd Shadow Clone (max {{max}}).",
   "passive.summonerMinionBuff": "Minions get +{{hp}}% HP, +{{attack}}% attack.",
   "passive.summonerMinionCap": "Can keep {{count}} minions active at once.",
-  "passive.jesterFortune": "Each lost gamble stores a stack of Fortune (up to {{max}}); the next gamble deals +{{percent}}% damage per stack, and a win spends them all.",
+  "passive.jesterGrowthSwap": "Each round, once orders are given, {{first}} and {{second}} growth trade places at random: one grows at x{{high}}, the other at x{{low}}.",
   "passive.paladinReflect": "Deals {{percent}}% of every direct hit taken back to the attacker.",
   "passive.warlockSoulFeast": "Each kill restores {{mp}}% max MP and {{hp}}% max HP.",
   "ui.characterInfoArtifactsLabel": "Equipped Artifacts:",

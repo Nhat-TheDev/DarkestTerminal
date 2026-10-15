@@ -1330,15 +1330,6 @@
     "rankLevel": 3
   },
   {
-    "id": "fortune",
-    "name": "Fortune",
-    "description": "Every lost wager is owed back; the next gamble lands harder for each stack.",
-    "perTurnEffects": [],
-    "tickCategory": "special",
-    "stackable": true,
-    "maxStacks": 3
-  },
-  {
     "id": "martyrs-resolve",
     "name": "Martyr's Resolve",
     "description": "Greatly raises defense for the duration.",

@@ -64,11 +64,11 @@
       "magicPower": 1.3
     },
     "jester": {
-      "attack": 1.6,
+      "attack": 1,
       "defense": 0.9,
       "maxHp": 1.3,
       "maxMp": 1.0,
-      "magicPower": 0
+      "magicPower": 1
     },
     "paladin": {
       "attack": 1.1,
