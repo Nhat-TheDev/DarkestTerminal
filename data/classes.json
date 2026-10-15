@@ -4088,11 +4088,11 @@
     ],
     "baseMaxHp": 95,
     "baseMaxMp": 40,
-    "baseAttack": 9,
+    "baseAttack": 10,
     "baseDefense": 6,
     "baseAggro": 10,
     "baseSpeed": 18,
-    "baseMagicPower": 9,
+    "baseMagicPower": 10,
     "dice": {
       "startCount": 3,
       "maxCount": 12,
@@ -4523,6 +4523,16 @@
         "attack",
         "magicPower"
       ],
+      "growthSwapStatusIds": {
+        "attack": {
+          "up": "sharp-face",
+          "down": "dull-face"
+        },
+        "magicPower": {
+          "up": "bright-face",
+          "down": "dim-face"
+        }
+      },
       "ranks": [
         {
           "rank": 1,
@@ -4562,12 +4572,12 @@
       "Frontline"
     ],
     "baseMaxHp": 125,
-    "baseMaxMp": 35,
-    "baseAttack": 12,
+    "baseMaxMp": 30,
+    "baseAttack": 8,
     "baseDefense": 10,
     "baseAggro": 16,
-    "baseSpeed": 7,
-    "baseMagicPower": 6,
+    "baseSpeed": 5,
+    "baseMagicPower": 8,
     "skills": [
       {
         "id": "mace-strike",
@@ -4586,83 +4596,42 @@
         "unlockLevel": 1
       },
       {
-        "id": "holy-strike",
-        "name": "Holy Strike",
-        "description": "A mace blessed so often the iron has gone pale, brought down two-handed.",
-        "shortDescription": "A holy mace blow.",
-        "target": "singleEnemy",
+        "id": "lay-on-hands",
+        "name": "Lay on Hands",
+        "description": "Both hands on the wound and the weight of the Paladin behind them, pressed harder the worse it is.",
+        "shortDescription": "Heals 1 ally; heals more the lower their HP.",
+        "target": "singleAlly",
         "slot": 1,
         "ranks": [
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 5,
+            "mpCost": 6,
             "effects": [
               {
-                "kind": "damage",
+                "kind": "heal",
                 "amount": 10,
-                "offenseMultiplierPercent": 100,
-                "damageType": "holy"
+                "casterMaxHpPercent": 10,
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 6,
-            "effects": [
-              {
-                "kind": "damage",
-                "amount": 13,
-                "offenseMultiplierPercent": 108,
-                "damageType": "holy"
-              }
-            ]
-          },
-          {
-            "rank": 3,
-            "unlockLevel": 15,
             "mpCost": 7,
-            "effects": [
-              {
-                "kind": "damage",
-                "amount": 16,
-                "offenseMultiplierPercent": 116,
-                "damageType": "holy"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "lay-on-hands",
-        "name": "Lay on Hands",
-        "description": "Both hands on the wound and the weight of the Paladin behind them.",
-        "shortDescription": "Restores HP to 1 ally.",
-        "target": "singleAlly",
-        "slot": 2,
-        "ranks": [
-          {
-            "rank": 1,
-            "unlockLevel": 1,
-            "mpCost": 6,
             "effects": [
               {
                 "kind": "heal",
                 "amount": 12,
-                "maxHpPercent": 10
-              }
-            ]
-          },
-          {
-            "rank": 2,
-            "unlockLevel": 7,
-            "mpCost": 7,
-            "effects": [
-              {
-                "kind": "heal",
-                "amount": 16,
-                "maxHpPercent": 12
+                "casterMaxHpPercent": 11,
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               }
             ]
           },
@@ -4673,22 +4642,88 @@
             "effects": [
               {
                 "kind": "heal",
-                "amount": 20,
-                "maxHpPercent": 14
+                "amount": 15,
+                "casterMaxHpPercent": 12,
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               }
             ]
           }
         ]
       },
       {
-        "id": "aegis",
-        "name": "Aegis",
-        "description": "Steps in front of a friend with the shield raised, loud enough that every enemy turns.",
-        "shortDescription": "Guards 1 ally and draws the enemy's eye.",
-        "target": "singleAlly",
-        "slot": 3,
+        "id": "defiance",
+        "name": "Defiance",
+        "description": "Strikes the shield and calls them on, and whoever answers leaves with a gap in their guard.",
+        "shortDescription": "Taunts; attackers who hit the Paladin are Weakened.",
+        "target": "self",
+        "slot": 2,
         "isBuff": true,
         "cooldownTurns": 3,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 1,
+            "mpCost": 6,
+            "effects": [
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "taunt",
+                "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "defiance",
+                "durationTurns": 1
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 7,
+            "mpCost": 7,
+            "effects": [
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "taunt",
+                "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "defiance",
+                "durationTurns": 1
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 15,
+            "mpCost": 8,
+            "effects": [
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "taunt",
+                "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "defiance",
+                "durationTurns": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cross-slash",
+        "name": "Cross Slash",
+        "description": "Two cuts with a blessed blade, one down and one across, and the mark they leave is the shape of a prayer.",
+        "shortDescription": "Two holy cuts on 1 foe.",
+        "target": "singleEnemy",
+        "slot": 3,
+        "cooldownTurns": 2,
         "ranks": [
           {
             "rank": 1,
@@ -4696,15 +4731,16 @@
             "mpCost": 9,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "guard",
-                "durationTurns": 2
+                "kind": "damage",
+                "amount": 7,
+                "offenseMultiplierPercent": 60,
+                "damageType": "holy"
               },
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2,
-                "target": "self"
+                "kind": "damage",
+                "amount": 6,
+                "offenseMultiplierPercent": 50,
+                "damageType": "holy"
               }
             ]
           },
@@ -4714,15 +4750,16 @@
             "mpCost": 10,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "guard-ii",
-                "durationTurns": 2
+                "kind": "damage",
+                "amount": 10,
+                "offenseMultiplierPercent": 65,
+                "damageType": "holy"
               },
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2,
-                "target": "self"
+                "kind": "damage",
+                "amount": 8,
+                "offenseMultiplierPercent": 55,
+                "damageType": "holy"
               }
             ]
           },
@@ -4732,83 +4769,65 @@
             "mpCost": 11,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "guard-iii",
-                "durationTurns": 2
+                "kind": "damage",
+                "amount": 14,
+                "offenseMultiplierPercent": 70,
+                "damageType": "holy"
               },
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2,
-                "target": "self"
+                "kind": "damage",
+                "amount": 10,
+                "offenseMultiplierPercent": 60,
+                "damageType": "holy"
               }
             ]
           }
         ]
       },
       {
-        "id": "consecrate",
-        "name": "Consecrate",
-        "description": "Drives the mace into the floor, and the stone goes white and hot under every enemy.",
-        "shortDescription": "Holy ground burns all foes, may Weaken.",
-        "target": "allEnemies",
+        "id": "guardian-angel",
+        "name": "Guardian Angel",
+        "description": "A blessing laid on a friend's shoulder: if death comes for them this turn, it leaves without them.",
+        "shortDescription": "1 other ally rises again if they fall this turn.",
+        "target": "singleAlly",
         "slot": 4,
-        "cooldownTurns": 3,
+        "isBuff": true,
+        "cooldownTurns": 5,
+        "targetsOtherAlliesOnly": true,
         "ranks": [
           {
             "rank": 1,
             "unlockLevel": 15,
-            "mpCost": 13,
+            "mpCost": 12,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 12,
-                "offenseMultiplierPercent": 65,
-                "damageType": "holy"
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "weakened",
-                "chance": 0.4,
-                "durationTurns": 2
+                "statusEffectId": "guardian-angel",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 40,
-            "mpCost": 14,
+            "mpCost": 13,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 16,
-                "offenseMultiplierPercent": 72,
-                "damageType": "holy"
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "weakened",
-                "chance": 0.5,
-                "durationTurns": 2
+                "statusEffectId": "guardian-angel-ii",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 65,
-            "mpCost": 15,
+            "mpCost": 14,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 20,
-                "offenseMultiplierPercent": 80,
-                "damageType": "holy"
-              },
-              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "weakened",
-                "chance": 0.6,
-                "durationTurns": 2
+                "statusEffectId": "guardian-angel-iii",
+                "durationTurns": 1
               }
             ]
           }
@@ -4817,61 +4836,113 @@
       {
         "id": "vigil",
         "name": "Vigil",
-        "description": "Kneels where the party can see it and does not move, and the watch makes the dark easier to bear.",
-        "shortDescription": "Party regains HP over 3 turns; fear eases.",
-        "target": "allAllies",
+        "description": "Kneels and lets the light out, and for as long as the Paladin stays kneeling the party mends and the enemy burns.",
+        "shortDescription": "A zone of light for 3 turns: heals and steadies allies, burns foes. The Paladin holds it instead of acting.",
+        "target": "allAlliesAndEnemies",
         "slot": 5,
-        "isBuff": true,
         "cooldownTurns": 4,
+        "isMagic": true,
+        "alwaysHits": true,
         "ranks": [
           {
             "rank": 1,
             "unlockLevel": 25,
-            "mpCost": 13,
+            "mpCost": 15,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "knitting",
-                "durationTurns": 3
+                "kind": "heal",
+                "amount": 10,
+                "casterMaxHpPercent": 3,
+                "offenseMultiplierPercent": 0,
+                "appliesToRelation": "ally"
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -5
+                "kind": "damage",
+                "amount": 8,
+                "offenseMultiplierPercent": 60,
+                "damageType": "holy",
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-light",
+                "durationTurns": 3,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-channel",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 50,
-            "mpCost": 14,
+            "mpCost": 16,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "knitting-ii",
-                "durationTurns": 3
+                "kind": "heal",
+                "amount": 12,
+                "casterMaxHpPercent": 3.5,
+                "offenseMultiplierPercent": 0,
+                "appliesToRelation": "ally"
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -7
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 70,
+                "damageType": "holy",
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-light",
+                "durationTurns": 3,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-channel",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 75,
-            "mpCost": 15,
+            "mpCost": 17,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "knitting-iii",
-                "durationTurns": 3
+                "kind": "heal",
+                "amount": 15,
+                "casterMaxHpPercent": 4,
+                "offenseMultiplierPercent": 0,
+                "appliesToRelation": "ally"
               },
               {
-                "kind": "modifyStat",
-                "stat": "fear",
-                "amount": -9
+                "kind": "damage",
+                "amount": 16,
+                "offenseMultiplierPercent": 80,
+                "damageType": "holy",
+                "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-light",
+                "durationTurns": 3,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "vigil-channel",
+                "durationTurns": 2,
+                "target": "self"
               }
             ]
           }
@@ -4880,10 +4951,11 @@
       {
         "id": "martyrs-oath",
         "name": "Martyr's Oath",
-        "description": "Swears the oath out loud, and takes on every blow meant for the others.",
-        "shortDescription": "Hardens and draws every blow; heals the party.",
-        "target": "self",
+        "description": "Swears the oath out loud, and for one turn every wound the party takes closes as soon as it is dealt.",
+        "shortDescription": "For 1 turn, allies heal back the HP each hit takes. Always lands.",
+        "target": "allAllies",
         "slot": 6,
+        "isBuff": true,
         "isUltimate": true,
         "cooldownTurns": 5,
         "ranks": [
@@ -4894,19 +4966,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "martyrs-resolve",
-                "durationTurns": 2
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2
-              },
-              {
-                "kind": "heal",
-                "amount": 20,
-                "maxHpPercent": 15,
-                "target": "allAllies"
+                "statusEffectId": "martyrs-grace",
+                "durationTurns": 1
               }
             ]
           },
@@ -4917,19 +4978,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "martyrs-resolve-ii",
-                "durationTurns": 2
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2
-              },
-              {
-                "kind": "heal",
-                "amount": 28,
-                "maxHpPercent": 18,
-                "target": "allAllies"
+                "statusEffectId": "martyrs-grace-ii",
+                "durationTurns": 1
               }
             ]
           },
@@ -4940,19 +4990,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "martyrs-resolve-iii",
-                "durationTurns": 2
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 2
-              },
-              {
-                "kind": "heal",
-                "amount": 36,
-                "maxHpPercent": 22,
-                "target": "allAllies"
+                "statusEffectId": "martyrs-grace-iii",
+                "durationTurns": 1
               }
             ]
           }
@@ -4962,22 +5001,23 @@
     "passiveSkill": {
       "id": "retribution",
       "name": "Retribution",
-      "description": "Every blow struck against the Paladin is owed, and it is paid back.",
+      "description": "Every blow struck against the Paladin is owed, and fear finds nothing in it to take hold of.",
+      "ignoresFearEffects": true,
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "reflectPercent": 8
+          "reflectPercent": 4
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "reflectPercent": 12
+          "reflectPercent": 6
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "reflectPercent": 16
+          "reflectPercent": 8
         }
       ]
     }
@@ -4992,11 +5032,11 @@
       "Lockdown",
       "Drain"
     ],
-    "baseMaxHp": 85,
-    "baseMaxMp": 50,
+    "baseMaxHp": 80,
+    "baseMaxMp": 55,
     "baseAttack": 3,
     "baseDefense": 6,
-    "baseAggro": 9,
+    "baseAggro": 8,
     "baseSpeed": 10,
     "baseMagicPower": 15,
     "skills": [
@@ -5087,12 +5127,17 @@
       {
         "id": "blood-pact",
         "name": "Blood Pact",
-        "description": "Opens a palm and lets it run, and something on the other side drinks and pays.",
-        "shortDescription": "Raises magic power; the Warlock bleeds.",
+        "description": "Opens a palm and lets it run, and something on the other side drinks and pays; the less there is to give, the less it asks.",
+        "shortDescription": "Raises magic power; costs HP as well as MP.",
         "target": "self",
         "slot": 2,
         "isBuff": true,
         "cooldownTurns": 4,
+        "hpCost": {
+          "atFullHpPercent": 10,
+          "atLowHpPercent": 3,
+          "lowHpBelowPercent": 20
+        },
         "ranks": [
           {
             "rank": 1,
@@ -5102,11 +5147,6 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact",
-                "durationTurns": 3
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
                 "durationTurns": 3
               }
             ]
@@ -5120,11 +5160,6 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact-ii",
                 "durationTurns": 3
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "durationTurns": 3
               }
             ]
           },
@@ -5137,11 +5172,6 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact-iii",
                 "durationTurns": 3
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "durationTurns": 3
               }
             ]
           }
@@ -5151,7 +5181,7 @@
         "id": "bind-tongue",
         "name": "Bind Tongue",
         "description": "Speaks the enemy's name backwards, and its mouth closes on whatever it meant to do.",
-        "shortDescription": "Silences 1 foe: basic attacks only.",
+        "shortDescription": "Silences 1 foe; likely Hexes it.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 4,
@@ -5172,6 +5202,12 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "silenced",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hexed",
+                "chance": 0.8,
+                "durationTurns": 3
               }
             ]
           },
@@ -5190,6 +5226,12 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "silenced",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hexed",
+                "chance": 0.8,
+                "durationTurns": 3
               }
             ]
           },
@@ -5208,17 +5250,23 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "silenced",
                 "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "hexed",
+                "chance": 0.8,
+                "durationTurns": 3
               }
             ]
           }
         ]
       },
       {
-        "id": "withering-curse",
-        "name": "Withering Curse",
-        "description": "A curse breathed over the whole enemy line, and the strength goes out of it like water.",
-        "shortDescription": "Curses all foes: may Hex and Enfeeble.",
-        "target": "allEnemies",
+        "id": "soul-rend",
+        "name": "Soul Rend",
+        "description": "Reaches into the curse already in the enemy and pulls, and what comes out keeps the Warlock standing.",
+        "shortDescription": "Drains life, harder per Hexed stack; eats 1 stack.",
+        "target": "singleEnemy",
         "slot": 4,
         "cooldownTurns": 3,
         "isMagic": true,
@@ -5230,15 +5278,99 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 8,
-                "offenseMultiplierPercent": 45,
+                "amount": 12,
+                "offenseMultiplierPercent": 90,
+                "damageType": "magic",
+                "scalesWithStatusStacks": {
+                  "statusEffectId": "hexed",
+                  "percentPerStack": 15
+                },
+                "lifestealPercent": 40
+              },
+              {
+                "kind": "removeStatusEffect",
+                "statusEffectId": "hexed",
+                "stacks": 1
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "unlockLevel": 40,
+            "mpCost": 14,
+            "effects": [
+              {
+                "kind": "damage",
+                "amount": 16,
+                "offenseMultiplierPercent": 100,
+                "damageType": "magic",
+                "scalesWithStatusStacks": {
+                  "statusEffectId": "hexed",
+                  "percentPerStack": 15
+                },
+                "lifestealPercent": 40
+              },
+              {
+                "kind": "removeStatusEffect",
+                "statusEffectId": "hexed",
+                "stacks": 1
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "unlockLevel": 65,
+            "mpCost": 15,
+            "effects": [
+              {
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 115,
+                "damageType": "magic",
+                "scalesWithStatusStacks": {
+                  "statusEffectId": "hexed",
+                  "percentPerStack": 15
+                },
+                "lifestealPercent": 40
+              },
+              {
+                "kind": "removeStatusEffect",
+                "statusEffectId": "hexed",
+                "stacks": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "withering-curse",
+        "name": "Withering Curse",
+        "description": "A curse breathed over the whole enemy line, and the strength goes out of it like water.",
+        "shortDescription": "Curses all foes: 1-2 Hexed stacks each, may Enfeeble.",
+        "target": "allEnemies",
+        "slot": 5,
+        "cooldownTurns": 3,
+        "isMagic": true,
+        "ranks": [
+          {
+            "rank": 1,
+            "unlockLevel": 25,
+            "mpCost": 14,
+            "effects": [
+              {
+                "kind": "damage",
+                "amount": 10,
+                "offenseMultiplierPercent": 60,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "chance": 0.7,
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 1,
+                  "max": 2
+                }
               },
               {
                 "kind": "applyStatusEffect",
@@ -5250,20 +5382,23 @@
           },
           {
             "rank": 2,
-            "unlockLevel": 40,
-            "mpCost": 14,
+            "unlockLevel": 50,
+            "mpCost": 15,
             "effects": [
               {
                 "kind": "damage",
-                "amount": 11,
-                "offenseMultiplierPercent": 50,
+                "amount": 15,
+                "offenseMultiplierPercent": 70,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "chance": 0.8,
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 1,
+                  "max": 2
+                }
               },
               {
                 "kind": "applyStatusEffect",
@@ -5275,20 +5410,23 @@
           },
           {
             "rank": 3,
-            "unlockLevel": 65,
-            "mpCost": 15,
+            "unlockLevel": 75,
+            "mpCost": 16,
             "effects": [
               {
                 "kind": "damage",
-                "amount": 14,
-                "offenseMultiplierPercent": 55,
+                "amount": 20,
+                "offenseMultiplierPercent": 80,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "chance": 0.9,
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 1,
+                  "max": 2
+                }
               },
               {
                 "kind": "applyStatusEffect",
@@ -5301,77 +5439,11 @@
         ]
       },
       {
-        "id": "soul-rend",
-        "name": "Soul Rend",
-        "description": "Reaches into the curse already in the enemy and pulls, and what comes out keeps the Warlock standing.",
-        "shortDescription": "Drains life, harder per Hexed stack.",
-        "target": "singleEnemy",
-        "slot": 5,
-        "cooldownTurns": 3,
-        "isMagic": true,
-        "ranks": [
-          {
-            "rank": 1,
-            "unlockLevel": 25,
-            "mpCost": 14,
-            "effects": [
-              {
-                "kind": "damage",
-                "amount": 14,
-                "offenseMultiplierPercent": 100,
-                "damageType": "magic",
-                "scalesWithStatusStacks": {
-                  "statusEffectId": "hexed",
-                  "percentPerStack": 20
-                },
-                "lifestealPercent": 40
-              }
-            ]
-          },
-          {
-            "rank": 2,
-            "unlockLevel": 50,
-            "mpCost": 15,
-            "effects": [
-              {
-                "kind": "damage",
-                "amount": 19,
-                "offenseMultiplierPercent": 112,
-                "damageType": "magic",
-                "scalesWithStatusStacks": {
-                  "statusEffectId": "hexed",
-                  "percentPerStack": 20
-                },
-                "lifestealPercent": 40
-              }
-            ]
-          },
-          {
-            "rank": 3,
-            "unlockLevel": 75,
-            "mpCost": 16,
-            "effects": [
-              {
-                "kind": "damage",
-                "amount": 24,
-                "offenseMultiplierPercent": 125,
-                "damageType": "magic",
-                "scalesWithStatusStacks": {
-                  "statusEffectId": "hexed",
-                  "percentPerStack": 20
-                },
-                "lifestealPercent": 40
-              }
-            ]
-          }
-        ]
-      },
-      {
         "id": "doom",
         "name": "Doom",
-        "description": "The room goes dark from the edges in, and when the light comes back the enemy has paid for it.",
-        "shortDescription": "Dark wave hits all foes and Hexes them. Always hits.",
-        "target": "allEnemies",
+        "description": "The curse is spoken whole into one enemy, and what it cannot hold spills onto whoever stands nearest.",
+        "shortDescription": "A heavy curse on 1 foe; 4 Hexed stacks, the excess spills onto others. Always hits.",
+        "target": "singleEnemy",
         "slot": 6,
         "isUltimate": true,
         "cooldownTurns": 5,
@@ -5384,14 +5456,23 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 22,
-                "offenseMultiplierPercent": 100,
+                "amount": 40,
+                "offenseMultiplierPercent": 120,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 4,
+                  "max": 4
+                },
+                "overflowDamage": {
+                  "amount": 20,
+                  "offenseMultiplierPercent": 70,
+                  "maxHitsPerTarget": 2
+                }
               }
             ]
           },
@@ -5402,14 +5483,23 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 30,
-                "offenseMultiplierPercent": 115,
+                "amount": 50,
+                "offenseMultiplierPercent": 135,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 4,
+                  "max": 4
+                },
+                "overflowDamage": {
+                  "amount": 25,
+                  "offenseMultiplierPercent": 75,
+                  "maxHitsPerTarget": 2
+                }
               }
             ]
           },
@@ -5420,14 +5510,23 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 38,
-                "offenseMultiplierPercent": 130,
+                "amount": 60,
+                "offenseMultiplierPercent": 160,
                 "damageType": "magic"
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "hexed",
-                "durationTurns": 3
+                "durationTurns": 3,
+                "stackCount": {
+                  "min": 4,
+                  "max": 4
+                },
+                "overflowDamage": {
+                  "amount": 30,
+                  "offenseMultiplierPercent": 80,
+                  "maxHitsPerTarget": 2
+                }
               }
             ]
           }
@@ -5435,27 +5534,30 @@
       }
     ],
     "passiveSkill": {
-      "id": "soul-feast",
-      "name": "Soul Feast",
-      "description": "Nothing the Warlock kills goes to waste.",
+      "id": "ripened-curse",
+      "name": "Ripened Curse",
+      "description": "A curse left long enough on one body comes due all at once.",
+      "stackBurst": {
+        "statusEffectId": "hexed",
+        "atStacks": 4,
+        "removeStacks": 3,
+        "skillId": "hex"
+      },
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "killRestoreMpPercent": 10,
-          "killRestoreHpPercent": 5
+          "stackBurstPowerPercent": 80
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "killRestoreMpPercent": 15,
-          "killRestoreHpPercent": 8
+          "stackBurstPowerPercent": 90
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "killRestoreMpPercent": 20,
-          "killRestoreHpPercent": 10
+          "stackBurstPowerPercent": 100
         }
       ]
     }

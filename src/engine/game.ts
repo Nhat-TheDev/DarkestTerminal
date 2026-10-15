@@ -19,6 +19,8 @@ import {
   queueAction,
   queueItemAction,
   allLivingCharactersHaveQueuedActions,
+  holdChannel,
+  breakChannel,
   resolveRound,
   startCombat,
   type QueueActionError,
@@ -335,6 +337,17 @@ export class Game {
   livingCharactersNeedingAction(): CombatantRef[] {
     if (!this.state.combat) return [];
     return livingCharacterRefs(this.state.combat, this.ctx);
+  }
+
+  /** Keeps a channeling character channeling this round (`holdChannel`). */
+  holdChannel(actorRef: CombatantRef): void {
+    if (this.state.combat) holdChannel(this.state.combat, actorRef);
+  }
+
+  /** Ends a character's channel now, so it can act this round (`breakChannel`). */
+  breakChannel(actorRef: CombatantRef): void {
+    const character = this.state.party.find((c) => c.id === actorRef.id);
+    if (this.state.combat && character) breakChannel(character, this.ctx, this.state.combat.log);
   }
 
   queue(actorRef: CombatantRef, skillId: string, targets: CombatantRef[]): QueueActionError | null {

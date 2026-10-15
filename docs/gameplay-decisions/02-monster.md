@@ -202,7 +202,7 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `whispered-name` | Whispered Name | singleEnemy | damage 15 + 100% ATK | Cultist Initiate (aggressive) |
 | `poison-bite` | Poison Bite | singleEnemy | damage 12 + 100% ATK; status poisoned (3 turns, 50% chance) | Toxic Toad (defensive), Snake (opportunistic) |
 | `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (defensive) |
-| `regeneration` | Regeneration | self | heal 15 + 100% MAG (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
+| `regeneration` | Regeneration | self | heal 15 (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
 | `quick-bite` | Quick Bite | singleEnemy | damage 13 + 100% ATK | Lizard (aggressive), Dire Wolf (aggressive) |
 | `web-spit` | Web Spit | singleEnemy | damage 13 + 100% ATK; status webbed (2 turns, 50% chance) | Spider (aggressive) |
 | `grave-chill` | Grave Chill | singleEnemy | damage 13 + 100% ATK; status weakened (2 turns, 50% chance) | Ghost (opportunistic) |
@@ -228,7 +228,7 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `old-fire-wakes` | Old Fire Wakes | self | status empower (99 turns) | Dragon (aggressive) |
 | `diseased-blade` | Diseased Blade | singleEnemy | damage 24 + 285% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
 | `guard-position` | Guard Position | self | status guard-ii (2 turns) | Zombie Knight (defensive) |
-| `undying` | Undying | self | heal 0 + 100% MAG (35% max HP) | Zombie Knight (defensive) |
+| `undying` | Undying | self | heal 0 (35% max HP) | Zombie Knight (defensive) |
 | `rotting-embrace` | Rotting Embrace | singleEnemy | damage 50 + 225% ATK; status agony (3 turns) | Zombie Knight (defensive) |
 | `salute` | Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
 | `measured-cut` | Measured Cut | singleEnemy | damage 26 + 230% ATK (crit 25%) | Dark Knight (defensive) |

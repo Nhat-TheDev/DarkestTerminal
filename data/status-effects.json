@@ -1330,52 +1330,9 @@
     "rankLevel": 3
   },
   {
-    "id": "martyrs-resolve",
-    "name": "Martyr's Resolve",
-    "description": "Greatly raises defense for the duration.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 12,
-        "minPercent": 50
-      }
-    ]
-  },
-  {
-    "id": "martyrs-resolve-ii",
-    "name": "Martyr's Resolve II",
-    "description": "Greatly raises defense for the duration.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 16,
-        "minPercent": 60
-      }
-    ],
-    "rankOf": "martyrs-resolve",
-    "rankLevel": 2
-  },
-  {
-    "id": "martyrs-resolve-iii",
-    "name": "Martyr's Resolve III",
-    "description": "Massively raises defense for the duration.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 20,
-        "minPercent": 70
-      }
-    ],
-    "rankOf": "martyrs-resolve",
-    "rankLevel": 3
-  },
-  {
     "id": "hexed",
     "name": "Hexed",
-    "description": "A curse that eats at the body each turn and saps attack; stacks up to 3 times.",
+    "description": "A curse that eats at the body each turn and saps attack; stacks up to 4 times.",
     "perTurnEffects": [
       {
         "kind": "damage",
@@ -1391,7 +1348,7 @@
       }
     ],
     "stackable": true,
-    "maxStacks": 3,
+    "maxStacks": 4,
     "perStackBonusPercent": 100
   },
   {
@@ -1402,7 +1359,7 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 5,
+        "amount": 6,
         "minPercent": 20
       }
     ]
@@ -1415,8 +1372,8 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 7,
-        "minPercent": 27
+        "amount": 9,
+        "minPercent": 30
       }
     ],
     "rankOf": "pact",
@@ -1430,8 +1387,8 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 9,
-        "minPercent": 35
+        "amount": 12,
+        "minPercent": 40
       }
     ],
     "rankOf": "pact",
@@ -1468,6 +1425,141 @@
     "description": "A weighted coin is ready; the next toss is far more likely to land.",
     "perTurnEffects": [],
     "coinFlipWinChanceMultiplier": 2
+  },
+  {
+    "id": "sharp-face",
+    "name": "Sharp Face",
+    "description": "The Jester's attack has the upper hand this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "dull-face",
+    "name": "Dull Face",
+    "description": "The Jester's attack has gone slack this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": -1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "bright-face",
+    "name": "Bright Face",
+    "description": "The Jester's magic burns hotter this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "dim-face",
+    "name": "Dim Face",
+    "description": "The Jester's magic gutters this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": -1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "defiance",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectId": "weakened",
+      "durationTurns": 2
+    }
+  },
+  {
+    "id": "guardian-angel",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 30
+  },
+  {
+    "id": "guardian-angel-ii",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 40,
+    "rankOf": "guardian-angel",
+    "rankLevel": 2
+  },
+  {
+    "id": "guardian-angel-iii",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 50,
+    "rankOf": "guardian-angel",
+    "rankLevel": 3
+  },
+  {
+    "id": "vigil-channel",
+    "name": "Vigil",
+    "description": "Holding the light: each turn spent kneeling renews it.",
+    "perTurnEffects": [],
+    "channelSkillId": "vigil",
+    "endsWithCombat": true
+  },
+  {
+    "id": "vigil-light",
+    "name": "Vigil's Light",
+    "description": "Standing in the light keeps most fear at bay.",
+    "perTurnEffects": [],
+    "fearResistPercent": 80,
+    "endsWithCombat": true
+  },
+  {
+    "id": "martyrs-grace",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 90
+  },
+  {
+    "id": "martyrs-grace-ii",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 110,
+    "rankOf": "martyrs-grace",
+    "rankLevel": 2
+  },
+  {
+    "id": "martyrs-grace-iii",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 130,
+    "rankOf": "martyrs-grace",
+    "rankLevel": 3
   },
   {
     "id": "blessed",

@@ -1,7 +1,8 @@
 import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
 import type { Character, CombatantRef, CombatStat, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
-import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
+import { getActorByRef, checkSkillUsable, checkItemUsable, channelStatus } from "../../engine/combat";
+import { getSkill } from "../../data/classes";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
 import { signed } from "../../data/items";
@@ -64,6 +65,12 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       ? t("ui.skillEffectDamageScalingOnly", { percent, statLabel, targetSuffix })
       : t("ui.skillEffectDamageScaling", { percent, statLabel, statAmount: base, targetSuffix });
   }
+  if (e.kind === "heal" && e.casterMaxHpPercent) {
+    const parts = [String(e.amount ?? 0)];
+    parts.push(t("ui.healCasterMaxHpPart", { percent: e.casterMaxHpPercent }));
+    const head = t("ui.skillEffectHealParts", { parts: parts.join(" + "), targetSuffix });
+    return e.lowHpHealBonus ? `${head}\n${t("ui.skillLowHpHealLine", { percent: e.lowHpHealBonus.maxBonusPercent, threshold: e.lowHpHealBonus.fullBonusBelowHpPercent })}` : head;
+  }
   if (e.kind === "heal" && sk.isMagic) {
     return t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
   }
@@ -86,13 +93,20 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     case "applyStatusEffect": {
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
-      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
+      const stacks = e.stackCount ? ` ${t("ui.skillStackCount", { range: e.stackCount.min === e.stackCount.max ? String(e.stackCount.min) : `${e.stackCount.min}-${e.stackCount.max}` })}` : "";
+      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${stacks}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
       const bullet = t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
       const parts = statusMechanicsParts(def, { amount: e.amount, minPercent: e.minPercent });
-      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics }))].join("\n");
+      const overflow = e.overflowDamage
+        ? [t("ui.skillOverflowLine", { amount: e.overflowDamage.amount, percent: e.overflowDamage.offenseMultiplierPercent, statLabel: sk.isMagic ? "Magic Power" : "Attack", max: e.overflowDamage.maxHitsPerTarget })]
+        : [];
+      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics })), ...overflow].join("\n");
     }
     case "removeStatusEffect":
-      body = t("ui.skillEffectRemoveStatus");
+      body =
+        e.stacks !== undefined && e.statusEffectId
+          ? t("ui.skillEffectRemoveStacks", { count: e.stacks, status: statusDisplayName(getStatusEffect(e.statusEffectId)) })
+          : t("ui.skillEffectRemoveStatus");
       break;
     case "commandSummons":
       return t("ui.skillEffectCommandSummons");
@@ -152,6 +166,9 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
     if (resetCooldownOnLose) lines.push(t("ui.skillCoinFlipResetLine"));
   }
   if (sk.grantsDice) lines.push(t("ui.skillGrantsDiceLine", { count: sk.grantsDice }));
+  if (sk.alwaysHits) lines.push(t("ui.skillAlwaysHitsLine"));
+  if (sk.hpCost) lines.push(t("ui.skillHpCostLine", { full: sk.hpCost.atFullHpPercent, low: sk.hpCost.atLowHpPercent, threshold: sk.hpCost.lowHpBelowPercent }));
+  if (sk.targetsOtherAlliesOnly) lines.push(t("ui.skillOthersOnlyLine"));
   if (sk.allyTurnOrderBonus) lines.push(t("ui.skillAllyTurnOrderLine", { speed: sk.allyTurnOrderBonus }));
   if (sk.casterHpBelowBonus) {
     const { hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent } = sk.casterHpBelowBonus;
@@ -187,7 +204,12 @@ export function trySelectSkill(ctx: ScreenContext, actorRef: CombatantRef, skill
     return;
   }
   if (skill.target === "singleEnemy" || skill.target === "singleAlly") {
-    const candidates = skill.target === "singleEnemy" ? ctx.game.livingEnemyRefs() : ctx.game.livingAllyRefs();
+    const allies = ctx.game.livingAllyRefs().filter((r) => !(skill.targetsOtherAlliesOnly && r.kind === actorRef.kind && r.id === actorRef.id));
+    const candidates = skill.target === "singleEnemy" ? ctx.game.livingEnemyRefs() : allies;
+    if (candidates.length === 0) {
+      ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: t("errors.cannotTargetSelf") }));
+      return;
+    }
     ctx.setUi({ kind: "pickTarget", actorRef, source: { kind: "skill", skill }, candidates });
     return;
   }
@@ -223,6 +245,17 @@ export function trySelectItem(ctx: ScreenContext, actorRef: CombatantRef, item: 
 export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
     case "pickAction": {
+      const channeling = channelStatus(getActorByRef(ui.actorRef, ctx.game.ctx));
+      if (channeling) {
+        if (digit === 1) {
+          ctx.game.holdChannel(ui.actorRef);
+          ctx.syncUiToGameState();
+        } else if (digit === 2) {
+          ctx.game.breakChannel(ui.actorRef);
+          ctx.setUi({ kind: "pickAction", actorRef: ui.actorRef });
+        }
+        break;
+      }
       if (digit === 1) {
         ctx.setUi({ kind: "pickSkill", actorRef: ui.actorRef });
       } else if (digit === 2) {
@@ -306,6 +339,15 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
 
     case "pickAction": {
       const actor = getActorByRef(ui.actorRef, game.ctx) as Character;
+      const channeling = channelStatus(actor);
+      if (channeling) {
+        const skill = getSkill(getStatusEffect(channeling.statusEffectId).channelSkillId!);
+        return [
+          t("ui.channelingTurn", { actor: actor.name, skill: skill.name, turns: channeling.turnsRemaining }),
+          t("ui.channelHoldOption", { skill: skill.name }),
+          t("ui.channelBreakOption", { skill: skill.name }),
+        ].join("\n");
+      }
       const hasItems = inventoryEntries(s.inventory).length > 0;
       const lines = [
         t("ui.turnOfChooseAction", { actor: actor.name }),

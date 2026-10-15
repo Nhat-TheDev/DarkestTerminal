@@ -13,7 +13,7 @@ import {
   applySkillEffects,
   applyMonsterHitFear,
   applyOnActStatuses,
-  triggerCounterAttack,
+  onStruckByMonster,
   type EngineContext,
 } from "./combat";
 import { getStatusEffect } from "../data/statusEffects";
@@ -312,5 +312,5 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log, rollDamage: () => ctx.rng.next() });
   if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
   if (damageDealt > 0) applyMonsterHitFear(actor, target, combat, ctx);
-  if (damageDealt > 0) triggerCounterAttack(target, combat, ctx);
+  if (damageDealt > 0) onStruckByMonster(target, actor, combat, ctx);
 }
