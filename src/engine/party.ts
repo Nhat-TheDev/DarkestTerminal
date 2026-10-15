@@ -108,7 +108,8 @@ export interface StatBreakdown {
 
 /** The single formula every character stat is built from — `recomputeCharacterStats` writes the totals, the
  *  Character Info screen shows the parts. `satiety`'s Exhausted penalty scales the base of every stat but
- *  maxHp/maxMp. Vanguard's passive (§11 of the design spec) multiplies maxHp/defense after equipment and adds
+ *  maxHp/maxMp. A growth-swap passive's `Character.growthShift` (Jester) counts toward the passive share of
+ *  attack/magicPower. Vanguard's passive (§11 of the design spec) multiplies maxHp/defense after equipment and adds
  *  flat aggro; status deltas come last and flat, the same way the resolver applies and undoes them mid-fight. */
 export function characterStatBreakdown(character: Character, satiety: number): Record<CharacterStat, StatBreakdown> {
   const cls = getClass(character.classId);
@@ -131,7 +132,8 @@ export function characterStatBreakdown(character: Character, satiety: number): R
     const artifact = stat === "aggro" ? curseAggroBoostSum(character) : boost[stat] - ability;
     const beforePassive = statBase + artifact + ability;
     const percent = passivePercent[stat] ?? 0;
-    const passive = (percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0) + (stat === "aggro" ? (vanguardPassive?.aggroFlat ?? 0) : 0);
+    const growthShift = stat === "attack" || stat === "magicPower" ? (character.growthShift?.[stat] ?? 0) : 0;
+    const passive = (percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0) + (stat === "aggro" ? (vanguardPassive?.aggroFlat ?? 0) : 0) + growthShift;
     const status = stat === "maxMp" ? 0 : activeStatusCombatStatSum(character, stat);
     return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, status, total: beforePassive + passive + status };
   };

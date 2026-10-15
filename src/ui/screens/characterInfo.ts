@@ -7,7 +7,7 @@ import { digitHint } from "../keyHints";
 import { getClass, passiveRankDef } from "../../data/classes";
 import type { PassiveRankDefinition, PassiveSkillDefinition } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
+import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics, COMBAT_STAT_LABEL } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
 import { wrapText } from "../layout";
 import { characterStatBreakdown, type StatBreakdown } from "../../engine/party";
@@ -99,9 +99,9 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   if (rankDef.maxActiveMinions !== undefined) {
     parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
   }
-  if (rankDef.gambleBonusPercentPerStack !== undefined) {
-    const fortune = passive.gambleStatusEffectId ? getStatusEffect(passive.gambleStatusEffectId) : undefined;
-    parts.push(t("passive.jesterFortune", { percent: rankDef.gambleBonusPercentPerStack, max: fortune?.maxStacks ?? 1 }));
+  if (rankDef.growthSwapWeights !== undefined && passive.growthSwapStats) {
+    const [first, second] = passive.growthSwapStats.map((stat) => COMBAT_STAT_LABEL[stat]) as [string, string];
+    parts.push(t("passive.jesterGrowthSwap", { first, second, low: rankDef.growthSwapWeights.low, high: rankDef.growthSwapWeights.high }));
   }
   if (rankDef.reflectPercent !== undefined) {
     parts.push(t("passive.paladinReflect", { percent: rankDef.reflectPercent }));

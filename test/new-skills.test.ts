@@ -4,6 +4,7 @@ import { runMonsterTurn } from "../src/engine/monsterAI";
 import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulStatusCount } from "../src/engine/resolver";
 import { resistedFearGain } from "../src/engine/survival";
 import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/data/classes";
+import { characterStatBreakdown } from "../src/engine/party";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
@@ -220,7 +221,7 @@ describe("Jester", () => {
     return { ctx, jester, rats, target, combat, cast };
   }
 
-  test("a lost coin flip misses, slows the Jester, rigs the next toss, resets the cooldown and stores Fortune", () => {
+  test("a lost coin flip misses, slows the Jester, rigs the next toss and resets the cooldown", () => {
     const { ctx, jester, cast } = jesterFight(25);
     const realChance = ctx.rng.chance.bind(ctx.rng);
     ctx.rng.chance = () => false;
@@ -228,28 +229,58 @@ describe("Jester", () => {
     expect(cast("double-or-nothing")).toBe(0);
     for (const id of ["slowed", "rigged"]) expect(jester.activeStatusEffects.some((s) => s.statusEffectId === id)).toBe(true);
     expect(jester.cooldownsRemaining["double-or-nothing"]).toBe(0);
-    expect(jester.activeStatusEffects.find((s) => s.statusEffectId === "fortune")?.stacks).toBe(1);
 
     // Rigged doubles a 50% toss: the next one cannot lose.
     ctx.rng.chance = realChance;
     expect(cast("double-or-nothing")).toBeGreaterThan(0);
-    expect(jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
   });
 
-  test("Fortune makes the winning toss hit harder, and below rank 1 nothing is stored", () => {
-    const { ctx, jester, cast } = jesterFight(25);
-    ctx.rng.chance = () => false;
-    cast("double-or-nothing");
-    cast("double-or-nothing");
-    ctx.rng.chance = () => true;
-    const withFortune = cast("double-or-nothing");
-    const withoutFortune = cast("double-or-nothing");
-    expect(withFortune).toBeGreaterThan(withoutFortune);
+  test("Two-Faced trades attack and magic power growth each round, and the fight's end takes it back", () => {
+    const { ctx, jester, rats, combat } = jesterFight(50);
+    const base = { attack: jester.attack, magicPower: jester.magicPower };
+    const { low, high } = getClass("jester").passiveSkill.ranks.find((r) => r.rank === 2)!.growthSwapWeights!;
+    const seen = new Set<string>();
+    for (let round = 0; round < 12 && seen.size < 2; round++) {
+      queueAction(combat, ref(jester), "loaded-dice", [monsterRef(rats[0]!)], ctx);
+      resolveRound(combat, ctx);
+      const shift = jester.growthShift!;
+      expect(jester.attack - base.attack).toBe(shift.attack!);
+      expect(jester.magicPower - base.magicPower).toBe(shift.magicPower!);
+      // One stat leans up and the other down, never both the same way.
+      expect(Math.sign(shift.attack!)).toBe(-Math.sign(shift.magicPower!));
+      seen.add(shift.attack! > 0 ? "attack" : "magic");
+    }
+    expect(seen.size).toBe(2);
+    expect(high).toBeGreaterThan(low);
+    const breakdown = characterStatBreakdown(jester, 100);
+    expect(breakdown.attack.passive).toBe(jester.growthShift!.attack!);
+    clearCombatResources(ctx);
+    expect(jester.attack).toBe(base.attack);
+    expect(jester.magicPower).toBe(base.magicPower);
+    expect(jester.growthShift).toBeUndefined();
+  });
 
-    const low = jesterFight(1);
-    low.ctx.rng.chance = () => false;
-    low.cast("double-or-nothing");
-    expect(low.jester.activeStatusEffects.some((s) => s.statusEffectId === "fortune")).toBe(false);
+  test("below the passive's first rank the growth never moves", () => {
+    const { ctx, jester, rats, combat } = jesterFight(1);
+    queueAction(combat, ref(jester), "loaded-dice", [monsterRef(rats[0]!)], ctx);
+    resolveRound(combat, ctx);
+    expect(jester.growthShift).toBeUndefined();
+  });
+
+  test("Finale's dice take turns between attack and magic power", () => {
+    const { ctx, jester, rats, combat } = jesterFight(35, 2);
+    jester.dice = getClass("jester").dice!.maxCount;
+    jester.attack = 2000;
+    jester.magicPower = 0;
+    for (const rat of rats) rat.defense = 0;
+    const from = combat.log.length;
+    applySkillEffects(getEffectiveSkill(getSkill("finale"), jester.level), jester, rats, combat, ctx, combat.log);
+    const amounts = combat.log.slice(from).flatMap((l) => (l.hit ? [l.hit.amount] : []));
+    expect(amounts.length).toBe(12);
+    // Attack dice hit for hundreds; magic dice, with no magic power, only for their flat amount.
+    expect(amounts.filter((a) => a > 200).length).toBe(6);
+    expect(amounts.filter((a) => a <= 200).length).toBe(6);
+    expect(getSkill("rigged-game").isMagic).toBe(true);
   });
 
   test("Loaded Dice deals one of its six faces", () => {
