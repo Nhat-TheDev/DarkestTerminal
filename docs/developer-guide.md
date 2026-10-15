@@ -417,6 +417,8 @@ screen contributes.
 | `pickAction` | `[1-2] Action` — "Use item" stays listed (tagged) even with an empty bag |
 | `pickSkill` | `[1-n] Skill   [Esc] Back` — n = the actor's skills |
 | `skillDetail` | `[Enter] Use   [Esc] Back` |
+| `pickCommandMinion` | `[1-n] Minion   [Esc] Back` — n = minions the Summoner can Command |
+| `pickCommandSkill` | `[1-n] Skill   [Esc] Back` — n = the minion's signature skills |
 | `pickItemInCombat` / `pickItemOutOfCombat` | `[1-n] Item   [Esc] Back` — n = items on this page |
 | `pickTarget` | `[1-n] Target   [Esc] Back` — n = candidates |
 | `roundResolved` / `combatOver` | `[Any] Continue` |

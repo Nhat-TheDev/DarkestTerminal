@@ -64,13 +64,14 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       head = `${field("combatStat", String)} ${field("amount", formatNumber)}`;
       break;
     case "removeStatusEffect":
-      head = `remove ${field("statusEffectId", String) ?? "one harmful status"}`;
+      used.add("removesHarmfulDots");
+      head = ranks.some((effect) => effect.removesHarmfulDots) ? "remove every harmful damage-over-time status" : `remove ${field("statusEffectId", String) ?? "one harmful status"}`;
       break;
     case "summon":
       head = `summon ${field("summonCastId", String)}`;
       break;
     case "commandSummons":
-      head = "every minion acts once more, boosted";
+      head = `cast one minion's signature skill as your own, off MAG, at ${field("powerPercent", formatNumber) ?? "100"}% of its damage and healing`;
       break;
     case "throwDice":
       head = `every die in hand: ${amount()} + ${multiplier()}% ${offenseStat} each`;

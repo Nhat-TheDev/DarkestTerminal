@@ -19,7 +19,7 @@ async function channelingFight() {
   game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
   const paladin = game.state.party[0]!;
   applyStatusEffectToActor(paladin, "vigil-channel", 2, { log: [] });
-  const app = new App(harness.renderer, game);
+  const app = new App(harness.renderer, game, { autoReveal: false });
   await harness.renderOnce();
   return { ...harness, app, game, paladin };
 }

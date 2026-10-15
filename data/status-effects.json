@@ -1175,23 +1175,25 @@
   {
     "id": "retaliating",
     "name": "Retaliating",
-    "description": "Answers a monster's blow with a sweep at every enemy, twice a round at most.",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
     "perTurnEffects": [],
+    "tickCategory": "statMod",
     "counterAttack": {
-      "maxPerRound": 2,
-      "amount": 8,
-      "offenseMultiplierPercent": 50
+      "maxCounters": 2,
+      "amount": 10,
+      "offenseMultiplierPercent": 60
     }
   },
   {
     "id": "retaliating-ii",
     "name": "Retaliating II",
-    "description": "Answers a monster's blow with a harder sweep at every enemy, twice a round at most.",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
     "perTurnEffects": [],
+    "tickCategory": "statMod",
     "counterAttack": {
-      "maxPerRound": 2,
-      "amount": 12,
-      "offenseMultiplierPercent": 60
+      "maxCounters": 2,
+      "amount": 15,
+      "offenseMultiplierPercent": 70
     },
     "rankOf": "retaliating",
     "rankLevel": 2
@@ -1199,12 +1201,13 @@
   {
     "id": "retaliating-iii",
     "name": "Retaliating III",
-    "description": "Answers a monster's blow with a heavy sweep at every enemy, twice a round at most.",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
     "perTurnEffects": [],
+    "tickCategory": "statMod",
     "counterAttack": {
-      "maxPerRound": 2,
-      "amount": 16,
-      "offenseMultiplierPercent": 70
+      "maxCounters": 2,
+      "amount": 20,
+      "offenseMultiplierPercent": 75
     },
     "rankOf": "retaliating",
     "rankLevel": 3
@@ -1560,6 +1563,74 @@
     "healOnHitPercent": 130,
     "rankOf": "martyrs-grace",
     "rankLevel": 3
+  },
+  {
+    "id": "cleansing-light",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 5,
+      "offenseMultiplierPercent": 85,
+      "damageType": "holy",
+      "isMagic": true
+    }
+  },
+  {
+    "id": "cleansing-light-ii",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 7,
+      "offenseMultiplierPercent": 95,
+      "damageType": "holy",
+      "isMagic": true
+    },
+    "rankOf": "cleansing-light",
+    "rankLevel": 2
+  },
+  {
+    "id": "cleansing-light-iii",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 10,
+      "offenseMultiplierPercent": 105,
+      "damageType": "holy",
+      "isMagic": true
+    },
+    "rankOf": "cleansing-light",
+    "rankLevel": 3
+  },
+  {
+    "id": "chilled",
+    "name": "Chilled",
+    "description": "Frost in the joints slows every move; a second layer freezes the body solid.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": -5
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 2,
+    "onMaxStacks": {
+      "statusEffectId": "frozen",
+      "durationTurns": 1
+    }
+  },
+  {
+    "id": "frozen",
+    "name": "Frozen",
+    "description": "Locked in ice; cannot act.",
+    "perTurnEffects": [],
+    "stuns": true
   },
   {
     "id": "blessed",

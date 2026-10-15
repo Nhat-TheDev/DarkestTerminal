@@ -80,12 +80,16 @@ export interface SkillEffect {
   overflowDamage?: { amount: number; offenseMultiplierPercent: number; maxHitsPerTarget: number };
   /** For `removeStatusEffect`: takes off this many stacks of `statusEffectId` rather than the whole status. */
   stacks?: number;
+  /** For `removeStatusEffect`: takes off every harmful damage-over-time status the target carries. */
+  removesHarmfulDots?: boolean;
   /** For `heal`: adds this percent of the caster's own max HP. */
   casterMaxHpPercent?: number;
   /** For `heal`: raises the heal by up to `maxBonusPercent`, growing evenly as the recipient's HP falls from full to `fullBonusBelowHpPercent` of its max. */
   lowHpHealBonus?: { maxBonusPercent: number; fullBonusBelowHpPercent: number };
   /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
   excludesCaster?: boolean;
+  /** For `commandSummons`: the commanded minion skill's damage and healing, both flat and scaled, at this percent. */
+  powerPercent?: number;
 }
 
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
@@ -375,8 +379,12 @@ export interface StatusEffectDefinition {
   harmful?: boolean;
   /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
   reflectDamagePercent?: number;
-  /** When a monster's direct hit lands on the bearer, the bearer strikes back at every enemy, at most `maxPerRound` times a round. */
-  counterAttack?: { maxPerRound: number; amount: number; offenseMultiplierPercent: number };
+  /** When a monster's direct hit lands on the bearer, the bearer strikes back at every enemy; after `maxCounters` counters the status ends. */
+  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number };
+  /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
+  onMaxStacks?: { statusEffectId: Id; durationTurns: number };
+  /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */
+  basicAttackOverride?: { name: string; amount: number; offenseMultiplierPercent: number; damageType?: DamageType; isMagic?: boolean };
   /** Reduces every fear gain on the bearer by this percent, combined with its fearResist. */
   fearResistPercent?: number;
   /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
@@ -565,8 +573,8 @@ export interface ActiveStatusEffect {
   /** Caster's magicPower at application, so `heal` ticks scale off the caster rather than the bearer. */
   sourceMagicPower?: number;
   onHitDurationTurns?: number;
-  /** For a status with `counterAttack`: how many counters it has struck this round, cleared at the start of every round. */
-  countersThisRound?: number;
+  /** For a status with `counterAttack`: how many counters it has struck so far. */
+  countersStruck?: number;
   /** For a status with `forcesTargetOnSource`: the id of the actor that applied it. */
   sourceId?: Id;
 }
@@ -760,8 +768,6 @@ export interface SummonArchetype {
   passive?: boolean;
   /** `chance` is 0-1. */
   basicAttackOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
-  /** When its owner commands it (`commandSummons`), its signature skill's damage and healing gain this percent. */
-  commandBoostPercent?: number;
 }
 
 export type CombatantRef = { kind: "character"; id: Id } | { kind: "monster"; id: Id } | { kind: "summon"; id: Id };
@@ -771,7 +777,13 @@ export interface Combatant {
   speed: number;
 }
 
-export type ActionSource = { kind: "skill"; skillId: Id } | { kind: "item"; itemId: Id };
+/** A Command cast (`commandSummons`): which of the caster's minions it orders, and which of that minion's signature skills it casts. */
+export interface CommandOrder {
+  summonId: Id;
+  skillId: Id;
+}
+
+export type ActionSource = { kind: "skill"; skillId: Id; command?: CommandOrder } | { kind: "item"; itemId: Id };
 
 export interface QueuedAction {
   actor: CombatantRef;

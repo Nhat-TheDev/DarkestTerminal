@@ -1,11 +1,12 @@
 import { describe, test, expect } from "bun:test";
-import { startCombat, queueAction, resolveRound, applySkillEffects, applyOnActStatuses, clearCombatResources, allLivingCharactersHaveQueuedActions, breakChannel } from "../src/engine/combat";
+import { startCombat, queueAction, queueCommand, commandedSkill, commandableSummons, spawnAdditionalSummon, resolveRound, applySkillEffects, applyOnActStatuses, clearCombatResources, allLivingCharactersHaveQueuedActions, breakChannel } from "../src/engine/combat";
 import { runMonsterTurn } from "../src/engine/monsterAI";
 import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulStatusCount, removeStatusStacks } from "../src/engine/resolver";
 import { resistedFearGain } from "../src/engine/survival";
 import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/data/classes";
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
 import { getStatusEffect } from "../src/data/statusEffects";
+import { getSummonSkill } from "../src/data/summons";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
 import { makeCtx, spawnInto, sk, withFixture, withoutDamageRolls } from "./helpers";
@@ -48,23 +49,36 @@ describe("kit shape", () => {
 });
 
 describe("Retaliate (Vanguard)", () => {
-  test("a monster's hit on a Retaliating Vanguard strikes back at every enemy, at most twice a round", () => {
+  test("the first 2 monster hits that land are answered on every enemy, then Retaliating drops", () => {
     const { ctx } = makeCtx(3);
     const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
     unlock(vanguard, 25, "retaliate");
     vanguard.maxHp = vanguard.hp = 1e6;
     onlyAlive(ctx.party, vanguard);
     const rats = [0, 1, 2].map(() => tank(spawnInto(ctx, "dungeon-rat")));
+    for (const rat of rats) rat.speed = 1;
     const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
     queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(true);
-
-    const from = combat.log.length;
-    resolveRound(combat, ctx);
-    const counters = combat.log.slice(from).filter((l) => l.text.includes("answers the blow")).length;
+    const counters = combat.log.filter((l) => l.text.includes("answers the blow")).length;
     expect(counters).toBe(2);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(false);
     for (const rat of rats) expect(rat.hp).toBeLessThan(rat.maxHp);
+  });
+
+  test("unused, Retaliating ends with the round", () => {
+    const { ctx } = makeCtx(3);
+    const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
+    unlock(vanguard, 25, "retaliate");
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    rat.attack = 0;
+    onlyAlive(ctx.party, vanguard);
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    // Stunned all round, the rat never swings.
+    applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
+    queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
+    resolveRound(combat, ctx);
+    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId.startsWith("retaliating"))).toBe(false);
   });
 });
 
@@ -115,6 +129,74 @@ describe("Sanctuary (Acolyte)", () => {
   });
 });
 
+describe("Mage — Chilled and Frozen", () => {
+  test("Frost Lance and Ice Age always Chill; a second stack freezes the target solid", () => {
+    const { ctx } = makeCtx();
+    const mage = ctx.party.find((c) => c.classId === "mage")!;
+    unlock(mage, 35, "frost-lance", "ice-age");
+    const rats = [0, 1].map(() => tank(spawnInto(ctx, "dungeon-rat")));
+    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+    const speed = rats[0]!.speed;
+    applySkillEffects(getEffectiveSkill(getSkill("ice-age"), 35), mage, rats, combat, ctx, combat.log);
+    for (const rat of rats) expect(rat.activeStatusEffects.find((s) => s.statusEffectId === "chilled")?.stacks).toBe(1);
+    expect(rats[0]!.speed).toBeLessThan(speed);
+
+    ctx.rng.next = () => 0.99; // the lance's accuracy roll lands
+    applySkillEffects(getEffectiveSkill(getSkill("frost-lance"), 35), mage, [rats[0]!], combat, ctx, combat.log);
+    expect(rats[0]!.activeStatusEffects.some((s) => s.statusEffectId === "chilled")).toBe(false);
+    expect(rats[0]!.activeStatusEffects.some((s) => s.statusEffectId === "frozen")).toBe(true);
+    // The chill's slow goes with its stacks.
+    expect(rats[0]!.speed).toBe(speed);
+  });
+
+  test("a Frozen monster loses its turn", () => {
+    const { ctx } = makeCtx();
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    applyStatusEffectToActor(rat, "frozen", 1, { log: [] });
+    const partyHp = ctx.party.map((c) => c.hp);
+    runMonsterTurn(monsterRef(rat), combat, ctx);
+    ctx.party.forEach((c, i) => expect(c.hp).toBe(partyHp[i]!));
+  });
+});
+
+describe("Acolyte tweaks", () => {
+  test("Mass Heal clears every damage over time but leaves heals over time", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((c) => c.classId === "acolyte")!;
+    unlock(acolyte, 15, "mass-heal");
+    const ally = ctx.party.find((c) => c.classId === "mage")!;
+    for (const id of ["poisoned", "burning", "bleeding", "mending"]) applyStatusEffectToActor(ally, id, 3, { log: [] });
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    applySkillEffects(getEffectiveSkill(getSkill("mass-heal"), 15), acolyte, ctx.party, combat, ctx, combat.log);
+    expect(ally.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["mending"]);
+  });
+
+  test("after Sanctuary the Acolyte's basic attack is a holy Cleansing Smite for 2 turns", () => {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((c) => c.classId === "acolyte")!;
+    unlock(acolyte, 25, "sanctuary");
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    rat.attack = 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    queueAction(combat, ref(acolyte), "sanctuary", ctx.party.map(ref), ctx);
+    resolveRound(combat, ctx);
+    expect(acolyte.activeStatusEffects.some((s) => s.statusEffectId === "cleansing-light")).toBe(true);
+    for (let turn = 0; turn < 2; turn++) {
+      const from = combat.log.length;
+      queueAction(combat, ref(acolyte), "smite", [monsterRef(rat)], ctx);
+      resolveRound(combat, ctx);
+      expect(combat.log.slice(from).some((l) => l.text.includes("Cleansing Smite"))).toBe(true);
+    }
+    expect(acolyte.activeStatusEffects.some((s) => s.statusEffectId === "cleansing-light")).toBe(false);
+    const from = combat.log.length;
+    queueAction(combat, ref(acolyte), "smite", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.slice(from).some((l) => l.text.includes("Smite") && !l.text.includes("Cleansing"))).toBe(true);
+  });
+});
+
 describe("Desperate Cleave (Viking)", () => {
   withoutDamageRolls();
 
@@ -129,6 +211,10 @@ describe("Desperate Cleave (Viking)", () => {
     applySkillEffects(getEffectiveSkill(getSkill("desperate-cleave"), viking.level), viking, [target], combat, ctx, combat.log);
     return { dealt: target.maxHp - target.hp, healed: viking.hp - hpBefore };
   }
+
+  test("Storm-Empowered lets it ignore part of the target's defense", () => {
+    expect(getSkill("desperate-cleave").conditionalBonus?.requiresStatusId).toBe("storm-empowered");
+  });
 
   test("below the threshold it hits harder and heals the Viking", () => {
     const healthy = cleave(1);
@@ -180,26 +266,82 @@ describe("Barbed Net (Ninja)", () => {
 });
 
 describe("Command (Summoner)", () => {
-  test("every minion out acts once more with its signature skill, without spending an action", () => {
+  withoutDamageRolls();
+
+  function summonerWithMinions(level = 25) {
     const { ctx } = makeCtx(5);
     const summoner = ctx.party.find((c) => c.classId === "summoner")!;
-    unlock(summoner, 25, "summon-goblin", "command");
+    unlock(summoner, level, "summon-goblin", "totem-recall", "command");
     const rat = tank(spawnInto(ctx, "dungeon-rat"));
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    queueAction(combat, ref(summoner), "summon-goblin", [ref(summoner)], ctx);
-    resolveRound(combat, ctx);
-    const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower" && s.hp > 0)!;
-    expect(goblin).toBeDefined();
-    const actionsBefore = goblin.actionsTaken;
+    const spawn = (skillId: string) => {
+      const effect = getEffectiveSkill(getSkill(skillId), summoner.level).effects!.find((e) => e.kind === "summon")!;
+      return spawnAdditionalSummon(effect, summoner, combat, ctx, [])!;
+    };
+    const goblin = spawn("summon-goblin");
+    goblin.maxActions = 10;
+    return { ctx, summoner, rat, combat, goblin, totem: spawn("totem-recall") };
+  }
 
+  test("casts the minion's signature skill as the Summoner's, scaled by rank, off MAG", () => {
+    const { summoner, goblin } = summonerWithMinions();
+    const rockThrow = getSummonSkill("rock-throw").effects![0]!;
+    for (const [level, percent] of [[25, 100], [50, 115], [75, 130]] as const) {
+      summoner.level = level;
+      const cast = commandedSkill(getEffectiveSkill(getSkill("command"), level), goblin, "rock-throw");
+      expect(cast.isMagic).toBe(true);
+      expect(cast.target).toBe("singleEnemy");
+      expect(cast.effects![0]!.amount).toBe(Math.round(rockThrow.amount! * (percent / 100)));
+      expect(cast.effects![0]!.offenseMultiplierPercent).toBe(Math.round(rockThrow.offenseMultiplierPercent! * (percent / 100)));
+    }
+  });
+
+  test("the hit scales with the Summoner's MAG, not its attack or the minion's stats", () => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    const cast = commandedSkill(getEffectiveSkill(getSkill("command"), 25), goblin, "rock-throw");
+    const hit = () => {
+      const before = rat.hp;
+      applySkillEffects(cast, summoner, [rat], combat, ctx, []);
+      return before - rat.hp;
+    };
+    summoner.attack = 500;
+    goblin.attack = 500;
+    summoner.magicPower = 0;
+    const weak = hit();
+    summoner.magicPower = 200;
+    expect(hit()).toBeGreaterThan(weak + 100);
+  });
+
+  test("a queued Command lands on the chosen target and costs the minion one action", () => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
+    const before = goblin.actionsTaken;
+    expect(queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx)).toBeNull();
     const from = combat.log.length;
-    queueAction(combat, ref(summoner), "command", [monsterRef(rat)], ctx);
     resolveRound(combat, ctx);
-    const rockThrows = combat.log.slice(from).filter((l) => l.text.includes(goblin.name) && l.text.includes("Rock Throw")).length;
-    expect(rockThrows).toBeGreaterThanOrEqual(1);
-    // Its normal turn this round counts; the commanded one does not.
-    expect(goblin.actionsTaken).toBe(actionsBefore + 1);
+    expect(combat.log.slice(from).some((l) => l.text.includes(`${summoner.name} uses ${goblin.name}'s Rock Throw on ${rat.name}`))).toBe(true);
+    expect(rat.hp).toBeLessThan(rat.maxHp);
+    expect(goblin.actionsTaken).toBe(before + 1);
+    expect(summoner.cooldownsRemaining["command"]).toBeGreaterThan(0);
+  });
+
+  test("a minion on its last action leaves once commanded", () => {
+    const { ctx, summoner, rat, combat, goblin } = summonerWithMinions();
+    applyStatusEffectToActor(goblin, "stunned", 1, { log: [] });
+    goblin.actionsTaken = goblin.maxActions - 1;
+    queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.combatants.some((c) => c.ref.id === goblin.id)).toBe(false);
+  });
+
+  test("the totem can't be commanded, and Command can't be queued without a minion order", () => {
+    const { ctx, summoner, rat, combat, goblin, totem } = summonerWithMinions();
+    expect(commandableSummons(summoner, combat, ctx).map((s) => s.id)).toEqual([goblin.id]);
+    expect(queueCommand(combat, ref(summoner), "command", { summonId: totem.id, skillId: "rock-throw" }, [monsterRef(rat)], ctx)).not.toBeNull();
+    expect(queueCommand(combat, ref(summoner), "command", { summonId: goblin.id, skillId: "stomp" }, [monsterRef(rat)], ctx)).not.toBeNull();
+    expect(queueAction(combat, ref(summoner), "command", [ref(summoner)], ctx)).not.toBeNull();
+    expect(combat.queuedActions).toHaveLength(0);
   });
 });
 

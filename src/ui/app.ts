@@ -4,7 +4,7 @@ import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
-import { getClass } from "../data/classes";
+import { getClass, getSkill, getEffectiveSkill } from "../data/classes";
 import { getEvent } from "../data/events";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
@@ -486,7 +486,7 @@ export class App implements ScreenContext {
     }
     if (
       key.name === "b" &&
-      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
@@ -508,6 +508,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":
@@ -586,9 +588,20 @@ export class App implements ScreenContext {
       case "skillDetail":
         this.ui = { kind: "pickSkill", actorRef: this.ui.actorRef };
         return true;
-      case "pickTarget":
-        this.ui = this.ui.source.kind === "skill" ? { kind: "pickSkill", actorRef: this.ui.actorRef } : { kind: "pickItemInCombat", actorRef: this.ui.actorRef };
+      case "pickCommandMinion":
+        this.ui = { kind: "skillDetail", actorRef: this.ui.actorRef, skill: this.ui.skill };
         return true;
+      case "pickCommandSkill":
+        this.ui = { kind: "pickCommandMinion", actorRef: this.ui.actorRef, skill: this.ui.skill };
+        return true;
+      case "pickTarget": {
+        const { actorRef, source } = this.ui;
+        if (source.kind === "command") {
+          const skill = getEffectiveSkill(getSkill(source.commandSkillId), (getActorByRef(actorRef, this.game.ctx) as Character).level);
+          this.ui = { kind: "pickCommandSkill", actorRef, skill, summonId: source.order.summonId };
+        } else this.ui = source.kind === "skill" ? { kind: "pickSkill", actorRef } : { kind: "pickItemInCombat", actorRef };
+        return true;
+      }
       case "pickItemOutOfCombat":
         this.ui = { kind: "room" };
         return true;
@@ -1183,6 +1196,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
@@ -1244,6 +1259,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":

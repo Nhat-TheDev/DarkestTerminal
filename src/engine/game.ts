@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
+import type { CombatantRef, CommandOrder, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -18,6 +18,7 @@ import {
   autoResolveTargets,
   queueAction,
   queueItemAction,
+  queueCommand,
   allLivingCharactersHaveQueuedActions,
   holdChannel,
   breakChannel,
@@ -353,6 +354,11 @@ export class Game {
   queue(actorRef: CombatantRef, skillId: string, targets: CombatantRef[]): QueueActionError | null {
     if (!this.state.combat) return { reason: t("errors.notInCombat") };
     return queueAction(this.state.combat, actorRef, skillId, targets, this.ctx);
+  }
+
+  queueCommand(actorRef: CombatantRef, skillId: string, order: CommandOrder, targets: CombatantRef[]): QueueActionError | null {
+    if (!this.state.combat) return { reason: t("errors.notInCombat") };
+    return queueCommand(this.state.combat, actorRef, skillId, order, targets, this.ctx);
   }
 
   queueItem(actorRef: CombatantRef, itemId: Id, targets: CombatantRef[]): QueueActionError | null {

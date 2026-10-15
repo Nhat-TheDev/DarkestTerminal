@@ -87,7 +87,12 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   }
   if (def.overwatchShot) parts.push(t("item.effectOverwatchShot", { amount: def.overwatchShot.amount, percent: def.overwatchShot.offenseMultiplierPercent }));
   if (def.counterAttack) {
-    parts.push(t("item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxPerRound }));
+    parts.push(t("item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxCounters }));
+  }
+  if (def.onMaxStacks) parts.push(t("item.effectOnMaxStacks", { max: def.maxStacks ?? 1, status: getStatusEffect(def.onMaxStacks.statusEffectId).name, turns: def.onMaxStacks.durationTurns }));
+  if (def.basicAttackOverride) {
+    const o = def.basicAttackOverride;
+    parts.push(t("item.effectBasicAttackOverride", { name: o.name, amount: o.amount, percent: o.offenseMultiplierPercent, stat: o.isMagic ? "magic power" : "attack" }));
   }
   if (def.fearResistPercent) parts.push(t("item.effectFearResist", { percent: def.fearResistPercent }));
   if (def.onActStatus) {

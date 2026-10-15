@@ -319,7 +319,12 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
     case "removeStatusEffect": {
-      if (effect.stacks !== undefined && effect.statusEffectId) removeStatusStacks(target, effect.statusEffectId, effect.stacks, ctx);
+      if (effect.removesHarmfulDots) {
+        for (const active of [...target.activeStatusEffects]) {
+          const def = getStatusEffect(active.statusEffectId);
+          if (def.perTurnEffects.some((e) => e.kind === "damage")) expireStatusEffect(target, active, ctx);
+        }
+      } else if (effect.stacks !== undefined && effect.statusEffectId) removeStatusStacks(target, effect.statusEffectId, effect.stacks, ctx);
       else removeStatusEffectFromActor(target, effect.statusEffectId, ctx);
       return 0;
     }
@@ -519,6 +524,10 @@ export function applyStatusEffectToActor(
       kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
       ...statusLandedTag(def, landedOf),
     });
+    if (def.onMaxStacks && gainedANewStack && stackedAfter === def.maxStacks) {
+      expireStatusEffect(actor, actor.activeStatusEffects[existingIndex]!, ctx);
+      applyStatusEffectToActor(actor, def.onMaxStacks.statusEffectId, def.onMaxStacks.durationTurns, ctx, undefined, undefined, undefined, undefined, landedOf, sourceId);
+    }
     return;
   }
   // All deltas computed before any lands, so one entry's delta never shifts another's minPercent floor.
