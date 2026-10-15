@@ -148,7 +148,7 @@ footer and at least one row of the main (Dungeon) panel; the party list may scro
 `bun run random-play` checks this on every screen it reaches.
 
 Below 61 rows (`COMPACT_LAYOUT_BELOW_ROWS` in `src/ui/app.ts`) the layout goes compact so the <!-- docs:intent -->
-Dungeon panel keeps room for its choices: the Path panel is hidden and the Log keeps 3 lines. The
+Dungeon panel keeps room for its choices: the Path panel is hidden and the Log keeps 5 lines. The
 battlefield keeps its full height (room for a boss sprite) in both layouts, so it never resizes from
 one room to the next. At 120×40 that leaves the Dungeon panel 4 rows, and a longer list scrolls. From <!-- docs:intent -->
 61 rows up the layout is unchanged, and resizing the terminal switches between the two at once.

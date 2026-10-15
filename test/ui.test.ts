@@ -776,12 +776,13 @@ describe("layout below the full height", () => {
     return { ...setup, game };
   }
 
-  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel keeps a row", async () => {
+  test("at 120x40 the Path panel goes, the Log keeps 5 lines and the key hints sit on the last row", async () => {
     const { captureCharFrame, game } = await openFight(120, 40);
     const frame = captureCharFrame();
     expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(5);
+    expect(panelRows(frame, t("ui.panelMain"))).toBe(4);
+    expect(frame.split("\n")[39]).toContain("[Ctrl+C] Quit");
     for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });

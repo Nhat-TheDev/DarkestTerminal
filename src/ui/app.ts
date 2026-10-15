@@ -82,11 +82,11 @@ const EXP_BAR_WIDTH = 24;
 
 const LOG_HEIGHT = 8;
 /** Below this many terminal rows the full layout can no longer show a 4-member party with no Ability
-    or status lines, so it goes compact: the Path panel is hidden and the Log keeps 3 lines — the
+    or status lines, so it goes compact: the Path panel is hidden and the Log keeps 5 lines — the
     Dungeon panel's choices get that room. The battlefield keeps its full height either way, so it
     never resizes from room to room. A party panel with more lines than that scrolls. */
 const COMPACT_LAYOUT_BELOW_ROWS = 61;
-const COMPACT_LOG_HEIGHT = 5;
+const COMPACT_LOG_HEIGHT = 7;
 
 /** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
@@ -242,7 +242,7 @@ export class App implements ScreenContext {
     this.root.add(this.fullLogBox);
 
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
-    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
+    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 1, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
