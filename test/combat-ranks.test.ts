@@ -49,7 +49,8 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const knight = ctx.party.find((p) => p.classId === "knight")!;
     const self: CombatantRef = { kind: "character", id: knight.id };
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    const mageRef: CombatantRef = { kind: "character", id: ctx.party.find((p) => p.classId === "mage")!.id };
+    queueAction(combat, self, "interpose", [mageRef], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
       if (ref.id === knight.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
@@ -106,14 +107,17 @@ describe("combat round structure", () => {
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: knight.id };
 
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    const mageRef: CombatantRef = { kind: "character", id: ctx.party.find((p) => p.classId === "mage")!.id };
+
+    queueAction(combat, self, "interpose", [mageRef], ctx);
     resolveRound(combat, ctx);
-    expect(knight.cooldownsRemaining["shield-guard"]).toBe(1);
-    expect(queueAction(combat, self, "shield-guard", [self], ctx)).not.toBeNull();
+    expect(knight.cooldownsRemaining["interpose"]).toBe(2);
+    expect(queueAction(combat, self, "interpose", [mageRef], ctx)).not.toBeNull();
 
     resolveRound(combat, ctx);
-    expect(knight.cooldownsRemaining["shield-guard"]).toBe(0);
-    expect(queueAction(combat, self, "shield-guard", [self], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(knight.cooldownsRemaining["interpose"]).toBe(0);
+    expect(queueAction(combat, self, "interpose", [mageRef], ctx)).toBeNull();
   });
 
   test("dead singleEnemy target redirects to another living enemy instead of fizzling", () => {

@@ -52,6 +52,14 @@
     ]
   },
   {
+    "id": "interposed",
+    "name": "Interposed",
+    "description": "A Knight stands in the way of the blow.",
+    "perTurnEffects": [],
+    "tickCategory": "special",
+    "interceptsForSource": true
+  },
+  {
     "id": "taunt",
     "name": "Taunt",
     "description": "Raises aggro for the duration.",

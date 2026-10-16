@@ -163,12 +163,12 @@ describe("untargetable monsters", () => {
       const archer = ref("archer");
       const attack = pickAnyAction(ctx, combat, archer);
       queueAction(combat, archer, attack.skillId, attack.targets, ctx);
-      queueAction(combat, ref("knight"), "shield-guard", [ref("knight")], ctx);
+      queueAction(combat, ref("knight"), "interpose", [ref("mage")], ctx);
       const before = boss.hp;
       resolveRound(combat, ctx);
       expect(boss.hp).toBe(before);
-      const knight = ctx.party.find((p) => p.classId === "knight")!;
-      expect(combat.log.some((l) => l.text === `${knight.name} gains the Guard effect.`)).toBe(true);
+      const mage = ctx.party.find((p) => p.classId === "mage")!;
+      expect(combat.log.some((l) => l.text === `${mage.name} gains the Interposed effect.`)).toBe(true);
     });
   });
 
