@@ -280,7 +280,7 @@ export interface PassiveRankDefinition {
   unlockLevel: number;
   maxHpPercent?: number; // Knight
   defensePercent?: number; // Knight
-  aggroFlat?: number; // Knight
+  interceptWeakestChancePercent?: number; // Knight — chance per round to take a hit aimed at the lowest-HP-percent ally
   onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
   durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
   bonusPercent?: number; // Rogue
@@ -1037,6 +1037,8 @@ export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
   roundNumber: number;
+  /** The round each Watchful bearer last took a hit for an ally; it fires at most once per round. */
+  watchfulRound?: Record<Id, number>;
   phase: "command" | "resolution" | "over";
   queuedActions: QueuedAction[];
   turnQueue: CombatantRef[];
