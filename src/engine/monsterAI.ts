@@ -109,8 +109,16 @@ function fearOf(c: Targetable): number {
   return isCharacter(c) ? c.survival.fear : 0;
 }
 
+/** Ranks whoever has taken HP off `actor`, most first; anyone who has taken none scores the last score. */
+function damageScores(actor: Monster, pool: Targetable[]): Map<Targetable, number> {
+  const { damageRankScores } = BALANCE.targeting;
+  const taken = (c: Targetable) => actor.damageTakenFrom?.[c.id] ?? 0;
+  const dealers = rankScores(pool.filter((c) => taken(c) > 0), (a, b) => taken(b) - taken(a), damageRankScores);
+  return new Map(pool.map((c) => [c, dealers.get(c) ?? damageRankScores[damageRankScores.length - 1]!]));
+}
+
 /** Each factor's raw score per candidate. A factor that scores everyone the same spreads its weight evenly. */
-function factorScores(factor: TargetingFactor, pool: Targetable[]): (c: Targetable) => number {
+function factorScores(factor: TargetingFactor, actor: Monster, pool: Targetable[]): (c: Targetable) => number {
   const { lowHpRankScores, fearRankScores } = BALANCE.targeting;
   switch (factor) {
     case "aggro":
@@ -123,7 +131,10 @@ function factorScores(factor: TargetingFactor, pool: Targetable[]): (c: Targetab
       const scores = rankScores(pool, (a, b) => fearOf(b) - fearOf(a), fearRankScores);
       return (c) => scores.get(c)!;
     }
-    case "damage":
+    case "damage": {
+      const scores = damageScores(actor, pool);
+      return (c) => scores.get(c)!;
+    }
     case "range":
       return () => 1;
   }
@@ -140,11 +151,18 @@ export function targetingWeight(actor: Monster, living: Targetable[]): (c: Targe
   for (const factor of TARGETING_FACTORS) {
     const weight = profile[factor];
     if (weight === 0) continue;
-    const score = factorScores(factor, living);
+    const score = factorScores(factor, actor, living);
     const total = living.reduce((sum, c) => sum + score(c), 0);
     for (const c of living) chance.set(c, chance.get(c)! + (weight * score(c)) / total);
   }
   return (c) => chance.get(c) ?? 0;
+}
+
+/** The end of every round dims what the monster remembers of who hurt it, so the `damage` factor follows the recent fight. */
+export function fadeDamageMemory(actor: Monster): void {
+  if (!actor.damageTakenFrom) return;
+  const decay = BALANCE.targeting.damageMemoryDecay;
+  actor.damageTakenFrom = Object.fromEntries(Object.entries(actor.damageTakenFrom).map(([id, amount]) => [id, amount * decay]));
 }
 
 /** Whoever a `forcesTargetOnSource` status on the monster names, when they are in the targetable pool. */

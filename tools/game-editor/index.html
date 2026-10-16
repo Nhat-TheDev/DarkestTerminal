@@ -1574,6 +1574,8 @@ function renderRebalanceTargeting() {
   const form = el("div", { class: "edit-form" }, [
     el("div", { class: "field" }, [el("label", { for: "edit-targeting-lowHp", text: "lowHpRankScores (lowest HP first)" }), el("input", { type: "text", id: "edit-targeting-lowHp", value: targeting.lowHpRankScores.join(", ") })]),
     el("div", { class: "field" }, [el("label", { for: "edit-targeting-fear", text: "fearRankScores (highest fear first)" }), el("input", { type: "text", id: "edit-targeting-fear", value: targeting.fearRankScores.join(", ") })]),
+    el("div", { class: "field" }, [el("label", { for: "edit-targeting-damage", text: "damageRankScores (most damage first)" }), el("input", { type: "text", id: "edit-targeting-damage", value: targeting.damageRankScores.join(", ") })]),
+    editField("edit-targeting-decay", "damageMemoryDecay (0-1, per round)", targeting.damageMemoryDecay),
   ]);
   const saveBtn = el("button", { class: "action", text: "Save" });
   const status = el("span", { class: "save-status" });
@@ -1588,7 +1590,15 @@ function renderRebalanceTargeting() {
         profiles[pattern] = {};
         for (const f of factors) profiles[pattern][f] = Number($("#" + id(pattern, f)).value);
       }
-      return { targeting: { lowHpRankScores: scoreList("edit-targeting-lowHp"), fearRankScores: scoreList("edit-targeting-fear"), profiles } };
+      return {
+        targeting: {
+          lowHpRankScores: scoreList("edit-targeting-lowHp"),
+          fearRankScores: scoreList("edit-targeting-fear"),
+          damageRankScores: scoreList("edit-targeting-damage"),
+          damageMemoryDecay: Number($("#edit-targeting-decay").value),
+          profiles,
+        },
+      };
     },
     renderRebalanceTargeting
   );

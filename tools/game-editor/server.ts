@@ -432,7 +432,13 @@ Bun.serve({
         if (err) return badRequest(err);
         const orphan = MONSTER_ARCHETYPES.find((m) => !(m.aiPattern in targeting.profiles));
         if (orphan) return badRequest(`${orphan.id} uses aiPattern "${orphan.aiPattern}", which this config drops.`);
-        balance.targeting = { lowHpRankScores: targeting.lowHpRankScores, fearRankScores: targeting.fearRankScores, profiles: targeting.profiles };
+        balance.targeting = {
+          lowHpRankScores: targeting.lowHpRankScores,
+          fearRankScores: targeting.fearRankScores,
+          damageRankScores: targeting.damageRankScores,
+          damageMemoryDecay: targeting.damageMemoryDecay,
+          profiles: targeting.profiles,
+        };
       }
       await writeJsonFile("balance-config.json", balance);
       return json({ ok: true });

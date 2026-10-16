@@ -1,5 +1,5 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, isCharacter, resolveSkillEffect } from "./resolver";
+import { type Actor, isCharacter, noteDamageTaken, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
@@ -30,7 +30,9 @@ export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, d
   // An intact shell caps what a reflect does to it, but a reflect is not a hit that wears it down.
   const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100)), false);
   if (reflected <= 0) return;
+  const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);
+  noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
   log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
 }
 

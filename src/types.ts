@@ -594,7 +594,7 @@ export interface ActiveStatusEffect {
   onHitDurationTurns?: number;
   /** For a status with `counterAttack`: how many counters it has struck so far. */
   countersStruck?: number;
-  /** For a status with `forcesTargetOnSource`, `interceptsForSource` or `onLandedHitSourceStatus`: the id of the actor that applied it. */
+  /** The id of the actor that applied it, kept for any status `statusKeepsSource` (`src/engine/resolver.ts`) accepts: a forced target, an intercept, a landed-hit or channel status, or a damage-over-time tick. */
   sourceId?: Id;
 }
 
@@ -745,6 +745,8 @@ export interface Monster {
   summonerId?: Id;
   /** Present on a shell bearer. */
   shell?: MonsterShellState;
+  /** HP each attacker has taken off this monster this combat, by attacker id, fading every round (`targeting.damageMemoryDecay`). */
+  damageTakenFrom?: Record<Id, number>;
 }
 
 /** Player-side combatant from a skill; gone once `actionsTaken` reaches `maxActions` (a stunned turn doesn't count) or `hp` hits 0. */

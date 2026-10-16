@@ -144,7 +144,7 @@ A monster picks its target by **weighted random** over every living, targetable 
 | `aggro` | the candidate's current `aggro` (at least 1) |
 | `lowHp` | by rank of `hp / maxHp`, lowest first |
 | `fear` | by rank of `survival.fear`, highest first; a summon has no fear and ranks as fearless |
-| `damage` | not tracked yet: every candidate scores the same |
+| `damage` | by rank of HP the candidate has taken off this monster, most first; anyone who has taken none scores the last rank's score |
 | `range` | not tracked yet: every candidate scores the same |
 
 Each factor turns its scores into shares of 1 across the pool, and the pattern's weights, which sum to 1, mix those shares:
@@ -158,15 +158,17 @@ A factor that scores everyone the same spreads its weight evenly, so a party at 
 **Rank scores.** Candidates that tie share a rank, and the next rank follows on without a gap (two candidates tied for lowest HP both take the first `lowHp` score, and the next take the second). Every rank past the end of the list takes its last score, which matters once summons push the pool past four.
 
 <!-- docs:begin targetingRankScores -->
-*Generated from `data/balance-config.json` (`targeting.lowHpRankScores`, `targeting.fearRankScores`) by `bun run docs:sync`. Do not edit.*
+*Generated from `data/balance-config.json` (`targeting.lowHpRankScores`, `targeting.fearRankScores`, `targeting.damageRankScores`) by `bun run docs:sync`. Do not edit.*
 
-| Rank | lowHp (lowest HP share first) | fear (highest fear first) |
-|---|---|---|
-| 1 | 5 | 6 |
-| 2 | 3 | 4 |
-| 3 | 2 | 3 |
-| 4 and below | 1 | 2 |
+| Rank | lowHp (lowest HP share first) | fear (highest fear first) | damage (most HP taken off first) |
+|---|---|---|---|
+| 1 | 5 | 6 | 5 |
+| 2 | 3 | 4 | 3 |
+| 3 | 2 | 3 | 2 |
+| 4 and below | 1 | 2 | 1 |
 <!-- docs:end -->
+
+**Damage memory.** Every monster keeps its own record of who has hurt it (`Monster.damageTakenFrom`): the HP each attacker actually took off, direct hits and reflected damage alike, and every damage-over-time tick credited to whoever applied the status (`ActiveStatusEffect.sourceId`). A summon is credited as itself, not its owner. At the end of every round each amount is multiplied by `targeting.damageMemoryDecay` (0.5), so a monster turns on whoever has hurt it lately rather than whoever opened the fight. A monster summoned mid-combat starts with no record.
 
 Ranking reads only the order, not the distance: a character at 99% HP among three at full ranks first exactly as one at 10% would. A monster that hunts the wounded is pulled toward whoever is hurt, without locking onto them.
 
@@ -189,7 +191,7 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
 <!-- docs:end -->
 
 - **`aggressive`** — goes at whatever is most in front of it: mindless, slow, or a straightforward brawler. Mostly `aggro`, so taunting works on it. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
-- **`defensive`** — owns a self-targeted skill and turtles with it, and turns on whoever has been hurting it (`damage`, once tracked). `aggro` still counts.
+- **`defensive`** — owns a self-targeted skill and turtles with it, and turns on whoever has been hurting it (`damage`). `aggro` still counts.
 
   `runMonsterTurn` (`src/engine/monsterAI.ts`) also intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below the threshold defined in code, it uses a self-targeted skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and chance rather than trusting a hand-copied number here. No other pattern has this branch.
 

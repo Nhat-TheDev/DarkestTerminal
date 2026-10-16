@@ -15,17 +15,17 @@ export const targetingProfiles: GeneratorSpec = {
   }),
 };
 
-/** The score each rank earns under the `lowHp` and `fear` factors. */
+/** The score each rank earns under the `lowHp`, `fear` and `damage` factors. */
 export const targetingRankScores: GeneratorSpec = {
-  source: "`data/balance-config.json` (`targeting.lowHpRankScores`, `targeting.fearRankScores`)",
+  source: "`data/balance-config.json` (`targeting.lowHpRankScores`, `targeting.fearRankScores`, `targeting.damageRankScores`)",
   args: [],
   generate: ({ balance }) => {
-    const { lowHpRankScores, fearRankScores } = balance.targeting;
-    const ranks = Math.max(lowHpRankScores.length, fearRankScores.length);
+    const { lowHpRankScores, fearRankScores, damageRankScores } = balance.targeting;
+    const ranks = Math.max(lowHpRankScores.length, fearRankScores.length, damageRankScores.length);
     const at = (scores: number[], i: number) => formatNumber(scores[Math.min(i, scores.length - 1)]!);
     return {
-      columns: ["Rank", "lowHp (lowest HP share first)", "fear (highest fear first)"],
-      rows: Array.from({ length: ranks }, (_, i) => [i === ranks - 1 ? `${i + 1} and below` : `${i + 1}`, at(lowHpRankScores, i), at(fearRankScores, i)]),
+      columns: ["Rank", "lowHp (lowest HP share first)", "fear (highest fear first)", "damage (most HP taken off first)"],
+      rows: Array.from({ length: ranks }, (_, i) => [i === ranks - 1 ? `${i + 1} and below` : `${i + 1}`, at(lowHpRankScores, i), at(fearRankScores, i), at(damageRankScores, i)]),
     };
   },
 };

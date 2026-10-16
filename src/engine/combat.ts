@@ -35,7 +35,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
-import { runMonsterTurn, finishMonsterTurn } from "./monsterAI";
+import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
@@ -58,6 +58,7 @@ import {
   expireStatusEffect,
   isHelpfulStatusEffect,
   removeStatusStacks,
+  noteDamageTaken,
 } from "./resolver";
 
 export interface EngineContext {
@@ -499,7 +500,9 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
             );
             continue;
           }
+          const hpBefore = target.hp;
           target.hp = Math.max(0, target.hp - effect.amount);
+          noteDamageTaken(target, character.id, hpBefore - target.hp);
           combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
         }
       }
@@ -637,6 +640,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
         if (c.cooldownsRemaining[skillId]! > 0) c.cooldownsRemaining[skillId]! -= 1;
       }
     }
+    for (const ref of livingMonsterRefs(combat, ctx)) fadeDamageMemory(getActorByRef(ref, ctx) as Monster);
     runFearSession(combat, ctx, () => ctx.party.filter((c) => applyRoundFear(c, floorDepth) !== 0));
     if (isPartyDying(satiety)) {
       runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), {
