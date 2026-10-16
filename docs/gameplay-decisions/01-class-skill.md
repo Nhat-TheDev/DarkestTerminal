@@ -431,7 +431,7 @@ What each is, and where it comes from:
 - `following-through` — Buff; applied to the Knight when the ally carrying `side-by-side` lands a damaging hit. `-ii`/`-iii` are the rank variants.
 - `engaged` — Buff (counter, not a stat-buff); used by Engage (Knight). `-ii`/`-iii` are the rank variants.
 - `guard` — Buff; used by monster skills.
-- `taunt` — Buff; used by Engage (Knight).
+- `taunt` — Buff; used by Engage (Knight) and Defiance (Paladin).
 - `rallied` — Buff; used by Rally (Knight).
 - `poison-coated` — Buff (rider, not a stat-buff); used by Poison Coat (Rogue). (see `docs/technical-decisions.md` §4.2)
 - `poisoned` — Debuff; used by on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor).
@@ -1100,7 +1100,7 @@ How each skill works:
 - **AoE skills** (`allEnemies`, or the "enemy" half of a two-sided skill): accuracy is rolled **separately for each target**, not once for the whole skill — one enemy dodging doesn't mean the whole group dodges.
 - **Two-sided skills** (Purify, Divine Descent, Total Plague): the effect applied depends on whether the target is an ally or an enemy, via each effect's own `appliesToRelation: "ally" | "enemy"` filter, rather than sharing one effect list — see `docs/technical-decisions.md` §4.4.
 - **Cooldown** (`cooldownTurns`): every class-specific skill beyond the first two slots has a cooldown (slots 1-2 have none). 2 formulas:
-  - **Buff skills** (`isBuff: true` — Interpose, Rally, Poison Coat, Lightning Axe): `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`.
+  - **Buff skills** (`isBuff: true` — Rally, Poison Coat, Lightning Axe): `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`. Interpose and Side by Side keep a fixed cooldown across ranks instead.
   - **Other damage/utility skills + ultimates**: assigned by hand based on power level, not a fixed formula (ultimates share one fixed value across classes — `data/classes.json`).
 - `usesPerCombat` is not used by any character skill — every skill uses `cooldownTurns`, including ultimates. The field still exists on `SkillDefinition`/`ItemDefinition` for Items (`07-items-artifacts.md` §7).
 - **Buff skills always grant a temporary speed bonus** for turn-order purposes in the round they're used (the bonus amount: `src/engine/combat.ts`). This applies only to the skills marked "Buff?" in each class's table (Interpose, Rally, Poison Coat, Lightning Axe) — not to support skills that don't carry a status (Prayer, Heal, Mass Heal for Acolyte adjust instantly, without going through `applyStatusEffect`). This is a temporary bonus only for ordering turns within the current round — it is not added to the character's base `speed` — technical design in `docs/technical-decisions.md` §4.7.
