@@ -5,7 +5,7 @@ import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulSt
 import { resistedFearGain } from "../src/engine/survival";
 import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/data/classes";
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
-import { getStatusEffect } from "../src/data/statusEffects";
+import { getStatusEffect, statusMechanicsParts } from "../src/data/statusEffects";
 import { getSummonSkill } from "../src/data/summons";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
@@ -189,6 +189,12 @@ describe("Side by Side (Knight)", () => {
     expect(gained).toBeGreaterThan(-1);
     expect(slashed).toBeGreaterThan(gained);
     expect(expired).toBeGreaterThan(slashed);
+  });
+
+  test("Side by Side's mechanics text names its follow-up status", () => {
+    const text = statusMechanicsParts(getStatusEffect("side-by-side")).join(" ");
+    expect(text).toContain("Following Through");
+    expect(text).not.toContain("{");
   });
 
   test("Side by Side cannot target the Knight itself", () => {
