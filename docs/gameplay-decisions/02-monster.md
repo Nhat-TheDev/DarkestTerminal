@@ -226,7 +226,7 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `brand` | Brand | singleEnemy | damage 12 + 90% ATK; status burning-vulnerable (3 turns) | Dragon (aggressive) |
 | `inferno` | Inferno | allEnemies | damage 34 + 130% ATK | Dragon (aggressive) |
 | `old-fire-wakes` | Old Fire Wakes | self | status empower (99 turns) | Dragon (aggressive) |
-| `diseased-blade` | Diseased Blade | singleEnemy | damage 24 + 360% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
+| `diseased-blade` | Diseased Blade | singleEnemy | damage 24 + 285% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
 | `guard-position` | Guard Position | self | status guard-ii (2 turns) | Zombie Knight (defensive) |
 | `undying` | Undying | self | heal 0 (35% max HP) | Zombie Knight (defensive) |
 | `rotting-embrace` | Rotting Embrace | singleEnemy | damage 50 + 225% ATK; status agony (3 turns) | Zombie Knight (defensive) |
@@ -236,7 +236,7 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `dread-presence` | Dread Presence | allEnemies | fear 6 | Dark Knight (defensive) |
 | `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 60 + 235% ATK; status stunned (1 turn) | Dark Knight (defensive) |
 | `second-salute` | Second Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
-| `skullsplitter` | Skullsplitter | singleEnemy | damage 28 + 190% ATK | Orc Chieftain (aggressive) |
+| `skullsplitter` | Skullsplitter | singleEnemy | damage 28 + 120% ATK | Orc Chieftain (aggressive) |
 | `call-the-warband` | Call the Warband | self | summonMonster (monsterArchetypeId goblin, count 1) | Orc Chieftain (aggressive) |
 | `war-cry` | War Cry | allAllies | status rallied-ii (2 turns) | Orc Chieftain (aggressive) |
 | `rout` | Rout | singleEnemy | damage 16 + 70% ATK; status weakened (2 turns) | Orc Chieftain (aggressive) |

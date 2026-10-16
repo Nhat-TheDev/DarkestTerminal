@@ -69,7 +69,7 @@ Current values for every class, generated from `data/classes.json`:
 
 | Class | Max HP | Max MP | Attack | Defense | Magic power | Aggro | Speed |
 |---|---|---|---|---|---|---|---|
-| Knight | 130 | 22 | 14 | 10 | 0 | 12 | 8 |
+| Knight | 140 | 22 | 14 | 11 | 0 | 20 | 8 |
 | Mage | 70 | 60 | 3 | 5 | 16 | 8 | 10 |
 | Rogue | 100 | 40 | 18 | 6 | 0 | 10 | 20 |
 | Acolyte | 90 | 50 | 6 | 8 | 10 | 11 | 9 |
@@ -90,19 +90,19 @@ Balance Points of each class against the roster average, scored with the formula
 
 | Class | Balance points | Against the roster average |
 |---|---|---|
-| Knight | 23.3 | −5.1% |
-| Mage | 24.7 | +0.5% |
-| Rogue | 24.5 | −0.3% |
-| Acolyte | 24.8 | +1.2% |
-| Viking | 24.7 | +0.7% |
-| Plague Doctor | 24.6 | +0.3% |
-| Archer | 24.7 | +0.5% |
-| Ninja | 24.7 | +0.6% |
-| Summoner | 24.5 | +0.0% |
-| Jester | 24.6 | +0.3% |
-| Paladin | 24.7 | +0.5% |
-| Warlock | 24.7 | +0.7% |
-| Roster average | 24.5 | — |
+| Knight | 24.5 | −0.6% |
+| Mage | 24.7 | +0.1% |
+| Rogue | 24.5 | −0.7% |
+| Acolyte | 24.8 | +0.8% |
+| Viking | 24.7 | +0.3% |
+| Plague Doctor | 24.6 | −0.1% |
+| Archer | 24.7 | +0.1% |
+| Ninja | 24.7 | +0.2% |
+| Summoner | 24.5 | −0.4% |
+| Jester | 24.6 | −0.1% |
+| Paladin | 24.7 | +0.1% |
+| Warlock | 24.7 | +0.3% |
+| Roster average | 24.6 | — |
 <!-- docs:end -->
 
 **Writing `description` text for a skill**: see `02-monster.md`'s "Writing `description` text"
@@ -146,7 +146,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | 2 | `side-by-side` | Side by Side | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status side-by-side / side-by-side-ii / side-by-side-iii (1 turn); not on the caster | buff |
 | 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
 | 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 68 / 78 / 88% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
+| 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 
