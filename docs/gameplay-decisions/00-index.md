@@ -8,7 +8,7 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | File | Section | Content |
 |---|---|---|
 | [`01-class-skill.md`](./01-class-skill.md) | §1 | Stats and Balance Points, the 12 classes and their skills (§1.3), the 3-rank skill power-scaling system (§1.4), each class's always-on passive (§1.5), status effects used by skills (§1.6), and the engine mechanics shared across classes (§1.7) — `data/classes.json` |
-| [`02-monster.md`](./02-monster.md) | §2 | Monster scaling formula by floor, aggro-based targeting, AI patterns (incl. the `aiPattern: "defensive"` low-HP logic), regular-monster skill kits, monster tiers (normal/Elite/Boss) — `data/monsters.json` |
+| [`02-monster.md`](./02-monster.md) | §2 | Monster scaling formula by floor, weighted targeting (aggro, low HP, fear...), AI patterns (incl. the `aiPattern: "defensive"` low-HP logic), regular-monster skill kits, monster tiers (normal/Elite/Boss) — `data/monsters.json`, `data/balance-config.json` (`targeting`) |
 | [`03-survival-stats.md`](./03-survival-stats.md) | §3 | Fear + Satiety thresholds, Exhausted/Dying, Camp, Rest room (incl. Camp Reflection, a party self-analysis mechanism) — `data/balance-config.json` |
 | [`04-fear-combat.md`](./04-fear-combat.md) | §4 | How fear feeds back into combat, per-target AoE accuracy rolls, ultimates |
 | [`05-character-stats.md`](./05-character-stats.md) | §5 | How HP/MP work, growth by level |

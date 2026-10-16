@@ -642,7 +642,8 @@ export interface Floor {
   entryRoomId: Id;
 }
 
-export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
+/** A key of `targeting.profiles` in `data/balance-config.json`. `"defensive"` also turns on the normal-tier low-HP self-skill branch (`runMonsterTurn`). */
+export type MonsterAiPattern = string;
 
 /** Its `monsterGrowthWeights` multipliers sum to 3. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";

@@ -23,7 +23,7 @@ import { mitigatedOffense, getFearTier, getFearAccuracyPenalty, getFearDamagePen
 import { createFloor } from "../../src/data/floor";
 import { Rng } from "../../src/engine/rng";
 import { STATUS_EFFECTS, getStatusEffect } from "../../src/data/statusEffects";
-import { BALANCE } from "../../src/data/balanceConfig";
+import { BALANCE, TARGETING_FACTORS } from "../../src/data/balanceConfig";
 import { t } from "../../src/data/strings";
 import type { CharacterClass, MonsterArchetype, MonsterPhase, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
 
@@ -90,6 +90,7 @@ export function getCatalog() {
       monsterTypeMultiplier: MONSTER_TYPE_MULTIPLIER,
     },
     balance: BALANCE,
+    targetingFactors: TARGETING_FACTORS,
     fearTiers: ([1, 2, 3, 4] as FearTier[]).map((tier) => ({
       tier,
       name: t(`ui.fearTier${tier}`),

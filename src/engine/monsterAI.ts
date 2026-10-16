@@ -1,6 +1,6 @@
 import type { Character, Monster, Summon, MonsterArchetype, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
 import { getArchetype, getMonsterSkill } from "../data/monsters";
-import { BALANCE } from "../data/balanceConfig";
+import { BALANCE, TARGETING_FACTORS, type TargetingFactor } from "../data/balanceConfig";
 import { rollDodge } from "./artifacts";
 import { resolveSkillEffect, rollHits, isCharacter, type Actor } from "./resolver";
 import { t } from "../data/strings";
@@ -86,21 +86,65 @@ function pickMonsterAction(archetype: MonsterArchetype, actor: Monster, view: Ai
 }
 
 /**
- * The aggro weighting an `aiPattern` targets by, computed once over the whole living pool.
- *
- * An "opportunistic" monster mirrors every aggro value across the party's own current range, so the
- * quietest character is picked as often as the loudest would otherwise have been. Reflecting rather
- * than inverting (1/aggro) keeps whatever spread the party actually has instead of flattening it to
- * a fixed ratio no matter how hard anyone taunts.
- *
- * The consequence is deliberate: Taunt's +40 aggro pushes the Knight out of danger and
- * pulls the rest of the party into it, so taunting is the wrong move against these archetypes.
+ * Scores by rank: the first score goes to whoever ranks first under `compare`, ties share a rank, and
+ * every rank past the end of `scores` takes the last score.
  */
-function aggroWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {
-  if (actor.aiPattern !== "opportunistic") return (c) => Math.max(1, c.aggro);
-  const aggros = living.map((c) => c.aggro);
-  const mirror = Math.max(...aggros) + Math.min(...aggros);
-  return (c) => Math.max(1, mirror - c.aggro);
+function rankScores(pool: Targetable[], compare: (a: Targetable, b: Targetable) => number, scores: number[]): Map<Targetable, number> {
+  const sorted = [...pool].sort(compare);
+  const result = new Map<Targetable, number>();
+  let rank = 0;
+  for (const [i, c] of sorted.entries()) {
+    if (i > 0 && compare(sorted[i - 1]!, c) !== 0) rank++;
+    result.set(c, scores[Math.min(rank, scores.length - 1)]!);
+  }
+  return result;
+}
+
+function hpShare(c: Targetable): number {
+  return c.hp / c.maxHp;
+}
+
+/** A summon has no fear of its own, so it ranks as fearless. */
+function fearOf(c: Targetable): number {
+  return isCharacter(c) ? c.survival.fear : 0;
+}
+
+/** Each factor's raw score per candidate. A factor that scores everyone the same spreads its weight evenly. */
+function factorScores(factor: TargetingFactor, pool: Targetable[]): (c: Targetable) => number {
+  const { lowHpRankScores, fearRankScores } = BALANCE.targeting;
+  switch (factor) {
+    case "aggro":
+      return (c) => Math.max(1, c.aggro);
+    case "lowHp": {
+      const scores = rankScores(pool, (a, b) => hpShare(a) - hpShare(b), lowHpRankScores);
+      return (c) => scores.get(c)!;
+    }
+    case "fear": {
+      const scores = rankScores(pool, (a, b) => fearOf(b) - fearOf(a), fearRankScores);
+      return (c) => scores.get(c)!;
+    }
+    case "damage":
+    case "range":
+      return () => 1;
+  }
+}
+
+/**
+ * The chance each living candidate is picked under the actor's `aiPattern`, before any skill's
+ * `targetRules`: every factor turns its scores into shares of 1, and the profile's weights (which
+ * sum to 1) mix those shares.
+ */
+export function targetingWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {
+  const profile = BALANCE.targeting.profiles[actor.aiPattern]!;
+  const chance = new Map<Targetable, number>(living.map((c) => [c, 0]));
+  for (const factor of TARGETING_FACTORS) {
+    const weight = profile[factor];
+    if (weight === 0) continue;
+    const score = factorScores(factor, living);
+    const total = living.reduce((sum, c) => sum + score(c), 0);
+    for (const c of living) chance.set(c, chance.get(c)! + (weight * score(c)) / total);
+  }
+  return (c) => chance.get(c) ?? 0;
 }
 
 /** Whoever a `forcesTargetOnSource` status on the monster names, when they are in the targetable pool. */
@@ -142,7 +186,7 @@ function pickTargets(
   rng: Rng,
   count: number = skill?.targetCount ? rng.int(skill.targetCount.min, skill.targetCount.max) : 1
 ): Targetable[] {
-  const base = aggroWeight(actor, living);
+  const base = targetingWeight(actor, living);
   const pool = [...living];
   const picked: Targetable[] = [];
   const forced = provokedBy(actor, pool);

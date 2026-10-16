@@ -64,7 +64,7 @@ describe("new skill mechanics", () => {
     knight.maxHp = 1000;
     knight.magicPower = 0; // a tick reading the bearer's magicPower would heal only the flat 7
     const rat = spawnInto(ctx, "dungeon-rat");
-    rat.attack = 0;
+    rat.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 10 }); // its bites would blur the HP being measured
     const combat = startCombat("r1", [rat.id], ctx, false);
     const doctorRef: CombatantRef = { kind: "character", id: doctor.id };
     const allyRef: CombatantRef = { kind: "character", id: knight.id };

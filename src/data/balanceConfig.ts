@@ -1,6 +1,19 @@
 import balanceConfigJson from "../../data/balance-config.json";
 import type { ArtifactRarity, ItemTier } from "../types";
 
+/** The factors a monster weighs when it picks a target — `docs/gameplay-decisions/02-monster.md`, "Targeting". */
+export const TARGETING_FACTORS = ["aggro", "lowHp", "damage", "range", "fear"] as const;
+export type TargetingFactor = (typeof TARGETING_FACTORS)[number];
+
+export interface TargetingConfig {
+  /** Score by HP-share rank, lowest HP share first; every rank past the end takes the last score. */
+  lowHpRankScores: number[];
+  /** Score by fear rank, highest fear first; every rank past the end takes the last score. */
+  fearRankScores: number[];
+  /** One weight per factor for each `aiPattern`; every profile's weights sum to 1. */
+  profiles: Record<string, Record<TargetingFactor, number>>;
+}
+
 interface BalanceConfig {
   combat: {
     /** A status lasting at least this many turns is shown as (∞). */
@@ -29,6 +42,7 @@ interface BalanceConfig {
     fearLoseControlChance: number;
     ultimateMultiplierByFearTier: [number, number, number, number];
   };
+  targeting: TargetingConfig;
   survival: {
     initialSatiety: number;
     initialFear: number;
@@ -213,3 +227,28 @@ for (const [key, length] of Object.entries(FEAR_TIER_ARRAYS)) {
 if (BALANCE.combat.fearTierThresholds.some((v, i, all) => i > 0 && v <= all[i - 1]!)) {
   throw new Error("balance-config combat.fearTierThresholds must be strictly ascending");
 }
+
+/** Why `config` is not a usable `targeting` section, or `null` when it is. Shared with the game editor's save path. */
+export function targetingConfigError(config: TargetingConfig): string | null {
+  for (const key of ["lowHpRankScores", "fearRankScores"] as const) {
+    const scores = config[key];
+    if (!Array.isArray(scores) || scores.length === 0 || !scores.every((v) => typeof v === "number" && v > 0)) {
+      return `targeting.${key} must be a non-empty list of numbers above 0`;
+    }
+  }
+  const profiles = Object.entries(config.profiles ?? {});
+  if (profiles.length === 0) return "targeting.profiles must define at least 1 aiPattern";
+  for (const [pattern, weights] of profiles) {
+    const keys = Object.keys(weights ?? {});
+    if (keys.length !== TARGETING_FACTORS.length || !TARGETING_FACTORS.every((f) => keys.includes(f))) {
+      return `targeting.profiles.${pattern} must set exactly ${TARGETING_FACTORS.join(", ")}`;
+    }
+    if (!TARGETING_FACTORS.every((f) => typeof weights[f] === "number" && weights[f] >= 0)) return `targeting.profiles.${pattern}: every weight must be a number >= 0`;
+    const sum = TARGETING_FACTORS.reduce((total, f) => total + weights[f], 0);
+    if (Math.abs(sum - 1) > 1e-9) return `targeting.profiles.${pattern}: weights must sum to 1 (got ${sum})`;
+  }
+  return null;
+}
+
+const targetingError = targetingConfigError(BALANCE.targeting);
+if (targetingError) throw new Error(`balance-config ${targetingError}`);

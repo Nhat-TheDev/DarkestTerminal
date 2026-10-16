@@ -46,6 +46,9 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
     if (roleSet.size !== archetype.roles.length) {
       throw new Error(`data/monsters.json: "${archetype.id}" has duplicate entries in "roles"`);
     }
+    if (!(archetype.aiPattern in BALANCE.targeting.profiles)) {
+      throw new Error(`data/monsters.json: "${archetype.id}" has aiPattern "${archetype.aiPattern}", which has no profile in balance-config targeting.profiles`);
+    }
     for (const role of archetype.roles) {
       if (!validTiers.includes(role)) {
         throw new Error(`data/monsters.json: "${archetype.id}" has unknown role "${role}"`);
