@@ -481,7 +481,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.40,
+                "chance": 0.4,
                 "durationTurns": 2
               }
             ]
