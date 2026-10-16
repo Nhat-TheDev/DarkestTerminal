@@ -338,6 +338,9 @@
 
     <h2 class="tab-section-title">Coin drop (by monster tier — global, not per-archetype)</h2>
     <div id="rb-coin-output"></div>
+
+    <h2 class="tab-section-title">Monster targeting (by aiPattern — global, not per-archetype)</h2>
+    <div id="rb-targeting-output"></div>
   </section>
 
   <!-- ============================== DEFENSE COEFFICIENT ============================== -->
@@ -791,6 +794,7 @@ async function boot() {
   renderRebalanceCharacter();
   renderRebalanceMonster();
   renderRebalanceCoin();
+  renderRebalanceTargeting();
   renderDefense();
   renderOther();
 }
@@ -1534,6 +1538,65 @@ function renderRebalanceCoin() {
   saveRow.appendChild(status);
   card.appendChild(saveRow);
   out.appendChild(card);
+}
+
+// --------------------------------------------------------------------------
+// Rebalance tab — monster targeting (data/balance-config.json `targeting`): each
+// aiPattern's factor weights, which must sum to 1, and the rank score lists.
+// --------------------------------------------------------------------------
+
+function renderRebalanceTargeting() {
+  const out = $("#rb-targeting-output");
+  out.innerHTML = "";
+  const targeting = META.balance.targeting;
+  const factors = META.targetingFactors;
+  const patterns = Object.keys(targeting.profiles);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Targeting weights — saves to data/balance-config.json" })]);
+  card.appendChild(el("p", { class: "hint", html: "Each row is one <code>aiPattern</code>; its weights must sum to 1. See <code>docs/gameplay-decisions/02-monster.md</code>, \"Targeting\"." }));
+  const id = (pattern, factor) => "edit-targeting-" + pattern + "-" + factor;
+  const table = el("table", {}, [el("tr", {}, [el("th", { text: "Pattern" }), ...factors.map((f) => el("th", { class: "num", text: f })), el("th", { class: "num", text: "Sum" })])]);
+  const sumCells = {};
+  function refreshSum(pattern) {
+    const sum = factors.reduce((total, f) => total + Number($("#" + id(pattern, f)).value), 0);
+    sumCells[pattern].textContent = String(Math.round(sum * 1000) / 1000);
+    sumCells[pattern].className = "num" + (Math.abs(sum - 1) > 1e-9 ? " save-status error" : "");
+  }
+  for (const pattern of patterns) {
+    sumCells[pattern] = el("td", { class: "num" });
+    const inputs = factors.map((f) => {
+      const input = el("input", { type: "number", id: id(pattern, f), value: String(targeting.profiles[pattern][f]), step: "0.05", min: "0", max: "1" });
+      input.addEventListener("input", () => refreshSum(pattern));
+      return el("td", { class: "num" }, [input]);
+    });
+    table.appendChild(el("tr", {}, [el("td", { text: pattern }), ...inputs, sumCells[pattern]]));
+  }
+  card.appendChild(table);
+  const form = el("div", { class: "edit-form" }, [
+    el("div", { class: "field" }, [el("label", { for: "edit-targeting-lowHp", text: "lowHpRankScores (lowest HP first)" }), el("input", { type: "text", id: "edit-targeting-lowHp", value: targeting.lowHpRankScores.join(", ") })]),
+    el("div", { class: "field" }, [el("label", { for: "edit-targeting-fear", text: "fearRankScores (highest fear first)" }), el("input", { type: "text", id: "edit-targeting-fear", value: targeting.fearRankScores.join(", ") })]),
+  ]);
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  const scoreList = (inputId) => $("#" + inputId).value.split(",").map((v) => v.trim()).filter((v) => v !== "").map(Number);
+  wireSaveButton(
+    saveBtn,
+    status,
+    "/api/edit/balance",
+    () => {
+      const profiles = {};
+      for (const pattern of patterns) {
+        profiles[pattern] = {};
+        for (const f of factors) profiles[pattern][f] = Number($("#" + id(pattern, f)).value);
+      }
+      return { targeting: { lowHpRankScores: scoreList("edit-targeting-lowHp"), fearRankScores: scoreList("edit-targeting-fear"), profiles } };
+    },
+    renderRebalanceTargeting
+  );
+  form.appendChild(saveBtn);
+  form.appendChild(status);
+  card.appendChild(form);
+  out.appendChild(card);
+  patterns.forEach(refreshSum);
 }
 
 // --------------------------------------------------------------------------
@@ -2360,7 +2423,6 @@ boot();
   };
   const STAT_BOOST_STATS = ["attack", "defense", "maxHp", "maxMp", "magicPower", "speed"];
   const MONSTER_TYPES = ["balanced", "tanky", "armored", "striker", "glass", "bruiser", "sentinel"];
-  const AI_PATTERNS = ["aggressive", "defensive", "opportunistic"];
   const POWER_TIERS = ["", "weak", "medium", "strong"];
   const MONSTER_ROLES = ["normal", "elite", "boss"];
 
@@ -2662,7 +2724,7 @@ boot();
     const minFloor = numberInput(entry.finalBoss ? undefined : (entry.minFloor ?? 0), "10");
     const minFloorHint = el("p", { class: "hint", text: "Required, non-negative multiple of 10 — leave empty only when Final boss is checked." });
     const monsterType = selectInput(MONSTER_TYPES, entry.monsterType || "balanced");
-    const aiPattern = selectInput(AI_PATTERNS, entry.aiPattern || "aggressive");
+    const aiPattern = selectInput(Object.keys(META.balance.targeting.profiles), entry.aiPattern || "aggressive");
     const powerTier = selectInput(POWER_TIERS, entry.powerTier || "");
     const roles = checkboxGroup(MONSTER_ROLES, entry.roles || ["normal"]);
     const finalBoss = checkboxField("Final boss (never rolled at random)", entry.finalBoss);

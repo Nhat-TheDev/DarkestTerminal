@@ -182,7 +182,7 @@
     "baseDefense": 3,
     "baseSpeed": 20,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "bloodthirsty",
     "skillIds": [
       "blood-drain"
     ],
@@ -446,7 +446,7 @@
     "baseDefense": 1,
     "baseSpeed": 18,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
     "skillIds": [
       "grave-chill"
     ],
@@ -505,7 +505,7 @@
     "baseDefense": 6,
     "baseSpeed": 16,
     "monsterType": "striker",
-    "aiPattern": "aggressive",
+    "aiPattern": "bloodthirsty",
     "skillIds": [
       "quick-bite"
     ],
@@ -679,7 +679,7 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "balanced",
-    "aiPattern": "aggressive",
+    "aiPattern": "bloodthirsty",
     "roles": [
       "normal"
     ],
@@ -797,7 +797,7 @@
     "baseDefense": 4,
     "baseSpeed": 15,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
     "skillIds": [
       "blood-drain"
     ],
@@ -1266,7 +1266,7 @@
     "baseDefense": 8,
     "baseSpeed": 12,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "bloodthirsty",
     "skillIds": [
       "crimson-talon",
       "drink",
@@ -1425,7 +1425,7 @@
     "baseDefense": 6,
     "baseSpeed": 14,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
     "skillIds": [
       "withering-touch",
       "raise-the-dead",
@@ -1479,7 +1479,7 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "sentinel",
-    "aiPattern": "aggressive",
+    "aiPattern": "dread",
     "skillIds": [
       "paid-in-full",
       "the-same-price",

@@ -8,7 +8,7 @@ Each major topic gets its own file for easier reading/editing. Section numbers (
 | File | Section | Content |
 |---|---|---|
 | [`01-class-skill.md`](./01-class-skill.md) | §1 | Class roster (12 classes, all implemented: the original 4 + Viking & Plague Doctor, plus Archer/Ninja/Summoner, §1.9-1.11, plus Jester/Paladin/Warlock, §1.15-1.17), skills per class, the 3-rank skill power-scaling system, status effects used by skills, the engine mechanics Archer/Ninja/Summoner introduced (§1.12), each class's 1 always-on passive skill (§1.13), and the slot-5 skill every class gained (§1.14) — `data/classes.json` |
-| [`02-monster.md`](./02-monster.md) | §2 | Monster scaling formula by floor, aggro-based targeting, AI patterns (incl. the `aiPattern: "defensive"` low-HP logic), regular-monster skill kits, monster tiers (normal/Elite/Boss) — `data/monsters.json` |
+| [`02-monster.md`](./02-monster.md) | §2 | Monster scaling formula by floor, weighted targeting (aggro, low HP, fear...), AI patterns (incl. the `aiPattern: "defensive"` low-HP logic), regular-monster skill kits, monster tiers (normal/Elite/Boss) — `data/monsters.json`, `data/balance-config.json` (`targeting`) |
 | [`03-survival-stats.md`](./03-survival-stats.md) | §3 | Fear + Satiety thresholds, Exhausted/Dying, Camp, Rest room (incl. Camp Reflection, a party self-analysis mechanism) — `data/balance-config.json` |
 | [`04-fear-combat.md`](./04-fear-combat.md) | §4 | How fear feeds back into combat, per-target AoE accuracy rolls, ultimates |
 | [`05-character-stats.md`](./05-character-stats.md) | §5 | How HP/MP work, growth by level |
