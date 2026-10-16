@@ -801,7 +801,7 @@ export class App implements ScreenContext {
       );
     });
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride));
+    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride, focus));
     this.keepScrollInRange(this.party);
     this.keepScrollInRange(this.monsters);
     if (revealing) {
@@ -1073,12 +1073,11 @@ export class App implements ScreenContext {
 
     let enemyBlock: TextChunk[][];
     if (combat) {
-      const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
-      if (monsterCombatants.length === 0) {
+      const shownMonsters = this.shownMonsters(combat, hpOverride, focus);
+      if (shownMonsters.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
       } else {
-        const enemyUnits = monsterCombatants.map((combatant) => {
-          const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+        const enemyUnits = shownMonsters.map((m) => {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
@@ -1113,7 +1112,16 @@ export class App implements ScreenContext {
     return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
-  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
+  /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */
+  private shownMonsters(combat: CombatState, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): Monster[] {
+    const inFocus = (id: Id) => focus !== null && Object.values(focus).some((ids) => Array.isArray(ids) && ids.includes(id));
+    return combat.combatants
+      .filter((c) => c.ref.kind === "monster")
+      .map((c) => getActorByRef(c.ref, this.game.ctx) as Monster)
+      .filter((m) => m.summonerId === undefined || (hpOverride?.get(m.id)?.hp ?? m.hp) > 0 || inFocus(m.id));
+  }
+
+  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     if (!combat) {
       const room = getRoom(s.floor, s.currentRoomId);
@@ -1123,9 +1131,7 @@ export class App implements ScreenContext {
       return [[colorChunk(room.cleared ? t("ui.roomSafe") : t("ui.notEncounteredDot"), PALETTE.dim)]];
     }
     const lines: TextChunk[][] = [];
-    for (const combatant of combat.combatants) {
-      if (combatant.ref.kind !== "monster") continue;
-      const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+    for (const m of this.shownMonsters(combat, hpOverride, focus)) {
       const hp = hpOverride?.get(m.id)?.hp ?? m.hp;
       const style = monsterStyle(m);
       if (hp <= 0) {

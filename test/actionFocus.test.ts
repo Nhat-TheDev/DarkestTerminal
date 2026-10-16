@@ -527,6 +527,56 @@ describe("battlefield and log stay in step", () => {
   }, 30000);
 });
 
+describe("summoned adds", () => {
+  /** The Monsters panel's text, read off its own columns so the Log beside it can't leak a name in. */
+  const monstersPanel = (frame: string) => {
+    const rows = frame.split("\n");
+    const top = rows.findIndex((r) => r.includes(`─${t("ui.panelMonsters")}`));
+    const left = rows[top]!.indexOf(`─${t("ui.panelMonsters")}`) - 1;
+    const panel: string[] = [];
+    for (let i = top + 1; i < rows.length && rows[i]![left] === "│"; i++) panel.push(rows[i]!.slice(left + 1));
+    return panel.join("\n");
+  };
+
+  test("a dead add shows its tombstone for the session it died in, then leaves; a regular monster keeps its own", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 62, kittyKeyboard: true });
+    const game = new Game(7, PARTY);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = boss.maxHp = 5000;
+    const add = spawnMonster("dungeon-rat", 1);
+    add.summonerId = boss.id;
+    add.hp = 1;
+    const goblin = spawnMonster("goblin", 1);
+    goblin.hp = 1;
+    game.ctx.monsters.push(add, goblin, boss);
+    room.monsterIds = [add.id, goblin.id, boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, room.monsterIds, game.ctx, false);
+    const app = new App(renderer, game, { autoReveal: false });
+    await renderOnce();
+    while (app.debugRevealActive) app.tickReveal();
+    await renderOnce();
+    const fight = { app, mockInput, renderOnce, captureCharFrame, game };
+    expect(monstersPanel(captureCharFrame())).toContain(add.name);
+
+    await playRound(fight);
+    let tombstoneSeen = false;
+    for (let guard = 0; app.debugRevealActive && guard < 2000; guard++) {
+      app.tickReveal();
+      await renderOnce();
+      if (monstersPanel(captureCharFrame()).includes(t("ui.monsterDefeatedSuffix", { name: add.name }).trim())) tombstoneSeen = true;
+    }
+    expect(add.hp).toBeLessThanOrEqual(0);
+    expect(goblin.hp).toBeLessThanOrEqual(0);
+    expect(tombstoneSeen).toBe(true);
+    const after = monstersPanel(captureCharFrame());
+    expect(after).not.toContain(add.name);
+    expect(after).toContain(t("ui.monsterDefeatedSuffix", { name: goblin.name }).trim());
+    renderer.destroy();
+  }, 30000);
+});
+
 describe("room log", () => {
   test("keeps at most 50 entries", async () => {
     const fight = await openFight();
