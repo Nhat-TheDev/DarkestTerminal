@@ -20,7 +20,7 @@ import { firstDepth, levelAt, mean, simulateRows, type Row } from "./balanceSim"
 // why their rounds are far above the rest.
 const BANDS = [
   { ids: ["skeleton-guard", "giant-spider"], dpr: { elite: [2, 4], boss: [0.8, 3.2] }, rounds: { elite: [2.5, 4.8], boss: [2.5, 6.5] }, telegraphCap: 0.45 },
-  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2, 4], boss: [2.1, 4.5] }, rounds: { elite: [5, 8.5], boss: [7, 11] }, telegraphCap: 0.55 },
+  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2, 4], boss: [2.3, 4.5] }, rounds: { elite: [5, 8.5], boss: [7, 11] }, telegraphCap: 0.55 },
   { ids: ["dark-knight", "void-amalgamation", "lich"], dpr: { elite: [1.5, 5.5], boss: [1.5, 5.5] }, rounds: { elite: [5, 13.5], boss: [6, 21] }, telegraphCap: 0.65 },
   { ids: ["ancient-golem", "dragon"], dpr: { elite: [3, 5.5], boss: [4.5, 7.5] }, rounds: { elite: [8, 33], boss: [18, 45] }, telegraphCap: 0.75 },
   { ids: ["the-founder"], dpr: { boss: [5, 8] }, rounds: { boss: [24, 45] }, telegraphCap: 0.8 },
@@ -33,9 +33,9 @@ const CASES = BANDS.flatMap((band) =>
 /** A boss spends turns charging, buffing and summoning, so its damage per round only has to come close to its elite's; the Lich's boss kit spends the most of them. */
 const BOSS_DPR_TOLERANCE = 0.55;
 /**
- * A band's mean damage per round may sit this far below the band before it: a defensive guard weighs
- * `damage` in its targeting, which nothing tracks yet, so its hits spread across the party and band 2
- * lands just under band 1. Rounds still rise strictly.
+ * A band's mean damage per round may sit this far below the band before it: who a guard hits depends on
+ * its `aiPattern`, which moves damage between bands, and band 2's mean sits just under band 1's.
+ * Rounds still rise strictly.
  */
 const BAND_DPR_TOLERANCE = 0.9;
 /** The final boss sits at least this close to the hardest guard on both measures. */

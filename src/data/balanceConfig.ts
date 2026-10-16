@@ -10,6 +10,10 @@ export interface TargetingConfig {
   lowHpRankScores: number[];
   /** Score by fear rank, highest fear first; every rank past the end takes the last score. */
   fearRankScores: number[];
+  /** Score by rank of HP taken off the monster, most first; anyone who has dealt none takes the last score. */
+  damageRankScores: number[];
+  /** What each remembered amount of damage is multiplied by at the end of every round, 0 to 1. */
+  damageMemoryDecay: number;
   /** One weight per factor for each `aiPattern`; every profile's weights sum to 1. */
   profiles: Record<string, Record<TargetingFactor, number>>;
 }
@@ -252,11 +256,14 @@ if (BALANCE.combat.fearTierThresholds.some((v, i, all) => i > 0 && v <= all[i - 
 
 /** Why `config` is not a usable `targeting` section, or `null` when it is. Shared with the game editor's save path. */
 export function targetingConfigError(config: TargetingConfig): string | null {
-  for (const key of ["lowHpRankScores", "fearRankScores"] as const) {
+  for (const key of ["lowHpRankScores", "fearRankScores", "damageRankScores"] as const) {
     const scores = config[key];
     if (!Array.isArray(scores) || scores.length === 0 || !scores.every((v) => typeof v === "number" && v > 0)) {
       return `targeting.${key} must be a non-empty list of numbers above 0`;
     }
+  }
+  if (!(typeof config.damageMemoryDecay === "number" && config.damageMemoryDecay >= 0 && config.damageMemoryDecay <= 1)) {
+    return "targeting.damageMemoryDecay must be a number from 0 to 1";
   }
   const profiles = Object.entries(config.profiles ?? {});
   if (profiles.length === 0) return "targeting.profiles must define at least 1 aiPattern";

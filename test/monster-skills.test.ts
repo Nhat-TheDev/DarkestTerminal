@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
 import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { runMonsterTurn, targetingWeight } from "../src/engine/monsterAI";
+import { applyStatusEffectToActor, resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
 import type { Character, MonsterArchetype, Summon } from "../src/types";
 import { BALANCE, targetingConfigError, type TargetingConfig } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
@@ -558,6 +559,87 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
   });
 });
 
+describe("the damage factor: a monster remembers who hurt it", () => {
+  const { damageRankScores, damageMemoryDecay, profiles } = BALANCE.targeting;
+
+  function setup(archetypeId = "zombie") {
+    const { ctx } = makeCtx();
+    const monster = spawnInto(ctx, archetypeId);
+    monster.maxHp = 100000;
+    monster.hp = 100000;
+    return { ctx, monster, party: ctx.party };
+  }
+
+  test("a direct hit credits its attacker with the HP it took off", () => {
+    const { monster, party } = setup();
+    const before = monster.hp;
+    resolveSkillEffect({ kind: "damage", amount: 30 }, party[0]!, monster, { log: [] });
+    expect(monster.damageTakenFrom?.[party[0]!.id]).toBe(before - monster.hp);
+    resolveSkillEffect({ kind: "damage", amount: 30 }, party[0]!, monster, { log: [] });
+    expect(monster.damageTakenFrom?.[party[0]!.id]).toBe(before - monster.hp);
+  });
+
+  test("a damage-over-time tick credits whoever applied the status", () => {
+    const { monster, party } = setup();
+    applyStatusEffectToActor(monster, "poisoned", 3, { log: [] }, undefined, undefined, undefined, undefined, undefined, party[1]!.id);
+    const before = monster.hp;
+    tickDotEffects(monster, { log: [] });
+    expect(monster.hp).toBeLessThan(before);
+    expect(monster.damageTakenFrom).toEqual({ [party[1]!.id]: before - monster.hp });
+  });
+
+  test("a character takes nothing from being hit, and a monster's hit on itself is not remembered", () => {
+    const { monster, party } = setup();
+    resolveSkillEffect({ kind: "damage", amount: 30 }, monster, party[0]!, { log: [] });
+    resolveSkillEffect({ kind: "damage", amount: 30 }, monster, monster, { log: [] });
+    expect((party[0] as unknown as { damageTakenFrom?: unknown }).damageTakenFrom).toBeUndefined();
+    expect(monster.damageTakenFrom).toBeUndefined();
+  });
+
+  test("the end of every round multiplies what it remembers by damageMemoryDecay", () => {
+    const { ctx, monster, party } = setup();
+    monster.attack = 0;
+    const combat = startCombat("r1", [monster.id], ctx, false);
+    monster.damageTakenFrom = { [party[0]!.id]: 80 };
+    resolveRound(combat, ctx);
+    expect(monster.damageTakenFrom[party[0]!.id]).toBeCloseTo(80 * damageMemoryDecay, 9);
+  });
+
+  test("dealers rank by what they took off, most first; anyone who dealt nothing takes the last score", () => {
+    const { monster, party } = setup();
+    const pool = party.slice(0, 4);
+    for (const c of pool) c.hp = c.maxHp;
+    monster.damageTakenFrom = { [pool[0]!.id]: 10, [pool[1]!.id]: 40 };
+    const weight = targetingWeight(monster, pool);
+    const scores = [damageRankScores[1]!, damageRankScores[0]!, damageRankScores.at(-1)!, damageRankScores.at(-1)!];
+    const total = scores.reduce((a, b) => a + b, 0);
+    const w = profiles.defensive!;
+    const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    pool.forEach((c, i) => {
+      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + w.damage * (scores[i]! / total) + (w.lowHp + w.range + w.fear) / pool.length;
+      expect(weight(c)).toBeCloseTo(expected, 9);
+    });
+  });
+
+  test("a defensive monster turns on whoever has been hurting it", () => {
+    expect(getArchetype("zombie").aiPattern).toBe("defensive");
+    function hitsOnMage(hurtByMage: boolean): number {
+      let n = 0;
+      for (let seed = 0; seed < 300; seed++) {
+        const { ctx } = makeCtx(seed);
+        const zombie = spawnInto(ctx, "zombie");
+        const mage = ctx.party.find((c) => c.classId === "mage")!;
+        if (hurtByMage) zombie.damageTakenFrom = { [mage.id]: 50 };
+        const combat = startCombat("r1", [zombie.id], ctx, false);
+        resolveRound(combat, ctx);
+        if (combat.log.some((l) => l.text.includes(`attacks ${mage.name}`))) n++;
+      }
+      return n;
+    }
+    expect(hitsOnMage(true)).toBeGreaterThan(hitsOnMage(false));
+  });
+});
+
 describe("targeting config validation", () => {
   const valid = (): TargetingConfig => structuredClone(BALANCE.targeting);
 
@@ -584,6 +666,10 @@ describe("targeting config validation", () => {
     const empty = valid();
     empty.fearRankScores = [];
     expect(targetingConfigError(empty)).toMatch(/fearRankScores/);
+
+    const decay = valid();
+    decay.damageMemoryDecay = 1.5;
+    expect(targetingConfigError(decay)).toMatch(/damageMemoryDecay/);
   });
 
   test("an archetype whose aiPattern has no profile throws on load", () => {
