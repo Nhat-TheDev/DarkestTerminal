@@ -34,14 +34,15 @@
         "unlockLevel": 1
       },
       {
-        "id": "shield-guard",
-        "name": "Shield Guard",
-        "description": "Sets the shield square to the front and plants the feet behind it, and every eye in the room finds it.",
-        "shortDescription": "Raises a shield: defense, aggro up.",
-        "target": "self",
+        "id": "interpose",
+        "name": "Interpose",
+        "description": "Steps into the line of the blow meant for someone else, and takes it on the shield.",
+        "shortDescription": "Takes single-target hits aimed at an ally.",
+        "target": "singleAlly",
+        "targetsOtherAlliesOnly": true,
         "slot": 1,
         "isBuff": true,
-        "cooldownTurns": 2,
+        "cooldownTurns": 3,
         "ranks": [
           {
             "rank": 1,
@@ -50,13 +51,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 2
               }
             ]
           },
@@ -67,13 +63,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-ii",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 3
               }
             ]
           },
@@ -84,13 +75,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-iii",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 4
               }
             ]
           }

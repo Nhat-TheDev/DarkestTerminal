@@ -180,10 +180,10 @@ Used for Acolyte's Purify (choose one of two sides), Divine Descent (both sides 
 - A field on `Character` (mirroring `usesRemainingThisCombat`): `cooldownsRemaining: Record<Id, number>` — initialized to `{}` in `createCharacter`, reset to `{}` in `startCombat` — doesn't carry over between combats.
 - `queueAction`: blocks if `(actor.cooldownsRemaining[skillId] ?? 0) > 0`. `cooldownsRemaining[skillId]` is set at execution time (`runCharacterTurn`, alongside MP deduction — §3), to `Math.max(0, skill.cooldownTurns - totalCooldownReduction(actor))` — `totalCooldownReduction` (`src/engine/artifacts.ts`) sums any cooldown-reduction granted by the actor's equipped artifacts, so the stored cooldown can be lower than the skill's own `cooldownTurns`.
 - Decrementing: at the end of every round, every entry `> 0` in `cooldownsRemaining` for every living actor → subtract 1 (floored at 0).
-- Convention for assigning `cooldownTurns` (`gameplay-decisions/01-class-skill.md` §1.5): for skills with `isBuff: true` (Shield Guard, Rally, Poison Coat) → `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`; damage/utility skills are assigned by hand; ultimates share a fixed value across every class (see `data/classes.json`).
+- Convention for assigning `cooldownTurns` (`gameplay-decisions/01-class-skill.md` §1.5): for skills with `isBuff: true` (Interpose, Rally, Poison Coat) → `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`; damage/utility skills are assigned by hand; ultimates share a fixed value across every class (see `data/classes.json`).
 
 ### 4.7 Buffs always act first in the round — `SkillDefinition.isBuff` + a temporary speed bonus for turn-order calculation
-Used for Shield Guard, Rally (Knight), Poison Coat (Rogue) — the skills marked `isBuff: true`.
+Used for Interpose, Rally (Knight), Poison Coat (Rogue) — the skills marked `isBuff: true`.
 
 - An optional field on `SkillDefinition`: `isBuff?: boolean`.
 - `buildTurnQueue`: when computing the sort key for a character combatant (`turnOrderSortKey`, `src/engine/combat.ts`), checks `combat.queuedActions` to see if that actor has a `QueuedAction` pointing at a skill with `isBuff: true` → if so, uses `actor.speed` plus `combat.buffTurnOrderSpeedBonus` (`data/balance-config.json`) as its sort key. This does **not** overwrite the actor's real `speed` — it's only a temporary value used for sorting, discarded as soon as `turnQueue` is built.

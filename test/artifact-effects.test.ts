@@ -367,7 +367,7 @@ describe("artifacts", () => {
     rat.attack = 200;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: knight.id };
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    queueAction(combat, self, "slash", [{ kind: "monster", id: rat.id }], ctx);
     const ratHpBefore = rat.hp;
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("reflected from"))).toBe(true);

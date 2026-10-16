@@ -150,7 +150,7 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
   Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
 
-  **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard adds a large `aggro` bonus to a Knight whose base is already high; against an `opportunistic` monster that pushes the Knight almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
+  **This makes taunting the wrong move against these archetypes, on purpose.** Taunt adds a large `aggro` bonus to a Knight whose base is already high; against an `opportunistic` monster that pushes the Knight almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
 
   Same mechanism, opposite direction: `distracted` (a negative `aggro` modifier) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
 

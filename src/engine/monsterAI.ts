@@ -21,6 +21,7 @@ import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
 import { advanceShellAfterOwnTurn } from "./monsterShell";
+import { interceptTarget } from "./interception";
 
 /** A monster's targeting pool: every living character/summon not currently `untargetable` (a stealthed Ninja). */
 type Targetable = Character | Summon;
@@ -93,7 +94,7 @@ function pickMonsterAction(archetype: MonsterArchetype, actor: Monster, view: Ai
  * than inverting (1/aggro) keeps whatever spread the party actually has instead of flattening it to
  * a fixed ratio no matter how hard anyone taunts.
  *
- * The consequence is deliberate: Shield Guard's +40 aggro pushes the Knight out of danger and
+ * The consequence is deliberate: Taunt's +40 aggro pushes the Knight out of danger and
  * pulls the rest of the party into it, so taunting is the wrong move against these archetypes.
  */
 function aggroWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {
@@ -168,6 +169,13 @@ function resolveMonsterSkillTargets(skill: SkillDefinition, archetype: MonsterAr
   return pickTargets(skill, archetype, actor, living, view, rng);
 }
 
+/** Each single-target hit goes to whoever guards its target; one cast never lands on the same guardian twice. */
+function interceptAll(attacker: Monster, targets: Actor[], combat: CombatState, ctx: EngineContext): Actor[] {
+  const mapped: Actor[] = [];
+  for (const [i, target] of targets.entries()) mapped.push(interceptTarget(attacker, target, [...mapped, ...targets.slice(i + 1)], combat, ctx));
+  return mapped;
+}
+
 function joinNames(actors: Actor[]): string {
   const names = actors.map((a) => a.name);
   return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")}${t("combat.targetListJoiner")}${names[names.length - 1]}`;
@@ -194,6 +202,8 @@ function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, ac
     if (turned) {
       combat.log.push({ text: t("combat.confusedAttack", { actor: actor.name }), kind: "info" });
       targets = turned;
+    } else if (skill.target === "singleEnemy" && (skill.effects ?? []).some((e) => e.kind === "damage")) {
+      targets = interceptAll(actor, targets, combat, ctx);
     }
   }
   commitSkill(actor, skill);
@@ -227,6 +237,7 @@ function releaseCharge(archetype: MonsterArchetype, actor: Monster, living: Targ
     if (targets.length === 0) targets = pickTargets(skill, archetype, actor, living, view, ctx.rng);
   }
   actor.charging = undefined;
+  if (skill.target === "singleEnemy" && (skill.effects ?? []).some((e) => e.kind === "damage")) targets = interceptAll(actor, targets, combat, ctx);
   combat.log.push({ text: t("combat.telegraphRelease", { actor: actor.name, skill: skill.name }), kind: "attack" });
   applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
 }
@@ -304,7 +315,7 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
     resolveSkillEffect({ kind: "damage", amount: 0 }, actor, victim, { log: combat.log, rollDamage: () => ctx.rng.next() });
     return;
   }
-  const target = pickTargets(null, archetype, actor, living, view, ctx.rng)[0]!;
+  const target = interceptTarget(actor, pickTargets(null, archetype, actor, living, view, ctx.rng)[0]!, [], combat, ctx);
   noteBasicAttack(combat, actor, target);
   if (!rollHits(actor, () => ctx.rng.next())) {
     noteMiss(combat, target);

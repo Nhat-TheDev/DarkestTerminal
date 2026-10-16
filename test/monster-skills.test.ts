@@ -475,7 +475,7 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
         const { ctx } = makeCtx(seed);
         const monster = spawnInto(ctx, archetypeId);
         const knight = ctx.party.find((c) => c.classId === "knight")!;
-        knight.aggro += 40; // what Shield Guard's taunt status is worth
+        knight.aggro += 40; // what the taunt status is worth
         const combat = startCombat("r1", [monster.id], ctx, false);
         resolveRound(combat, ctx);
         if (combat.log.some((l) => l.text.includes(`attacks ${knight.name}`))) n++;

@@ -20,17 +20,18 @@ afterAll(() => {
 });
 
 describe("new skill mechanics", () => {
-  test("Shield Guard applies both guard and taunt in a single cast", () => {
+  test("Interpose marks the ally and records the Knight as its source", () => {
     const { ctx } = makeCtx();
     const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: knight.id };
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    const mage = ctx.party.find((p) => p.classId === "mage")!;
+    queueAction(combat, self, "interpose", [{ kind: "character", id: mage.id }], ctx);
     resolveRound(combat, ctx);
 
-    expect(combat.log.some((l) => l.text.includes("gains the Guard effect"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("gains the Interposed effect"))).toBe(true);
+    expect(mage.activeStatusEffects.find((s) => s.statusEffectId === "interposed")?.sourceId).toBe(knight.id);
   });
 
   test("Prayer lowers the ally's fear, fortifies them for 2 rounds, and goes on cooldown", () => {
@@ -348,15 +349,16 @@ describe("queued action refund when it never executes", () => {
     const selfRef: CombatantRef = { kind: "character", id: knight.id };
 
     const mpBefore = knight.mp;
-    expect(queueAction(combat, selfRef, "shield-guard", [selfRef], ctx)).toBeNull();
+    const mageRef: CombatantRef = { kind: "character", id: ctx.party.find((p) => p.classId === "mage")!.id };
+    expect(queueAction(combat, selfRef, "interpose", [mageRef], ctx)).toBeNull();
     expect(knight.mp).toBe(mpBefore);
-    expect(knight.cooldownsRemaining["shield-guard"]).toBeUndefined();
+    expect(knight.cooldownsRemaining["interpose"]).toBeUndefined();
 
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
     expect(knight.mp).toBe(mpBefore);
-    expect(knight.cooldownsRemaining["shield-guard"]).toBeUndefined();
+    expect(knight.cooldownsRemaining["interpose"]).toBeUndefined();
   });
 });
 
@@ -725,23 +727,12 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
 
 
 describe("Knight skill ranks", () => {
-  test("Shield Guard ranks resolve to guard-ii/guard-iii at lv7/lv15", () => {
-    const skill = getSkill("shield-guard");
-    expect(getEffectiveSkill(skill, 1).mpCost).toBe(8);
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
-    expect(getEffectiveSkill(skill, 7).mpCost).toBe(9);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard-ii", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
-    expect(getEffectiveSkill(skill, 15).mpCost).toBe(10);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard-iii", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
+  test("Interpose ranks lengthen the interposed status at lv7/lv15", () => {
+    const skill = getSkill("interpose");
+    for (const [level, mp, turns] of [[1, 8, 2], [7, 9, 3], [15, 10, 4]] as const) {
+      expect(getEffectiveSkill(skill, level).mpCost).toBe(mp);
+      expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "interposed", durationTurns: turns }]);
+    }
   });
 
   test("Sword Judgment ranks resolve to dmg 30/40/50 at lv35/70/100", () => {

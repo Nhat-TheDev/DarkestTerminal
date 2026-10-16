@@ -564,7 +564,7 @@ export function applyStatusEffectToActor(
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
-      ...(def.forcesTargetOnSource ? { sourceId: sourceId ?? existing.sourceId } : {}),
+      ...(def.forcesTargetOnSource || def.interceptsForSource ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -594,7 +594,7 @@ export function applyStatusEffectToActor(
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
-    ...(def.forcesTargetOnSource && sourceId !== undefined ? { sourceId } : {}),
+    ...((def.forcesTargetOnSource || def.interceptsForSource) && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
