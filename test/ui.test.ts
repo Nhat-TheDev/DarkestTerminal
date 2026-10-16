@@ -67,7 +67,7 @@ describe("headless UI smoke test", () => {
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
   // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
   async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
-    let game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    let game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
     game.currentSaveSlot = "slot1";
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "boss";
@@ -299,7 +299,7 @@ describe("character info screen", () => {
 
     const opened = captureCharFrame();
     expect(opened).toContain("[2] Mage");
-    expect(opened).toContain("Vanguard (Level 1 Vanguard)");
+    expect(opened).toContain("Knight (Level 1 Knight)");
     expect(opened).toContain("[1-4] Character");
 
     mockInput.pressKey("3");
@@ -689,7 +689,7 @@ describe("a panel scrolled with the mouse wheel", () => {
   /** A Rest room with a Runner in it, entered from a fresh run. */
   function gameInRunnerRoom(): Game {
     for (let seed = 1; seed < 300; seed++) {
-      const game = new Game(seed, ["vanguard", "mage", "rogue", "acolyte"]);
+      const game = new Game(seed, ["knight", "mage", "rogue", "acolyte"]);
       game.state.combat = null;
       const rest = game.state.floor.rooms.find((r) => r.type === "rest")!;
       game.state.currentRoomId = rest.id;
@@ -759,7 +759,7 @@ describe("layout", () => {
 
   /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
   async function openFight(width: number, height: number, boss = false) {
-    const game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
     if (boss) {
       const room = getRoom(game.state.floor, game.state.currentRoomId);
       const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
@@ -784,13 +784,13 @@ describe("layout", () => {
     expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
     expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(10);
     expect(rows[44]).toContain("[Ctrl+C] Quit");
-    for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
+    for (const abbr of ["KN", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
   test("the Log keeps its width on a wide terminal, and a long entry wraps under its icon", async () => {
     const { captureCharFrame, renderOnce, app } = await openFight(200, 45);
-    app.pushToast("Vanguard uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
+    app.pushToast("Knight uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
     app.tickReveal(); // the first tick renders, which queues the toast
     for (let i = 0; i < 500 && app.debugRevealActive; i++) app.tickReveal();
     await renderOnce();
@@ -799,7 +799,7 @@ describe("layout", () => {
     const left = rows[top]!.indexOf(`─${t("ui.panelLog")}`) - 1;
     expect(rows[top]!.indexOf("┐", left) - left + 1).toBe(35);
     const panel = rows.slice(top + 1, top + 1 + UNIT_BLOCK_HEIGHT).map((r) => r.slice(left + 1, left + 34));
-    const first = panel.findIndex((line) => line.includes("Vanguard uses"));
+    const first = panel.findIndex((line) => line.includes("Knight uses"));
     expect(first).toBeGreaterThanOrEqual(0);
     expect(panel[first + 1]).toMatch(/^ {2}\S/);
   });

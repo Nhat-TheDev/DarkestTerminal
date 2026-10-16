@@ -42,7 +42,7 @@ const detailLines = (text: string): TextChunk[][] =>
 export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
   const parts: string[] = [];
   if (rankDef.maxHpPercent !== undefined) {
-    parts.push(t("passive.vanguardBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
+    parts.push(t("passive.knightBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
   }
   if (rankDef.onHitStatusEffectId !== undefined) {
     const shredStat = getStatusEffect(rankDef.onHitStatusEffectId).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === "defense");

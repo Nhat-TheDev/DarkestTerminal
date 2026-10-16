@@ -73,8 +73,8 @@ describe("which target is flagged as most hurt", () => {
 
 describe("the rows of a target list", () => {
   test("a heal colours each HP figure by its share and flags the most hurt ally", () => {
-    const rows = targetChoiceLines([ally("Vanguard", 174, 185), ally("Mage", 60, 100), ally("Acolyte", 31, 124)], heal, false);
-    expect(rows.map(text)).toEqual(["  [1] Vanguard (174/185 HP)", "  [2] Mage (60/100 HP)", "  [3] Acolyte (31/124 HP) *"]);
+    const rows = targetChoiceLines([ally("Knight", 174, 185), ally("Mage", 60, 100), ally("Acolyte", 31, 124)], heal, false);
+    expect(rows.map(text)).toEqual(["  [1] Knight (174/185 HP)", "  [2] Mage (60/100 HP)", "  [3] Acolyte (31/124 HP) *"]);
     expect(colorOf(rows[0]!, "174/185")).toEqual(fgOf(PALETTE.hpHigh));
     expect(colorOf(rows[1]!, "60/100")).toEqual(fgOf(PALETTE.hpMid));
     expect(colorOf(rows[2]!, "31/124")).toEqual(fgOf(PALETTE.hpLow));
@@ -87,13 +87,13 @@ describe("the rows of a target list", () => {
   });
 
   test("no ally is flagged while everyone is at half HP or better", () => {
-    const rows = targetChoiceLines([ally("Vanguard", 100, 100), ally("Mage", 50, 100)], heal, false);
+    const rows = targetChoiceLines([ally("Knight", 100, 100), ally("Mage", 50, 100)], heal, false);
     expect(rows.map(text).join("\n")).not.toContain("*");
   });
 
   test("a stat buff shows the raised stat instead of HP, and flags nobody", () => {
-    const rows = targetChoiceLines([ally("Vanguard", 10, 185, { attack: 32 }), ally("Mage", 98, 98, { attack: 12 })], whetstone, false);
-    expect(rows.map(text)).toEqual(["  [1] Vanguard (ATK 32)", "  [2] Mage (ATK 12)"]);
+    const rows = targetChoiceLines([ally("Knight", 10, 185, { attack: 32 }), ally("Mage", 98, 98, { attack: 12 })], whetstone, false);
+    expect(rows.map(text)).toEqual(["  [1] Knight (ATK 32)", "  [2] Mage (ATK 12)"]);
   });
 
   test("an attack colours enemy HP and flags the most hurt enemy when there are two or more", () => {

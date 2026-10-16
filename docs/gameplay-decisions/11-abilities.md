@@ -365,7 +365,7 @@ it, so no equipped ability is lost there:
    rest of the run's state — it does not carry over to the next run (a
    fresh run always starts at `runStardust = 0`).
 5. **Results screen** — shown after the buyback (or immediately, if the
-   lost set was empty): 1 line per lost-set entry, e.g. "Vanguard's
+   lost set was empty): 1 line per lost-set entry, e.g. "Knight's
    *Bloodletting* was lost — reclaimed for 2 Stardust" / "Rogue's
    *Phantom Reflexes* was lost for good."
 6. **Next run starts with more (or the same) choices, never fewer than
@@ -574,7 +574,7 @@ used for `magicPower`**: that method gives an absurd result.
 `speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
 matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
 would mean `speed +32` to `+48`. `speed` only spans a narrow range across
-all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Vanguard slowest,
+all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Knight slowest,
 Rogue fastest) — a `+32` would make the
 *slowest* class in the game faster than the *fastest* one, by a wide
 margin. The reason the formula breaks down here: `attack`/`defense`/

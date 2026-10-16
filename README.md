@@ -105,7 +105,7 @@ before your party doesn't make it back is up to you.
 
 - **A dungeon that keeps going** — floors are generated as you descend, so no
   two runs look the same.
-- **12 classes, a party of 4** — Vanguard, Mage, Rogue, Acolyte, Viking, Plague
+- **12 classes, a party of 4** — Knight, Mage, Rogue, Acolyte, Viking, Plague
   Doctor, Archer, Ninja, Summoner, Jester, Paladin, and Warlock. Each plays differently.
 - **Turn-based tactical combat** — command your party, then watch the round
   play out.

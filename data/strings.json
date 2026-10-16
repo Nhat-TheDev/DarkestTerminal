@@ -312,7 +312,7 @@
   "ui.characterInfoPassiveItemLocked": "  - {{name}} (unlocks at level {{level}})",
   "ui.characterInfoPassiveItemRanked": "  - {{name}} (Rank {{rank}}/3)",
   "ui.characterInfoPassiveNextRank": "Next rank at level {{level}}.",
-  "passive.vanguardBuff": "+{{maxHp}}% max HP, +{{defense}}% defense, +{{aggro}} aggro.",
+  "passive.knightBuff": "+{{maxHp}}% max HP, +{{defense}}% defense, +{{aggro}} aggro.",
   "passive.mageShred": "Each hit reduces the target's defense by {{flat}} ({{percent}}%), up to 3 stacks.",
   "passive.roguePoisonBonus": "Hits on a poisoned target deal +{{percent}}% and +{{flat}} bonus poison damage.",
   "passive.acolyteHealBoost": "Own heals +{{percent}}% stronger.",

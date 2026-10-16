@@ -36,7 +36,7 @@ function onlyAlive(party: Character[], ...keep: Character[]): void {
 
 describe("kit shape", () => {
   test("every class has 7 skills, slot 5 a ranked class skill and slot 6 the ultimate", () => {
-    for (const id of ["vanguard", "mage", "rogue", "acolyte", "viking", "plague-doctor", "archer", "ninja", "summoner", "jester", "paladin", "warlock"]) {
+    for (const id of ["knight", "mage", "rogue", "acolyte", "viking", "plague-doctor", "archer", "ninja", "summoner", "jester", "paladin", "warlock"]) {
       const cls = getClass(id);
       expect(cls.skills.length).toBe(SKILLS_PER_CLASS);
       expect(cls.skills.map((s) => s.slot)).toEqual([0, 1, 2, 3, 4, 5, 6]);
@@ -48,37 +48,37 @@ describe("kit shape", () => {
   });
 });
 
-describe("Retaliate (Vanguard)", () => {
+describe("Retaliate (Knight)", () => {
   test("the first 2 monster hits that land are answered on every enemy, then Retaliating drops", () => {
     const { ctx } = makeCtx(3);
-    const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-    unlock(vanguard, 25, "retaliate");
-    vanguard.maxHp = vanguard.hp = 1e6;
-    onlyAlive(ctx.party, vanguard);
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    unlock(knight, 25, "retaliate");
+    knight.maxHp = knight.hp = 1e6;
+    onlyAlive(ctx.party, knight);
     const rats = [0, 1, 2].map(() => tank(spawnInto(ctx, "dungeon-rat")));
     for (const rat of rats) rat.speed = 1;
     const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
-    queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
+    queueAction(combat, ref(knight), "retaliate", [ref(knight)], ctx);
     resolveRound(combat, ctx);
     const counters = combat.log.filter((l) => l.text.includes("answers the blow")).length;
     expect(counters).toBe(2);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(false);
     for (const rat of rats) expect(rat.hp).toBeLessThan(rat.maxHp);
   });
 
   test("unused, Retaliating ends with the round", () => {
     const { ctx } = makeCtx(3);
-    const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-    unlock(vanguard, 25, "retaliate");
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    unlock(knight, 25, "retaliate");
     const rat = tank(spawnInto(ctx, "dungeon-rat"));
     rat.attack = 0;
-    onlyAlive(ctx.party, vanguard);
+    onlyAlive(ctx.party, knight);
     const combat = startCombat("r1", [rat.id], ctx, false);
     // Stunned all round, the rat never swings.
     applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
-    queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
+    queueAction(combat, ref(knight), "retaliate", [ref(knight)], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId.startsWith("retaliating"))).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("retaliating"))).toBe(false);
   });
 });
 
@@ -571,7 +571,7 @@ describe("Jester", () => {
 
   test("Battle Ballad buffs the rest of the party, not the Jester, and moves them ahead in the turn order", () => {
     const { ctx, jester, target, combat } = jesterFight(10);
-    const slowAlly = ctx.party.find((c) => c.classId === "vanguard")!;
+    const slowAlly = ctx.party.find((c) => c.classId === "knight")!;
     slowAlly.speed = 1;
     target.speed = 5;
     queueAction(combat, ref(jester), "battle-ballad", ctx.party.map(ref), ctx);
@@ -629,7 +629,7 @@ describe("Paladin", () => {
 
   test("Lay on Hands adds the Paladin's max HP share and heals more the lower the target", () => {
     const { paladin, ctx } = paladinFight(1);
-    const target = ctx.party.find((c) => c.classId === "vanguard")!;
+    const target = ctx.party.find((c) => c.classId === "knight")!;
     const effect = getEffectiveSkill(getSkill("lay-on-hands"), 1).effects![0]!;
     const healAt = (hpFraction: number) => {
       target.hp = Math.max(1, Math.round(target.maxHp * hpFraction));
@@ -729,7 +729,7 @@ describe("Paladin", () => {
 
   test("Martyr's Grace heals back part of each surviving hit, but not a killing one", () => {
     const { ctx, paladin, combat } = paladinFight(35);
-    const ally = ctx.party.find((c) => c.classId === "vanguard")!;
+    const ally = ctx.party.find((c) => c.classId === "knight")!;
     ally.maxHp = ally.hp = 1000;
     applySkillEffects(getEffectiveSkill(getSkill("martyrs-oath"), 35), paladin, ctx.party, combat, ctx, combat.log);
     const rat = tank(spawnInto(ctx, "dungeon-rat"));

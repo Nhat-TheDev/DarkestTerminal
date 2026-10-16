@@ -442,35 +442,35 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
     return hits;
   }
 
-  // Vanguard has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
+  // Knight has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
   test("an aggressive archetype hits the highest-aggro character more than the lowest", () => {
     const hits = countTargets("skeleton");
     expect(getArchetype("skeleton").aiPattern).toBe("aggressive");
-    expect(hits.get("vanguard") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
+    expect(hits.get("knight") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
   });
 
   test("an opportunistic archetype reverses that — the lowest-aggro character is hit more", () => {
     const hits = countTargets("skeleton-archer");
     expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
-    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("vanguard") ?? 0);
+    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("knight") ?? 0);
   });
 
-  test("taunting pulls attacks toward the Vanguard for aggressive, and away from it for opportunistic", () => {
-    function hitsOnVanguardWithTaunt(archetypeId: string): number {
+  test("taunting pulls attacks toward the Knight for aggressive, and away from it for opportunistic", () => {
+    function hitsOnKnightWithTaunt(archetypeId: string): number {
       let n = 0;
       for (let seed = 0; seed < 300; seed++) {
         const { ctx } = makeCtx(seed);
         const monster = spawnInto(ctx, archetypeId);
-        const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-        vanguard.aggro += 40; // what Shield Guard's taunt status is worth
+        const knight = ctx.party.find((c) => c.classId === "knight")!;
+        knight.aggro += 40; // what Shield Guard's taunt status is worth
         const combat = startCombat("r1", [monster.id], ctx, false);
         resolveRound(combat, ctx);
-        if (combat.log.some((l) => l.text.includes(`attacks ${vanguard.name}`))) n++;
+        if (combat.log.some((l) => l.text.includes(`attacks ${knight.name}`))) n++;
       }
       return n;
     }
-    // Against an opportunistic archetype, taunting makes the Vanguard safer and the rest of the party more exposed.
-    expect(hitsOnVanguardWithTaunt("skeleton")).toBeGreaterThan(hitsOnVanguardWithTaunt("skeleton-archer"));
+    // Against an opportunistic archetype, taunting makes the Knight safer and the rest of the party more exposed.
+    expect(hitsOnKnightWithTaunt("skeleton")).toBeGreaterThan(hitsOnKnightWithTaunt("skeleton-archer"));
   });
 
   test("a single surviving character is still a valid target for both patterns", () => {

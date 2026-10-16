@@ -47,7 +47,7 @@ describe("floor layout", () => {
 
 describe("character creation", () => {
   test("level-1 character has only starting skills unlocked", () => {
-    const cls = getClass("vanguard");
+    const cls = getClass("knight");
     const c = createCharacter("c1", "Test", cls);
     expect(c.unlockedSkillIds).toEqual(["slash", "shield-guard", "shield-throw"]);
     expect(c.hp).toBe(cls.baseMaxHp);

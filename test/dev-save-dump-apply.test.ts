@@ -4,7 +4,7 @@ import { applyDump } from "../tools/dev-save-dump/applyDump";
 import { BALANCE } from "../src/data/balanceConfig";
 import { ENDING_CHECKPOINT_FLOOR_DEPTH, FOUNDER_FLOOR_DEPTH } from "../src/data/endings";
 
-const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
+const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
 describe("dev-save-dump applyDump", () => {
   test("refuses to force a scripted event into a room", () => {

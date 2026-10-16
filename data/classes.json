@@ -1,7 +1,7 @@
 [
   {
-    "id": "vanguard",
-    "name": "Vanguard",
+    "id": "knight",
+    "name": "Knight",
     "description": "Stands in front, takes the hits, and keeps the enemy's attention off the healer.",
     "roleTags": [
       "Tank",

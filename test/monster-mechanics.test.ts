@@ -153,7 +153,7 @@ describe("untargetable monsters", () => {
       const { ctx, boss, combat, ref } = airborneFight();
       expect(livingMonsterRefs(combat, ctx).some((r) => r.id === boss.id)).toBe(true);
       expect(livingTargetableMonsterRefs(combat, ctx)).toEqual([]);
-      expect(autoResolveTargets("allEnemies", ref("vanguard"), combat, ctx)).toEqual([]);
+      expect(autoResolveTargets("allEnemies", ref("knight"), combat, ctx)).toEqual([]);
     });
   });
 
@@ -163,12 +163,12 @@ describe("untargetable monsters", () => {
       const archer = ref("archer");
       const attack = pickAnyAction(ctx, combat, archer);
       queueAction(combat, archer, attack.skillId, attack.targets, ctx);
-      queueAction(combat, ref("vanguard"), "shield-guard", [ref("vanguard")], ctx);
+      queueAction(combat, ref("knight"), "shield-guard", [ref("knight")], ctx);
       const before = boss.hp;
       resolveRound(combat, ctx);
       expect(boss.hp).toBe(before);
-      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-      expect(combat.log.some((l) => l.text === `${vanguard.name} gains the Guard effect.`)).toBe(true);
+      const knight = ctx.party.find((p) => p.classId === "knight")!;
+      expect(combat.log.some((l) => l.text === `${knight.name} gains the Guard effect.`)).toBe(true);
     });
   });
 
@@ -384,7 +384,7 @@ describe("a party caster felled by riposte", () => {
   }
 
   test("stays dead: no lifesteal heals it after the reflect", () => {
-    const { hero, combat, cast } = riposteFight("vanguard", 1, ["bloodthirsty-blade"]);
+    const { hero, combat, cast } = riposteFight("knight", 1, ["bloodthirsty-blade"]);
     cast("slash");
     expect(hero.isAlive).toBe(false);
     expect(hero.hp).toBe(0);
