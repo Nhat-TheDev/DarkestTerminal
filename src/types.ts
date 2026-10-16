@@ -420,8 +420,11 @@ export interface StatusEffectDefinition {
   harmful?: boolean;
   /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
   reflectDamagePercent?: number;
-  /** When a monster's direct hit lands on the bearer, the bearer strikes back at every enemy; after `maxCounters` counters the status ends. */
-  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number };
+  /**
+   * When a monster's direct hit lands on the bearer, the bearer strikes back; after `maxCounters` counters the status ends.
+   * `"attacker"` answers only the monster whose hit triggered it; absent or `"allEnemies"` answers every targetable enemy.
+   */
+  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
   /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
   onMaxStacks?: { statusEffectId: Id; durationTurns: number };
   /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */

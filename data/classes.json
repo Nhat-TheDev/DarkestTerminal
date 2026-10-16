@@ -253,13 +253,12 @@
         ]
       },
       {
-        "id": "retaliate",
-        "name": "Retaliate",
-        "description": "Plants the shield and dares them to swing, and the first blows that land are paid back across the whole line.",
-        "shortDescription": "Taunts for 1 turn; the first 2 hits taken are answered on every foe.",
-        "target": "self",
+        "id": "engage",
+        "name": "Engage",
+        "description": "Steps in under the guard of the nearest, lands a blow, and holds there. Whatever strikes back is answered in kind.",
+        "shortDescription": "Closes on 1 foe; taunts, and answers the first 2 hits on whoever struck.",
+        "target": "singleEnemy",
         "slot": 5,
-        "isBuff": true,
         "cooldownTurns": 4,
         "ranks": [
           {
@@ -268,14 +267,21 @@
             "mpCost": 12,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 68
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           },
@@ -285,14 +291,21 @@
             "mpCost": 13,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 16,
+                "offenseMultiplierPercent": 78
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating-ii",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged-ii",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           },
@@ -302,14 +315,21 @@
             "mpCost": 14,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 88
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating-iii",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged-iii",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           }

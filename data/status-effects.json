@@ -1173,43 +1173,46 @@
     "untargetable": true
   },
   {
-    "id": "retaliating",
-    "name": "Retaliating",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged",
+    "name": "Engaged",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 10,
-      "offenseMultiplierPercent": 60
+      "offenseMultiplierPercent": 60,
+      "target": "attacker"
     }
   },
   {
-    "id": "retaliating-ii",
-    "name": "Retaliating II",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged-ii",
+    "name": "Engaged II",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 15,
-      "offenseMultiplierPercent": 70
+      "offenseMultiplierPercent": 70,
+      "target": "attacker"
     },
-    "rankOf": "retaliating",
+    "rankOf": "engaged",
     "rankLevel": 2
   },
   {
-    "id": "retaliating-iii",
-    "name": "Retaliating III",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged-iii",
+    "name": "Engaged III",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 20,
-      "offenseMultiplierPercent": 75
+      "offenseMultiplierPercent": 75,
+      "target": "attacker"
     },
-    "rankOf": "retaliating",
+    "rankOf": "engaged",
     "rankLevel": 3
   },
   {

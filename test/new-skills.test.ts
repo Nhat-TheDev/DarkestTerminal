@@ -48,37 +48,47 @@ describe("kit shape", () => {
   });
 });
 
-describe("Retaliate (Knight)", () => {
-  test("the first 2 monster hits that land are answered on every enemy, then Retaliating drops", () => {
+describe("Engage (Knight)", () => {
+  function setup() {
     const { ctx } = makeCtx(3);
     const knight = ctx.party.find((c) => c.classId === "knight")!;
-    unlock(knight, 25, "retaliate");
+    unlock(knight, 25, "engage");
     knight.maxHp = knight.hp = 1e6;
     onlyAlive(ctx.party, knight);
-    const rats = [0, 1, 2].map(() => tank(spawnInto(ctx, "dungeon-rat")));
-    for (const rat of rats) rat.speed = 1;
-    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
-    queueAction(combat, ref(knight), "retaliate", [ref(knight)], ctx);
-    resolveRound(combat, ctx);
-    const counters = combat.log.filter((l) => l.text.includes("answers the blow")).length;
-    expect(counters).toBe(2);
-    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(false);
-    for (const rat of rats) expect(rat.hp).toBeLessThan(rat.maxHp);
+    const [ratA, ratB] = [tank(spawnInto(ctx, "dungeon-rat")), tank(spawnInto(ctx, "dungeon-rat"))] as [Monster, Monster];
+    const combat = startCombat("r1", [ratA.id, ratB.id], ctx, false);
+    return { ctx, knight, ratA, ratB, combat };
+  }
+
+  test("Engage damages its target and taunts", () => {
+    const { ctx, knight, ratA, combat } = setup();
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratA], combat, ctx, combat.log);
+    expect(ratA.hp).toBeLessThan(ratA.maxHp);
+    const ids = knight.activeStatusEffects.map((s) => s.statusEffectId);
+    expect(ids).toContain("taunt");
+    expect(ids).toContain("engaged");
   });
 
-  test("unused, Retaliating ends with the round", () => {
-    const { ctx } = makeCtx(3);
-    const knight = ctx.party.find((c) => c.classId === "knight")!;
-    unlock(knight, 25, "retaliate");
-    const rat = tank(spawnInto(ctx, "dungeon-rat"));
-    rat.attack = 0;
-    onlyAlive(ctx.party, knight);
-    const combat = startCombat("r1", [rat.id], ctx, false);
-    // Stunned all round, the rat never swings.
-    applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
-    queueAction(combat, ref(knight), "retaliate", [ref(knight)], ctx);
-    resolveRound(combat, ctx);
-    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("retaliating"))).toBe(false);
+  test("Engage's counter strikes only the monster that hit the Knight", () => {
+    const { ctx, knight, ratA, ratB, combat } = setup();
+    ctx.rng.next = () => 0;
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratB], combat, ctx, combat.log);
+    const aBefore = ratA.hp;
+    const bBefore = ratB.hp;
+    runMonsterTurn(monsterRef(ratA), combat, ctx);
+    expect(ratA.hp).toBeLessThan(aBefore);
+    expect(ratB.hp).toBe(bBefore);
+  });
+
+  test("Engage's counter stops after maxCounters", () => {
+    const { ctx, knight, ratA, combat } = setup();
+    ctx.rng.next = () => 0;
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratA], combat, ctx, combat.log);
+    const before = combat.log.length;
+    for (let i = 0; i < 3; i++) runMonsterTurn(monsterRef(ratA), combat, ctx);
+    const counters = combat.log.slice(before).filter((l) => l.text.includes("answers the blow")).length;
+    expect(counters).toBe(2);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
   });
 });
 

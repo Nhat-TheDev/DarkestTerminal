@@ -146,7 +146,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | 2 | `shield-throw` | Shield Throw | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% ATK | — |
 | 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
 | 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `retaliate` | Retaliate | self | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status taunt (1 turn); status retaliating / retaliating-ii / retaliating-iii (1 turn) | buff |
+| 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 68 / 78 / 88% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 
@@ -156,7 +156,7 @@ How each skill works:
 - `shield-throw` — `damage`
 - `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
 - `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
-- `retaliate` — `applyStatusEffect "taunt"` + `applyStatusEffect "retaliating"` (rank variants `-ii`/`-iii`) on the caster for 1 turn: while it lasts, every monster hit that lands on the Knight is answered with a sweep at every enemy; the second counter ends it at once (`counterAttack`, section 1.14)
+- `engage` — a `damage` hit on one enemy, then `applyStatusEffect "taunt"` + `applyStatusEffect "engaged"` (rank variants `-ii`/`-iii`) on the Knight for 1 turn (per-effect `target: "self"`): while it lasts, each monster hit that lands on the Knight is answered with a strike at that monster alone; the second counter ends it at once (`counterAttack`, section 1.14)
 - `sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Shield Guard carries both the "aggro draw" role and the "defense" role, while Rally is a whole-party buff rather than just self-taunt. The Flags column marks skills that receive `isBuff: true` — see the `durationTurns`/cooldown/speed rules specific to buffs in section 1.7 and `docs/technical-decisions.md` §4.7. MP costs, effects and cooldowns are in the table above, generated from `data/classes.json`.*
@@ -912,7 +912,7 @@ How each passive works:
 
 | Class | Slot 5 | What it does |
 |---|---|---|
-| Knight | Retaliate | Taunts for a turn and answers monster hits with a sweep at all enemies, until it has struck twice |
+| Knight | Engage | Strikes one foe, taunts for a turn, and answers the first two monster hits on whoever landed them |
 | Mage | Frost Lance | A heavy ice hit that chills; a second chill freezes the target solid |
 | Rogue | Venom Brand | A light cut that always leaves the target weak to poison |
 | Acolyte | Sanctuary | A heal over time and a fear resist on the whole party; the Acolyte's basic attack turns holy for 2 turns |
@@ -924,7 +924,7 @@ How each passive works:
 
 The mechanics these skills needed, all read from `data/*.json` (`src/types.ts`):
 
-- **`StatusEffectDefinition.counterAttack`** `{ maxCounters, amount, offenseMultiplierPercent }` (Retaliate's `retaliating`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes every targetable enemy, no accuracy roll. The count lives on the active status (`ActiveStatusEffect.countersStruck`); the counter that reaches `maxCounters` ends the status on the spot. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
+- **`StatusEffectDefinition.counterAttack`** `{ maxCounters, amount, offenseMultiplierPercent, target? }` (Engage's `engaged`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes back, no accuracy roll: `target: "attacker"` hits only the monster that landed the blow (spending no counter if it is dead or untargetable), absent or `"allEnemies"` hits every targetable enemy. The count lives on the active status (`ActiveStatusEffect.countersStruck`); the counter that reaches `maxCounters` ends the status on the spot. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
 - **`StatusEffectDefinition.fearResistPercent`** (Sanctuary's `steadfast`). Every fear gain on the bearer is cut by it, combined multiplicatively with its `fearResist` from Artifacts and Ability. Engine hook: `resistedFearGain`, `src/engine/survival.ts`.
 - **`SkillDefinition.casterHpBelowBonus`** `{ hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent? }` (Desperate Cleave). Checked once when the skill resolves: below the threshold, every `damage` effect gains the offense bonus and the lifesteal. Engine hook: `applySkillEffects`.
 - **`SkillEffect.scalesWithDebuffCount`** `{ percentPerDebuff }` (Volatile Flask). Each harmful status on the target when the hit lands adds to the offense multiplier, a stackable status counting once (`harmfulStatusCount`). With `hitCountRange`, every strike re-counts. Engine hook: the `"damage"` case of `resolveSkillEffect`, `src/engine/resolver.ts`.
