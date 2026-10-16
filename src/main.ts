@@ -10,7 +10,12 @@ import { CLASSES } from "./data/classes";
 import { loadSave, gameFromSave, saveRun } from "./engine/save";
 
 async function main() {
-  const renderer = await createCliRenderer({ exitOnCtrlC: true, backgroundColor: PALETTE.bg });
+  const renderer = await createCliRenderer({
+    exitOnCtrlC: true,
+    backgroundColor: PALETTE.bg,
+    // OpenTUI waits 100 ms after a resize before redrawing; until then the old frame sits clipped at the new edge.
+    debounceDelay: 1,
+  });
 
   for (;;) {
     const choice = await showMainMenu(renderer);

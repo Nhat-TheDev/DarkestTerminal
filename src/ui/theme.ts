@@ -158,7 +158,7 @@ export const LOG_KIND_STYLE: Record<LogEntryKind, { icon: string; color: string 
   heal: { icon: "✚", color: PALETTE.hpHigh },
   buff: { icon: "↑", color: PALETTE.mp },
   debuff: { icon: "↓", color: PALETTE.fearPanic },
-  item: { icon: "🎒", color: PALETTE.title },
+  item: { icon: "◆", color: PALETTE.title },
   death: { icon: "☠", color: PALETTE.dead },
   info: { icon: "·", color: PALETTE.dim },
 };

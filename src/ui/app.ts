@@ -80,10 +80,14 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-/** Width of the Battlefield panel, border included: the party, the divider and the widest enemy side a
-    fight starts with (a boss and two summoned adds). The Log takes the rest of the row, which is why the
-    smallest supported terminal is 150 wide. */
-const BATTLEFIELD_WIDTH = 115;
+/** Width of the Battlefield's content: the party, the divider and the widest enemy side a fight starts
+    with (a boss and two summoned adds). Its panel takes every column the Log leaves and centres it. */
+const BATTLEFIELD_CONTENT_WIDTH = 113;
+/** Width of the Log and the Monsters panel below it, border included, so their edges line up; with the
+    Battlefield beside the Log, the smallest supported terminal is 150 wide. */
+const SIDE_PANEL_WIDTH = 35;
+/** Columns a Log line can use: the panel minus its border and the scrollbar. */
+const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 /** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
@@ -108,6 +112,7 @@ export class App implements ScreenContext {
   private fullLogJustOpened = false;
   /** `runLogVersion` the run-log screen was last built from. */
   private fullLogBuiltFrom = -1;
+  private fullLogBuiltWidth = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated: the enemy side, the Monsters panel and the round in the header are drawn from it until that reveal drains. */
@@ -180,8 +185,8 @@ export class App implements ScreenContext {
     const battlefieldBox = new BoxRenderable(renderer, {
       id: "battlefield-box",
       ...panel,
-      width: BATTLEFIELD_WIDTH,
-      flexShrink: 0,
+      flexGrow: 1,
+      alignItems: "center",
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
@@ -201,12 +206,12 @@ export class App implements ScreenContext {
     mainBox.add(this.main);
     body.add(mainBox);
 
-    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: 32, title: t("ui.panelMonsters") });
+    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelMonsters") });
     this.monsters = new TextRenderable(renderer, { id: "monsters", content: "", fg: PALETTE.text });
     monstersBox.add(this.monsters);
     body.add(monstersBox);
 
-    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, flexGrow: 1, title: t("ui.panelLog") });
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelLog") });
     this.logScroll = new ScrollBoxRenderable(renderer, {
       id: "log-scroll",
       width: "100%",
@@ -731,9 +736,11 @@ export class App implements ScreenContext {
     this.fullLogBox.visible = inFullLog;
     if (inFullLog) {
       // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
-      if (this.fullLogBuiltFrom !== this.runLogVersion) {
+      const fullLogWidth = this.renderer.width - 3;
+      if (this.fullLogBuiltFrom !== this.runLogVersion || this.fullLogBuiltWidth !== fullLogWidth) {
         this.fullLogBuiltFrom = this.runLogVersion;
-        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+        this.fullLogBuiltWidth = fullLogWidth;
+        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog, fullLogWidth));
       }
       if (this.fullLogJustOpened) {
         this.fullLogJustOpened = false;
@@ -784,7 +791,7 @@ export class App implements ScreenContext {
     this.progress.content = joinLines([progressChunks]);
 
     const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
-    this.battlefield.content = joinLines(battlefieldRows);
+    this.battlefield.content = joinLines(battlefieldRows.map((row) => [...row, plainChunk(" ".repeat(Math.max(0, BATTLEFIELD_CONTENT_WIDTH - row.reduce((n, c) => n + c.text.length, 0))))]));
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -872,7 +879,7 @@ export class App implements ScreenContext {
       this.log.content = this.game.state.message;
       return;
     }
-    this.log.content = joinLines(logLines(this.roomLog));
+    this.log.content = joinLines(logLines(this.roomLog, LOG_TEXT_WIDTH));
   }
 
   /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */

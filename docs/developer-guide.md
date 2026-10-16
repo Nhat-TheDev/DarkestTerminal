@@ -149,10 +149,12 @@ footer and at least one row of the main (Dungeon) panel; the party list may scro
 
 From top to bottom the screen is the header, the Path panel, a row holding the Battlefield and the
 Log beside it, the Party | Dungeon | Monsters row, and the key hints on the last line. The
-Battlefield has a fixed size (`BATTLEFIELD_WIDTH` in `src/ui/app.ts`, wide enough for a boss and two
-summoned adds, and tall enough for a boss sprite), so it never resizes from one room to the next; the
-Log takes the rest of that row's width. Every extra column goes to the Log, every extra row to the
-Party | Dungeon | Monsters row, which has 13 rows of content at 150×45. <!-- docs:intent -->
+Battlefield's content has a fixed size (`BATTLEFIELD_CONTENT_WIDTH` in `src/ui/app.ts`, wide enough
+for a boss and two summoned adds, and tall enough for a boss sprite), so it never resizes from one
+room to the next. The Log is a fixed-width column, as wide as the Monsters panel under it (`SIDE_PANEL_WIDTH`): each entry starts with its kind's
+icon and wraps with its later lines indented under the text. Every extra column goes to the
+Battlefield, which centres its content, and every extra row to the Party | Dungeon | Monsters row,
+which has 13 rows of content at 150×45. <!-- docs:intent -->
 
 ### The "Battlefield" panel — pixel art
 
