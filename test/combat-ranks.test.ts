@@ -39,31 +39,31 @@ describe("combat round structure", () => {
     }
     resolveRound(combat, ctx);
     const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("uses"));
-    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("uses"));
+    const knightLine = combat.log.findIndex((l) => l.text.includes("Knight") && l.text.includes("uses"));
     expect(rogueLine).toBeGreaterThanOrEqual(0);
-    expect(vanguardLine).toBeGreaterThanOrEqual(0);
-    expect(rogueLine).toBeLessThan(vanguardLine);
+    expect(knightLine).toBeGreaterThanOrEqual(0);
+    expect(rogueLine).toBeLessThan(knightLine);
   });
 
   test("isBuff skills get +20 speed for this round's turn order only", () => {
     const { ctx } = makeCtx();
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    const self: CombatantRef = { kind: "character", id: knight.id };
     queueAction(combat, self, "shield-guard", [self], ctx);
     for (const ref of livingCharacterRefs(combat, ctx)) {
-      if (ref.id === vanguard.id) continue;
+      if (ref.id === knight.id) continue;
       const { skillId, targets } = pickAnyAction(ctx, combat, ref);
       queueAction(combat, ref, skillId, targets, ctx);
     }
     resolveRound(combat, ctx);
-    const vanguardLine = combat.log.findIndex((l) => l.text.includes("Vanguard") && l.text.includes("uses"));
+    const knightLine = combat.log.findIndex((l) => l.text.includes("Knight") && l.text.includes("uses"));
     const rogueLine = combat.log.findIndex((l) => l.text.includes("Rogue") && l.text.includes("uses"));
-    expect(vanguardLine).toBeGreaterThanOrEqual(0);
+    expect(knightLine).toBeGreaterThanOrEqual(0);
     expect(rogueLine).toBeGreaterThanOrEqual(0);
-    expect(vanguardLine).toBeLessThan(rogueLine);
-    expect(vanguard.speed).toBe(8);
+    expect(knightLine).toBeLessThan(rogueLine);
+    expect(knight.speed).toBe(8);
   });
 
   test("a summon skill (isBuff: true, but has a summon effect) gets no +20 boost — normal speed order applies", () => {
@@ -102,19 +102,19 @@ describe("combat round structure", () => {
 
   test("cooldown decrements each round and re-allows the skill once it hits 0", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.mp = 999;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.mp = 999;
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
 
     queueAction(combat, self, "shield-guard", [self], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.cooldownsRemaining["shield-guard"]).toBe(1);
+    expect(knight.cooldownsRemaining["shield-guard"]).toBe(1);
     expect(queueAction(combat, self, "shield-guard", [self], ctx)).not.toBeNull();
 
     resolveRound(combat, ctx);
-    expect(vanguard.cooldownsRemaining["shield-guard"]).toBe(0);
+    expect(knight.cooldownsRemaining["shield-guard"]).toBe(0);
     expect(queueAction(combat, self, "shield-guard", [self], ctx)).toBeNull();
   });
 
@@ -800,7 +800,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
   test("Healer Spirit heals on its own turn regardless of which of its 2 heal skills is picked", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
@@ -808,7 +808,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
 
     queueAction(combat, self, "summon-spirit", [self], ctx);
     resolveRound(combat, ctx); // spirit spawns mid-round, doesn't act yet
-    vanguard.hp = 1;
+    knight.hp = 1;
 
     resolveRound(combat, ctx); // spirit's own 1st turn
     expect(combat.log.some((l) => l.kind === "heal")).toBe(true);
@@ -818,7 +818,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const { ctx } = makeCtx();
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     summoner.level = 20; // passive rank 2: +1 cap, lets Goblin Thrower and Healer Spirit coexist
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     rat.hp = 500; // survives the goblin/party's attacks long enough for the Spirit to get its own turn
@@ -834,7 +834,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
     goblin.hp = 1; // far lower HP% than any character — before the fix this was a valid (and often winning) heal target
     goblin.actionsTaken = 0; // keep it from expiring (unrelated to this test) before the Spirit's turn below
-    vanguard.hp = Math.max(1, Math.round(vanguard.maxHp * 0.5));
+    knight.hp = Math.max(1, Math.round(knight.maxHp * 0.5));
 
     const logLengthBeforeSpiritTurn = combat.log.length;
     resolveRound(combat, ctx); // spirit's own turn, whichever of its 2 heal skills is rolled

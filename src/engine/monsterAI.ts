@@ -93,7 +93,7 @@ function pickMonsterAction(archetype: MonsterArchetype, actor: Monster, view: Ai
  * than inverting (1/aggro) keeps whatever spread the party actually has instead of flattening it to
  * a fixed ratio no matter how hard anyone taunts.
  *
- * The consequence is deliberate: Shield Guard's +40 aggro pushes the Vanguard out of danger and
+ * The consequence is deliberate: Shield Guard's +40 aggro pushes the Knight out of danger and
  * pulls the rest of the party into it, so taunting is the wrong move against these archetypes.
  */
 function aggroWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {

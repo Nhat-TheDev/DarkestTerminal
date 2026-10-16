@@ -325,7 +325,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
   });
 
   test("defeating the founder bulk-inserts all 11 Covenant events into firedOnceEventIds", () => {
-    const game = new Game(424, ["vanguard"]);
+    const game = new Game(424, ["knight"]);
     toFloor119Continued(game);
     game.advanceToNextFloor();
     game.enterFounderFight();
@@ -337,11 +337,11 @@ describe("Part F.5: Continue → the founder encounter", () => {
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const founder = game.ctx.monsters.find((m) => m.id === room.monsterIds[0])!;
     founder.hp = 1;
-    const vanguard = game.state.party[0]!;
-    vanguard.speed = founder.speed + 1; // this test is about the victory bookkeeping, not turn order: the killing blow must land first
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knight = game.state.party[0]!;
+    knight.speed = founder.speed + 1; // this test is about the victory bookkeeping, not turn order: the killing blow must land first
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const founderRef: CombatantRef = { kind: "monster", id: founder.id };
-    expect(game.queue(vanguardRef, "slash", [founderRef])).toBeNull();
+    expect(game.queue(knightRef, "slash", [founderRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
@@ -395,7 +395,7 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
 
   test("with multiple retired characters, the most recently retired one is used", () => {
     resetProfile();
-    addRetiredCharacter("vanguard");
+    addRetiredCharacter("knight");
     addRetiredCharacter("acolyte");
     const game = new Game(503);
     expect(game.state.retiredCharacterClassId).toBe("acolyte");
@@ -455,9 +455,9 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
 
   test("only a living party member is ever recorded as the one who stayed", () => {
     resetProfile();
-    const game = new Game(509, ["vanguard", "rogue"]);
+    const game = new Game(509, ["knight", "rogue"]);
     game.state.combat = null;
-    game.state.party[0]!.isAlive = false; // vanguard dead, rogue alive
+    game.state.party[0]!.isAlive = false; // knight dead, rogue alive
     game.state.floor.depth = 100;
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");

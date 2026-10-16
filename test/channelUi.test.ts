@@ -9,7 +9,7 @@ import { applyStatusEffectToActor } from "../src/engine/resolver";
 
 async function channelingFight() {
   const harness = await createTestRenderer({ width: 130, height: 47 });
-  const game = new Game(3, ["paladin", "vanguard", "mage", "rogue"]);
+  const game = new Game(3, ["paladin", "knight", "mage", "rogue"]);
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   const rat = spawnMonster("dungeon-rat", 1);
   rat.maxHp = rat.hp = 1e5;

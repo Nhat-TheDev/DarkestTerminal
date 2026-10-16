@@ -27,7 +27,7 @@ import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Summon } from "../src/types";
 
-const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
+const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
 describe("Save version blocking", () => {
   test("current app version is always allowed", () => {

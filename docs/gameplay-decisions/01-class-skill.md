@@ -2,7 +2,7 @@
 
 *(section 1 of `00-index.md` — see that file for the full table of contents)*
 
-Each class has a shared basic attack (slot 0) + several class-specific skills, plus 4 engine mechanics (percentage-based procs, self-buffs applied on a successful hit, stun that skips a turn, and skills whose effect differs depending on the target's side), and cooldowns measured in turns for some of the stronger skills. The roster is 12 classes total: the original 4 (Vanguard, Mage, Rogue, Acolyte — sections 1.1-1.4) plus Viking and Plague Doctor (sections 1.5-1.6), added later alongside a 3-rank power-scaling system layered on every class-specific skill (section 1.8), plus Archer, Ninja, and Summoner (sections 1.9-1.11), added later still alongside 8 further engine mechanics (critical hits, an interrupt/overwatch reaction, untargetable stealth, a summoned-combatant primitive, an execute/low-HP damage bonus, stackable status effects, a per-skill offense multiplier, and a summon death-burst — section 1.12), plus Jester, Paladin, and Warlock (sections 1.15-1.17). Every class has 5 class skills in slots 1-5 and its ultimate in slot 6; section 1.14 covers the slot-5 skills and the mechanics they brought.
+Each class has a shared basic attack (slot 0) + several class-specific skills, plus 4 engine mechanics (percentage-based procs, self-buffs applied on a successful hit, stun that skips a turn, and skills whose effect differs depending on the target's side), and cooldowns measured in turns for some of the stronger skills. The roster is 12 classes total: the original 4 (Knight, Mage, Rogue, Acolyte — sections 1.1-1.4) plus Viking and Plague Doctor (sections 1.5-1.6), added later alongside a 3-rank power-scaling system layered on every class-specific skill (section 1.8), plus Archer, Ninja, and Summoner (sections 1.9-1.11), added later still alongside 8 further engine mechanics (critical hits, an interrupt/overwatch reaction, untargetable stealth, a summoned-combatant primitive, an execute/low-HP damage bonus, stackable status effects, a per-skill offense multiplier, and a summon death-burst — section 1.12), plus Jester, Paladin, and Warlock (sections 1.15-1.17). Every class has 5 class skills in slots 1-5 and its ultimate in slot 6; section 1.14 covers the slot-5 skills and the mechanics they brought.
 
 **Status of sections 1.9-1.11 (Archer/Ninja/Summoner): implemented.** All 12 classes now exist in `data/classes.json`, and the section 1.12 engine mechanics they depend on are all built. As with every other class in this document, treat the numbers in 1.9-1.11 as shape over magnitude — the JSON is the tuned source of truth (see below) — but the *shape* itself (skills, targets, mechanics) is real, shipped code.
 
@@ -14,7 +14,7 @@ Each class has a shared basic attack (slot 0) + several class-specific skills, p
 
 Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below), **defense** (`defense`), **HP** (`maxHp`), **mana** (`maxMp`), **aggro** (`aggro` — the weight used when a monster picks its target, see `02-monster.md` section 2), **speed** (`speed` — priority for acting first, see `docs/technical-decisions.md` §2). Level-1 values for all 12 classes: `data/classes.json`.
 
-- Vanguard has the highest `defense` + `maxHp`, `aggro` second only to the Paladin's, and low `speed` (a tank that acts late).
+- Knight has the highest `defense` + `maxHp`, `aggro` second only to the Paladin's, and low `speed` (a tank that acts late).
 - Mage has the lowest stats across the board on defense/aggro but decent `speed`, and is the only class with low `attack` and the highest `magicPower` — Mage's damage carry comes from its spell skills (section 1.2), not its basic attack.
 - Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical), and is the party's main damage source (section 1.3).
 - Acolyte is balanced, with average `aggro` and decent `magicPower` (healing + secondary damage, lower than Mage's).
@@ -23,7 +23,7 @@ Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below)
 
 #### The `magicPower` stat and the `isMagic` flag
 
-Any skill whose `damage`/`heal` is "magical" in nature (Mage's fire/lightning/ice elements, Acolyte's holy heal/purge, all of Plague Doctor's skills, and the Mage/Acolyte/Summoner basic attacks) is flagged `isMagic: true` in `data/classes.json`. When the resolver computes damage/healing for an `isMagic` skill, it uses the caster's `source.magicPower` in place of `source.attack` — only the offense side of the formula changes; how defense is subtracted stays the same (full mitigation formula details: `docs/technical-decisions.md`, section "Handling by `effect.kind`"). Skills not flagged `isMagic` (the Vanguard/Rogue/Viking/Archer/Ninja basic attacks, all of Vanguard's/Rogue's/Viking's skills, Purify's damage — enemy branch only) use `attack` as normal. Which skills carry `isMagic: true` for each class: `data/classes.json`.
+Any skill whose `damage`/`heal` is "magical" in nature (Mage's fire/lightning/ice elements, Acolyte's holy heal/purge, all of Plague Doctor's skills, and the Mage/Acolyte/Summoner basic attacks) is flagged `isMagic: true` in `data/classes.json`. When the resolver computes damage/healing for an `isMagic` skill, it uses the caster's `source.magicPower` in place of `source.attack` — only the offense side of the formula changes; how defense is subtracted stays the same (full mitigation formula details: `docs/technical-decisions.md`, section "Handling by `effect.kind`"). Skills not flagged `isMagic` (the Knight/Rogue/Viking/Archer/Ninja basic attacks, all of Knight's/Rogue's/Viking's skills, Purify's damage — enemy branch only) use `attack` as normal. Which skills carry `isMagic: true` for each class: `data/classes.json`.
 
 `magicPower` grows by level along the same tapered curve shared with `attack`/`defense`/`maxHp`/`maxMp` (`06-level-system.md` §6.3), multiplied by a class-specific `growthWeights.magicPower` — see `06-level-system.md` §6.8.
 
@@ -69,7 +69,7 @@ Current values for every class, generated from `data/classes.json`:
 
 | Class | Max HP | Max MP | Attack | Defense | Magic power | Aggro | Speed |
 |---|---|---|---|---|---|---|---|
-| Vanguard | 140 | 22 | 14 | 11 | 0 | 20 | 8 |
+| Knight | 140 | 22 | 14 | 11 | 0 | 20 | 8 |
 | Mage | 70 | 60 | 3 | 5 | 16 | 8 | 10 |
 | Rogue | 100 | 40 | 18 | 6 | 0 | 10 | 20 |
 | Acolyte | 90 | 50 | 6 | 8 | 10 | 11 | 9 |
@@ -90,7 +90,7 @@ Balance Points of each class against the roster average, scored with the formula
 
 | Class | Balance points | Against the roster average |
 |---|---|---|
-| Vanguard | 24.5 | −0.6% |
+| Knight | 24.5 | −0.6% |
 | Mage | 24.7 | +0.1% |
 | Rogue | 24.5 | −0.7% |
 | Acolyte | 24.8 | +0.8% |
@@ -119,7 +119,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 | Class | Skill id | Name | Damage stat |
 |---|---|---|---|
-| Vanguard | `slash` | Slash | attack |
+| Knight | `slash` | Slash | attack |
 | Mage | `arcane-bolt` | Arcane Bolt | magicPower |
 | Rogue | `stab` | Stab | attack |
 | Acolyte | `smite` | Smite | magicPower |
@@ -135,9 +135,9 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 *Most basic attacks are physical and scale off their full `attack`. The exceptions: the **magic basics** — Mage's Arcane Bolt, Acolyte's Smite, Summoner's Hollow Pulse (`isMagic: true` + `damageType: "magic"`, each with a reduced `offenseMultiplierPercent`) and Plague Doctor's Vial Toss (`isMagic: true` only, full multiplier) — draw their baseline damage from `magicPower` instead of `attack`; and the **ranged basics** — Archer's Quick Shot and Ninja's Kunai Strike — which stay physical but carry a reduced `offenseMultiplierPercent` because they attack from range, while the melee basics keep the full multiplier. Exact values: `data/classes.json`.*
 
-### 1.1 Vanguard — tank, damage sponge, holds monster attention
+### 1.1 Knight — tank, damage sponge, holds monster attention
 
-<!-- docs:begin classSkills class=vanguard -->
+<!-- docs:begin classSkills class=knight -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
@@ -156,7 +156,7 @@ How each skill works:
 - `shield-throw` — `damage`
 - `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
 - `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
-- `retaliate` — `applyStatusEffect "taunt"` + `applyStatusEffect "retaliating"` (rank variants `-ii`/`-iii`) on the caster for 1 turn: while it lasts, every monster hit that lands on the Vanguard is answered with a sweep at every enemy; the second counter ends it at once (`counterAttack`, section 1.14)
+- `retaliate` — `applyStatusEffect "taunt"` + `applyStatusEffect "retaliating"` (rank variants `-ii`/`-iii`) on the caster for 1 turn: while it lasts, every monster hit that lands on the Knight is answered with a sweep at every enemy; the second counter ends it at once (`counterAttack`, section 1.14)
 - `sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Shield Guard carries both the "aggro draw" role and the "defense" role, while Rally is a whole-party buff rather than just self-taunt. The Flags column marks skills that receive `isBuff: true` — see the `durationTurns`/cooldown/speed rules specific to buffs in section 1.7 and `docs/technical-decisions.md` §4.7. MP costs, effects and cooldowns are in the table above, generated from `data/classes.json`.*
@@ -422,9 +422,9 @@ The statuses used by the character skill kits in sections 1.1-1.6 (English id/na
 
 What each is, and where it comes from:
 
-- `guard` — Buff; used by Shield Guard (Vanguard).
-- `taunt` — Buff; used by Shield Guard (Vanguard).
-- `rallied` — Buff; used by Rally (Vanguard).
+- `guard` — Buff; used by Shield Guard (Knight).
+- `taunt` — Buff; used by Shield Guard (Knight).
+- `rallied` — Buff; used by Rally (Knight).
 - `poison-coated` — Buff (rider, not a stat-buff); used by Poison Coat (Rogue). (see `docs/technical-decisions.md` §4.2)
 - `poisoned` — Debuff; used by on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor).
 - `burning` — Debuff; used by Fireball, Fire Pillar (Mage); Fire Vial, Total Plague (Plague Doctor).
@@ -474,7 +474,7 @@ Where each comes from:
 - `acid-burn` — Acid Spit (Slime)
 - `hexed` — Hex/Withering Curse/Doom (Warlock); also lowers attack, stacks up to 3 times (section 1.17)
 
-**DoT carries the deep floors — by design.** A direct hit goes through the attack-vs-defense mitigation (`mitigatedOffense`, `src/engine/resolver.ts`), which takes a larger share of it as monster defense grows with depth (`06-level-system.md` §6.10). A DoT tick skips defense and grows with the target's max HP. The deeper the floor, the more of a party's damage comes from the classes that keep a DoT up: the Rogue first (poison plus Venomcraft, section 1.3), then the Ninja (stacking bleed), the Plague Doctor (poison and burn) and the Warlock (stacking Hexed); the Viking and the Mage only now and then, and the Vanguard, Archer and Acolyte not at all. This is intended: the Rogue is the party's main damage source, and the other classes are not given defense-ignoring scaling to close the gap.
+**DoT carries the deep floors — by design.** A direct hit goes through the attack-vs-defense mitigation (`mitigatedOffense`, `src/engine/resolver.ts`), which takes a larger share of it as monster defense grows with depth (`06-level-system.md` §6.10). A DoT tick skips defense and grows with the target's max HP. The deeper the floor, the more of a party's damage comes from the classes that keep a DoT up: the Rogue first (poison plus Venomcraft, section 1.3), then the Ninja (stacking bleed), the Plague Doctor (poison and burn) and the Warlock (stacking Hexed); the Viking and the Mage only now and then, and the Knight, Archer and Acolyte not at all. This is intended: the Rogue is the party's main damage source, and the other classes are not given defense-ignoring scaling to close the gap.
 
 **Elite/Boss dampening — every DoT's total tick (flat + `maxHpPercent`) is multiplied by `combat.eliteBossDotMultiplier` (0.8) when the target's `tier` is `"elite"` or `"boss"`** (`Monster.tier`, `02-monster.md` §2's tier system). The tick still deals at least 1 damage unless the target's race is immune to its damage type, the same floor every hit gets in `resolveSkillEffect`. Exists specifically to keep `maxHpPercent` from becoming disproportionately strong against Elite/Boss's much larger HP pools — a flat-rate `%maxHp` tick would otherwise scale up faster on high-HP targets than intended. A DoT's status line says "(less on Elites and Bosses)" without the number.
 
@@ -514,9 +514,9 @@ SkillRankDefinition {
 
 At cast time, the game resolves the character's current rank for a skill as the highest `rank` whose `unlockLevel <= Character.level`, then uses that rank entry's `mpCost`/`effects` instead of the skill's top-level `mpCost`/`effects` (which mirror rank 1, kept for backward compatibility with any code that doesn't yet know about `ranks`). This is done via a lookup helper (`getEffectiveSkill(skill, characterLevel)`) used wherever a character's skill is cast or displayed (skill list UI, resolver).
 
-#### Buff-status rank scaling — 4 new statuses (Vanguard)
+#### Buff-status rank scaling — 4 new statuses (Knight)
 
-2 of the class-specific skills carry a `modifyCombatStat` status whose magnitude scales with rank (Vanguard's Shield Guard → `guard`, Vanguard's Rally → `rallied`). Since `guard`/`rallied` are shared `StatusEffectDefinition`s with a fixed magnitude, scaling them per-rank meant adding rank-specific variants rather than mutating the shared status (avoids changing the base `guard`/`rallied` magnitude for any other skill/rank that might reuse them). Shape (current magnitudes: `data/status-effects.json`):
+2 of the class-specific skills carry a `modifyCombatStat` status whose magnitude scales with rank (Knight's Shield Guard → `guard`, Knight's Rally → `rallied`). Since `guard`/`rallied` are shared `StatusEffectDefinition`s with a fixed magnitude, scaling them per-rank meant adding rank-specific variants rather than mutating the shared status (avoids changing the base `guard`/`rallied` magnitude for any other skill/rank that might reuse them). Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
@@ -588,7 +588,7 @@ Per-rank `mpCost`/`effects`/`unlockLevel` for every skill of every class (all 9)
 
 **Status: implemented.**
 
-**Base stats (`data/classes.json`)**: see the class stats table in section 1 — between Vanguard and Rogue on attack, reflecting a single-target physical striker. Confirmed against the roster's `BalancePoints` formula (section 1's "Base stats balancing formula").
+**Base stats (`data/classes.json`)**: see the class stats table in section 1 — between Knight and Rogue on attack, reflecting a single-target physical striker. Confirmed against the roster's `BalancePoints` formula (section 1's "Base stats balancing formula").
 
 Basic attack (slot 0): **Quick Shot** (`quick-shot`), physical, bow, sub-100% offense (ranged — see the footnote under section 1.0).
 
@@ -871,7 +871,7 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 
 | Class | Passive | Unlock level (R1/R2/R3) | Parameters (R1/R2/R3) |
 |---|---|---|---|
-| Vanguard | Bulwark | 5 / 20 / 35 | maxHpPercent 5 / 10 / 15, defensePercent 7 / 10 / 14, aggroFlat 3 / 6 / 9 |
+| Knight | Bulwark | 5 / 20 / 35 | maxHpPercent 5 / 10 / 15, defensePercent 7 / 10 / 14, aggroFlat 3 / 6 / 9 |
 | Mage | Arcane Shred | 5 / 20 / 35 | onHitStatusEffectId shredded / shredded-ii / shredded-iii, durationTurns 3 |
 | Rogue | Venomcraft | 5 / 20 / 35 | bonusPercent 15 / 20 / 30, bonusFlat 5 / 10 / 20 |
 | Acolyte | Devotion | 5 / 20 / 35 | healBoostPercent 10 / 20 / 25, debuffResistPercent 30 / 40 / 50 |
@@ -887,7 +887,7 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 
 How each passive works:
 
-- **Vanguard — Bulwark.** Permanent, unconditional stat buff — a multiplier on maxHp/defense after Artifact/Ability boosts and before status deltas (which stay flat, the same way the resolver applies them mid-fight), flat add to aggro. The Character Info screen shows its share as its own bracket. Engine hook: `characterStatBreakdown` (`src/engine/party.ts`)
+- **Knight — Bulwark.** Permanent, unconditional stat buff — a multiplier on maxHp/defense after Artifact/Ability boosts and before status deltas (which stay flat, the same way the resolver applies them mid-fight), flat add to aggro. The Character Info screen shows its share as its own bracket. Engine hook: `characterStatBreakdown` (`src/engine/party.ts`)
 - **Rogue — Venomcraft.** Triggers only when the target carries `passiveSkill.requiresTargetStatusId` (or a `rankOf` variant of it — `statusSatisfiesRequirement`, the same family-match `conditionalBonus` skills use); the bonus is a true flat amount (`ignoreDefensePercent` at its maximum plus a zero `offenseMultiplierPercent` zero out the usual attack-vs-defense term). Engine hook: `onDamageDealt` hook, `combatHooks.ts`
 - **Mage — Arcane Shred.** Every hit stacks the status named by that rank's `onHitStatusEffectId` (`shredded`/`-ii`/`-iii`, 1 status id per rank — same rank-to-status mapping Rogue's own Poison Bomb skill uses for `poisoned`/`-ii`/`-iii`); the status lasts that rank's `durationTurns` and every hit refreshes it back to that value; needed a real fix to `applyStatusEffectToActor`'s existing-status branch (it only bumped `stacks`/`turnsRemaining` before, never re-applied a fresh delta per stack). Engine hook: `onDamageDealt` hook, `combatHooks.ts`; stacking fix in `src/engine/resolver.ts`
 - **Acolyte — Devotion.** Debuff resist combines multiplicatively with equipped Artifact/Ability `debuffResist` (`combinePercents`, same formula both already used independently); the heal boost applies only to a heal cast via the Acolyte's **own class skill** — not an item, not another class's skill — via a new `ResolveContext.castByOwnClassSkill` flag `combat.ts` sets by checking the casting skill's id against the source's own class skill list. Engine hook: `acolyteDebuffResistPercent` + the `"heal"` case, both in `src/engine/combat.ts`/`resolver.ts`
@@ -912,7 +912,7 @@ How each passive works:
 
 | Class | Slot 5 | What it does |
 |---|---|---|
-| Vanguard | Retaliate | Taunts for a turn and answers monster hits with a sweep at all enemies, until it has struck twice |
+| Knight | Retaliate | Taunts for a turn and answers monster hits with a sweep at all enemies, until it has struck twice |
 | Mage | Frost Lance | A heavy ice hit that chills; a second chill freezes the target solid |
 | Rogue | Venom Brand | A light cut that always leaves the target weak to poison |
 | Acolyte | Sanctuary | A heal over time and a fear resist on the whole party; the Acolyte's basic attack turns holy for 2 turns |

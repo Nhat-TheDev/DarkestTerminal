@@ -378,7 +378,7 @@ describe("AbilityProfile persistence", () => {
   });
 });
 
-const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
+const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
 function wipeParty(game: Game): void {
   for (const c of game.state.party) {
@@ -495,18 +495,18 @@ describe("Abilities: run entry", () => {
     // attack statBoost (amount 5, minPercent 5) — each resolved against the character's
     // pre-equipment base (a fresh run starts at level 1, satiety 100 → no Exhausted multiplier).
     const game = new Game(11, classIds, undefined, ["thornhide", "battle-instinct"]);
-    const [vanguard, mage] = game.state.party;
-    const vanguardMaxHp = statsForLevel(getClass(vanguard!.classId), vanguard!.level).maxHp;
+    const [knight, mage] = game.state.party;
+    const knightMaxHp = statsForLevel(getClass(knight!.classId), knight!.level).maxHp;
     const mageAttack = statsForLevel(getClass(mage!.classId), mage!.level).attack;
 
-    expect(vanguard!.maxHp).toBe(vanguardMaxHp + expectedAbilityStatBoost("thornhide", "maxHp", vanguardMaxHp));
-    expect(vanguard!.hp).toBe(vanguard!.maxHp);
+    expect(knight!.maxHp).toBe(knightMaxHp + expectedAbilityStatBoost("thornhide", "maxHp", knightMaxHp));
+    expect(knight!.hp).toBe(knight!.maxHp);
     expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 
     // The bonus must survive the first recompute rather than being clamped away into a permanent
     // hp shortfall — `recomputeCharacterStats` only ever clamps hp down.
-    recomputeCharacterStats(vanguard!, game.state.satiety);
-    expect(vanguard!.hp).toBe(vanguard!.maxHp);
+    recomputeCharacterStats(knight!, game.state.satiety);
+    expect(knight!.hp).toBe(knight!.maxHp);
   });
 
   test("two characters cannot enter a run carrying the same Ability", () => {

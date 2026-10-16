@@ -278,9 +278,9 @@ export interface CoinFlip {
 export interface PassiveRankDefinition {
   rank: 1 | 2 | 3;
   unlockLevel: number;
-  maxHpPercent?: number; // Vanguard
-  defensePercent?: number; // Vanguard
-  aggroFlat?: number; // Vanguard
+  maxHpPercent?: number; // Knight
+  defensePercent?: number; // Knight
+  aggroFlat?: number; // Knight
   onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
   durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
   bonusPercent?: number; // Rogue

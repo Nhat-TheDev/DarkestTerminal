@@ -92,13 +92,13 @@ describe("items", () => {
 
   test("queueItemAction deducts inventory at queue time and applies the item's effect on resolve", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    vanguard.hp = vanguard.maxHp - 30;
+    const knight = ctx.party[0]!;
+    knight.hp = knight.maxHp - 30;
     ctx.inventory["small-health-potion"] = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     const err = queueItemAction(combat, self, "small-health-potion", [self], ctx);
     expect(err).toBeNull();
     expect(ctx.inventory["small-health-potion"]).toBe(0);
@@ -113,12 +113,12 @@ describe("items", () => {
 
   test("using a trophy in combat spends it and logs that it has no effect", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
+    const knight = ctx.party[0]!;
     ctx.inventory["rat-tail"] = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     expect(queueItemAction(combat, self, "rat-tail", [self], ctx)).toBeNull();
     expect(ctx.inventory["rat-tail"]).toBe(0);
     resolveRound(combat, ctx);
@@ -135,8 +135,8 @@ describe("items", () => {
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    expect(checkItemUsable(vanguard, "small-health-potion", ctx.inventory)).not.toBeNull();
+    const knight = ctx.party[0]!;
+    expect(checkItemUsable(knight, "small-health-potion", ctx.inventory)).not.toBeNull();
   });
 
   test("Regeneration heals 10 HP/turn and refreshes (doesn't stack a 2nd instance) when reapplied while active", () => {
@@ -304,8 +304,8 @@ describe("consumable catalog data", () => {
       resolveRound(combat, ctx);
       return before - rat.hp;
     };
-    expect(hpLost("mage")).toBe(hpLost("vanguard"));
-    expect(hpLost("vanguard")).toBeGreaterThan(0);
+    expect(hpLost("mage")).toBe(hpLost("knight"));
+    expect(hpLost("knight")).toBeGreaterThan(0);
   });
 
   test("Antidote removes Poisoned only", () => {
@@ -438,8 +438,8 @@ describe("items never crit", () => {
     ITEMS.push(bomb);
     try {
       const { ctx } = makeCtx();
-      const vanguard = ctx.party[0]!;
-      vanguard.hp = vanguard.maxHp - 30;
+      const knight = ctx.party[0]!;
+      knight.hp = knight.maxHp - 30;
       ctx.inventory["small-health-potion"] = 1;
       ctx.inventory[bomb.id] = 1;
       const rat = spawnInto(ctx, "dungeon-rat");
@@ -447,7 +447,7 @@ describe("items never crit", () => {
       rat.defense = 0;
       rat.hp = rat.maxHp = 500;
       const combat = startCombat("r1", [rat.id], ctx, false);
-      const self: CombatantRef = { kind: "character", id: vanguard.id };
+      const self: CombatantRef = { kind: "character", id: knight.id };
       const target: CombatantRef = { kind: "monster", id: rat.id };
       expect(queueItemAction(combat, self, "small-health-potion", [self], ctx)).toBeNull();
       expect(queueItemAction(combat, { kind: "character", id: ctx.party[1]!.id }, bomb.id, [target], ctx)).toBeNull();
