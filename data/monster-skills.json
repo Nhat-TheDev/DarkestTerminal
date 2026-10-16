@@ -659,7 +659,7 @@
       {
         "kind": "damage",
         "amount": 24,
-        "offenseMultiplierPercent": 360
+        "offenseMultiplierPercent": 285
       },
       {
         "kind": "applyStatusEffect",
@@ -902,7 +902,7 @@
       {
         "kind": "damage",
         "amount": 28,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 120
       }
     ],
     "slot": 0,
