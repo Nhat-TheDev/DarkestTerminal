@@ -83,50 +83,53 @@
         ]
       },
       {
-        "id": "shield-throw",
-        "name": "Shield Throw",
-        "description": "Hurls the shield flat across the room, edge first.",
-        "shortDescription": "Throws the shield for ranged damage.",
-        "target": "singleEnemy",
+        "id": "side-by-side",
+        "name": "Side by Side",
+        "description": "Takes the ally's flank and lends them the shield. If they land a blow, the Knight is already moving.",
+        "shortDescription": "Buffs an ally; if they land a hit, the Knight gains Following Through.",
+        "target": "singleAlly",
         "slot": 2,
         "ranks": [
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 5,
+            "mpCost": 6,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 10,
-                "offenseMultiplierPercent": 100
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 6,
+            "mpCost": 7,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 13,
-                "offenseMultiplierPercent": 105
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side-ii",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 7,
+            "mpCost": 8,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 16,
-                "offenseMultiplierPercent": 110
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side-iii",
+                "durationTurns": 1
               }
             ]
           }
-        ]
+        ],
+        "targetsOtherAlliesOnly": true,
+        "isBuff": true,
+        "cooldownTurns": 3
       },
       {
         "id": "rally",
@@ -478,7 +481,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "burning",
-                "chance": 0.4,
+                "chance": 0.40,
                 "durationTurns": 2
               }
             ]
@@ -4237,7 +4240,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "confused",
-                "chance": 0.40,
+                "chance": 0.4,
                 "durationTurns": 2
               }
             ]

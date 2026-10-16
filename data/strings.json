@@ -529,6 +529,7 @@
   "item.effectEliteBossMaxTurns": "lasts at most {{turns}} turn on an elite or boss",
   "item.effectForcesTarget": "attacks only whoever applied it",
   "item.effectIntercepts": "single-target hits on the bearer go to whoever applied it",
+  "item.effectLandedHitSourceStatus": "when the bearer lands a damaging hit, whoever applied it gains {status} ({turns} turn)",
   "item.effectRedirectToAllies": "{{percent}}% of attacks land on its own side",
   "item.effectCoinFlipWin": "coin flips land {{multiplier}}x as often",
   "item.effectEndsWithCombat": "ends with the fight",

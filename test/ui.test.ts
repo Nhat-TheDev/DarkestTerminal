@@ -792,7 +792,7 @@ describe("layout", () => {
 
   test("the Log keeps its width on a wide terminal, and a long entry wraps under its icon", async () => {
     const { captureCharFrame, renderOnce, app } = await openFight(200, 45);
-    app.pushToast("Knight uses Shield Throw on Goblin for 23 damage, and the goblin staggers back into the corner.");
+    app.pushToast("Knight uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
     app.tickReveal(); // the first tick renders, which queues the toast
     for (let i = 0; i < 500 && app.debugRevealActive; i++) app.tickReveal();
     await renderOnce();

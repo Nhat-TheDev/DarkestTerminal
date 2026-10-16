@@ -441,6 +441,8 @@ export interface StatusEffectDefinition {
   forcesTargetOnSource?: boolean;
   /** A monster's single-target damaging attack aimed at the bearer goes to the actor that applied the status, while that actor is alive and not stunned. */
   interceptsForSource?: boolean;
+  /** When the bearer's own action lands a damaging hit, the actor that applied this status gets `statusEffectId`. */
+  onLandedHitSourceStatus?: { statusEffectId: Id; durationTurns: number };
   /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
   redirectToAlliesChance?: number;
   /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
@@ -686,7 +688,7 @@ export interface ActiveStatusEffect {
   onHitDurationTurns?: number;
   /** For a status with `counterAttack`: how many counters it has struck so far. */
   countersStruck?: number;
-  /** For a status with `forcesTargetOnSource` or `interceptsForSource`: the id of the actor that applied it. */
+  /** For a status with `forcesTargetOnSource`, `interceptsForSource` or `onLandedHitSourceStatus`: the id of the actor that applied it. */
   sourceId?: Id;
 }
 
