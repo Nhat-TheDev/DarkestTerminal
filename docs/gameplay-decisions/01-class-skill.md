@@ -14,7 +14,7 @@ Each class has a shared basic attack (slot 0) + several class-specific skills, p
 
 Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below), **defense** (`defense`), **HP** (`maxHp`), **mana** (`maxMp`), **aggro** (`aggro` — the weight used when a monster picks its target, see `02-monster.md` section 2), **speed** (`speed` — priority for acting first, see `docs/technical-decisions.md` §2). Level-1 values for all 12 classes: `data/classes.json`.
 
-- Knight has the highest `defense` + `maxHp`, `aggro` second only to the Paladin's, and low `speed` (a tank that acts late).
+- Knight has high `maxHp` and `defense`, an `aggro` well below the Paladin's, and low `speed` (it acts late). It does not draw attacks by default: Interpose, Watchful and Engage are how it takes hits, and the Paladin holds the party's defensive role.
 - Mage has the lowest stats across the board on defense/aggro but decent `speed`, and is the only class with low `attack` and the highest `magicPower` — Mage's damage carry comes from its spell skills (section 1.2), not its basic attack.
 - Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical), and is the party's main damage source (section 1.3).
 - Acolyte is balanced, with average `aggro` and decent `magicPower` (healing + secondary damage, lower than Mage's).
@@ -135,7 +135,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 
 *Most basic attacks are physical and scale off their full `attack`. The exceptions: the **magic basics** — Mage's Arcane Bolt, Acolyte's Smite, Summoner's Hollow Pulse (`isMagic: true` + `damageType: "magic"`, each with a reduced `offenseMultiplierPercent`) and Plague Doctor's Vial Toss (`isMagic: true` only, full multiplier) — draw their baseline damage from `magicPower` instead of `attack`; and the **ranged basics** — Archer's Quick Shot and Ninja's Kunai Strike — which stay physical but carry a reduced `offenseMultiplierPercent` because they attack from range, while the melee basics keep the full multiplier. Exact values: `data/classes.json`.*
 
-### 1.1 Knight — tank, damage sponge, holds monster attention
+### 1.1 Knight — shield-bearing captain: guards one ally, drives the others
 
 <!-- docs:begin classSkills class=knight -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -402,11 +402,15 @@ This also required a fix to `isHelpfulStatusEffect()` (`src/engine/resolver.ts`,
 
 The statuses used by the character skill kits in sections 1.1-1.6 (English id/name, matching `data/status-effects.json`):
 
-<!-- docs:begin statusEffects ids=guard,taunt,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
+<!-- docs:begin statusEffects ids=interposed,side-by-side,following-through,engaged,guard,taunt,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
+| `interposed` | Interposed | tickCategory special; interceptsForSource |
+| `side-by-side` | Side by Side | defense +6 (min 10%); attack +12 (min 25%); magicPower +12 (min 25%); tickCategory special; onLandedHitSourceStatus statusEffectId following-through, durationTurns 1 |
+| `following-through` | Following Through | defense +6 (min 10%); attack +12 (min 25%); tickCategory special |
+| `engaged` | Engaged | tickCategory statMod; counterAttack maxCounters 2, amount 10, offenseMultiplierPercent 60, target attacker |
 | `guard` | Guard | defense +6 (min 10%) |
 | `taunt` | Taunt | aggro +40 |
 | `rallied` | Rallied | attack +4 (min 5%) |
@@ -422,7 +426,10 @@ The statuses used by the character skill kits in sections 1.1-1.6 (English id/na
 
 What each is, and where it comes from:
 
-- `interposed` — Buff; used by Interpose (Knight).
+- `interposed` — Buff (redirect, not a stat-buff); used by Interpose (Knight).
+- `side-by-side` — Buff (raises defense, attack and magic power; follow-up on a landed hit); used by Side by Side (Knight). `-ii`/`-iii` are the rank variants.
+- `following-through` — Buff; applied to the Knight when the ally carrying `side-by-side` lands a damaging hit. `-ii`/`-iii` are the rank variants.
+- `engaged` — Buff (counter, not a stat-buff); used by Engage (Knight). `-ii`/`-iii` are the rank variants.
 - `guard` — Buff; used by monster skills.
 - `taunt` — Buff; used by Engage (Knight).
 - `rallied` — Buff; used by Rally (Knight).

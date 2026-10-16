@@ -90,6 +90,16 @@ describe("Engage (Knight)", () => {
     expect(counters).toBe(2);
     expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
   });
+
+  test("an unused Engage counter ends with the round", () => {
+    const { ctx, knight, ratA, ratB, combat } = setup();
+    ratA.attack = 0;
+    ratB.attack = 0;
+    for (const rat of [ratA, ratB]) applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
+    queueAction(combat, ref(knight), "engage", [monsterRef(ratA)], ctx);
+    resolveRound(combat, ctx);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
+  });
 });
 
 describe("Side by Side (Knight)", () => {
@@ -194,6 +204,8 @@ describe("Side by Side (Knight)", () => {
   test("Side by Side's mechanics text names its follow-up status", () => {
     const text = statusMechanicsParts(getStatusEffect("side-by-side")).join(" ");
     expect(text).toContain("Following Through");
+    expect(text).toContain("for 1 turn");
+    expect(text).not.toContain("1 turns");
     expect(text).not.toContain("{");
   });
 

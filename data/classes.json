@@ -2,12 +2,12 @@
   {
     "id": "knight",
     "name": "Knight",
-    "description": "Stands in front, takes the hits, and keeps the enemy's attention off the healer.",
+    "description": "Takes the blow meant for the weakest, and drives the others on behind its shield.",
     "roleTags": [
-      "Tank",
-      "Taunt",
+      "Guardian",
       "Frontline",
-      "Party Buff"
+      "Party Buff",
+      "Leader"
     ],
     "baseMaxHp": 130,
     "baseMaxMp": 22,
@@ -244,7 +244,7 @@
       {
         "id": "engage",
         "name": "Engage",
-        "description": "Steps in under the guard of the nearest, lands a blow, and holds there. Whatever strikes back is answered in kind.",
+        "description": "Closes on the foe it chose, lands a blow, and holds the ground. Whatever strikes the Knight is struck back.",
         "shortDescription": "Closes on 1 foe; taunts, and answers the first 2 hits on whoever struck.",
         "target": "singleEnemy",
         "slot": 5,

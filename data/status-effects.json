@@ -54,7 +54,7 @@
   {
     "id": "interposed",
     "name": "Interposed",
-    "description": "A Knight stands in the way of the blow.",
+    "description": "The Knight takes the single-target blows aimed at the bearer.",
     "perTurnEffects": [],
     "tickCategory": "special",
     "interceptsForSource": true
@@ -62,7 +62,7 @@
   {
     "id": "side-by-side",
     "name": "Side by Side",
-    "description": "Raises defense, attack and magic power. When the bearer lands a hit, the one who stood beside them is paid back.",
+    "description": "Raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -92,7 +92,7 @@
   {
     "id": "side-by-side-ii",
     "name": "Side by Side II",
-    "description": "Raises defense, attack and magic power more. When the bearer lands a hit, the one who stood beside them is paid back.",
+    "description": "Raises defense, attack and magic power more. If the bearer lands a hit, the Knight who stood beside them follows through.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -124,7 +124,7 @@
   {
     "id": "side-by-side-iii",
     "name": "Side by Side III",
-    "description": "Sharply raises defense, attack and magic power. When the bearer lands a hit, the one who stood beside them is paid back.",
+    "description": "Sharply raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -156,7 +156,7 @@
   {
     "id": "following-through",
     "name": "Following Through",
-    "description": "Raises defense and attack for the duration.",
+    "description": "The Knight presses the advantage. Raises defense and attack.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -176,7 +176,7 @@
   {
     "id": "following-through-ii",
     "name": "Following Through II",
-    "description": "Raises defense and attack more for the duration.",
+    "description": "The Knight presses the advantage. Raises defense and attack more.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -198,7 +198,7 @@
   {
     "id": "following-through-iii",
     "name": "Following Through III",
-    "description": "Sharply raises defense and attack for the duration.",
+    "description": "The Knight presses the advantage. Sharply raises defense and attack.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
