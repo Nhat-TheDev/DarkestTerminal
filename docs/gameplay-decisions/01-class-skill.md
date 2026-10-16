@@ -14,7 +14,7 @@ Each class has a shared basic attack (slot 0) + several class-specific skills, p
 
 Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below), **defense** (`defense`), **HP** (`maxHp`), **mana** (`maxMp`), **aggro** (`aggro` — the weight used when a monster picks its target, see `02-monster.md` section 2), **speed** (`speed` — priority for acting first, see `docs/technical-decisions.md` §2). Level-1 values for all 12 classes: `data/classes.json`.
 
-- Knight has high `maxHp` and `defense`, an `aggro` well below the Paladin's, and low `speed` (it acts late). It does not draw attacks by default: Interpose, Watchful and Engage are how it takes hits, and the Paladin holds the party's defensive role.
+- Knight has high `maxHp` and `defense`, `aggro` second only to the Paladin's, and low `speed` (it acts late). On top of the hits its aggro draws, Interpose, Watchful and Engage pull blows meant for others onto it; the Paladin still holds the party's top aggro.
 - Mage has the lowest stats across the board on defense/aggro but decent `speed`, and is the only class with low `attack` and the highest `magicPower` — Mage's damage carry comes from its spell skills (section 1.2), not its basic attack.
 - Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical), and is the party's main damage source (section 1.3).
 - Acolyte is balanced, with average `aggro` and decent `magicPower` (healing + secondary damage, lower than Mage's).

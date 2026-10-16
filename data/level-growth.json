@@ -124,8 +124,8 @@
     }
   ],
   "eliteMultiplier": {
-    "maxHp": 1.8,
-    "attack": 1.4,
+    "maxHp": 2.0,
+    "attack": 1.5,
     "defense": 1.2,
     "exp": 3
   },
