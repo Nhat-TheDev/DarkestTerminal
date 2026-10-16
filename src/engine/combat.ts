@@ -759,21 +759,24 @@ export function onStruckByMonster(target: Actor, attacker: Monster, combat: Comb
       if (isActorAlive(attacker)) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns: mark.durationTurns }, target, attacker, { log: combat.log });
     }
   }
-  triggerCounterAttack(target, combat, ctx);
+  triggerCounterAttack(target, attacker, combat, ctx);
 }
 
 /**
- * A monster's direct hit landed on `bearer`: a status with `counterAttack` strikes every targetable
- * enemy back; the status ends once it has struck its `maxCounters`. The counter is the bearer's own action.
+ * A monster's direct hit landed on `bearer`: a status with `counterAttack` strikes back, at `attacker` alone or
+ * at every targetable enemy; the status ends once it has struck its `maxCounters`. The counter is the bearer's own action.
  */
-function triggerCounterAttack(bearer: Actor, combat: CombatState, ctx: EngineContext): void {
+function triggerCounterAttack(bearer: Actor, attacker: Monster, combat: CombatState, ctx: EngineContext): void {
   if (!isCharacter(bearer) || !isActorAlive(bearer)) return;
   const active = bearer.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).counterAttack);
   if (!active) return;
   const def = getStatusEffect(active.statusEffectId);
   const counter = def.counterAttack!;
   if ((active.countersStruck ?? 0) >= counter.maxCounters) return;
-  const enemies = livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx));
+  const enemies: Actor[] =
+    counter.target === "attacker"
+      ? isActorAlive(attacker) && !isUntargetable(attacker) ? [attacker] : []
+      : livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx));
   if (enemies.length === 0) return;
   active.countersStruck = (active.countersStruck ?? 0) + 1;
   runInSession(
