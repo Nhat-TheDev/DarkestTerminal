@@ -4,10 +4,10 @@ import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
-import { getClass, passiveRankDef } from "../../data/classes";
+import { getClass, getSkill, passiveRankDef } from "../../data/classes";
 import type { PassiveRankDefinition, PassiveSkillDefinition } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
+import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics, COMBAT_STAT_LABEL } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
 import { wrapText } from "../layout";
 import { characterStatBreakdown, type StatBreakdown } from "../../engine/party";
@@ -98,6 +98,26 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   }
   if (rankDef.maxActiveMinions !== undefined) {
     parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
+  }
+  if (rankDef.growthSwapWeights !== undefined && passive.growthSwapStats) {
+    const [first, second] = passive.growthSwapStats.map((stat) => COMBAT_STAT_LABEL[stat]) as [string, string];
+    parts.push(t("passive.jesterGrowthSwap", { first, second, low: rankDef.growthSwapWeights.low, high: rankDef.growthSwapWeights.high }));
+  }
+  if (rankDef.reflectPercent !== undefined) {
+    parts.push(t("passive.paladinReflect", { percent: rankDef.reflectPercent }));
+  }
+  if (passive.ignoresFearEffects) parts.push(t("passive.paladinFearImmune"));
+  if (rankDef.stackBurstPowerPercent !== undefined && passive.stackBurst) {
+    const burst = passive.stackBurst;
+    parts.push(
+      t("passive.warlockStackBurst", {
+        status: getStatusEffect(burst.statusEffectId).name,
+        stacks: burst.atStacks,
+        skill: getSkill(burst.skillId).name,
+        percent: rankDef.stackBurstPowerPercent,
+        removed: burst.removeStacks,
+      })
+    );
   }
   return parts.join(" ");
 }

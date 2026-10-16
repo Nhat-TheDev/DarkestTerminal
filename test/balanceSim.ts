@@ -49,7 +49,7 @@ function restoreWounded(party: Character[]): void {
   });
 }
 
-/** One fight: every character uses its last ready damaging skill on the monster; no heals or items, since every round starts from the same wounded spread. */
+/** One fight: every character uses its heaviest ready damaging skill on the monster; no heals or items, since every round starts from the same wounded spread. */
 export function fight(id: string, tier: MonsterTier, partyIds: string[], seed: number, atDepth?: number): FightResult {
   const depth = atDepth ?? firstDepth(id, tier);
   const level = levelAt(depth);
@@ -68,7 +68,11 @@ export function fight(id: string, tier: MonsterTier, partyIds: string[], seed: n
       const usable = actor.unlockedSkillIds
         .map((skillId) => getEffectiveSkill(getSkill(skillId), actor.level))
         .filter((s) => (s.target === "singleEnemy" || s.target === "allEnemies") && checkSkillUsable(actor, s) === null);
-      const skill = usable[usable.length - 1];
+      // The heaviest ready skill: the longest cooldown first (an ultimate, a crowd-control skill), then the higher slot.
+      const skill = usable.reduce<(typeof usable)[number] | undefined>(
+        (best, s) => (!best || (s.cooldownTurns ?? 0) > (best.cooldownTurns ?? 0) || ((s.cooldownTurns ?? 0) === (best.cooldownTurns ?? 0) && s.slot > best.slot) ? s : best),
+        undefined
+      );
       if (!skill) continue;
       const reachable = livingTargetableMonsterRefs(combat, ctx);
       const targets =

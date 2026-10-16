@@ -1,5 +1,5 @@
 import { describe, test, expect, afterAll } from "bun:test";
-import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank } from "../src/data/classes";
+import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank, SKILLS_PER_CLASS } from "../src/data/classes";
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
@@ -779,11 +779,12 @@ describe("Mage skill ranks", () => {
     });
   });
 
-  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100", () => {
+  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100, each chilling every target", () => {
     const skill = getSkill("ice-age");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }]);
+    const chill = { kind: "applyStatusEffect" as const, statusEffectId: "chilled", durationTurns: 2 };
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }, chill]);
   });
 });
 
@@ -810,10 +811,10 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
     expectValidCharacterBase(getClass("rogue"));
   });
 
-  test("Plague Doctor has valid base stats, growth weights, and 6 skills", () => {
+  test("Plague Doctor has valid base stats, growth weights, and 7 skills", () => {
     const doc = getClass("plague-doctor");
     expectValidCharacterBase(doc);
-    expect(doc.skills.length).toBe(6);
+    expect(doc.skills.length).toBe(SKILLS_PER_CLASS);
   });
 
   test("blinded status has accuracyPenaltyPercent 60, no perTurnEffects", () => {
@@ -916,10 +917,10 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
 
 describe("Viking class", () => {
   withoutDamageRolls();
-  test("Viking has valid base stats, growth weights, and 6 skills", () => {
+  test("Viking has valid base stats, growth weights, and 7 skills", () => {
     const viking = getClass("viking");
     expectValidCharacterBase(viking);
-    expect(viking.skills.length).toBe(6);
+    expect(viking.skills.length).toBe(SKILLS_PER_CLASS);
   });
 
   test("Lightning Axe applies storm-empowered + storm-recoil at rank 1", () => {
@@ -1169,9 +1170,9 @@ describe("Archer class", () => {
     expectValidCharacterBase(getClass("archer"));
   });
 
-  test("Archer has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Archer has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const archer = getClass("archer");
-    expect(archer.skills.length).toBe(6);
+    expect(archer.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = archer.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("quick-shot");
     expect(basic.mpCost).toBe(0);
@@ -1233,9 +1234,9 @@ describe("Ninja class", () => {
     expectValidCharacterBase(getClass("ninja"));
   });
 
-  test("Ninja has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Ninja has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const ninja = getClass("ninja");
-    expect(ninja.skills.length).toBe(6);
+    expect(ninja.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = ninja.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("kunai-strike");
     expect(basic.mpCost).toBe(0);
@@ -1305,9 +1306,9 @@ describe("Summoner class", () => {
     expectValidCharacterBase(getClass("summoner"));
   });
 
-  test("Summoner has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Summoner has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const summoner = getClass("summoner");
-    expect(summoner.skills.length).toBe(6);
+    expect(summoner.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = summoner.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("hollow-pulse");
     expect(basic.mpCost).toBe(0);

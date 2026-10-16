@@ -12,8 +12,11 @@ import {
   hasStunningStatus,
   applySkillEffects,
   applyMonsterHitFear,
+  applyOnActStatuses,
+  onStruckByMonster,
   type EngineContext,
 } from "./combat";
+import { getStatusEffect } from "../data/statusEffects";
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
@@ -100,6 +103,35 @@ function aggroWeight(actor: Monster, living: Targetable[]): (c: Targetable) => n
   return (c) => Math.max(1, mirror - c.aggro);
 }
 
+/** Whoever a `forcesTargetOnSource` status on the monster names, when they are in the targetable pool. */
+function provokedBy(actor: Monster, pool: Targetable[]): Targetable | undefined {
+  for (const active of actor.activeStatusEffects) {
+    if (!active.sourceId || !getStatusEffect(active.statusEffectId).forcesTargetOnSource) continue;
+    const source = pool.find((c) => c.id === active.sourceId);
+    if (source) return source;
+  }
+  return undefined;
+}
+
+/**
+ * A `redirectToAlliesChance` status turns the attack on the monster's own side: every other living
+ * monster for an area attack, or as many of them as the attack had targets, picked at random. A monster
+ * with no ally left hits itself. Null when no such status rolls true.
+ */
+function confusedTargets(actor: Monster, targetCount: number, isArea: boolean, combat: CombatState, ctx: EngineContext): Monster[] | null {
+  const chance = Math.max(0, ...actor.activeStatusEffects.map((s) => getStatusEffect(s.statusEffectId).redirectToAlliesChance ?? 0));
+  if (chance === 0 || !ctx.rng.chance(chance)) return null;
+  const allies = livingMonsterRefs(combat, ctx)
+    .map((r) => getActorByRef(r, ctx) as Monster)
+    .filter((m) => m.id !== actor.id);
+  if (allies.length === 0) return [actor];
+  if (isArea) return allies;
+  const pool = [...allies];
+  const picked: Monster[] = [];
+  while (picked.length < Math.max(1, targetCount) && pool.length > 0) picked.push(pool.splice(pool.indexOf(ctx.rng.pick(pool)), 1)[0]!);
+  return picked;
+}
+
 /** Distinct targets, picked one at a time from the weighted pool. A skill without `targetCount` (and the basic attack) picks one; `count` overrides the roll. */
 function pickTargets(
   skill: SkillDefinition | null,
@@ -113,6 +145,11 @@ function pickTargets(
   const base = aggroWeight(actor, living);
   const pool = [...living];
   const picked: Targetable[] = [];
+  const forced = provokedBy(actor, pool);
+  if (forced && count > 0) {
+    picked.push(forced);
+    pool.splice(pool.indexOf(forced), 1);
+  }
   while (picked.length < count && pool.length > 0) {
     const next = archetype.targeting === "random" ? rng.pick(pool) : rng.weightedPick(pool, (c) => scoreWeight(base(c), skill?.targetRules, view, c));
     picked.push(next);
@@ -150,7 +187,15 @@ function commitSkill(actor: Monster, skill: SkillDefinition): void {
 }
 
 function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, actor: Monster, living: Targetable[], view: AiView, combat: CombatState, ctx: EngineContext): void {
-  const targets = resolveMonsterSkillTargets(skill, archetype, actor, living, view, ctx.rng);
+  let targets = resolveMonsterSkillTargets(skill, archetype, actor, living, view, ctx.rng);
+  // A telegraph is aimed when it is charged, so only an attack that lands now can be turned.
+  if (!skill.telegraph && (skill.target === "singleEnemy" || skill.target === "allEnemies")) {
+    const turned = confusedTargets(actor, targets.length, skill.target === "allEnemies", combat, ctx);
+    if (turned) {
+      combat.log.push({ text: t("combat.confusedAttack", { actor: actor.name }), kind: "info" });
+      targets = turned;
+    }
+  }
   commitSkill(actor, skill);
   if (skill.telegraph) {
     actor.charging = { skillId: skill.id, targetIds: skill.target === "singleEnemy" ? targets.map((a) => a.id) : [] };
@@ -211,6 +256,9 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const living = livingPlayerSideEnemyFacingRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Targetable);
   if (living.length === 0) return;
 
+  applyOnActStatuses(actor, combat, ctx);
+  if (actor.hp <= 0) return;
+
   const archetype = getArchetype(actor.archetypeId);
   const view = monsterAiView(actor, combat, ctx);
 
@@ -230,7 +278,10 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   // current tier weights name (a weight of 0 still counts: Zombie keeps Regeneration at 0 so it
   // fires only here) — skillIds holds every skill an archetype can roll at any tier, so taking the
   // first self skill would have a normal-tier Skeleton Guard reaching for its guard-room kit.
-  if (actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
+  // A silenced monster still crosses into a new phase, but every skill of its own choosing is locked.
+  const silenced = actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).silences);
+
+  if (!silenced && actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
     const tierWeights = currentWeights(archetype, actor) ?? {};
     const selfSkillId = archetype.skillIds.find((id) => id in tierWeights && getMonsterSkill(id).target === "self");
     if (selfSkillId !== undefined && ctx.rng.chance(BALANCE.combat.defensiveLowHpSkillChance)) {
@@ -241,9 +292,18 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
     }
   }
 
-  const skillId = pickMonsterAction(archetype, actor, view, ctx.rng);
+  const skillId = silenced ? null : pickMonsterAction(archetype, actor, view, ctx.rng);
   if (skillId !== null) return useMonsterSkill(getMonsterSkill(skillId), archetype, actor, living, view, combat, ctx);
 
+  const turned = confusedTargets(actor, 1, false, combat, ctx);
+  if (turned) {
+    const victim = turned[0]!;
+    combat.log.push({ text: t("combat.confusedAttack", { actor: actor.name }), kind: "info" });
+    noteBasicAttack(combat, actor, victim);
+    combat.log.push({ text: t("combat.basicAttack", { actor: actor.name, target: victim.name }), kind: "attack" });
+    resolveSkillEffect({ kind: "damage", amount: 0 }, actor, victim, { log: combat.log, rollDamage: () => ctx.rng.next() });
+    return;
+  }
   const target = pickTargets(null, archetype, actor, living, view, ctx.rng)[0]!;
   noteBasicAttack(combat, actor, target);
   if (!rollHits(actor, () => ctx.rng.next())) {
@@ -260,4 +320,5 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const damageDealt = resolveSkillEffect({ kind: "damage", amount: 0 }, actor, target, { log: combat.log, rollDamage: () => ctx.rng.next() });
   if (damageDealt > 0 && isCharacter(target)) applyArtifactReflectDamage(target, actor, damageDealt, combat.log);
   if (damageDealt > 0) applyMonsterHitFear(actor, target, combat, ctx);
+  if (damageDealt > 0) onStruckByMonster(target, actor, combat, ctx);
 }

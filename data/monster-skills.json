@@ -413,7 +413,7 @@
   {
     "id": "venom-bite",
     "name": "Venom Bite",
-    "description": "It goes for what the web is already holding still.",
+    "description": "Fangs, for whatever the web is holding still.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -479,7 +479,7 @@
   {
     "id": "feed",
     "name": "Feed",
-    "description": "It takes its time over the one that has stopped fighting back.",
+    "description": "Taken slowly, from the one that has stopped fighting back.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -581,7 +581,7 @@
   {
     "id": "brand",
     "name": "Brand",
-    "description": "It breathes on the burn already there, slowly, until it takes.",
+    "description": "It breathes on the old burn, slowly, until it takes.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -1361,7 +1361,7 @@
   {
     "id": "name-struck-out",
     "name": "Name Struck Out",
-    "description": "Regards one of you the way a clerk regards a line about to be crossed through.",
+    "description": "Draws a slow line through the air in front of one of you, from left to right.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [

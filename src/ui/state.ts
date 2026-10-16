@@ -1,9 +1,14 @@
-import type { Character, CombatantRef, SkillDefinition, ItemDefinition, Id } from "../types";
+import type { Character, CombatantRef, SkillDefinition, ItemDefinition, Id, CommandOrder } from "../types";
 import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getItem } from "../data/items";
+import { withBasicAttackOverride } from "../engine/combat";
 import { getEvent } from "../data/events";
 
-export type PickTargetSource = { kind: "skill"; skill: SkillDefinition } | { kind: "item"; item: ItemDefinition };
+export type PickTargetSource =
+  | { kind: "skill"; skill: SkillDefinition }
+  | { kind: "item"; item: ItemDefinition }
+  /** A Command cast: `skill` is the minion skill as the caster casts it (`commandedSkill`), `commandSkillId` the Command itself. */
+  | { kind: "command"; skill: SkillDefinition; commandSkillId: Id; order: CommandOrder };
 
 export type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { kind: "outOfCombat" };
 
@@ -23,6 +28,8 @@ export type UiState =
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }
   | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
   | { kind: "skillDetail"; actorRef: CombatantRef; skill: SkillDefinition }
+  | { kind: "pickCommandMinion"; actorRef: CombatantRef; skill: SkillDefinition }
+  | { kind: "pickCommandSkill"; actorRef: CombatantRef; skill: SkillDefinition; summonId: Id }
   | { kind: "roundResolved" }
   | { kind: "combatOver" }
   | { kind: "pickItemOutOfCombat" }
@@ -89,7 +96,10 @@ export function ownedArtifactEntries(party: Character[]): { character: Character
 }
 
 export function skillEntries(actor: Character): SkillDefinition[] {
-  return actor.unlockedSkillIds.map((id) => getEffectiveSkill(getSkill(id), actor.level));
+  return actor.unlockedSkillIds.map((id) => {
+    const skill = getEffectiveSkill(getSkill(id), actor.level);
+    return skill.slot === 0 ? withBasicAttackOverride(skill, actor) : skill;
+  });
 }
 
 export function eventUiState(eventId: Id): UiState {

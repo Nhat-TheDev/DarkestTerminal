@@ -22,7 +22,7 @@ bun run typecheck              # tsc --noEmit (strict mode)
 bun run game-editor         # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills
 bun run dump-save           # dev tool: web UI to generate a save at any level/floor/room/event (dev-mode only)
 bun run docs:sync           # rewrite the doc tables and numbers that mirror data/*.json (--check only verifies, --coverage lists unprotected numbers; `bun test` runs the check)
-bun run random-play         # dev tool: a bot plays seeded runs through the headless UI and writes report.html (crashes, invariants, footer keys, layout at 120x40, screen gallery)
+bun run random-play         # dev tool: a bot plays seeded runs through the headless UI and writes report.html (crashes, invariants, footer keys, layout at 150x45, screen gallery)
 
 bun run build            # compile a standalone release binary (--define __DEV__=false)
 ```

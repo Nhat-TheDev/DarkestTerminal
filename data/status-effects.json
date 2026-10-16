@@ -1171,5 +1171,491 @@
     "description": "Out of reach of every attack while it lasts.",
     "perTurnEffects": [],
     "untargetable": true
+  },
+  {
+    "id": "retaliating",
+    "name": "Retaliating",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "counterAttack": {
+      "maxCounters": 2,
+      "amount": 10,
+      "offenseMultiplierPercent": 60
+    }
+  },
+  {
+    "id": "retaliating-ii",
+    "name": "Retaliating II",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "counterAttack": {
+      "maxCounters": 2,
+      "amount": 15,
+      "offenseMultiplierPercent": 70
+    },
+    "rankOf": "retaliating",
+    "rankLevel": 2
+  },
+  {
+    "id": "retaliating-iii",
+    "name": "Retaliating III",
+    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "counterAttack": {
+      "maxCounters": 2,
+      "amount": 20,
+      "offenseMultiplierPercent": 75
+    },
+    "rankOf": "retaliating",
+    "rankLevel": 3
+  },
+  {
+    "id": "sanctified",
+    "name": "Sanctified",
+    "description": "Restores a little HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 6,
+        "offenseMultiplierPercent": 35
+      }
+    ]
+  },
+  {
+    "id": "sanctified-ii",
+    "name": "Sanctified II",
+    "description": "Restores HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 9,
+        "offenseMultiplierPercent": 40
+      }
+    ],
+    "rankOf": "sanctified",
+    "rankLevel": 2
+  },
+  {
+    "id": "sanctified-iii",
+    "name": "Sanctified III",
+    "description": "Restores a lot of HP each turn, drawn from the caster's power.",
+    "perTurnEffects": [
+      {
+        "kind": "heal",
+        "amount": 12,
+        "offenseMultiplierPercent": 45
+      }
+    ],
+    "rankOf": "sanctified",
+    "rankLevel": 3
+  },
+  {
+    "id": "steadfast",
+    "name": "Steadfast",
+    "description": "Most of the fear that would land is shrugged off.",
+    "perTurnEffects": [],
+    "fearResistPercent": 70
+  },
+  {
+    "id": "netted",
+    "name": "Netted",
+    "description": "Every move pulls the barbs deeper; acting may open a fresh bleed.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "onActStatus": {
+      "statusEffectId": "bleeding",
+      "chance": 0.8,
+      "durationTurns": 3
+    }
+  },
+  {
+    "id": "ballad",
+    "name": "Ballad",
+    "description": "Mildly raises attack and magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 6,
+        "minPercent": 7.5
+      }
+    ]
+  },
+  {
+    "id": "ballad-ii",
+    "name": "Ballad II",
+    "description": "Moderately raises attack and magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 8,
+        "minPercent": 10
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 8,
+        "minPercent": 10
+      }
+    ],
+    "rankOf": "ballad",
+    "rankLevel": 2
+  },
+  {
+    "id": "ballad-iii",
+    "name": "Ballad III",
+    "description": "Sharply raises attack and magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 10,
+        "minPercent": 12.5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 10,
+        "minPercent": 12.5
+      }
+    ],
+    "rankOf": "ballad",
+    "rankLevel": 3
+  },
+  {
+    "id": "hexed",
+    "name": "Hexed",
+    "description": "A curse that eats at the body each turn and saps attack; stacks up to 4 times.",
+    "perTurnEffects": [
+      {
+        "kind": "damage",
+        "amount": 4,
+        "maxHpPercent": 1.5,
+        "damageType": "magic"
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": -3,
+        "minPercent": -4
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 4,
+    "perStackBonusPercent": 100
+  },
+  {
+    "id": "pact",
+    "name": "Pact",
+    "description": "Mildly raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 6,
+        "minPercent": 20
+      }
+    ]
+  },
+  {
+    "id": "pact-ii",
+    "name": "Pact II",
+    "description": "Moderately raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 9,
+        "minPercent": 30
+      }
+    ],
+    "rankOf": "pact",
+    "rankLevel": 2
+  },
+  {
+    "id": "pact-iii",
+    "name": "Pact III",
+    "description": "Sharply raises magic power for the duration.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 12,
+        "minPercent": 40
+      }
+    ],
+    "rankOf": "pact",
+    "rankLevel": 3
+  },
+  {
+    "id": "silenced",
+    "name": "Silenced",
+    "description": "Cannot use skills; only a basic attack is left.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "silences": true,
+    "eliteBossMaxTurns": 1
+  },
+  {
+    "id": "provoked",
+    "name": "Provoked",
+    "description": "Has eyes for one target only: whoever goaded it.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "forcesTargetOnSource": true
+  },
+  {
+    "id": "confused",
+    "name": "Confused",
+    "description": "Cannot tell friend from foe; its blows often land on its own side.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "redirectToAlliesChance": 0.55
+  },
+  {
+    "id": "rigged",
+    "name": "Rigged",
+    "description": "A weighted coin is ready; the next toss is far more likely to land.",
+    "perTurnEffects": [],
+    "coinFlipWinChanceMultiplier": 2
+  },
+  {
+    "id": "sharp-face",
+    "name": "Sharp Face",
+    "description": "The Jester's attack has the upper hand this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "dull-face",
+    "name": "Dull Face",
+    "description": "The Jester's attack has gone slack this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": -1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "bright-face",
+    "name": "Bright Face",
+    "description": "The Jester's magic burns hotter this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "dim-face",
+    "name": "Dim Face",
+    "description": "The Jester's magic gutters this round.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": -1
+      }
+    ],
+    "endsWithCombat": true
+  },
+  {
+    "id": "defiance",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectIds": ["weakened"],
+      "durationTurns": 2
+    }
+  },
+  {
+    "id": "defiance-ii",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectIds": ["weakened", "enfeebled"],
+      "durationTurns": 2
+    },
+    "rankOf": "defiance",
+    "rankLevel": 2
+  },
+  {
+    "id": "defiance-iii",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectIds": ["weakened", "enfeebled", "slowed"],
+      "durationTurns": 2
+    },
+    "rankOf": "defiance",
+    "rankLevel": 3
+  },
+  {
+    "id": "guardian-angel",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 30
+  },
+  {
+    "id": "guardian-angel-ii",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 40,
+    "rankOf": "guardian-angel",
+    "rankLevel": 2
+  },
+  {
+    "id": "guardian-angel-iii",
+    "name": "Guardian Angel",
+    "description": "Death will be turned away once this turn.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "reviveHpPercent": 50,
+    "rankOf": "guardian-angel",
+    "rankLevel": 3
+  },
+  {
+    "id": "vigil-channel",
+    "name": "Vigil",
+    "description": "Holding the light: each turn spent kneeling renews it.",
+    "perTurnEffects": [],
+    "channelSkillId": "vigil",
+    "endsWithCombat": true
+  },
+  {
+    "id": "vigil-light",
+    "name": "Vigil's Light",
+    "description": "Standing in the light keeps most fear at bay.",
+    "perTurnEffects": [],
+    "fearResistPercent": 80,
+    "endsWithCombat": true
+  },
+  {
+    "id": "martyrs-grace",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 90
+  },
+  {
+    "id": "martyrs-grace-ii",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 110,
+    "rankOf": "martyrs-grace",
+    "rankLevel": 2
+  },
+  {
+    "id": "martyrs-grace-iii",
+    "name": "Martyr's Grace",
+    "description": "Each wound closes as soon as it is dealt, unless it kills.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "healOnHitPercent": 130,
+    "rankOf": "martyrs-grace",
+    "rankLevel": 3
+  },
+  {
+    "id": "cleansing-light",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 5,
+      "offenseMultiplierPercent": 85,
+      "damageType": "holy",
+      "isMagic": true
+    }
+  },
+  {
+    "id": "cleansing-light-ii",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 7,
+      "offenseMultiplierPercent": 95,
+      "damageType": "holy",
+      "isMagic": true
+    },
+    "rankOf": "cleansing-light",
+    "rankLevel": 2
+  },
+  {
+    "id": "cleansing-light-iii",
+    "name": "Cleansing Light",
+    "description": "The Acolyte's plain strikes carry holy fire for a while.",
+    "perTurnEffects": [],
+    "basicAttackOverride": {
+      "name": "Cleansing Smite",
+      "amount": 10,
+      "offenseMultiplierPercent": 105,
+      "damageType": "holy",
+      "isMagic": true
+    },
+    "rankOf": "cleansing-light",
+    "rankLevel": 3
+  },
+  {
+    "id": "chilled",
+    "name": "Chilled",
+    "description": "Frost in the joints slows every move; a second layer freezes the body solid.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "speed",
+        "amount": -5
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 2,
+    "onMaxStacks": {
+      "statusEffectId": "frozen",
+      "durationTurns": 1
+    }
+  },
+  {
+    "id": "frozen",
+    "name": "Frozen",
+    "description": "Locked in ice; cannot act.",
+    "perTurnEffects": [],
+    "stuns": true
   }
 ]

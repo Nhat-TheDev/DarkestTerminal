@@ -29,7 +29,7 @@
 terminal — no graphics card, no window manager, just you, a keyboard, and a
 dungeon that goes as deep as you dare.
 
-Pick 4 characters from a roster of 9 classes and lead them down an endless,
+Pick 4 characters from a roster of 12 classes and lead them down an endless,
 procedurally generated dungeon. Every floor is freshly built, every branch
 eventually leads back to a guarded boss room, and every fight is turn-based —
 command your whole party, then watch the round play out in speed order. There
@@ -61,21 +61,20 @@ bun run start
 
 **Starting up.** You'll first see the title (splash) screen — press any key
 to reach the menu, then choose **New Game** or **Continue** (Continue only
-shows up once you have a save). New Game takes you straight to the character
-select screen.
+shows up once you have a save). New Game takes you straight to building your
+party.
 
-**Building your party.** Pick exactly 4 characters from the 9-class roster —
-number keys to select/deselect a class, any key to confirm once you have 4.
-Each class plays differently, so a mix of roles (a tank, some damage, some
-support) will serve you better than four of the same idea.
+**Building your party.** Browse the 12 classes one at a time with **←/→** —
+each page shows the class's stats, passive and opening skills — and press
+**Enter** to recruit. Every recruit then picks one ability from the persistent
+pool you've unlocked so far (or skips); abilities carry over between runs,
+unlike anything else tied to a save. Four different classes make a party.
+A mix of roles (a tank, some damage, some support) will serve you better than
+four of the same idea.
 
-![Character select — choosing 4 characters for the expedition party from the 9-class roster](./docs/images/character-select.svg)
+![Character select — browsing the roster for the expedition party](./docs/images/character-select.svg)
 
-**Picking abilities.** Right after character select, each character gets one
-ability pick from the persistent pool you've unlocked so far (or skip) —
-these carry over between runs, unlike anything else tied to a save.
-
-![Ability select — choosing a permanent ability for a party member right after character select](./docs/images/ability-select.svg)
+![Ability select — choosing a permanent ability for a party member](./docs/images/ability-select.svg)
 
 **Controls.** Everything in the game is driven by a **number** key — moving
 between rooms, choosing skills/items, picking targets, rest-room choices,
@@ -96,8 +95,8 @@ just how deep you can push before your party doesn't make it back.
 
 - **An endless, hand-crafted-feeling dungeon** — no two runs look the same,
   and there's no scripted ending. You play until you can't.
-- **9 classes, a party of 4** — Vanguard, Mage, Rogue, Acolyte, Viking, Plague
-  Doctor, Archer, Ninja, and Summoner. Each plays differently.
+- **12 classes, a party of 4** — Vanguard, Mage, Rogue, Acolyte, Viking, Plague
+  Doctor, Archer, Ninja, Summoner, Jester, Paladin, and Warlock. Each plays differently.
 - **Turn-based tactical combat** — command your party, then watch the round
   play out.
 - **A real bestiary** — dozens of monsters, plus dedicated Elite/Boss guards

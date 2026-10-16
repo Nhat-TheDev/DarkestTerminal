@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
+import type { CombatantRef, CommandOrder, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -18,7 +18,10 @@ import {
   autoResolveTargets,
   queueAction,
   queueItemAction,
+  queueCommand,
   allLivingCharactersHaveQueuedActions,
+  holdChannel,
+  breakChannel,
   resolveRound,
   startCombat,
   type QueueActionError,
@@ -29,6 +32,7 @@ import {
   tagLogRange,
   tagPartySnapshotRange,
   dismissSummonsAtCombatEnd,
+  clearCombatResources,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
@@ -204,6 +208,7 @@ export class Game {
   private endCombat(): void {
     if (!this.state.combat) return;
     dismissSummonsAtCombatEnd(this.ctx);
+    clearCombatResources(this.ctx);
     this.state.combat = null;
   }
 
@@ -343,9 +348,25 @@ export class Game {
     return livingCharacterRefs(this.state.combat, this.ctx);
   }
 
+  /** Keeps a channeling character channeling this round (`holdChannel`). */
+  holdChannel(actorRef: CombatantRef): void {
+    if (this.state.combat) holdChannel(this.state.combat, actorRef);
+  }
+
+  /** Ends a character's channel now, so it can act this round (`breakChannel`). */
+  breakChannel(actorRef: CombatantRef): void {
+    const character = this.state.party.find((c) => c.id === actorRef.id);
+    if (this.state.combat && character) breakChannel(character, this.ctx, this.state.combat.log);
+  }
+
   queue(actorRef: CombatantRef, skillId: string, targets: CombatantRef[]): QueueActionError | null {
     if (!this.state.combat) return { reason: t("errors.notInCombat") };
     return queueAction(this.state.combat, actorRef, skillId, targets, this.ctx);
+  }
+
+  queueCommand(actorRef: CombatantRef, skillId: string, order: CommandOrder, targets: CombatantRef[]): QueueActionError | null {
+    if (!this.state.combat) return { reason: t("errors.notInCombat") };
+    return queueCommand(this.state.combat, actorRef, skillId, order, targets, this.ctx);
   }
 
   queueItem(actorRef: CombatantRef, itemId: Id, targets: CombatantRef[]): QueueActionError | null {
