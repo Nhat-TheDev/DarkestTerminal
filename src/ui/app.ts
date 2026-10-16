@@ -80,13 +80,10 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-const LOG_HEIGHT = 8;
-/** Below this many terminal rows the full layout can no longer show a 4-member party with no Ability
-    or status lines, so it goes compact: the Path panel is hidden and the Log keeps 5 lines — the
-    Dungeon panel's choices get that room. The battlefield keeps its full height either way, so it
-    never resizes from room to room. A party panel with more lines than that scrolls. */
-const COMPACT_LAYOUT_BELOW_ROWS = 61;
-const COMPACT_LOG_HEIGHT = 7;
+/** Width of the Battlefield panel, border included: the party, the divider and the widest enemy side a
+    fight starts with (a boss and two summoned adds). The Log takes the rest of the row, which is why the
+    smallest supported terminal is 150 wide. */
+const BATTLEFIELD_WIDTH = 115;
 
 /** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
@@ -105,9 +102,6 @@ export class App implements ScreenContext {
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
   private chrome: BoxRenderable[];
-  private progressBox: BoxRenderable;
-  private battlefieldBox: BoxRenderable;
-  private logBox: BoxRenderable;
   private fullLogBox: BoxRenderable;
   private fullLogText: TextRenderable;
   private fullLogScroll: ScrollBoxRenderable;
@@ -175,20 +169,24 @@ export class App implements ScreenContext {
     headerBox.add(this.header);
     this.root.add(headerBox);
 
-    this.progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
+    const progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
     this.progress = new TextRenderable(renderer, { id: "progress", content: "", fg: PALETTE.text });
-    this.progressBox.add(this.progress);
-    this.root.add(this.progressBox);
+    progressBox.add(this.progress);
+    this.root.add(progressBox);
 
-    this.battlefieldBox = new BoxRenderable(renderer, {
+    const arena = new BoxRenderable(renderer, { id: "arena", flexDirection: "row", height: UNIT_BLOCK_HEIGHT + 2, flexShrink: 0, backgroundColor: PALETTE.bg });
+    this.root.add(arena);
+
+    const battlefieldBox = new BoxRenderable(renderer, {
       id: "battlefield-box",
       ...panel,
-      height: UNIT_BLOCK_HEIGHT + 2,
+      width: BATTLEFIELD_WIDTH,
+      flexShrink: 0,
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
-    this.battlefieldBox.add(this.battlefield);
-    this.root.add(this.battlefieldBox);
+    battlefieldBox.add(this.battlefield);
+    arena.add(battlefieldBox);
 
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
@@ -208,7 +206,7 @@ export class App implements ScreenContext {
     monstersBox.add(this.monsters);
     body.add(monstersBox);
 
-    this.logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: LOG_HEIGHT, title: t("ui.panelLog") });
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, flexGrow: 1, title: t("ui.panelLog") });
     this.logScroll = new ScrollBoxRenderable(renderer, {
       id: "log-scroll",
       width: "100%",
@@ -220,11 +218,10 @@ export class App implements ScreenContext {
     });
     this.log = new TextRenderable(renderer, { id: "log", content: "", fg: PALETTE.dim });
     this.logScroll.add(this.log);
-    this.logBox.add(this.logScroll);
-    this.root.add(this.logBox);
+    logBox.add(this.logScroll);
+    arena.add(logBox);
 
-    // The Path panel is left out: render() also hides it in the compact layout.
-    this.chrome = [headerBox, this.battlefieldBox, body, this.logBox];
+    this.chrome = [headerBox, progressBox, arena, body];
 
     this.fullLogBox = new BoxRenderable(renderer, { id: "full-log-box", ...panel, flexGrow: 1, title: t("ui.panelFullLog", { count: RUN_LOG_SIZE }), visible: false });
     this.fullLogScroll = new ScrollBoxRenderable(renderer, {
@@ -247,9 +244,9 @@ export class App implements ScreenContext {
     this.root.add(footerBox);
 
     renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // Crossing COMPACT_LAYOUT_BELOW_ROWS changes panel heights, which only render() sets. OpenTUI
-    // shields keypress handlers from a throw but not resize listeners, so a draw error here is logged
-    // the same way rather than ending the run.
+    // A resize changes how panel text wraps and scrolls, which only render() settles. OpenTUI shields
+    // keypress handlers from a throw but not resize listeners, so a draw error here is logged the same
+    // way rather than ending the run.
     renderer.on("resize", () => {
       try {
         this.render();
@@ -663,10 +660,6 @@ export class App implements ScreenContext {
     else this.appendLog([{ text, kind: "info" }]);
   }
 
-  private isCompactLayout(): boolean {
-    return this.renderer.height < COMPACT_LAYOUT_BELOW_ROWS;
-  }
-
   getPendingFloorAdvance(): boolean {
     return this.pendingFloorAdvance;
   }
@@ -736,10 +729,6 @@ export class App implements ScreenContext {
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
     this.fullLogBox.visible = inFullLog;
-    const compact = this.isCompactLayout();
-    this.progressBox.visible = !inFullLog && !compact;
-    const logHeight = compact ? COMPACT_LOG_HEIGHT : LOG_HEIGHT;
-    if (this.logBox.height !== logHeight) this.logBox.height = logHeight;
     if (inFullLog) {
       // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
       if (this.fullLogBuiltFrom !== this.runLogVersion) {
@@ -796,7 +785,6 @@ export class App implements ScreenContext {
 
     const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
     this.battlefield.content = joinLines(battlefieldRows);
-    if (this.battlefieldBox.height !== battlefieldRows.length + 2) this.battlefieldBox.height = battlefieldRows.length + 2;
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];

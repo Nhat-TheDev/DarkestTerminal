@@ -33,15 +33,15 @@ seeds, a random 4-class party, a random start depth and party level (via `applyD
 of cautious and random keys taken from the footer on screen. Once the run has not changed for a
 while it stops picking cautiously, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
-at a height of 70 rows and widths 120/160/220, so the whole party and every panel is visible; each
-new screen is also redrawn once at the minimum supported size, 120×40. Along the way it saves and
+at a height of 70 rows and widths 150/180/220, so the whole party and every panel is visible; each
+new screen is also redrawn once at the minimum supported size, 150×45. Along the way it saves and
 reloads (more often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
 - **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
-- **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 120×40;
+- **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 150×45;
 - **softLock** — 300 keypresses without the run changing, even while trying to back out and move on.
 
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
@@ -143,19 +143,20 @@ abbreviation, e.g. `VG` in steel blue for Vanguard, `GRD` in bone gray for
 Skeleton Guard, bosses tinted red). HP changes color by threshold
 (green/yellow/red), and fear only shows a colored label from tier 2 onward.
 
-The smallest supported terminal is 120×40. At that size every screen must still show its whole <!-- docs:intent -->
+The smallest supported terminal is 150×45. At that size every screen must still show its whole <!-- docs:intent -->
 footer and at least one row of the main (Dungeon) panel; the party list may scroll.
 `bun run random-play` checks this on every screen it reaches.
 
-Below 61 rows (`COMPACT_LAYOUT_BELOW_ROWS` in `src/ui/app.ts`) the layout goes compact so the <!-- docs:intent -->
-Dungeon panel keeps room for its choices: the Path panel is hidden and the Log keeps 5 lines. The
-battlefield keeps its full height (room for a boss sprite) in both layouts, so it never resizes from
-one room to the next. At 120×40 that leaves the Dungeon panel 4 rows, and a longer list scrolls. From <!-- docs:intent -->
-61 rows up the layout is unchanged, and resizing the terminal switches between the two at once.
+From top to bottom the screen is the header, the Path panel, a row holding the Battlefield and the
+Log beside it, the Party | Dungeon | Monsters row, and the key hints on the last line. The
+Battlefield has a fixed size (`BATTLEFIELD_WIDTH` in `src/ui/app.ts`, wide enough for a boss and two
+summoned adds, and tall enough for a boss sprite), so it never resizes from one room to the next; the
+Log takes the rest of that row's width. Every extra column goes to the Log, every extra row to the
+Party | Dungeon | Monsters row, which has 13 rows of content at 150×45. <!-- docs:intent -->
 
 ### The "Battlefield" panel — pixel art
 
-A dedicated panel right under the header, showing the party of 4 characters
+A dedicated panel under the Path panel, beside the Log, showing the party of 4 characters
 (left) and the monsters/boss in the current room (right), rendered as pixel
 art: **1 pixel = 1 character cell** (a space with a background color, no
 visible glyph). Characters/regular monsters are up to **10 pixels** tall,
@@ -561,7 +562,7 @@ tools/
   random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
-  ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the compact layout
+  ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
   randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting

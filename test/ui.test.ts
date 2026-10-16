@@ -756,7 +756,7 @@ describe("a panel scrolled with the mouse wheel", () => {
   });
 });
 
-describe("layout below the full height", () => {
+describe("layout", () => {
   const panelRows = (frame: string, title: string) => panelContentRows(frame.split("\n"), title);
 
   /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
@@ -776,42 +776,34 @@ describe("layout below the full height", () => {
     return { ...setup, game };
   }
 
-  test("at 120x40 the Path panel goes, the Log keeps 5 lines and the key hints sit on the last row", async () => {
-    const { captureCharFrame, game } = await openFight(120, 40);
+  test("at 150x45 the Log sits beside the battlefield, as tall as it, and the Dungeon panel has room", async () => {
+    const { captureCharFrame, game } = await openFight(150, 45);
     const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(5);
-    expect(panelRows(frame, t("ui.panelMain"))).toBe(4);
-    expect(frame.split("\n")[39]).toContain("[Ctrl+C] Quit");
+    const rows = frame.split("\n");
+    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(10);
+    expect(rows[44]).toContain("[Ctrl+C] Quit");
     for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
-  test("at 120x40 the battlefield is as tall in an ordinary fight as against a boss", async () => {
+  test("the battlefield is as tall in an ordinary fight as against a boss", async () => {
     for (const boss of [false, true]) {
-      const { captureCharFrame, renderer } = await openFight(120, 40, boss);
+      const { captureCharFrame, renderer } = await openFight(150, 45, boss);
       expect(panelRows(captureCharFrame(), t("ui.panelBattlefield")), boss ? "boss" : "ordinary").toBe(UNIT_BLOCK_HEIGHT);
       renderer.destroy();
     }
   });
 
-  test("at full height the layout is unchanged", async () => {
-    const { captureCharFrame } = await openFight(120, 70);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(6);
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(20);
-  });
-
-  test("resizing the terminal switches between the two layouts at once", async () => {
-    const { captureCharFrame, resize, renderOnce } = await openFight(120, 70);
-    resize(120, 40);
+  test("a taller terminal gives its extra rows to the Dungeon panel, not the battlefield", async () => {
+    const { captureCharFrame, resize, renderOnce } = await openFight(150, 45);
+    const before = panelRows(captureCharFrame(), t("ui.panelMain"))!;
+    resize(150, 70);
     await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
-    resize(120, 70);
-    await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(20);
+    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
   });
 });

@@ -11,7 +11,7 @@ import { skillEntries } from "../src/ui/state";
 import { applyStatusEffectToActor } from "../src/engine/resolver";
 
 async function commandFight(withGoblin = true) {
-  const harness = await createTestRenderer({ width: 130, height: 47 });
+  const harness = await createTestRenderer({ width: 150, height: 47 });
   const game = new Game(3, ["summoner", "vanguard", "mage", "rogue"]);
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   const rat = spawnMonster("dungeon-rat", 1);
@@ -87,6 +87,7 @@ describe("Command on the combat screen", () => {
     await press(commandDigit);
     await press("RETURN");
     expect(app.debugUiState.kind).toBe("skillDetail");
+    await press("l");
     expect(captureCharFrame()).toContain("No minion able to take a command.");
     renderer.destroy();
   });
@@ -97,6 +98,7 @@ describe("Command on the combat screen", () => {
     await press(commandDigit);
     await press("RETURN");
     expect(app.debugUiState.kind).toBe("skillDetail");
+    await press("l");
     expect(captureCharFrame()).toContain("No minion able to take a command.");
     renderer.destroy();
   });
