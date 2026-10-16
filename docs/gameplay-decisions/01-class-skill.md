@@ -143,7 +143,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `interpose` | Interpose | singleAlly | 3 | 8 / 9 / 10 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
-| 2 | `shield-throw` | Shield Throw | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 105 / 110% ATK | — |
+| 2 | `side-by-side` | Side by Side | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status side-by-side / side-by-side-ii / side-by-side-iii (1 turn); not on the caster | buff |
 | 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
 | 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
 | 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 68 / 78 / 88% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
@@ -153,7 +153,7 @@ Free (`mpCost 0`), always available from level 1, unlimited uses, no cooldown, `
 How each skill works:
 
 - `interpose` — `applyStatusEffect "interposed"` (2 / 3 / 4 turns) on one other ally. While it lasts, a monster's single-target damaging attack aimed at that ally goes to the Knight instead, as long as the Knight is alive and not stunned. The hit is rolled against the Knight's defense, and a cast that already targets the Knight never hits it twice. Area attacks, skills without a damage effect, and a confused monster's blows on its own side are not redirected; a telegraphed attack is turned when it is released (`interceptTarget`, `src/engine/interception.ts`; `StatusEffectDefinition.interceptsForSource`)
-- `shield-throw` — `damage`
+- `side-by-side` — `applyStatusEffect "side-by-side"` (rank variants `-ii`/`-iii`, 1 turn) on one other ally: raises their defense, attack and magic power. If the ally's own action then lands a damaging hit, the Knight gains `following-through` (defense and attack, 1 turn). A miss, a stun, a heal or a buff gives the Knight nothing. Both statuses tick as `special`, so each lasts through its bearer's next own action (`StatusEffectDefinition.onLandedHitSourceStatus`, `applyLandedHitFollowUps` in `src/engine/combat.ts`)
 - `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
 - `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
 - `engage` — a `damage` hit on one enemy, then `applyStatusEffect "taunt"` + `applyStatusEffect "engaged"` (rank variants `-ii`/`-iii`) on the Knight for 1 turn (per-effect `target: "self"`): while it lasts, each monster hit that lands on the Knight is answered with a strike at that monster alone; the second counter ends it at once (`counterAttack`, section 1.14)

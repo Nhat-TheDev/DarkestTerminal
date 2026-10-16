@@ -92,6 +92,111 @@ describe("Engage (Knight)", () => {
   });
 });
 
+describe("Side by Side (Knight)", () => {
+  withoutDamageRolls();
+  function setup() {
+    const { ctx } = makeCtx(3);
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    unlock(knight, 1, "side-by-side");
+    for (const c of [knight, rogue]) c.maxHp = c.hp = 1e6;
+    onlyAlive(ctx.party, knight, rogue);
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    rat.attack = 0;
+    ctx.rng.next = () => 0;
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    return { ctx, knight, rogue, rat, combat };
+  }
+  const has = (c: Character, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
+
+  test("Side by Side raises the ally's defense, attack and magic power", () => {
+    const { ctx, knight, rogue, combat } = setup();
+    const before = { defense: rogue.defense, attack: rogue.attack, magicPower: rogue.magicPower };
+    applySkillEffects(getEffectiveSkill(getSkill("side-by-side"), 1), knight, [rogue], combat, ctx, combat.log);
+    expect(rogue.defense).toBeGreaterThan(before.defense);
+    expect(rogue.attack).toBeGreaterThan(before.attack);
+    expect(rogue.magicPower).toBeGreaterThan(before.magicPower);
+  });
+
+  test("an ally who lands a hit under Side by Side gives the Knight Following Through", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(rat.hp).toBeLessThan(rat.maxHp);
+    expect(has(knight, "following-through")).toBe(true);
+  });
+
+  test("a miss, a stun, or a non-damaging action gives the Knight nothing", () => {
+    const miss = setup();
+    miss.rogue.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+    queueAction(miss.combat, ref(miss.knight), "side-by-side", [ref(miss.rogue)], miss.ctx);
+    queueAction(miss.combat, ref(miss.rogue), "stab", [monsterRef(miss.rat)], miss.ctx);
+    resolveRound(miss.combat, miss.ctx);
+    expect(has(miss.knight, "following-through")).toBe(false);
+
+    const stun = setup();
+    stun.rogue.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+    queueAction(stun.combat, ref(stun.knight), "side-by-side", [ref(stun.rogue)], stun.ctx);
+    queueAction(stun.combat, ref(stun.rogue), "stab", [monsterRef(stun.rat)], stun.ctx);
+    resolveRound(stun.combat, stun.ctx);
+    expect(has(stun.knight, "following-through")).toBe(false);
+
+    const heal = setup();
+    heal.rogue.activeStatusEffects.push({ statusEffectId: "side-by-side", turnsRemaining: 1, sourceId: heal.knight.id });
+    const buff = sk("self-buff", { target: "self", isBuff: true, effects: [{ kind: "applyStatusEffect", statusEffectId: "venom-edge", durationTurns: 1 }] }) as any;
+    applySkillEffects(buff, heal.rogue, [heal.rogue], heal.combat, heal.ctx, heal.combat.log);
+    expect(has(heal.knight, "following-through")).toBe(false);
+  });
+
+  test("Following Through is still on the Knight at its next turn", () => {
+    function roundTwoDamage(withSideBySide: boolean): number {
+      const { ctx, knight, rogue, rat, combat } = setup();
+      knight.speed = 100;
+      rogue.speed = 1;
+      if (withSideBySide) queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      resolveRound(combat, ctx);
+      expect(has(knight, "following-through")).toBe(withSideBySide);
+      rogue.activeStatusEffects = [];
+      queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      const hpBefore = rat.hp;
+      resolveRound(combat, ctx);
+      expect(has(knight, "following-through")).toBe(false);
+      return hpBefore - rat.hp;
+    }
+    expect(roundTwoDamage(true)).toBeGreaterThan(roundTwoDamage(false));
+  });
+
+  test("Side by Side on an ally who already acted this round lasts into that ally's next action", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    knight.speed = 1;
+    rogue.speed = 100;
+    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(has(rogue, "side-by-side")).toBe(true);
+    expect(has(knight, "following-through")).toBe(false);
+    queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(has(rogue, "side-by-side")).toBe(false);
+    const texts = combat.log.map((l) => l.text);
+    const gained = texts.indexOf("Knight gains the Following Through effect.");
+    const slashed = texts.indexOf("Knight uses Slash on Dungeon Rat.");
+    const expired = texts.indexOf("Knight's Following Through effect expires.");
+    expect(gained).toBeGreaterThan(-1);
+    expect(slashed).toBeGreaterThan(gained);
+    expect(expired).toBeGreaterThan(slashed);
+  });
+
+  test("Side by Side cannot target the Knight itself", () => {
+    const { ctx, knight, combat } = setup();
+    expect(queueAction(combat, ref(knight), "side-by-side", [ref(knight)], ctx)?.reason).toBe("it cannot be cast on yourself");
+  });
+});
+
 describe("Venom Brand (Rogue)", () => {
   test("poison-vulnerable raises every rank of Poisoned, not only the base status", () => {
     const { ctx } = makeCtx();

@@ -45,6 +45,7 @@ import {
   isPlayerSide,
   isActorAlive,
   resolveSkillEffect,
+  applyStatusEffectToActor,
   tickDotEffects,
   tickStatModEffects,
   tickSpecialEffects,
@@ -1512,6 +1513,16 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
+/** Each status on `source` with `onLandedHitSourceStatus` gives the actor that applied it the follow-up status, if that actor is alive. */
+function applyLandedHitFollowUps(source: Character, ctx: EngineContext, log: LogEntry[]): void {
+  for (const active of [...source.activeStatusEffects]) {
+    const followUp = getStatusEffect(active.statusEffectId).onLandedHitSourceStatus;
+    if (!followUp || !active.sourceId) continue;
+    const giver = ctx.party.find((c) => c.id === active.sourceId);
+    if (giver && isActorAlive(giver)) applyStatusEffectToActor(giver, followUp.statusEffectId, followUp.durationTurns, { log });
+  }
+}
+
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
   if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
@@ -1717,6 +1728,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
     source.hp = Math.max(1, source.hp - selfDamage);
   }
   if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) applyLandedHitFollowUps(source, ctx, log);
   if (coinWon === false && !sourceFell()) {
     log.push({ text: t("combat.coinFlipLost", { actor: sourceName(source), skill: skill.name }), kind: "info" });
     for (const lose of skill.coinFlip!.loseSelfStatuses ?? []) {

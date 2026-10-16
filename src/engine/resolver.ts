@@ -515,7 +515,7 @@ export function applyStatusEffectToActor(
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
-      ...(def.forcesTargetOnSource || def.interceptsForSource ? { sourceId: sourceId ?? existing.sourceId } : {}),
+      ...(def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     ctx.log.push({
       text: gainedANewStack
@@ -541,7 +541,7 @@ export function applyStatusEffectToActor(
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
-    ...((def.forcesTargetOnSource || def.interceptsForSource) && sourceId !== undefined ? { sourceId } : {}),
+    ...((def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus) && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
