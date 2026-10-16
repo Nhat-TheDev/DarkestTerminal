@@ -536,12 +536,15 @@ describe("Jester", () => {
     expect(jester.dice).toBeUndefined();
   });
 
-  test("Jeer always weakens, and a Provoked monster's attacks all go to the Jester", () => {
+  test("Jeer always weakens, may confuse, and a Provoked monster's attacks all go to the Jester", () => {
     const { ctx, jester, target, combat, cast } = jesterFight(15);
     ctx.rng.chance = () => true;
     cast("jeer");
     expect(target.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
+    expect(target.activeStatusEffects.some((s) => s.statusEffectId === "confused")).toBe(true);
     expect(target.activeStatusEffects.find((s) => s.statusEffectId === "provoked")?.sourceId).toBe(jester.id);
+    // Confused would turn some blows onto the monster's own side; drop it to isolate Provoked.
+    target.activeStatusEffects = target.activeStatusEffects.filter((s) => s.statusEffectId !== "confused");
     jester.maxHp = jester.hp = 1e6;
     const others = ctx.party.filter((c) => c !== jester);
     const hpBefore = others.map((c) => c.hp);
@@ -648,6 +651,16 @@ describe("Paladin", () => {
     queueAction(combat, ref(paladin), "defiance", [ref(paladin)], ctx);
     resolveRound(combat, ctx);
     expect(rats[0]!.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
+  });
+
+  test("Defiance III marks a monster that hits the Paladin with Weakened, Enfeebled and Slowed", () => {
+    const { ctx, paladin, rats, combat } = paladinFight(15);
+    onlyAlive(ctx.party, paladin);
+    paladin.maxHp = paladin.hp = 1e6;
+    queueAction(combat, ref(paladin), "defiance", [ref(paladin)], ctx);
+    resolveRound(combat, ctx);
+    const marks = rats[0]!.activeStatusEffects.map((s) => s.statusEffectId);
+    for (const id of ["weakened", "enfeebled", "slowed"]) expect(marks).toContain(id);
   });
 
   test("Cross Slash strikes twice", () => {
@@ -811,6 +824,15 @@ describe("Warlock", () => {
     resolveRound(combat, ctx);
     expect(warlock.hp).toBe(1);
     expect(warlock.isAlive).toBe(true);
+  });
+
+  test("Blood Pact pays its MP cost, then restores MP", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(1);
+    rats[0]!.attack = 0;
+    warlock.mp = 20;
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    expect(warlock.mp).toBe(20 - 4 + 10);
   });
 
   test("Soul Rend eats one Hexed stack", () => {

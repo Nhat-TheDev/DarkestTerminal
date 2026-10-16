@@ -14,7 +14,7 @@ Each class has a shared basic attack (slot 0) + several class-specific skills, p
 
 Class stats: **attack** (`attack`), **magic power** (`magicPower` — see below), **defense** (`defense`), **HP** (`maxHp`), **mana** (`maxMp`), **aggro** (`aggro` — the weight used when a monster picks its target, see `02-monster.md` section 2), **speed** (`speed` — priority for acting first, see `docs/technical-decisions.md` §2). Level-1 values for all 12 classes: `data/classes.json`.
 
-- Vanguard has the highest `aggro` + `defense` + `maxHp`, and the lowest `speed` (a tank that acts late).
+- Vanguard has the highest `defense` + `maxHp`, `aggro` second only to the Paladin's, and low `speed` (a tank that acts late).
 - Mage has the lowest stats across the board on defense/aggro but decent `speed`, and is the only class with low `attack` and the highest `magicPower` — Mage's damage carry comes from its spell skills (section 1.2), not its basic attack.
 - Rogue has the highest `speed`/`attack`, low `defense`, and no `magicPower` (purely physical), and is the party's main damage source (section 1.3).
 - Acolyte is balanced, with average `aggro` and decent `magicPower` (healing + secondary damage, lower than Mage's).
@@ -72,14 +72,14 @@ Current values for every class, generated from `data/classes.json`:
 | Vanguard | 140 | 22 | 14 | 11 | 0 | 20 | 8 |
 | Mage | 70 | 60 | 3 | 5 | 16 | 8 | 10 |
 | Rogue | 100 | 40 | 18 | 6 | 0 | 10 | 20 |
-| Acolyte | 90 | 50 | 6 | 8 | 10 | 12 | 9 |
+| Acolyte | 90 | 50 | 6 | 8 | 10 | 11 | 9 |
 | Viking | 100 | 30 | 18 | 6 | 8 | 16 | 11 |
 | Plague Doctor | 80 | 60 | 2 | 6 | 13 | 8 | 11 |
 | Archer | 90 | 45 | 17 | 8 | 0 | 9 | 13 |
 | Ninja | 110 | 45 | 12 | 8 | 0 | 8 | 16 |
 | Summoner | 80 | 55 | 4 | 7 | 12 | 7 | 10 |
 | Jester | 95 | 40 | 10 | 6 | 10 | 10 | 18 |
-| Paladin | 125 | 30 | 8 | 10 | 8 | 16 | 5 |
+| Paladin | 125 | 30 | 8 | 10 | 8 | 22 | 5 |
 | Warlock | 80 | 55 | 3 | 6 | 15 | 8 | 10 |
 <!-- docs:end -->
 
@@ -948,7 +948,7 @@ Basic attack (slot 0): **Knife Flick** (`knife-flick`), physical, sub-100% offen
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `loaded-dice` | Loaded Dice | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 13 / 16 + 100 / 108 / 116% ATK (die faces 30%/60%/90%/120%/150%/180%); +1 dice | — |
-| 2 | `jeer` | Jeer | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | status weakened (2 turns); status provoked (1 turn, 75 / 80 / 85% chance); +1 dice | — |
+| 2 | `jeer` | Jeer | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | status weakened (2 turns); status provoked (1 turn, 75 / 80 / 85% chance); status confused (2 turns, 40 / 50 / 65% chance); +1 dice | — |
 | 3 | `battle-ballad` | Battle Ballad | allAllies | 2 | 10 / 11 / 12 | 10 / 25 / 45 | status ballad / ballad-ii / ballad-iii (1 turn, not on the caster, not on summons); the rest of the party +10 speed for turn order this round | buff |
 | 4 | `rigged-game` | Rigged Game | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 12 / 15 / 20 + 75 / 85 / 100% MAG (magic); status confused (2 turns, 65 / 75 / 85% chance); +1 dice | magic |
 | 5 | `double-or-nothing` | Double or Nothing | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 20 / 30 / 40 + 160 / 175 / 190% ATK; coin flip: 50% to resolve, on a loss no damage, status slowed on the caster (2 turns), status rigged on the caster (1 turns), cooldown reset; +2 dice | — |
@@ -1001,8 +1001,8 @@ Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `lay-on-hands` | Lay on Hands | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 10 / 12 / 15 (+10% of the caster's max HP / +11% of the caster's max HP / +12% of the caster's max HP, up to +40% as the target's HP falls to 20%) | — |
-| 2 | `defiance` | Defiance | self | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status taunt (1 turn); status defiance (1 turn) | buff |
+| 1 | `lay-on-hands` | Lay on Hands | singleAlly | — | 5 / 6 / 8 | 1 / 7 / 15 | heal 10 / 12 / 15 (+10% of the caster's max HP / +11% of the caster's max HP / +12% of the caster's max HP, up to +40% as the target's HP falls to 20%) | — |
+| 2 | `defiance` | Defiance | self | 3 | 6 / 8 / 8 | 1 / 7 / 15 | status taunt (2 turns); status defiance / defiance-ii / defiance-iii (2 turns); status enfeebled (2 turns) | buff |
 | 3 | `cross-slash` | Cross Slash | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 7 / 10 / 14 + 60 / 65 / 70% ATK (holy); damage 6 / 8 / 10 + 50 / 55 / 60% ATK (holy) | — |
 | 4 | `guardian-angel` | Guardian Angel | singleAlly | 5 | 12 / 13 / 14 | 15 / 40 / 65 | status guardian-angel / guardian-angel-ii / guardian-angel-iii (1 turn); not on the caster | buff |
 | 5 | `vigil` | Vigil | allAlliesAndEnemies | 4 | 15 / 16 / 17 | 25 / 50 / 75 | heal 10 / 12 / 15 (on allies, +3% of the caster's max HP / +3.5% of the caster's max HP / +4% of the caster's max HP); damage 8 / 12 / 16 + 60 / 70 / 80% MAG (on enemies, holy); status vigil-light (3 turns, on allies, not on summons); status vigil-channel (2 turns, target self); cannot miss or be dodged | magic |
@@ -1012,7 +1012,7 @@ Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 How each skill works:
 
 - `lay-on-hands` — `heal` of a flat amount plus `casterMaxHpPercent` of the Paladin's max HP, raised by `lowHpHealBonus` the lower the recipient's HP (nothing at full HP, the full bonus at its threshold and below)
-- `defiance` — `taunt` + `defiance` on the Paladin for the round: a monster whose direct hit lands on the Paladin gets `weakened` (`debuffsAttackerOnHit`)
+- `defiance` — `taunt` + `defiance` (rank variants `-ii`/`-iii`) on the Paladin for 2 turns, and `enfeebled` on the Paladin itself: a monster whose direct hit lands on the Paladin gets every status in `debuffsAttackerOnHit.statusEffectIds` — `weakened`, plus `enfeebled` from rank 2 and `slowed` at rank 3
 - `cross-slash` — two `damage` hits (`holy`, attack-based) behind one accuracy roll
 - `guardian-angel` — `guardian-angel` (rank variants `-ii`/`-iii`) on another ally for the round (`targetsOtherAlliesOnly`): should the ally fall while it lasts, from any source, it rises at the status's `reviveHpPercent` of max HP and the status is spent
 - `vigil` — a zone: allies `heal` (a flat amount plus `casterMaxHpPercent` of the Paladin's max HP) and get `vigil-light` (`fearResistPercent`); enemies take `holy` magic `damage` that cannot miss or be dodged (`alwaysHits`). The Paladin gets `vigil-channel` (`channelSkillId`): on each of its next turns it repeats the skill's heal and damage instead of acting, so the zone pulses three times in all
@@ -1020,12 +1020,14 @@ How each skill works:
 
 **Channeling.** A character carrying a `channelSkillId` status needs no order: each round the command screen asks once — `[1] Hold` keeps it channeling (`holdChannel`), `[2] Break` ends the channel at once, takes the channeled skill's statuses off the party (`breakChannel`) and lets the character choose an action. Left alone, a channel holds; the engine counts a channeling character as ready (`allLivingCharactersHaveQueuedActions`) and runs the pulse on its turn (`runChannelPulse`, `src/engine/combat.ts`). A stunned channeler loses the pulse but not the channel's countdown. `vigil-channel` and `vigil-light` end with the fight (`endsWithCombat`).
 
-<!-- docs:begin statusEffects ids=defiance,guardian-angel,guardian-angel-ii,guardian-angel-iii,vigil-channel,vigil-light,martyrs-grace,martyrs-grace-ii,martyrs-grace-iii -->
+<!-- docs:begin statusEffects ids=defiance,defiance-ii,defiance-iii,guardian-angel,guardian-angel-ii,guardian-angel-iii,vigil-channel,vigil-light,martyrs-grace,martyrs-grace-ii,martyrs-grace-iii -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
-| `defiance` | Defiance | tickCategory statMod; debuffsAttackerOnHit statusEffectId weakened, durationTurns 2 |
+| `defiance` | Defiance | tickCategory statMod; debuffsAttackerOnHit statusEffectIds weakened, durationTurns 2 |
+| `defiance-ii` | Defiance | tickCategory statMod; debuffsAttackerOnHit statusEffectIds weakened / enfeebled, durationTurns 2; rankOf defiance; rankLevel 2 |
+| `defiance-iii` | Defiance | tickCategory statMod; debuffsAttackerOnHit statusEffectIds weakened / enfeebled / slowed, durationTurns 2; rankOf defiance; rankLevel 3 |
 | `guardian-angel` | Guardian Angel | tickCategory statMod; reviveHpPercent 30 |
 | `guardian-angel-ii` | Guardian Angel | tickCategory statMod; reviveHpPercent 40; rankOf guardian-angel; rankLevel 2 |
 | `guardian-angel-iii` | Guardian Angel | tickCategory statMod; reviveHpPercent 50; rankOf guardian-angel; rankLevel 3 |
@@ -1050,7 +1052,7 @@ Basic attack (slot 0): **Eldritch Bolt** (`eldritch-bolt`), `isMagic: true` + `d
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `hex` | Hex | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 6 / 8 / 10 + 60 / 66 / 72% MAG (magic); status hexed (3 turns) | magic |
-| 2 | `blood-pact` | Blood Pact | self | 4 | 4 / 5 / 6 | 1 / 7 / 15 | status pact / pact-ii / pact-iii (3 turns); HP cost 10% max HP at full health, down to 3% below 20% | buff |
+| 2 | `blood-pact` | Blood Pact | self | 4 | 4 / 5 / 6 | 1 / 7 / 15 | status pact / pact-ii / pact-iii (3 turns); restoreMp 10 / 18 / 28; HP cost 10% max HP at full health, down to 3% below 20% | buff |
 | 3 | `bind-tongue` | Bind Tongue | singleEnemy | 4 | 10 / 11 / 12 | 10 / 25 / 45 | damage 6 / 8 / 10 + 50 / 55 / 60% MAG (magic); status silenced (2 turns); status hexed (3 turns, 80% chance) | magic |
 | 4 | `soul-rend` | Soul Rend | singleEnemy | 3 | 13 / 14 / 15 | 15 / 40 / 65 | damage 12 / 16 / 20 + 90 / 100 / 115% MAG (magic, +15% per hexed stack, 40% lifesteal); remove hexed (1 stack) | magic |
 | 5 | `withering-curse` | Withering Curse | allEnemies | 3 | 14 / 15 / 16 | 25 / 50 / 75 | damage 10 / 15 / 20 + 60 / 70 / 80% MAG (magic); status hexed (3 turns, 1–2 stacks); status enfeebled (2 turns, 40 / 50 / 60% chance) | magic |
@@ -1060,7 +1062,7 @@ Basic attack (slot 0): **Eldritch Bolt** (`eldritch-bolt`), `isMagic: true` + `d
 How each skill works:
 
 - `hex` — light `damage` + a guaranteed `applyStatusEffect "hexed"`: a stackable magic DoT that also lowers attack, up to 4 stacks; each new stack renews the whole stack's duration
-- `blood-pact` — `applyStatusEffect "pact"` (a magic power buff, rank variants `-ii`/`-iii`) on the Warlock, paid for with HP as well as MP (`hpCost`: a share of max HP that shrinks as the Warlock's HP falls, never below 1 HP left)
+- `blood-pact` — `applyStatusEffect "pact"` (a magic power buff, rank variants `-ii`/`-iii`) on the Warlock + `restoreMp` that returns more MP than the cast cost, paid for with HP as well as MP (`hpCost`: a share of max HP that shrinks as the Warlock's HP falls, never below 1 HP left)
 - `bind-tongue` — light `damage` + a guaranteed `applyStatusEffect "silenced"` + a chance of `hexed`
 - `soul-rend` — `damage` that grows per `hexed` stack on the target (`scalesWithStatusStacks`) and heals the Warlock for part of it (`lifestealPercent`), then takes 1 `hexed` stack off (`removeStatusEffect` with `stacks`)
 - `withering-curse` — `damage`/enemy + 1-2 `hexed` stacks on each (`stackCount`) + a chance of `enfeebled`
