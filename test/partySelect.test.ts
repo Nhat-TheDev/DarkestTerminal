@@ -7,7 +7,7 @@ import { BALANCE } from "../src/data/balanceConfig";
 import { loadProfile, saveProfile, unlockAbility } from "../src/engine/profile";
 
 async function openScreen() {
-  const harness = await createTestRenderer({ width: 120, height: 40 });
+  const harness = await createTestRenderer({ width: 150, height: 45 });
   const picked = showPartySelect(harness.renderer, CLASSES);
   await harness.renderOnce();
   const press = async (key: string) => {
