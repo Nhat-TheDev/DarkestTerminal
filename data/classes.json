@@ -9,11 +9,11 @@
       "Frontline",
       "Party Buff"
     ],
-    "baseMaxHp": 140,
+    "baseMaxHp": 130,
     "baseMaxMp": 22,
     "baseAttack": 14,
-    "baseDefense": 11,
-    "baseAggro": 20,
+    "baseDefense": 10,
+    "baseAggro": 12,
     "baseSpeed": 8,
     "baseMagicPower": 0,
     "skills": [
@@ -371,30 +371,30 @@
       }
     ],
     "passiveSkill": {
-      "id": "bulwark",
-      "name": "Bulwark",
-      "description": "Years on the front line have hardened more than just the shield arm.",
+      "id": "watchful",
+      "name": "Watchful",
+      "description": "The shield arm is hardened, and the eyes find whoever is bleeding worst. Now and then the blow meant for them lands on the Knight instead.",
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
           "maxHpPercent": 5,
           "defensePercent": 7,
-          "aggroFlat": 3
+          "interceptWeakestChancePercent": 25
         },
         {
           "rank": 2,
           "unlockLevel": 20,
           "maxHpPercent": 10,
           "defensePercent": 10,
-          "aggroFlat": 6
+          "interceptWeakestChancePercent": 30
         },
         {
           "rank": 3,
           "unlockLevel": 35,
           "maxHpPercent": 15,
           "defensePercent": 14,
-          "aggroFlat": 9
+          "interceptWeakestChancePercent": 35
         }
       ]
     }

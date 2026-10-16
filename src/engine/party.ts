@@ -124,7 +124,7 @@ export function characterStatBreakdown(character: Character, satiety: number): R
     const artifact = stat === "aggro" ? curseAggroBoostSum(character) : boost[stat] - ability;
     const beforePassive = statBase + artifact + ability;
     const percent = passivePercent[stat] ?? 0;
-    const passive = (percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0) + (stat === "aggro" ? (knightPassive?.aggroFlat ?? 0) : 0);
+    const passive = percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0;
     const status = stat === "maxMp" ? 0 : activeStatusCombatStatSum(character, stat);
     return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, status, total: beforePassive + passive + status };
   };

@@ -164,3 +164,96 @@ describe("Interpose", () => {
     });
   });
 });
+
+describe("Watchful", () => {
+  const weaken = (c: Character) => {
+    c.hp = 5e8;
+  };
+
+  test("takes a hit aimed at the lowest-HP-percent ally when its chance rolls", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      weaken(mage);
+      ctx.rng.chance = () => true;
+      turn();
+      expect(mage.hp).toBe(5e8);
+      expect(lost(knight)).toBeGreaterThan(0);
+    });
+  });
+
+  test("does nothing when the chance fails", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      weaken(mage);
+      ctx.rng.chance = () => false;
+      turn();
+      expect(mage.hp).toBeLessThan(5e8);
+      expect(lost(knight)).toBe(0);
+    });
+  });
+
+  test("fires at most once per round", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      weaken(mage);
+      ctx.rng.chance = () => true;
+      turn();
+      expect(mage.hp).toBe(5e8);
+      turn();
+      expect(mage.hp).toBeLessThan(5e8);
+      expect(lost(knight)).toBeGreaterThan(0);
+    });
+  });
+
+  test("fires again in the next round", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, combat, turn }) => {
+      weaken(mage);
+      ctx.rng.chance = () => true;
+      turn();
+      combat.roundNumber++;
+      const knightAfterFirst = lost(knight);
+      turn();
+      expect(mage.hp).toBe(5e8);
+      expect(lost(knight)).toBeGreaterThan(knightAfterFirst);
+    });
+  });
+
+  test("ignores an ally who is not the lowest HP percent", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      knight.hp = 5e8;
+      ctx.rng.chance = () => true;
+      turn();
+      expect(mage.hp).toBeLessThan(1e9);
+      expect(knight.hp).toBe(5e8);
+    });
+  });
+
+  test("never fires when the Knight itself is the lowest", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      knight.hp = 5e8;
+      ctx.rng.chance = () => true;
+      turn();
+      expect(knight.hp).toBe(5e8);
+      expect(lost(mage)).toBeGreaterThan(0);
+    });
+  });
+
+  test("does nothing below level 5", () => {
+    fight([], { basicAttack: 100 }, false, ({ ctx, knight, mage, turn }) => {
+      knight.level = 4;
+      weaken(mage);
+      ctx.rng.chance = () => true;
+      turn();
+      expect(mage.hp).toBeLessThan(5e8);
+      expect(lost(knight)).toBe(0);
+    });
+  });
+
+  test("does not override an Interpose redirect", () => {
+    fight([], { basicAttack: 100 }, true, ({ ctx, knight, mage, combat, turn }) => {
+      weaken(mage);
+      ctx.rng.chance = () => true;
+      turn();
+      expect(combat.watchfulRound?.[knight.id]).toBeUndefined();
+      expect(mage.hp).toBe(5e8);
+      expect(lost(knight)).toBeGreaterThan(0);
+    });
+  });
+});

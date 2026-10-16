@@ -752,9 +752,9 @@ const STATS_DATA = {
     {
       id: "a", name: "Alpha", baseMaxHp: 100, baseMaxMp: 40, baseAttack: 12, baseDefense: 6, baseMagicPower: 0, baseAggro: 9, baseSpeed: 13,
       passiveSkill: { id: "a-passive", name: "Grit", description: "", ranks: [
-        { rank: 1, unlockLevel: 5, maxHpPercent: 5, aggroFlat: 3 },
-        { rank: 2, unlockLevel: 20, maxHpPercent: 10, aggroFlat: 6 },
-        { rank: 3, unlockLevel: 35, maxHpPercent: 15, aggroFlat: 9 },
+        { rank: 1, unlockLevel: 5, maxHpPercent: 5, bonusFlat: 3 },
+        { rank: 2, unlockLevel: 20, maxHpPercent: 10, bonusFlat: 6 },
+        { rank: 3, unlockLevel: 35, maxHpPercent: 15, bonusFlat: 9 },
       ] },
     },
     {
@@ -798,7 +798,7 @@ describe("passives", () => {
     expect(passives.generate(STATS_DATA, {})).toEqual({
       columns: ["Class", "Passive", "Unlock level (R1/R2/R3)", "Parameters (R1/R2/R3)"],
       rows: [
-        ["Alpha", "Grit", "5 / 20 / 35", "maxHpPercent 5 / 10 / 15, aggroFlat 3 / 6 / 9"],
+        ["Alpha", "Grit", "5 / 20 / 35", "maxHpPercent 5 / 10 / 15, bonusFlat 3 / 6 / 9"],
         ["Beta", "Echo", "5 / 20 / 35", "onHitStatusEffectId echo / echo-ii / echo-iii, procChancePercent 30 / 40 / 50"],
       ],
     });

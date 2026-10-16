@@ -246,7 +246,7 @@ export interface PassiveRankDefinition {
   unlockLevel: number;
   maxHpPercent?: number;
   defensePercent?: number;
-  aggroFlat?: number;
+  interceptWeakestChancePercent?: number; // chance per round to take a hit aimed at the lowest-HP-percent ally
   onHitStatusEffectId?: Id;
   durationTurns?: number;
   bonusPercent?: number;
@@ -888,6 +888,8 @@ export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
   roundNumber: number;
+  /** The round each Watchful bearer last took a hit for an ally; it fires at most once per round. */
+  watchfulRound?: Record<Id, number>;
   phase: "command" | "resolution" | "over";
   queuedActions: QueuedAction[];
   turnQueue: CombatantRef[];

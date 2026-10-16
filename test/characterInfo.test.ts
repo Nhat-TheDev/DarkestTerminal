@@ -24,7 +24,7 @@ describe("formatPassiveEffect", () => {
     const text = formatPassiveEffect(knight.passiveSkill, rank3);
     expect(text).toContain(`+${rank3.maxHpPercent}%`);
     expect(text).toContain(`+${rank3.defensePercent}%`);
-    expect(text).toContain(`+${rank3.aggroFlat} aggro`);
+    expect(text).toContain(`${rank3.interceptWeakestChancePercent}% chance`);
   });
 
   test("Viking and Ninja text reflects the passive's own top-level fields, not a hand-typed number", () => {

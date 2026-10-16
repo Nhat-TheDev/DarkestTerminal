@@ -3,33 +3,13 @@ import { getClass } from "../src/data/classes";
 import { createCharacter, recomputeCharacterStats } from "../src/engine/party";
 
 describe("Knight passive: permanent stat buff", () => {
-  // aggro has no level growth, so anything above cls.baseAggro on a fresh character comes from the passive.
-  test("below level 5 (rank 0), aggro stays at the class base", () => {
+  test("the passive adds no aggro at any rank", () => {
     const cls = getClass("knight");
-    const knight = createCharacter("v1", "Knight", cls, 4);
-    recomputeCharacterStats(knight, 100);
-    expect(knight.aggro).toBe(cls.baseAggro);
-  });
-
-  test("rank 1 (level 5): +3 aggro", () => {
-    const cls = getClass("knight");
-    const knight = createCharacter("v2", "Knight", cls, 5);
-    recomputeCharacterStats(knight, 100);
-    expect(knight.aggro).toBe(cls.baseAggro + 3);
-  });
-
-  test("rank 2 (level 20): +6 aggro", () => {
-    const cls = getClass("knight");
-    const knight = createCharacter("v3", "Knight", cls, 20);
-    recomputeCharacterStats(knight, 100);
-    expect(knight.aggro).toBe(cls.baseAggro + 6);
-  });
-
-  test("rank 3 (level 35): +9 aggro", () => {
-    const cls = getClass("knight");
-    const knight = createCharacter("v4", "Knight", cls, 35);
-    recomputeCharacterStats(knight, 100);
-    expect(knight.aggro).toBe(cls.baseAggro + 9);
+    for (const level of [4, 5, 20, 35]) {
+      const knight = createCharacter(`v${level}`, "Knight", cls, level);
+      recomputeCharacterStats(knight, 100);
+      expect(knight.aggro).toBe(cls.baseAggro);
+    }
   });
 
   test("rank 1/2/3 grant +5%/+10%/+15% maxHp and +7%/+10%/+14% defense over the same level with the passive artificially removed", () => {
