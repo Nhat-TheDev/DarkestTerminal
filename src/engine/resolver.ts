@@ -295,6 +295,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
       const hpLost = hpBefore - target.hp;
+      if (!isSelfTick) noteDamageTaken(target, source.id, hpLost);
       const overkill = finalDamage - hpLost;
       const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
       ctx.log.push({ text: damageText, kind: "attack", ...hit });
@@ -355,7 +356,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const landedOf = isPlayerSide(source) !== isPlayerSide(target) ? (isSummon(target) ? target.ownerId : target.id) : undefined;
       applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf, source.id);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
-        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf, source.id);
       return 0;
     }
     case "removeStatusEffect": {
@@ -426,7 +427,9 @@ function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: Reso
   const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + paladinReflectPercent(bearer);
   const amount = Math.round((damage * percent) / 100);
   if (amount <= 0 || attacker === bearer) return;
+  const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - amount);
+  noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
   ctx.log.push({ text: t("combat.statusReflectDamage", { attacker: nameOf(attacker), amount, bearer: nameOf(bearer) }), kind: "attack" });
   if (attacker.hp <= 0) reviveIfGuarded(attacker, ctx);
   if (attacker.hp <= 0 && isCharacter(attacker)) attacker.isAlive = false;
@@ -512,6 +515,26 @@ function statusLandedTag(def: StatusEffectDefinition, landedOf: Id | undefined):
   return {};
 }
 
+/**
+ * Whether an applied status remembers who applied it: a taunt needs it to force the target, an
+ * intercept or a landed-hit or channel status to reach its source, a damage-over-time tick to credit the damage.
+ */
+function statusKeepsSource(def: StatusEffectDefinition): boolean {
+  return (
+    def.forcesTargetOnSource === true ||
+    def.interceptsForSource === true ||
+    def.onLandedHitSourceStatus !== undefined ||
+    def.endsWithChannel === true ||
+    def.perTurnEffects.some((e) => e.kind === "damage")
+  );
+}
+
+/** Credits `attackerId` with HP it took off a monster, for the `damage` targeting factor. Nothing is kept for any other bearer, or for a monster's own damage to itself. */
+export function noteDamageTaken(target: Actor, attackerId: Id | undefined, hpLost: number): void {
+  if (!isMonster(target) || attackerId === undefined || attackerId === target.id || hpLost <= 0) return;
+  target.damageTakenFrom = { ...target.damageTakenFrom, [attackerId]: (target.damageTakenFrom?.[attackerId] ?? 0) + hpLost };
+}
+
 export function applyStatusEffectToActor(
   actor: Actor,
   statusEffectId: string,
@@ -566,7 +589,7 @@ export function applyStatusEffectToActor(
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
-      ...(def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus || def.endsWithChannel ? { sourceId: sourceId ?? existing.sourceId } : {}),
+      ...(statusKeepsSource(def) ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -596,7 +619,7 @@ export function applyStatusEffectToActor(
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
-    ...((def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus || def.endsWithChannel) && sourceId !== undefined ? { sourceId } : {}),
+    ...(statusKeepsSource(def) && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
@@ -710,6 +733,7 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         const effectToApply = e.kind === "heal" ? { ...e, amount, offenseMultiplierPercent: undefined } : { ...e, amount, maxHpPercent: undefined };
         const hpBefore = actor.hp;
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
+        if (actor.hp < hpBefore) noteDamageTaken(actor, active.sourceId, hpBefore - actor.hp);
         if (actor.hp < hpBefore) ctx.onDotEffect?.("damage");
         else if (actor.hp > hpBefore) ctx.onDotEffect?.("heal");
       }
