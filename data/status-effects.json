@@ -1488,9 +1488,35 @@
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "debuffsAttackerOnHit": {
-      "statusEffectId": "weakened",
+      "statusEffectIds": ["weakened"],
       "durationTurns": 2
     }
+  },
+  {
+    "id": "defiance-ii",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectIds": ["weakened", "enfeebled"],
+      "durationTurns": 2
+    },
+    "rankOf": "defiance",
+    "rankLevel": 2
+  },
+  {
+    "id": "defiance-iii",
+    "name": "Defiance",
+    "description": "Whoever lands a blow on the bearer comes away with its guard open.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "debuffsAttackerOnHit": {
+      "statusEffectIds": ["weakened", "enfeebled", "slowed"],
+      "durationTurns": 2
+    },
+    "rankOf": "defiance",
+    "rankLevel": 3
   },
   {
     "id": "guardian-angel",

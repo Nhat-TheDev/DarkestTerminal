@@ -116,7 +116,7 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   if (def.redirectToAlliesChance) parts.push(t("item.effectRedirectToAllies", { percent: Math.round(def.redirectToAlliesChance * 100) }));
   if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
   if (def.debuffsAttackerOnHit) {
-    parts.push(t("item.effectDebuffsAttacker", { status: getStatusEffect(def.debuffsAttackerOnHit.statusEffectId).name, turns: def.debuffsAttackerOnHit.durationTurns }));
+    parts.push(t("item.effectDebuffsAttacker", { status: def.debuffsAttackerOnHit.statusEffectIds.map((id) => getStatusEffect(id).name).join(", "), turns: def.debuffsAttackerOnHit.durationTurns }));
   }
   if (def.reviveHpPercent) parts.push(t("item.effectRevive", { percent: def.reviveHpPercent }));
   if (def.healOnHitPercent) parts.push(t("item.effectHealOnHit", { percent: def.healOnHitPercent }));

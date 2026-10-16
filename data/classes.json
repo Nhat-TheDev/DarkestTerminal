@@ -1297,7 +1297,7 @@
     "baseMaxMp": 50,
     "baseAttack": 6,
     "baseDefense": 8,
-    "baseAggro": 12,
+    "baseAggro": 11,
     "baseSpeed": 9,
     "baseMagicPower": 10,
     "skills": [
@@ -4227,6 +4227,12 @@
                 "statusEffectId": "provoked",
                 "chance": 0.75,
                 "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "confused",
+                "chance": 0.40,
+                "durationTurns": 2
               }
             ]
           },
@@ -4245,6 +4251,12 @@
                 "statusEffectId": "provoked",
                 "chance": 0.8,
                 "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "confused",
+                "chance": 0.5,
+                "durationTurns": 2
               }
             ]
           },
@@ -4263,6 +4275,12 @@
                 "statusEffectId": "provoked",
                 "chance": 0.85,
                 "durationTurns": 1
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "confused",
+                "chance": 0.65,
+                "durationTurns": 2
               }
             ]
           }
@@ -4591,7 +4609,7 @@
     "baseMaxMp": 30,
     "baseAttack": 8,
     "baseDefense": 10,
-    "baseAggro": 16,
+    "baseAggro": 22,
     "baseSpeed": 5,
     "baseMagicPower": 8,
     "skills": [
@@ -4622,7 +4640,7 @@
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 6,
+            "mpCost": 5,
             "effects": [
               {
                 "kind": "heal",
@@ -4638,7 +4656,7 @@
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 7,
+            "mpCost": 6,
             "effects": [
               {
                 "kind": "heal",
@@ -4687,29 +4705,39 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 1
+                "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "defiance",
-                "durationTurns": 1
+                "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "enfeebled",
+                "durationTurns": 2
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 7,
+            "mpCost": 8,
             "effects": [
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 1
+                "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "defiance",
-                "durationTurns": 1
+                "statusEffectId": "defiance-ii",
+                "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "enfeebled",
+                "durationTurns": 2
               }
             ]
           },
@@ -4721,12 +4749,17 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "taunt",
-                "durationTurns": 1
+                "durationTurns": 2
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "defiance",
-                "durationTurns": 1
+                "statusEffectId": "defiance-iii",
+                "durationTurns": 2
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "enfeebled",
+                "durationTurns": 2
               }
             ]
           }
@@ -5144,7 +5177,7 @@
         "id": "blood-pact",
         "name": "Blood Pact",
         "description": "Opens a palm and lets it run into the dark. What drinks there gives power back, and takes less from a body that has less.",
-        "shortDescription": "Raises magic power; costs HP as well as MP.",
+        "shortDescription": "Raises magic power and restores MP; costs HP.",
         "target": "self",
         "slot": 2,
         "isBuff": true,
@@ -5164,6 +5197,10 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact",
                 "durationTurns": 3
+              },
+              {
+                "kind": "restoreMp",
+                "amount": 10
               }
             ]
           },
@@ -5176,6 +5213,10 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact-ii",
                 "durationTurns": 3
+              },
+              {
+                "kind": "restoreMp",
+                "amount": 18
               }
             ]
           },
@@ -5188,6 +5229,10 @@
                 "kind": "applyStatusEffect",
                 "statusEffectId": "pact-iii",
                 "durationTurns": 3
+              },
+              {
+                "kind": "restoreMp",
+                "amount": 28
               }
             ]
           }

@@ -438,8 +438,8 @@ export interface StatusEffectDefinition {
   forcesTargetOnSource?: boolean;
   /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
   redirectToAlliesChance?: number;
-  /** When a monster's direct hit lands on the bearer, the attacker gets this status. */
-  debuffsAttackerOnHit?: { statusEffectId: Id; durationTurns: number };
+  /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
+  debuffsAttackerOnHit?: { statusEffectIds: Id[]; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
   reviveHpPercent?: number;
   /** Each direct hit the bearer survives heals it for this percent of the HP the hit took. */

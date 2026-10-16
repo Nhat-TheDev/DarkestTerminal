@@ -775,7 +775,10 @@ export function onStruckByMonster(target: Actor, attacker: Monster, combat: Comb
   if (!isActorAlive(target)) return;
   for (const active of target.activeStatusEffects) {
     const mark = getStatusEffect(active.statusEffectId).debuffsAttackerOnHit;
-    if (mark && isActorAlive(attacker)) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: mark.statusEffectId, durationTurns: mark.durationTurns }, target, attacker, { log: combat.log });
+    if (!mark) continue;
+    for (const statusEffectId of mark.statusEffectIds) {
+      if (isActorAlive(attacker)) resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns: mark.durationTurns }, target, attacker, { log: combat.log });
+    }
   }
   triggerCounterAttack(target, combat, ctx);
 }
