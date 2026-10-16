@@ -1,8 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
 import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
-import { runMonsterTurn } from "../src/engine/monsterAI";
-import type { MonsterArchetype } from "../src/types";
+import { runMonsterTurn, targetingWeight } from "../src/engine/monsterAI";
+import type { Character, MonsterArchetype, Summon } from "../src/types";
+import { BALANCE, targetingConfigError, type TargetingConfig } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
 import { makeCtx, spawnInto, pickAnyAction, sk, withFixture } from "./helpers";
@@ -240,10 +241,10 @@ describe("regular monster skills", () => {
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
     assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
 
-    const typo = { id: "typo-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    const typo = { id: "typo-test", aiPattern: "aggressive", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
 
-    const ghost = { id: "ghost-test", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
+    const ghost = { id: "ghost-test", aiPattern: "aggressive", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 
@@ -437,67 +438,157 @@ describe("regular monster skills end-to-end", () => {
 
 
 
-describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors it", () => {
+describe("aiPattern targeting: each pattern mixes its factors by its profile weights", () => {
+  const { lowHpRankScores, fearRankScores, profiles } = BALANCE.targeting;
+
   /** Counts which party member a monster's basic attack lands on, across many seeds. */
-  function countTargets(archetypeId: string, seeds = 300): Map<string, number> {
+  function countTargets(archetypeId: string, setup: (ctx: EngineContext) => void = () => {}, seeds = 300): Map<string, number> {
     const hits = new Map<string, number>();
     for (let seed = 0; seed < seeds; seed++) {
       const { ctx } = makeCtx(seed);
       const monster = spawnInto(ctx, archetypeId);
+      setup(ctx);
       const combat = startCombat("r1", [monster.id], ctx, false);
       resolveRound(combat, ctx);
       for (const c of ctx.party) {
-        if (combat.log.some((l) => l.text.includes(`attacks ${c.name}`))) {
-          hits.set(c.classId, (hits.get(c.classId) ?? 0) + 1);
-        }
+        if (combat.log.some((l) => l.text.includes(`attacks ${c.name}`))) hits.set(c.classId, (hits.get(c.classId) ?? 0) + 1);
       }
     }
     return hits;
   }
 
-  // Knight has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
+  function chances(archetypeId: string, setup: (party: Character[]) => void = () => {}) {
+    const { ctx } = makeCtx();
+    const monster = spawnInto(ctx, archetypeId);
+    setup(ctx.party);
+    const weight = targetingWeight(monster, ctx.party);
+    return { party: ctx.party, chance: (c: Character) => weight(c) };
+  }
+
+  test("every profile in the data sums to 1, so the chances over a pool sum to 1", () => {
+    for (const pattern of Object.keys(profiles)) {
+      const archetype = MONSTER_ARCHETYPES.find((m) => m.aiPattern === pattern);
+      if (!archetype) continue;
+      const { party, chance } = chances(archetype.id, (p) => {
+        p[0]!.hp = 1;
+        p[1]!.survival.fear = 50;
+      });
+      expect(party.reduce((sum, c) => sum + chance(c), 0)).toBeCloseTo(1, 9);
+    }
+  });
+
+  test("at full HP and no fear, only aggro separates the party; the other factors spread evenly", () => {
+    const archetype = getArchetype("skeleton");
+    const weights = profiles[archetype.aiPattern]!;
+    const { party, chance } = chances("skeleton");
+    const totalAggro = party.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    for (const c of party) {
+      expect(chance(c)).toBeCloseTo(weights.aggro * (Math.max(1, c.aggro) / totalAggro) + (1 - weights.aggro) / party.length, 9);
+    }
+  });
+
+  test("lowHp ranks by HP share, lowest first; ties share a rank and the next rank follows without a gap", () => {
+    const { party, chance } = chances("dungeon-rat", (p) => {
+      for (const c of p) c.hp = c.maxHp;
+      p[0]!.hp = Math.round(p[0]!.maxHp * 0.2);
+      p[1]!.hp = Math.round(p[1]!.maxHp * 0.2);
+      p[2]!.hp = Math.round(p[2]!.maxHp * 0.5);
+    });
+    const at = (rank: number) => lowHpRankScores[Math.min(rank, lowHpRankScores.length - 1)]!;
+    const scores = party.map((_, i) => (i < 2 ? at(0) : i === 2 ? at(1) : at(2)));
+    const total = scores.reduce((a, b) => a + b, 0);
+    const w = profiles.opportunistic!;
+    party.forEach((c, i) => expect(chance(c)).toBeCloseTo(w.lowHp * (scores[i]! / total) + (1 - w.lowHp) / party.length, 9));
+  });
+
+  test("fear ranks highest first, and a summon counts as fearless", () => {
+    const { ctx } = makeCtx();
+    const ghost = spawnInto(ctx, "ghost");
+    expect(ghost.aiPattern).toBe("dread");
+    const [scared, uneasy] = [ctx.party[0]!, ctx.party[1]!];
+    for (const c of [scared, uneasy]) c.hp = c.maxHp;
+    scared.survival.fear = 60;
+    uneasy.survival.fear = 30;
+    const summon = { id: "summon-test", ownerId: uneasy.id, name: "Summon", hp: 50, maxHp: 50, aggro: 10, activeStatusEffects: [] } as unknown as Summon;
+    const pool = [scared, uneasy, summon];
+    const weight = targetingWeight(ghost, pool);
+
+    const w = profiles.dread!;
+    const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    const fearScores = new Map<Character | Summon, number>([[scared, fearRankScores[0]!], [uneasy, fearRankScores[1]!], [summon, fearRankScores[2]!]]);
+    const totalFear = [...fearScores.values()].reduce((a, b) => a + b, 0);
+    for (const c of pool) {
+      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + (w.lowHp + w.damage + w.range) / pool.length + w.fear * (fearScores.get(c)! / totalFear);
+      expect(weight(c)).toBeCloseTo(expected, 9);
+    }
+  });
+
   test("an aggressive archetype hits the highest-aggro character more than the lowest", () => {
-    const hits = countTargets("skeleton");
     expect(getArchetype("skeleton").aiPattern).toBe("aggressive");
+    const hits = countTargets("skeleton");
     expect(hits.get("knight") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
   });
 
-  test("an opportunistic archetype reverses that — the lowest-aggro character is hit more", () => {
-    const hits = countTargets("skeleton-archer");
+  test("an opportunistic archetype ignores aggro: a taunt changes nothing it does", () => {
     expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
-    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("knight") ?? 0);
+    const taunt = (ctx: EngineContext) => (ctx.party.find((c) => c.classId === "knight")!.aggro += 40);
+    expect(countTargets("skeleton-archer", taunt)).toEqual(countTargets("skeleton-archer"));
+    expect(countTargets("skeleton", taunt).get("knight")).toBeGreaterThan(countTargets("skeleton").get("knight")!);
   });
 
-  test("taunting pulls attacks toward the Knight for aggressive, and away from it for opportunistic", () => {
-    function hitsOnKnightWithTaunt(archetypeId: string): number {
-      let n = 0;
-      for (let seed = 0; seed < 300; seed++) {
-        const { ctx } = makeCtx(seed);
-        const monster = spawnInto(ctx, archetypeId);
-        const knight = ctx.party.find((c) => c.classId === "knight")!;
-        knight.aggro += 40; // what the taunt status is worth
-        const combat = startCombat("r1", [monster.id], ctx, false);
-        resolveRound(combat, ctx);
-        if (combat.log.some((l) => l.text.includes(`attacks ${knight.name}`))) n++;
-      }
-      return n;
-    }
-    // This is the deliberate trade-off of the mirrored rule, not an accident: against an
-    // opportunistic archetype, taunting makes the Knight *safer* and the rest of the party
-    // more exposed.
-    expect(hitsOnKnightWithTaunt("skeleton")).toBeGreaterThan(hitsOnKnightWithTaunt("skeleton-archer"));
+  test("an opportunistic archetype goes for the wounded, a dread archetype for the frightened", () => {
+    const wounded = countTargets("skeleton-archer", (ctx) => (ctx.party.find((c) => c.classId === "knight")!.hp = 1));
+    const baseline = countTargets("skeleton-archer");
+    expect(wounded.get("knight")!).toBeGreaterThan(baseline.get("knight") ?? 0);
+
+    const frightened = countTargets("ghost", (ctx) => (ctx.party.find((c) => c.classId === "mage")!.survival.fear = 50));
+    expect(frightened.get("mage")!).toBeGreaterThan(countTargets("ghost").get("mage") ?? 0);
   });
 
-  test("a single surviving character is still a valid target for both patterns", () => {
-    for (const id of ["skeleton", "skeleton-archer"]) {
+  test("a single surviving character is still a valid target for every pattern", () => {
+    for (const pattern of Object.keys(profiles)) {
+      const archetype = MONSTER_ARCHETYPES.find((m) => m.aiPattern === pattern && m.roles.includes("normal"));
+      if (!archetype) continue;
       const { ctx } = makeCtx();
-      const monster = spawnInto(ctx, id);
+      const monster = spawnInto(ctx, archetype.id);
       for (const c of ctx.party.slice(1)) c.isAlive = false;
       const survivor = ctx.party[0]!;
-      const combat = startCombat("r1", [monster.id], ctx, false);
-      resolveRound(combat, ctx);
-      expect(combat.log.some((l) => l.text.includes(survivor.name))).toBe(true);
+      expect(targetingWeight(monster, [survivor])(survivor)).toBeCloseTo(1, 9);
     }
+  });
+});
+
+describe("targeting config validation", () => {
+  const valid = (): TargetingConfig => structuredClone(BALANCE.targeting);
+
+  test("the shipped config is valid", () => {
+    expect(targetingConfigError(BALANCE.targeting)).toBeNull();
+  });
+
+  test("a profile whose weights do not sum to 1 is rejected", () => {
+    const config = valid();
+    config.profiles.aggressive!.aggro += 0.1;
+    expect(targetingConfigError(config)).toMatch(/aggressive: weights must sum to 1/);
+  });
+
+  test("a negative weight, a missing factor, or an empty score list is rejected", () => {
+    const negative = valid();
+    negative.profiles.aggressive!.aggro = -0.1;
+    negative.profiles.aggressive!.lowHp += 0.2;
+    expect(targetingConfigError(negative)).toMatch(/>= 0/);
+
+    const missing = valid();
+    delete (missing.profiles.aggressive as Partial<Record<string, number>>).range;
+    expect(targetingConfigError(missing)).toMatch(/must set exactly/);
+
+    const empty = valid();
+    empty.fearRankScores = [];
+    expect(targetingConfigError(empty)).toMatch(/fearRankScores/);
+  });
+
+  test("an archetype whose aiPattern has no profile throws on load", () => {
+    const stray = { ...getArchetype("skeleton"), id: "stray-pattern", aiPattern: "sneaky" } as MonsterArchetype;
+    expect(() => assertMonsterDataConsistent([stray])).toThrow(/aiPattern "sneaky", which has no profile/);
   });
 });
 

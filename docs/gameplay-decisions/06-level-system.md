@@ -151,7 +151,7 @@ Each turn runs in this order (`takeMonsterTurn`, `src/engine/monsterAI.ts`). Stu
 3. **Filter.** Build the candidates from the current weights (`"basicAttack"` plus skill ids). Drop a skill that is on cooldown, out of `usesPerCombat`, or whose `aiCondition` fails.
 4. **Score.** Multiply each candidate's weight by every matching `aiRules` entry's `weightMultiplier`.
 5. **Pick** by weighted random over the scored weights; with no candidate left the monster basic-attacks.
-6. **Target.** A single-target skill (and each pick of a `targetCount` skill) draws from the party weighted by the archetype's `aiPattern` aggro rule, multiplied by every matching `targetRules` entry. An archetype with `targeting: "random"` skips both and picks uniformly.
+6. **Target.** A single-target skill (and each pick of a `targetCount` skill) draws from the party weighted by the archetype's `aiPattern` targeting profile (`02-monster.md`, "Targeting"), multiplied by every matching `targetRules` entry. An archetype with `targeting: "random"` skips both and picks uniformly.
 7. **Act.** A `telegraph` skill locks its target(s), resolves its `chargeEffects`, logs the warning and deals nothing this turn. Any other skill resolves at once. Using a skill starts its cooldown and spends one of its uses.
 
 Cooldowns count down at the end of each of the monster's own turns, stunned or not — the same once-per-round pace a character's cooldowns run at. `initialCooldownTurns` is the cooldown a skill starts the fight on, so a telegraph cannot open the fight.

@@ -14,6 +14,7 @@ import { passives } from "./passives";
 import { rarityOdds } from "./rarityOdds";
 import { shopOdds } from "./shopOdds";
 import { statusEffects } from "./statusEffects";
+import { targetingProfiles, targetingRankScores } from "./targeting";
 
 /** Every generator a `docs:begin` marker can name. */
-export const REGISTRY: Readonly<Record<string, GeneratorSpec>> = { abilities, artifacts, balancePoints, basicAttacks, classSkills, classStats, coinDropByTier, deathBursts, eventTiers, gamblingRounds, map, minionSkills, minions, monsterSkills, monsterTypeWeights, passives, rarityOdds, shopOdds, statusEffects };
+export const REGISTRY: Readonly<Record<string, GeneratorSpec>> = { abilities, artifacts, balancePoints, basicAttacks, classSkills, classStats, coinDropByTier, deathBursts, eventTiers, gamblingRounds, map, minionSkills, minions, monsterSkills, monsterTypeWeights, passives, rarityOdds, shopOdds, statusEffects, targetingProfiles, targetingRankScores };

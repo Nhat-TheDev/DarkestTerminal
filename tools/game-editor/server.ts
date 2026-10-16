@@ -4,6 +4,7 @@ import { getCatalog, computeCharacter, computeMonster, computeDamage, computeSki
 import type { MonsterArchetype, MonsterTier, SkillDefinition } from "../../src/types";
 import { MONSTER_ARCHETYPES, MONSTER_SKILLS, assertMonsterDataConsistent, assertMonsterKitConsistent } from "../../src/data/monsters";
 import type { FearTier } from "../../src/engine/resolver";
+import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
@@ -425,7 +426,7 @@ Bun.serve({
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/balance") {
-      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown };
+      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       const balance = (await readJsonFile("balance-config.json")) as Record<string, unknown>;
       const flatSections: [string, readonly string[]][] = [
@@ -452,6 +453,15 @@ Bun.serve({
           const err = applyTierRangePatch(currency.coinDropByTier as Record<string, unknown>, currencyPatch.coinDropByTier as Record<string, unknown>, COIN_DROP_TIERS);
           if (err) return badRequest(err);
         }
+      }
+      if (body.targeting !== undefined) {
+        if (typeof body.targeting !== "object" || body.targeting === null) return badRequest("targeting must be an object.");
+        const targeting = body.targeting as TargetingConfig;
+        const err = targetingConfigError(targeting);
+        if (err) return badRequest(err);
+        const orphan = MONSTER_ARCHETYPES.find((m) => !(m.aiPattern in targeting.profiles));
+        if (orphan) return badRequest(`${orphan.id} uses aiPattern "${orphan.aiPattern}", which this config drops.`);
+        balance.targeting = { lowHpRankScores: targeting.lowHpRankScores, fearRankScores: targeting.fearRankScores, profiles: targeting.profiles };
       }
       await writeJsonFile("balance-config.json", balance);
       return json({ ok: true });

@@ -991,8 +991,7 @@ describe("Warlock", () => {
 
   test("Blood Pact costs 10% max HP at full health, less when low, and never kills", () => {
     const { ctx, warlock, rats, combat } = warlockFight(1);
-    const rat = rats[0]!;
-    rat.attack = 0;
+    rats[0]!.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 10 }); // its bites would blur the HP being measured
     queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
     const full = warlock.hp;
     resolveRound(combat, ctx);
