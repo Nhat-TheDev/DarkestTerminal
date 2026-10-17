@@ -44,27 +44,27 @@
   "expTiers": [
     {
       "maxLevel": 5,
-      "expCost": 115
+      "expCost": 200
     },
     {
       "maxLevel": 10,
-      "expCost": 135
+      "expCost": 215
     },
     {
       "maxLevel": 15,
-      "expCost": 150
+      "expCost": 230
     },
     {
       "maxLevel": 20,
-      "expCost": 165
+      "expCost": 240
     },
     {
       "maxLevel": 25,
-      "expCost": 195
+      "expCost": 250
     },
     {
       "maxLevel": 30,
-      "expCost": 255
+      "expCost": 260
     },
     {
       "maxLevel": 35,
