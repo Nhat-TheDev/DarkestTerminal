@@ -756,8 +756,6 @@ export class App implements ScreenContext {
     const coins = partyOverride?.coins ?? s.coins;
     const partyExp = partyOverride?.partyExp ?? s.partyExp;
     const satiety = partyOverride?.satiety ?? s.satiety;
-    // Rooms the blessing still covers, counting the room the party is standing in when it is the blessed one.
-    const blessedRooms = s.pendingGatekeeper ? 0 : s.blessingRoomsLeft + (s.blessedRoomId === s.currentRoomId ? 1 : 0);
     const p0 = s.party[0];
     const level = (p0 && hpOverride?.get(p0.id)?.level) ?? p0?.level ?? 1;
 
@@ -779,7 +777,6 @@ export class App implements ScreenContext {
         plainChunk("  "),
         colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
         ...(s.runStardust > 0 ? [plainChunk("  "), colorChunk(t("ui.stardustStat", { stardust: s.runStardust }), PALETTE.title)] : []),
-        ...(blessedRooms > 0 ? [plainChunk("  "), colorChunk(t("ui.blessingStat", { rooms: blessedRooms }), PALETTE.title)] : []),
       ],
       expLine,
     ]);
@@ -982,7 +979,7 @@ export class App implements ScreenContext {
       target.push([
         plainChunk("  "),
         colorChunk(statusDisplayName(def), color),
-        colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+        colorChunk(combatScreen.statusTurnsSuffix(eff.turnsRemaining), color),
         ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
       ]);
     }
@@ -1171,7 +1168,7 @@ export class App implements ScreenContext {
         lines.push([
           plainChunk("  "),
           colorChunk(statusDisplayName(def), color),
-          colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+          colorChunk(combatScreen.statusTurnsSuffix(eff.turnsRemaining), color),
           ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
         ]);
       }

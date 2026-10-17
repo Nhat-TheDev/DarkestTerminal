@@ -3,6 +3,8 @@ import type { ArtifactRarity, ItemTier } from "../types";
 
 interface BalanceConfig {
   combat: {
+    /** A status applied for at least this many turns reads as lasting the whole fight, shown as (∞) instead of a turn count. */
+    statusLastsFightFromTurns: number;
     defenseMitigationX: number;
     defenseMitigationY: number;
     executeCooldownTurns: number;

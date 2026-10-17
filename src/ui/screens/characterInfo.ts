@@ -12,6 +12,7 @@ import { getAbility, formatAbilityEffect } from "../../data/abilities";
 import { wrapText } from "../layout";
 import { characterStatBreakdown, type StatBreakdown } from "../../engine/party";
 import { t } from "../../data/strings";
+import { BALANCE } from "../../data/balanceConfig";
 
 export type CharacterInfoUiState = Extract<UiState, { kind: "characterInfo" }>;
 
@@ -211,9 +212,11 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       const name = statusDisplayName(def);
       lines.push([
         colorChunk(
-          active.turnsRemaining !== undefined
-            ? t("ui.characterInfoStatusItem", { name, turns: active.turnsRemaining })
-            : t("ui.characterInfoListItem", { name }),
+          active.turnsRemaining === undefined
+            ? t("ui.characterInfoListItem", { name })
+            : active.turnsRemaining >= BALANCE.combat.statusLastsFightFromTurns
+              ? `${t("ui.characterInfoListItem", { name })}${t("ui.statusLastsFightSuffix")}`
+              : t("ui.characterInfoStatusItem", { name, turns: active.turnsRemaining }),
           PALETTE.text
         ),
       ]);

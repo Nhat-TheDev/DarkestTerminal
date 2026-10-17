@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { Game } from "../src/engine/game";
 import { App } from "../src/ui/app";
+import * as characterInfoScreen from "../src/ui/screens/characterInfo";
 import { getRoom } from "../src/engine/dungeon";
 import { countBlessedRoom } from "../src/engine/events/gatekeeper";
 import { rollEvent } from "../src/data/events";
@@ -162,7 +163,14 @@ describe("the Gatekeeper screen", () => {
     mockInput.pressKey("1");
     await renderOnce();
     expect(game.state.pendingGatekeeper).toBe(false);
-    expect(captureCharFrame()).not.toContain("[1] Enter");
+    frame = captureCharFrame();
+    expect(frame).not.toContain("[1] Enter");
+    // The blessing lasts the whole fight, so the party panel shows (∞), and the header carries no room count.
+    expect(frame).toContain("Blessed (∞)");
+    expect(frame.split("\n").slice(0, 3).join("\n")).not.toContain("Blessed");
+    const info = characterInfoScreen.renderMain(game, { kind: "characterInfo", characterIndex: 0, previousUi: { kind: "room" } });
+    const infoText = typeof info === "string" ? info : info.chunks.map((c) => c.text).join("");
+    expect(infoText).toContain("- Blessed (∞)");
     expect(getRoom(game.state.floor, game.state.currentRoomId).id).toBe(game.state.floor.entryRoomId);
     renderer.destroy();
   });

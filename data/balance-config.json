@@ -1,5 +1,6 @@
 {
   "combat": {
+    "statusLastsFightFromTurns": 99,
     "defenseMitigationX": 40,
     "defenseMitigationY": 10,
     "executeCooldownTurns": 3,
