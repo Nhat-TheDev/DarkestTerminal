@@ -461,6 +461,10 @@ Bun.serve({
       return new Response(await readFile(path.join(DATA_DIR, "monster-races.json"), "utf8"), { headers: { "content-type": "application/json" } });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/events") {
+      return new Response(await readFile(path.join(DATA_DIR, "events.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/monster-traits") {
       return new Response(await readFile(path.join(DATA_DIR, "monster-traits.json"), "utf8"), { headers: { "content-type": "application/json" } });
     }
