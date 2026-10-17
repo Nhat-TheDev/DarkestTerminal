@@ -5,8 +5,9 @@ import { Game } from "../src/engine/game";
 import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
-import { startCombat } from "../src/engine/combat";
-import { spawnMonster } from "../src/data/monsters";
+import { getActorByRef, startCombat } from "../src/engine/combat";
+import { spawnMonster, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { resolveSkillEffect } from "../src/engine/resolver";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
@@ -39,7 +40,7 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     let guard = 0;
-    while (app.debugUiState.kind !== "artifactDecision" && guard < 40) {
+    while (app.debugUiState.kind !== "artifactDecision" && guard < 80) {
       guard++;
       if (app.debugUiState.kind === "roomReward" || app.debugUiState.kind === "skillDetail") mockInput.pressKey("RETURN");
       else mockInput.pressKey("1");
@@ -66,7 +67,7 @@ describe("headless UI smoke test", () => {
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
   // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
   async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
-    let game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    let game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
     game.currentSaveSlot = "slot1";
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "boss";
@@ -118,6 +119,48 @@ describe("headless UI smoke test", () => {
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
   }, 20000);
+
+  test("the monster panel shows a shell bearer's shell: hits left while intact, broken after the break", async () => {
+    // A real archetype (the panel needs its sprite) given a shell for the length of the test.
+    const spider = MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!;
+    spider.shell = { hitsToBreak: { min: 3, max: 3 }, hitDamageCapMaxHpPercent: 5, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+    try {
+      const frameWith = async (hits: number) => {
+        const { renderer, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
+        const game = new Game(7);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.type = "boss";
+        const boss = spawnMonster("giant-spider", 1, { tier: "boss" });
+        game.ctx.monsters.push(boss);
+        room.monsterIds = [boss.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+        for (let i = 0; i < hits; i++) resolveSkillEffect({ kind: "damage", amount: 1 }, game.state.party[0]!, boss, { log: [] });
+        new App(renderer, game);
+        await renderOnce();
+        return captureCharFrame();
+      };
+      expect(await frameWith(0)).toContain("Shell (3 hits)");
+      expect(await frameWith(1)).toContain("Shell (2 hits)");
+      expect(await frameWith(2)).toContain("Shell (1 hit)");
+      const broken = await frameWith(3);
+      expect(broken).toContain("Shell broken");
+      expect(broken).not.toContain("Shell (");
+    } finally {
+      delete spider.shell;
+    }
+  }, 20000);
+
+  test("a target prompt with nothing in reach says so instead of showing an empty list", () => {
+    const game = new Game(7);
+    const actor = game.state.party[0]!;
+    const skill = getSkill(actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!.id);
+    const out = renderCombat(game, { kind: "pickTarget", actorRef: { kind: "character", id: actor.id }, source: { kind: "skill", skill }, candidates: [] }) as unknown as {
+      chunks: { text: string }[];
+    };
+    const text = out.chunks.map((c) => c.text).join("");
+    expect(text).toContain(t("ui.noTargetReachable"));
+  });
 
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
@@ -258,7 +301,7 @@ describe("character info screen", () => {
 
     const opened = captureCharFrame();
     expect(opened).toContain("[2] Mage");
-    expect(opened).toContain("Vanguard (Level 1 Vanguard)");
+    expect(opened).toContain("Knight (Level 1 Knight)");
     expect(opened).toContain("[1-4] Character");
 
     mockInput.pressKey("3");
@@ -648,7 +691,7 @@ describe("a panel scrolled with the mouse wheel", () => {
   /** A Rest room with a Runner in it, entered from a fresh run. */
   function gameInRunnerRoom(): Game {
     for (let seed = 1; seed < 300; seed++) {
-      const game = new Game(seed, ["vanguard", "mage", "rogue", "acolyte"]);
+      const game = new Game(seed, ["knight", "mage", "rogue", "acolyte"]);
       game.state.combat = null;
       const rest = game.state.floor.rooms.find((r) => r.type === "rest")!;
       game.state.currentRoomId = rest.id;
@@ -713,12 +756,12 @@ describe("a panel scrolled with the mouse wheel", () => {
   });
 });
 
-describe("layout below the full height", () => {
+describe("layout", () => {
   const panelRows = (frame: string, title: string) => panelContentRows(frame.split("\n"), title);
 
   /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
   async function openFight(width: number, height: number, boss = false) {
-    const game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
     if (boss) {
       const room = getRoom(game.state.floor, game.state.currentRoomId);
       const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
@@ -730,45 +773,63 @@ describe("layout below the full height", () => {
     const app = new App(setup.renderer, game, { autoReveal: false });
     await setup.renderOnce();
     expect(app.debugUiState.kind).toBe("pickAction");
-    return { ...setup, game };
+    return { ...setup, game, app };
   }
 
-  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel gets room for its choices", async () => {
-    const { captureCharFrame, game } = await openFight(120, 40);
+  test("at 150x45 the Log sits beside the battlefield, as tall as it, and the Dungeon panel has room", async () => {
+    const { captureCharFrame, game } = await openFight(150, 45);
     const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    // Only blank rows above the sprites were trimmed: every character's name and HP row is still drawn.
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
-    for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
+    const rows = frame.split("\n");
+    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(10);
+    expect(rows[44]).toContain("[Ctrl+C] Quit");
+    for (const abbr of ["KN", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
-  test("at 120x40 a boss keeps the battlefield's full height, so its sprite is not cut", async () => {
-    const { captureCharFrame } = await openFight(120, 40, true);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+  test("the Log keeps its width on a wide terminal, and a long entry wraps under its icon", async () => {
+    const { captureCharFrame, renderOnce, app } = await openFight(200, 45);
+    app.pushToast("Knight uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
+    app.tickReveal(); // the first tick renders, which queues the toast
+    for (let i = 0; i < 500 && app.debugRevealActive; i++) app.tickReveal();
+    await renderOnce();
+    const rows = captureCharFrame().split("\n");
+    const top = rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`));
+    const left = rows[top]!.indexOf(`─${t("ui.panelLog")}`) - 1;
+    expect(rows[top]!.indexOf("┐", left) - left + 1).toBe(35);
+    const panel = rows.slice(top + 1, top + 1 + UNIT_BLOCK_HEIGHT).map((r) => r.slice(left + 1, left + 34));
+    const first = panel.findIndex((line) => line.includes("Knight uses"));
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(panel[first + 1]).toMatch(/^ {2}\S/);
   });
 
-  test("at full height the layout is unchanged", async () => {
-    const { captureCharFrame } = await openFight(120, 70);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(6);
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(20);
+  test("the Log and the Monsters panel below it share their left edge", async () => {
+    for (const width of [150, 200]) {
+      const { captureCharFrame, renderer } = await openFight(width, 45);
+      const rows = captureCharFrame().split("\n");
+      const leftEdge = (title: string) => rows.find((r) => r.includes(`─${title}`))!.indexOf(`─${title}`) - 1;
+      expect(leftEdge(t("ui.panelLog")), `${width}`).toBe(leftEdge(t("ui.panelMonsters")));
+      renderer.destroy();
+    }
   });
 
-  test("resizing the terminal switches between the two layouts at once", async () => {
-    const { captureCharFrame, resize, renderOnce } = await openFight(120, 70);
-    resize(120, 40);
+  test("the battlefield is as tall in an ordinary fight as against a boss", async () => {
+    for (const boss of [false, true]) {
+      const { captureCharFrame, renderer } = await openFight(150, 45, boss);
+      expect(panelRows(captureCharFrame(), t("ui.panelBattlefield")), boss ? "boss" : "ordinary").toBe(UNIT_BLOCK_HEIGHT);
+      renderer.destroy();
+    }
+  });
+
+  test("a taller terminal gives its extra rows to the Dungeon panel, not the battlefield", async () => {
+    const { captureCharFrame, resize, renderOnce } = await openFight(150, 45);
+    const before = panelRows(captureCharFrame(), t("ui.panelMain"))!;
+    resize(150, 70);
     await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    resize(120, 70);
-    await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(20);
+    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
   });
 });

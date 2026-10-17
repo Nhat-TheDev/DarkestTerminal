@@ -1002,14 +1002,12 @@ and only ever spawned by `Game.enterFounderFight()`. `finalBoss` is what carries
 `GUARD_ROOM_ARCHETYPES` (`src/data/monsters.ts`) otherwise treats "elite+boss roles"
 as the definition of guard-room material, and the founder can. "Stronger than
 any existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
-depth-scaling every monster already uses — no bespoke stat multiplier needed. 4 new skills, all
-following the exact mechanical shape of every other Elite/Boss archetype's kit: `elite-strike-the-founder`
-("Paid In Full," 20 single-target) and `elite-cleave-the-founder` ("The Same Price," 10 party-wide)
-alongside `boss-execute-the-founder` ("Everything You Asked For") and `boss-debuff-the-founder`
-("What's Left Listening," applying `blinded`). Its boss action weights lean harder on the debuff than
-a standard boss does — 30/20/15/35 against the usual 40/20/15/25 — so the fight still reads as its
-own thing rather than a reskinned Dark Knight. It carries no `elite` action weights and no elite
-sprite, because it can never spawn at Elite tier.
+depth-scaling every monster already uses — no bespoke stat multiplier needed. Its kit is its own
+and, like every guard-room archetype's, data-declared (`06-level-system.md` §6.12): ropes that reach
+several targets ("Paid In Full"), one that strikes everyone through defense ("The Same Price"), a
+gaze that blinds and raises fear ("What's Left Listening"), a telegraphed heavy hit ("Everything You
+Asked For"), and two phase skills. It carries no `elite` action weights and no elite sprite, because
+it can never spawn at Elite tier.
 
 **After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — no new
 mechanic needed for this framing; it's flavor over the existing infinite-descent loop continuing as
@@ -1082,10 +1080,9 @@ persistence layer, and the boss kit:
   `GUARD_ROOM_ARCHETYPES` would otherwise read that as guard-room eligibility. Stats are
   deliberately plain (baseHp 80/baseAttack 28/baseDefense 12/baseSpeed 5, `aiPattern: "aggressive"`)
   — depth-scaling alone (floor 120, deeper than any other boss in the game) already satisfies
-  "stronger than any existing boss" without a bespoke multiplier. 4 new skills — the
-  `elite-strike-`/`elite-cleave-` pair and the `boss-execute-`/`boss-debuff-` pair — follow the same
-  mechanical shape every other Elite/Boss archetype already uses (only the flavor and the boss-tier
-  action weights differ).
+  "stronger than any existing boss" without a bespoke multiplier. Its skills are a kit of its
+  own, built from the same mechanics every other Elite/Boss archetype uses (`06-level-system.md`
+  §6.12).
 - **Ending 1's persistence layer** (`src/engine/profile.ts`, new): a small `profile.json` sharing
   `save.ts`'s app-data directory but never imported by or importing `save.ts`/`game.ts` circularly.
   Records `{classId}` per retirement and a `shownRetiredCharacterEvent` flag, both independent of any

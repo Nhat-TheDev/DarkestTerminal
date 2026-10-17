@@ -4,10 +4,10 @@ import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
-import { getClass, passiveRankDef } from "../../data/classes";
+import { getClass, getSkill, passiveRankDef } from "../../data/classes";
 import type { PassiveRankDefinition, PassiveSkillDefinition } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics } from "../../data/statusEffects";
+import { getStatusEffect, statusDisplayName, formatStatusEffectMechanics, COMBAT_STAT_LABEL } from "../../data/statusEffects";
 import { getAbility, formatAbilityEffect } from "../../data/abilities";
 import { wrapText } from "../layout";
 import { characterStatBreakdown, type StatBreakdown } from "../../engine/party";
@@ -57,7 +57,7 @@ const detailLines = (text: string): TextChunk[][] =>
 export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
   const parts: string[] = [];
   if (rankDef.maxHpPercent !== undefined) {
-    parts.push(t("passive.vanguardBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, aggro: rankDef.aggroFlat ?? 0 }));
+    parts.push(t("passive.knightBuff", { maxHp: rankDef.maxHpPercent, defense: rankDef.defensePercent ?? 0, chance: rankDef.interceptWeakestChancePercent ?? 0 }));
   }
   if (rankDef.onHitStatusEffectId !== undefined) {
     const shredStat = getStatusEffect(rankDef.onHitStatusEffectId).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === "defense");
@@ -98,6 +98,32 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   }
   if (rankDef.maxActiveMinions !== undefined) {
     parts.push(t("passive.summonerMinionCap", { count: rankDef.maxActiveMinions }));
+  }
+  if (rankDef.growthSwapWeights !== undefined && passive.growthSwapStats) {
+    const [first, second] = passive.growthSwapStats.map((stat) => COMBAT_STAT_LABEL[stat]) as [string, string];
+    parts.push(t("passive.jesterGrowthSwap", { first, second, low: rankDef.growthSwapWeights.low, high: rankDef.growthSwapWeights.high }));
+  }
+  if (rankDef.reflectPercent !== undefined) {
+    parts.push(t("passive.paladinReflect", { percent: rankDef.reflectPercent }));
+  }
+  if (passive.ignoresFearEffects) parts.push(t("passive.paladinFearImmune"));
+  if (rankDef.stackBurstPowerPercent !== undefined && passive.stackBurst) {
+    const burst = passive.stackBurst;
+    parts.push(
+      t("passive.warlockStackBurst", {
+        status: getStatusEffect(burst.statusEffectId).name,
+        stacks: burst.atStacks,
+        skill: getSkill(burst.skillId).name,
+        percent: rankDef.stackBurstPowerPercent,
+        removed: burst.removeStacks,
+      })
+    );
+  }
+  if (rankDef.deathSpreadChancePercentPerStack !== undefined && passive.deathSpread) {
+    const spread = passive.deathSpread;
+    parts.push(
+      t("passive.warlockDeathSpread", { status: getStatusEffect(spread.statusEffectId).name, percent: rankDef.deathSpreadChancePercentPerStack, stacks: spread.stacks })
+    );
   }
   return parts.join(" ");
 }

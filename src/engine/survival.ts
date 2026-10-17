@@ -2,6 +2,7 @@ import type { Character, GameState, LogEntry } from "../types";
 import { fearResistMultiplier } from "./artifacts";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
+import { getStatusEffect } from "../data/statusEffects";
 
 export const SATIETY_DRAIN_COMBAT = BALANCE.survival.satietyDrainCombat;
 export const SATIETY_DRAIN_EVENT = BALANCE.survival.satietyDrainEvent;
@@ -79,9 +80,14 @@ export function formatFear(value: number): string {
   return String(roundFear(value));
 }
 
-/** Every fear gain, whatever its source, is reduced by the character's fearResist. */
+/** The share of a fear gain a character's statuses let through (`fearResistPercent`, each one combined multiplicatively). */
+function statusFearResistMultiplier(character: Character): number {
+  return character.activeStatusEffects.reduce((mult, s) => mult * (1 - Math.min(100, getStatusEffect(s.statusEffectId).fearResistPercent ?? 0) / 100), 1);
+}
+
+/** Every fear gain, whatever its source, is reduced by the character's fearResist and by any fear-resisting status. */
 export function resistedFearGain(character: Character, amount: number): number {
-  return roundFear(amount * fearResistMultiplier(character));
+  return roundFear(amount * fearResistMultiplier(character) * statusFearResistMultiplier(character));
 }
 
 /** The one place fear is written: clamped to 0-100 and rounded. Returns the change actually made. */

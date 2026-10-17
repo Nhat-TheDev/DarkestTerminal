@@ -4,6 +4,7 @@ import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
+import { getClass, getSkill, getEffectiveSkill } from "../data/classes";
 import { getEvent } from "../data/events";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
@@ -30,7 +31,6 @@ import {
   spriteForMonster,
   spriteForEvent,
   renderSpriteInSlot,
-  spriteHeight,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
@@ -80,13 +80,14 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-const LOG_HEIGHT = 8;
-/** Below this many terminal rows the full layout can no longer show a 4-member party with no Ability
-    or status lines, so it goes compact: the Path panel is hidden, the Log keeps 3 lines and the
-    battlefield drops the blank rows it keeps for sprites taller than any on it — the Dungeon panel's
-    choices get that room. A party panel with more lines than that scrolls. */
-const COMPACT_LAYOUT_BELOW_ROWS = 61;
-const COMPACT_LOG_HEIGHT = 5;
+/** Width of the Battlefield's content: the party, the divider and the widest enemy side a fight starts
+    with (a boss and two summoned adds). Its panel takes every column the Log leaves and centres it. */
+const BATTLEFIELD_CONTENT_WIDTH = 113;
+/** Width of the Log and the Monsters panel below it, border included, so their edges line up; with the
+    Battlefield beside the Log, the smallest supported terminal is 150 wide. */
+const SIDE_PANEL_WIDTH = 35;
+/** Columns a Log line can use: the panel minus its border and the scrollbar. */
+const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 /** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
@@ -105,15 +106,13 @@ export class App implements ScreenContext {
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
   private chrome: BoxRenderable[];
-  private progressBox: BoxRenderable;
-  private battlefieldBox: BoxRenderable;
-  private logBox: BoxRenderable;
   private fullLogBox: BoxRenderable;
   private fullLogText: TextRenderable;
   private fullLogScroll: ScrollBoxRenderable;
   private fullLogJustOpened = false;
   /** `runLogVersion` the run-log screen was last built from. */
   private fullLogBuiltFrom = -1;
+  private fullLogBuiltWidth = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated: the enemy side, the Monsters panel and the round in the header are drawn from it until that reveal drains. */
@@ -175,20 +174,24 @@ export class App implements ScreenContext {
     headerBox.add(this.header);
     this.root.add(headerBox);
 
-    this.progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
+    const progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
     this.progress = new TextRenderable(renderer, { id: "progress", content: "", fg: PALETTE.text });
-    this.progressBox.add(this.progress);
-    this.root.add(this.progressBox);
+    progressBox.add(this.progress);
+    this.root.add(progressBox);
 
-    this.battlefieldBox = new BoxRenderable(renderer, {
+    const arena = new BoxRenderable(renderer, { id: "arena", flexDirection: "row", height: UNIT_BLOCK_HEIGHT + 2, flexShrink: 0, backgroundColor: PALETTE.bg });
+    this.root.add(arena);
+
+    const battlefieldBox = new BoxRenderable(renderer, {
       id: "battlefield-box",
       ...panel,
-      height: UNIT_BLOCK_HEIGHT + 2,
+      flexGrow: 1,
+      alignItems: "center",
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
-    this.battlefieldBox.add(this.battlefield);
-    this.root.add(this.battlefieldBox);
+    battlefieldBox.add(this.battlefield);
+    arena.add(battlefieldBox);
 
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
@@ -203,12 +206,12 @@ export class App implements ScreenContext {
     mainBox.add(this.main);
     body.add(mainBox);
 
-    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: 32, title: t("ui.panelMonsters") });
+    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelMonsters") });
     this.monsters = new TextRenderable(renderer, { id: "monsters", content: "", fg: PALETTE.text });
     monstersBox.add(this.monsters);
     body.add(monstersBox);
 
-    this.logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: LOG_HEIGHT, title: t("ui.panelLog") });
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelLog") });
     this.logScroll = new ScrollBoxRenderable(renderer, {
       id: "log-scroll",
       width: "100%",
@@ -220,11 +223,10 @@ export class App implements ScreenContext {
     });
     this.log = new TextRenderable(renderer, { id: "log", content: "", fg: PALETTE.dim });
     this.logScroll.add(this.log);
-    this.logBox.add(this.logScroll);
-    this.root.add(this.logBox);
+    logBox.add(this.logScroll);
+    arena.add(logBox);
 
-    // The Path panel is left out: render() also hides it in the compact layout.
-    this.chrome = [headerBox, this.battlefieldBox, body, this.logBox];
+    this.chrome = [headerBox, progressBox, arena, body];
 
     this.fullLogBox = new BoxRenderable(renderer, { id: "full-log-box", ...panel, flexGrow: 1, title: t("ui.panelFullLog", { count: RUN_LOG_SIZE }), visible: false });
     this.fullLogScroll = new ScrollBoxRenderable(renderer, {
@@ -242,14 +244,14 @@ export class App implements ScreenContext {
     this.root.add(this.fullLogBox);
 
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
-    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
+    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 1, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
     renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // Crossing COMPACT_LAYOUT_BELOW_ROWS changes panel heights, which only render() sets. OpenTUI
-    // shields keypress handlers from a throw but not resize listeners, so a draw error here is logged
-    // the same way rather than ending the run.
+    // A resize changes how panel text wraps and scrolls, which only render() settles. OpenTUI shields
+    // keypress handlers from a throw but not resize listeners, so a draw error here is logged the same
+    // way rather than ending the run.
     renderer.on("resize", () => {
       try {
         this.render();
@@ -432,7 +434,7 @@ export class App implements ScreenContext {
     }
     const next = this.game
       .livingCharactersNeedingAction()
-      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind));
+      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind) && !combat.heldChannelIds?.includes(ref.id));
     this.ui = next ? { kind: "pickAction", actorRef: next } : { kind: "roundResolved" };
     if (!next && this.game.readyToResolve()) {
       this.game.resolve();
@@ -497,7 +499,7 @@ export class App implements ScreenContext {
     }
     if (
       key.name === "b" &&
-      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
@@ -519,6 +521,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":
@@ -594,9 +598,20 @@ export class App implements ScreenContext {
       case "skillDetail":
         this.ui = { kind: "pickSkill", actorRef: this.ui.actorRef };
         return true;
-      case "pickTarget":
-        this.ui = this.ui.source.kind === "skill" ? { kind: "pickSkill", actorRef: this.ui.actorRef } : { kind: "pickItemInCombat", actorRef: this.ui.actorRef };
+      case "pickCommandMinion":
+        this.ui = { kind: "skillDetail", actorRef: this.ui.actorRef, skill: this.ui.skill };
         return true;
+      case "pickCommandSkill":
+        this.ui = { kind: "pickCommandMinion", actorRef: this.ui.actorRef, skill: this.ui.skill };
+        return true;
+      case "pickTarget": {
+        const { actorRef, source } = this.ui;
+        if (source.kind === "command") {
+          const skill = getEffectiveSkill(getSkill(source.commandSkillId), (getActorByRef(actorRef, this.game.ctx) as Character).level);
+          this.ui = { kind: "pickCommandSkill", actorRef, skill, summonId: source.order.summonId };
+        } else this.ui = source.kind === "skill" ? { kind: "pickSkill", actorRef } : { kind: "pickItemInCombat", actorRef };
+        return true;
+      }
       case "pickItemOutOfCombat":
         this.ui = { kind: "room" };
         return true;
@@ -648,10 +663,6 @@ export class App implements ScreenContext {
     if (this.game.state.combat) this.game.state.combat.log.push({ text, kind: "info" });
     else if (this.reveal.active || (this.observedCombat !== null && this.observedCombat.log.length > this.lastLogLength)) this.deferredToasts.push({ text, kind: "info" });
     else this.appendLog([{ text, kind: "info" }]);
-  }
-
-  private isCompactLayout(): boolean {
-    return this.renderer.height < COMPACT_LAYOUT_BELOW_ROWS;
   }
 
   getPendingFloorAdvance(): boolean {
@@ -723,15 +734,13 @@ export class App implements ScreenContext {
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
     this.fullLogBox.visible = inFullLog;
-    const compact = this.isCompactLayout();
-    this.progressBox.visible = !inFullLog && !compact;
-    const logHeight = compact ? COMPACT_LOG_HEIGHT : LOG_HEIGHT;
-    if (this.logBox.height !== logHeight) this.logBox.height = logHeight;
     if (inFullLog) {
       // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
-      if (this.fullLogBuiltFrom !== this.runLogVersion) {
+      const fullLogWidth = this.renderer.width - 3;
+      if (this.fullLogBuiltFrom !== this.runLogVersion || this.fullLogBuiltWidth !== fullLogWidth) {
         this.fullLogBuiltFrom = this.runLogVersion;
-        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+        this.fullLogBuiltWidth = fullLogWidth;
+        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog, fullLogWidth));
       }
       if (this.fullLogJustOpened) {
         this.fullLogJustOpened = false;
@@ -781,9 +790,8 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus, compact);
-    this.battlefield.content = joinLines(battlefieldRows);
-    if (this.battlefieldBox.height !== battlefieldRows.length + 2) this.battlefieldBox.height = battlefieldRows.length + 2;
+    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
+    this.battlefield.content = joinLines(battlefieldRows.map((row) => [...row, plainChunk(" ".repeat(Math.max(0, BATTLEFIELD_CONTENT_WIDTH - row.reduce((n, c) => n + c.text.length, 0))))]));
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -800,7 +808,7 @@ export class App implements ScreenContext {
       );
     });
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride));
+    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride, focus));
     this.keepScrollInRange(this.party);
     this.keepScrollInRange(this.monsters);
     if (revealing) {
@@ -871,7 +879,7 @@ export class App implements ScreenContext {
       this.log.content = this.game.state.message;
       return;
     }
-    this.log.content = joinLines(logLines(this.roomLog));
+    this.log.content = joinLines(logLines(this.roomLog, LOG_TEXT_WIDTH));
   }
 
   /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */
@@ -956,6 +964,8 @@ export class App implements ScreenContext {
     if (tier >= 2) {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
+    const hand = getClass(c.classId).dice;
+    if (hand && c.dice !== undefined) fearLine.push(plainChunk("   "), colorChunk(t("ui.diceStat", { count: c.dice, max: hand.maxCount }), PALETTE.title));
 
     // Ability, then artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
@@ -1041,9 +1051,7 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  /** In the compact layout the rows above the tallest sprite on screen are dropped: every block is
-      bottom-aligned in a boss-height slot with its icons one band above its own frame, so those rows are always blank. */
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, compact: boolean): TextChunk[][] {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     const impact = focus !== null && !this.reveal.holding;
 
@@ -1071,14 +1079,12 @@ export class App implements ScreenContext {
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
-    let tallest = tierFrameHeight("party");
     if (combat) {
-      const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
-      if (monsterCombatants.length === 0) {
+      const shownMonsters = this.shownMonsters(combat, hpOverride, focus);
+      if (shownMonsters.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
       } else {
-        const enemyUnits = monsterCombatants.map((combatant) => {
-          const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+        const enemyUnits = shownMonsters.map((m) => {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
@@ -1089,18 +1095,13 @@ export class App implements ScreenContext {
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
-        tallest = Math.max(tallest, ...enemyUnits.map((u) => u.frameHeight));
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
-      tallest = Math.max(tallest, spriteHeight(CAMPFIRE_SPRITE));
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
-      tallest = Math.max(tallest, spriteHeight(TREASURE_CHEST_SPRITE));
     } else if (isEventRoom) {
       enemyBlock = this.buildEventBlock(room.rolledEventId!);
-      const eventSprite = spriteForEvent(room.rolledEventId!);
-      if (eventSprite) tallest = Math.max(tallest, spriteHeight(eventSprite));
     } else {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
@@ -1115,11 +1116,19 @@ export class App implements ScreenContext {
       );
     }
 
-    const rows = mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
-    return compact ? rows.slice(Math.max(0, MAX_BOSS_HEIGHT - tallest)) : rows;
+    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
-  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
+  /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */
+  private shownMonsters(combat: CombatState, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): Monster[] {
+    const inFocus = (id: Id) => focus !== null && Object.values(focus).some((ids) => Array.isArray(ids) && ids.includes(id));
+    return combat.combatants
+      .filter((c) => c.ref.kind === "monster")
+      .map((c) => getActorByRef(c.ref, this.game.ctx) as Monster)
+      .filter((m) => m.summonerId === undefined || (hpOverride?.get(m.id)?.hp ?? m.hp) > 0 || inFocus(m.id));
+  }
+
+  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     if (!combat) {
       const room = getRoom(s.floor, s.currentRoomId);
@@ -1129,9 +1138,7 @@ export class App implements ScreenContext {
       return [[colorChunk(room.cleared ? t("ui.roomSafe") : t("ui.notEncounteredDot"), PALETTE.dim)]];
     }
     const lines: TextChunk[][] = [];
-    for (const combatant of combat.combatants) {
-      if (combatant.ref.kind !== "monster") continue;
-      const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+    for (const m of this.shownMonsters(combat, hpOverride, focus)) {
       const hp = hpOverride?.get(m.id)?.hp ?? m.hp;
       const style = monsterStyle(m);
       if (hp <= 0) {
@@ -1148,6 +1155,15 @@ export class App implements ScreenContext {
         colorChunk(t("ui.statValueSuffix", { cur: hp, max: m.maxHp }), hpColorFor(hp, m.maxHp)),
       ]);
       const activeStatusEffects = hpOverride?.get(m.id)?.activeStatusEffects ?? m.activeStatusEffects;
+      const shell = hpOverride?.get(m.id)?.shell ?? m.shell;
+      if (shell) {
+        lines.push([
+          plainChunk("  "),
+          shell.state === "intact"
+            ? colorChunk(shell.hitsLeft === 1 ? t("ui.shellIntactOne") : t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
+            : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
+        ]);
+      }
       for (const eff of activeStatusEffects) {
         const def = getStatusEffect(eff.statusEffectId);
         const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
@@ -1209,6 +1225,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
@@ -1268,6 +1286,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":

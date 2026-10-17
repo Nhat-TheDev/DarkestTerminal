@@ -3,7 +3,7 @@ import { describeEffects, joinRanks } from "../effects";
 import { formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** What a skill adds on top of its per-rank effects: a bonus that needs a status, and an execute bonus. */
+/** What a skill adds on top of its per-rank effects: a bonus that needs a status, an execute bonus, a low-HP caster bonus, a coin flip, dice it grants and a turn-order push for the party. */
 function modifiers(skill: SkillDefinition): string[] {
   const out: string[] = [];
   const conditional = skill.conditionalBonus;
@@ -18,6 +18,22 @@ function modifiers(skill: SkillDefinition): string[] {
     if (execute.bonusDamagePercent !== undefined) bonus.push(`+${formatNumber(execute.bonusDamagePercent)}% damage`);
     out.push(`below ${formatNumber(execute.hpPercentThreshold)}% HP: ${bonus.join(", ")}`);
   }
+  const lowHp = skill.casterHpBelowBonus;
+  if (lowHp) {
+    const lifesteal = lowHp.lifestealPercent ? `, ${formatNumber(lowHp.lifestealPercent)}% lifesteal` : "";
+    out.push(`caster below ${formatNumber(lowHp.hpPercentThreshold)}% HP: +${formatNumber(lowHp.offenseMultiplierPercentBonus)}% offense${lifesteal}`);
+  }
+  const coin = skill.coinFlip;
+  if (coin) {
+    const statuses = (coin.loseSelfStatuses ?? []).map((s) => `status ${s.statusEffectId} on the caster (${formatNumber(s.durationTurns)} turns)`);
+    const lose = ["no damage", ...statuses, ...(coin.resetCooldownOnLose ? ["cooldown reset"] : [])].join(", ");
+    out.push(`coin flip: ${formatNumber(coin.winChance * 100)}% to resolve, on a loss ${lose}`);
+  }
+  if (skill.grantsDice) out.push(`+${formatNumber(skill.grantsDice)} dice`);
+  if (skill.alwaysHits) out.push("cannot miss or be dodged");
+  if (skill.hpCost) out.push(`HP cost ${formatNumber(skill.hpCost.atFullHpPercent)}% max HP at full health, down to ${formatNumber(skill.hpCost.atLowHpPercent)}% below ${formatNumber(skill.hpCost.lowHpBelowPercent)}%`);
+  if (skill.targetsOtherAlliesOnly) out.push("not on the caster");
+  if (skill.allyTurnOrderBonus) out.push(`the rest of the party +${formatNumber(skill.allyTurnOrderBonus)} speed for turn order this round`);
   return out;
 }
 

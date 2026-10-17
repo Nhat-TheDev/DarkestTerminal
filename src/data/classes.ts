@@ -17,6 +17,9 @@ function normalizeRankedSkill(skill: SkillDefinition): SkillDefinition {
 
 export const CLASSES = classesJson as unknown as CharacterClass[];
 
+/** The basic attack (slot 0), 5 class skills (slots 1-5) and the ultimate (slot 6). */
+export const SKILLS_PER_CLASS = 7;
+
 /** Every status a passive names must exist, so a typo fails at load rather than mid-fight. */
 export function validatePassiveStatusIds(classId: string, passive: PassiveSkillDefinition): void {
   const check = (where: string, field: string, ids: Id[]) => {
@@ -30,6 +33,8 @@ export function validatePassiveStatusIds(classId: string, passive: PassiveSkillD
   }
   check("skill", "requiresTargetStatusId", passive.requiresTargetStatusId ? [passive.requiresTargetStatusId] : []);
   check("skill", "debuffPool", passive.debuffPool ?? []);
+  check("skill", "stackBurst.statusEffectId", passive.stackBurst ? [passive.stackBurst.statusEffectId] : []);
+  check("skill", "growthSwapStatusIds", Object.values(passive.growthSwapStatusIds ?? {}).flatMap((ids) => [ids.up, ids.down]));
   if (passive.cloneSummonCastId !== undefined && !SUMMON_CASTS.some((c) => c.id === passive.cloneSummonCastId)) {
     throw new Error(`data/classes.json: class "${classId}"'s passive names an unknown cloneSummonCastId "${passive.cloneSummonCastId}"`);
   }
@@ -37,8 +42,8 @@ export function validatePassiveStatusIds(classId: string, passive: PassiveSkillD
 
 if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined");
 for (const cls of CLASSES) {
-  if (cls.skills.length !== 6) {
-    throw new Error(`data/classes.json: class "${cls.id}" must have exactly 6 skills (has ${cls.skills.length})`);
+  if (cls.skills.length !== SKILLS_PER_CLASS) {
+    throw new Error(`data/classes.json: class "${cls.id}" must have exactly ${SKILLS_PER_CLASS} skills (has ${cls.skills.length})`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
 

@@ -1,7 +1,8 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { getCatalog, computeCharacter, computeMonster, computeDamage, computeSkillPreview, computeMatchup, simulateLevelByDepth } from "./calc";
-import type { MonsterTier } from "../../src/types";
+import type { MonsterArchetype, MonsterTier, SkillDefinition } from "../../src/types";
+import { MONSTER_ARCHETYPES, MONSTER_SKILLS, assertMonsterDataConsistent, assertMonsterKitConsistent } from "../../src/data/monsters";
 import type { FearTier } from "../../src/engine/resolver";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
@@ -52,7 +53,7 @@ function applyNumericPatch(target: Record<string, unknown>, patch: Record<string
 const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const;
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
 const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed", "expReward"] as const;
-const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "executeCooldownTurns", "defensiveLowHpSkillChance"] as const;
+const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "defensiveLowHpSkillChance"] as const;
 const BALANCE_SURVIVAL_FIELDS = [
   "initialFear", "initialSatiety", "satietyDrainCombat", "satietyDrainEvent", "exhaustedThreshold",
   "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",
@@ -191,6 +192,35 @@ const ENTITY_FILES: Record<EntityType, string> = {
   status: "status-effects.json",
   "monster-skill": "monster-skills.json",
 };
+
+/**
+ * The same checks the game runs when data/monsters.json and data/monster-skills.json load, run on the
+ * catalog as it would be after this write — so the editor refuses an edit that would stop the game
+ * (and this server, which imports the same loaders) from starting. A status edit is checked for the
+ * one thing that would break them: removing or renaming an id a monster skill or shell still names.
+ */
+function monsterCatalogError(entityType: EntityType, entries: { id: string }[]): string | null {
+  try {
+    if (entityType === "monster" || entityType === "monster-skill") {
+      const archetypes = entityType === "monster" ? (entries as unknown as MonsterArchetype[]) : MONSTER_ARCHETYPES;
+      const skills = entityType === "monster-skill" ? (entries as unknown as SkillDefinition[]) : MONSTER_SKILLS;
+      assertMonsterDataConsistent(archetypes);
+      assertMonsterKitConsistent(archetypes, skills);
+    }
+    if (entityType === "status") {
+      const ids = new Set(entries.map((e) => e.id));
+      const named = [
+        ...MONSTER_SKILLS.flatMap((s) => [...(s.effects ?? []), ...(s.chargeEffects ?? [])].flatMap((e) => [e.statusEffectId, ...(e.alsoApplyStatusEffectIds ?? [])])),
+        ...MONSTER_ARCHETYPES.flatMap((a) => (a.shell ? [a.shell.breakStatusId] : [])),
+      ].filter((id): id is string => id !== undefined);
+      const missing = named.find((id) => !ids.has(id));
+      if (missing) return `Status "${missing}" is still used by a monster skill or shell.`;
+    }
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  return null;
+}
 
 function validateEntry(entry: unknown): string | null {
   if (typeof entry !== "object" || entry === null) return "Entry must be an object.";
@@ -487,6 +517,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
         if (pairingError) return badRequest(pairingError);
         entries.push(entry);
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         // Must run BEFORE writeJsonFile below: monsters.json is statically imported by src/data/monsters.ts,
         // so writing it makes `bun --watch` restart this very process — any await placed after that write
         // races the restart and can be cut off before it runs (sprites.json is never statically imported,
@@ -509,6 +541,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
         if (pairingError) return badRequest(pairingError);
         entries[index] = entry;
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         await writeJsonFile(file, entries);
         return json({ ok: true });
       }
@@ -520,6 +554,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(entries[index], undefined) : null;
         if (pairingError) return badRequest(pairingError);
         entries.splice(index, 1);
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         await writeJsonFile(file, entries);
         return json({ ok: true });
       }

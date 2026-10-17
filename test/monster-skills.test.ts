@@ -1,10 +1,11 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
 import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { runMonsterTurn } from "../src/engine/monsterAI";
 import type { MonsterArchetype } from "../src/types";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
-import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { makeCtx, spawnInto, pickAnyAction, sk, withFixture } from "./helpers";
 
 describe("elite/boss skill kit", () => {
   function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
@@ -15,7 +16,7 @@ describe("elite/boss skill kit", () => {
   }
 
   test("elite/boss pick from a weighted action pool; skill kit and basic attack are both reachable", () => {
-
+    const kitNames = getArchetype("skeleton-guard").skillIds.map((id) => getMonsterSkill(id).name);
     let sawNamedKit = false;
     let sawBasicAttack = false;
     for (let seed = 0; seed < 30 && !(sawNamedKit && sawBasicAttack); seed++) {
@@ -27,9 +28,7 @@ describe("elite/boss skill kit", () => {
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
-        if (monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave") || l.text.includes("finishing blow") || l.text.includes("Crush"))) {
-          sawNamedKit = true;
-        }
+        if (monsterLines.some((l) => kitNames.some((name) => l.text.includes(name)))) sawNamedKit = true;
         if (monsterLines.some((l) => l.text.includes("attacks"))) sawBasicAttack = true;
       }
     }
@@ -48,88 +47,79 @@ describe("elite/boss skill kit", () => {
     resolveRound(combat, ctx);
     const monsterLines = combat.log.filter((l) => l.text.startsWith(monster.name));
     expect(monsterLines.some((l) => l.text.includes("attacks"))).toBe(true);
-    expect(monsterLines.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
+    const kitNames = getArchetype("skeleton-guard").skillIds.map((id) => getMonsterSkill(id).name);
+    expect(monsterLines.some((l) => kitNames.some((name) => l.text.includes(name)))).toBe(false);
   });
 
-  test("boss telegraphs Finishing Blow 1 turn ahead, then releases a flat hit", () => {
+  test("a boss's telegraph charges one turn, then releases on its locked target", () => {
     const { ctx } = makeCtx();
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
-
-    boss.maxHp = 1000;
-    boss.hp = 1000;
+    boss.maxHp = 5000;
+    boss.hp = 5000;
     ctx.monsters.push(boss);
     const combat = startCombat("r1", [boss.id], ctx, false);
 
     let charged = false;
-    for (let round = 0; round < 10 && combat.phase !== "over" && !charged; round++) {
+    for (let round = 0; round < 20 && combat.phase !== "over" && !charged; round++) {
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      charged = combat.log.some((l) => l.text.includes("begins charging"));
+      charged = boss.charging !== undefined;
     }
     expect(charged).toBe(true);
-    expect(boss.isChargingExecute).toBe(true);
-    const markedTarget = ctx.party.find((p) => p.id === boss.executeTargetId);
-    expect(markedTarget).toBeDefined();
-    markedTarget!.hp = markedTarget!.maxHp;
+    expect(boss.charging!.skillId).toBe("overhead-cut");
+    expect(combat.log.some((l) => l.text.includes("draws back for Overhead Cut"))).toBe(true);
 
-    const hpBefore = markedTarget!.hp;
     queueTrivialActions(ctx, combat);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("unleashes its charged finishing blow") && l.text.includes(markedTarget!.name))).toBe(true);
-
-    const damageDealt = Math.max(0, hpBefore - markedTarget!.hp);
-    expect(damageDealt).toBeGreaterThan(markedTarget!.maxHp * 0.5);
-    expect(boss.isChargingExecute).toBe(false);
-    expect(boss.executeCooldownTurns).toBeGreaterThan(0);
+    expect(combat.log.some((l) => l.text.includes("unleashes Overhead Cut"))).toBe(true);
+    expect(boss.charging).toBeUndefined();
   });
 
-  test("elite cleave damages every living character when it fires", () => {
+  test("an elite's area skill damages every living character when it fires", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
-      const elite = spawnMonster("skeleton-guard", 1, { tier: "elite" });
+      const elite = spawnMonster("dragon", 1, { tier: "elite" });
+      elite.maxHp = elite.hp = 5000;
       ctx.monsters.push(elite);
       const combat = startCombat("r1", [elite.id], ctx, false);
       queueTrivialActions(ctx, combat);
       const hpBefore = new Map(ctx.party.filter((c) => c.isAlive).map((c) => [c.id, c.hp]));
       resolveRound(combat, ctx);
-      if (!combat.log.some((l) => l.text.includes("Sweeping Cleave"))) continue;
+      if (!combat.log.some((l) => l.text.includes("uses Fire Breath"))) continue;
       found = true;
-      const hitCount = [...hpBefore.entries()].filter(([id, hp]) => {
-        const c = ctx.party.find((p) => p.id === id)!;
-        return c.hp < hp;
-      }).length;
+      const hitCount = [...hpBefore.entries()].filter(([id, hp]) => ctx.party.find((p) => p.id === id)!.hp < hp).length;
       expect(hitCount).toBe(hpBefore.size);
     }
     expect(found).toBe(true);
   });
 
-  test("boss debuff (Crush) applies weakened, weakening the target's defense", () => {
+  test("a boss skill's status lands on the target it names", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
       const { ctx } = makeCtx(seed);
-      const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      const boss = spawnMonster("zombie-knight", 1, { tier: "boss" });
+      boss.maxHp = boss.hp = 5000;
       ctx.monsters.push(boss);
       const combat = startCombat("r1", [boss.id], ctx, false);
       queueTrivialActions(ctx, combat);
       resolveRound(combat, ctx);
-      if (!combat.log.some((l) => l.text.includes("Crush"))) continue;
+      if (!combat.log.some((l) => l.text.includes("gains the Enfeebled effect"))) continue;
       found = true;
-      const debuffed = ctx.party.find((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "weakened"));
-      expect(debuffed).toBeDefined();
+      expect(ctx.party.some((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "enfeebled"))).toBe(true);
     }
     expect(found).toBe(true);
   });
 
   test("every monster skill log line derives from the skill's own target, not from which weight key rolled it", () => {
-    // Single-target skills all name their target now, whatever tier or weight key produced them —
-    // a plain monster's skill and a boss's debuff used to print without one.
+    // Single-target skills all name their target now, whatever tier or weight key produced them.
     const lines: string[] = [];
     for (let seed = 0; seed < 40; seed++) {
-      for (const [id, tier] of [["dungeon-rat", "normal"], ["skeleton-guard", "boss"]] as const) {
+      for (const [id, tier] of [["dungeon-rat", "normal"], ["dragon", "boss"]] as const) {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
-        monster.executeCooldownTurns = 99;
+        // The telegraph is held off so every boss turn goes through the plain roll.
+        monster.skillCooldowns = { inferno: 99 };
         // makeCtx's party has 1 character per class — their combined opening damage would otherwise
         // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
         // which is what this test is actually checking for.
@@ -142,30 +132,26 @@ describe("elite/boss skill kit", () => {
       }
     }
     const bite = lines.find((l) => l.includes("uses Bite"));
-    const crush = lines.find((l) => l.includes("uses Crush"));
-    const cleave = lines.find((l) => l.includes("Sweeping Cleave"));
+    const rake = lines.find((l) => l.includes("uses Claw Rake"));
+    const breath = lines.find((l) => l.includes("uses Fire Breath"));
     expect(bite).toMatch(/^Dungeon Rat uses Bite on .+\.$/);
-    expect(crush).toMatch(/^Skeleton Guard \(Boss\) uses Crush on .+\.$/);
-    expect(cleave).toBe("Skeleton Guard (Boss) uses Sweeping Cleave, sweeping the whole party!");
+    expect(rake).toMatch(/^Dragon \(Boss\) uses Claw Rake on .+\.$/);
+    expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party!");
   });
 
-  test("the-founder carries the full strike/cleave/execute/debuff kit, weighted for boss tier only", () => {
+  test("the-founder carries its own kit and two phases, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.skillIds).toEqual(["elite-strike-the-founder", "elite-cleave-the-founder", "boss-debuff-the-founder"]);
-    expect(founder.executeSkillId).toBe("boss-execute-the-founder");
-    expect(getMonsterSkill("elite-strike-the-founder").target).toBe("singleEnemy");
-    expect(getMonsterSkill("elite-cleave-the-founder").target).toBe("allEnemies");
-    expect(founder.actionWeights?.boss).toEqual({
-      basicAttack: 30,
-      "elite-strike-the-founder": 20,
-      "elite-cleave-the-founder": 15,
-      "boss-debuff-the-founder": 35,
-    });
+    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "hung-lower", "the-last-of-it"]);
+    expect(getMonsterSkill("everything-you-asked-for").telegraph).toBe(true);
+    expect(getMonsterSkill("paid-in-full").targetCount).toEqual({ min: 2, max: 3 });
+    expect(getMonsterSkill("the-same-price").target).toBe("allEnemies");
+    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "everything-you-asked-for", "paid-in-full", "the-same-price", "whats-left-listening"]);
+    expect(founder.phases!.map((p) => p.onEnterSkillId)).toEqual(["hung-lower", "the-last-of-it"]);
     // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });
 
-  test("the-founder actually reaches its strike and cleave in combat", () => {
+  test("the-founder actually reaches its multi-target strike and its area skill in combat", () => {
     const seen = new Set<string>();
     for (let seed = 0; seed < 80 && seen.size < 2; seed++) {
       const { ctx } = makeCtx(seed);
@@ -173,10 +159,10 @@ describe("elite/boss skill kit", () => {
       ctx.monsters.push(monster);
       const combat = startCombat("r1", [monster.id], ctx, false);
       for (let round = 0; round < 6 && seen.size < 2; round++) {
-        // Execute charges/releases on its own cycle and bypasses the weighted pool entirely;
-        // hold it off so every boss turn goes through pickMonsterAction().
-        monster.executeCooldownTurns = 99;
-        monster.isChargingExecute = false;
+        // The telegraph charges/releases on its own cycle; hold it off so every boss turn
+        // goes through the strike/cleave roll.
+        monster.skillCooldowns = { "everything-you-asked-for": 99 };
+        monster.charging = undefined;
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         if (combat.log.some((l) => l.text.includes("Paid In Full"))) seen.add("strike");
@@ -247,8 +233,8 @@ describe("regular monster skills", () => {
   test("Skeleton Guard does nothing but a basic attack at normal tier, and has its full kit above it", () => {
     const guard = getArchetype("skeleton-guard");
     expect(guard.actionWeights?.normal).toEqual({ basicAttack: 100 });
-    expect(guard.skillIds).toEqual(["elite-strike-skeleton-guard", "elite-cleave-skeleton-guard", "boss-debuff-skeleton-guard"]);
-    expect(guard.executeSkillId).toBe("boss-execute-skeleton-guard");
+    expect(guard.skillIds).toEqual(["hold-the-line", "shield-bash", "riposte-stance", "overhead-cut"]);
+    expect(getMonsterSkill("overhead-cut").telegraph).toBe(true);
   });
 
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
@@ -316,13 +302,13 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
     expect(attackCount).toBeGreaterThan(0);
   });
 
-  test("a defensive archetype whose only skills target enemies never turns one on itself below 40% HP", () => {
-    // Skeleton Guard is defensive, spawns at normal tier in ordinary combat rooms, and since
-    // skillIds became "every skill at any tier" its first entry is Cleaving Strike. Picking by
-    // position instead of by target would have it hitting itself.
+  test("a defensive archetype never reaches for a kit its normal weights do not name, below 40% HP", () => {
+    // Skeleton Guard is defensive and spawns at normal tier in ordinary combat rooms, while its
+    // skillIds hold its guard-room kit — self-targeted guard skills included. The low-HP branch
+    // only considers a self skill the tier's own weights name, so the normal tier never reaches them.
     const guard = getArchetype("skeleton-guard");
-    expect(guard.skillIds.length).toBeGreaterThan(0);
-    expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(false);
+    expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(true);
+    expect(Object.keys(guard.actionWeights!.normal!)).toEqual(["basicAttack"]);
 
     for (let seed = 0; seed < 30; seed++) {
       const { ctx } = makeCtx(seed);
@@ -332,7 +318,8 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
       const hpBefore = monster.hp;
       resolveRound(combat, ctx);
       expect(monster.hp).toBe(hpBefore);
-      expect(combat.log.some((l) => l.text.includes("Cleaving Strike") || l.text.includes("Sweeping Cleave"))).toBe(false);
+      const kitNames = guard.skillIds.map((id) => getMonsterSkill(id).name);
+      expect(combat.log.some((l) => kitNames.some((name) => l.text.includes(name)))).toBe(false);
     }
   });
 
@@ -468,37 +455,37 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
     return hits;
   }
 
-  // Vanguard has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
+  // Knight has the highest baseAggro in the party, Mage and Plague Doctor the lowest.
   test("an aggressive archetype hits the highest-aggro character more than the lowest", () => {
     const hits = countTargets("skeleton");
     expect(getArchetype("skeleton").aiPattern).toBe("aggressive");
-    expect(hits.get("vanguard") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
+    expect(hits.get("knight") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
   });
 
   test("an opportunistic archetype reverses that — the lowest-aggro character is hit more", () => {
     const hits = countTargets("skeleton-archer");
     expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
-    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("vanguard") ?? 0);
+    expect(hits.get("mage") ?? 0).toBeGreaterThan(hits.get("knight") ?? 0);
   });
 
-  test("taunting pulls attacks toward the Vanguard for aggressive, and away from it for opportunistic", () => {
-    function hitsOnVanguardWithTaunt(archetypeId: string): number {
+  test("taunting pulls attacks toward the Knight for aggressive, and away from it for opportunistic", () => {
+    function hitsOnKnightWithTaunt(archetypeId: string): number {
       let n = 0;
       for (let seed = 0; seed < 300; seed++) {
         const { ctx } = makeCtx(seed);
         const monster = spawnInto(ctx, archetypeId);
-        const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-        vanguard.aggro += 40; // what Shield Guard's taunt status is worth
+        const knight = ctx.party.find((c) => c.classId === "knight")!;
+        knight.aggro += 40; // what the taunt status is worth
         const combat = startCombat("r1", [monster.id], ctx, false);
         resolveRound(combat, ctx);
-        if (combat.log.some((l) => l.text.includes(`attacks ${vanguard.name}`))) n++;
+        if (combat.log.some((l) => l.text.includes(`attacks ${knight.name}`))) n++;
       }
       return n;
     }
     // This is the deliberate trade-off of the mirrored rule, not an accident: against an
-    // opportunistic archetype, taunting makes the Vanguard *safer* and the rest of the party
+    // opportunistic archetype, taunting makes the Knight *safer* and the rest of the party
     // more exposed.
-    expect(hitsOnVanguardWithTaunt("skeleton")).toBeGreaterThan(hitsOnVanguardWithTaunt("skeleton-archer"));
+    expect(hitsOnKnightWithTaunt("skeleton")).toBeGreaterThan(hitsOnKnightWithTaunt("skeleton-archer"));
   });
 
   test("a single surviving character is still a valid target for both patterns", () => {
@@ -511,5 +498,217 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
       resolveRound(combat, ctx);
       expect(combat.log.some((l) => l.text.includes(survivor.name))).toBe(true);
     }
+  });
+});
+
+
+describe("monster AI rules, driven by fixture kits", () => {
+
+  function bossFight(seed = 1) {
+    const { ctx } = makeCtx(seed);
+    const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+    boss.maxHp = 100000;
+    boss.hp = 100000;
+    ctx.monsters.push(boss);
+    for (const c of ctx.party) {
+      c.maxHp = 1e9;
+      c.hp = 1e9;
+    }
+    const combat = startCombat("r1", [boss.id], ctx, true);
+    const turn = () => runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+    const uses = (name: string) => combat.log.filter((l) => l.text.includes(`uses ${name}`)).length;
+    return { ctx, boss, combat, turn, uses };
+  }
+  const kill = (c: { hp: number; isAlive: boolean }) => {
+    c.hp = 0;
+    c.isAlive = false;
+  };
+  const targetsOf = (text: string, skill: string) =>
+    text
+      .slice(text.indexOf(`uses ${skill} on `) + `uses ${skill} on `.length)
+      .replace(/\.$/, "")
+      .split(/, | and /);
+
+  test("a skill's cooldown holds it back for exactly that many of the monster's own turns", () => {
+    withFixture([sk("fx-a", { cooldownTurns: 2 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      expect(boss.skillCooldowns!["fx-a"]).toBe(1);
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      turn();
+      expect(uses("fx-a")).toBe(2);
+    });
+  });
+
+  test("initialCooldownTurns keeps a skill out of the opening turns", () => {
+    withFixture([sk("fx-a", { initialCooldownTurns: 2 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { turn, uses } = bossFight();
+      turn();
+      turn();
+      expect(uses("fx-a")).toBe(0);
+      turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("usesPerCombat caps how often a skill fires", () => {
+    withFixture([sk("fx-a", { usesPerCombat: 1 })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { turn, uses } = bossFight();
+      for (let i = 0; i < 10; i++) turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("aiCondition makes a skill a candidate only while it holds", () => {
+    withFixture([sk("fx-a", { aiCondition: { selfHpBelowPercent: 50 } })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      for (let i = 0; i < 20; i++) turn();
+      expect(uses("fx-a")).toBe(0);
+      boss.hp = boss.maxHp * 0.4;
+      turn();
+      expect(uses("fx-a")).toBe(1);
+    });
+  });
+
+  test("an aiRule that multiplies a weight to 0 removes the skill from the pick", () => {
+    const rule = { if: { selfHpBelowPercent: 50 }, weightMultiplier: 0 };
+    withFixture([sk("fx-a", { aiRules: [rule] })], { actionWeights: { boss: { basicAttack: 50, "fx-a": 50 } } }, () => {
+      const { boss, turn, uses } = bossFight();
+      boss.hp = boss.maxHp * 0.4;
+      for (let i = 0; i < 30; i++) turn();
+      expect(uses("fx-a")).toBe(0);
+    });
+  });
+
+  test("targetRules steer a single-target skill toward the matching target", () => {
+    const rule = { if: { targetHasStatusId: "bleeding" }, weightMultiplier: 1000 };
+    withFixture([sk("fx-a", { targetRules: [rule] })], { actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      const marked = ctx.party[2]!;
+      marked.activeStatusEffects.push({ statusEffectId: "bleeding", turnsRemaining: 99 });
+      for (let i = 0; i < 20; i++) turn();
+      const onMarked = combat.log.filter((l) => l.text.includes(`uses fx-a on ${marked.name}.`)).length;
+      expect(onMarked).toBeGreaterThanOrEqual(18);
+    });
+  });
+
+  test("a telegraph charges without dealing damage, then releases on the locked target", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, effects: [{ kind: "damage", amount: 50 }] })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { ctx, boss, combat, turn } = bossFight();
+      const hp = () => ctx.party.map((c) => c.hp);
+      const before = hp();
+      turn();
+      expect(combat.log.some((l) => l.text.includes("draws back for fx-t"))).toBe(true);
+      expect(hp()).toEqual(before);
+      expect(boss.charging!.skillId).toBe("fx-t");
+      expect(boss.charging!.targetIds.length).toBe(1);
+      expect(boss.skillCooldowns!["fx-t"]).toBe(3);
+      const lockedId = boss.charging!.targetIds[0]!;
+      turn();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+      expect(boss.charging).toBeUndefined();
+      const changed = ctx.party.filter((c, i) => c.hp !== before[i]);
+      expect(changed.map((c) => c.id)).toEqual([lockedId]);
+    });
+  });
+
+  test("a telegraph whose locked target died re-picks a living one", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { ctx, boss, combat, turn } = bossFight();
+      turn();
+      const locked = ctx.party.find((c) => c.id === boss.charging!.targetIds[0])!;
+      kill(locked);
+      turn();
+      expect(boss.charging).toBeUndefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+    });
+  });
+
+  test("a stun delays a charged release instead of cancelling it", () => {
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 6 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { boss, combat, turn } = bossFight();
+      turn();
+      boss.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+      turn();
+      expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
+      expect(boss.charging).toBeDefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(false);
+      boss.activeStatusEffects = [];
+      turn();
+      expect(boss.charging).toBeUndefined();
+      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
+    });
+  });
+
+  test("chargeEffects resolve on the caster during the charge turn", () => {
+    const charge = [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }];
+    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, chargeEffects: charge })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
+      const { boss, turn } = bossFight();
+      turn();
+      expect(boss.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+    });
+  });
+
+  test("a phase is entered once, casts its onEnterSkillId, and replaces the weights", () => {
+    const phases = [{ tier: "boss", hpBelowPercent: 50, weights: { "fx-b": 1 }, onEnterSkillId: "fx-p" }];
+    withFixture([sk("fx-a"), sk("fx-b"), sk("fx-p", { target: "self", effects: [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }] })], { phases, actionWeights: { boss: { "fx-a": 100 } } }, () => {
+      const { boss, combat, turn, uses } = bossFight();
+      turn();
+      expect(uses("fx-a")).toBe(1);
+      boss.hp = boss.maxHp * 0.4;
+      turn();
+      expect(combat.log.some((l) => l.text.includes("fights has changed"))).toBe(true);
+      expect(uses("fx-p")).toBe(1);
+      for (let i = 0; i < 5; i++) turn();
+      expect(uses("fx-p")).toBe(1);
+      expect(uses("fx-a")).toBe(1);
+      expect(uses("fx-b")).toBe(5);
+      expect(boss.enteredPhaseIndexes).toEqual([0]);
+    });
+  });
+
+  test("targetCount hits that many distinct enemies, capped at the living count", () => {
+    withFixture([sk("fx-m", { targetCount: { min: 3, max: 3 } })], { actionWeights: { boss: { "fx-m": 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      turn();
+      const first = combat.log.find((l) => l.text.includes("uses fx-m on"))!;
+      const names = targetsOf(first.text, "fx-m");
+      expect(names.length).toBe(3);
+      expect(new Set(names).size).toBe(3);
+      for (const c of ctx.party.slice(2)) kill(c);
+      turn();
+      const second = combat.log.filter((l) => l.text.includes("uses fx-m on")).at(-1)!;
+      expect(targetsOf(second.text, "fx-m").length).toBe(2);
+    });
+  });
+
+  test('targeting "random" ignores aggro', () => {
+    withFixture([], { targeting: "random", skillIds: [], actionWeights: { boss: { basicAttack: 100 } } }, () => {
+      const { ctx, combat, turn } = bossFight();
+      const loud = ctx.party[0]!;
+      loud.aggro = 10000;
+      for (let i = 0; i < 200; i++) turn();
+      const aimed = combat.log.filter((l) => l.text.includes(`attacks ${loud.name}.`) || l.text.includes(`on ${loud.name}.`) || l.text.includes(`attack on ${loud.name} out`));
+      const all = combat.log.filter((l) => l.text.includes(" attacks ") || l.text.includes("misses its attack"));
+      expect(all.length).toBeGreaterThan(100);
+      expect(aimed.length / all.length).toBeLessThan(0.5);
+    });
+  });
+});
+
+describe("a monster's area skill that deals no damage", () => {
+  test("logs as a plain use, not as a sweep across the party", () => {
+    const cry = sk("fx-cry", { target: "allEnemies", effects: [{ kind: "modifyStat", stat: "fear", amount: 1 }] });
+    withFixture([cry], { actionWeights: { boss: { "fx-cry": 100 } } }, () => {
+      const { ctx } = makeCtx(1);
+      const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+      ctx.monsters.push(boss);
+      const combat = startCombat("r1", [boss.id], ctx, true);
+      runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+      expect(combat.log.some((l) => l.text === `${boss.name} uses fx-cry.`)).toBe(true);
+      expect(combat.log.some((l) => l.text.includes("sweeping the whole party"))).toBe(false);
+    });
   });
 });

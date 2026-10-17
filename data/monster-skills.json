@@ -289,181 +289,381 @@
     "unlockLevel": 1
   },
   {
-    "id": "elite-strike-skeleton-guard",
-    "name": "Cleaving Strike",
-    "description": "Brings the weapon straight down from full height, with the whole length of the arm behind it.",
+    "id": "hold-the-line",
+    "name": "Hold the Line",
+    "description": "Sets its feet on the worn ring and stops giving ground.",
     "mpCost": 0,
-    "target": "singleEnemy",
+    "target": "self",
     "effects": [
-      {
-        "kind": "damage",
-        "amount": 26
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-skeleton-guard",
-    "name": "Sweeping Cleave",
-    "description": "Sweeps the weapon level across the whole line at once, at the height of the hip.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-skeleton-guard",
-    "name": "Crush",
-    "description": "A blow to the shoulder that knocks the guard out of true and leaves the arm slow to come back.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
-      },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
-        "durationTurns": 2
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-execute-skeleton-guard",
-    "name": "Finishing Blow",
-    "description": "Plants its feet and raises the weapon to full stretch, and holds it there over a single head.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-strike-giant-spider",
-    "name": "Venomous Bite",
-    "description": "Fangs in to the root, and held there a moment longer than it takes.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 26
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-giant-spider",
-    "name": "Web Barrage",
-    "description": "Throws a fan of web across the room and catches every one of you in some part of it.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-giant-spider",
-    "name": "Web Trap",
-    "description": "A bite shallow enough to miss, and a dark line that starts up the limb from it.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
-      },
-      {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "poisoned",
+        "statusEffectId": "held-ground",
         "durationTurns": 3
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "cooldownTurns": 3,
+    "aiRules": [
+      {
+        "if": {
+          "selfHpBelowPercent": 50
+        },
+        "weightMultiplier": 3
+      }
+    ],
+    "aiCondition": {
+      "selfLacksStatusId": "held-ground"
+    }
   },
   {
-    "id": "boss-execute-giant-spider",
-    "name": "Death Bite",
-    "description": "Rears onto its hind legs, fangs spread, and fixes on a single throat.",
+    "id": "shield-bash",
+    "name": "Shield Bash",
+    "description": "The shield edge, driven into the forearm that was raised to stop it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "amount": 18,
+        "offenseMultiplierPercent": 170
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "enfeebled",
+        "durationTurns": 2,
+        "chance": 0.5
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "elite-strike-dragon",
+    "id": "riposte-stance",
+    "name": "Riposte Stance",
+    "description": "The blade comes back to the guard and waits there for something to answer.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "riposte",
+        "durationTurns": 1
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3
+  },
+  {
+    "id": "overhead-cut",
+    "name": "Overhead Cut",
+    "description": "The weapon goes up to full height and stays there over one head.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 55,
+        "ignoreDefensePercent": 40,
+        "offenseMultiplierPercent": 90
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 5,
+    "initialCooldownTurns": 1
+  },
+  {
+    "id": "web-barrage",
+    "name": "Web Barrage",
+    "description": "Strands thrown in loose handfuls, at whoever is still moving freely.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 10,
+        "offenseMultiplierPercent": 40
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "webbed",
+        "durationTurns": 2,
+        "chance": 0.6
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetCount": {
+      "min": 2,
+      "max": 3
+    },
+    "cooldownTurns": 2,
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "webbed"
+        },
+        "weightMultiplier": 3
+      }
+    ]
+  },
+  {
+    "id": "venom-bite",
+    "name": "Venom Bite",
+    "description": "Fangs, for whatever the web is holding still.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 22,
+        "offenseMultiplierPercent": 60
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned-ii",
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "webbed"
+        },
+        "weightMultiplier": 3
+      }
+    ]
+  },
+  {
+    "id": "cocoon",
+    "name": "Cocoon",
+    "description": "It turns the caught one over and over until there is nothing left to struggle with.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 30,
+        "offenseMultiplierPercent": 150
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned",
+        "durationTurns": 1
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "poisoned-iii",
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 4,
+    "initialCooldownTurns": 2,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "webbed"
+        },
+        "weightMultiplier": 4
+      }
+    ]
+  },
+  {
+    "id": "feed",
+    "name": "Feed",
+    "description": "Taken slowly, from the one that has stopped fighting back.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 24,
+        "offenseMultiplierPercent": 110
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "executeBonus": {
+      "hpPercentThreshold": 40,
+      "bonusDamagePercent": 60
+    },
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "poisoned"
+        },
+        "weightMultiplier": 3
+      },
+      {
+        "if": {
+          "targetHpBelowPercent": 40
+        },
+        "weightMultiplier": 2
+      }
+    ]
+  },
+  {
+    "id": "into-the-rafters",
+    "name": "Into the Rafters",
+    "description": "It is overhead now, in the part of the dark the torch never reaches.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "airborne",
+        "durationTurns": 1
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "claw-rake",
     "name": "Claw Rake",
-    "description": "A claw brought down like a roof coming in.",
+    "description": "A claw brought down like a roof coming in, and sometimes the other one after it.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 14,
+        "hitCountRange": {
+          "min": 1,
+          "max": 2
+        },
+        "offenseMultiplierPercent": 65
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "elite-cleave-dragon",
+    "id": "dragon-fire-breath",
     "name": "Fire Breath",
-    "description": "The breath comes out in one long sweep and reaches the walls on either side.",
+    "description": "One long sweep of flame that reaches the walls on either side.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 10,
+        "offenseMultiplierPercent": 55
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning",
+        "durationTurns": 2,
+        "chance": 0.5
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 2,
+    "aiRules": [
+      {
+        "if": {
+          "targetsBelowHpPercent": 50,
+          "atLeast": 2
+        },
+        "weightMultiplier": 2
+      }
+    ]
+  },
+  {
+    "id": "brand",
+    "name": "Brand",
+    "description": "It breathes on the old burn, slowly, until it takes.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 12,
+        "offenseMultiplierPercent": 90
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning-vulnerable",
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "burning"
+        },
+        "weightMultiplier": 4
+      }
+    ]
+  },
+  {
+    "id": "inferno",
+    "name": "Inferno",
+    "description": "It climbs out of reach, and the air at the top of the room starts to glow.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 34,
+        "offenseMultiplierPercent": 130
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 5,
+    "initialCooldownTurns": 3,
+    "chargeEffects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "airborne",
+        "durationTurns": 1
+      }
+    ]
+  },
+  {
+    "id": "old-fire-wakes",
+    "name": "Old Fire Wakes",
+    "description": "The heat comes off it in a new way, from somewhere it had kept closed.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "empower",
+        "durationTurns": 99
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-dragon",
-    "name": "Scorching Breath",
-    "description": "Catches a single fighter at the edge of the flame, and the fire goes on burning there after the breath is gone.",
+    "id": "diseased-blade",
+    "name": "Diseased Blade",
+    "description": "The edge is black with what has been growing on it, and the arm it opens goes slack.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 24
+        "amount": 24,
+        "offenseMultiplierPercent": 285
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "burning",
+        "statusEffectId": "enfeebled",
         "durationTurns": 2
       }
     ],
@@ -471,61 +671,311 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-dragon",
-    "name": "Inferno Bite",
-    "description": "Lowers the head, slowly, until the open jaw is level with one chosen fighter.",
+    "id": "guard-position",
+    "name": "Guard Position",
+    "description": "The next position in the sequence, taken correctly, as it always is.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "guard-ii",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3
+  },
+  {
+    "id": "undying",
+    "name": "Undying",
+    "description": "It goes down, and then it is getting up again, as if the first time did not count.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "heal",
+        "amount": 0,
+        "maxHpPercent": 35
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "usesPerCombat": 1,
+    "aiCondition": {
+      "selfHpBelowPercent": 30
+    }
+  },
+  {
+    "id": "rotting-embrace",
+    "name": "Rotting Embrace",
+    "description": "Both arms open, the way a guard opens to let someone in close.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 50,
+        "offenseMultiplierPercent": 225
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "agony",
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 4,
+    "initialCooldownTurns": 3
+  },
+  {
+    "id": "salute",
+    "name": "Salute",
+    "description": "It turns to one of you and raises the blade to its face.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "challenged",
+        "durationTurns": 3
+      },
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": 8
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 4,
+    "aiRules": [
+      {
+        "if": {
+          "targetHasStatusId": "challenged"
+        },
+        "weightMultiplier": 0.2
+      }
+    ],
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "challenged"
+        },
+        "weightMultiplier": 5
+      }
+    ]
+  },
+  {
+    "id": "measured-cut",
+    "name": "Measured Cut",
+    "description": "Exactly as much as the opening allows, and the opening was its own.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 26,
+        "critChance": 0.25,
+        "offenseMultiplierPercent": 230
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "challenged"
+        },
+        "weightMultiplier": 5
+      }
+    ]
+  },
+  {
+    "id": "parry-stance",
+    "name": "Parry Stance",
+    "description": "The blade comes across the body and the whole of it closes behind.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "fortify",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3
+  },
+  {
+    "id": "dread-presence",
+    "name": "Dread Presence",
+    "description": "It stands without moving, and every one of you feels where it is looking.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": 6
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3
+  },
+  {
+    "id": "abyssal-judgment",
+    "name": "Abyssal Judgment",
+    "description": "The blade rises to its face again, slower, and then comes down on the one it was raised for.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
         "amount": 60,
-        "ignoreDefensePercent": 50
+        "offenseMultiplierPercent": 235
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned",
+        "durationTurns": 1
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 3,
+    "initialCooldownTurns": 2,
+    "aiCondition": {
+      "targetHasStatusId": "challenged"
+    },
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "challenged"
+        },
+        "weightMultiplier": 0
+      }
+    ]
   },
   {
-    "id": "elite-strike-zombie-knight",
-    "name": "Rusted Blade",
-    "description": "A straight cut with the blade, correct in every detail and slow to arrive.",
+    "id": "second-salute",
+    "name": "Second Salute",
+    "description": "It lowers the blade, looks at the rest of you, and chooses again.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "challenged",
+        "durationTurns": 3
+      },
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": 8
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "challenged"
+        },
+        "weightMultiplier": 5
+      }
+    ]
+  },
+  {
+    "id": "skullsplitter",
+    "name": "Skullsplitter",
+    "description": "Brought down on whoever is already on one knee.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 28,
+        "offenseMultiplierPercent": 120
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "executeBonus": {
+      "hpPercentThreshold": 30,
+      "bonusDamagePercent": 70
+    },
+    "targetRules": [
+      {
+        "if": {
+          "targetHpBelowPercent": 30
+        },
+        "weightMultiplier": 3
+      }
+    ]
   },
   {
-    "id": "elite-cleave-zombie-knight",
-    "name": "Rotting Swing",
-    "description": "Swings the blade through the whole line in one sweeping step, as the drill has it.",
+    "id": "call-the-warband",
+    "name": "Call the Warband",
+    "description": "It does not get up. It shouts, and something smaller comes running.",
     "mpCost": 0,
-    "target": "allEnemies",
+    "target": "self",
     "effects": [
       {
-        "kind": "damage",
-        "amount": 13
+        "kind": "summonMonster",
+        "monsterArchetypeId": "goblin",
+        "count": 1
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "cooldownTurns": 2,
+    "aiCondition": {
+      "alliesFewerThan": 1
+    }
   },
   {
-    "id": "boss-debuff-zombie-knight",
-    "name": "Diseased Strike",
-    "description": "A cut aimed at the buckles, where the armour was fitted for a body that no longer fills it.",
+    "id": "war-cry",
+    "name": "War Cry",
+    "description": "A roar the whole warband answers, louder each time.",
+    "mpCost": 0,
+    "target": "allAllies",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "rallied-ii",
+        "durationTurns": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3,
+    "aiRules": [
+      {
+        "if": {
+          "alliesFewerThan": 1
+        },
+        "weightMultiplier": 0.2
+      }
+    ]
+  },
+  {
+    "id": "rout",
+    "name": "Rout",
+    "description": "It wades through the line at whoever looks ready to break.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 24
+        "amount": 16,
+        "offenseMultiplierPercent": 70
       },
       {
         "kind": "applyStatusEffect",
@@ -534,196 +984,52 @@
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-execute-zombie-knight",
-    "name": "Grave Judgment",
-    "description": "Draws the blade back and holds it there, level with a single neck, while the armour creaks to a stop.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
+    "unlockLevel": 1,
+    "targetCount": {
+      "min": 2,
+      "max": 3
+    },
+    "targetRules": [
       {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "if": {
+          "targetHpBelowPercent": 50
+        },
+        "weightMultiplier": 2
       }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
+    ]
   },
   {
-    "id": "elite-strike-dark-knight",
-    "name": "Shadow Slash",
-    "description": "One downward stroke, drilled until it carries no wasted motion.",
+    "id": "gets-up",
+    "name": "Gets Up",
+    "description": "Now it gets up.",
     "mpCost": 0,
-    "target": "singleEnemy",
+    "target": "self",
     "effects": [
-      {
-        "kind": "damage",
-        "amount": 26
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-dark-knight",
-    "name": "Dark Wave",
-    "description": "The blade comes round and the dark comes with it, in a flat arc that takes the whole line at the knee.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-dark-knight",
-    "name": "Crushing Blow",
-    "description": "A pommel to the temple, short and unceremonious after all the ceremony.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
-      },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "stunned",
-        "durationTurns": 1
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-execute-dark-knight",
-    "name": "Abyssal Judgment",
-    "description": "Returns the blade to the salute, and the point of it settles on one of you.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-strike-orc-chieftain",
-    "name": "Skullsplitter",
-    "description": "Swings the heavy end of its weapon in a single downward arc, put where a helmet meets a neck.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 26
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-orc-chieftain",
-    "name": "Rout",
-    "description": "Turns on the spot with its arms out wide, driving everyone in reach back a pace at once.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-orc-chieftain",
-    "name": "Helm Crusher",
-    "description": "A flat, ringing blow to the head — the target is still upright, but nothing gets through to them for a while.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
+        "statusEffectId": "bloodrage",
+        "durationTurns": 99
       },
       {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "stunned",
-        "durationTurns": 1
+        "kind": "summonMonster",
+        "monsterArchetypeId": "orc-brute",
+        "count": 1
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-orc-chieftain",
-    "name": "The Last Trophy",
-    "description": "Winds up slowly and unmistakably, watching one of them the whole time, then brings it all down.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-strike-vampire-lord",
+    "id": "crimson-talon",
     "name": "Crimson Talon",
-    "description": "One long nail opens a line where the armour gaps, unhurried, almost fastidious.",
+    "description": "A single nail, drawn across the throat with care.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-cleave-vampire-lord",
-    "name": "Scarlet Mist",
-    "description": "Bursts apart into a fine red haze that passes over the whole party and gathers again behind them.",
-    "mpCost": 0,
-    "target": "allEnemies",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-vampire-lord",
-    "name": "Opened Vein",
-    "description": "Finds the vessel it wants on the first try and leaves it running.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
+        "amount": 20,
+        "offenseMultiplierPercent": 80
       },
       {
         "kind": "applyStatusEffect",
@@ -735,131 +1041,203 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-vampire-lord",
+    "id": "drink",
+    "name": "Drink",
+    "description": "It goes where the blood is already coming, and stays a while.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 16,
+        "lifestealPercent": 60,
+        "scalesWithStatusStacks": {
+          "statusEffectId": "bleeding",
+          "percentPerStack": 20
+        },
+        "offenseMultiplierPercent": 85
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "bleeding"
+        },
+        "weightMultiplier": 5
+      }
+    ]
+  },
+  {
+    "id": "bat-swarm",
+    "name": "Bat Swarm",
+    "description": "It opens its coat, and the dark inside it comes apart into wings.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "summonMonster",
+        "monsterArchetypeId": "vampire-bat",
+        "count": 2
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3,
+    "aiCondition": {
+      "alliesFewerThan": 2
+    },
+    "aiRules": [
+      {
+        "if": {
+          "selfHpBelowPercent": 50
+        },
+        "weightMultiplier": 3
+      }
+    ]
+  },
+  {
+    "id": "final-draught",
     "name": "Final Draught",
-    "description": "Holds still, choosing, then closes the distance all at once on the one it has been watching.",
+    "description": "It has decided which of you it will finish, and it lets you see it decide.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "amount": 45,
+        "lifestealPercent": 100,
+        "offenseMultiplierPercent": 140
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 3,
+    "initialCooldownTurns": 3,
+    "targetRules": [
+      {
+        "if": {
+          "targetHasStatusId": "bleeding"
+        },
+        "weightMultiplier": 6
+      }
+    ]
   },
   {
-    "id": "elite-strike-void",
-    "name": "Grasping Remnant",
-    "description": "A limb that used to belong to something else reaches out of the mass and takes hold.",
+    "id": "grasping-remnants",
+    "name": "Grasping Remnants",
+    "description": "Several of the parts reach out at once, each for someone different.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 14,
+        "offenseMultiplierPercent": 70
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "shredded",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "targetCount": {
+      "min": 2,
+      "max": 3
+    }
   },
   {
-    "id": "elite-cleave-void",
+    "id": "unravelling-tide",
     "name": "Unravelling Tide",
-    "description": "Spills outward in every direction, and everything it washes over comes back a little less whole.",
+    "description": "It spills across the floor and what it touches comes loose at the seams.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-void",
-    "name": "Dissolution",
-    "description": "Presses against armour until the armour stops being armour.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
+        "amount": 12,
+        "offenseMultiplierPercent": 65
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "corroded",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "chance": 0.5
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-void",
-    "name": "Subsumed",
-    "description": "Goes quiet and turns its whole shapeless attention on one of them, then folds forward over that spot.",
+    "id": "old-work",
+    "name": "Old Work",
+    "description": "One of the parts goes back to what it used to do, and what it used to do was mend.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "regeneration",
+        "durationTurns": 3
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 5
+  },
+  {
+    "id": "subsume",
+    "name": "Subsume",
+    "description": "It folds over one of you, and comes back up a little larger.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "amount": 40,
+        "lifestealPercent": 50,
+        "offenseMultiplierPercent": 145
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "cooldownTurns": 3
   },
   {
-    "id": "elite-strike-ancient-golem",
+    "id": "stoneshear",
     "name": "Stoneshear",
-    "description": "Brings one slab of an arm down in a single unhurried motion that does not need to be fast.",
+    "description": "A slab of a fist, swung through where you were standing.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 34,
+        "offenseMultiplierPercent": 315
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "elite-cleave-ancient-golem",
+    "id": "tremor",
     "name": "Tremor",
-    "description": "Strikes the floor once, and the floor carries it to everyone standing on it.",
+    "description": "Its weight comes down and the floor carries it to everyone.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-ancient-golem",
-    "name": "Grinding Weight",
-    "description": "Leans in and bears down, and plate gives way the way soft ground does under a millstone.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
+        "amount": 12,
+        "offenseMultiplierPercent": 155
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "weakened",
+        "statusEffectId": "slowed",
         "durationTurns": 2
       }
     ],
@@ -867,104 +1245,196 @@
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-ancient-golem",
+    "id": "sealing-blow",
     "name": "Sealing Blow",
-    "description": "Draws back and holds there, weight gathered over one of them, for as long as it takes.",
+    "description": "Both arms go up to close a door that is no longer there.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "amount": 75,
+        "offenseMultiplierPercent": 310
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 6,
+    "initialCooldownTurns": 4
+  },
+  {
+    "id": "crumbling-shell",
+    "name": "Crumbling Shell",
+    "description": "Pieces of it come away, and what is underneath hits harder.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "empower",
+        "durationTurns": 99
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "elite-strike-lich",
+    "id": "withering-touch",
     "name": "Withering Touch",
-    "description": "Lays one dry hand on whatever is nearest and takes the years out of it.",
+    "description": "One dry hand, laid flat, and the years go out of whatever it touches.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 22,
+        "offenseMultiplierPercent": 135
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "withered",
+        "durationTurns": 3
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "elite-cleave-lich",
-    "name": "Grave Wind",
-    "description": "A cold draught out of somewhere deeper passes through the whole party at once.",
+    "id": "raise-the-dead",
+    "name": "Raise the Dead",
+    "description": "It says something to the floor, and the floor gives back what it was holding.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "summonMonster",
+        "monsterArchetypeId": "skeleton-mage",
+        "count": 1
+      },
+      {
+        "kind": "summonMonster",
+        "monsterArchetypeId": "skeleton",
+        "count": 1
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3,
+    "aiCondition": {
+      "alliesFewerThan": 2
+    }
+  },
+  {
+    "id": "ledger-mark",
+    "name": "Ledger Mark",
+    "description": "It looks at one of you for exactly as long as it takes to write something down.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "marked",
+        "durationTurns": 4
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "cooldownTurns": 3,
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "marked"
+        },
+        "weightMultiplier": 5
+      }
+    ],
+    "aiRules": [
+      {
+        "if": {
+          "targetHasStatusId": "marked"
+        },
+        "weightMultiplier": 0.2
+      }
+    ]
+  },
+  {
+    "id": "name-struck-out",
+    "name": "Name Struck Out",
+    "description": "Draws a slow line through the air in front of one of you, from left to right.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 65,
+        "offenseMultiplierPercent": 140
+      },
+      {
+        "kind": "removeStatusEffect",
+        "statusEffectId": "marked"
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 3,
+    "initialCooldownTurns": 1,
+    "aiCondition": {
+      "targetHasStatusId": "marked"
+    },
+    "targetRules": [
+      {
+        "if": {
+          "targetLacksStatusId": "marked"
+        },
+        "weightMultiplier": 0
+      }
+    ]
+  },
+  {
+    "id": "unhurried",
+    "name": "Unhurried",
+    "description": "It stops trying to be quick about any of this.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
       {
-        "kind": "damage",
-        "amount": 13
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "boss-debuff-lich",
-    "name": "Hollow Sight",
-    "description": "Meets someone's eyes, and afterwards they cannot be sure where anything in the room is.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 24
+        "kind": "applyStatusEffect",
+        "statusEffectId": "marked",
+        "durationTurns": 4
       },
       {
-        "kind": "applyStatusEffect",
-        "statusEffectId": "blinded",
-        "durationTurns": 2
+        "kind": "summonMonster",
+        "monsterArchetypeId": "skeleton",
+        "count": 2
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-lich",
-    "name": "Name Struck Out",
-    "description": "Regards one of them without moving, the way a clerk regards a line about to be crossed through.",
-    "mpCost": 0,
-    "target": "singleEnemy",
-    "effects": [
-      {
-        "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
-      }
-    ],
-    "slot": 0,
-    "unlockLevel": 1
-  },
-  {
-    "id": "elite-strike-the-founder",
+    "id": "paid-in-full",
     "name": "Paid In Full",
-    "description": "A rope of tissue snaps out of the dark and lands once, flat and heavy.",
+    "description": "Ropes of tissue snap out of the dark, two or three of them, each finding someone.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
       {
         "kind": "damage",
-        "amount": 26
+        "amount": 20,
+        "offenseMultiplierPercent": 115
       }
     ],
     "slot": 0,
-    "unlockLevel": 1
+    "unlockLevel": 1,
+    "targetCount": {
+      "min": 2,
+      "max": 3
+    }
   },
   {
-    "id": "elite-cleave-the-founder",
+    "id": "the-same-price",
     "name": "The Same Price",
     "description": "Every rope lashes out at once, and every one of you is struck, none harder than the rest.",
     "mpCost": 0,
@@ -972,14 +1442,16 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 16,
+        "ignoreDefensePercent": 100,
+        "offenseMultiplierPercent": 100
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-debuff-the-founder",
+    "id": "whats-left-listening",
     "name": "What's Left Listening",
     "description": "Something in the dark looks back at one of you, and afterwards the eyes are slow to answer.",
     "mpCost": 0,
@@ -987,19 +1459,25 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 24
+        "amount": 22,
+        "offenseMultiplierPercent": 155
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "blinded",
         "durationTurns": 2
+      },
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": 8
       }
     ],
     "slot": 0,
     "unlockLevel": 1
   },
   {
-    "id": "boss-execute-the-founder",
+    "id": "everything-you-asked-for",
     "name": "Everything You Asked For",
     "description": "Draws every rope in toward a single spot on the floor, and waits for someone to be standing on it.",
     "mpCost": 0,
@@ -1007,8 +1485,44 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "ignoreDefensePercent": 50
+        "amount": 70,
+        "ignoreDefensePercent": 40,
+        "offenseMultiplierPercent": 235
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true,
+    "cooldownTurns": 4,
+    "initialCooldownTurns": 4
+  },
+  {
+    "id": "hung-lower",
+    "name": "Hung Lower",
+    "description": "It lets itself down a little further into the light, and what hangs there begins to close.",
+    "mpCost": 0,
+    "target": "self",
+    "effects": [
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "knitting-ii",
+        "durationTurns": 6
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1
+  },
+  {
+    "id": "the-last-of-it",
+    "name": "The Last of It",
+    "description": "The ropes go slack. What hangs there now is smaller than it was, and it is not trying to keep any of it.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "modifyStat",
+        "stat": "fear",
+        "amount": 12
       }
     ],
     "slot": 0,

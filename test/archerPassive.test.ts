@@ -78,17 +78,17 @@ describe("Archer passive: character-level crit", () => {
 
   test("a non-Archer character's basic attack is unaffected by this passive", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.level = 35;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.level = 35;
     const skill = getSkill("slash");
     const combat = startCombat("test-room", [], ctx, false);
     const target = tankyTarget();
     const before = target.hp;
-    applySkillEffects(skill, vanguard, [target], combat, ctx, []);
+    applySkillEffects(skill, knight, [target], combat, ctx, []);
     const dealt = before - target.hp;
 
     const effect = skill.effects![0]!;
-    const base = (effect.amount ?? 0) + mitigatedOffense(vanguard.attack * ((effect.offenseMultiplierPercent ?? 100) / 100), target.defense);
+    const base = (effect.amount ?? 0) + mitigatedOffense(knight.attack * ((effect.offenseMultiplierPercent ?? 100) / 100), target.defense);
     expect(dealt).toBe(Math.max(1, Math.round(base)));
   });
 });

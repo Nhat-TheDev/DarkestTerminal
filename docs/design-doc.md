@@ -15,7 +15,7 @@ existing gameplay.
 
 ### 1.1 Gameplay overview
 - Genre: roguelike dungeon crawler, running on a terminal (TUI)
-- A party of characters (fixed size, `PARTY_SIZE` in `src/ui/characterSelect.ts`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
+- A party of characters (fixed size, `party.size` in `data/balance-config.json`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
 - Main loop: fighting monsters (combat) — exploring (moving between rooms) — surviving (survival management)
 
 ### 1.2 Combat
@@ -39,7 +39,7 @@ existing gameplay.
 - Each class has a shared **basic attack** (free, same structure across all classes, deals pure weapon damage) + several class-specific skills, defined in `data/classes.json`, unlocked gradually as the character levels up (`unlockLevel` field)
 - Class stats: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first) — values in `data/classes.json`
 - Some class-specific skills also have a **per-turn cooldown** (`cooldownTurns` field)
-- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor)
+- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Knight, Mage, Rogue, Acolyte, Viking, Plague Doctor)
 
 ### 1.6 Item & Artifact
 - **Consumable items**: restore HP/MP/fear/satiety, usable in or out of combat unless flagged `combatUsable: false` (e.g. the Camp-only Exploration Kit), dropped randomly by monsters
@@ -93,7 +93,7 @@ Main type groups:
 ## 5. Detailed decisions (split into separate files)
 
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
-- The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor), plus the 3-rank skill power-scaling system — `data/classes.json`
+- The class roster + stat table + skill list per class (Knight, Mage, Rogue, Acolyte, Viking, Plague Doctor), plus the 3-rank skill power-scaling system — `data/classes.json`
 - Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns + regular-monster skill kits — `data/monsters.json`
 - Fear/Satiety thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
 - Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`

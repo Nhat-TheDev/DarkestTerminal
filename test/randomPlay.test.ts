@@ -22,7 +22,7 @@ const FOOTER = "[1-2] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicks
 describe("random-play checks", () => {
   test("text leaks catch raw ANSI, NaN and unfilled templates, not ordinary text", () => {
     expect(findTextLeaks("│HP 40/40  Fear 2.5│")).toEqual([]);
-    expect(findTextLeaks("│Vanguard [31mLv.1[0m│").map((f) => f.detail)).toEqual([expect.stringContaining("raw ANSI color code")]);
+    expect(findTextLeaks("│Knight [31mLv.1[0m│").map((f) => f.detail)).toEqual([expect.stringContaining("raw ANSI color code")]);
     expect(findTextLeaks("│HP NaN/40│")[0]!.detail).toContain("NaN");
     expect(findTextLeaks("│Entered {{room}}│")[0]!.detail).toContain("template");
   });
