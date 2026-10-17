@@ -2,29 +2,34 @@
   "classes": {
     "knight": {
       "rows": [
-        ".....FFFFF....",
-        "....FFBEBEB...",
-        "....FFBEBEB...",
-        "D...CAAARRRRRR",
-        "DG.ANCCARFFFFR",
-        ".DGAANNCRFFFFR",
-        "..DSAAANNRRRR.",
-        "....HHHHHHH...",
-        "....HHH.HHH...",
-        "....NNN.NNN..."
+        "..HHHFFFFFF....",
+        "...HHFFBEBEB...",
+        "D..H.FFBEBEB...",
+        "DG..KKKAARRRRRR",
+        ".DGIIKKKKRLFFLR",
+        "..DGAAAAARLLLLR",
+        "...DSCCCARFLLFR",
+        "...IIMCCCCRRRR.",
+        "..IIICCAJACC...",
+        ".JJJJNNN.NNN..."
       ],
       "palette": {
-        "H": "#2b3a4a",
+        "H": "#cc6300",
         "S": "#f2ce9c",
-        "E": "#2a1f18",
-        "A": "#a5b4c5",
-        "C": "#1e3a5c",
-        "F": "#7f9ab5",
-        "R": "#c9d8e8",
-        "N": "#394c60",
-        "B": "#cec7db",
+        "E": "#342923",
+        "A": "#abc1d9",
+        "C": "#8f9dae",
+        "F": "#7a96b3",
+        "R": "#c3d6e9",
+        "N": "#a9bbcb",
+        "B": "#dfdce5",
         "D": "#ffffff",
-        "G": "#e6e6e6"
+        "G": "#c3b7b7",
+        "I": "#b4591d",
+        "J": "#c9a227",
+        "K": "#b60707",
+        "L": "#7a86a8",
+        "M": "#696249"
       }
     },
     "mage": {
