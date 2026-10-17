@@ -119,6 +119,12 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
       })
     );
   }
+  if (rankDef.deathSpreadChancePercentPerStack !== undefined && passive.deathSpread) {
+    const spread = passive.deathSpread;
+    parts.push(
+      t("passive.warlockDeathSpread", { status: getStatusEffect(spread.statusEffectId).name, percent: rankDef.deathSpreadChancePercentPerStack, stacks: spread.stacks })
+    );
+  }
   return parts.join(" ");
 }
 

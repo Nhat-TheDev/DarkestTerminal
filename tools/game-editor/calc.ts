@@ -378,7 +378,7 @@ export function previewSkillDamage(
   fearTier: FearTier,
   sourceIsCharacter: boolean
 ): SkillDamagePreview {
-  const baseOffense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
+  const offenseOf = (e: SkillEffect) => (e.scalesWithAttackAndMagic ? source.attack + (source.magicPower ?? 0) : skill.isMagic ? (source.magicPower ?? 0) : source.attack);
   const allDamageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
   // Matches applySkillEffects' isOverrideEffect check in src/engine/combat.ts for a damage effect:
   // a `target` that differs from the skill's own target resolves against a separate population —
@@ -389,7 +389,7 @@ export function previewSkillDamage(
     // Mirrors resolveSkillEffect's offenseMultiplier in src/engine/resolver.ts — an effect that
     // scales the caster's offense before mitigation (e.g. Self-Destruct's 200%) must apply that
     // scaling here too, or this preview understates/overstates the damage the real engine deals.
-    const offense = baseOffense * ((e.offenseMultiplierPercent ?? 100) / 100);
+    const offense = offenseOf(e) * ((e.offenseMultiplierPercent ?? 100) / 100);
     const breakdown = computeDamage({
       offense,
       defense: target.defense,

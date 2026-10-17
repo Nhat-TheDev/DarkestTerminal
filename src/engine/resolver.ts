@@ -207,7 +207,8 @@ export interface ResolveContext {
   executeHpFraction?: number;
 }
 
-function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
+function offensiveStatFor(source: Actor, isMagic: boolean | undefined, effect: SkillEffect): number {
+  if (effect.scalesWithAttackAndMagic && (isCharacter(source) || isSummon(source))) return source.attack + source.magicPower;
   if (isMagic && (isCharacter(source) || isSummon(source))) return source.magicPower;
   return source.attack;
 }
@@ -230,12 +231,13 @@ export function mitigatedOffense(off: number, def: number): number {
 
 /** Resist/weak only ever applies to a Monster target — a Character is never affected, per this
  *  feature's design (see 02-monster.md, "Race, subRace & traits"). Returns 1 (no-op) for anything
- *  that isn't a Monster. */
+ *  that isn't a Monster. A status's `weakPercent` adds to the race's like a trait's, under the same cap. */
 function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   if (!isMonster(target)) return 1;
   const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);
   const resist = profile.resistPercent[damageType];
-  const weak = profile.weakPercent[damageType];
+  const statusWeak = target.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).weakPercent?.[damageType] ?? 0), 0);
+  const weak = clamp(profile.weakPercent[damageType] + statusWeak, 0, 100);
   return (1 - resist / 100) * (1 + weak / 100);
 }
 
@@ -267,7 +269,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         : roundDamage(
             ((effect.amount ?? 0) +
               executeFlat +
-              mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
+              mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic, effect)) * offenseMultiplier, effectiveDefense)) *
               damageMultiplierFor(source) *
               critMultiplier *
               executeMultiplier *
@@ -564,7 +566,7 @@ export function applyStatusEffectToActor(
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
-      ...(def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus ? { sourceId: sourceId ?? existing.sourceId } : {}),
+      ...(def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus || def.endsWithChannel ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
     // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
@@ -594,7 +596,7 @@ export function applyStatusEffectToActor(
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
-    ...((def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus) && sourceId !== undefined ? { sourceId } : {}),
+    ...((def.forcesTargetOnSource || def.interceptsForSource || def.onLandedHitSourceStatus || def.endsWithChannel) && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);

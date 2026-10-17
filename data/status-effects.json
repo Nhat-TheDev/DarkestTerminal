@@ -91,7 +91,7 @@
   },
   {
     "id": "side-by-side-ii",
-    "name": "Side by Side II",
+    "name": "Side by Side",
     "description": "Raises defense, attack and magic power more. If the bearer lands a hit, the Knight who stood beside them follows through.",
     "perTurnEffects": [
       {
@@ -123,7 +123,7 @@
   },
   {
     "id": "side-by-side-iii",
-    "name": "Side by Side III",
+    "name": "Side by Side",
     "description": "Sharply raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
     "perTurnEffects": [
       {
@@ -175,7 +175,7 @@
   },
   {
     "id": "following-through-ii",
-    "name": "Following Through II",
+    "name": "Following Through",
     "description": "The Knight presses the advantage. Raises defense and attack more.",
     "perTurnEffects": [
       {
@@ -197,7 +197,7 @@
   },
   {
     "id": "following-through-iii",
-    "name": "Following Through III",
+    "name": "Following Through",
     "description": "The Knight presses the advantage. Sharply raises defense and attack.",
     "perTurnEffects": [
       {
@@ -1353,7 +1353,7 @@
   },
   {
     "id": "engaged-ii",
-    "name": "Engaged II",
+    "name": "Engaged",
     "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
@@ -1368,7 +1368,7 @@
   },
   {
     "id": "engaged-iii",
-    "name": "Engaged III",
+    "name": "Engaged",
     "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
@@ -1395,7 +1395,7 @@
   },
   {
     "id": "sanctified-ii",
-    "name": "Sanctified II",
+    "name": "Sanctified",
     "description": "Restores HP each turn, drawn from the caster's power.",
     "perTurnEffects": [
       {
@@ -1409,7 +1409,7 @@
   },
   {
     "id": "sanctified-iii",
-    "name": "Sanctified III",
+    "name": "Sanctified",
     "description": "Restores a lot of HP each turn, drawn from the caster's power.",
     "perTurnEffects": [
       {
@@ -1461,7 +1461,7 @@
   },
   {
     "id": "ballad-ii",
-    "name": "Ballad II",
+    "name": "Ballad",
     "description": "Moderately raises attack and magic power for the duration.",
     "perTurnEffects": [
       {
@@ -1482,7 +1482,7 @@
   },
   {
     "id": "ballad-iii",
-    "name": "Ballad III",
+    "name": "Ballad",
     "description": "Sharply raises attack and magic power for the duration.",
     "perTurnEffects": [
       {
@@ -1538,7 +1538,7 @@
   },
   {
     "id": "pact-ii",
-    "name": "Pact II",
+    "name": "Pact",
     "description": "Moderately raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -1553,7 +1553,7 @@
   },
   {
     "id": "pact-iii",
-    "name": "Pact III",
+    "name": "Pact",
     "description": "Sharply raises magic power for the duration.",
     "perTurnEffects": [
       {
@@ -1739,6 +1739,59 @@
     "perTurnEffects": [],
     "fearResistPercent": 80,
     "endsWithCombat": true
+  },
+  {
+    "id": "searing-light",
+    "name": "Searing Light",
+    "description": "The Paladin's light burns into the bearer's guard, deeper each turn it holds. Ends when the light does.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -3,
+        "minPercent": -5
+      }
+    ],
+    "stackable": true,
+    "maxStacks": 3,
+    "endsWithChannel": true
+  },
+  {
+    "id": "condemned",
+    "name": "Condemned",
+    "description": "Marked by a blessed blade. Holy damage cuts deeper.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "weakPercent": {
+      "holy": 20
+    }
+  },
+  {
+    "id": "condemned-ii",
+    "name": "Condemned",
+    "description": "Marked by a blessed blade. Holy damage cuts much deeper.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "weakPercent": {
+      "holy": 25
+    },
+    "rankOf": "condemned",
+    "rankLevel": 2
+  },
+  {
+    "id": "condemned-iii",
+    "name": "Condemned",
+    "description": "Marked by a blessed blade. Holy damage cuts far deeper.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "weakPercent": {
+      "holy": 30
+    },
+    "rankOf": "condemned",
+    "rankLevel": 3
   },
   {
     "id": "martyrs-grace",

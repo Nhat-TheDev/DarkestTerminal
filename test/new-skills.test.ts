@@ -803,6 +803,30 @@ describe("Paladin", () => {
     expect(combat.log.slice(from).filter((l) => l.hit !== undefined).length).toBe(2);
   });
 
+  test("Cross Slash scales with attack plus magic power and leaves the target Condemned", () => {
+    const { ctx, paladin, rats, combat } = paladinFight(10);
+    const effect = getEffectiveSkill(getSkill("cross-slash"), 10).effects![0]!;
+    const clean = tank(spawnInto(ctx, "dungeon-rat"));
+    const hit = () => resolveSkillEffect(effect, paladin, clean, { log: [] });
+    paladin.magicPower = 0;
+    const attackOnly = hit();
+    paladin.magicPower = 40;
+    expect(hit()).toBeGreaterThan(attackOnly);
+    applySkillEffects(getEffectiveSkill(getSkill("cross-slash"), 10), paladin, rats, combat, ctx, combat.log);
+    expect(rats[0]!.activeStatusEffects.find((s) => s.statusEffectId === "condemned")?.turnsRemaining).toBe(3);
+  });
+
+  test("Condemned adds its weakPercent to holy damage only", () => {
+    const { ctx, paladin } = paladinFight(10);
+    const clean = tank(spawnInto(ctx, "dungeon-rat"));
+    const condemned = tank(spawnInto(ctx, "dungeon-rat"));
+    applyStatusEffectToActor(condemned, "condemned", 3, { log: [] });
+    const holy = { kind: "damage" as const, amount: 100, damageType: "holy" as const };
+    const physical = { kind: "damage" as const, amount: 100 };
+    expect(resolveSkillEffect(holy, paladin, condemned, { log: [] })).toBeGreaterThan(resolveSkillEffect(holy, paladin, clean, { log: [] }));
+    expect(resolveSkillEffect(physical, paladin, condemned, { log: [] })).toBe(resolveSkillEffect(physical, paladin, clean, { log: [] }));
+  });
+
   test("Guardian Angel cannot target the Paladin, and brings a fallen ally back once", () => {
     const { ctx, paladin, combat } = paladinFight(15);
     expect(queueAction(combat, ref(paladin), "guardian-angel", [ref(paladin)], ctx)).not.toBeNull();
@@ -840,23 +864,41 @@ describe("Paladin", () => {
     expect(hits).toBe(6);
   });
 
-  test("Vigil's heal adds a share of the Paladin's max HP, not the ally's", () => {
+  test("Vigil's heal adds a share of the Paladin's max HP, not the ally's, and the low-HP bonus", () => {
     const { ctx, paladin, combat } = paladinFight(25);
     const ally = ctx.party.find((c) => c.classId === "mage")!;
     ally.maxHp = 100000;
     ally.hp = 1;
     const effect = getEffectiveSkill(getSkill("vigil"), 25).effects!.find((e) => e.kind === "heal")!;
     resolveSkillEffect(effect, paladin, ally, { log: combat.log, isMagic: true });
-    expect(ally.hp - 1).toBe(Math.round(effect.amount! + (paladin.maxHp * effect.casterMaxHpPercent!) / 100));
+    const bonus = 1 + effect.lowHpHealBonus!.maxBonusPercent / 100;
+    expect(ally.hp - 1).toBe(Math.round((effect.amount! + (paladin.maxHp * effect.casterMaxHpPercent!) / 100) * bonus));
+  });
+
+  test("Vigil adds a Searing Light stack per pulse and takes it away when the channel ends", () => {
+    const { ctx, paladin, rats, combat } = paladinFight(25, 2);
+    for (const r of rats) r.attack = 0;
+    onlyAlive(ctx.party, paladin);
+    const searing = (m: Monster) => m.activeStatusEffects.find((s) => s.statusEffectId === "searing-light")?.stacks ?? 0;
+    queueAction(combat, ref(paladin), "vigil", [ref(paladin), ...rats.map(monsterRef)], ctx);
+    resolveRound(combat, ctx);
+    for (const r of rats) expect(searing(r)).toBe(1);
+    resolveRound(combat, ctx);
+    for (const r of rats) expect(searing(r)).toBe(2);
+    resolveRound(combat, ctx);
+    expect(channelStatusOf(paladin)).toBe(false);
+    for (const r of rats) expect(searing(r)).toBe(0);
+    expect(combat.log.some((l) => l.text.includes("Searing Light") && l.text.includes("3"))).toBe(true);
   });
 
   test("breaking Vigil ends the light and frees the Paladin to act", () => {
     const { ctx, paladin, rats, combat } = paladinFight(25);
     queueAction(combat, ref(paladin), "vigil", [...ctx.party.map(ref), ...rats.map(monsterRef)], ctx);
     resolveRound(combat, ctx);
-    breakChannel(paladin, ctx, combat.log);
+    breakChannel(paladin, combat, ctx, combat.log);
     expect(channelStatusOf(paladin)).toBe(false);
     expect(ctx.party.some((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "vigil-light"))).toBe(false);
+    expect(rats.some((r) => r.activeStatusEffects.some((s) => s.statusEffectId === "searing-light"))).toBe(false);
     expect(allLivingCharactersHaveQueuedActions(combat, ctx)).toBe(false);
   });
 
@@ -966,6 +1008,102 @@ describe("Warlock", () => {
     queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
     resolveRound(combat, ctx);
     expect(warlock.mp).toBe(20 - 4 + 10);
+  });
+
+  test("Blood Pact can be cast on an ally: the ally gets Pact and MP, the Warlock pays the HP", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(1);
+    rats[0]!.attack = 0;
+    const mage = ctx.party.find((c) => c.classId === "mage")!;
+    mage.mp = 0;
+    const full = warlock.hp;
+    const mageHp = mage.hp;
+    expect(queueAction(combat, ref(warlock), "blood-pact", [ref(mage)], ctx)).toBeNull();
+    resolveRound(combat, ctx);
+    expect(mage.activeStatusEffects.some((s) => s.statusEffectId === "pact")).toBe(true);
+    expect(warlock.activeStatusEffects.some((s) => s.statusEffectId === "pact")).toBe(false);
+    expect(mage.mp).toBeGreaterThan(0);
+    expect(full - warlock.hp).toBe(Math.round(warlock.maxHp * 0.1));
+    expect(mage.hp).toBe(mageHp);
+  });
+
+  test("Soul Rend heals the rest of the party a share of its lifesteal", () => {
+    const { ctx, warlock, rats, combat, cast } = warlockFight(15);
+    const effect = getEffectiveSkill(getSkill("soul-rend"), 15).effects![0]!;
+    const allies = ctx.party.filter((c) => c !== warlock);
+    for (const c of allies) c.hp = 1;
+    const from = combat.log.length;
+    cast("soul-rend", [rats[0]!]);
+    const dealt = combat.log.slice(from).find((l) => l.hit?.targetId === rats[0]!.id)!.hit!.amount;
+    const share = Math.round((Math.round((dealt * effect.lifestealPercent!) / 100) * effect.lifestealPartySharePercent!) / 100);
+    expect(share).toBeGreaterThan(0);
+    for (const c of allies) expect(c.hp).toBe(Math.min(c.maxHp, 1 + share));
+  });
+
+  test("Ripened Curse may pass a stack of Hexed from a fallen foe, at its rank's chance per stack", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(35, 2);
+    const [fallen, next] = rats as [Monster, Monster];
+    onlyAlive(ctx.party, warlock);
+    for (const r of rats) r.attack = 0;
+    for (let i = 0; i < 3; i++) applyStatusEffectToActor(fallen, "hexed", 3, { log: [] });
+    resolveSkillEffect({ kind: "damage", amount: 1e7 }, warlock, fallen, { log: [] });
+    const asked: number[] = [];
+    const chance = ctx.rng.chance.bind(ctx.rng);
+    ctx.rng.chance = (p: number) => {
+      asked.push(p);
+      return p === 0.6 ? true : chance(p);
+    };
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    const perStack = getClass("warlock").passiveSkill.ranks[2]!.deathSpreadChancePercentPerStack!;
+    expect(asked).toContain((perStack * 3) / 100);
+    expect(hexStacks(next)).toBe(1);
+    expect(hexStacks(fallen)).toBe(0);
+    expect(combat.log.some((l) => l.text.includes("passes to"))).toBe(true);
+  });
+
+  test("Ripened Curse passes nothing when its roll fails, and a corpse rolls only once", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(35, 2);
+    const [fallen, next] = rats as [Monster, Monster];
+    onlyAlive(ctx.party, warlock);
+    for (const r of rats) r.attack = 0;
+    applyStatusEffectToActor(fallen, "hexed", 3, { log: [] });
+    resolveSkillEffect({ kind: "damage", amount: 1e7 }, warlock, fallen, { log: [] });
+    const chance = ctx.rng.chance.bind(ctx.rng);
+    ctx.rng.chance = (p: number) => (p === 0.2 ? false : chance(p));
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    expect(hexStacks(next)).toBe(0);
+    expect(hexStacks(fallen)).toBe(0);
+  });
+
+  test("Ripened Curse ignores a cursed body left in another room", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(35, 1);
+    onlyAlive(ctx.party, warlock);
+    rats[0]!.attack = 0;
+    const elsewhere = tank(spawnInto(ctx, "dungeon-rat"));
+    applyStatusEffectToActor(elsewhere, "hexed", 3, { log: [] });
+    elsewhere.hp = 0;
+    ctx.rng.chance = () => true;
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    expect(hexStacks(rats[0]!)).toBe(0);
+    expect(combat.log.some((l) => l.text.includes("passes to"))).toBe(false);
+  });
+
+  test("a spread stack that brings a foe to the burst threshold ripens at once", () => {
+    const { ctx, warlock, rats, combat } = warlockFight(35, 2);
+    const [fallen, next] = rats as [Monster, Monster];
+    onlyAlive(ctx.party, warlock);
+    for (const r of rats) r.attack = 0;
+    applyStatusEffectToActor(fallen, "hexed", 3, { log: [] });
+    for (let i = 0; i < 3; i++) applyStatusEffectToActor(next, "hexed", 3, { log: [] });
+    resolveSkillEffect({ kind: "damage", amount: 1e7 }, warlock, fallen, { log: [] });
+    const chance = ctx.rng.chance.bind(ctx.rng);
+    ctx.rng.chance = (p: number) => (p === 0.2 ? true : chance(p));
+    const from = combat.log.length;
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    expect(combat.log.slice(from).some((l) => l.text.includes("ripens"))).toBe(true);
   });
 
   test("Soul Rend eats one Hexed stack", () => {

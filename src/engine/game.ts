@@ -356,7 +356,7 @@ export class Game {
   /** Ends a character's channel now, so it can act this round (`breakChannel`). */
   breakChannel(actorRef: CombatantRef): void {
     const character = this.state.party.find((c) => c.id === actorRef.id);
-    if (this.state.combat && character) breakChannel(character, this.ctx, this.state.combat.log);
+    if (this.state.combat && character) breakChannel(character, this.state.combat, this.ctx, this.state.combat.log);
   }
 
   queue(actorRef: CombatantRef, skillId: string, targets: CombatantRef[]): QueueActionError | null {
