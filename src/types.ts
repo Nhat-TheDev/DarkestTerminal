@@ -34,6 +34,12 @@ export interface SkillEffect {
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
+  /** For a `damage` effect with `lifestealPercent`: every other living party member also heals this percent of the lifesteal the hit drew (before the caster's own missing-HP cap). */
+  lifestealPartySharePercent?: number;
+  /** For a `damage` effect: `offenseMultiplierPercent` scales the caster's attack plus magic power, not just one of them. */
+  scalesWithAttackAndMagic?: boolean;
+  /** Repeated by each pulse of a channel of this skill, alongside its heal and damage effects. */
+  repeatsOnChannelPulse?: boolean;
   /** Percent of the caster's attack/magicPower used before mitigation; absent = 100. */
   offenseMultiplierPercent?: number;
   /** On a `damage` tick, adds `target.maxHp * maxHpPercent / 100` to `amount`; on a `heal`, floors `amount` at that value. */
@@ -266,6 +272,7 @@ export interface PassiveRankDefinition {
   growthSwapWeights?: { low: number; high: number }; // the two growth weights `growthSwapStats` trade between each round
   reflectPercent?: number;
   stackBurstPowerPercent?: number; // the free cast's power, as a percent of the skill's own damage
+  deathSpreadChancePercentPerStack?: number; // chance per stack the fallen enemy carried that `deathSpread` lands
 }
 
 /** A stat a class passive can shift the level growth of mid-fight (`PassiveSkillDefinition.growthSwapStats`). */
@@ -285,6 +292,7 @@ export interface PassiveSkillDefinition {
   debuffPool?: Id[];
   ignoresFearEffects?: boolean; // fear still builds, but none of its combat penalties apply
   stackBurst?: { statusEffectId: Id; atStacks: number; removeStacks: number; skillId: Id }; // a target reaching `atStacks` of the status loses `removeStacks` of them and takes a free cast of `skillId`
+  deathSpread?: { statusEffectId: Id; stacks: number; durationTurns: number }; // when an enemy carrying the status falls, `stacks` of it may pass to another random enemy
   growthSwapStats?: [GrowthSwapStat, GrowthSwapStat]; // the two stats whose growth weights trade places at random each round
   growthSwapStatusIds?: Record<GrowthSwapStat, { up: Id; down: Id }>; // the round-long statuses that carry each stat's shift, one per direction
 }
@@ -416,6 +424,10 @@ export interface StatusEffectDefinition {
   endsWithCombat?: boolean;
   /** Multiplies the bearer's `coinFlip` win chance. */
   coinFlipWinChanceMultiplier?: number;
+  /** Added to a monster bearer's race `weakPercent` for these damage types, the same way a trait's is. */
+  weakPercent?: Partial<Record<DamageType, number>>;
+  /** Taken off the bearer as soon as whoever applied it is no longer channeling. */
+  endsWithChannel?: boolean;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";

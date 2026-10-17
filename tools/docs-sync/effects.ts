@@ -42,7 +42,8 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
   let head: string;
   switch (first.kind) {
     case "damage":
-      head = `damage ${amount()} + ${multiplier()}% ${offenseStat}`;
+      used.add("scalesWithAttackAndMagic");
+      head = `damage ${amount()} + ${multiplier()}% ${ranks.some((effect) => effect.scalesWithAttackAndMagic) ? "ATK+MAG" : offenseStat}`;
       break;
     case "heal": {
       // Only a heal that names its offense multiplier scales off magic power; one without (or at 0) is a flat or max-HP heal.
@@ -102,6 +103,8 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     field("lowHpHealBonus", ({ maxBonusPercent, fullBonusBelowHpPercent }) => `up to +${formatNumber(maxBonusPercent)}% as the target's HP falls to ${formatNumber(fullBonusBelowHpPercent)}%`),
     amountOf("ignoreDefensePercent", (joined) => `ignores ${joined}% defense`),
     amountOf("lifestealPercent", (joined) => `${joined}% lifesteal`),
+    field("lifestealPartySharePercent", (value) => `the rest of the party heals ${formatNumber(value)}% of the lifesteal`),
+    field("repeatsOnChannelPulse", (value) => (value ? "repeats on each channel pulse" : "")),
     amountOf("maxHpPercent", (joined) => `${joined}% max HP`),
     amountOf("minPercent", (joined) => `min ${joined}%`),
     field("excludesSummonTargets", (value) => (value ? "not on summons" : "")),

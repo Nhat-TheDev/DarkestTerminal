@@ -344,7 +344,7 @@ export function holdChannel(combat: CombatState, ref: CombatantRef): void {
  * Ends `character`'s channel at once: the channel status goes, and with it every status the
  * channeled skill put on the party (Vigil's light), so the character can act this round.
  */
-export function breakChannel(character: Character, ctx: EngineContext, log: LogEntry[]): void {
+export function breakChannel(character: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const active = channelStatus(character);
   if (!active) return;
   const skill = getSkill(getStatusEffect(active.statusEffectId).channelSkillId!);
@@ -356,14 +356,27 @@ export function breakChannel(character: Character, ctx: EngineContext, log: LogE
   for (const member of ctx.party) {
     for (const s of [...member.activeStatusEffects]) if (partyStatusIds.has(s.statusEffectId)) expireStatusEffect(member, s, { log });
   }
+  endChannelBoundStatuses(combat, ctx, log);
   log.push({ text: t("combat.channelBroken", { actor: character.name, skill: skill.name }), kind: "info" });
 }
 
-/** One pulse of a channel: the channeled skill's heal and damage effects again, at the caster's current rank, free. */
+/** Takes every `endsWithChannel` status off its bearer once whoever applied it is down or no longer channeling — checked at the end of each round and when a channel is broken. */
+function endChannelBoundStatuses(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  for (const bearer of combat.combatants.map((c) => getActorByRef(c.ref, ctx))) {
+    for (const active of [...bearer.activeStatusEffects]) {
+      if (!getStatusEffect(active.statusEffectId).endsWithChannel) continue;
+      const source = ctx.party.find((c) => c.id === active.sourceId);
+      if (source && source.isAlive && channelStatus(source)) continue;
+      expireStatusEffect(bearer, active, { log });
+    }
+  }
+}
+
+/** One pulse of a channel: the channeled skill's heal and damage effects (and any `repeatsOnChannelPulse` effect) again, at the caster's current rank, free. */
 function runChannelPulse(actor: Character, combat: CombatState, ctx: EngineContext): void {
   const active = channelStatus(actor)!;
   const skill = getEffectiveSkill(getSkill(getStatusEffect(active.statusEffectId).channelSkillId!), actor.level);
-  const pulse: SkillDefinition = { ...skill, effects: (skill.effects ?? []).filter((e) => e.kind === "heal" || e.kind === "damage") };
+  const pulse: SkillDefinition = { ...skill, effects: (skill.effects ?? []).filter((e) => e.kind === "heal" || e.kind === "damage" || e.repeatsOnChannelPulse) };
   const targets = (autoResolveTargets(skill.target, { kind: "character", id: actor.id }, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
   combat.log.push({ text: t("combat.channelPulse", { actor: actor.name, skill: skill.name }), kind: "info" });
   applySkillEffects(pulse, actor, targets, combat, ctx, combat.log);
@@ -556,10 +569,10 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
     },
     { cause: "dot", snapshot }
   );
-  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
+  runInSession(combat, null, () => afterDeaths(combat, ctx), { snapshot });
   runArtifactAutoDamage(combat, ctx);
   // Auto-damage can kill a summoner before anyone acts; its adds fall before they get a turn.
-  runInSession(combat, null, () => pruneDeadSummons(combat, ctx, combat.log), { snapshot });
+  runInSession(combat, null, () => afterDeaths(combat, ctx), { snapshot });
 
   const actedRefs: CombatantRef[] = [];
   for (const ref of combat.turnQueue) {
@@ -588,7 +601,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
           }
         }
         if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
-        pruneDeadSummons(combat, ctx, combat.log);
+        afterDeaths(combat, ctx);
       },
       { snapshot, bySummon: ref.kind === "summon" }
     );
@@ -608,6 +621,8 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   }
 
   if (!isCombatOver(combat, ctx)) {
+    // A channel that ended this round (its last pulse, or its caster falling) takes its zone with it now, before the round's countdowns.
+    runInSession(combat, null, () => endChannelBoundStatuses(combat, ctx, combat.log), { snapshot });
     runTicksInSession(
       combat,
       combatActors(),
@@ -636,6 +651,52 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   const blockStart = combat.log.length;
   finalizeRound(combat, ctx);
   tagLogRange(combat, blockStart, snapshotCombatants(combat, ctx));
+}
+
+/** What follows anyone falling: dead summons go, and a cursed enemy's curse may pass on. */
+function afterDeaths(combat: CombatState, ctx: EngineContext): void {
+  pruneDeadSummons(combat, ctx, combat.log);
+  spreadCurseFromFallen(combat, ctx, combat.log);
+}
+
+/**
+ * Warlock's passive — each fallen enemy still carrying the passive's `deathSpread` status rolls once,
+ * at the rank's `deathSpreadChancePercentPerStack` times the stacks it carried (at most 100%), to put
+ * `deathSpread.stacks` of it on another random living enemy of the same fight, which may ripen there like
+ * any other stack. The status leaves the body either way, so a death rolls only once. Needs a living
+ * Warlock with the passive unlocked; the best rank among them rolls.
+ */
+function spreadCurseFromFallen(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  let caster: Character | undefined;
+  let perStack = 0;
+  for (const c of ctx.party) {
+    const percent = c.isAlive && getClass(c.classId).passiveSkill.deathSpread ? (passiveRankDef(getClass(c.classId).passiveSkill, c.level)?.deathSpreadChancePercentPerStack ?? 0) : 0;
+    if (percent > perStack) [caster, perStack] = [c, percent];
+  }
+  if (!caster) return;
+  const spread = getClass(caster.classId).passiveSkill.deathSpread!;
+  for (const ref of combat.combatants) {
+    if (ref.ref.kind !== "monster") continue;
+    const fallen = getActorByRef(ref.ref, ctx);
+    if (isActorAlive(fallen)) continue;
+    const active = fallen.activeStatusEffects.find((s) => s.statusEffectId === spread.statusEffectId);
+    if (!active) continue;
+    fallen.activeStatusEffects = fallen.activeStatusEffects.filter((s) => s !== active);
+    const open = livingTargetableMonsterRefs(combat, ctx);
+    if (open.length === 0 || !ctx.rng.chance(Math.min(1, (perStack * (active.stacks ?? 1)) / 100))) continue;
+    const next = getActorByRef(ctx.rng.pick(open), ctx);
+    const stacksOf = () => next.activeStatusEffects.find((s) => s.statusEffectId === spread.statusEffectId)?.stacks ?? 0;
+    const before = stacksOf();
+    const applied: LogEntry[] = [];
+    for (let i = 0; i < spread.stacks; i++) {
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: spread.statusEffectId, durationTurns: spread.durationTurns }, caster, next, { log: applied, isMagic: true });
+    }
+    // An immune target keeps only its immunity line, so the log never claims a curse it refused.
+    if (stacksOf() > before) log.push({ text: t("combat.curseSpreads", { status: statusDisplayName(getStatusEffect(spread.statusEffectId)), fallen: fallen.name, target: next.name }), kind: "debuff" });
+    log.push(...applied);
+    noteAffected(combat, next);
+    stackBurst(caster, next, combat, ctx, log);
+  }
 }
 
 export function hasStunningStatus(actor: Actor): boolean {
@@ -1713,6 +1774,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
+        if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {
+          shareLifesteal(source, Math.round((appliedAmount * finalEffect.lifestealPercent) / 100), finalEffect.lifestealPartySharePercent, combat, ctx, log);
+        }
         if (wasAliveBefore && !isActorAlive(target)) {
           for (const hook of combatHooks) hook.onKill?.(source, target, log);
         }
@@ -1738,6 +1802,20 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   }
   consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
   return spawnedSummon;
+}
+
+/** Every other living party member heals `percent` of the lifesteal `drawn` by the caster's hit. */
+function shareLifesteal(caster: Character, drawn: number, percent: number, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  const amount = Math.round((drawn * percent) / 100);
+  if (amount <= 0) return;
+  for (const ally of ctx.party) {
+    if (ally === caster || !ally.isAlive) continue;
+    const before = ally.hp;
+    ally.hp = Math.min(ally.maxHp, ally.hp + amount);
+    if (ally.hp === before) continue;
+    log.push({ text: t("combat.lifestealShared", { target: ally.name, amount: ally.hp - before, caster: caster.name }), kind: "heal" });
+    noteAffected(combat, ally);
+  }
 }
 
 function sourceName(source: Actor): string {

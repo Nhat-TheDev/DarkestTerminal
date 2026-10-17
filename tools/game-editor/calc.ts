@@ -334,13 +334,13 @@ export function previewSkillDamage(
   fearTier: FearTier,
   sourceIsCharacter: boolean
 ): SkillDamagePreview {
-  const baseOffense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
+  const offenseOf = (e: SkillEffect) => (e.scalesWithAttackAndMagic ? source.attack + (source.magicPower ?? 0) : skill.isMagic ? (source.magicPower ?? 0) : source.attack);
   const allDamageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
   // Mirrors combat.ts isOverrideEffect: a "self" effect on a non-self skill hits only the caster.
   const selfDamageEffects = allDamageEffects.filter((e) => e.target === "self" && e.target !== skill.target);
   const damageEffects = allDamageEffects.filter((e) => !(e.target === "self" && e.target !== skill.target));
   const perEffect = damageEffects.map((e) => {
-    const offense = baseOffense * ((e.offenseMultiplierPercent ?? 100) / 100);
+    const offense = offenseOf(e) * ((e.offenseMultiplierPercent ?? 100) / 100);
     const breakdown = computeDamage({
       offense,
       defense: target.defense,
