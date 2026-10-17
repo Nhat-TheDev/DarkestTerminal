@@ -1111,5 +1111,15 @@
     ],
     "rankOf": "knitting",
     "rankLevel": 6
+  },
+  {
+    "id": "blessed",
+    "name": "Blessed",
+    "description": "The words the gatekeeper said over you: raises defense, attack and magic power for the whole fight.",
+    "perTurnEffects": [
+      { "kind": "modifyCombatStat", "combatStat": "defense", "amount": 0, "minPercent": 30 },
+      { "kind": "modifyCombatStat", "combatStat": "attack", "amount": 0, "minPercent": 15 },
+      { "kind": "modifyCombatStat", "combatStat": "magicPower", "amount": 0, "minPercent": 15 }
+    ]
   }
 ]

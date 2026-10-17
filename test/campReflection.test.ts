@@ -44,10 +44,11 @@ describe("campReflectionTier (03-survival-stats.md)", () => {
     expect(highestAnsweredCampReflectionTier({ 1: 0, 3: 2 })).toBe(3);
   });
 
-  test("LORE_EXPOSURE_EVENT_IDS excludes only open-chest", () => {
+  test("LORE_EXPOSURE_EVENT_IDS excludes only open-chest and scripted scenes", () => {
     expect(LORE_EXPOSURE_EVENT_IDS.has("open-chest")).toBe(false);
+    expect(LORE_EXPOSURE_EVENT_IDS.has("the-gatekeeper")).toBe(false);
     for (const event of EVENTS) {
-      if (event.id === "open-chest") continue;
+      if (event.id === "open-chest" || event.kind === "scripted") continue;
       expect(LORE_EXPOSURE_EVENT_IDS.has(event.id)).toBe(true);
     }
   });

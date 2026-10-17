@@ -28,6 +28,9 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
   // The Game constructor already ran its own entry-room ambush check against floor 1's monsters —
   // stale here since we just replaced both the floor and the monster list.
   game.state.combat = null;
+  // A dump lands mid-run, past the gate: the Gatekeeper scene never shows and counts as refused.
+  game.state.pendingGatekeeper = false;
+  game.state.gatekeeperAnswer = "refused";
 
   game.state.partyExp = expCostForLevel(level);
   for (const c of game.state.party) {

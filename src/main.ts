@@ -20,7 +20,7 @@ async function main() {
       if (!slotId) continue;
       const classIds = await showCharacterSelect(renderer, CLASSES);
       const abilityIds = await showAbilitySelect(renderer, classIds.map((id) => getClass(id).name));
-      const game = new Game(Date.now(), classIds, undefined, abilityIds);
+      const game = new Game(Date.now(), classIds, undefined, abilityIds, true);
       // Claim the slot now: a run that dies before its first save must not leave the previous
       // run's file behind for permadeath to delete.
       game.currentSaveSlot = slotId;

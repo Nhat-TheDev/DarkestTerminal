@@ -52,7 +52,13 @@
   "party": {
     "size": 4,
     "maxEquippedArtifacts": 3,
-    "startingExplorationKits": 4
+    "startingExplorationKits": 4,
+    "startingCoins": 50
+  },
+  "gatekeeper": {
+    "tollCoins": 50,
+    "blessingRooms": 5,
+    "blessingStatusId": "blessed"
   },
   "currency": {
     "coinDropByTier": {

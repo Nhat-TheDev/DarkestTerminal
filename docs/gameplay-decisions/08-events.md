@@ -28,8 +28,9 @@ Every time the party steps into a room with `RoomType === "event"`, the system r
 
 The roll is otherwise independent of party state. Two gates narrow the pool, both shown in the table above:
 
-- `minFloorDepth` — the event is never rolled before that floor. The narrative events in Part C.4 use it to hold back late reveals. `merchant`, `gambling-den`, `sacrificial-circle` and `wandering-hermit` use it because they have a price the party can't pay on floor 1: a fresh run starts with 0 coins and no artifacts, and these rooms need coins, an equipped artifact, or both. Floor 1's Elite guard always drops an artifact and its combat rooms pay coins, so most parties can afford them once the gate opens. The gate is depth only and doesn't read the party's coins or artifacts, so a party that is still short past it gets the room with every option locked except leaving.
+- `minFloorDepth` — the event is never rolled before that floor. The narrative events in Part C.4 use it to hold back late reveals. `merchant`, `gambling-den`, `sacrificial-circle` and `wandering-hermit` use it because they have a price the party can't pay on floor 1: a fresh run starts with only `party.startingCoins`, which the Gatekeeper (§8.25) asks for before floor 1, and no artifacts, and these rooms need coins, an equipped artifact, or both. Floor 1's Elite guard always drops an artifact and its combat rooms pay coins, so most parties can afford them once the gate opens. The gate is depth only and doesn't read the party's coins or artifacts, so a party that is still short past it gets the room with every option locked except leaving.
 - `onceLifetime` — excluded from the roll pool once fired, tracked in `GameState.firedOnceEventIds` (10-event-narrative.md Part C.4/C.5).
+- `kind: "scripted"` — never rolled at all and not in the table above. The engine shows the event at a fixed point instead (`the-gatekeeper`, §8.25).
 
 All Artifact rewards in §8 share the same depth-scaled `treasureOrEvent` rarity odds (`artifactRarityWeights`, `src/data/artifacts.ts`) defined in `07-items-artifacts.md` §7.2 "Level bands & drop schedule", **unless an event states its own table** (e.g. `collapsed-floor` rolls the Boss odds, `sacrificial-circle` and `wandering-hermit` use a fixed table with a minimum tier floor).
 
@@ -591,3 +592,23 @@ The first non-institutional evidence of the containment/communion schism (§8.13
 The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.4) gains a closing line on the party's next visit — "You don't look at the cloth the way you used to."
 
 **No recurring NPC, no chain.** **Reflection**: see §8.16.
+
+---
+
+## 8.25 The Gatekeeper (`the-gatekeeper`) — *Scripted*
+
+> "An old man leans on a staff at the mouth of the cave, a lantern hung from its tip. The rock beside the opening is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. {{toll}} coins, by custom. Keep them if you like. The way in doesn't close.'"
+
+Not a room. Every new run opens on this scene after party and ability selection, before floor 1's entry room. Its own sprite (`data/sprites.json` → `events["the-gatekeeper"]`: the cave mouth, and the old man beside it facing away) stands in the battlefield's event slot. Floor 1's entry-room ambush waits until the party answers and presses **[1] Enter**. A save made before answering reopens on the scene. `kind: "scripted"` keeps it out of `rollEvent()` and out of `loreExposureCount`, and it has no reflection prompt: it happens outside the dungeon.
+
+The run starts with `party.startingCoins`; the toll is `gatekeeper.tollCoins` (`data/balance-config.json`).
+
+- **[1] Leave the coins with him** — the toll is taken. He warns the party ("The first thing that shines, leave it where it lies"), then blesses them.
+- **[2] Keep your coins** — he laughs once, says "Good luck, then", and nothing else. No blessing.
+
+**The blessing** is the `blessed` status (`data/status-effects.json`): a `modifyCombatStat` per stat with `minPercent`, so it raises DEF by a share of the character's own DEF and ATK and MAG by a share of theirs. It covers the first `gatekeeper.blessingRooms` rooms of floor 1, counted on entry (`countBlessedRoom`, `src/engine/events/gatekeeper.ts`). The entry room is the first. Combat and event rooms count; rest rooms don't. Entering floor 1's guard room ends it on the spot, and the guard room is never blessed. Every fight that starts in a covered room, including an event's guardian fight, starts with `blessed` on each living party member, and it ends with the fight like the Runner's barter buffs. The header shows `Blessed N` while it lasts, and one log line marks its end.
+
+The answer is kept in `GameState.gatekeeperAnswer` (`"paid"` / `"refused"`). A dev-dump save that lands mid-run counts as `"refused"` and never shows the scene.
+
+**No recurring NPC, no chain.**
+

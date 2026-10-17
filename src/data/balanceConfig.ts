@@ -69,6 +69,13 @@ interface BalanceConfig {
     size: number;
     maxEquippedArtifacts: number;
     startingExplorationKits: number;
+    startingCoins: number;
+  };
+  /** The Gatekeeper scene before floor 1: the coins it asks for, and how many floor-1 rooms its blessing covers. */
+  gatekeeper: {
+    tollCoins: number;
+    blessingRooms: number;
+    blessingStatusId: string;
   };
   currency: {
     coinDropByTier: {

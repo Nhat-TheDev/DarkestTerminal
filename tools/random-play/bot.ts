@@ -153,7 +153,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   let size = pick(rng, PLAY_SIZES);
   const start = floorDepth === 1 && levelOffset === 0 ? "fresh run" : `floor ${floorDepth}, level ${Math.max(1, Math.min(MAX_LEVEL, floorDepth + levelOffset))}`;
 
-  let game = new Game(gameSeed, classIds, undefined, abilityIds);
+  let game = new Game(gameSeed, classIds, undefined, abilityIds, start === "fresh run");
   if (start !== "fresh run") applyDump(game, { level: floorDepth + levelOffset, floorDepth, roomArg: "entry" });
   game.currentSaveSlot = SAVE_SLOT;
 

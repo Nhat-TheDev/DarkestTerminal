@@ -56,6 +56,8 @@ import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
+import * as gatekeeperScreen from "./screens/gatekeeper";
+import { GATEKEEPER_EVENT_ID } from "../engine/events/gatekeeper";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 import * as abilityBuybackScreen from "./screens/abilityBuyback";
@@ -346,6 +348,11 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    // The Gatekeeper scene opens a new run, before the party is in any room.
+    if (this.game.state.pendingGatekeeper) {
+      this.ui = { kind: "gatekeeper" };
+      return;
+    }
     // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls, checked before
     // anything else (including a pending artifact decision from that same boss kill).
     if (this.game.state.pendingEndingCheckpoint) {
@@ -576,6 +583,9 @@ export class App implements ScreenContext {
       case "founderDialogue":
         founderDialogueScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "gatekeeper":
+        gatekeeperScreen.handleKey(this, this.ui, key, digit);
+        break;
       case "abilityBuyback":
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -746,6 +756,8 @@ export class App implements ScreenContext {
     const coins = partyOverride?.coins ?? s.coins;
     const partyExp = partyOverride?.partyExp ?? s.partyExp;
     const satiety = partyOverride?.satiety ?? s.satiety;
+    // Rooms the blessing still covers, counting the room the party is standing in when it is the blessed one.
+    const blessedRooms = s.pendingGatekeeper ? 0 : s.blessingRoomsLeft + (s.blessedRoomId === s.currentRoomId ? 1 : 0);
     const p0 = s.party[0];
     const level = (p0 && hpOverride?.get(p0.id)?.level) ?? p0?.level ?? 1;
 
@@ -759,7 +771,7 @@ export class App implements ScreenContext {
           ];
     this.header.content = joinLines([
       [
-        boldColorChunk(room.name, PALETTE.title),
+        boldColorChunk(s.pendingGatekeeper ? getEvent(GATEKEEPER_EVENT_ID).name : room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
         colorChunk(shownCombat ? t("ui.roundHeader", { round: shownCombat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
@@ -767,6 +779,7 @@ export class App implements ScreenContext {
         plainChunk("  "),
         colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
         ...(s.runStardust > 0 ? [plainChunk("  "), colorChunk(t("ui.stardustStat", { stardust: s.runStardust }), PALETTE.title)] : []),
+        ...(blessedRooms > 0 ? [plainChunk("  "), colorChunk(t("ui.blessingStat", { rooms: blessedRooms }), PALETTE.title)] : []),
       ],
       expLine,
     ]);
@@ -1072,7 +1085,11 @@ export class App implements ScreenContext {
 
     let enemyBlock: TextChunk[][];
     let tallest = tierFrameHeight("party");
-    if (combat) {
+    if (s.pendingGatekeeper) {
+      enemyBlock = this.buildEventBlock(GATEKEEPER_EVENT_ID);
+      const gateSprite = spriteForEvent(GATEKEEPER_EVENT_ID);
+      if (gateSprite) tallest = Math.max(tallest, spriteHeight(gateSprite));
+    } else if (combat) {
       const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
@@ -1242,6 +1259,9 @@ export class App implements ScreenContext {
       case "founderDialogue":
         return founderDialogueScreen.renderMain(this.game, this.ui);
 
+      case "gatekeeper":
+        return gatekeeperScreen.renderMain(this.game, this.ui);
+
       default: {
         const _exhaustive: never = this.ui;
         return _exhaustive;
@@ -1312,6 +1332,8 @@ export class App implements ScreenContext {
         return endingScreen.renderFooter(this.ui, this.game);
       case "founderDialogue":
         return founderDialogueScreen.renderFooter(this.ui);
+      case "gatekeeper":
+        return gatekeeperScreen.renderFooter(this.ui, this.game);
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter();
       case "gameover":

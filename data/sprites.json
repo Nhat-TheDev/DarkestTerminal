@@ -1723,6 +1723,39 @@
         "K": "#2f2d2d",
         "A": "#253c29"
       }
+    },
+    "the-gatekeeper": {
+      "rows": [
+        "..............................",
+        "..................RRRRRRRR....",
+        "................RRRrrrrrrRRR..",
+        ".....L.........RRrrkKKKKkrrRR.",
+        "....lLl........RrkKKKKKKKKkrR.",
+        ".....l.S......RRrKKKKKKKKKKrRR",
+        ".......S......RrkKKKKKKKKKKkrR",
+        ".......S.MMM..RrKKKKKKKKKKKKrR",
+        ".......SMFFMM.RrKKKKKKKKKKKKrR",
+        ".......SMMMMM.RrKKKKKKKKKKKKrR",
+        ".......SMMMNMmRrKKKKKKKKKKKKrR",
+        ".......SMNMM.mRrKKKKKKKKKKKKrR",
+        ".......SMMMM.mRrKKKKKKKKKKKKrR",
+        ".......SM..M.mRRrKKKKKKKKKKrRR",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+      ],
+      "palette": {
+        "R": "#4a463f",
+        "r": "#2f2c27",
+        "K": "#0a0909",
+        "k": "#151311",
+        "G": "#24211c",
+        "m": "#36422c",
+        "M": "#3b352b",
+        "N": "#2a251e",
+        "F": "#8a7458",
+        "S": "#5a4a34",
+        "L": "#e0a840",
+        "l": "#7a5a22"
+      }
     }
   },
   "rest": {

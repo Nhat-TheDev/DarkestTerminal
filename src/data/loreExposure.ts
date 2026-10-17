@@ -4,9 +4,10 @@ import { BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 
 /** 03-survival-stats.md's Camp Reflection — every event id except open-chest, the 1 event
-    explicitly "Outside the Balance" (11-world-bible.md §11.12). Computed from the live event
+    explicitly "Outside the Balance" (11-world-bible.md §11.12), and the `scripted` gate scene, which
+    happens outside the dungeon. Computed from the live event
     catalog rather than hardcoded, so a newly added event id is in scope automatically. */
-export const LORE_EXPOSURE_EVENT_IDS: ReadonlySet<Id> = new Set(EVENTS.map((e) => e.id).filter((id) => id !== "open-chest"));
+export const LORE_EXPOSURE_EVENT_IDS: ReadonlySet<Id> = new Set(EVENTS.filter((e) => e.id !== "open-chest" && e.kind !== "scripted").map((e) => e.id));
 
 export type CampReflectionTier = 1 | 2 | 3 | 4;
 
