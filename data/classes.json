@@ -4777,8 +4777,8 @@
       {
         "id": "cross-slash",
         "name": "Cross Slash",
-        "description": "Two cuts with a blessed blade: one down, one across.",
-        "shortDescription": "Two holy cuts on 1 foe.",
+        "description": "Two cuts with a blessed blade: one down, one across. The wound stays open to the light.",
+        "shortDescription": "Two holy cuts on 1 foe, scaling with attack and magic power; leaves it Condemned.",
         "target": "singleEnemy",
         "slot": 3,
         "cooldownTurns": 2,
@@ -4792,13 +4792,20 @@
                 "kind": "damage",
                 "amount": 7,
                 "offenseMultiplierPercent": 60,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
               },
               {
                 "kind": "damage",
                 "amount": 6,
                 "offenseMultiplierPercent": 50,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "condemned",
+                "durationTurns": 3
               }
             ]
           },
@@ -4811,13 +4818,20 @@
                 "kind": "damage",
                 "amount": 10,
                 "offenseMultiplierPercent": 65,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
               },
               {
                 "kind": "damage",
                 "amount": 8,
                 "offenseMultiplierPercent": 55,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "condemned-ii",
+                "durationTurns": 3
               }
             ]
           },
@@ -4830,13 +4844,20 @@
                 "kind": "damage",
                 "amount": 14,
                 "offenseMultiplierPercent": 70,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
               },
               {
                 "kind": "damage",
                 "amount": 10,
                 "offenseMultiplierPercent": 60,
-                "damageType": "holy"
+                "damageType": "holy",
+                "scalesWithAttackAndMagic": true
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "condemned-iii",
+                "durationTurns": 3
               }
             ]
           }
@@ -4895,7 +4916,7 @@
         "id": "vigil",
         "name": "Vigil",
         "description": "Kneels and lets the light out. For as long as the Paladin stays kneeling, the party mends and the enemy burns.",
-        "shortDescription": "A zone of light for 3 turns: heals and steadies allies, burns foes. The Paladin holds it instead of acting.",
+        "shortDescription": "A zone of light for 3 turns: heals allies, more the lower their HP, and burns foes and strips their defense. The Paladin holds it instead of acting.",
         "target": "allAlliesAndEnemies",
         "slot": 5,
         "cooldownTurns": 4,
@@ -4912,7 +4933,11 @@
                 "amount": 10,
                 "casterMaxHpPercent": 3,
                 "offenseMultiplierPercent": 0,
-                "appliesToRelation": "ally"
+                "appliesToRelation": "ally",
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               },
               {
                 "kind": "damage",
@@ -4920,6 +4945,13 @@
                 "offenseMultiplierPercent": 60,
                 "damageType": "holy",
                 "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "searing-light",
+                "durationTurns": 2,
+                "appliesToRelation": "enemy",
+                "repeatsOnChannelPulse": true
               },
               {
                 "kind": "applyStatusEffect",
@@ -4946,7 +4978,11 @@
                 "amount": 12,
                 "casterMaxHpPercent": 3.5,
                 "offenseMultiplierPercent": 0,
-                "appliesToRelation": "ally"
+                "appliesToRelation": "ally",
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               },
               {
                 "kind": "damage",
@@ -4954,6 +4990,13 @@
                 "offenseMultiplierPercent": 70,
                 "damageType": "holy",
                 "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "searing-light",
+                "durationTurns": 2,
+                "appliesToRelation": "enemy",
+                "repeatsOnChannelPulse": true
               },
               {
                 "kind": "applyStatusEffect",
@@ -4980,7 +5023,11 @@
                 "amount": 15,
                 "casterMaxHpPercent": 4,
                 "offenseMultiplierPercent": 0,
-                "appliesToRelation": "ally"
+                "appliesToRelation": "ally",
+                "lowHpHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusBelowHpPercent": 20
+                }
               },
               {
                 "kind": "damage",
@@ -4988,6 +5035,13 @@
                 "offenseMultiplierPercent": 80,
                 "damageType": "holy",
                 "appliesToRelation": "enemy"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "searing-light",
+                "durationTurns": 2,
+                "appliesToRelation": "enemy",
+                "repeatsOnChannelPulse": true
               },
               {
                 "kind": "applyStatusEffect",
@@ -5185,9 +5239,9 @@
       {
         "id": "blood-pact",
         "name": "Blood Pact",
-        "description": "Opens a palm and lets it run into the dark. What drinks there gives power back, and takes less from a body that has less.",
-        "shortDescription": "Raises magic power and restores MP; costs HP.",
-        "target": "self",
+        "description": "Opens a palm and lets it run into the dark for whoever it names. What drinks there gives power back, and takes less from a body that has less.",
+        "shortDescription": "Raises 1 ally's magic power and restores their MP; costs the Warlock HP.",
+        "target": "singleAlly",
         "slot": 2,
         "isBuff": true,
         "cooldownTurns": 4,
@@ -5334,8 +5388,8 @@
       {
         "id": "soul-rend",
         "name": "Soul Rend",
-        "description": "Takes hold of the curse in the enemy and pulls it out by the root. What comes with it keeps the Warlock standing.",
-        "shortDescription": "Drains life, harder per Hexed stack; eats 1 stack.",
+        "description": "Takes hold of the curse in the enemy and pulls it out by the root. What comes with it keeps the Warlock standing, and some of it reaches the others.",
+        "shortDescription": "Drains life, harder per Hexed stack; the rest of the party gets a third. Eats 1 stack.",
         "target": "singleEnemy",
         "slot": 4,
         "cooldownTurns": 3,
@@ -5353,9 +5407,10 @@
                 "damageType": "magic",
                 "scalesWithStatusStacks": {
                   "statusEffectId": "hexed",
-                  "percentPerStack": 15
+                  "percentPerStack": 12
                 },
-                "lifestealPercent": 40
+                "lifestealPercent": 40,
+                "lifestealPartySharePercent": 33
               },
               {
                 "kind": "removeStatusEffect",
@@ -5378,7 +5433,8 @@
                   "statusEffectId": "hexed",
                   "percentPerStack": 15
                 },
-                "lifestealPercent": 40
+                "lifestealPercent": 40,
+                "lifestealPartySharePercent": 33
               },
               {
                 "kind": "removeStatusEffect",
@@ -5399,9 +5455,10 @@
                 "damageType": "magic",
                 "scalesWithStatusStacks": {
                   "statusEffectId": "hexed",
-                  "percentPerStack": 15
+                  "percentPerStack": 18
                 },
-                "lifestealPercent": 40
+                "lifestealPercent": 40,
+                "lifestealPartySharePercent": 33
               },
               {
                 "kind": "removeStatusEffect",
@@ -5606,28 +5663,36 @@
     "passiveSkill": {
       "id": "ripened-curse",
       "name": "Ripened Curse",
-      "description": "A curse left long enough on one body comes due all at once.",
+      "description": "A curse left long enough on one body comes due all at once, and a body that dies with one in it passes it on.",
       "stackBurst": {
         "statusEffectId": "hexed",
         "atStacks": 4,
         "removeStacks": 3,
         "skillId": "hex"
       },
+      "deathSpread": {
+        "statusEffectId": "hexed",
+        "stacks": 1,
+        "durationTurns": 3
+      },
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
-          "stackBurstPowerPercent": 80
+          "stackBurstPowerPercent": 70,
+          "deathSpreadChancePercentPerStack": 12
         },
         {
           "rank": 2,
           "unlockLevel": 20,
-          "stackBurstPowerPercent": 90
+          "stackBurstPowerPercent": 85,
+          "deathSpreadChancePercentPerStack": 17
         },
         {
           "rank": 3,
           "unlockLevel": 35,
-          "stackBurstPowerPercent": 100
+          "stackBurstPowerPercent": 100,
+          "deathSpreadChancePercentPerStack": 20
         }
       ]
     }

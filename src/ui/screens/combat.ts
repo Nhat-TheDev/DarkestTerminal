@@ -63,9 +63,10 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
 export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
   const targetSuffix = targetSuffixFor(e, sk);
   if (e.kind === "damage") {
-    const statLabel = sk.isMagic ? "Magic Power" : "Attack";
+    const statLabel = e.scalesWithAttackAndMagic ? "(Attack + Magic Power)" : sk.isMagic ? "Magic Power" : "Attack";
     const percent = e.offenseMultiplierPercent ?? 100;
     const base = e.amount ?? 0;
+    if (e.scalesWithAttackAndMagic && base !== 0) return t("ui.skillEffectDamageHybrid", { percent, statAmount: base, targetSuffix });
     return base === 0
       ? t("ui.skillEffectDamageScalingOnly", { percent, statLabel, targetSuffix })
       : t("ui.skillEffectDamageScaling", { percent, statLabel, statAmount: base, targetSuffix });
@@ -161,6 +162,7 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
     if (e.scalesWithDebuffCount) lines.push(t("ui.skillDebuffScalingLine", { percent: e.scalesWithDebuffCount.percentPerDebuff }));
     if (e.ignoreDefensePercent) lines.push(t("ui.skillIgnoreDefenseLine", { percent: e.ignoreDefensePercent }));
     if (e.lifestealPercent) lines.push(t("ui.skillLifestealLine", { percent: e.lifestealPercent }));
+    if (e.lifestealPercent && e.lifestealPartySharePercent) lines.push(t("ui.skillLifestealShareLine", { percent: e.lifestealPartySharePercent }));
   }
   for (const e of sk.effects ?? []) {
     if (e.kind === "throwDice" && e.damageRollFaces?.length) lines.push(t("ui.skillDiceFacesLine", { faces: e.damageRollFaces.map((f) => `${f}%`).join(" / ") }));
@@ -200,7 +202,7 @@ export type CombatUiState = Extract<
 /** Shared by the pickSkill list and the skillDetail screen so the estimate formula lives in one place. */
 function skillMeta(actor: Character, sk: SkillDefinition): { dmgAmount: number | null; usesLeft: number | null } {
   const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
-  const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
+  const offensiveStat = dmgEffect?.scalesWithAttackAndMagic ? actor.attack + actor.magicPower : sk.isMagic ? actor.magicPower : actor.attack;
   const dmgAmount = dmgEffect ? Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat * ((dmgEffect.offenseMultiplierPercent ?? 100) / 100))) : null;
   const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
   return { dmgAmount, usesLeft };
