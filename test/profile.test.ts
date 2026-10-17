@@ -18,16 +18,16 @@ describe("profile.ts — Part F.2's cross-run persistence layer", () => {
 
   test("addRetiredCharacter persists across separate loadProfile calls", () => {
     resetProfile();
-    addRetiredCharacter("vanguard");
-    expect(loadProfile().retiredCharacters).toEqual([{ classId: "vanguard" }]);
+    addRetiredCharacter("knight");
+    expect(loadProfile().retiredCharacters).toEqual([{ classId: "knight" }]);
   });
 
   test("addRetiredCharacter appends, never overwrites — multiple retirements accumulate in order", () => {
     resetProfile();
-    addRetiredCharacter("vanguard");
+    addRetiredCharacter("knight");
     addRetiredCharacter("rogue");
     addRetiredCharacter("mage");
-    expect(loadProfile().retiredCharacters).toEqual([{ classId: "vanguard" }, { classId: "rogue" }, { classId: "mage" }]);
+    expect(loadProfile().retiredCharacters).toEqual([{ classId: "knight" }, { classId: "rogue" }, { classId: "mage" }]);
   });
 
   test("markRetiredCharacterEventShown persists independently of retiredCharacters", () => {

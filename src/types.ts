@@ -278,9 +278,9 @@ export interface CoinFlip {
 export interface PassiveRankDefinition {
   rank: 1 | 2 | 3;
   unlockLevel: number;
-  maxHpPercent?: number; // Vanguard
-  defensePercent?: number; // Vanguard
-  aggroFlat?: number; // Vanguard
+  maxHpPercent?: number; // Knight
+  defensePercent?: number; // Knight
+  interceptWeakestChancePercent?: number; // Knight — chance per round to take a hit aimed at the lowest-HP-percent ally
   onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
   durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
   bonusPercent?: number; // Rogue
@@ -420,8 +420,11 @@ export interface StatusEffectDefinition {
   harmful?: boolean;
   /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
   reflectDamagePercent?: number;
-  /** When a monster's direct hit lands on the bearer, the bearer strikes back at every enemy; after `maxCounters` counters the status ends. */
-  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number };
+  /**
+   * When a monster's direct hit lands on the bearer, the bearer strikes back; after `maxCounters` counters the status ends.
+   * `"attacker"` answers only the monster whose hit triggered it; absent or `"allEnemies"` answers every targetable enemy.
+   */
+  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
   /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
   onMaxStacks?: { statusEffectId: Id; durationTurns: number };
   /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */
@@ -436,6 +439,10 @@ export interface StatusEffectDefinition {
   eliteBossMaxTurns?: number;
   /** The bearer's single-target attacks all go to whoever applied the status, while that one can be targeted. */
   forcesTargetOnSource?: boolean;
+  /** A monster's single-target damaging attack aimed at the bearer goes to the actor that applied the status, while that actor is alive and not stunned. */
+  interceptsForSource?: boolean;
+  /** When the bearer's own action lands a damaging hit, the actor that applied this status gets `statusEffectId`. */
+  onLandedHitSourceStatus?: { statusEffectId: Id; durationTurns: number };
   /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
   redirectToAlliesChance?: number;
   /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
@@ -681,7 +688,7 @@ export interface ActiveStatusEffect {
   onHitDurationTurns?: number;
   /** For a status with `counterAttack`: how many counters it has struck so far. */
   countersStruck?: number;
-  /** For a status with `forcesTargetOnSource`: the id of the actor that applied it. */
+  /** For a status with `forcesTargetOnSource`, `interceptsForSource` or `onLandedHitSourceStatus`: the id of the actor that applied it. */
   sourceId?: Id;
 }
 
@@ -1032,6 +1039,8 @@ export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
   roundNumber: number;
+  /** The round each Watchful bearer last took a hit for an ally; it fires at most once per round. */
+  watchfulRound?: Record<Id, number>;
   phase: "command" | "resolution" | "over";
   queuedActions: QueuedAction[];
   turnQueue: CombatantRef[];

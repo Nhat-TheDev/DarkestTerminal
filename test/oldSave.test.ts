@@ -10,9 +10,9 @@ import { getClass } from "../src/data/classes";
 import type { CombatantRef, LogSession, Summon } from "../src/types";
 import { pickAnyAction } from "./helpers";
 
-const PARTY = ["vanguard", "mage", "ninja", "summoner"];
+const PARTY = ["knight", "mage", "ninja", "summoner"];
 /** Ids a build before the rename used: a skill, a status and a summon archetype that are no longer in data/*.json. */
-const OLD_SKILL = "vanguard-slash";
+const OLD_SKILL = "knight-slash";
 const OLD_STATUS = "mage-shred";
 const OLD_SUMMON = "ninja-clone";
 
@@ -48,7 +48,7 @@ function oldMidFightSave(): { save: SaveFile; goblinRef: CombatantRef } {
   const save = loadSave("slot1");
   const combat = save.state.combat!;
   expect(combat.phase).toBe("command");
-  const [vanguard, mage, ninja, summoner] = save.state.party.map((c) => c!);
+  const [knight, mage, ninja, summoner] = save.state.party.map((c) => c!);
   const goblinRef: CombatantRef = { kind: "monster", id: goblins[0]!.id };
 
   const clone = summon(`${ninja!.id}-${OLD_SUMMON}-1`, ninja!.id, OLD_SUMMON);
@@ -61,14 +61,14 @@ function oldMidFightSave(): { save: SaveFile; goblinRef: CombatantRef } {
     combat.combatants.push({ ref: { kind: "summon", id: s.id }, speed: s.speed });
     combat.turnQueue.push({ kind: "summon", id: s.id });
   }
-  vanguard!.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 5, linkedSummonId: clone.id });
+  knight!.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 5, linkedSummonId: clone.id });
 
   combat.queuedActions = [
-    { actor: { kind: "character", id: vanguard!.id }, source: { kind: "skill", skillId: OLD_SKILL }, targets: [goblinRef] },
+    { actor: { kind: "character", id: knight!.id }, source: { kind: "skill", skillId: OLD_SKILL }, targets: [goblinRef] },
     { actor: { kind: "character", id: mage!.id }, source: { kind: "skill", skillId: getClass("mage").skills[0]!.id }, targets: [goblinRef] },
   ];
   mage!.cooldownsRemaining = { "mage-fireball": 2, fireball: 1 };
-  vanguard!.usesRemainingThisCombat = { "vanguard-sword-judgment": 0 };
+  knight!.usesRemainingThisCombat = { "knight-sword-judgment": 0 };
 
   for (const snapshot of [combat.roundStartSnapshot!, ...combat.log.flatMap((e) => (e.snapshot ? [e.snapshot] : []))]) {
     for (const unit of snapshot) unit.activeStatusEffects = [...(unit.activeStatusEffects ?? []), { statusEffectId: OLD_STATUS, turnsRemaining: 2 }];
@@ -92,18 +92,18 @@ describe("a mid-fight save written before ids were renamed", () => {
       const thrower = save.summons![1]!;
       const game = gameFromSave(save, "slot1");
       const combat = game.state.combat!;
-      const [vanguard, mage] = game.state.party;
+      const [knight, mage] = game.state.party;
 
       expect(game.ctx.summons.map((s) => s.id)).toEqual([thrower.id]);
       expect(game.ctx.summons[0]!.activeStatusEffects).toEqual([]);
       expect(game.ctx.summons[0]!.defense).toBe(5);
       const summonRefs = [...combat.combatants.map((c) => c.ref), ...combat.turnQueue].filter((r) => r.kind === "summon").map((r) => r.id);
       expect(new Set(summonRefs)).toEqual(new Set([thrower.id]));
-      expect(vanguard!.activeStatusEffects.some((s) => s.linkedSummonId !== undefined)).toBe(false);
+      expect(knight!.activeStatusEffects.some((s) => s.linkedSummonId !== undefined)).toBe(false);
 
       expect(combat.queuedActions.map((a) => a.actor.id)).toEqual([mage!.id]);
       expect(mage!.cooldownsRemaining).toEqual({ fireball: 1 });
-      expect(vanguard!.usesRemainingThisCombat).toEqual({});
+      expect(knight!.usesRemainingThisCombat).toEqual({});
 
       const snapshots = [combat.roundStartSnapshot!, ...combat.log.flatMap((e) => (e.snapshot ? [e.snapshot] : []))];
       expect(snapshots.flat().flatMap((u) => u.activeStatusEffects ?? []).some((s) => s.statusEffectId === "mage-shred")).toBe(false);

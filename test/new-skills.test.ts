@@ -5,7 +5,7 @@ import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulSt
 import { resistedFearGain } from "../src/engine/survival";
 import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/data/classes";
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
-import { getStatusEffect } from "../src/data/statusEffects";
+import { getStatusEffect, statusMechanicsParts } from "../src/data/statusEffects";
 import { getSummonSkill } from "../src/data/summons";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
@@ -36,7 +36,7 @@ function onlyAlive(party: Character[], ...keep: Character[]): void {
 
 describe("kit shape", () => {
   test("every class has 7 skills, slot 5 a ranked class skill and slot 6 the ultimate", () => {
-    for (const id of ["vanguard", "mage", "rogue", "acolyte", "viking", "plague-doctor", "archer", "ninja", "summoner", "jester", "paladin", "warlock"]) {
+    for (const id of ["knight", "mage", "rogue", "acolyte", "viking", "plague-doctor", "archer", "ninja", "summoner", "jester", "paladin", "warlock"]) {
       const cls = getClass(id);
       expect(cls.skills.length).toBe(SKILLS_PER_CLASS);
       expect(cls.skills.map((s) => s.slot)).toEqual([0, 1, 2, 3, 4, 5, 6]);
@@ -48,37 +48,170 @@ describe("kit shape", () => {
   });
 });
 
-describe("Retaliate (Vanguard)", () => {
-  test("the first 2 monster hits that land are answered on every enemy, then Retaliating drops", () => {
+describe("Engage (Knight)", () => {
+  function setup() {
     const { ctx } = makeCtx(3);
-    const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-    unlock(vanguard, 25, "retaliate");
-    vanguard.maxHp = vanguard.hp = 1e6;
-    onlyAlive(ctx.party, vanguard);
-    const rats = [0, 1, 2].map(() => tank(spawnInto(ctx, "dungeon-rat")));
-    for (const rat of rats) rat.speed = 1;
-    const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
-    queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
-    resolveRound(combat, ctx);
-    const counters = combat.log.filter((l) => l.text.includes("answers the blow")).length;
-    expect(counters).toBe(2);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "retaliating")).toBe(false);
-    for (const rat of rats) expect(rat.hp).toBeLessThan(rat.maxHp);
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    unlock(knight, 25, "engage");
+    knight.maxHp = knight.hp = 1e6;
+    onlyAlive(ctx.party, knight);
+    const [ratA, ratB] = [tank(spawnInto(ctx, "dungeon-rat")), tank(spawnInto(ctx, "dungeon-rat"))] as [Monster, Monster];
+    const combat = startCombat("r1", [ratA.id, ratB.id], ctx, false);
+    return { ctx, knight, ratA, ratB, combat };
+  }
+
+  test("Engage damages its target and taunts", () => {
+    const { ctx, knight, ratA, combat } = setup();
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratA], combat, ctx, combat.log);
+    expect(ratA.hp).toBeLessThan(ratA.maxHp);
+    const ids = knight.activeStatusEffects.map((s) => s.statusEffectId);
+    expect(ids).toContain("taunt");
+    expect(ids).toContain("engaged");
   });
 
-  test("unused, Retaliating ends with the round", () => {
+  test("Engage's counter strikes only the monster that hit the Knight", () => {
+    const { ctx, knight, ratA, ratB, combat } = setup();
+    ctx.rng.next = () => 0;
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratB], combat, ctx, combat.log);
+    const aBefore = ratA.hp;
+    const bBefore = ratB.hp;
+    runMonsterTurn(monsterRef(ratA), combat, ctx);
+    expect(ratA.hp).toBeLessThan(aBefore);
+    expect(ratB.hp).toBe(bBefore);
+  });
+
+  test("Engage's counter stops after maxCounters", () => {
+    const { ctx, knight, ratA, combat } = setup();
+    ctx.rng.next = () => 0;
+    applySkillEffects(getEffectiveSkill(getSkill("engage"), 25), knight, [ratA], combat, ctx, combat.log);
+    const before = combat.log.length;
+    for (let i = 0; i < 3; i++) runMonsterTurn(monsterRef(ratA), combat, ctx);
+    const counters = combat.log.slice(before).filter((l) => l.text.includes("answers the blow")).length;
+    expect(counters).toBe(2);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
+  });
+
+  test("an unused Engage counter ends with the round", () => {
+    const { ctx, knight, ratA, ratB, combat } = setup();
+    ratA.attack = 0;
+    ratB.attack = 0;
+    for (const rat of [ratA, ratB]) applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
+    queueAction(combat, ref(knight), "engage", [monsterRef(ratA)], ctx);
+    resolveRound(combat, ctx);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
+  });
+});
+
+describe("Side by Side (Knight)", () => {
+  withoutDamageRolls();
+  function setup() {
     const { ctx } = makeCtx(3);
-    const vanguard = ctx.party.find((c) => c.classId === "vanguard")!;
-    unlock(vanguard, 25, "retaliate");
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    unlock(knight, 1, "side-by-side");
+    for (const c of [knight, rogue]) c.maxHp = c.hp = 1e6;
+    onlyAlive(ctx.party, knight, rogue);
     const rat = tank(spawnInto(ctx, "dungeon-rat"));
     rat.attack = 0;
-    onlyAlive(ctx.party, vanguard);
+    ctx.rng.next = () => 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    // Stunned all round, the rat never swings.
-    applyStatusEffectToActor(rat, "stunned", 3, { log: [] });
-    queueAction(combat, ref(vanguard), "retaliate", [ref(vanguard)], ctx);
+    return { ctx, knight, rogue, rat, combat };
+  }
+  const has = (c: Character, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
+
+  test("Side by Side raises the ally's defense, attack and magic power", () => {
+    const { ctx, knight, rogue, combat } = setup();
+    const before = { defense: rogue.defense, attack: rogue.attack, magicPower: rogue.magicPower };
+    applySkillEffects(getEffectiveSkill(getSkill("side-by-side"), 1), knight, [rogue], combat, ctx, combat.log);
+    expect(rogue.defense).toBeGreaterThan(before.defense);
+    expect(rogue.attack).toBeGreaterThan(before.attack);
+    expect(rogue.magicPower).toBeGreaterThan(before.magicPower);
+  });
+
+  test("an ally who lands a hit under Side by Side gives the Knight Following Through", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId.startsWith("retaliating"))).toBe(false);
+    expect(rat.hp).toBeLessThan(rat.maxHp);
+    expect(has(knight, "following-through")).toBe(true);
+  });
+
+  test("a miss, a stun, or a non-damaging action gives the Knight nothing", () => {
+    const miss = setup();
+    miss.rogue.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+    queueAction(miss.combat, ref(miss.knight), "side-by-side", [ref(miss.rogue)], miss.ctx);
+    queueAction(miss.combat, ref(miss.rogue), "stab", [monsterRef(miss.rat)], miss.ctx);
+    resolveRound(miss.combat, miss.ctx);
+    expect(has(miss.knight, "following-through")).toBe(false);
+
+    const stun = setup();
+    stun.rogue.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+    queueAction(stun.combat, ref(stun.knight), "side-by-side", [ref(stun.rogue)], stun.ctx);
+    queueAction(stun.combat, ref(stun.rogue), "stab", [monsterRef(stun.rat)], stun.ctx);
+    resolveRound(stun.combat, stun.ctx);
+    expect(has(stun.knight, "following-through")).toBe(false);
+
+    const heal = setup();
+    heal.rogue.activeStatusEffects.push({ statusEffectId: "side-by-side", turnsRemaining: 1, sourceId: heal.knight.id });
+    const buff = sk("self-buff", { target: "self", isBuff: true, effects: [{ kind: "applyStatusEffect", statusEffectId: "venom-edge", durationTurns: 1 }] }) as any;
+    applySkillEffects(buff, heal.rogue, [heal.rogue], heal.combat, heal.ctx, heal.combat.log);
+    expect(has(heal.knight, "following-through")).toBe(false);
+  });
+
+  test("Following Through is still on the Knight at its next turn", () => {
+    function roundTwoDamage(withSideBySide: boolean): number {
+      const { ctx, knight, rogue, rat, combat } = setup();
+      knight.speed = 100;
+      rogue.speed = 1;
+      if (withSideBySide) queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      resolveRound(combat, ctx);
+      expect(has(knight, "following-through")).toBe(withSideBySide);
+      rogue.activeStatusEffects = [];
+      queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      const hpBefore = rat.hp;
+      resolveRound(combat, ctx);
+      expect(has(knight, "following-through")).toBe(false);
+      return hpBefore - rat.hp;
+    }
+    expect(roundTwoDamage(true)).toBeGreaterThan(roundTwoDamage(false));
+  });
+
+  test("Side by Side on an ally who already acted this round lasts into that ally's next action", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    knight.speed = 1;
+    rogue.speed = 100;
+    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(has(rogue, "side-by-side")).toBe(true);
+    expect(has(knight, "following-through")).toBe(false);
+    queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+    resolveRound(combat, ctx);
+    expect(has(rogue, "side-by-side")).toBe(false);
+    const texts = combat.log.map((l) => l.text);
+    const gained = texts.indexOf("Knight gains the Following Through effect.");
+    const slashed = texts.indexOf("Knight uses Slash on Dungeon Rat.");
+    const expired = texts.indexOf("Knight's Following Through effect expires.");
+    expect(gained).toBeGreaterThan(-1);
+    expect(slashed).toBeGreaterThan(gained);
+    expect(expired).toBeGreaterThan(slashed);
+  });
+
+  test("Side by Side's mechanics text names its follow-up status", () => {
+    const text = statusMechanicsParts(getStatusEffect("side-by-side")).join(" ");
+    expect(text).toContain("Following Through");
+    expect(text).toContain("for 1 turn");
+    expect(text).not.toContain("1 turns");
+    expect(text).not.toContain("{");
+  });
+
+  test("Side by Side cannot target the Knight itself", () => {
+    const { ctx, knight, combat } = setup();
+    expect(queueAction(combat, ref(knight), "side-by-side", [ref(knight)], ctx)?.reason).toBe("it cannot be cast on yourself");
   });
 });
 
@@ -571,7 +704,7 @@ describe("Jester", () => {
 
   test("Battle Ballad buffs the rest of the party, not the Jester, and moves them ahead in the turn order", () => {
     const { ctx, jester, target, combat } = jesterFight(10);
-    const slowAlly = ctx.party.find((c) => c.classId === "vanguard")!;
+    const slowAlly = ctx.party.find((c) => c.classId === "knight")!;
     slowAlly.speed = 1;
     target.speed = 5;
     queueAction(combat, ref(jester), "battle-ballad", ctx.party.map(ref), ctx);
@@ -629,7 +762,7 @@ describe("Paladin", () => {
 
   test("Lay on Hands adds the Paladin's max HP share and heals more the lower the target", () => {
     const { paladin, ctx } = paladinFight(1);
-    const target = ctx.party.find((c) => c.classId === "vanguard")!;
+    const target = ctx.party.find((c) => c.classId === "knight")!;
     const effect = getEffectiveSkill(getSkill("lay-on-hands"), 1).effects![0]!;
     const healAt = (hpFraction: number) => {
       target.hp = Math.max(1, Math.round(target.maxHp * hpFraction));
@@ -729,7 +862,7 @@ describe("Paladin", () => {
 
   test("Martyr's Grace heals back part of each surviving hit, but not a killing one", () => {
     const { ctx, paladin, combat } = paladinFight(35);
-    const ally = ctx.party.find((c) => c.classId === "vanguard")!;
+    const ally = ctx.party.find((c) => c.classId === "knight")!;
     ally.maxHp = ally.hp = 1000;
     applySkillEffects(getEffectiveSkill(getSkill("martyrs-oath"), 35), paladin, ctx.party, combat, ctx, combat.log);
     const rat = tank(spawnInto(ctx, "dungeon-rat"));

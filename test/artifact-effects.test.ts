@@ -357,17 +357,17 @@ describe("artifacts", () => {
 
   test("reflectDamage: a monster's attack on the bearer reflects a percent back", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("thorned-armor");
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.equippedArtifactIds.push("thorned-armor");
 
     for (const c of ctx.party) {
-      if (c.id !== vanguard.id) c.isAlive = false;
+      if (c.id !== knight.id) c.isAlive = false;
     }
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 200;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    const self: CombatantRef = { kind: "character", id: knight.id };
+    queueAction(combat, self, "slash", [{ kind: "monster", id: rat.id }], ctx);
     const ratHpBefore = rat.hp;
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("reflected from"))).toBe(true);
@@ -376,15 +376,15 @@ describe("artifacts", () => {
 
   test("lifesteal and healOnKill heal the equipped character on their own damage", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("reapers-covenant");
-    vanguard.hp = Math.max(1, vanguard.maxHp - 100);
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.equippedArtifactIds.push("reapers-covenant");
+    knight.hp = Math.max(1, knight.maxHp - 100);
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.hp = 1;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const attackSkill = vanguard.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
+    const attackSkill = knight.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
-    queueAction(combat, { kind: "character", id: vanguard.id }, attackSkill.id, [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, attackSkill.id, [enemyRef], ctx);
     resolveRound(combat, ctx);
     expect(combat.log.some((l) => l.text.includes("upon defeating an enemy"))).toBe(true);
     expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
@@ -392,15 +392,15 @@ describe("artifacts", () => {
 
   test("lifesteal heals off the full damage of a multi-hit skill, not just its last hit", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push("reapers-covenant"); // 8% lifesteal
-    vanguard.hp = Math.max(1, vanguard.maxHp - 100);
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.equippedArtifactIds.push("reapers-covenant"); // 8% lifesteal
+    knight.hp = Math.max(1, knight.maxHp - 100);
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.hp = 99999;
     rat.defense = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     // offenseMultiplierPercent: 0 keeps each hit's damage a deterministic flat 20, regardless of the
-    // Vanguard's own attack stat, so the expected total (3 x 20 = 60) is exact, not just "greater than".
+    // Knight's own attack stat, so the expected total (3 x 20 = 60) is exact, not just "greater than".
     const multiHitSkill: SkillDefinition = {
       id: "test-multi-hit",
       name: "Test Multi Hit",
@@ -411,10 +411,10 @@ describe("artifacts", () => {
       slot: 0,
       unlockLevel: 1,
     };
-    const hpBefore = vanguard.hp;
-    applySkillEffects(multiHitSkill, vanguard, [rat], combat, ctx, combat.log);
+    const hpBefore = knight.hp;
+    applySkillEffects(multiHitSkill, knight, [rat], combat, ctx, combat.log);
     // Lifesteal must scale off all 3 hits (60 total), not just the last one: round(60*0.08)=5.
-    expect(vanguard.hp - hpBefore).toBe(5);
+    expect(knight.hp - hpBefore).toBe(5);
   });
 
   test("autoDamage fires at the start of the round, independent of turn order", () => {
@@ -471,9 +471,9 @@ describe("artifacts", () => {
 
   test("expBoost artifacts increase EXP gained on victory", () => {
     const game = new Game(3);
-    const vanguard = game.state.party[0]!;
+    const knight = game.state.party[0]!;
     game.state.pendingArtifactDecision = { artifactId: "scholars-insight", forceEquip: false };
-    expect(game.resolveArtifactEquip(vanguard.id)).toBeNull();
+    expect(game.resolveArtifactEquip(knight.id)).toBeNull();
 
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;
@@ -483,9 +483,9 @@ describe("artifacts", () => {
     room.cleared = false;
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
 
-    const attackSkill = vanguard.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
+    const attackSkill = knight.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!;
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
-    expect(game.queue({ kind: "character", id: vanguard.id }, attackSkill.id, [enemyRef])).toBeNull();
+    expect(game.queue({ kind: "character", id: knight.id }, attackSkill.id, [enemyRef])).toBeNull();
     game.resolve();
 
     const expectedExp = Math.round(rat.expReward * 1.15);

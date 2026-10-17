@@ -52,6 +52,172 @@
     ]
   },
   {
+    "id": "interposed",
+    "name": "Interposed",
+    "description": "The Knight takes the single-target blows aimed at the bearer.",
+    "perTurnEffects": [],
+    "tickCategory": "special",
+    "interceptsForSource": true
+  },
+  {
+    "id": "side-by-side",
+    "name": "Side by Side",
+    "description": "Raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 6,
+        "minPercent": 10
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 12,
+        "minPercent": 25
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 12,
+        "minPercent": 25
+      }
+    ],
+    "tickCategory": "special",
+    "onLandedHitSourceStatus": {
+      "statusEffectId": "following-through",
+      "durationTurns": 1
+    }
+  },
+  {
+    "id": "side-by-side-ii",
+    "name": "Side by Side II",
+    "description": "Raises defense, attack and magic power more. If the bearer lands a hit, the Knight who stood beside them follows through.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8,
+        "minPercent": 12
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 16,
+        "minPercent": 35
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 16,
+        "minPercent": 35
+      }
+    ],
+    "tickCategory": "special",
+    "onLandedHitSourceStatus": {
+      "statusEffectId": "following-through-ii",
+      "durationTurns": 1
+    },
+    "rankOf": "side-by-side",
+    "rankLevel": 2
+  },
+  {
+    "id": "side-by-side-iii",
+    "name": "Side by Side III",
+    "description": "Sharply raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 10,
+        "minPercent": 15
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 20,
+        "minPercent": 45
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
+        "amount": 20,
+        "minPercent": 45
+      }
+    ],
+    "tickCategory": "special",
+    "onLandedHitSourceStatus": {
+      "statusEffectId": "following-through-iii",
+      "durationTurns": 1
+    },
+    "rankOf": "side-by-side",
+    "rankLevel": 3
+  },
+  {
+    "id": "following-through",
+    "name": "Following Through",
+    "description": "The Knight presses the advantage. Raises defense and attack.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 6,
+        "minPercent": 10
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 12,
+        "minPercent": 25
+      }
+    ],
+    "tickCategory": "special"
+  },
+  {
+    "id": "following-through-ii",
+    "name": "Following Through II",
+    "description": "The Knight presses the advantage. Raises defense and attack more.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 8,
+        "minPercent": 12
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 16,
+        "minPercent": 35
+      }
+    ],
+    "tickCategory": "special",
+    "rankOf": "following-through",
+    "rankLevel": 2
+  },
+  {
+    "id": "following-through-iii",
+    "name": "Following Through III",
+    "description": "The Knight presses the advantage. Sharply raises defense and attack.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": 10,
+        "minPercent": 15
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "attack",
+        "amount": 20,
+        "minPercent": 45
+      }
+    ],
+    "tickCategory": "special",
+    "rankOf": "following-through",
+    "rankLevel": 3
+  },
+  {
     "id": "taunt",
     "name": "Taunt",
     "description": "Raises aggro for the duration.",
@@ -1173,43 +1339,46 @@
     "untargetable": true
   },
   {
-    "id": "retaliating",
-    "name": "Retaliating",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged",
+    "name": "Engaged",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 10,
-      "offenseMultiplierPercent": 60
+      "offenseMultiplierPercent": 60,
+      "target": "attacker"
     }
   },
   {
-    "id": "retaliating-ii",
-    "name": "Retaliating II",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged-ii",
+    "name": "Engaged II",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 15,
-      "offenseMultiplierPercent": 70
+      "offenseMultiplierPercent": 70,
+      "target": "attacker"
     },
-    "rankOf": "retaliating",
+    "rankOf": "engaged",
     "rankLevel": 2
   },
   {
-    "id": "retaliating-iii",
-    "name": "Retaliating III",
-    "description": "Answers the first 2 monster blows that land with a sweep at every enemy, then drops.",
+    "id": "engaged-iii",
+    "name": "Engaged III",
+    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
       "maxCounters": 2,
       "amount": 20,
-      "offenseMultiplierPercent": 75
+      "offenseMultiplierPercent": 75,
+      "target": "attacker"
     },
-    "rankOf": "retaliating",
+    "rankOf": "engaged",
     "rankLevel": 3
   },
   {
@@ -1488,7 +1657,9 @@
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "debuffsAttackerOnHit": {
-      "statusEffectIds": ["weakened"],
+      "statusEffectIds": [
+        "weakened"
+      ],
       "durationTurns": 2
     }
   },
@@ -1499,7 +1670,10 @@
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "debuffsAttackerOnHit": {
-      "statusEffectIds": ["weakened", "enfeebled"],
+      "statusEffectIds": [
+        "weakened",
+        "enfeebled"
+      ],
       "durationTurns": 2
     },
     "rankOf": "defiance",
@@ -1512,7 +1686,11 @@
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "debuffsAttackerOnHit": {
-      "statusEffectIds": ["weakened", "enfeebled", "slowed"],
+      "statusEffectIds": [
+        "weakened",
+        "enfeebled",
+        "slowed"
+      ],
       "durationTurns": 2
     },
     "rankOf": "defiance",

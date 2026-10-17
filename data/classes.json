@@ -1,13 +1,13 @@
 [
   {
-    "id": "vanguard",
-    "name": "Vanguard",
-    "description": "Stands in front, takes the hits, and keeps the enemy's attention off the healer.",
+    "id": "knight",
+    "name": "Knight",
+    "description": "Takes the blow meant for the weakest, and drives the others on behind its shield.",
     "roleTags": [
-      "Tank",
-      "Taunt",
+      "Guardian",
       "Frontline",
-      "Party Buff"
+      "Party Buff",
+      "Leader"
     ],
     "baseMaxHp": 140,
     "baseMaxMp": 22,
@@ -34,14 +34,15 @@
         "unlockLevel": 1
       },
       {
-        "id": "shield-guard",
-        "name": "Shield Guard",
-        "description": "Sets the shield square to the front and plants the feet behind it, and every eye in the room finds it.",
-        "shortDescription": "Raises a shield: defense, aggro up.",
-        "target": "self",
+        "id": "interpose",
+        "name": "Interpose",
+        "description": "Steps into the line of the blow meant for someone else, and takes it on the shield.",
+        "shortDescription": "Takes single-target hits aimed at an ally.",
+        "target": "singleAlly",
+        "targetsOtherAlliesOnly": true,
         "slot": 1,
         "isBuff": true,
-        "cooldownTurns": 2,
+        "cooldownTurns": 3,
         "ranks": [
           {
             "rank": 1,
@@ -50,13 +51,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 2
               }
             ]
           },
@@ -67,13 +63,8 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-ii",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 3
               }
             ]
           },
@@ -84,63 +75,61 @@
             "effects": [
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "guard-iii",
-                "durationTurns": 1
-              },
-              {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "statusEffectId": "interposed",
+                "durationTurns": 4
               }
             ]
           }
         ]
       },
       {
-        "id": "shield-throw",
-        "name": "Shield Throw",
-        "description": "Hurls the shield flat across the room, edge first.",
-        "shortDescription": "Throws the shield for ranged damage.",
-        "target": "singleEnemy",
+        "id": "side-by-side",
+        "name": "Side by Side",
+        "description": "Takes the ally's flank and lends them the shield. If they land a blow, the Knight is already moving.",
+        "shortDescription": "Buffs an ally; if they land a hit, the Knight gains Following Through.",
+        "target": "singleAlly",
         "slot": 2,
         "ranks": [
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 5,
+            "mpCost": 6,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 10,
-                "offenseMultiplierPercent": 100
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 6,
+            "mpCost": 7,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 13,
-                "offenseMultiplierPercent": 105
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side-ii",
+                "durationTurns": 1
               }
             ]
           },
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 7,
+            "mpCost": 8,
             "effects": [
               {
-                "kind": "damage",
-                "amount": 16,
-                "offenseMultiplierPercent": 110
+                "kind": "applyStatusEffect",
+                "statusEffectId": "side-by-side-iii",
+                "durationTurns": 1
               }
             ]
           }
-        ]
+        ],
+        "targetsOtherAlliesOnly": true,
+        "isBuff": true,
+        "cooldownTurns": 3
       },
       {
         "id": "rally",
@@ -253,13 +242,12 @@
         ]
       },
       {
-        "id": "retaliate",
-        "name": "Retaliate",
-        "description": "Plants the shield and dares them to swing, and the first blows that land are paid back across the whole line.",
-        "shortDescription": "Taunts for 1 turn; the first 2 hits taken are answered on every foe.",
-        "target": "self",
+        "id": "engage",
+        "name": "Engage",
+        "description": "Closes on the foe it chose, lands a blow, and holds the ground. Whatever strikes the Knight is struck back.",
+        "shortDescription": "Closes on 1 foe; taunts, and answers the first 2 hits on whoever struck.",
+        "target": "singleEnemy",
         "slot": 5,
-        "isBuff": true,
         "cooldownTurns": 4,
         "ranks": [
           {
@@ -268,14 +256,21 @@
             "mpCost": 12,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 80
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           },
@@ -285,14 +280,21 @@
             "mpCost": 13,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 16,
+                "offenseMultiplierPercent": 90
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating-ii",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged-ii",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           },
@@ -302,14 +304,21 @@
             "mpCost": 14,
             "effects": [
               {
-                "kind": "applyStatusEffect",
-                "statusEffectId": "taunt",
-                "durationTurns": 1
+                "kind": "damage",
+                "amount": 20,
+                "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "retaliating-iii",
-                "durationTurns": 1
+                "statusEffectId": "taunt",
+                "durationTurns": 1,
+                "target": "self"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "engaged-iii",
+                "durationTurns": 1,
+                "target": "self"
               }
             ]
           }
@@ -365,30 +374,30 @@
       }
     ],
     "passiveSkill": {
-      "id": "bulwark",
-      "name": "Bulwark",
-      "description": "Years on the front line have hardened more than just the shield arm.",
+      "id": "watchful",
+      "name": "Watchful",
+      "description": "The shield arm is hardened, and the eyes find whoever is bleeding worst. Now and then the blow meant for them lands on the Knight instead.",
       "ranks": [
         {
           "rank": 1,
           "unlockLevel": 5,
           "maxHpPercent": 5,
           "defensePercent": 7,
-          "aggroFlat": 3
+          "interceptWeakestChancePercent": 25
         },
         {
           "rank": 2,
           "unlockLevel": 20,
           "maxHpPercent": 10,
           "defensePercent": 10,
-          "aggroFlat": 6
+          "interceptWeakestChancePercent": 30
         },
         {
           "rank": 3,
           "unlockLevel": 35,
           "maxHpPercent": 15,
           "defensePercent": 14,
-          "aggroFlat": 9
+          "interceptWeakestChancePercent": 35
         }
       ]
     }
@@ -4231,7 +4240,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "confused",
-                "chance": 0.40,
+                "chance": 0.4,
                 "durationTurns": 2
               }
             ]

@@ -2310,7 +2310,7 @@ boot();
     await loadSpritesData();
     populateExistingIds();
     // Load whatever populateExistingIds actually left selected in the dropdown — hardcoding
-    // "vanguard" here regardless of dropdown order (it isn't always 1st alphabetically) is
+    // "knight" here regardless of dropdown order (it isn't always 1st alphabetically) is
     // exactly the "dropdown says X but the grid shows Y" bug this tool had.
     const firstId = existingIdEl.value;
     loadSpriteIntoEditor((firstId && currentSection()[firstId]) || Object.values(currentSection())[0]);

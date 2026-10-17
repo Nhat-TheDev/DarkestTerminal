@@ -150,7 +150,7 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
   Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
 
-  **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard adds a large `aggro` bonus to a Vanguard whose base is already high; against an `opportunistic` monster that pushes the Vanguard almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
+  **This makes taunting the wrong move against these archetypes, on purpose.** Taunt adds a large `aggro` bonus to a Knight whose base is already high; against an `opportunistic` monster that pushes the Knight almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
 
   Same mechanism, opposite direction: `distracted` (a negative `aggro` modifier) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
 
@@ -333,11 +333,11 @@ only — what the thing looks or feels like. It must never contain:
   Every description must stand alone; the reader shouldn't need another skill's card in front of
   them to understand this one.
 - **Numbers, percentages, or a reference to another class/archetype's stat field** — e.g. "roughly
-  60% of the Vanguard's maxHp." Those belong in `effects`, in this document's prose, or in a code
+  60% of the Knight's maxHp." Those belong in `effects`, in this document's prose, or in a code
   comment — never inside the JSON `description` string.
 
 If a balance fact needs to be written down somewhere (e.g. "this execute hits for ~60% of a
-Vanguard's maxHp"), put it in this doc or a code comment next to the JSON, not in the string a
+Knight's maxHp"), put it in this doc or a code comment next to the JSON, not in the string a
 player will actually read.
 
 ### Guard-room archetypes (elite/boss)

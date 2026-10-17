@@ -370,7 +370,7 @@ Hooks into the sole place `gameOver` becomes `"defeat"`
    rest of the run's state — it does not carry over to the next run (a
    fresh run always starts at `runStardust = 0`).
 5. **Results screen** — shown after the buyback (or immediately, if the
-   lost set was empty): 1 line per lost-set entry, e.g. "Vanguard's
+   lost set was empty): 1 line per lost-set entry, e.g. "Knight's
    *Bloodletting* was lost — reclaimed for 2 Stardust" / "Rogue's
    *Phantom Reflexes* was lost for good."
 6. **Next run starts with more (or the same) choices, never fewer than

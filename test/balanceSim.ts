@@ -14,9 +14,9 @@ import { simulateLevelByDepth } from "../tools/game-editor/calc";
 import type { Character, MonsterTier } from "../src/types";
 
 export const PARTIES = [
-  ["vanguard", "mage", "acolyte", "archer"],
+  ["knight", "mage", "acolyte", "archer"],
   ["viking", "rogue", "plague-doctor", "summoner"],
-  ["vanguard", "ninja", "mage", "rogue"],
+  ["knight", "ninja", "mage", "rogue"],
 ];
 export const SEEDS = 6;
 export const MAX_ROUNDS = 150;
