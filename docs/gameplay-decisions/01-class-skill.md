@@ -402,7 +402,7 @@ This also required a fix to `isHelpfulStatusEffect()` (`src/engine/resolver.ts`,
 
 The statuses used by the character skill kits in sections 1.1-1.6 (English id/name, matching `data/status-effects.json`):
 
-<!-- docs:begin statusEffects ids=interposed,side-by-side,following-through,engaged,guard,taunt,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
+<!-- docs:begin statusEffects ids=interposed,side-by-side,following-through,engaged,guard,taunt,challenge,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
@@ -412,7 +412,8 @@ The statuses used by the character skill kits in sections 1.1-1.6 (English id/na
 | `following-through` | Following Through | defense +6 (min 10%); attack +12 (min 25%); tickCategory special |
 | `engaged` | Engaged | tickCategory statMod; counterAttack maxCounters 2, amount 10, offenseMultiplierPercent 60, target attacker |
 | `guard` | Guard | defense +6 (min 10%) |
-| `taunt` | Taunt | aggro +40 |
+| `taunt` | Taunt | aggro +40; targetPull 0.2 |
+| `challenge` | Challenge | aggro +60; targetPull 0.4 |
 | `rallied` | Rallied | attack +4 (min 5%) |
 | `poison-coated` | Poison-Coated | onHitStatusEffectId poisoned |
 | `poisoned` | Poisoned | damage 4 or 2.5% max HP per turn |
@@ -431,7 +432,8 @@ What each is, and where it comes from:
 - `following-through` — Buff; applied to the Knight when the ally carrying `side-by-side` lands a damaging hit. `-ii`/`-iii` are the rank variants.
 - `engaged` — Buff (counter, not a stat-buff); used by Engage (Knight). `-ii`/`-iii` are the rank variants.
 - `guard` — Buff; used by monster skills.
-- `taunt` — Buff; used by Engage (Knight) and Defiance (Paladin).
+- `taunt` — Buff (aggro and a `targetPull` share of every monster's pick); used by Engage (Knight).
+- `challenge` — Buff; a stronger `taunt` (more aggro, a larger `targetPull`); used by Defiance (Paladin).
 - `rallied` — Buff; used by Rally (Knight).
 - `poison-coated` — Buff (rider, not a stat-buff); used by Poison Coat (Rogue). (see `docs/technical-decisions.md` §4.2)
 - `poisoned` — Debuff; used by on-hit rider of Poison Coat; Poison Bomb (Rogue); Toxic Fog, Total Plague (Plague Doctor).
@@ -535,7 +537,7 @@ The class-specific skills whose `modifyCombatStat` status scales with rank (Knig
 ]
 ```
 
-`taunt` and `poison-coated` are **not** given rank variants: `taunt`'s aggro bonus already dominates target selection at rank 1 (diminishing returns from going higher), and `poison-coated` is a binary on-hit rider, not a magnitude stat.
+`taunt` and `poison-coated` are **not** given rank variants: `taunt`'s `targetPull` already claims a fixed share of every monster's pick at rank 1 on every `aiPattern` (the stronger pull is `challenge`, a status of its own), and `poison-coated` is a binary on-hit rider, not a magnitude stat.
 
 #### Poison Coat — rank-up adds a separate attack-buff status (Rogue)
 
@@ -1010,7 +1012,7 @@ Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `lay-on-hands` | Lay on Hands | singleAlly | — | 5 / 6 / 8 | 1 / 7 / 15 | heal 10 / 12 / 15 (+10% of the caster's max HP / +11% of the caster's max HP / +12% of the caster's max HP, up to +40% as the target's HP falls to 20%) | — |
-| 2 | `defiance` | Defiance | self | 3 | 6 / 8 / 8 | 1 / 7 / 15 | status taunt (2 turns); status defiance / defiance-ii / defiance-iii (2 turns); status enfeebled (2 turns) | buff |
+| 2 | `defiance` | Defiance | self | 3 | 6 / 8 / 8 | 1 / 7 / 15 | status challenge (2 turns); status defiance / defiance-ii / defiance-iii (2 turns); status enfeebled (2 turns) | buff |
 | 3 | `cross-slash` | Cross Slash | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 7 / 10 / 14 + 60 / 65 / 70% ATK+MAG (holy); damage 6 / 8 / 10 + 50 / 55 / 60% ATK+MAG (holy); status condemned / condemned-ii / condemned-iii (3 turns) | — |
 | 4 | `guardian-angel` | Guardian Angel | singleAlly | 5 | 12 / 13 / 14 | 15 / 40 / 65 | status guardian-angel / guardian-angel-ii / guardian-angel-iii (1 turn); not on the caster | buff |
 | 5 | `vigil` | Vigil | allAlliesAndEnemies | 4 | 15 / 16 / 17 | 25 / 50 / 75 | heal 10 / 12 / 15 (on allies, +3% of the caster's max HP / +3.5% of the caster's max HP / +4% of the caster's max HP, up to +40% as the target's HP falls to 20%); damage 8 / 12 / 16 + 60 / 70 / 80% MAG (on enemies, holy); status searing-light (2 turns, on enemies, repeats on each channel pulse); status vigil-light (3 turns, on allies, not on summons); status vigil-channel (2 turns, target self); cannot miss or be dodged | magic |
@@ -1020,7 +1022,7 @@ Basic attack (slot 0): **Mace Strike** (`mace-strike`), physical, full offense.
 How each skill works:
 
 - `lay-on-hands` — `heal` of a flat amount plus `casterMaxHpPercent` of the Paladin's max HP, raised by `lowHpHealBonus` the lower the recipient's HP (nothing at full HP, the full bonus at its threshold and below)
-- `defiance` — `taunt` + `defiance` (rank variants `-ii`/`-iii`) on the Paladin for 2 turns, and `enfeebled` on the Paladin itself: a monster whose direct hit lands on the Paladin gets every status in `debuffsAttackerOnHit.statusEffectIds` — `weakened`, plus `enfeebled` from rank 2 and `slowed` at rank 3
+- `defiance` — `challenge` + `defiance` (rank variants `-ii`/`-iii`) on the Paladin for 2 turns, and `enfeebled` on the Paladin itself: a monster whose direct hit lands on the Paladin gets every status in `debuffsAttackerOnHit.statusEffectIds` — `weakened`, plus `enfeebled` from rank 2 and `slowed` at rank 3
 - `cross-slash` — two `damage` hits (`holy`) behind one accuracy roll, each scaling with the Paladin's attack plus magic power (`scalesWithAttackAndMagic`), then `condemned` (rank variants `-ii`/`-iii`) for 3 turns: its `weakPercent` adds to the target's race weakness to `holy`, the same way a trait's does, under the same 100% cap (`raceMultiplierFor`, `src/engine/resolver.ts`). The cuts that apply it don't benefit from it
 - `guardian-angel` — `guardian-angel` (rank variants `-ii`/`-iii`) on another ally for the round (`targetsOtherAlliesOnly`): should the ally fall while it lasts, from any source, it rises at the status's `reviveHpPercent` of max HP and the status is spent
 - `vigil` — a zone: allies `heal` (a flat amount plus `casterMaxHpPercent` of the Paladin's max HP, raised by `lowHpHealBonus` like Lay on Hands) and get `vigil-light` (`fearResistPercent`); enemies take `holy` magic `damage` that cannot miss or be dodged (`alwaysHits`) and a stack of `searing-light` (a defense debuff, up to 3 stacks). The Paladin gets `vigil-channel` (`channelSkillId`): on each of its next turns it repeats the skill's heal, damage and `repeatsOnChannelPulse` effects instead of acting, so the zone pulses three times in all and `searing-light` reaches 3 stacks

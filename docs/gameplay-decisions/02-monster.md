@@ -172,7 +172,9 @@ A factor that scores everyone the same spreads its weight evenly, so a party at 
 
 Ranking reads only the order, not the distance: a character at 99% HP among three at full ranks first exactly as one at 10% would. A monster that hunts the wounded is pulled toward whoever is hurt, without locking onto them.
 
-A skill's own `targetRules` multiply the pattern's weight (`06-level-system.md` §6.12). A `forcesTargetOnSource` status on the monster takes its first pick before any weighting, and an archetype with `targeting: "random"` picks the rest uniformly, ignoring both the pattern and the rules.
+**Target pull.** A status with `targetPull` (0–1) takes its bearer's share of the pick before the profile has a say: with a total pull `P` over the living pool, each candidate's chance is its own pull plus `(1 − P)` of what the profile gives it. Pulls summing past 1 are scaled down to share the whole pick in proportion, leaving nothing to the profile. The pull works on every pattern, `opportunistic` included; it is how `taunt` (Engage) and `challenge` (Defiance) reach a monster that ignores `aggro`.
+
+A skill's own `targetRules` multiply the pulled weight (`06-level-system.md` §6.12). A `forcesTargetOnSource` status on the monster takes its first pick before any weighting, and an archetype with `targeting: "random"` picks the rest uniformly, ignoring both the pattern and the rules.
 
 ### AI patterns (`MonsterAiPattern`)
 
@@ -196,9 +198,9 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
   `runMonsterTurn` (`src/engine/monsterAI.ts`) also intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below the threshold defined in code, it uses a self-targeted skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and chance rather than trusting a hand-copied number here. No other pattern has this branch.
 
   The branch looks for a skill whose `target` is `self` **and whose id is a key of the tier's own `actionWeights`** (a weight of 0 still counts: Zombie and Skeleton Warrior keep their skill at weight 0, so it fires only from this branch). It does not take the first entry of `skillIds`: that list holds every skill an archetype can roll at any tier, so a positional pick would reach into the guard-room kit. Skeleton Guard is the case that matters — its `skillIds` hold self-targeted guard-room skills (a guard stance, a riposte stance), but its normal weights name only the basic attack, so a normal-tier Skeleton Guard never reaches them. In practice the branch is live for Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The guard-room `defensive` archetypes (Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem) use their self-targeted skills through their elite/boss weights and AI rules instead (`06-level-system.md` §6.12).
-- **`opportunistic`** — has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, or it is clever enough to choose. It ignores `aggro` entirely, so taunting does nothing against it, and goes for the wounded and the frightened.
+- **`opportunistic`** — has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, or it is clever enough to choose. It ignores `aggro` entirely, so only a taunt's `targetPull` reaches it, and it goes for the wounded and the frightened.
 - **`dread`** — feeds on fear. It finds whoever is shaking and stays on them; calming the party is the counter.
-- **`bloodthirsty`** — follows the smell of blood, but is still an animal or a hunger in front of a shield: `aggro` keeps a real share, so a taunt can still pull it off a bleeding ally.
+- **`bloodthirsty`** — follows the smell of blood, but is still an animal or a hunger in front of a shield: `aggro` keeps a real share, so a taunt's aggro adds to its pull and can still drag it off a bleeding ally.
 
  Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules, phases and telegraphs on top of the weights — `06-level-system.md` §6.12.
 
