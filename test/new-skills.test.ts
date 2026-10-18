@@ -201,6 +201,12 @@ describe("Side by Side (Knight)", () => {
     expect(expired).toBeGreaterThan(slashed);
   });
 
+  test("Engaged's text says it answers only the monster that struck", () => {
+    const text = statusMechanicsParts(getStatusEffect("engaged")).join(" ");
+    expect(text).toContain("the monster whose hit lands");
+    expect(text).not.toContain("every enemy");
+  });
+
   test("Side by Side's mechanics text names its follow-up status", () => {
     const text = statusMechanicsParts(getStatusEffect("side-by-side")).join(" ");
     expect(text).toContain("Following Through");
@@ -1104,6 +1110,21 @@ describe("Warlock", () => {
     queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
     resolveRound(combat, ctx);
     expect(combat.log.slice(from).some((l) => l.text.includes("ripens"))).toBe(true);
+  });
+
+  test("a Hex that kills its target leaves no curse on the body to pass on", () => {
+    const { ctx, warlock, rats, combat, cast } = warlockFight(35, 2);
+    const [victim, other] = rats as [Monster, Monster];
+    onlyAlive(ctx.party, warlock);
+    victim.hp = 1;
+    ctx.rng.chance = () => true;
+    cast("hex", [victim]);
+    expect(victim.hp).toBe(0);
+    expect(hexStacks(victim)).toBe(0);
+    other.attack = 0;
+    queueAction(combat, ref(warlock), "blood-pact", [ref(warlock)], ctx);
+    resolveRound(combat, ctx);
+    expect(hexStacks(other)).toBe(0);
   });
 
   test("Soul Rend eats one Hexed stack", () => {

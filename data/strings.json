@@ -524,6 +524,7 @@
   "item.effectUntargetableTimed": "untargetable while it lasts",
   "item.effectReflect": "reflects {{percent}}% of direct damage back at the attacker",
   "item.effectCounterAttack": "strikes back at every enemy when hit by a monster ({{amount}} + {{percent}}% attack), ending after {{max}} counters",
+  "item.effectCounterAttackAttacker": "strikes back at the monster whose hit lands ({{amount}} + {{percent}}% attack), ending after {{max}} counters",
   "item.effectBasicAttackOverride": "basic attack becomes {{name}} ({{amount}} + {{percent}}% {{stat}})",
   "item.effectOnMaxStacks": "at {{max}} stacks turns into {{status}} for {{turns}} turn",
   "item.effectFearResist": "resists {{percent}}% of fear gained",

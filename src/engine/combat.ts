@@ -1809,7 +1809,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         const targetIsAlly = isPlayerSide(target);
         if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
       }
-      if (!isActorAlive(target) && effect.kind !== "applyStatusEffect") continue;
+      // A target felled by an earlier effect of this cast takes nothing more from it, statuses included.
+      if (!isActorAlive(target)) continue;
       const harmfulStatus = harmfulStatusOnCharacter(effect, target, isEnemyFacing);
       // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
       // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.

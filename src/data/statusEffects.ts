@@ -99,7 +99,7 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   }
   if (def.overwatchShot) parts.push(t("item.effectOverwatchShot", { amount: def.overwatchShot.amount, percent: def.overwatchShot.offenseMultiplierPercent }));
   if (def.counterAttack) {
-    parts.push(t("item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxCounters }));
+    parts.push(t(def.counterAttack.target === "attacker" ? "item.effectCounterAttackAttacker" : "item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxCounters }));
   }
   if (def.onMaxStacks) parts.push(t("item.effectOnMaxStacks", { max: def.maxStacks ?? 1, status: getStatusEffect(def.onMaxStacks.statusEffectId).name, turns: def.onMaxStacks.durationTurns }));
   if (def.basicAttackOverride) {
