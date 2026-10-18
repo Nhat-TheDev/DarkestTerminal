@@ -1262,7 +1262,7 @@
     "name": "Vampire Lord",
     "description": "Dressed, and dressed well, for somewhere that stopped existing a long time ago. None of you hold its attention until one of you starts bleeding. After that, the rest of you could leave the room unnoticed.",
     "baseHp": 110,
-    "baseAttack": 34,
+    "baseAttack": 35,
     "baseDefense": 8,
     "baseSpeed": 12,
     "monsterType": "striker",
