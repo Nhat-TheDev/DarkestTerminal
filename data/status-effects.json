@@ -220,14 +220,28 @@
   {
     "id": "taunt",
     "name": "Taunt",
-    "description": "Raises aggro for the duration.",
+    "description": "Raises aggro, and a share of every foe's attacks comes to the bearer whatever else it wants.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "aggro",
         "amount": 40
       }
-    ]
+    ],
+    "targetPull": 0.2
+  },
+  {
+    "id": "challenge",
+    "name": "Challenge",
+    "description": "Raises aggro sharply, and a large share of every foe's attacks comes to the bearer whatever else it wants.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "aggro",
+        "amount": 60
+      }
+    ],
+    "targetPull": 0.4
   },
   {
     "id": "rallied",

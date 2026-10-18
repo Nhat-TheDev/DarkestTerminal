@@ -412,6 +412,8 @@ export interface StatusEffectDefinition {
   onLandedHitSourceStatus?: { statusEffectId: Id; durationTurns: number };
   /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
   redirectToAlliesChance?: number;
+  /** This share (0–1) of every monster's targeting chance goes to the bearer before the monster's `aiPattern` profile splits the rest. */
+  targetPull?: number;
   /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
   debuffsAttackerOnHit?: { statusEffectIds: Id[]; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */

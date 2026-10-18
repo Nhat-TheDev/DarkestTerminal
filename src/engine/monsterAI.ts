@@ -143,7 +143,8 @@ function factorScores(factor: TargetingFactor, actor: Monster, pool: Targetable[
 /**
  * The chance each living candidate is picked under the actor's `aiPattern`, before any skill's
  * `targetRules`: every factor turns its scores into shares of 1, and the profile's weights (which
- * sum to 1) mix those shares.
+ * sum to 1) mix those shares. A `targetPull` status hands its bearer that share of the pick first and
+ * the profile splits what is left; pulls summing past 1 are scaled down to share the whole pick.
  */
 export function targetingWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {
   const profile = BALANCE.targeting.profiles[actor.aiPattern]!;
@@ -154,6 +155,12 @@ export function targetingWeight(actor: Monster, living: Targetable[]): (c: Targe
     const score = factorScores(factor, actor, living);
     const total = living.reduce((sum, c) => sum + score(c), 0);
     for (const c of living) chance.set(c, chance.get(c)! + (weight * score(c)) / total);
+  }
+  const pull = new Map(living.map((c) => [c, c.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).targetPull ?? 0), 0)]));
+  const totalPull = living.reduce((sum, c) => sum + pull.get(c)!, 0);
+  if (totalPull > 0) {
+    const scale = totalPull > 1 ? 1 / totalPull : 1;
+    for (const c of living) chance.set(c, pull.get(c)! * scale + (1 - Math.min(1, totalPull)) * chance.get(c)!);
   }
   return (c) => chance.get(c) ?? 0;
 }

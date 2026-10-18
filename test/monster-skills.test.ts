@@ -3,6 +3,7 @@ import { startCombat, queueAction, resolveRound, livingCharacterRefs, type Engin
 import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { runMonsterTurn, targetingWeight } from "../src/engine/monsterAI";
 import { applyStatusEffectToActor, resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
+import { getStatusEffect } from "../src/data/statusEffects";
 import type { Character, MonsterArchetype, Summon } from "../src/types";
 import { BALANCE, targetingConfigError, type TargetingConfig } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
@@ -517,7 +518,7 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     expect(hits.get("knight") ?? 0).toBeGreaterThan(hits.get("mage") ?? 0);
   });
 
-  test("an opportunistic archetype ignores aggro: a taunt changes nothing it does", () => {
+  test("an opportunistic archetype ignores aggro: raising it changes nothing it does", () => {
     expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
     const taunt = (ctx: EngineContext) => (ctx.party.find((c) => c.classId === "knight")!.aggro += 40);
     expect(countTargets("skeleton-archer", taunt)).toEqual(countTargets("skeleton-archer"));
@@ -543,6 +544,46 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
       const survivor = ctx.party[0]!;
       expect(targetingWeight(monster, [survivor])(survivor)).toBeCloseTo(1, 9);
     }
+  });
+
+  /** The bearer's chance under a pull status, against the same party with no status on anyone. */
+  function pulledChance(archetypeId: string, statusId: string) {
+    const base = chances(archetypeId);
+    const knightIndex = base.party.findIndex((c) => c.classId === "knight");
+    const before = base.chance(base.party[knightIndex]!);
+    const pulled = chances(archetypeId, (p) => p[knightIndex]!.activeStatusEffects.push({ statusEffectId: statusId, turnsRemaining: 2 }));
+    return { before, after: pulled.chance(pulled.party[knightIndex]!), total: pulled.party.reduce((sum, c) => sum + pulled.chance(c), 0) };
+  }
+
+  test("a targetPull status hands its bearer that share of the pick before the profile splits the rest", () => {
+    const pull = getStatusEffect("taunt").targetPull!;
+    expect(pull).toBeGreaterThan(0);
+    for (const archetypeId of ["skeleton", "skeleton-archer", "ghost"]) {
+      const { before, after, total } = pulledChance(archetypeId, "taunt");
+      expect(after).toBeCloseTo(pull + (1 - pull) * before, 9);
+      expect(total).toBeCloseTo(1, 9);
+    }
+  });
+
+  test("challenge pulls harder than taunt, an opportunistic archetype included", () => {
+    expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
+    for (const archetypeId of ["skeleton", "skeleton-archer"]) {
+      const taunt = pulledChance(archetypeId, "taunt");
+      const challenge = pulledChance(archetypeId, "challenge");
+      expect(taunt.after).toBeGreaterThan(taunt.before);
+      expect(challenge.after).toBeGreaterThan(taunt.after);
+    }
+  });
+
+  test("pulls summing past 1 are scaled down to share the whole pick in proportion", () => {
+    const { party, chance } = chances("skeleton", (p) => {
+      for (let i = 0; i < 3; i++) p[0]!.activeStatusEffects.push({ statusEffectId: "challenge", turnsRemaining: 2 });
+      for (let i = 0; i < 2; i++) p[1]!.activeStatusEffects.push({ statusEffectId: "challenge", turnsRemaining: 2 });
+    });
+    expect(party.reduce((sum, c) => sum + chance(c), 0)).toBeCloseTo(1, 9);
+    expect(chance(party[0]!)).toBeCloseTo(3 / 5, 9);
+    expect(chance(party[1]!)).toBeCloseTo(2 / 5, 9);
+    expect(chance(party[2]!)).toBe(0);
   });
 });
 

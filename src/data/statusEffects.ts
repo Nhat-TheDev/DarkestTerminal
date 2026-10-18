@@ -106,6 +106,7 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   if (def.interceptsForSource) parts.push(t("item.effectIntercepts"));
   if (def.onLandedHitSourceStatus) parts.push(t(def.onLandedHitSourceStatus.durationTurns === 1 ? "item.effectLandedHitSourceStatusOne" : "item.effectLandedHitSourceStatus", { status: getStatusEffect(def.onLandedHitSourceStatus.statusEffectId).name, turns: def.onLandedHitSourceStatus.durationTurns }));
   if (def.redirectToAlliesChance) parts.push(t("item.effectRedirectToAllies", { percent: Math.round(def.redirectToAlliesChance * 100) }));
+  if (def.targetPull) parts.push(t("item.effectTargetPull", { percent: Math.round(def.targetPull * 100) }));
   if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
   if (def.debuffsAttackerOnHit) {
     parts.push(t("item.effectDebuffsAttacker", { status: def.debuffsAttackerOnHit.statusEffectIds.map((id) => getStatusEffect(id).name).join(", "), turns: def.debuffsAttackerOnHit.durationTurns }));
