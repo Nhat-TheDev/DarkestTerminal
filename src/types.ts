@@ -226,6 +226,8 @@ export interface SkillDefinition {
   aiRules?: MonsterAiRule[];
   /** Monster skills only: each matching rule multiplies a candidate target's weight. */
   targetRules?: MonsterAiRule[];
+  /** Monster skills only: how this skill reaches its target for the `range` targeting factor, in place of the archetype's own `attackRange`. Absent = the archetype's. */
+  attackRange?: AttackRange;
   /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
   telegraph?: boolean;
   /** Monster skills only: effects resolved on the caster during a telegraph's charge turn. */
@@ -322,6 +324,7 @@ export interface CharacterClass {
   baseAggro: number;
   baseSpeed: number;
   baseMagicPower: number;
+  attackRange: AttackRange;
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
   /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */
@@ -644,6 +647,9 @@ export interface Floor {
   entryRoomId: Id;
 }
 
+/** Whether a fighter strikes from close or from afar — the `range` targeting factor matches a monster's attack against its target's. */
+export type AttackRange = "melee" | "ranged";
+
 /** A key of `targeting.profiles` in `data/balance-config.json`. `"defensive"` also turns on the normal-tier low-HP self-skill branch (`runMonsterTurn`). */
 export type MonsterAiPattern = string;
 
@@ -693,6 +699,8 @@ export interface MonsterArchetype {
   baseSpeed: number;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  /** How its basic attack, and any skill without its own `attackRange`, reaches a target. */
+  attackRange: AttackRange;
   /** Exactly one of `["normal"]`, `["normal","elite","boss"]`, `["elite","boss"]`, or `["boss"]` with `finalBoss`; must match `actionWeights`' keys. */
   roles: MonsterTier[];
   /** Never enters any random roll. */
@@ -785,6 +793,8 @@ export interface SummonArchetype {
   name: string;
   /** Independent of the owner's speed; its first action, right after the cast, ignores speed. */
   speed: number;
+  /** Whether a monster sees it as a melee or a ranged fighter (the `range` targeting factor). */
+  attackRange: AttackRange;
   /** Same as `MonsterArchetype.actionWeights`, without the tier level. */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];

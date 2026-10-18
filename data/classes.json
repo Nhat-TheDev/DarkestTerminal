@@ -16,6 +16,7 @@
     "baseAggro": 20,
     "baseSpeed": 8,
     "baseMagicPower": 0,
+    "attackRange": "melee",
     "skills": [
       {
         "id": "slash",
@@ -419,6 +420,7 @@
     "baseAggro": 8,
     "baseSpeed": 10,
     "baseMagicPower": 16,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "arcane-bolt",
@@ -890,6 +892,7 @@
     "baseAggro": 10,
     "baseSpeed": 20,
     "baseMagicPower": 0,
+    "attackRange": "melee",
     "skills": [
       {
         "id": "stab",
@@ -1309,6 +1312,7 @@
     "baseAggro": 11,
     "baseSpeed": 9,
     "baseMagicPower": 10,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "smite",
@@ -1781,6 +1785,7 @@
     "baseAggro": 16,
     "baseSpeed": 11,
     "baseMagicPower": 8,
+    "attackRange": "melee",
     "skills": [
       {
         "id": "axe-slash",
@@ -2206,6 +2211,7 @@
     "baseAggro": 8,
     "baseSpeed": 11,
     "baseMagicPower": 13,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "vial-toss",
@@ -2755,6 +2761,7 @@
     "baseAggro": 9,
     "baseSpeed": 13,
     "baseMagicPower": 0,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "quick-shot",
@@ -3148,6 +3155,7 @@
     "baseAggro": 8,
     "baseSpeed": 16,
     "baseMagicPower": 0,
+    "attackRange": "melee",
     "skills": [
       {
         "id": "kunai-strike",
@@ -3645,6 +3653,7 @@
     "baseAggro": 7,
     "baseSpeed": 10,
     "baseMagicPower": 12,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "hollow-pulse",
@@ -4118,6 +4127,7 @@
     "baseAggro": 10,
     "baseSpeed": 18,
     "baseMagicPower": 10,
+    "attackRange": "ranged",
     "dice": {
       "startCount": 3,
       "maxCount": 12,
@@ -4621,6 +4631,7 @@
     "baseAggro": 22,
     "baseSpeed": 5,
     "baseMagicPower": 8,
+    "attackRange": "melee",
     "skills": [
       {
         "id": "mace-strike",
@@ -5151,6 +5162,7 @@
     "baseAggro": 8,
     "baseSpeed": 10,
     "baseMagicPower": 15,
+    "attackRange": "ranged",
     "skills": [
       {
         "id": "eldritch-bolt",

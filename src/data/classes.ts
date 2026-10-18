@@ -2,6 +2,7 @@ import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveS
 import classesJson from "../../data/classes.json";
 import { STATUS_EFFECTS } from "./statusEffects";
 import { SUMMON_CASTS } from "./summons";
+import { ATTACK_RANGES } from "./balanceConfig";
 
 /** The JSON keeps a ranked skill's base numbers only in rank 1; copying them up lets every reader treat it as a plain `SkillDefinition`. */
 function normalizeRankedSkill(skill: SkillDefinition): SkillDefinition {
@@ -38,6 +39,9 @@ if (CLASSES.length === 0) throw new Error("data/classes.json: no classes defined
 for (const cls of CLASSES) {
   if (cls.skills.length !== SKILLS_PER_CLASS) {
     throw new Error(`data/classes.json: class "${cls.id}" must have exactly ${SKILLS_PER_CLASS} skills (has ${cls.skills.length})`);
+  }
+  if (!ATTACK_RANGES.includes(cls.attackRange)) {
+    throw new Error(`data/classes.json: class "${cls.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
 

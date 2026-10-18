@@ -9,7 +9,7 @@ import {
   monsterDepthBuffPercent,
   MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS,
 } from "./levelGrowth";
-import { BALANCE } from "./balanceConfig";
+import { ATTACK_RANGES, BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 import { assertRaceDataConsistent, resolveRaceProfile } from "./monsterRaces";
 import { STATUS_EFFECTS } from "./statusEffects";
@@ -48,6 +48,9 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
     }
     if (!(archetype.aiPattern in BALANCE.targeting.profiles)) {
       throw new Error(`data/monsters.json: "${archetype.id}" has aiPattern "${archetype.aiPattern}", which has no profile in balance-config targeting.profiles`);
+    }
+    if (!ATTACK_RANGES.includes(archetype.attackRange)) {
+      throw new Error(`data/monsters.json: "${archetype.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
     }
     for (const role of archetype.roles) {
       if (!validTiers.includes(role)) {
@@ -131,6 +134,7 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
     assertPredicate(`${where} aiCondition`, skill.aiCondition);
     assertRules(`${where} aiRules`, skill.aiRules);
     assertRules(`${where} targetRules`, skill.targetRules);
+    if (skill.attackRange !== undefined && !ATTACK_RANGES.includes(skill.attackRange)) throw new Error(`${where}: attackRange must be ${ATTACK_RANGES.join(" or ")}`);
     // Cooldowns and uses land in the saved Monster as counts; a fraction or a negative would make that save unloadable.
     for (const field of ["cooldownTurns", "initialCooldownTurns"] as const) {
       const value = skill[field];

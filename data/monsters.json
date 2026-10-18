@@ -9,6 +9,7 @@
     "baseSpeed": 12,
     "monsterType": "balanced",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -40,6 +41,7 @@
     "baseSpeed": 18,
     "monsterType": "striker",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "blood-drain"
     ],
@@ -71,6 +73,7 @@
     "baseSpeed": 5,
     "monsterType": "tanky",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "acid-spit"
     ],
@@ -99,6 +102,7 @@
     "baseSpeed": 16,
     "monsterType": "striker",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -127,6 +131,7 @@
     "baseSpeed": 10,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "whispered-name"
     ],
@@ -155,6 +160,7 @@
     "baseSpeed": 14,
     "monsterType": "balanced",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -183,6 +189,7 @@
     "baseSpeed": 20,
     "monsterType": "striker",
     "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
       "blood-drain"
     ],
@@ -214,6 +221,7 @@
     "baseSpeed": 8,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "poison-bite"
     ],
@@ -245,6 +253,7 @@
     "baseSpeed": 8,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bone-throw"
     ],
@@ -273,6 +282,7 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "regeneration"
     ],
@@ -301,6 +311,7 @@
     "baseSpeed": 16,
     "monsterType": "glass",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "poison-bite"
     ],
@@ -332,6 +343,7 @@
     "baseSpeed": 11,
     "monsterType": "armored",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "quick-bite"
     ],
@@ -360,6 +372,7 @@
     "baseSpeed": 16,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "web-spit"
     ],
@@ -391,6 +404,7 @@
     "baseSpeed": 12,
     "monsterType": "glass",
     "aiPattern": "defensive",
+    "attackRange": "ranged",
     "skillIds": [
       "acid-spit"
     ],
@@ -419,6 +433,7 @@
     "baseSpeed": 12,
     "monsterType": "striker",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "blood-drain"
     ],
@@ -447,6 +462,7 @@
     "baseSpeed": 18,
     "monsterType": "glass",
     "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "grave-chill"
     ],
@@ -477,7 +493,8 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "glass",
-    "aiPattern": "defensive",
+    "aiPattern": "marksman",
+    "attackRange": "ranged",
     "skillIds": [
       "bone-throw"
     ],
@@ -506,6 +523,7 @@
     "baseSpeed": 16,
     "monsterType": "striker",
     "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
       "quick-bite"
     ],
@@ -537,6 +555,7 @@
     "baseSpeed": 5,
     "monsterType": "tanky",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "acid-spit"
     ],
@@ -565,6 +584,7 @@
     "baseSpeed": 4,
     "monsterType": "tanky",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "self-destruct"
     ],
@@ -593,6 +613,7 @@
     "baseSpeed": 14,
     "monsterType": "striker",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "ember-lash"
     ],
@@ -621,6 +642,7 @@
     "baseSpeed": 12,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "regeneration"
     ],
@@ -649,6 +671,7 @@
     "baseSpeed": 10,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "settle-into-stone"
     ],
@@ -680,6 +703,7 @@
     "baseSpeed": 10,
     "monsterType": "balanced",
     "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "roles": [
       "normal"
     ],
@@ -710,7 +734,8 @@
     "baseDefense": 7,
     "baseSpeed": 12,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "marksman",
+    "attackRange": "ranged",
     "skillIds": [
       "arrow-shot"
     ],
@@ -739,6 +764,7 @@
     "baseSpeed": 8,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -767,6 +793,7 @@
     "baseSpeed": 8,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bone-breaker"
     ],
@@ -798,6 +825,7 @@
     "baseSpeed": 15,
     "monsterType": "striker",
     "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "blood-drain"
     ],
@@ -829,6 +857,7 @@
     "baseSpeed": 6,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -860,6 +889,7 @@
     "baseSpeed": 8,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "maul"
     ],
@@ -891,6 +921,7 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -919,6 +950,7 @@
     "baseSpeed": 15,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -947,6 +979,7 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "hold-the-line",
       "shield-bash",
@@ -994,6 +1027,7 @@
     "baseSpeed": 14,
     "monsterType": "glass",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "web-barrage",
       "venom-bite",
@@ -1051,6 +1085,7 @@
     "baseSpeed": 10,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "claw-rake",
       "dragon-fire-breath",
@@ -1108,6 +1143,7 @@
     "baseSpeed": 6,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "diseased-blade",
       "guard-position",
@@ -1150,6 +1186,7 @@
     "baseSpeed": 10,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "salute",
       "measured-cut",
@@ -1210,6 +1247,7 @@
     "baseSpeed": 10,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "skullsplitter",
       "call-the-warband",
@@ -1267,6 +1305,7 @@
     "baseSpeed": 12,
     "monsterType": "striker",
     "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
       "crimson-talon",
       "drink",
@@ -1319,6 +1358,7 @@
     "baseSpeed": 9,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "grasping-remnants",
       "unravelling-tide",
@@ -1362,6 +1402,7 @@
     "baseSpeed": 5,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "stoneshear",
       "tremor",
@@ -1426,6 +1467,7 @@
     "baseSpeed": 14,
     "monsterType": "glass",
     "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "withering-touch",
       "raise-the-dead",
@@ -1480,6 +1522,7 @@
     "baseSpeed": 10,
     "monsterType": "sentinel",
     "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "paid-in-full",
       "the-same-price",

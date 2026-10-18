@@ -437,6 +437,7 @@ Bun.serve({
           fearRankScores: targeting.fearRankScores,
           damageRankScores: targeting.damageRankScores,
           damageMemoryDecay: targeting.damageMemoryDecay,
+          rangeScores: targeting.rangeScores,
           profiles: targeting.profiles,
         };
       }

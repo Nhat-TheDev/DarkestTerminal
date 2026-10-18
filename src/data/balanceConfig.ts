@@ -1,9 +1,11 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity, ItemTier } from "../types";
+import type { ArtifactRarity, AttackRange, ItemTier } from "../types";
 
 /** The factors a monster weighs when it picks a target — `docs/gameplay-decisions/02-monster.md`, "Targeting". */
 export const TARGETING_FACTORS = ["aggro", "lowHp", "damage", "range", "fear"] as const;
 export type TargetingFactor = (typeof TARGETING_FACTORS)[number];
+
+export const ATTACK_RANGES: readonly AttackRange[] = ["melee", "ranged"];
 
 export interface TargetingConfig {
   /** Score by HP-share rank, lowest HP share first; every rank past the end takes the last score. */
@@ -14,6 +16,8 @@ export interface TargetingConfig {
   damageRankScores: number[];
   /** What each remembered amount of damage is multiplied by at the end of every round, 0 to 1. */
   damageMemoryDecay: number;
+  /** The `range` score of a target whose `attackRange` matches the attack's, and of one whose does not. */
+  rangeScores: { sameRange: number; otherRange: number };
   /** One weight per factor for each `aiPattern`; every profile's weights sum to 1. */
   profiles: Record<string, Record<TargetingFactor, number>>;
 }
@@ -242,6 +246,10 @@ export function targetingConfigError(config: TargetingConfig): string | null {
   }
   if (!(typeof config.damageMemoryDecay === "number" && config.damageMemoryDecay >= 0 && config.damageMemoryDecay <= 1)) {
     return "targeting.damageMemoryDecay must be a number from 0 to 1";
+  }
+  for (const key of ["sameRange", "otherRange"] as const) {
+    const score = config.rangeScores?.[key];
+    if (!(typeof score === "number" && score > 0)) return `targeting.rangeScores.${key} must be a number above 0`;
   }
   const profiles = Object.entries(config.profiles ?? {});
   if (profiles.length === 0) return "targeting.profiles must define at least 1 aiPattern";

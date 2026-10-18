@@ -1,6 +1,7 @@
 import type { SummonArchetype, SkillDefinition, SummonCast } from "../types";
 import summonsJson from "../../data/summons.json";
 import { getStatusEffect } from "./statusEffects";
+import { ATTACK_RANGES } from "./balanceConfig";
 
 const DATA = summonsJson as unknown as { archetypes: SummonArchetype[]; skills: SkillDefinition[]; casts: SummonCast[] };
 
@@ -31,6 +32,9 @@ export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts:
   for (const archetype of archetypes) {
     if (typeof archetype.speed !== "number") {
       throw new Error(`data/summons.json: archetype "${archetype.id}" is missing a numeric "speed"`);
+    }
+    if (!ATTACK_RANGES.includes(archetype.attackRange)) {
+      throw new Error(`data/summons.json: archetype "${archetype.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
     }
     const declared = new Set(archetype.signatureSkillIds ?? []);
     for (const id of archetype.signatureSkillIds ?? []) getSummonSkill(id);
