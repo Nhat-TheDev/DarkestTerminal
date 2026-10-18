@@ -1576,6 +1576,8 @@ function renderRebalanceTargeting() {
     el("div", { class: "field" }, [el("label", { for: "edit-targeting-fear", text: "fearRankScores (highest fear first)" }), el("input", { type: "text", id: "edit-targeting-fear", value: targeting.fearRankScores.join(", ") })]),
     el("div", { class: "field" }, [el("label", { for: "edit-targeting-damage", text: "damageRankScores (most damage first)" }), el("input", { type: "text", id: "edit-targeting-damage", value: targeting.damageRankScores.join(", ") })]),
     editField("edit-targeting-decay", "damageMemoryDecay (0-1, per round)", targeting.damageMemoryDecay),
+    editField("edit-targeting-range-same", "rangeScores.sameRange (target fights like the attack)", targeting.rangeScores.sameRange),
+    editField("edit-targeting-range-other", "rangeScores.otherRange (target fights the other way)", targeting.rangeScores.otherRange),
   ]);
   const saveBtn = el("button", { class: "action", text: "Save" });
   const status = el("span", { class: "save-status" });
@@ -1596,6 +1598,7 @@ function renderRebalanceTargeting() {
           fearRankScores: scoreList("edit-targeting-fear"),
           damageRankScores: scoreList("edit-targeting-damage"),
           damageMemoryDecay: Number($("#edit-targeting-decay").value),
+          rangeScores: { sameRange: Number($("#edit-targeting-range-same").value), otherRange: Number($("#edit-targeting-range-other").value) },
           profiles,
         },
       };
@@ -2434,6 +2437,7 @@ boot();
   const STAT_BOOST_STATS = ["attack", "defense", "maxHp", "maxMp", "magicPower", "speed"];
   const MONSTER_TYPES = ["balanced", "tanky", "armored", "striker", "glass", "bruiser", "sentinel"];
   const POWER_TIERS = ["", "weak", "medium", "strong"];
+  const ATTACK_RANGES = ["melee", "ranged"];
   const MONSTER_ROLES = ["normal", "elite", "boss"];
 
   const typeEl = $("#dataType");
@@ -2736,6 +2740,7 @@ boot();
     const monsterType = selectInput(MONSTER_TYPES, entry.monsterType || "balanced");
     const aiPattern = selectInput(Object.keys(META.balance.targeting.profiles), entry.aiPattern || "aggressive");
     const powerTier = selectInput(POWER_TIERS, entry.powerTier || "");
+    const attackRange = selectInput(ATTACK_RANGES, entry.attackRange || "melee");
     const roles = checkboxGroup(MONSTER_ROLES, entry.roles || ["normal"]);
     const finalBoss = checkboxField("Final boss (never rolled at random)", entry.finalBoss);
     minFloor.disabled = !!entry.finalBoss;
@@ -2804,7 +2809,7 @@ boot();
       field("Description", description),
       el("div", { class: "row" }, [field("Base HP", baseHp), field("Base Attack", baseAttack), field("Base Defense", baseDefense), field("Base Speed", baseSpeed), field("EXP reward", expReward), field("Min floor", minFloor)]),
       minFloorHint,
-      el("div", { class: "row" }, [field("Monster type", monsterType), field("AI pattern", aiPattern), field("Power tier", powerTier)]),
+      el("div", { class: "row" }, [field("Monster type", monsterType), field("AI pattern", aiPattern), field("Attack range", attackRange), field("Power tier", powerTier)]),
       el("div", { class: "row" }, [field("Race", race), field("Sub-race", subRace)]),
       el("fieldset", {}, [el("legend", { text: "Roles" }), roles, finalBoss]),
       el("fieldset", {}, [el("legend", { text: "Traits" }), traitIds]),
@@ -2822,7 +2827,7 @@ boot();
           ...entry,
           id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
           baseHp: Number(baseHp.value), baseAttack: Number(baseAttack.value), baseDefense: Number(baseDefense.value), baseSpeed: Number(baseSpeed.value),
-          monsterType: monsterType.value, aiPattern: aiPattern.value, roles: roles._values(), skillIds: skillIds._values(), expReward: Number(expReward.value),
+          monsterType: monsterType.value, aiPattern: aiPattern.value, attackRange: attackRange.value, roles: roles._values(), skillIds: skillIds._values(), expReward: Number(expReward.value),
           race: race.value,
         };
         const optional = {};
@@ -3033,6 +3038,8 @@ boot();
     const unlockLevel = numberInput(entry.unlockLevel ?? 1, "1");
     const usesPerCombat = numberInput(entry.usesPerCombat, "1");
     const cooldownTurns = numberInput(entry.cooldownTurns, "1");
+    // Empty = the monster's own attackRange.
+    const attackRange = selectInput(["", ...ATTACK_RANGES], entry.attackRange || "");
     const isUltimate = checkboxField("Ultimate (always hits, no accuracy roll)", entry.isUltimate);
     const isBuff = checkboxField("Buff (turn-priority)", entry.isBuff);
     const isMagic = checkboxField("Magic (scales off magicPower)", entry.isMagic);
@@ -3042,7 +3049,7 @@ boot();
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Short description", shortDescription)]),
       field("Description", description),
-      el("div", { class: "row" }, [field("MP cost", mpCost), field("Target", target), field("Slot", slot), field("Unlock level", unlockLevel), field("Uses per combat (optional)", usesPerCombat), field("Cooldown turns (optional)", cooldownTurns)]),
+      el("div", { class: "row" }, [field("MP cost", mpCost), field("Target", target), field("Slot", slot), field("Unlock level", unlockLevel), field("Uses per combat (optional)", usesPerCombat), field("Cooldown turns (optional)", cooldownTurns), field("Attack range (empty = the monster's)", attackRange)]),
       el("fieldset", {}, [el("legend", { text: "Flags" }), isUltimate, isBuff, isMagic]),
       effectsEditor,
       aiBox
@@ -3060,11 +3067,12 @@ boot();
         if (shortDescription.value.trim()) optional.shortDescription = shortDescription.value.trim();
         if (usesPerCombat.value !== "") optional.usesPerCombat = Number(usesPerCombat.value);
         if (cooldownTurns.value !== "") optional.cooldownTurns = Number(cooldownTurns.value);
+        if (attackRange.value) optional.attackRange = attackRange.value;
         if (isUltimate._checkbox.checked) optional.isUltimate = true;
         if (isBuff._checkbox.checked) optional.isBuff = true;
         if (isMagic._checkbox.checked) optional.isMagic = true;
         const ai = aiBox._read();
-        for (const k of ["shortDescription", "usesPerCombat", "cooldownTurns", "isUltimate", "isBuff", "isMagic"]) setOrDelete(out, k, optional[k]);
+        for (const k of ["shortDescription", "usesPerCombat", "cooldownTurns", "attackRange", "isUltimate", "isBuff", "isMagic"]) setOrDelete(out, k, optional[k]);
         for (const k of AI_SKILL_KEYS) setOrDelete(out, k, ai[k]);
         return out;
       },

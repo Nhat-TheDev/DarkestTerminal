@@ -33,6 +33,7 @@
   {
     "id": "acid-spit",
     "name": "Acid Spit",
+    "attackRange": "ranged",
     "description": "Spits something that eats through leather and keeps eating once the leather is gone.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -57,6 +58,7 @@
   {
     "id": "whispered-name",
     "name": "Whispered Name",
+    "attackRange": "ranged",
     "description": "Says something under its breath that isn't meant for anyone living, and the air goes wrong where it lands.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -93,6 +95,7 @@
   {
     "id": "bone-throw",
     "name": "Bone Throw",
+    "attackRange": "ranged",
     "description": "A bone splintered to a point and thrown from further off than a bone should carry.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -139,6 +142,7 @@
   {
     "id": "web-spit",
     "name": "Web Spit",
+    "attackRange": "ranged",
     "description": "Spits a rope of web that sets as it lands, and every step after has to be pulled free.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -160,6 +164,7 @@
   {
     "id": "grave-chill",
     "name": "Grave Chill",
+    "attackRange": "ranged",
     "description": "Reaches through cloth and mail alike, and leaves whatever it touched slower to close its guard again.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -218,6 +223,7 @@
   {
     "id": "arrow-shot",
     "name": "Arrow Shot",
+    "attackRange": "ranged",
     "description": "One arrow, nocked and loosed with no sign of aiming.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -378,6 +384,7 @@
   {
     "id": "web-barrage",
     "name": "Web Barrage",
+    "attackRange": "ranged",
     "description": "Strands thrown in loose handfuls, at whoever is still moving freely.",
     "mpCost": 0,
     "target": "singleEnemy",
@@ -1282,6 +1289,7 @@
   {
     "id": "withering-touch",
     "name": "Withering Touch",
+    "attackRange": "melee",
     "description": "One dry hand, laid flat, and the years go out of whatever it touches.",
     "mpCost": 0,
     "target": "singleEnemy",

@@ -1,4 +1,4 @@
-import type { Character, Monster, Summon, MonsterArchetype, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
+import type { AttackRange, Character, Monster, Summon, MonsterArchetype, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
 import { getArchetype, getMonsterSkill } from "../data/monsters";
 import { BALANCE, TARGETING_FACTORS, type TargetingFactor } from "../data/balanceConfig";
 import { rollDodge } from "./artifacts";
@@ -17,6 +17,8 @@ import {
   type EngineContext,
 } from "./combat";
 import { getStatusEffect } from "../data/statusEffects";
+import { getClass } from "../data/classes";
+import { getSummonArchetype } from "../data/summons";
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 import { predicateHolds, scoreWeight, type AiView } from "./monsterAiRules";
@@ -110,6 +112,10 @@ function fearOf(c: Targetable): number {
   return isCharacter(c) ? c.survival.fear : 0;
 }
 
+function attackRangeOf(c: Targetable): AttackRange {
+  return isCharacter(c) ? getClass(c.classId).attackRange : getSummonArchetype(c.archetypeId).attackRange;
+}
+
 /** Ranks whoever has taken HP off `actor`, most first; anyone who has taken none scores the last score. */
 function damageScores(actor: Monster, pool: Targetable[]): Map<Targetable, number> {
   const { damageRankScores } = BALANCE.targeting;
@@ -119,8 +125,8 @@ function damageScores(actor: Monster, pool: Targetable[]): Map<Targetable, numbe
 }
 
 /** Each factor's raw score per candidate. A factor that scores everyone the same spreads its weight evenly. */
-function factorScores(factor: TargetingFactor, actor: Monster, pool: Targetable[]): (c: Targetable) => number {
-  const { lowHpRankScores, fearRankScores } = BALANCE.targeting;
+function factorScores(factor: TargetingFactor, actor: Monster, pool: Targetable[], attackRange: AttackRange): (c: Targetable) => number {
+  const { lowHpRankScores, fearRankScores, rangeScores } = BALANCE.targeting;
   switch (factor) {
     case "aggro":
       return (c) => Math.max(1, c.aggro);
@@ -137,23 +143,24 @@ function factorScores(factor: TargetingFactor, actor: Monster, pool: Targetable[
       return (c) => scores.get(c)!;
     }
     case "range":
-      return () => 1;
+      return (c) => (attackRangeOf(c) === attackRange ? rangeScores.sameRange : rangeScores.otherRange);
   }
 }
 
 /**
  * The chance each living candidate is picked under the actor's `aiPattern`, before any skill's
  * `targetRules`: every factor turns its scores into shares of 1, and the profile's weights (which
- * sum to 1) mix those shares. A `targetPull` status hands its bearer that share of the pick first and
+ * sum to 1) mix those shares. `attackRange` is how the attack reaches its target (the `range` factor):
+ * the skill's own, or the archetype's for the basic attack and a skill without one. A `targetPull` status hands its bearer that share of the pick first and
  * the profile splits what is left; pulls summing past 1 are scaled down to share the whole pick.
  */
-export function targetingWeight(actor: Monster, living: Targetable[]): (c: Targetable) => number {
+export function targetingWeight(actor: Monster, living: Targetable[], attackRange: AttackRange = getArchetype(actor.archetypeId).attackRange): (c: Targetable) => number {
   const profile = BALANCE.targeting.profiles[actor.aiPattern]!;
   const chance = new Map<Targetable, number>(living.map((c) => [c, 0]));
   for (const factor of TARGETING_FACTORS) {
     const weight = profile[factor];
     if (weight === 0) continue;
-    const score = factorScores(factor, actor, living);
+    const score = factorScores(factor, actor, living, attackRange);
     const total = living.reduce((sum, c) => sum + score(c), 0);
     for (const c of living) chance.set(c, chance.get(c)! + (weight * score(c)) / total);
   }
@@ -212,7 +219,7 @@ function pickTargets(
   rng: Rng,
   count: number = skill?.targetCount ? rng.int(skill.targetCount.min, skill.targetCount.max) : 1
 ): Targetable[] {
-  const base = targetingWeight(actor, living);
+  const base = targetingWeight(actor, living, skill?.attackRange ?? archetype.attackRange);
   const pool = [...living];
   const picked: Targetable[] = [];
   const forced = provokedBy(actor, pool);

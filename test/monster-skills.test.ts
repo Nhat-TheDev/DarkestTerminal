@@ -1,14 +1,16 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
-import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, assertMonsterKitConsistent, MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../src/data/monsters";
+import { assertSummonDataConsistent, SUMMON_ARCHETYPES, SUMMON_CASTS } from "../src/data/summons";
 import { runMonsterTurn, targetingWeight } from "../src/engine/monsterAI";
 import { applyStatusEffectToActor, resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
 import { getStatusEffect } from "../src/data/statusEffects";
-import type { Character, MonsterArchetype, Summon } from "../src/types";
+import type { AttackRange, Character, MonsterArchetype, Summon } from "../src/types";
 import { BALANCE, targetingConfigError, type TargetingConfig } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
 import { makeCtx, spawnInto, pickAnyAction, sk, withFixture } from "./helpers";
+import { getClass } from "../src/data/classes";
 
 describe("elite/boss skill kit", () => {
   function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
@@ -243,10 +245,10 @@ describe("regular monster skills", () => {
   test("every action-weight key names a skill the archetype declares, and a stray key throws on load", () => {
     assertMonsterDataConsistent(MONSTER_ARCHETYPES); // the shipped catalog
 
-    const typo = { id: "typo-test", aiPattern: "aggressive", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
+    const typo = { id: "typo-test", aiPattern: "aggressive", attackRange: "melee", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["bite"], actionWeights: { normal: { basicAttack: 70, bight: 30 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([typo])).toThrow(/actionWeights\.normal key "bight" is not in its skillIds/);
 
-    const ghost = { id: "ghost-test", aiPattern: "aggressive", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
+    const ghost = { id: "ghost-test", aiPattern: "aggressive", attackRange: "melee", roles: ["normal"], powerTier: "weak", minFloor: 0, skillIds: ["no-such-skill"], actionWeights: { normal: { basicAttack: 100 } } } as unknown as MonsterArchetype;
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 
@@ -440,6 +442,14 @@ describe("regular monster skills end-to-end", () => {
 
 
 
+/** Each candidate's share of the `range` factor against an attack of `attackRange`. */
+function rangeShares(attackRange: AttackRange, pool: (Character | Summon)[], rangeOf: (c: Character | Summon) => AttackRange = (c) => getClass((c as Character).classId).attackRange) {
+  const { sameRange, otherRange } = BALANCE.targeting.rangeScores;
+  const score = (c: Character | Summon) => (rangeOf(c) === attackRange ? sameRange : otherRange);
+  const total = pool.reduce((sum, c) => sum + score(c), 0);
+  return (c: Character | Summon) => score(c) / total;
+}
+
 describe("aiPattern targeting: each pattern mixes its factors by its profile weights", () => {
   const { lowHpRankScores, fearRankScores, profiles } = BALANCE.targeting;
 
@@ -479,13 +489,14 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     }
   });
 
-  test("at full HP and no fear, only aggro separates the party; the other factors spread evenly", () => {
+  test("at full HP and no fear, only aggro and range separate the party; the other factors spread evenly", () => {
     const archetype = getArchetype("skeleton");
     const weights = profiles[archetype.aiPattern]!;
     const { party, chance } = chances("skeleton");
     const totalAggro = party.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    const range = rangeShares(archetype.attackRange, party);
     for (const c of party) {
-      expect(chance(c)).toBeCloseTo(weights.aggro * (Math.max(1, c.aggro) / totalAggro) + (1 - weights.aggro) / party.length, 9);
+      expect(chance(c)).toBeCloseTo(weights.aggro * (Math.max(1, c.aggro) / totalAggro) + weights.range * range(c) + (1 - weights.aggro - weights.range) / party.length, 9);
     }
   });
 
@@ -500,7 +511,8 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     const scores = party.map((_, i) => (i < 2 ? at(0) : i === 2 ? at(1) : at(2)));
     const total = scores.reduce((a, b) => a + b, 0);
     const w = profiles.opportunistic!;
-    party.forEach((c, i) => expect(chance(c)).toBeCloseTo(w.lowHp * (scores[i]! / total) + (1 - w.lowHp) / party.length, 9));
+    const range = rangeShares(getArchetype("dungeon-rat").attackRange, party);
+    party.forEach((c, i) => expect(chance(c)).toBeCloseTo(w.lowHp * (scores[i]! / total) + w.range * range(c) + (1 - w.lowHp - w.range) / party.length, 9));
   });
 
   test("fear ranks highest first, and a summon counts as fearless", () => {
@@ -511,7 +523,7 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     for (const c of [scared, uneasy]) c.hp = c.maxHp;
     scared.survival.fear = 60;
     uneasy.survival.fear = 30;
-    const summon = { id: "summon-test", ownerId: uneasy.id, name: "Summon", hp: 50, maxHp: 50, aggro: 10, activeStatusEffects: [] } as unknown as Summon;
+    const summon = { id: "summon-test", ownerId: uneasy.id, archetypeId: "goblin-thrower", name: "Summon", hp: 50, maxHp: 50, aggro: 10, activeStatusEffects: [] } as unknown as Summon;
     const pool = [scared, uneasy, summon];
     const weight = targetingWeight(ghost, pool);
 
@@ -519,8 +531,9 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
     const fearScores = new Map<Character | Summon, number>([[scared, fearRankScores[0]!], [uneasy, fearRankScores[1]!], [summon, fearRankScores[2]!]]);
     const totalFear = [...fearScores.values()].reduce((a, b) => a + b, 0);
+    const range = rangeShares(getArchetype(ghost.archetypeId).attackRange, pool, (c) => (c === summon ? "ranged" : getClass((c as Character).classId).attackRange));
     for (const c of pool) {
-      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + (w.lowHp + w.damage + w.range) / pool.length + w.fear * (fearScores.get(c)! / totalFear);
+      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + (w.lowHp + w.damage) / pool.length + w.range * range(c) + w.fear * (fearScores.get(c)! / totalFear);
       expect(weight(c)).toBeCloseTo(expected, 9);
     }
   });
@@ -532,15 +545,15 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
   });
 
   test("an opportunistic archetype ignores aggro: raising it changes nothing it does", () => {
-    expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
+    expect(getArchetype("dungeon-rat").aiPattern).toBe("opportunistic");
     const taunt = (ctx: EngineContext) => (ctx.party.find((c) => c.classId === "knight")!.aggro += 40);
-    expect(countTargets("skeleton-archer", taunt)).toEqual(countTargets("skeleton-archer"));
+    expect(countTargets("dungeon-rat", taunt)).toEqual(countTargets("dungeon-rat"));
     expect(countTargets("skeleton", taunt).get("knight")).toBeGreaterThan(countTargets("skeleton").get("knight")!);
   });
 
   test("an opportunistic archetype goes for the wounded, a dread archetype for the frightened", () => {
-    const wounded = countTargets("skeleton-archer", (ctx) => (ctx.party.find((c) => c.classId === "knight")!.hp = 1));
-    const baseline = countTargets("skeleton-archer");
+    const wounded = countTargets("dungeon-rat", (ctx) => (ctx.party.find((c) => c.classId === "knight")!.hp = 1));
+    const baseline = countTargets("dungeon-rat");
     expect(wounded.get("knight")!).toBeGreaterThan(baseline.get("knight") ?? 0);
 
     const frightened = countTargets("ghost", (ctx) => (ctx.party.find((c) => c.classId === "mage")!.survival.fear = 50));
@@ -571,7 +584,7 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
   test("a targetPull status hands its bearer that share of the pick before the profile splits the rest", () => {
     const pull = getStatusEffect("taunt").targetPull!;
     expect(pull).toBeGreaterThan(0);
-    for (const archetypeId of ["skeleton", "skeleton-archer", "ghost"]) {
+    for (const archetypeId of ["skeleton", "dungeon-rat", "ghost"]) {
       const { before, after, total } = pulledChance(archetypeId, "taunt");
       expect(after).toBeCloseTo(pull + (1 - pull) * before, 9);
       expect(total).toBeCloseTo(1, 9);
@@ -579,8 +592,8 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
   });
 
   test("challenge pulls harder than taunt, an opportunistic archetype included", () => {
-    expect(getArchetype("skeleton-archer").aiPattern).toBe("opportunistic");
-    for (const archetypeId of ["skeleton", "skeleton-archer"]) {
+    expect(getArchetype("dungeon-rat").aiPattern).toBe("opportunistic");
+    for (const archetypeId of ["skeleton", "dungeon-rat"]) {
       const taunt = pulledChance(archetypeId, "taunt");
       const challenge = pulledChance(archetypeId, "challenge");
       expect(taunt.after).toBeGreaterThan(taunt.before);
@@ -597,6 +610,83 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
     expect(chance(party[0]!)).toBeCloseTo(3 / 5, 9);
     expect(chance(party[1]!)).toBeCloseTo(2 / 5, 9);
     expect(chance(party[2]!)).toBe(0);
+  });
+});
+
+describe("the range factor: a monster prefers targets that fight the way its attack does", () => {
+  const { rangeScores, profiles } = BALANCE.targeting;
+
+  test("a marksman scores a target sameRange when it fights like the attack and otherRange when not", () => {
+    const { ctx } = makeCtx();
+    const archer = spawnInto(ctx, "skeleton-archer");
+    expect(archer.aiPattern).toBe("marksman");
+    expect(getArchetype("skeleton-archer").attackRange).toBe("ranged");
+    const pool = ctx.party;
+    const weight = targetingWeight(archer, pool);
+    const w = profiles.marksman!;
+    const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    const totalRange = pool.reduce((sum, c) => sum + (getClass(c.classId).attackRange === "ranged" ? rangeScores.sameRange : rangeScores.otherRange), 0);
+    for (const c of pool) {
+      const score = getClass(c.classId).attackRange === "ranged" ? rangeScores.sameRange : rangeScores.otherRange;
+      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + (w.lowHp + w.damage + w.fear) / pool.length + w.range * (score / totalRange);
+      expect(weight(c)).toBeCloseTo(expected, 9);
+    }
+  });
+
+  test("a melee attack favours melee targets and a ranged one ranged targets", () => {
+    const { ctx } = makeCtx();
+    const archer = spawnInto(ctx, "skeleton-archer");
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    const mage = ctx.party.find((c) => c.classId === "mage")!;
+    const ranged = targetingWeight(archer, [knight, mage], "ranged");
+    const melee = targetingWeight(archer, [knight, mage], "melee");
+    expect(ranged(mage)).toBeGreaterThan(ranged(knight));
+    expect(melee(knight)).toBeGreaterThan(melee(mage));
+  });
+
+  test("a summon is scored by its own archetype's attackRange", () => {
+    const { ctx } = makeCtx();
+    const archer = spawnInto(ctx, "skeleton-archer");
+    const summon = (archetypeId: string) => ({ id: archetypeId, ownerId: ctx.party[0]!.id, archetypeId, name: archetypeId, hp: 50, maxHp: 50, aggro: 10, activeStatusEffects: [] }) as unknown as Summon;
+    const thrower = summon("goblin-thrower");
+    const golem = summon("stone-golem");
+    const weight = targetingWeight(archer, [thrower, golem]);
+    expect(weight(thrower)).toBeGreaterThan(weight(golem));
+  });
+
+  test("a skill's own attackRange replaces the monster's; a skill without one follows the monster", () => {
+    /** Share of the fixture skill's casts that land on a ranged class, across many seeds. */
+    function rangedShare(skillOver: object): number {
+      let ranged = 0;
+      let total = 0;
+      withFixture([sk("fx-reach", skillOver)], { aiPattern: "marksman", attackRange: "melee", actionWeights: { boss: { "fx-reach": 100 } } }, () => {
+        for (let seed = 0; seed < 300; seed++) {
+          const { ctx } = makeCtx(seed);
+          const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
+          ctx.monsters.push(boss);
+          const combat = startCombat("r1", [boss.id], ctx, true);
+          runMonsterTurn({ kind: "monster", id: boss.id }, combat, ctx);
+          const line = combat.log.find((l) => l.text.includes("uses fx-reach on "));
+          const target = line && ctx.party.find((c) => line.text.includes(`on ${c.name}`));
+          if (!target) continue;
+          total++;
+          if (getClass(target.classId).attackRange === "ranged") ranged++;
+        }
+      });
+      return ranged / total;
+    }
+    const followsMonster = rangedShare({});
+    expect(rangedShare({ attackRange: "melee" })).toBeCloseTo(followsMonster, 1);
+    expect(rangedShare({ attackRange: "ranged" })).toBeGreaterThan(followsMonster + 0.15);
+  });
+
+  test("an attackRange that is not melee or ranged is rejected on load", () => {
+    const archetype = { ...getArchetype("skeleton"), id: "far-test", attackRange: "far" } as unknown as MonsterArchetype;
+    expect(() => assertMonsterDataConsistent([archetype])).toThrow(/"far-test" needs an "attackRange"/);
+    const skill = { ...getMonsterSkill("bone-throw"), attackRange: "far" } as unknown as (typeof MONSTER_SKILLS)[number];
+    expect(() => assertMonsterKitConsistent(MONSTER_ARCHETYPES, MONSTER_SKILLS.map((s) => (s.id === skill.id ? skill : s)))).toThrow(/"bone-throw": attackRange must be/);
+    const summon = { ...SUMMON_ARCHETYPES[0]!, attackRange: undefined } as unknown as (typeof SUMMON_ARCHETYPES)[number];
+    expect(() => assertSummonDataConsistent([summon, ...SUMMON_ARCHETYPES.slice(1)], SUMMON_CASTS)).toThrow(/needs an "attackRange"/);
   });
 });
 
@@ -656,8 +746,9 @@ describe("the damage factor: a monster remembers who hurt it", () => {
     const total = scores.reduce((a, b) => a + b, 0);
     const w = profiles.defensive!;
     const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
+    const range = rangeShares(getArchetype(monster.archetypeId).attackRange, pool);
     pool.forEach((c, i) => {
-      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + w.damage * (scores[i]! / total) + (w.lowHp + w.range + w.fear) / pool.length;
+      const expected = w.aggro * (Math.max(1, c.aggro) / totalAggro) + w.damage * (scores[i]! / total) + w.range * range(c) + (w.lowHp + w.fear) / pool.length;
       expect(weight(c)).toBeCloseTo(expected, 9);
     });
   });
@@ -711,6 +802,10 @@ describe("targeting config validation", () => {
     const decay = valid();
     decay.damageMemoryDecay = 1.5;
     expect(targetingConfigError(decay)).toMatch(/damageMemoryDecay/);
+
+    const range = valid();
+    range.rangeScores.otherRange = 0;
+    expect(targetingConfigError(range)).toMatch(/rangeScores\.otherRange/);
   });
 
   test("an archetype whose aiPattern has no profile throws on load", () => {
