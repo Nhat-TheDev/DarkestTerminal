@@ -493,7 +493,7 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "glass",
-    "aiPattern": "marksman",
+    "aiPattern": "tactical",
     "attackRange": "ranged",
     "skillIds": [
       "bone-throw"
@@ -734,7 +734,7 @@
     "baseDefense": 7,
     "baseSpeed": 12,
     "monsterType": "glass",
-    "aiPattern": "marksman",
+    "aiPattern": "tactical",
     "attackRange": "ranged",
     "skillIds": [
       "arrow-shot"

@@ -192,7 +192,7 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
 | `opportunistic` | 0 | 0.6 | 0.1 | 0.1 | 0.2 | Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Snake |
 | `dread` | 0.1 | 0.1 | 0 | 0.1 | 0.7 | Ghost, Wraith, Lich, What's Left of Him |
 | `bloodthirsty` | 0.3 | 0.6 | 0 | 0.1 | 0 | Vampire Bat, Dire Wolf, Lesser Vampire, Vampire Lord |
-| `marksman` | 0.2 | 0.1 | 0.1 | 0.6 | 0 | Skeleton Mage, Skeleton Archer |
+| `tactical` | 0.2 | 0.1 | 0.1 | 0.6 | 0 | Skeleton Mage, Skeleton Archer |
 <!-- docs:end -->
 
 - **`aggressive`** — goes at whatever is most in front of it: mindless, slow, or a straightforward brawler. Mostly `aggro`, so taunting works on it. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
@@ -203,7 +203,7 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
   The branch looks for a skill whose `target` is `self` **and whose id is a key of the tier's own `actionWeights`** (a weight of 0 still counts: Zombie and Skeleton Warrior keep their skill at weight 0, so it fires only from this branch). It does not take the first entry of `skillIds`: that list holds every skill an archetype can roll at any tier, so a positional pick would reach into the guard-room kit. Skeleton Guard is the case that matters — its `skillIds` hold self-targeted guard-room skills (a guard stance, a riposte stance), but its normal weights name only the basic attack, so a normal-tier Skeleton Guard never reaches them. In practice the branch is live for Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The guard-room `defensive` archetypes (Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem) use their self-targeted skills through their elite/boss weights and AI rules instead (`06-level-system.md` §6.12).
 - **`opportunistic`** — has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, or it is clever enough to choose. It ignores `aggro` entirely, so only a taunt's `targetPull` reaches it, and it goes for the wounded and the frightened.
 - **`dread`** — feeds on fear. It finds whoever is shaking and stays on them; calming the party is the counter.
-- **`marksman`** — picks its mark by how it reaches it. `range` carries most of its weight, so a ranged one keeps to the archers and casters at the back, and the rest of the pick still answers `aggro`.
+- **`tactical`** — chooses its target by how it fights. `range` carries most of its weight: a melee one closes on the front line, a ranged one keeps to the archers and casters at the back, and the rest of the pick still answers `aggro`.
 - **`bloodthirsty`** — follows the smell of blood, but is still an animal or a hunger in front of a shield: `aggro` keeps a real share, so a taunt's aggro adds to its pull and can still drag it off a bleeding ally.
 
  Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules, phases and telegraphs on top of the weights — `06-level-system.md` §6.12.
@@ -247,14 +247,14 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `acid-spit` | Acid Spit | singleEnemy | damage 10 + 100% ATK; status acid-burn + corroded (2 turns, 50% chance) | Slime (aggressive), Goblin Shaman (defensive), Swamp Slime (aggressive) |
 | `whispered-name` | Whispered Name | singleEnemy | damage 15 + 100% ATK | Cultist Initiate (aggressive) |
 | `poison-bite` | Poison Bite | singleEnemy | damage 12 + 100% ATK; status poisoned (3 turns, 50% chance) | Toxic Toad (defensive), Snake (opportunistic) |
-| `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (marksman) |
+| `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (tactical) |
 | `regeneration` | Regeneration | self | heal 15 (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
 | `quick-bite` | Quick Bite | singleEnemy | damage 13 + 100% ATK | Lizard (aggressive), Dire Wolf (bloodthirsty) |
 | `web-spit` | Web Spit | singleEnemy | damage 13 + 100% ATK; status webbed (2 turns, 50% chance) | Spider (aggressive) |
 | `grave-chill` | Grave Chill | singleEnemy | damage 13 + 100% ATK; status weakened (2 turns, 50% chance) | Ghost (dread) |
 | `ember-lash` | Ember Lash | singleEnemy | damage 15 + 100% ATK; status burning (2 turns, 50% chance) | Fire Elemental (aggressive) |
 | `settle-into-stone` | Settle Into Stone | self | status guard (2 turns) | Gargoyle (defensive) |
-| `arrow-shot` | Arrow Shot | singleEnemy | damage 15 + 100% ATK | Skeleton Archer (marksman) |
+| `arrow-shot` | Arrow Shot | singleEnemy | damage 15 + 100% ATK | Skeleton Archer (tactical) |
 | `guard-stance` | Guard Stance | self | status guard (2 turns) | Skeleton Warrior (defensive), Armored Beetle (defensive), Lesser Golem (defensive) |
 | `bone-breaker` | Bone Breaker | singleEnemy | damage 14 + 100% ATK; status weakened (2 turns, 50% chance) | Orc Brute (aggressive) |
 | `maul` | Maul | singleEnemy | damage 13 + 100% ATK; status bleeding (3 turns, 50% chance) | Cave Bear (aggressive) |

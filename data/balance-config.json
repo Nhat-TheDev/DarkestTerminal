@@ -28,7 +28,7 @@
       "opportunistic": { "aggro": 0, "lowHp": 0.6, "damage": 0.1, "range": 0.1, "fear": 0.2 },
       "dread": { "aggro": 0.1, "lowHp": 0.1, "damage": 0, "range": 0.1, "fear": 0.7 },
       "bloodthirsty": { "aggro": 0.3, "lowHp": 0.6, "damage": 0, "range": 0.1, "fear": 0 },
-      "marksman": { "aggro": 0.2, "lowHp": 0.1, "damage": 0.1, "range": 0.6, "fear": 0 }
+      "tactical": { "aggro": 0.2, "lowHp": 0.1, "damage": 0.1, "range": 0.6, "fear": 0 }
     }
   },
   "survival": {
