@@ -603,14 +603,14 @@ describe("aiPattern targeting: each pattern mixes its factors by its profile wei
 describe("the range factor: a monster prefers targets that fight the way its attack does", () => {
   const { rangeScores, profiles } = BALANCE.targeting;
 
-  test("a marksman scores a target sameRange when it fights like the attack and otherRange when not", () => {
+  test("a tactical monster scores a target sameRange when it fights like the attack and otherRange when not", () => {
     const { ctx } = makeCtx();
     const archer = spawnInto(ctx, "skeleton-archer");
-    expect(archer.aiPattern).toBe("marksman");
+    expect(archer.aiPattern).toBe("tactical");
     expect(getArchetype("skeleton-archer").attackRange).toBe("ranged");
     const pool = ctx.party;
     const weight = targetingWeight(archer, pool);
-    const w = profiles.marksman!;
+    const w = profiles.tactical!;
     const totalAggro = pool.reduce((sum, c) => sum + Math.max(1, c.aggro), 0);
     const totalRange = pool.reduce((sum, c) => sum + (getClass(c.classId).attackRange === "ranged" ? rangeScores.sameRange : rangeScores.otherRange), 0);
     for (const c of pool) {
@@ -646,7 +646,7 @@ describe("the range factor: a monster prefers targets that fight the way its att
     function rangedShare(skillOver: object): number {
       let ranged = 0;
       let total = 0;
-      withFixture([sk("fx-reach", skillOver)], { aiPattern: "marksman", attackRange: "melee", actionWeights: { boss: { "fx-reach": 100 } } }, () => {
+      withFixture([sk("fx-reach", skillOver)], { aiPattern: "tactical", attackRange: "melee", actionWeights: { boss: { "fx-reach": 100 } } }, () => {
         for (let seed = 0; seed < 300; seed++) {
           const { ctx } = makeCtx(seed);
           const boss = spawnMonster("fixture-boss", 1, { tier: "boss" });
