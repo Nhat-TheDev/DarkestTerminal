@@ -10,6 +10,73 @@ import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
 import { getArchetype } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
+import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
+
+/** Orders "x.y.z" versions field by field, numerically (1.2.0 < 1.10.0). */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * The EXP cost of one level on 1.1.0's curve, for the levels 1.1.1 changed. A record of a released
+ * version, not a balance value: it never follows `data/level-growth.json`.
+ */
+const V1_1_0_EXP_TIERS = [
+  { maxLevel: 5, expCost: 115 },
+  { maxLevel: 10, expCost: 135 },
+  { maxLevel: 15, expCost: 150 },
+  { maxLevel: 20, expCost: 165 },
+  { maxLevel: 25, expCost: 195 },
+  { maxLevel: 30, expCost: 255 },
+];
+
+/** Cumulative EXP to reach each level on 1.1.0's curve, indexed by level. Levels past the tiers above cost what they cost now. */
+function v1_1_0ExpCosts(): number[] {
+  const costs = [0, 0];
+  for (let level = 2; level <= MAX_LEVEL; level++) {
+    const tier = V1_1_0_EXP_TIERS.find((t) => level <= t.maxLevel);
+    costs[level] = costs[level - 1]! + (tier ? tier.expCost : expCostForLevel(level) - expCostForLevel(level - 1));
+  }
+  return costs;
+}
+
+/**
+ * 1.1.1 raised the EXP cost of levels 2-30. The party keeps its level and its progress toward the
+ * next one, as a share of that level's cost. A fight's party snapshots are rescaled the same way,
+ * each at the level its own EXP reached, since a snapshot can predate a level-up.
+ */
+function migrateToV1_1_1(state: GameState): void {
+  const oldCosts = v1_1_0ExpCosts();
+  const oldLevel = (exp: number) => {
+    let level = 1;
+    while (level < MAX_LEVEL && exp >= oldCosts[level + 1]!) level++;
+    return level;
+  };
+  const rescale = (exp: number, level: number) => {
+    const into = exp - oldCosts[level]!;
+    if (level >= MAX_LEVEL) return expCostForLevel(level) + into;
+    const share = into / (oldCosts[level + 1]! - oldCosts[level]!);
+    return expCostForLevel(level) + Math.floor(share * (expCostForLevel(level + 1) - expCostForLevel(level)));
+  };
+  state.partyExp = rescale(state.partyExp, state.party[0]?.level ?? oldLevel(state.partyExp));
+  const combat = state.combat;
+  if (!combat) return;
+  const snapshots = new Set([combat.roundStartPartySnapshot, ...combat.log.map((entry) => entry.partySnapshot)]);
+  for (const snapshot of snapshots) if (snapshot) snapshot.partyExp = rescale(snapshot.partyExp, oldLevel(snapshot.partyExp));
+}
+
+/**
+ * One step per release that changed what a saved value means, oldest first. Each step upgrades a
+ * save written by the release before it to `version`; a save runs every step newer than its own
+ * version, in order. A released version's saves load only once it is in `ALLOWED_LEGACY_SAVE_VERSIONS` (save.ts).
+ */
+const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [{ version: "1.1.1", migrate: migrateToV1_1_1 }];
 
 /**
  * Removes the active statuses whose id has left `data/status-effects.json` (a renamed status, a rank
@@ -105,9 +172,17 @@ function reconstructRoomPath(state: GameState): Id[] {
   return path;
 }
 
-/** Migrates a GameState from an older save shape to the current one. No-op on an already-current save. */
-export function migrateGameState(raw: unknown): GameState {
+/**
+ * Migrates a GameState from an older save shape to the current one. No-op on an already-current save.
+ * `saveVersion` is the version stamped on the save: every `VERSION_MIGRATIONS` step newer than it
+ * runs first, oldest first. Without it no version step runs.
+ */
+export function migrateGameState(raw: unknown, saveVersion?: string): GameState {
   const state = raw as GameState & { unequippedArtifactIds?: string[]; pendingFloorMilestoneMessage?: string | null };
+
+  if (saveVersion !== undefined) {
+    for (const step of VERSION_MIGRATIONS) if (compareVersions(step.version, saveVersion) > 0) step.migrate(state);
+  }
 
   if (typeof state.runId !== "string") state.runId = randomUUID();
   if (typeof state.coins !== "number") state.coins = 0;

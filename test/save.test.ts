@@ -22,7 +22,8 @@ import { Game } from "../src/engine/game";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { getRoom, moveToRoom } from "../src/engine/dungeon";
 import { spawnMonster, getArchetype } from "../src/data/monsters";
-import { migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
+import { compareVersions, migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
+import { expCostForLevel, levelForTotalExp } from "../src/data/levelGrowth";
 import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Summon } from "../src/types";
@@ -478,5 +479,73 @@ describe("Loading a save after a data change", () => {
     const migrated = migrateGameState(state);
     expect(migrated.pendingFloorMilestoneOmenId).toBe(omenId);
     expect(migrated.shownFloorMilestoneIds).toEqual([omenId]);
+  });
+});
+
+describe("Version migrations", () => {
+  /** A real save stamped 1.1.0, with the party at level 3 and 70 EXP into it on 1.1.0's curve (230 to 345). */
+  function writeV110Save(game: Game) {
+    game.currentSaveSlot = "slot1";
+    saveRun(game);
+    const save = loadSave("slot1");
+    save.meta.saveVersion = "1.1.0";
+    for (const c of save.state.party) c.level = 3;
+    save.state.partyExp = 300;
+    writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+    return save;
+  }
+  const span = (level: number) => expCostForLevel(level + 1) - expCostForLevel(level);
+
+  test("compareVersions orders versions field by field, numerically", () => {
+    expect(compareVersions("1.1.0", "1.1.1")).toBeLessThan(0);
+    expect(compareVersions("1.1.1", "1.2.0")).toBeLessThan(0);
+    expect(compareVersions("1.2.0", "1.10.0")).toBeLessThan(0);
+    expect(compareVersions("1.1.1", "1.1.1")).toBe(0);
+  });
+
+  test("a 1.1.0 save loads with its level, its floor and its share of the way to the next level", () => {
+    withGame(21, (game) => {
+      const save = writeV110Save(game);
+      expect(listSlots()[0]!.meta?.saveVersion).toBe("1.1.0");
+      const state = gameFromSave(loadSave("slot1"), "slot1").state;
+      expect(state.party.every((c) => c.level === 3)).toBe(true);
+      expect(levelForTotalExp(state.partyExp)).toBe(3);
+      expect(state.partyExp - expCostForLevel(3)).toBe(Math.floor((70 / 115) * span(3)));
+      expect(state.floor.depth).toBe(save.state.floor.depth);
+      expect(state.currentRoomId).toBe(save.state.currentRoomId);
+      expect(state.roomPath).toEqual(save.state.roomPath);
+    });
+  });
+
+  test("a 1.1.0 fight's party snapshots are rescaled at the level each one reached", () => {
+    withGame(22, (game) => {
+      const rat = spawnMonster("dungeon-rat", 1);
+      game.ctx.monsters.push(rat);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [rat.id];
+      room.cleared = false;
+      const combat = startCombat(room.id, [rat.id], game.ctx, false);
+      combat.roundStartPartySnapshot = { coins: 0, partyExp: 100, satiety: 50 };
+      combat.log.push({ text: "", kind: "info", partySnapshot: { coins: 0, partyExp: 300, satiety: 50 } });
+      const state = structuredClone({ ...game.state, combat, partyExp: 300 });
+      for (const c of state.party) c.level = 3;
+
+      const migrated = migrateGameState(state, "1.1.0").combat!;
+      expect(migrated.roundStartPartySnapshot!.partyExp).toBe(Math.floor((100 / 115) * span(1)));
+      expect(migrated.log.at(-1)!.partySnapshot!.partyExp).toBe(expCostForLevel(3) + Math.floor((70 / 115) * span(3)));
+    });
+  });
+
+  test("a save of the current version keeps its EXP, and a migrated save is not migrated again once resaved", () => {
+    withGame(23, (game) => {
+      writeV110Save(game);
+      const loaded = gameFromSave(loadSave("slot1"), "slot1");
+      const migratedExp = loaded.state.partyExp;
+      saveRun(loaded);
+      const resaved = loadSave("slot1");
+      expect(resaved.meta.saveVersion).toBe(APP_VERSION);
+      expect(gameFromSave(resaved, "slot1").state.partyExp).toBe(migratedExp);
+      expect(migrateGameState(structuredClone(resaved.state), APP_VERSION).partyExp).toBe(migratedExp);
+    });
   });
 });
