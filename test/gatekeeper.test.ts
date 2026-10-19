@@ -166,6 +166,16 @@ describe("the Gatekeeper screen", () => {
     let frame = captureCharFrame();
     expect(frame).toContain("The Gatekeeper");
     expect(frame).toContain("[1-2] Choose");
+    // No saving at the gate: neither key is advertised, and neither does anything.
+    expect(frame).not.toContain("[q] Save");
+    expect(frame).not.toContain("[s] Quicksave");
+    mockInput.pressKey("s");
+    mockInput.pressKey("q");
+    await renderOnce();
+    frame = captureCharFrame();
+    expect(frame).not.toContain("Quicksaved.");
+    expect(frame).not.toContain("Paused");
+    expect(frame).toContain("[1-2] Choose");
 
     mockInput.pressKey("1");
     await renderOnce();
@@ -178,6 +188,8 @@ describe("the Gatekeeper screen", () => {
     expect(frame).toContain(`│  ${pathLine}`);
     expect(frame).toContain("[1] Move");
     expect(frame).not.toContain("[i] Items");
+    expect(frame).not.toContain("[q] Save");
+    expect(frame).not.toContain("[s] Quicksave");
     expect(frame).toContain("Blessed: +");
 
     mockInput.pressKey("1");
@@ -185,6 +197,8 @@ describe("the Gatekeeper screen", () => {
     expect(game.state.pendingGatekeeper).toBe(false);
     frame = captureCharFrame();
     expect(frame).not.toContain(pathLine);
+    expect(frame).toContain("[q] Save");
+    expect(frame).toContain("[s] Quicksave");
     // The blessing lasts the whole fight, so the party panel shows (∞), and the header carries no room count.
     expect(frame).toContain("Blessed (∞)");
     expect(frame.split("\n").slice(0, 3).join("\n")).not.toContain("Blessed");

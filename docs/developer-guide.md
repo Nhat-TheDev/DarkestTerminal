@@ -370,7 +370,7 @@ is a key hint and belongs in the footer.
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
 `[b]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
 including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
-`saveMenu`, `[s]` is off on `gameover`/`abilityBuyback`, `[b]` only opens party
+`saveMenu`/`gatekeeper`, `[s]` is off on `gameover`/`abilityBuyback`/`gatekeeper`, `[b]` only opens party
 info from a fixed list of screen kinds. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
 otherwise the two drift apart and the hint outlives the binding. On the log screen itself
@@ -432,6 +432,7 @@ screen contributes.
 | `floorMilestone` | `[Enter] Continue` |
 | `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
 | `founderDialogue` | `[1] Continue` |
+| `gatekeeper` | `[1-2] Choose`, then `[1] Move` once answered (no `[q]`/`[s]` until the party is inside) |
 | `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |
 | `abilityBuyback` | `[1-2] Choose` |
 | `saveMenu` | `[1-3] Choose   [Esc] Cancel` |

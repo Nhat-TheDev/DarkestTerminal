@@ -461,12 +461,12 @@ export class App implements ScreenContext {
       }
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && key.name === "q") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && key.name === "s") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
       saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
