@@ -12,12 +12,18 @@ import { getArchetype } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 
-/** Orders "x.y.z" versions field by field, numerically (1.2.0 < 1.10.0). */
+/** Whether `version` is a plain "x.y.z" release version, the only form a save is stamped with. */
+export function isVersion(version: string): boolean {
+  return /^\d+\.\d+\.\d+$/.test(version);
+}
+
+/** Orders "x.y.z" versions field by field, numerically (1.2.0 < 1.10.0). Throws on any other form. */
 export function compareVersions(a: string, b: string): number {
+  for (const v of [a, b]) if (!isVersion(v)) throw new Error(`Not an x.y.z version: ${v}`);
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+  for (let i = 0; i < 3; i++) {
+    const diff = pa[i]! - pb[i]!;
     if (diff !== 0) return diff;
   }
   return 0;
@@ -36,20 +42,24 @@ const V1_1_0_EXP_TIERS = [
   { maxLevel: 30, expCost: 255 },
 ];
 
-/** Cumulative EXP to reach each level on 1.1.0's curve, indexed by level. Levels past the tiers above cost what they cost now. */
+let v1_1_0Costs: number[] | undefined;
+
+/** Cumulative EXP to reach each level on 1.1.0's curve, indexed by level, built once. Levels past the tiers above cost what they cost now. */
 function v1_1_0ExpCosts(): number[] {
+  if (v1_1_0Costs) return v1_1_0Costs;
   const costs = [0, 0];
   for (let level = 2; level <= MAX_LEVEL; level++) {
     const tier = V1_1_0_EXP_TIERS.find((t) => level <= t.maxLevel);
     costs[level] = costs[level - 1]! + (tier ? tier.expCost : expCostForLevel(level) - expCostForLevel(level - 1));
   }
-  return costs;
+  return (v1_1_0Costs = costs);
 }
 
 /**
  * 1.1.1 raised the EXP cost of levels 2-30. The party keeps its level and its progress toward the
- * next one, as a share of that level's cost. A fight's party snapshots are rescaled the same way,
- * each at the level its own EXP reached, since a snapshot can predate a level-up.
+ * next one, as a share of that level's cost, held inside the level so the EXP never reaches the next
+ * threshold or drops below its own. A fight's party snapshots are rescaled the same way, each at the
+ * level its own EXP reached, since a snapshot can predate a level-up.
  */
 function migrateToV1_1_1(state: GameState): void {
   const oldCosts = v1_1_0ExpCosts();
@@ -60,9 +70,10 @@ function migrateToV1_1_1(state: GameState): void {
   };
   const rescale = (exp: number, level: number) => {
     const into = exp - oldCosts[level]!;
-    if (level >= MAX_LEVEL) return expCostForLevel(level) + into;
-    const share = into / (oldCosts[level + 1]! - oldCosts[level]!);
-    return expCostForLevel(level) + Math.floor(share * (expCostForLevel(level + 1) - expCostForLevel(level)));
+    if (level >= MAX_LEVEL) return expCostForLevel(level) + Math.max(0, into);
+    const oldSpan = oldCosts[level + 1]! - oldCosts[level]!;
+    const span = expCostForLevel(level + 1) - expCostForLevel(level);
+    return expCostForLevel(level) + Math.min(span - 1, Math.max(0, Math.floor((into * span) / oldSpan)));
   };
   state.partyExp = rescale(state.partyExp, state.party[0]?.level ?? oldLevel(state.partyExp));
   const combat = state.combat;
@@ -74,7 +85,7 @@ function migrateToV1_1_1(state: GameState): void {
 /**
  * One step per release that changed what a saved value means, oldest first. Each step upgrades a
  * save written by the release before it to `version`; a save runs every step newer than its own
- * version, in order. A released version's saves load only once it is in `ALLOWED_LEGACY_SAVE_VERSIONS` (save.ts).
+ * version, in order. Saves load from `OLDEST_LOADABLE_SAVE_VERSION` (save.ts) up to the current version.
  */
 const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [{ version: "1.1.1", migrate: migrateToV1_1_1 }];
 

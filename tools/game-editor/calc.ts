@@ -535,6 +535,11 @@ export interface LevelByDepthRow {
   maxLevel: number;
 }
 
+/** The seed `simulateLevelByDepth` builds seed `seed`'s floors from. */
+export function levelByDepthFloorSeed(seed: number): number {
+  return seed * 104729 + 7;
+}
+
 /** Replays createFloor from floor 1, walking one random path per floor (entry room to the last stage) and summing the expReward of the monsters in the rooms on that path, averaged across `seeds` seeds. */
 export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDepthRow[] {
   if (!Number.isFinite(seeds) || seeds < 1 || seeds > 500) throw new Error("seeds must be an integer in [1, 500].");
@@ -544,7 +549,7 @@ export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDe
 
   const expBySeed: number[][] = [];
   for (let seed = 0; seed < seeds; seed++) {
-    const rng = new Rng(seed * 104729 + 7);
+    const rng = new Rng(levelByDepthFloorSeed(seed));
     const pathRng = new Rng(seed * 104729 + 13);
     let exp = 0;
     const perDepth: number[] = [];

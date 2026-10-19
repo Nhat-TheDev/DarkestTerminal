@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import {
   APP_VERSION,
-  ALLOWED_LEGACY_SAVE_VERSIONS,
+  OLDEST_LOADABLE_SAVE_VERSION,
   UNVERSIONED,
   isSaveVersionAllowed,
   isSaveStateValid,
@@ -23,7 +23,7 @@ import { getActorByRef, startCombat } from "../src/engine/combat";
 import { getRoom, moveToRoom } from "../src/engine/dungeon";
 import { spawnMonster, getArchetype } from "../src/data/monsters";
 import { compareVersions, migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
-import { expCostForLevel, levelForTotalExp } from "../src/data/levelGrowth";
+import { expCostForLevel, levelForTotalExp, MAX_LEVEL } from "../src/data/levelGrowth";
 import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Summon } from "../src/types";
@@ -35,25 +35,26 @@ describe("Save version blocking", () => {
     expect(isSaveVersionAllowed(APP_VERSION)).toBe(true);
   });
 
-  test("a version not in the allowlist is blocked", () => {
-    expect(isSaveVersionAllowed("0.0.1-not-a-real-version")).toBe(false);
+  test("every version from the oldest loadable one up to the app's own is allowed", () => {
+    expect(isSaveVersionAllowed(OLDEST_LOADABLE_SAVE_VERSION)).toBe(true);
+    expect(isSaveVersionAllowed("1.1.0")).toBe(true);
   });
 
-  test("a save with no version field is blocked by default", () => {
-    expect(ALLOWED_LEGACY_SAVE_VERSIONS.includes(UNVERSIONED)).toBe(false);
+  test("a version older than the oldest loadable one is blocked", () => {
+    expect(isSaveVersionAllowed("1.0.0")).toBe(false);
+  });
+
+  test("a version newer than the app is blocked", () => {
+    const [major, minor, patch] = APP_VERSION.split(".").map(Number);
+    expect(isSaveVersionAllowed(`${major}.${minor}.${patch! + 1}`)).toBe(false);
+    expect(isSaveVersionAllowed(`${major! + 1}.0.0`)).toBe(false);
+  });
+
+  test("a save with no version field, or one that is not x.y.z, is blocked", () => {
     expect(isSaveVersionAllowed(undefined)).toBe(false);
-  });
-
-  test("a version explicitly added to the allowlist is allowed", () => {
-    const original = [...ALLOWED_LEGACY_SAVE_VERSIONS];
-    expect(isSaveVersionAllowed("0.1.1")).toBe(false);
-    ALLOWED_LEGACY_SAVE_VERSIONS.push("0.1.1");
-    try {
-      expect(isSaveVersionAllowed("0.1.1")).toBe(true);
-    } finally {
-      ALLOWED_LEGACY_SAVE_VERSIONS.length = 0;
-      ALLOWED_LEGACY_SAVE_VERSIONS.push(...original);
-    }
+    expect(isSaveVersionAllowed(UNVERSIONED)).toBe(false);
+    expect(isSaveVersionAllowed("0.0.1-not-a-real-version")).toBe(false);
+    expect(isSaveVersionAllowed("1.2.0-rc.1")).toBe(false);
   });
 });
 
@@ -501,6 +502,34 @@ describe("Version migrations", () => {
     expect(compareVersions("1.1.1", "1.2.0")).toBeLessThan(0);
     expect(compareVersions("1.2.0", "1.10.0")).toBeLessThan(0);
     expect(compareVersions("1.1.1", "1.1.1")).toBe(0);
+  });
+
+  test("compareVersions refuses anything but an x.y.z version", () => {
+    expect(() => compareVersions("1.2.0-rc.1", "1.1.0")).toThrow();
+    expect(() => compareVersions("1.1.0", UNVERSIONED)).toThrow();
+  });
+
+  /** A party of `level` holding `partyExp`, as a 1.1.0 save would carry them. */
+  const v110State = (level: number, partyExp: number): GameState => {
+    const state = structuredClone(new Game(24, PARTY).state);
+    for (const c of state.party) c.level = level;
+    state.partyExp = partyExp;
+    return state;
+  };
+  /** 1.1.0's cost to reach `level` for level 30 and up: 4960 to reach 30, then the same steps as now. */
+  const v110CostFrom30 = (level: number) => 4960 + expCostForLevel(level) - expCostForLevel(30);
+
+  test("EXP that does not fit the party's level on 1.1.0's curve is held inside that level", () => {
+    const ahead = migrateGameState(v110State(3, 500), "1.1.0").partyExp;
+    expect(levelForTotalExp(ahead)).toBe(3);
+    expect(ahead).toBe(expCostForLevel(4) - 1);
+    expect(migrateGameState(v110State(3, 100), "1.1.0").partyExp).toBe(expCostForLevel(3));
+  });
+
+  test("from level 30 on, where a level costs what it did, the EXP into the level is unchanged", () => {
+    expect(migrateGameState(v110State(30, v110CostFrom30(30) + 100), "1.1.0").partyExp).toBe(expCostForLevel(30) + 100);
+    expect(migrateGameState(v110State(45, v110CostFrom30(45) + 37), "1.1.0").partyExp).toBe(expCostForLevel(45) + 37);
+    expect(migrateGameState(v110State(MAX_LEVEL, v110CostFrom30(MAX_LEVEL) + 50), "1.1.0").partyExp).toBe(expCostForLevel(MAX_LEVEL) + 50);
   });
 
   test("a 1.1.0 save loads with its level, its floor and its share of the way to the next level", () => {

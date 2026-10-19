@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
-import { migrateGameState, migrateMonsters, migrateSummons } from "./migration";
+import { compareVersions, isVersion, migrateGameState, migrateMonsters, migrateSummons } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
@@ -20,15 +20,16 @@ export const APP_VERSION: string = pkg.version;
 export const UNVERSIONED = "unversioned";
 
 /**
- * Older save versions still safe to load with the current code. Saves whose version is neither
- * `APP_VERSION` nor listed here are hidden from Continue (file stays on disk, untouched).
- * Add an old version here only after confirming its save shape still loads cleanly via migrateGameState.
+ * The oldest save version the current code still loads. Every version from here up to `APP_VERSION`
+ * loads, upgraded by `VERSION_MIGRATIONS` (migration.ts); anything older, newer, unversioned or not an
+ * x.y.z version is hidden from Continue (file stays on disk, untouched). Raise it only to drop support
+ * for older saves.
  */
-export const ALLOWED_LEGACY_SAVE_VERSIONS: string[] = ["1.1.0"];
+export const OLDEST_LOADABLE_SAVE_VERSION = "1.1.0";
 
 export function isSaveVersionAllowed(version: string | undefined): boolean {
-  const normalized = version ?? UNVERSIONED;
-  return normalized === APP_VERSION || ALLOWED_LEGACY_SAVE_VERSIONS.includes(normalized);
+  if (version === undefined || !isVersion(version)) return false;
+  return compareVersions(version, OLDEST_LOADABLE_SAVE_VERSION) >= 0 && compareVersions(version, APP_VERSION) <= 0;
 }
 
 export const NUM_SAVE_SLOTS = 5;

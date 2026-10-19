@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { computeDamage, simulateLevelByDepth } from "../tools/game-editor/calc";
+import { computeDamage, levelByDepthFloorSeed, simulateLevelByDepth } from "../tools/game-editor/calc";
 import { BALANCE } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
@@ -29,9 +29,8 @@ describe("game-editor computeDamage: the range of one swing", () => {
 });
 
 describe("game-editor simulateLevelByDepth: one path per floor", () => {
-  // Seed n of the simulation generates its floors from new Rng(n * 104729 + 7).
   const floorExp = (seed: number) => {
-    const { floor, monsters } = createFloor(new Rng(seed * 104729 + 7), 1);
+    const { floor, monsters } = createFloor(new Rng(levelByDepthFloorSeed(seed)), 1);
     const roomsById = new Map(floor.rooms.map((r) => [r.id, r]));
     const expById = new Map(monsters.map((m) => [m.id, m.expReward]));
     const roomExp = (room: Room) => room.monsterIds.reduce((sum, id) => sum + (expById.get(id) ?? 0), 0);
