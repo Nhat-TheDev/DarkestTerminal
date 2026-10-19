@@ -535,7 +535,14 @@ export interface LevelByDepthRow {
   maxLevel: number;
 }
 
-/** Replays createFloor from floor 1, summing every monster's expReward per depth, averaged across `seeds` seeds. */
+const LEVEL_BY_DEPTH_SEED_STRIDE = 104729;
+
+/** The Rng seed `simulateLevelByDepth` generates the floors of its seed number `seed` from. */
+export function levelByDepthFloorSeed(seed: number): number {
+  return seed * LEVEL_BY_DEPTH_SEED_STRIDE + 7;
+}
+
+/** Replays createFloor from floor 1, walking one random path per floor (entry room to the last stage) and summing the expReward of the monsters in the rooms on that path, averaged across `seeds` seeds. */
 export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDepthRow[] {
   if (!Number.isFinite(seeds) || seeds < 1 || seeds > 500) throw new Error("seeds must be an integer in [1, 500].");
   if (!Number.isFinite(maxDepth) || maxDepth < 1 || maxDepth > 500) throw new Error("maxDepth must be an integer in [1, 500].");
@@ -544,12 +551,19 @@ export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDe
 
   const expBySeed: number[][] = [];
   for (let seed = 0; seed < seeds; seed++) {
-    const rng = new Rng(seed * 104729 + 7);
+    const rng = new Rng(levelByDepthFloorSeed(seed));
+    const pathRng = new Rng(seed * LEVEL_BY_DEPTH_SEED_STRIDE + 13);
     let exp = 0;
     const perDepth: number[] = [];
     for (let depth = 1; depth <= maxDepth; depth++) {
-      const { monsters } = createFloor(rng, depth);
-      for (const m of monsters) exp += m.expReward;
+      const { floor, monsters } = createFloor(rng, depth);
+      const roomsById = new Map(floor.rooms.map((r) => [r.id, r]));
+      const expById = new Map(monsters.map((m) => [m.id, m.expReward]));
+      let room = roomsById.get(floor.entryRoomId);
+      while (room) {
+        for (const id of room.monsterIds) exp += expById.get(id) ?? 0;
+        room = room.connectedRoomIds.length > 0 ? roomsById.get(pathRng.pick(room.connectedRoomIds)) : undefined;
+      }
       perDepth.push(exp);
     }
     expBySeed.push(perDepth);

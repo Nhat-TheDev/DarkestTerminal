@@ -288,9 +288,9 @@
       <legend>Live simulation against current data</legend>
       <p class="hint">
         Reproduces the methodology in <code>docs/gameplay-decisions/06-level-system.md</code> §6.7: replays the
-        real <code>createFloor(rng, depth)</code> floor generator from floor 1 onward, summing every monster's
-        <code>expReward</code> (combat rooms + the guard room — event-branch rooms spawn no combat monsters, so this
-        already matches "1 path through" with no extra bookkeeping), across multiple seeds, averaged.
+        real <code>createFloor(rng, depth)</code> floor generator from floor 1 onward, walking one random path per floor
+        from the entry room to the guard room and summing the <code>expReward</code> of the monsters in the rooms it
+        passes, across multiple seeds, averaged.
         This is a live simulation against the current data — not a hand-maintained table.
       </p>
       <div class="row">
