@@ -535,9 +535,11 @@ export interface LevelByDepthRow {
   maxLevel: number;
 }
 
-/** The seed `simulateLevelByDepth` builds seed `seed`'s floors from. */
+const LEVEL_BY_DEPTH_SEED_STRIDE = 104729;
+
+/** The Rng seed `simulateLevelByDepth` generates the floors of its seed number `seed` from. */
 export function levelByDepthFloorSeed(seed: number): number {
-  return seed * 104729 + 7;
+  return seed * LEVEL_BY_DEPTH_SEED_STRIDE + 7;
 }
 
 /** Replays createFloor from floor 1, walking one random path per floor (entry room to the last stage) and summing the expReward of the monsters in the rooms on that path, averaged across `seeds` seeds. */
@@ -550,7 +552,7 @@ export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDe
   const expBySeed: number[][] = [];
   for (let seed = 0; seed < seeds; seed++) {
     const rng = new Rng(levelByDepthFloorSeed(seed));
-    const pathRng = new Rng(seed * 104729 + 13);
+    const pathRng = new Rng(seed * LEVEL_BY_DEPTH_SEED_STRIDE + 13);
     let exp = 0;
     const perDepth: number[] = [];
     for (let depth = 1; depth <= maxDepth; depth++) {

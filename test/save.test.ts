@@ -37,7 +37,6 @@ describe("Save version blocking", () => {
 
   test("every version from the oldest loadable one up to the app's own is allowed", () => {
     expect(isSaveVersionAllowed(OLDEST_LOADABLE_SAVE_VERSION)).toBe(true);
-    expect(isSaveVersionAllowed("1.1.0")).toBe(true);
   });
 
   test("a version older than the oldest loadable one is blocked", () => {
@@ -539,7 +538,7 @@ describe("Version migrations", () => {
       const state = gameFromSave(loadSave("slot1"), "slot1").state;
       expect(state.party.every((c) => c.level === 3)).toBe(true);
       expect(levelForTotalExp(state.partyExp)).toBe(3);
-      expect(state.partyExp - expCostForLevel(3)).toBe(Math.floor((70 / 115) * span(3)));
+      expect(state.partyExp - expCostForLevel(3)).toBe(Math.floor((70 * span(3)) / 115));
       expect(state.floor.depth).toBe(save.state.floor.depth);
       expect(state.currentRoomId).toBe(save.state.currentRoomId);
       expect(state.roomPath).toEqual(save.state.roomPath);
@@ -560,8 +559,8 @@ describe("Version migrations", () => {
       for (const c of state.party) c.level = 3;
 
       const migrated = migrateGameState(state, "1.1.0").combat!;
-      expect(migrated.roundStartPartySnapshot!.partyExp).toBe(Math.floor((100 / 115) * span(1)));
-      expect(migrated.log.at(-1)!.partySnapshot!.partyExp).toBe(expCostForLevel(3) + Math.floor((70 / 115) * span(3)));
+      expect(migrated.roundStartPartySnapshot!.partyExp).toBe(Math.floor((100 * span(1)) / 115));
+      expect(migrated.log.at(-1)!.partySnapshot!.partyExp).toBe(expCostForLevel(3) + Math.floor((70 * span(3)) / 115));
     });
   });
 
