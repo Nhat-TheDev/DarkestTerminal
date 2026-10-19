@@ -511,7 +511,7 @@ function renderMetPicker() {
 function buildEventSection() {
   const forceSelect = document.getElementById("event-force");
   forceSelect.innerHTML = '<option value="">(random)</option>';
-  for (const ev of events) {
+  for (const ev of events.filter((e) => e.kind !== "scripted")) {
     const opt = document.createElement("option");
     opt.value = ev.id;
     opt.textContent = ev.name + " (" + ev.tier + (ev.onceLifetime ? ", once-lifetime" : "") + (ev.minFloorDepth ? ", floor " + ev.minFloorDepth + "+" : "") + ")";

@@ -46,6 +46,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { openChest } from "./events/openChest";
 import { runnerBuy, runnerRefresh, runnerSell } from "./events/runner";
 import { runnerBarter } from "./events/barter";
+import { answerGatekeeper, applyBlessing, countBlessedRoom } from "./events/gatekeeper";
 import { merchantPurchase, merchantRefresh, merchantLeave, MERCHANT_PRICE_COINS } from "./events/merchant";
 import { bloodAltarPay, bloodAltarLeave, BLOOD_ALTAR_HP_PERCENT } from "./events/bloodAltar";
 import { cursedShrineDecide } from "./events/cursedShrine";
@@ -72,7 +73,9 @@ export class Game {
     seed = Date.now(),
     classIds?: Id[],
     restore?: { state: GameState; monsters: Monster[]; summons: Summon[]; rngState: number; playTimeSec: number },
-    abilityIds?: (Id | null)[]
+    abilityIds?: (Id | null)[],
+    /** A real new run opens on the Gatekeeper scene, which holds floor 1's entry ambush until `enterDungeon()`. Tests and dev tools leave it off. */
+    withGatekeeper = false
   ) {
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
@@ -111,11 +114,11 @@ export class Game {
       currentRoomId: floor.entryRoomId,
       roomPath: [floor.entryRoomId],
       combat: null,
-      message: t("game.enteredRoom", { room: getRoom(floor, floor.entryRoomId).name }),
+      message: withGatekeeper ? "" : t("game.enteredRoom", { room: getRoom(floor, floor.entryRoomId).name }),
       gameOver: null,
       partyExp: 0,
       inventory,
-      coins: 0,
+      coins: BALANCE.party.startingCoins,
       satiety: BALANCE.survival.initialSatiety,
       pendingArtifactDecision: null,
       secondJackpotArtifactId: null,
@@ -138,6 +141,10 @@ export class Game {
       pendingEndingCheckpoint: false,
       continuedPastCheckpoint: false,
       pendingFounderDialogue: false,
+      pendingGatekeeper: withGatekeeper,
+      gatekeeperAnswer: null,
+      blessingRoomsLeft: 0,
+      blessedRoomId: null,
       retiredCharacterClassId: retiredCharacterEventEligible ? retiredCharacter.classId : null,
       runStardust: 0,
       pendingAbilityBuyback: null,
@@ -154,7 +161,7 @@ export class Game {
       character.hp = character.maxHp;
       character.mp = character.maxMp;
     }
-    this.checkEntryRoomAmbush();
+    if (!withGatekeeper) this.checkEntryRoomAmbush();
   }
 
   /** Seconds played across every session of this run: the saved total plus the time since this Game was created. */
@@ -167,8 +174,25 @@ export class Game {
     const hasLiving = room.monsterIds.some((id) => (this.ctx.monsters.find((m) => m.id === id)?.hp ?? 0) > 0);
     if (hasLiving && !room.cleared) {
       this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, room.type === "boss");
+      applyBlessing(this.state, this.ctx, room.id);
       this.state.message = t("dungeon.ambush", { room: room.name });
     }
+  }
+
+  /** The party's answer at the gate; only while the scene is up and unanswered. */
+  answerGatekeeper(answer: "paid" | "refused"): PartyActionError | null {
+    if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer !== null) return null;
+    return answerGatekeeper(this.state, answer);
+  }
+
+  /** Leaves the Gatekeeper scene: the party steps into floor 1's entry room, which counts as the blessing's first room, and its ambush starts. */
+  enterDungeon(): void {
+    if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer === null) return;
+    this.state.pendingGatekeeper = false;
+    const entry = getRoom(this.state.floor, this.state.currentRoomId);
+    countBlessedRoom(this.state, entry);
+    this.state.message = t("game.enteredRoom", { room: entry.name });
+    this.checkEntryRoomAmbush();
   }
 
   connectedRoomChoices() {

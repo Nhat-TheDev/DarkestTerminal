@@ -1854,12 +1854,9 @@ boot();
   // Valid sprite ids per monster category, derived from `roles` in data/monsters.json (loadSpritesData):
   // monsters = roles includes normal, elites = includes elite, bosses = includes boss.
   let ROLE_SPRITE_IDS = { monsters: [], elites: [], bosses: [] };
-  // Event ids from data/events.json — for the "events" category, the ID must match one of these
-  // to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
-  const EVENT_IDS = [
-    "open-chest", "guardian-fight", "merchant", "desecrated-altar", "blood-altar",
-    "cursed-shrine", "twin-altars", "sacrificial-circle", "gambling-den", "wandering-hermit", "collapsed-floor",
-  ];
+  // Event ids from data/events.json (loadSpritesData) — for the "events" category, the ID must match one
+  // of these to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
+  let EVENT_IDS = [];
   // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
   // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
   const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
@@ -1911,6 +1908,7 @@ boot();
     const archetypes = await (await fetch("/api/monsters")).json();
     const idsWithRole = (role) => archetypes.filter((a) => a.roles.includes(role)).map((a) => a.id).sort();
     ROLE_SPRITE_IDS = { monsters: idsWithRole("normal"), elites: idsWithRole("elite"), bosses: idsWithRole("boss") };
+    EVENT_IDS = (await (await fetch("/api/events")).json()).map((e) => e.id);
   }
 
   function currentSection() {

@@ -235,6 +235,10 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;
   if (typeof state.pendingFounderDialogue !== "boolean") state.pendingFounderDialogue = false;
+  if (typeof state.pendingGatekeeper !== "boolean") state.pendingGatekeeper = false;
+  if (state.gatekeeperAnswer === undefined) state.gatekeeperAnswer = null;
+  if (typeof state.blessingRoomsLeft !== "number") state.blessingRoomsLeft = 0;
+  if (state.blessedRoomId === undefined) state.blessedRoomId = null;
   if (state.retiredCharacterClassId === undefined) state.retiredCharacterClassId = null;
   // Part F.2 — a fresh Game encodes "the-one-who-stayed" is ineligible by pre-inserting its id into
   // firedOnceEventIds; a migrated save never went through that constructor, so restore the same

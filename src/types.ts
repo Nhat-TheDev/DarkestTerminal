@@ -381,7 +381,9 @@ export type EventKind =
   | "choiceReveal"
   | "artifactExchange"
   | "rescueGamble"
-  | "coinGamble";
+  | "coinGamble"
+  /** Shown by the engine at a fixed point (the-gatekeeper, before floor 1), never rolled into a room. */
+  | "scripted";
 
 /** A single condition an event's outcome tag must match, for `CrossEventVariant.when`
     (10-event-narrative.md Part C.1). `outcome` is compared against `GameState.eventOutcomes[eventId]`. */
@@ -894,6 +896,15 @@ export interface GameState {
       pre-fight dialogue and boss visual, shown before `Game.enterFounderFight()` starts combat.
       Same "block everything else" priority as `pendingEndingCheckpoint`. */
   pendingFounderDialogue: boolean;
+  /** The Gatekeeper scene (`the-gatekeeper`) is on screen: set at construction for a real new run, it
+      blocks floor 1's entry ambush until `Game.enterDungeon()` clears it. */
+  pendingGatekeeper: boolean;
+  /** The answer given at the gate this run; `null` until answered. */
+  gatekeeperAnswer: "paid" | "refused" | null;
+  /** Floor-1 rooms the gatekeeper's blessing still covers, counted on entry; rest rooms don't count. */
+  blessingRoomsLeft: number;
+  /** The room the blessing covers right now: a fight that starts in it starts with the blessing applied. */
+  blessedRoomId: Id | null;
   /** Part F.2's cross-run persistence layer — set once, at fresh-run construction, from
       `src/engine/profile.ts`'s on-disk profile: the most recently retired class, if any exist and
       `the-one-who-stayed` hasn't already been shown in a previous run. `null` means either nobody

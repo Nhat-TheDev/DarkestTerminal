@@ -13,7 +13,7 @@ export const eventTiers: GeneratorSpec = {
         capitalize(tier),
         formatNumber(weight[tier]),
         events
-          .filter((event) => event.tier === tier)
+          .filter((event) => event.tier === tier && event.kind !== "scripted")
           .map((event) => {
             const gates = [event.minFloorDepth === undefined ? "" : `from floor ${formatNumber(event.minFloorDepth)}`, event.onceLifetime ? "once per run" : ""].filter(Boolean);
             return `\`${event.id}\`${gates.length === 0 ? "" : ` (${gates.join(", ")})`}`;

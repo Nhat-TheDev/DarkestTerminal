@@ -39,9 +39,10 @@ const EVENTS_BY_TIER: Record<EventTier, EventDefinition[]> = {
 const COMMON_TIER_WEIGHT = BALANCE.events.commonTierWeight;
 const RARE_TIER_WEIGHT = BALANCE.events.rareTierWeight;
 
-/** Part C.4/C.5 — an event is eligible to be rolled if the run's floor depth meets its
-    `minFloorDepth` (if any) and it isn't a spent `onceLifetime` event. */
+/** Part C.4/C.5 — an event is eligible to be rolled if it isn't `scripted`, the run's floor depth meets
+    its `minFloorDepth` (if any) and it isn't a spent `onceLifetime` event. */
 function isEligible(event: EventDefinition, depth: number, firedOnceEventIds: Id[]): boolean {
+  if (event.kind === "scripted") return false;
   if (event.minFloorDepth !== undefined && depth < event.minFloorDepth) return false;
   if (event.onceLifetime && firedOnceEventIds.includes(event.id)) return false;
   return true;

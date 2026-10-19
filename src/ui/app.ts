@@ -56,6 +56,8 @@ import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
+import * as gatekeeperScreen from "./screens/gatekeeper";
+import { GATEKEEPER_EVENT_ID } from "../engine/events/gatekeeper";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 import * as abilityBuybackScreen from "./screens/abilityBuyback";
@@ -346,6 +348,11 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    // The Gatekeeper scene opens a new run, before the party is in any room.
+    if (this.game.state.pendingGatekeeper) {
+      this.ui = { kind: "gatekeeper" };
+      return;
+    }
     // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls, checked before
     // anything else (including a pending artifact decision from that same boss kill).
     if (this.game.state.pendingEndingCheckpoint) {
@@ -454,12 +461,12 @@ export class App implements ScreenContext {
       }
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && key.name === "q") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && key.name === "s") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
       saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
@@ -575,6 +582,9 @@ export class App implements ScreenContext {
         break;
       case "founderDialogue":
         founderDialogueScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "gatekeeper":
+        gatekeeperScreen.handleKey(this, this.ui, key, digit);
         break;
       case "abilityBuyback":
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
@@ -759,7 +769,7 @@ export class App implements ScreenContext {
           ];
     this.header.content = joinLines([
       [
-        boldColorChunk(room.name, PALETTE.title),
+        boldColorChunk(s.pendingGatekeeper ? getEvent(GATEKEEPER_EVENT_ID).name : room.name, PALETTE.title),
         plainChunk(t("ui.headerFloor", { depth: s.floor.depth })),
         colorChunk(shownCombat ? t("ui.roundHeader", { round: shownCombat.roundNumber }) : t("ui.exploring"), PALETTE.dim),
         plainChunk("  "),
@@ -969,7 +979,7 @@ export class App implements ScreenContext {
       target.push([
         plainChunk("  "),
         colorChunk(statusDisplayName(def), color),
-        colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+        colorChunk(combatScreen.statusTurnsSuffix(eff.turnsRemaining), color),
         ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
       ]);
     }
@@ -1072,7 +1082,11 @@ export class App implements ScreenContext {
 
     let enemyBlock: TextChunk[][];
     let tallest = tierFrameHeight("party");
-    if (combat) {
+    if (s.pendingGatekeeper) {
+      enemyBlock = this.buildEventBlock(GATEKEEPER_EVENT_ID);
+      const gateSprite = spriteForEvent(GATEKEEPER_EVENT_ID);
+      if (gateSprite) tallest = Math.max(tallest, spriteHeight(gateSprite));
+    } else if (combat) {
       const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
@@ -1154,7 +1168,7 @@ export class App implements ScreenContext {
         lines.push([
           plainChunk("  "),
           colorChunk(statusDisplayName(def), color),
-          colorChunk(t("ui.statusTurnsSuffix", { turns: eff.turnsRemaining }), color),
+          colorChunk(combatScreen.statusTurnsSuffix(eff.turnsRemaining), color),
           ...(eff.stacks && eff.stacks > 1 ? [colorChunk(t("ui.statusStacksSuffix", { stacks: eff.stacks }), color)] : []),
         ]);
       }
@@ -1242,6 +1256,9 @@ export class App implements ScreenContext {
       case "founderDialogue":
         return founderDialogueScreen.renderMain(this.game, this.ui);
 
+      case "gatekeeper":
+        return gatekeeperScreen.renderMain(this.game, this.ui);
+
       default: {
         const _exhaustive: never = this.ui;
         return _exhaustive;
@@ -1312,6 +1329,8 @@ export class App implements ScreenContext {
         return endingScreen.renderFooter(this.ui, this.game);
       case "founderDialogue":
         return founderDialogueScreen.renderFooter(this.ui);
+      case "gatekeeper":
+        return gatekeeperScreen.renderFooter(this.ui, this.game);
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter();
       case "gameover":

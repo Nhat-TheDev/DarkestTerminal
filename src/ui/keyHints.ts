@@ -31,8 +31,8 @@ const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "roomReward",
   "campPrompt",
 ];
-const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "saveMenu", "fullLog"];
-const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "fullLog"];
+const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "saveMenu", "fullLog", "gatekeeper"];
+const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "fullLog", "gatekeeper"];
 const NO_LOG_KINDS: readonly UiState["kind"][] = ["fullLog"];
 
 export function joinHints(...parts: (string | null | false | undefined)[]): string {

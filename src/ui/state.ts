@@ -52,6 +52,7 @@ export type UiState =
   | { kind: "floorMilestone" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
+  | { kind: "gatekeeper" }
   | { kind: "abilityBuyback" }
   | { kind: "characterInfo"; characterIndex: number; previousUi: UiState }
   | { kind: "gameover" };

@@ -7,6 +7,11 @@ import { ENDING_CHECKPOINT_FLOOR_DEPTH, FOUNDER_FLOOR_DEPTH } from "../src/data/
 const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
 
 describe("dev-save-dump applyDump", () => {
+  test("refuses to force a scripted event into a room", () => {
+    const game = new Game(4, PARTY);
+    expect(() => applyDump(game, { level: 1, floorDepth: 1, roomArg: "entry", forceEventId: "the-gatekeeper" })).toThrow("scripted");
+  });
+
   test("sets the requested level, refilling hp/mp to the new max", () => {
     const game = new Game(1, PARTY);
     applyDump(game, { level: 50, floorDepth: 50, roomArg: "entry" });

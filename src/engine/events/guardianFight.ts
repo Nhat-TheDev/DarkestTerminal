@@ -6,6 +6,7 @@ import { getEvent } from "../../data/events";
 import { spawnEventGuardianMonsters } from "../../data/floor";
 import { t } from "../../data/strings";
 import { getRoom } from "../dungeon";
+import { applyBlessing } from "./gatekeeper";
 import { closeEvent } from "./shared";
 
 function guardianFightRoomOrError(state: GameState): Room | PartyActionError {
@@ -31,6 +32,7 @@ export function guardianFightEnter(state: GameState, ctx: EngineContext): PartyA
   ctx.monsters.push(...monsters);
   room.monsterIds = monsters.map((m) => m.id);
   state.combat = startCombat(room.id, room.monsterIds, ctx, false);
+  applyBlessing(state, ctx, room.id);
   state.message = t("dungeon.ambush", { room: room.name });
   return null;
 }

@@ -11,6 +11,7 @@ import { campReflectionTier, highestAnsweredCampReflectionTier } from "../data/l
 import { getClass } from "../data/classes";
 import { rollRestRunner } from "./events/runner";
 import { applyPendingBarterBuffs } from "./events/barter";
+import { applyBlessing, countBlessedRoom } from "./events/gatekeeper";
 
 export function getRoom(floor: Floor, roomId: string): Room {
   const room = floor.rooms.find((r) => r.id === roomId);
@@ -40,6 +41,7 @@ export function enterRoom(state: GameState, room: Room, ctx: EngineContext): voi
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");
     if (room.type === "boss") applyPendingBarterBuffs(state, ctx, state.combat.log);
+    applyBlessing(state, ctx, room.id);
     state.message = t("dungeon.ambush", { room: room.name });
     return;
   }
@@ -82,7 +84,11 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
 
   state.currentRoomId = targetRoomId;
   state.roomPath.push(targetRoomId);
-  enterRoom(state, getRoom(state.floor, targetRoomId), ctx);
+  const room = getRoom(state.floor, targetRoomId);
+  // Counted before the room's own effects, so a fight that starts on arrival is already blessed.
+  const blessingNote = countBlessedRoom(state, room);
+  enterRoom(state, room, ctx);
+  if (blessingNote) state.message = `${blessingNote} ${state.message}`;
 }
 
 /** 11-world-bible.md §11.13 tier 2 — a chain's deeper escalation requires both its own higher

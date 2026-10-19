@@ -6,6 +6,7 @@ import { getRoom, enterRoom } from "../../src/engine/dungeon";
 import { statsForLevel, recomputeAllPartyStats } from "../../src/engine/party";
 import { expCostForLevel, MAX_LEVEL } from "../../src/data/levelGrowth";
 import { FOUNDER_FLOOR_DEPTH } from "../../src/data/endings";
+import { getEvent } from "../../src/data/events";
 import { resolveRoomId } from "./args";
 
 export interface DumpOptions {
@@ -13,12 +14,16 @@ export interface DumpOptions {
   floorDepth: number;
   roomArg: string;
   /** Pins the event room's roll instead of letting `resolveEventEntry` pick one at random — lets a
-      caller jump straight to a specific event id for testing, bypassing its own `isEligible` gate. */
+      caller jump straight to a specific event id for testing, bypassing its own `isEligible` gate.
+      A `scripted` event is refused: it is never a room's event. */
   forceEventId?: Id;
 }
 
 /** Mutates `game` in place to the requested level/floor/room, returning the room it landed in. */
 export function applyDump(game: Game, opts: DumpOptions): Room {
+  if (opts.forceEventId && getEvent(opts.forceEventId).kind === "scripted") {
+    throw new Error(`"${opts.forceEventId}" is a scripted scene, not a room event.`);
+  }
   const level = Math.max(1, Math.min(MAX_LEVEL, opts.level));
   const floorDepth = Math.max(1, opts.floorDepth);
 
@@ -28,6 +33,9 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
   // The Game constructor already ran its own entry-room ambush check against floor 1's monsters —
   // stale here since we just replaced both the floor and the monster list.
   game.state.combat = null;
+  // A dump lands mid-run, past the gate: the Gatekeeper scene never shows and counts as refused.
+  game.state.pendingGatekeeper = false;
+  game.state.gatekeeperAnswer = "refused";
 
   game.state.partyExp = expCostForLevel(level);
   for (const c of game.state.party) {

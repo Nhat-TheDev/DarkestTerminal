@@ -590,6 +590,14 @@ before reaching for another Covenant-adjacent scene.
 **`waiting-supplies`** — Thread 3 & 4, common tier. Base text and `merchant`-sourced variant are in
 C.1, entry 11.
 
+**`the-gatekeeper`** — the scene that opens every run, outside the dungeon (`08-events.md` §8.25). The
+party are fortune-seekers who came down for treasure that would change their lives. The man at the
+gate is neither priest nor guide: he keeps it, watches parties go in, and never says how many come
+out. The toll is framed as something left with him by custom, not a purchase. He is deliberately
+unlike the Wandering Hermit, the other old man in the roster: he stands rather than sits, asks
+for a customary sum the party may refuse where the Hermit names his price, and is met before the
+first room rather than among the rubble.
+
 ---
 
 ## Part E — The Wanderer

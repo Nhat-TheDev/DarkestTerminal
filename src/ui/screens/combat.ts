@@ -15,6 +15,16 @@ import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
 
+/** Whether a status with this many turns left is long enough to outlast any fight. */
+export function lastsWholeFight(turns: number): boolean {
+  return turns >= BALANCE.combat.statusLastsFightFromTurns;
+}
+
+/** A status's remaining-turns suffix: " (3t)", or " (∞)" once it lasts the whole fight. */
+export function statusTurnsSuffix(turns: number): string {
+  return lastsWholeFight(turns) ? t("ui.statusLastsFightSuffix") : t("ui.statusTurnsSuffix", { turns });
+}
+
 const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
   attack: t("ui.statLabelAttack"),
   defense: t("ui.statLabelDefense"),
@@ -91,7 +101,7 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     case "applyStatusEffect": {
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
-      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })} (${e.durationTurns ?? 1}t)`;
+      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
       const bullet = t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
       const parts = statusMechanicsParts(def, { amount: e.amount, minPercent: e.minPercent });
       return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics }))].join("\n");

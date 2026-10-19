@@ -1,5 +1,6 @@
 {
   "combat": {
+    "statusLastsFightFromTurns": 99,
     "defenseMitigationX": 40,
     "defenseMitigationY": 10,
     "executeCooldownTurns": 3,
@@ -52,7 +53,14 @@
   "party": {
     "size": 4,
     "maxEquippedArtifacts": 3,
-    "startingExplorationKits": 4
+    "startingExplorationKits": 4,
+    "startingCoins": 50
+  },
+  "gatekeeper": {
+    "tollCoins": 50,
+    "blessingRooms": 5,
+    "blessingStatusId": "blessed",
+    "blessingDurationTurns": 999
   },
   "currency": {
     "coinDropByTier": {
