@@ -370,8 +370,8 @@ is a key hint and belongs in the footer.
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
 `[b]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
 including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
-`saveMenu`/`gatekeeper`, `[s]` is off on `gameover`/`abilityBuyback`/`gatekeeper`, `[b]` only opens party
-info from a fixed list of screen kinds. The footer's global group must be
+`saveMenu`/`gatekeeper`, `[s]` is off on `gameover`/`abilityBuyback`/`gatekeeper`,
+`[b]` only opens party info from a fixed list of screen kinds. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
 otherwise the two drift apart and the hint outlives the binding. On the log screen itself
 only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
