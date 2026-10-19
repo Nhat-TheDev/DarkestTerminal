@@ -73,11 +73,12 @@ interface BalanceConfig {
     startingExplorationKits: number;
     startingCoins: number;
   };
-  /** The Gatekeeper scene before floor 1: the coins it asks for, and how many floor-1 rooms its blessing covers. */
+  /** The Gatekeeper scene before floor 1: the coins it asks for, how many floor-1 rooms its blessing covers, and how long it lasts in a fight. */
   gatekeeper: {
     tollCoins: number;
     blessingRooms: number;
     blessingStatusId: string;
+    blessingDurationTurns: number;
   };
   currency: {
     coinDropByTier: {

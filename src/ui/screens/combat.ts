@@ -15,9 +15,14 @@ import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
 
-/** A status's remaining-turns suffix: " (3t)", or " (∞)" once the count is long enough to outlast any fight. */
+/** Whether a status with this many turns left is long enough to outlast any fight. */
+export function lastsWholeFight(turns: number): boolean {
+  return turns >= BALANCE.combat.statusLastsFightFromTurns;
+}
+
+/** A status's remaining-turns suffix: " (3t)", or " (∞)" once it lasts the whole fight. */
 export function statusTurnsSuffix(turns: number): string {
-  return turns >= BALANCE.combat.statusLastsFightFromTurns ? t("ui.statusLastsFightSuffix") : t("ui.statusTurnsSuffix", { turns });
+  return lastsWholeFight(turns) ? t("ui.statusLastsFightSuffix") : t("ui.statusTurnsSuffix", { turns });
 }
 
 const COMBAT_STAT_LABEL: Record<CombatStat, string> = {

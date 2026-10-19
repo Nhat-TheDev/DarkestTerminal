@@ -603,10 +603,10 @@ Not a room. Every new run opens on this scene after party and ability selection,
 
 The run starts with `party.startingCoins`; the toll is `gatekeeper.tollCoins` (`data/balance-config.json`).
 
-- **[1] Leave the coins with him** — the toll is taken. He warns the party ("The first thing that shines, leave it where it lies"), then blesses them.
+- **[1] Leave the coins with him** — the toll is taken. He warns the party ("The first thing that shines, leave it where it lies"), then blesses them. A party holding fewer coins than the toll is refused ("Not enough coins on hand.") and can only keep them.
 - **[2] Keep your coins** — he laughs once, says "Good luck, then", and nothing else. No blessing.
 
-**The blessing** is the `blessed` status (`data/status-effects.json`): a `modifyCombatStat` per stat with `minPercent`, so it raises DEF by a share of the character's own DEF and ATK and MAG by a share of theirs. It covers the first `gatekeeper.blessingRooms` rooms of floor 1, counted on entry (`countBlessedRoom`, `src/engine/events/gatekeeper.ts`). The entry room is the first. Combat and event rooms count; rest rooms don't. Entering floor 1's guard room ends it on the spot, and the guard room is never blessed. Every fight that starts in a covered room, including an event's guardian fight, starts with `blessed` on each living party member, and it ends with the fight like the Runner's barter buffs. One log line marks its end.
+**The blessing** is the `blessed` status (`data/status-effects.json`): a `modifyCombatStat` per stat with `minPercent`, so it raises DEF by a share of the character's own DEF and ATK and MAG by a share of theirs. It covers the first `gatekeeper.blessingRooms` rooms of floor 1, counted on entry (`countBlessedRoom`, `src/engine/events/gatekeeper.ts`). The entry room is the first. Combat and event rooms count; rest rooms don't. Entering floor 1's guard room ends it on the spot, and the guard room is never blessed. Every fight that starts in a covered room, including an event's guardian fight, starts with `blessed` on each living party member, and it ends with the fight like the Runner's barter buffs: it is applied for `gatekeeper.blessingDurationTurns` (999) turns, long enough to outlast any fight, and the party panel shows it as (∞). One log line marks its end.
 
 The answer is kept in `GameState.gatekeeperAnswer` (`"paid"` / `"refused"`). A dev-dump save that lands mid-run counts as `"refused"` and never shows the scene.
 

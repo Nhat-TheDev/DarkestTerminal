@@ -8,6 +8,7 @@ import { countBlessedRoom } from "../src/engine/events/gatekeeper";
 import { rollEvent } from "../src/data/events";
 import { LORE_EXPOSURE_EVENT_IDS } from "../src/data/loreExposure";
 import { BALANCE } from "../src/data/balanceConfig";
+import { getStatusEffect } from "../src/data/statusEffects";
 import { t } from "../src/data/strings";
 import { Rng } from "../src/engine/rng";
 import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
@@ -49,6 +50,17 @@ describe("the Gatekeeper scene", () => {
     expect(refused.state.blessingRoomsLeft).toBe(0);
   });
 
+  test("a party short of the toll can't leave it, and can still keep its coins", () => {
+    const game = newRun();
+    game.state.coins = BALANCE.gatekeeper.tollCoins - 1;
+    expect(game.answerGatekeeper("paid")).toEqual({ reason: t("errors.notEnoughCoins") });
+    expect(game.state.coins).toBe(BALANCE.gatekeeper.tollCoins - 1);
+    expect(game.state.gatekeeperAnswer).toBeNull();
+    expect(game.state.blessingRoomsLeft).toBe(0);
+    expect(game.answerGatekeeper("refused")).toBeNull();
+    expect(game.state.gatekeeperAnswer).toBe("refused");
+  });
+
   test("entering starts the entry room's ambush, blessed only when the coins were left", () => {
     const paid = newRun();
     paid.answerGatekeeper("paid");
@@ -74,7 +86,8 @@ describe("the Gatekeeper scene", () => {
     refused.answerGatekeeper("refused");
     refused.enterDungeon();
     const before = refused.state.party[0]!.defense;
-    expect(paid.state.party[0]!.defense).toBe(before + Math.round((before * 30) / 100));
+    const percent = getStatusEffect(BLESSED).perTurnEffects.find((e) => e.combatStat === "defense")!.minPercent!;
+    expect(paid.state.party[0]!.defense).toBe(before + Math.round((before * percent) / 100));
   });
 
   test("an unanswered scene survives a save and reload", () => {
@@ -134,10 +147,12 @@ describe("the blessing's room count", () => {
     game.answerGatekeeper("paid");
     game.enterDungeon();
     game.state.combat = null;
-    const next = game.connectedRoomChoices().find((r) => r.type !== "rest")!;
-    game.move(next.id);
-    expect(game.state.blessedRoomId).toBe(next.id);
-    if (game.state.combat) expect(isBlessed(game)).toBe(true);
+    const next = game.connectedRoomChoices().find((r) => r.type === "combat");
+    expect(next).toBeDefined();
+    game.move(next!.id);
+    expect(game.state.blessedRoomId).toBe(next!.id);
+    expect(game.state.combat).not.toBeNull();
+    expect(isBlessed(game)).toBe(true);
   });
 });
 

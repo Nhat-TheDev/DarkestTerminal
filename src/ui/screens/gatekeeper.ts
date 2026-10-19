@@ -2,9 +2,10 @@ import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { t } from "../../data/strings";
 import { getEvent } from "../../data/events";
-import { getStatusEffect } from "../../data/statusEffects";
+import { COMBAT_STAT_LABEL, getStatusEffect } from "../../data/statusEffects";
 import { BALANCE } from "../../data/balanceConfig";
 import { GATEKEEPER_EVENT_ID } from "../../engine/events/gatekeeper";
+import { digitHint } from "../keyHints";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
 
@@ -14,9 +15,10 @@ export type GatekeeperUiState = Extract<UiState, { kind: "gatekeeper" }>;
 export function handleKey(ctx: ScreenContext, _ui: GatekeeperUiState, _key: KeyEvent, digit: number | null): void {
   if (ctx.game.state.gatekeeperAnswer === null) {
     if (digit === 1) {
-      ctx.game.answerGatekeeper("paid");
+      const err = ctx.game.answerGatekeeper("paid");
       // The blessing's numbers go to the log, so the Dungeon panel keeps room for his words and [1] Enter.
-      ctx.logInfo(t("ui.gatekeeperBlessing", { defense: blessingPercent("defense"), attack: blessingPercent("attack"), rooms: BALANCE.gatekeeper.blessingRooms }));
+      if (err) ctx.reportUnusable(err.reason);
+      else ctx.logInfo(t("ui.gatekeeperBlessing", { stats: blessingStats(), rooms: BALANCE.gatekeeper.blessingRooms }));
     } else if (digit === 2) ctx.game.answerGatekeeper("refused");
     return;
   }
@@ -26,10 +28,11 @@ export function handleKey(ctx: ScreenContext, _ui: GatekeeperUiState, _key: KeyE
   }
 }
 
-/** The blessing's percentages, read from its status entry so the text never drifts from what the fight applies. */
-function blessingPercent(stat: "defense" | "attack"): number {
-  const effect = getStatusEffect(BALANCE.gatekeeper.blessingStatusId).perTurnEffects.find((e) => e.kind === "modifyCombatStat" && e.combatStat === stat);
-  return effect?.minPercent ?? 0;
+/** Every stat the blessing raises, read from its status entry so the text never drifts from what the fight applies. */
+function blessingStats(): string {
+  return getStatusEffect(BALANCE.gatekeeper.blessingStatusId)
+    .perTurnEffects.map((e) => t("ui.gatekeeperBlessingStat", { percent: e.minPercent ?? 0, stat: COMBAT_STAT_LABEL[e.combatStat!] }))
+    .join(", ");
 }
 
 export function renderMain(game: Game, _ui: GatekeeperUiState): string {
@@ -47,5 +50,5 @@ export function renderMain(game: Game, _ui: GatekeeperUiState): string {
 }
 
 export function renderFooter(_ui: GatekeeperUiState, game: Game): string {
-  return game.state.gatekeeperAnswer === null ? t("ui.footerGatekeeperChoice") : t("ui.footerGatekeeperEnter");
+  return game.state.gatekeeperAnswer === null ? digitHint("ui.footerChoose", 2) : t("ui.footerGatekeeperEnter");
 }

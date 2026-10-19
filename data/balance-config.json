@@ -59,7 +59,8 @@
   "gatekeeper": {
     "tollCoins": 50,
     "blessingRooms": 5,
-    "blessingStatusId": "blessed"
+    "blessingStatusId": "blessed",
+    "blessingDurationTurns": 999
   },
   "currency": {
     "coinDropByTier": {

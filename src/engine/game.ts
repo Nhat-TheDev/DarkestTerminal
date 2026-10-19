@@ -180,9 +180,9 @@ export class Game {
   }
 
   /** The party's answer at the gate; only while the scene is up and unanswered. */
-  answerGatekeeper(answer: "paid" | "refused"): void {
-    if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer !== null) return;
-    answerGatekeeper(this.state, answer);
+  answerGatekeeper(answer: "paid" | "refused"): PartyActionError | null {
+    if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer !== null) return null;
+    return answerGatekeeper(this.state, answer);
   }
 
   /** Leaves the Gatekeeper scene: the party steps into floor 1's entry room, which counts as the blessing's first room, and its ambush starts. */
