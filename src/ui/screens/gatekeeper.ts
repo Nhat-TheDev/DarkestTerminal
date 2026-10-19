@@ -6,17 +6,19 @@ import { COMBAT_STAT_LABEL, getStatusEffect } from "../../data/statusEffects";
 import { BALANCE } from "../../data/balanceConfig";
 import { GATEKEEPER_EVENT_ID } from "../../engine/events/gatekeeper";
 import { digitHint } from "../keyHints";
+import { getRoom } from "../../engine/dungeon";
+import { pathChoiceLine } from "./room";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
 
-/** The Gatekeeper scene before floor 1 (`the-gatekeeper`): leave the toll or keep it, then a single Enter steps into the dungeon. */
+/** The Gatekeeper scene before floor 1 (`the-gatekeeper`): leave the toll or keep it, then move into floor 1's entry room, its only path. */
 export type GatekeeperUiState = Extract<UiState, { kind: "gatekeeper" }>;
 
 export function handleKey(ctx: ScreenContext, _ui: GatekeeperUiState, _key: KeyEvent, digit: number | null): void {
   if (ctx.game.state.gatekeeperAnswer === null) {
     if (digit === 1) {
       const err = ctx.game.answerGatekeeper("paid");
-      // The blessing's numbers go to the log, so the Dungeon panel keeps room for his words and [1] Enter.
+      // The blessing's numbers go to the log, so the Dungeon panel keeps room for his words and the path in.
       if (err) ctx.reportUnusable(err.reason);
       else ctx.logInfo(t("ui.gatekeeperBlessing", { stats: blessingStats(), rooms: BALANCE.gatekeeper.blessingRooms }));
     } else if (digit === 2) ctx.game.answerGatekeeper("refused");
@@ -46,9 +48,10 @@ export function renderMain(game: Game, _ui: GatekeeperUiState): string {
       t("ui.gatekeeperKeepCoins"),
     ].join("\n");
   }
-  return [answer === "paid" ? t("ui.gatekeeperPaid") : t("ui.gatekeeperRefused"), "", t("ui.gatekeeperEnter")].join("\n");
+  const entry = getRoom(game.state.floor, game.state.floor.entryRoomId);
+  return [answer === "paid" ? t("ui.gatekeeperPaid") : t("ui.gatekeeperRefused"), "", t("ui.pathsLabel"), pathChoiceLine(1, entry)].join("\n");
 }
 
 export function renderFooter(_ui: GatekeeperUiState, game: Game): string {
-  return game.state.gatekeeperAnswer === null ? digitHint("ui.footerChoose", 2) : t("ui.footerGatekeeperEnter");
+  return game.state.gatekeeperAnswer === null ? digitHint("ui.footerChoose", 2) : digitHint("ui.footerGatekeeperMove", 1);
 }

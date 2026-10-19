@@ -2,6 +2,7 @@ import { StyledText, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { getRoom } from "../../engine/dungeon";
 import { t } from "../../data/strings";
+import type { Room } from "../../types";
 import type { UiState } from "../state";
 import { inventoryEntries } from "../state";
 import type { ScreenContext } from "./context";
@@ -45,6 +46,11 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
   }
 }
 
+/** One numbered path in a "Paths:" list. */
+export function pathChoiceLine(index: number, room: Room): string {
+  return `  [${index}] ${room.name} (${room.type})`;
+}
+
 export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
@@ -56,7 +62,7 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
         [],
         [colorChunk(t("ui.pathsLabel"), PALETTE.text)],
       ];
-      choices.forEach((r, i) => lines.push([colorChunk(`  [${i + 1}] ${r.name} (${r.type})`, PALETTE.text)]));
+      choices.forEach((r, i) => lines.push([colorChunk(pathChoiceLine(i + 1, r), PALETTE.text)]));
       return joinLines(lines);
     }
 

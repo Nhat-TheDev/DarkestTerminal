@@ -171,15 +171,20 @@ describe("the Gatekeeper screen", () => {
     await renderOnce();
     frame = captureCharFrame();
     expect(game.state.gatekeeperAnswer).toBe("paid");
-    // [1] Enter must be inside the Dungeon panel, not only in the footer; the blessing line goes to the log.
-    expect(frame).toMatch(/│ {2}\[1\] Enter/);
+    // The way in is floor 1's entry room, listed inside the Dungeon panel like a cleared room's paths; the blessing line goes to the log.
+    const entry = getRoom(game.state.floor, game.state.floor.entryRoomId);
+    const pathLine = `[1] ${entry.name} (${entry.type})`;
+    expect(frame).toContain("Paths:");
+    expect(frame).toContain(`│  ${pathLine}`);
+    expect(frame).toContain("[1] Move");
+    expect(frame).not.toContain("[i] Items");
     expect(frame).toContain("Blessed: +");
 
     mockInput.pressKey("1");
     await renderOnce();
     expect(game.state.pendingGatekeeper).toBe(false);
     frame = captureCharFrame();
-    expect(frame).not.toContain("[1] Enter");
+    expect(frame).not.toContain(pathLine);
     // The blessing lasts the whole fight, so the party panel shows (∞), and the header carries no room count.
     expect(frame).toContain("Blessed (∞)");
     expect(frame.split("\n").slice(0, 3).join("\n")).not.toContain("Blessed");
