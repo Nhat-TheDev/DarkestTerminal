@@ -49,15 +49,15 @@ Modeled as a **live-computed condition, not a stored status effect** — mirrors
 
 ### Dying — satiety ≤ 10
 
-While satiety ≤ `survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses a fixed amount of HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status already uses.
+While satiety ≤ `survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses a fixed amount of HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status uses.
 
-Per-round damage equals **Poisoned II**'s tick amount (`poisoned-ii`, `data/status-effects.json`) — `survival.dyingDamagePerRound` is sourced from that same value, so retuning Poisoned II automatically retunes Dying too. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — 10 ≤ 30, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
+Per-round damage is `survival.dyingDamagePerRound`, set to match **Poisoned II**'s flat tick `amount` (`poisoned-ii`, `data/status-effects.json`). It is its own field, so retuning Poisoned II does not retune Dying. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — 10 ≤ 30, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
 
 Same reasoning as Exhausted — it's not a normal status-effect instance, so it has no cure mechanic of its own — the only way out is raising satiety back above 10 (Rest room, Camp, Exploration Kit).
 
 ### Camp — a post-victory option, distinct from the Rest room
 
-A choice offered **after winning any combat room** (regular/Elite/Boss, not just entering a dedicated Rest room — a separate, pre-existing room type with its own 3-option flow, see below):
+A choice offered **after winning any combat room** (regular/Elite/Boss, not just entering a dedicated Rest room — a separate room type with its own 3-option flow, see below):
 
 - Costs **1 Exploration Kit** item (`ItemDefinition.combatUsable: false`, `data/items.json` entry `exploration-kit`) — the party starts a run with `party.startingExplorationKits` (4).
 - Restores **+30 satiety only** (`survival.campSatietyRestore`) — explicitly **no** HP/MP restore, that's what the Rest room is for.
@@ -65,9 +65,9 @@ A choice offered **after winning any combat room** (regular/Elite/Boss, not just
 
 Implementation: `Game.camp()` → `campAction` (`src/engine/survival.ts`); UI flow in `src/ui/screens/camp.ts`, wired in after `roomReward` via `proceedAfterVictory`/`finishVictorySequence` (`src/ui/screens/context.ts`).
 
-**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction. The `waiting-supplies` event (`08-events.md` §8.20) is the other source: it adds 3 kits.
+**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction. The `waiting-supplies` event (`08-events.md` §8.14) is the other source: it adds 3 kits.
 
-Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]`, usable out of combat like any other item (`combatUsable: false` only blocks it from the in-combat item list) — `modifyStat` targeting `"satiety"` reads/writes `GameState.satiety` directly (needs a `gameState` reference in `ResolveContext`, since satiety isn't on `Character`), distinct from `modifyStat` targeting `fear` which stays per-character.
+Exploration Kit also has a normal `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]`, usable out of combat like any other item (`combatUsable: false` only blocks it from the in-combat item list) — `modifyStat` targeting `"satiety"` reads/writes `GameState.satiety` directly (through `ResolveContext`'s `gameState` reference, since satiety isn't on `Character`), distinct from `modifyStat` targeting `fear` which stays per-character.
 
 ---
 
@@ -85,18 +85,30 @@ Fear is kept to one decimal place: every change goes through `adjustFear` (`src/
   - Because it lands mid-round, its accuracy/damage penalty already applies to the character's own action later in that round.
 - **Skills and items** (`modifyStat` on `fear`, resolved in `src/engine/resolver.ts`): a positive amount is reduced by `fearResist` like every other gain (`resistedFearGain`); a negative amount (Prayer, Rally, Calming Draught…) is applied in full. These keep their usual log line, written with the decimal.
 - Every fear change in combat — a rise or a drop, from a round, a hit, a skill, an item or a victory — is shown on the battlefield as `◉ +N` or `◉ -N` over the character, after the session's other icons (`docs/developer-guide.md`, the battlefield section). Round, hit and victory changes add no log line.
-- **Winning a fight** — relief now also depends on how fast the fight was won (`CombatState.roundNumber` at the moment `outcome === "victory"` is set):
+- **Winning a fight** — relief depends on how fast the fight was won (`CombatState.roundNumber` at the moment `outcome === "victory"` is set):
 
   | Fight type | Normal relief | Quick-win relief | Quick-win condition |
   |---|---|---|---|
   | Regular | `survival.fearVictoryRelief` (5) | `survival.fearVictoryReliefQuick` (10) | won with `roundNumber < survival.fearQuickVictoryRoundThreshold` (3) |
   | Elite / Boss | `survival.fearEliteOrBossVictoryRelief` (8) | `survival.fearEliteOrBossVictoryReliefQuick` (12) | won with `roundNumber < survival.fearEliteOrBossQuickVictoryRoundThreshold` (5) |
 
-  Neither pair is additive with the other — same "instead of, not on top of" rule the Elite/Boss relief always used vs. the regular one. Determined by the actual tier of the monster just defeated (`Monster.tier !== "normal"`), not by room type. Implementation: `applyVictoryFearRelief(party, isEliteOrBossFight, roundNumber)`, called from `finalizeRound` when `outcome === "victory"`.
-- Losing a mini-game: a fixed fear increase, regardless of mini-game type (`gameplay-decisions/00-index.md` → `minigame-decisions.md`, not yet implemented).
+  Neither pair is additive with the other: the Elite/Boss relief replaces the regular one, never adds to it. Determined by the actual tier of the monster just defeated (`Monster.tier !== "normal"`), not by room type. Implementation: `applyVictoryFearRelief(party, isEliteOrBossFight, roundNumber)`, called from `finalizeRound` when `outcome === "victory"`.
 - Rest room ("Chat" option): reduces fear by `survival.chatFearRelief` (`CHAT_FEAR_RELIEF`, `src/engine/survival.ts`).
 
 Fear does not increase while moving between rooms — it only increases during combat: every round the fight continues, and every monster hit that lands (as described above).
+
+### Fear tiers (shared with `04-fear-combat.md` section 4)
+
+4 tiers, computed by `getFearTier(fear)` (`src/engine/resolver.ts`) from the boundaries in `data/balance-config.json` field `combat.fearTierThresholds`:
+
+| Tier | Name |
+|---|---|
+| 1 | Calm |
+| 2 | Uneasy |
+| 3 | Panicked |
+| 4 | Broken |
+
+Exact numeric ranges for each tier: `combat.fearTierThresholds` in `data/balance-config.json`, read by `getFearTier`.
 
 ---
 
@@ -107,7 +119,7 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 | Option | Effect |
 |---|---|
 | **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (30) satiety, all in 1 action |
-| **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — unchanged, still doesn't touch satiety (satiety recovery stays tied to "eating") |
+| **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — doesn't touch satiety (satiety recovery is tied to "eating") |
 | **Skip** | No effect at all, just marks the room as cleared (`room.cleared = true`) and moves on |
 
 All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
@@ -164,20 +176,20 @@ Code: `src/engine/events/barter.ts`.
 ### Camp Reflection
 
 A 4th piece of content at Rest rooms, independent of which of the 3 options above is picked and
-independent of `08-events.md` §8.16's post-event reflection — no shared data, no shared trigger
-logic, deliberately, since the register is different: §8.16 is a short in-the-moment dialogue beat
+independent of `08-events.md` §8.6's post-event reflection — no shared data, no shared trigger
+logic, deliberately, since the register is different: §8.6 is a short in-the-moment dialogue beat
 reacting to 1 room; Camp Reflection is the party looking back at its own *accumulated* pattern of
 exchanges across the whole run so far, fires at most 4 times ever, and is meant to land each time
 rather than repeat. It is armed on entering the Rest room but shown only once the room's own choice has been made (including Trade).
 
-**Tracking** — entirely new `GameState` fields, none of them touching `narrativeCounters`,
+**Tracking** — its own `GameState` fields, none of them touching `narrativeCounters`,
 `eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:
 
 ```ts
 /** Increments by 1 each time the party resolves an event in LORE_EXPOSURE_EVENT_IDS — every event
-    id except open-chest, the 1 event explicitly "Outside the Balance" (11-world-bible.md §11.12).
+    id except open-chest, the 1 event explicitly "Outside the Balance" (12-world-bible.md §12.12).
     Never resets, never decreases. Written in closeEvent() (src/engine/events/shared.ts), alongside
-    but independent of that function's existing eventOutcomes/firedOnceEventIds writes. */
+    but independent of that function's eventOutcomes/firedOnceEventIds writes. */
 loreExposureCount: number;
 
 /** Set at rest-room entry (moveToRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
@@ -191,23 +203,25 @@ pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
 campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
 ```
 
-Tier thresholds against `loreExposureCount` (a balance decision, not a lore one): **tier 1 at 3,
-tier 2 at 8, tier 3 at 15, tier 4 at 25.**
+Tier thresholds against `loreExposureCount` (a balance decision, not a lore one): tier 1 at
+`survival.campReflectionTier1Threshold` (3), tier 2 at `survival.campReflectionTier2Threshold` (8),
+tier 3 at `survival.campReflectionTier3Threshold` (15), tier 4 at
+`survival.campReflectionTier4Threshold` (25).
 
 **Skip-to-highest, not sequential**: if the party jumps straight from tier 0 to tier 3 between 2
 rest visits (event rooms aren't evenly spaced with rest rooms), only tier 3's content shows — tiers
-1-2 are silently skipped, never shown later. Same design language `08-events.md` §8.15's chain-tier
-escalation already uses (a jump straight to tier 2 never backfills tier 1's text), independently
-implemented here, not shared code. Fires deterministically the first time a new tier is reached, no
-chance roll — unlike §8.16's reflection, which needs `reflectionRepeatChance` because it can
+1-2 are silently skipped, never shown later. Same design language `08-events.md` §8.5's chain-tier
+escalation uses (a jump straight to tier 2 never backfills tier 1's text), implemented separately
+here, not shared code. Fires deterministically the first time a new tier is reached, no
+chance roll — unlike §8.6's reflection, which needs `reflectionRepeatChance` because it can
 trigger many times per event id; Camp Reflection fires at most 4 times, ever.
 
-**UI**: a new screen (e.g. `"campReflection"` in `UiState`, `src/ui/state.ts`, rendered from a new
-`src/ui/screens/campReflection.ts`), not a variant of the existing `eventReflection` screen,
+**UI**: its own screen (`"campReflection"` in `UiState`, `src/ui/state.ts`, rendered from
+`src/ui/screens/campReflection.ts`), not a variant of the `eventReflection` screen,
 triggered from the rest-room entry flow rather than from event-room `closeEvent()`.
 
-**Content — all 4 tiers, final text.** Tier 0 (Untouched) has no content — nothing has happened
-yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having no §8.16 reflection.
+**Content — all 4 tiers.** Tier 0 (Untouched) has no content — nothing has happened
+yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having no §8.6 reflection.
 
 **Tier 1 — Use**
 
@@ -253,7 +267,7 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 stone, circle, spiral) — deliberately, since Camp Reflection is the party looking at itself, not at
 any altar, and needed its own sensory palette (supplies, a route, a dropped cup, a meal). Hands do
 appear (tier 3's "catch a falling cup without thinking"), on purpose: the drift being described is
-specifically a body acting ahead of a decision, which is exactly what §11.5's stage 3 is. "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
+specifically a body acting ahead of a decision, which is exactly what §12.5's stage 3 is. "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
 deliberate doubled echo in tier 4's last option — an escalating motif specific to this content,
 never reused from tier 1-2's different framing or from any existing event text. The 3 options per
 tier are bespoke self-narratives, not a `curious`/`wary`/`dismissive` relabeling — a plausible
@@ -265,48 +279,34 @@ fit the content no longer supports.
 — but the moment tier 4 resolves, 1 line writes a synthetic tag into the *existing* `eventOutcomes`
 map: `state.eventOutcomes["camp-reflection"] = "unaware"`. A narrow, deliberate bridge: Camp
 Reflection's own tracking stays fully independent as specified above; this single key exists only
-so the already-built `crossEventVariants` pipeline (`10-event-narrative.md` Part C.1) can reference
-it with zero changes to that pipeline's own code. `wandering-hermit` gains a `crossEventVariants`
+so the `crossEventVariants` pipeline (`10-event-narrative.md` Part B.1) can reference
+it with zero changes to that pipeline's own code. `wandering-hermit` has a `crossEventVariants`
 entry keyed on `{"eventId": "camp-reflection", "outcome": "unaware"}` — of the 3 recurring figures,
-he's the 1 who learned this exact drift the hard way (`11-world-bible.md` §11.8), so he's the most
+he's the 1 who learned this exact drift the hard way (`12-world-bible.md` §12.8), so he's the most
 plausible to notice it in someone else before they notice it in themselves:
 
 > "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. He doesn't
 > look up right away this time. When he finally does, it isn't your face he's checking first — it's
 > your hands, like he's counting something you've stopped counting yourself."
 
-`pickEventText()`'s existing priority order makes
+`pickEventText()`'s priority order makes
 `returnDescription` win over `crossEventVariants` on any visit after the party's 1st meeting with a
-recurring NPC (confirmed by an already-passing test asserting exactly that, for a different pairing).
-Since Unawareness is a late-run state almost always reached *after* a party's first hermit visit,
-the `crossEventVariants` entry above would in practice almost never be seen. Fixed with a 2nd,
-narrower field, `EventDefinition.campReflectionUnawareEcho?: string`, appended to `returnDescription`
-the same way `stanceEcho` already is — covering every visit after the first, while the
+recurring NPC. Since Unawareness is a late-run state almost always reached *after* a party's first
+hermit visit, the `crossEventVariants` entry alone would almost never be seen. A 2nd, narrower
+field, `EventDefinition.campReflectionUnawareEcho?: string`, is appended to `returnDescription`
+the same way `stanceEcho` is — covering every visit after the first, while the
 `crossEventVariants` entry above still covers the rarer case of reaching Unawareness before ever
 having met the hermit:
 
 > "This time, he doesn't check your face at all — only your hands, until he shuts his eyes for the trade."
 
-**Compliance check against `11-world-bible.md`**: no mechanic here implies the dream is tracking
+**Compliance check against `12-world-bible.md`**: no mechanic here implies the dream is tracking
 the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
 outside this mechanism except the 1 synthetic bridge tag above. Agency stays real at every tier
-(§11.5) — tier 3's "whoever was closest just did it" and tier 4's "the rest of it just happened
+(§12.5) — tier 3's "whoever was closest just did it" and tier 4's "the rest of it just happened
 somewhere in between" both describe the party's own hands acting, never the dream choosing for
-them. Resolves nothing on §11.9's open list — entirely about the party's own psychology, never
+them. Resolves nothing on §12.9's open list — entirely about the party's own psychology, never
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
 "Sleeper," "Covenant," or "the Balance."
 
-**Implemented.** Tier logic lives in `src/data/loreExposure.ts` and the text in `data/strings.json` (`ui.campReflectionTier<N>Prompt` / `ui.campReflectionTier<N>Option<1-3>`); UI in `src/ui/screens/campReflection.ts`.
-
-### Fear tiers (shared with `04-fear-combat.md` section 4 below)
-
-4 tiers, computed by `getFearTier(fear)` (`src/engine/resolver.ts`) — the tier boundaries are hardcoded there (not in `data/balance-config.json`), since they're read alongside the combat-effect functions in the same module:
-
-| Tier | Name |
-|---|---|
-| 1 | Calm |
-| 2 | Uneasy |
-| 3 | Panicked |
-| 4 | Broken |
-
-Exact numeric ranges for each tier: `getFearTier` in `src/engine/resolver.ts`.
+Tier logic lives in `src/data/loreExposure.ts` and the text in `data/strings.json` (`ui.campReflectionTier<N>Prompt` / `ui.campReflectionTier<N>Option<1-3>`); UI in `src/ui/screens/campReflection.ts`.

@@ -397,7 +397,7 @@ describe("events", () => {
   });
 });
 
-describe("recurring narrative NPCs (docs/gameplay-decisions/10-event-narrative.md §10.2)", () => {
+describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)", () => {
   test("resolveEventEntry shows the original description on the 1st visit; metNarrativeNpcIds is only marked once the event closes, not on room entry", () => {
     const game = new Game(20);
     const target = game.connectedRoomChoices()[0]!;
@@ -497,7 +497,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/10-event-narrative.m
   });
 });
 
-describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md §8.5)", () => {
   test("counter is shared across guardian-fight and desecrated-altar — skipping 1 of each reaches the threshold", () => {
     const game = new Game(30);
     forceEventRoom(game, "guardian-fight");
@@ -537,7 +537,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narra
     expect(typeof forcedDescription).toBe("string");
     expect(game.state.message).toBe(forcedDescription as string);
     expect(game.skipGuardianFight()).not.toBeNull(); // rejected past the threshold
-    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(3); // unchanged by the rejected attempt
+    expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(3);
   });
 
   test("entering the forced encounter resets the counter back to 0", () => {
@@ -566,7 +566,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narra
     expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
   });
 
-  test("11-world-bible.md §11.13 tier 2: the 2nd+ forced encounter past chainTier2MinFloorDepth shows chainForced2Description, Skip still rejected", () => {
+  test("12-world-bible.md §12.13 tier 2: the 2nd+ forced encounter past chainTier2MinFloorDepth shows chainForced2Description, Skip still rejected", () => {
     const game = new Game(35);
     game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
     game.state.narrativeCounters.guardianGrudgeFiredCount = 1; // already fired once before
@@ -613,7 +613,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/10-event-narra
   });
 });
 
-describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/10-event-narrative.md §10.3)", () => {
+describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/08-events.md §8.5)", () => {
   test("sacrificial-circle shows the plain description below the threshold, the escalated one at/past it — and it stays escalated on a later visit", () => {
     const game = new Game(40);
     const c = game.state.party[0]!;
@@ -668,9 +668,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.type = "event";
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
-    // Still below the chain-4 escalation threshold, but Part C.1 pair 3 now fires — the earlier
-    // collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] to "rescued" or "failed" (either
-    // one matches), which this event's crossEventVariants match on.
+    // Still below the chain-4 threshold, but the cross-event variant fires: collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] to "rescued" or "failed", and either matches.
     expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description);
 
     c.hp = c.maxHp;
@@ -703,7 +701,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     expect(sawFailure).toBe(true);
   });
 
-  test("11-world-bible.md §11.13 tier 2: sacrificial-circle needs both threshold2 and chainTier2MinFloorDepth, not the counter alone", () => {
+  test("12-world-bible.md §12.13 tier 2: sacrificial-circle needs both threshold2 and chainTier2MinFloorDepth, not the counter alone", () => {
     const game = new Game(42);
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.circleRemembersThreshold2; i++) {
@@ -733,7 +731,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     expect(game.state.message).toBe(escalated2 as string);
   });
 
-  test("11-world-bible.md §11.13 tier 2: blood-altar needs both threshold2 and chainTier2MinFloorDepth", () => {
+  test("12-world-bible.md §12.13 tier 2: blood-altar needs both threshold2 and chainTier2MinFloorDepth", () => {
     const game = new Game(43);
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.bloodDebtThreshold2; i++) {
@@ -761,7 +759,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
   });
 });
 
-describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event-narrative.md)", () => {
+describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events.md)", () => {
   test("maybeTriggerReflection is a no-op until the room is actually cleared", () => {
     const game = new Game(60);
     forceEventRoom(game, "wandering-hermit"); // forceEventRoom leaves cleared: false
@@ -770,8 +768,7 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
   });
 
   test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
-    // merchant, not wandering-hermit — merchant has no engagement gate, so this test stays focused
-    // purely on the trigger-frequency mechanism (see the reflectionRequiresOutcome tests below for that).
+    // merchant has no engagement gate, so this tests only the trigger frequency.
     const game = new Game(61);
     forceEventRoom(game, "merchant");
     getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
@@ -803,7 +800,7 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
     }
   });
 
-  test("pickReflectionPrompt returns the escalated prompt once the matching §10.3 chain has fired", () => {
+  test("pickReflectionPrompt returns the escalated prompt once the matching §8.5 chain has fired", () => {
     const game = new Game(63);
     game.state.narrativeCounters.guardianFightsSkipped = 3;
     const target = game.connectedRoomChoices()[0]!;
@@ -819,7 +816,7 @@ describe("§10.5: Post-event reflection choice (docs/gameplay-decisions/10-event
     expect(prompt).not.toBe(event.reflection!.prompt);
   });
 
-  test("pickReflectionPrompt returns the tier-2 escalated2 prompt once the chain has fired a 2nd time past chainTier2MinFloorDepth (11-world-bible.md §11.13)", () => {
+  test("pickReflectionPrompt returns the tier-2 escalated2 prompt once the chain has fired a 2nd time past chainTier2MinFloorDepth (12-world-bible.md §12.13)", () => {
     const game = new Game(66);
     game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
     game.state.narrativeCounters.guardianGrudgeFiredCount = 1;
@@ -1232,7 +1229,7 @@ describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative
   });
 });
 
-describe("Part §11.13: reflection-stance payoff (stanceEcho)", () => {
+describe("Part §12.13: reflection-stance payoff (stanceEcho)", () => {
   test("the party's dominant recorded stance appends the matching stanceEcho line on a return visit", () => {
     const game = new Game(120);
     game.state.metNarrativeNpcIds.push("wandering-hermit");
@@ -1423,7 +1420,7 @@ describe("Event-tied artifacts now wired (07-items-artifacts.md)", () => {
   });
 });
 
-describe("Chain 4: 'Taken, Never Given' (08-events.md §8.15)", () => {
+describe("Chain 4: 'Taken, Never Given' (08-events.md §8.5)", () => {
   const FREE_TAKE_IDS = ["open-chest", "old-count", "doubled-back", "waiting-supplies", "vigil-candle", "broken-seal", "half-a-warning"];
 
   test("resolving any of the 7 zero-cost events increments freeRewardsTakenCount by 1", () => {

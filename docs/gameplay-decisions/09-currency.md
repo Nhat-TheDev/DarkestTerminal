@@ -28,7 +28,7 @@ Config: `currency.coinDropByTier: { weak: [min,max], medium: [min,max], strong: 
 
 ## 9.2 Spend — Merchant, Gambling Den, Wandering Hermit
 
-Exactly 3 events accept coins; Blood Altar and Collapsed Floor stay HP-only (`08-events.md` §8.4, §8.9, §8.10 for the mechanics; this section only covers the currency side):
+Exactly 3 events accept coins; Blood Altar and Collapsed Floor are HP-only (`08-events.md` §8.10, §8.18, §8.19 for the mechanics; this section only covers the currency side):
 
 | Event | Cost |
 |---|---|

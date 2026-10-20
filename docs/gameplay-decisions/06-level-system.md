@@ -44,12 +44,12 @@ On top of this, every archetype has a fixed `monsterType` (see `02-monster.md` f
 
 **Method**: simulate a party walking one path per floor continuously from floor 1 to a target floor (using the real `createFloor(rng, depth)` for each floor, starting at the entry room and moving to a random connected room in the next stage until the boss/guard room, accumulating the `expReward` of every monster in the visited rooms into `partyExp`, then looking up `levelForTotalExp` to get the level at each floor milestone), repeated across multiple different seeds and averaged. A floor's branch rooms off that path never count — the player passes exactly one room per stage (`generateFloorLayout`, `technical-decisions.md` §1). The game editor's level-by-depth panel (`simulateLevelByDepth`, `tools/game-editor/calc.ts`) runs this simulation.
 
-This document intentionally does **not** hand-maintain the resulting character-level-by-floor-depth table, hits-to-kill tables, or damage-taken tables that used to live here — they're a direct function of `data/classes.json`/`data/monsters.json`/`data/level-growth.json` and go stale the moment any of those are retuned. To (re-)verify balance, run the simulation described above (a script, or an addition to `test/`) against the current data rather than trusting a number written in this doc.
+This document intentionally does **not** hand-maintain the resulting character-level-by-floor-depth table, hits-to-kill tables, or damage-taken tables — they're a direct function of `data/classes.json`/`data/monsters.json`/`data/level-growth.json` and go stale the moment any of those are retuned. To (re-)verify balance, run the simulation described above (a script, or an addition to `test/`) against the current data rather than trusting a number written in this doc.
 
-**Known limitations** (still true regardless of the current numbers):
+**Known limitations** (independent of the current numbers):
 - Any such simulation uses average values (number of combat rooms, monsters per room, random archetype among the regular combat archetypes) — it does not account for variance between specific seeds.
 - Guard-room archetypes other than the one used as a reference in a given simulation run don't automatically get their own table — their numbers vary proportionally to each archetype's different `baseAttack`/`baseHp`/`baseDefense` (`02-monster.md` section 2).
-- Skill-unlock milestones (`unlockLevel` per skill, `01-class-skill.md` section 1) are spread across the level range rather than being front-loaded into the first few levels — check `data/classes.json` for the current spacing. The 1 passive skill per class (§1.13) is the exception: its 5/20/35 rank schedule is fixed and identical across every class, not spread per-skill like the active-skill table.
+- Skill-unlock milestones (`unlockLevel` per skill, `01-class-skill.md` section 1) are spread across the level range rather than being front-loaded into the first few levels — check `data/classes.json` for the current spacing. The 1 passive skill per class (§1.5) is the exception: its 5/20/35 rank schedule is fixed and identical across every class, not spread per-skill like the active-skill table.
 
 ### 6.8 Class-dependent growth (`growthWeights`)
 
@@ -59,9 +59,9 @@ Each class additionally has `growthWeights: { attack, defense, maxHp, maxMp, mag
 classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
 ```
 
-`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` section 1.6) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills (including the basic attacks of Mage/Acolyte). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
+`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` §1.1) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills (including the basic attacks of Mage/Acolyte). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
 
-`growthWeights` applies only to characters (`party.ts`); monsters still use the unweighted `growthBonus()` for the floor-depth curve itself, weighted separately afterward by `monsterType` (§6.6).
+`growthWeights` applies only to characters (`party.ts`); monsters use the unweighted `growthBonus()` for the floor-depth curve itself, weighted separately afterward by `monsterType` (§6.6).
 
 ### 6.9 Decoupling character level from dungeon-floor level — the EXP system
 
@@ -74,7 +74,7 @@ Character level and dungeon floor depth are **2 independent progression axes**, 
 
 `Game.resolve()` (`src/engine/game.ts`) calls `applyPartyExp(state, expGained)` (`src/engine/party.ts`) the moment a battle is won, adding EXP and leveling up the whole party at once if the threshold is met; `Game.clearFinishedCombat()` calls `advanceToNextFloor()` when the just-won room was the guard-room (`type === "boss"`), generating the next floor via `createFloor(ctx.rng, nextDepth)`.
 
-Monsters scale with `floorDepth` (unchanged, §6.6); characters scale with the player's actual combat progress, not with how many floors they've passed through.
+Monsters scale with `floorDepth` (§6.6); characters scale with the player's actual combat progress, not with how many floors they've passed through.
 
 **Monster EXP formula (added to `partyExp` on kill)**: a **simple linear** formula:
 
@@ -88,9 +88,9 @@ expReward(archetype, floorDepth) = archetype.expReward + floor(floorDepth × exp
 
 `expCostForLevel(level)` = the cumulative sum of the `expCost` of the bucket containing each level, from level 2 up to the level in question (the exact same cumulative-sum formula as `growthBonus` in §6.3, but reading from `expTiers[]` through a separate `expTierFor()` function, not sharing the stat table's `tierFor()` — `src/data/levelGrowth.ts`) — clamped at `MAX_LEVEL` (characters still have a cap, unlike monsters/floors).
 
-**Leveling up**: whenever `partyExp` exceeds the `expCostForLevel(nextLevel)` threshold, the whole party levels up together (still sharing a single level, only the trigger source differs) — `hp`/`mp` fully restore, skills unlock if `unlockLevel` matches, keeping the "leveling up = full recovery" rule from `05-character-stats.md` section 5.
+**Leveling up**: whenever `partyExp` exceeds the `expCostForLevel(nextLevel)` threshold, the whole party levels up together (sharing a single level) — `hp`/`mp` fully restore, skills unlock if `unlockLevel` matches, keeping the "leveling up = full recovery" rule from `05-character-stats.md` section 5.
 
-**Passive skill unlock schedule** (`01-class-skill.md` §1.13): every class's single passive skill unlocks its 3 ranks at a fixed **5 / 20 / 35**, the same for all 9 classes — a separate, uniform schedule from each class's own per-skill `unlockLevel` spacing above. Unlike an active skill, a passive's current rank is read directly off `Character.level` whenever it's needed (`getUnlockedPassiveRank`, `src/data/classes.ts`) rather than being unlocked once and cached — there's no `unlockedSkillIds`-style bookkeeping for it, since it's derived, not "learned."
+**Passive skill unlock schedule** (`01-class-skill.md` §1.5): every class's single passive skill unlocks its 3 ranks at a fixed **5 / 20 / 35**, the same for all 9 classes — a separate, uniform schedule from each class's own per-skill `unlockLevel` spacing above. Unlike an active skill, a passive's current rank is read directly off `Character.level` whenever it's needed (`getUnlockedPassiveRank`, `src/data/classes.ts`) rather than being unlocked once and cached — there's no `unlockedSkillIds`-style bookkeeping for it, since it's derived, not "learned."
 
 The number of monsters killable per floor is fixed by the generated layout (`technical-decisions.md` §1) — there's no mechanism to farm extra kills within a single floor. The event room (`08-events.md` §8) is an optional detour for Item/Artifact rewards, or the player can go straight through.
 
@@ -98,9 +98,9 @@ The number of monsters killable per floor is fixed by the generated layout (`tec
 
 The monster-scaling formula in §6.6 does not apply a level-cap clamp to `floorDepth` (§6.9).
 
-`growthBonusForDepth(stat, floorDepth)` — uses the same cumulative-sum-by-tier formula as `growthBonus`, but drops the ceiling clamp (keeping only the floor clamp at level 1), relying on the existing fallback mechanism (`tierFor()` naturally falls back to the last tier when no tier matches). Once `floorDepth` exceeds the last tier's `maxLevel`, monsters keep growing their stats at that last tier's rate.
+`growthBonusForDepth(stat, floorDepth)` — uses the same cumulative-sum-by-tier formula as `growthBonus`, but drops the ceiling clamp (keeping only the floor clamp at level 1), relying on `tierFor()` falling back to the last tier when no tier matches. Once `floorDepth` exceeds the last tier's `maxLevel`, monsters keep growing their stats at that last tier's rate.
 
-**Consequence**: character level caps at `MAX_LEVEL` (§6.9); floor level is unlimited. Once the party hits max level, character power plateaus while monsters/bosses keep getting stronger indefinitely. There is no `gameOver: "victory"` state — defeating a boss always leads to the next floor via `advanceToNextFloor()`.
+**Consequence**: character level caps at `MAX_LEVEL` (§6.9); floor level is unlimited. Once the party hits max level, character power plateaus while monsters/bosses keep getting stronger indefinitely. Nothing sets `gameOver` to `"victory"` — defeating a boss always leads on through `advanceToNextFloor()`.
 
 ### 6.11 Elite vs real Boss — Boss is stronger, demands more tactics
 
@@ -110,11 +110,11 @@ The final room of each floor (tagged `boss` in the pattern) splits into 2 monste
 
 DoT (Poisoned/Burning — `effect.amount` fixed, not reduced by defense, `src/engine/resolver.ts`) can't be dodged via high defense. **Stunned** (`data/status-effects.json`, from Lightning Bolt/Lightning Storm) completely skips 1 of the Boss's turns, independent of defense.
 
-There's no boss-phase mini-game. See §6.12 for Elite/Boss's own skillset. As with §6.7, a TTK comparison between Elite and Boss on the same floor is something to (re-)run against current data rather than read off a static table here.
+See §6.12 for Elite/Boss's own skillset. As with §6.7, a TTK comparison between Elite and Boss on the same floor is something to (re-)run against current data rather than read off a static table here.
 
 ### 6.12 Elite/Boss have their own skills — AoE, finishers, random debuffs
 
-Elite and real Boss (not applicable to regular monsters, including a guard-room archetype when it spawns in a regular combat room) have a skillset that activates automatically on their own turn (not through `queueAction`/MP/cooldown like the player — monsters are always "free" and always hit, preserving the existing invariant in `resolver.ts`). The skill table applies to every guard-room archetype (`data/monster-skills.json`), each archetype having its own name per its flavor but sharing the same set of trigger mechanics — only the debuff status differs, to give each archetype its own identity (the exact archetype → debuff-status mapping: `data/monster-skills.json`):
+Elite and real Boss (not applicable to regular monsters, including a guard-room archetype when it spawns in a regular combat room) have a skillset that activates automatically on their own turn (not through `queueAction`/MP/cooldown like the player — monsters are always "free" and always hit, preserving the invariant in `resolver.ts`). The skill table applies to every guard-room archetype (`data/monster-skills.json`), each archetype having its own name per its flavor but sharing the same set of trigger mechanics — only the debuff status differs, to give each archetype its own identity (the exact archetype → debuff-status mapping: `data/monster-skills.json`):
 
 | Skill (generic name) | Tier | Target | Effect (shape) | Weight |
 |---|---|---|---|---|
@@ -136,4 +136,4 @@ The Boss's per-turn priority order: **currently charging?** → unleash Execute 
 
 `weakened` (`data/status-effects.json`) can be cleared by the Acolyte's Purify (ally branch = `removeStatusEffect`). The remaining guard-room archetypes use their own debuff statuses instead of `weakened` — see `data/monster-skills.json`.
 
-**Numeric verification**: re-run the resolver's formula against the current `data/monsters.json`/`data/monster-skills.json`/`data/level-growth.json`/`data/classes.json` (a script, or a balance-oriented test) to see Strike/Cleave/Execute as a % of a given class's `maxHp` at any floor depth — this document intentionally no longer hand-maintains that table.
+**Numeric verification**: re-run the resolver's formula against the current `data/monsters.json`/`data/monster-skills.json`/`data/level-growth.json`/`data/classes.json` (a script, or a balance-oriented test) to see Strike/Cleave/Execute as a % of a given class's `maxHp` at any floor depth — this document intentionally does not hand-maintain that table.

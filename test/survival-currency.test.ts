@@ -18,7 +18,7 @@ describe("Camp", () => {
     expect(game.camp()).toBeNull();
     expect(game.state.satiety).toBe(70);
     expect(game.state.inventory["exploration-kit"]).toBe(1);
-    expect(c.hp).toBe(1); // untouched
+    expect(c.hp).toBe(1);
   });
 
   test("camp() fails once the party has 0 kits", () => {
@@ -69,7 +69,7 @@ describe("save-file migration", () => {
     expect(migrated.secondJackpotArtifactId).toBeNull();
   });
 
-  test("migrateGameState defaults metNarrativeNpcIds to [] on a pre-§10.2 save, leaves lastGamblingDenOutcome undefined", () => {
+  test("migrateGameState defaults metNarrativeNpcIds to [] on a pre-§8.3 save, leaves lastGamblingDenOutcome undefined", () => {
     const legacy = { party: [], inventory: {}, floor: { depth: 1, rooms: [], entryRoomId: "r1" }, currentRoomId: "r1" } as unknown as Parameters<typeof migrateGameState>[0];
     const migrated = migrateGameState(legacy);
     expect(migrated.metNarrativeNpcIds).toEqual([]);
@@ -101,7 +101,7 @@ describe("save-file migration", () => {
     const game = new Game(6);
     const bearer = game.state.party[0]!;
     bearer.activeStatusEffects = [
-      { statusEffectId: "poison-coat-ii", turnsRemaining: 2 }, // rank id removed by the poison-coat/venom-edge split
+      { statusEffectId: "poison-coat-ii", turnsRemaining: 2 }, // a rank id no longer in data
       { statusEffectId: "guard", turnsRemaining: 1 },
     ];
     const migrated = migrateGameState({ ...game.state });

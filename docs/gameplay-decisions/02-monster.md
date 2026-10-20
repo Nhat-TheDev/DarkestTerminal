@@ -179,11 +179,11 @@ Every guard-room randomly picks among the guard-room archetypes each time the ro
 
 The full roster (id, name, base stats, AI pattern, `expReward`) lives in `data/monsters.json`; the loader is `src/data/monsters.ts`. `COMBAT_ROOM_ARCHETYPES` (`src/data/monsters.ts`) is every archetype with `"normal"` in `roles` — currently **33 total**: 32 `roles: ["normal"]`-only archetypes plus Skeleton Guard, the roster's one triple-role archetype (also a guard-room archetype — see below). Check the JSON directly for the current list rather than trusting an enumeration here, since new archetypes can be added without a doc update.
 
-Every one of the 32 `roles: ["normal"]`-only archetypes carries a `skillIds` entry (see "Regular monster skill kits" below). Skeleton Guard is the one exception, since it already has a full Elite/Boss kit for its guard-room role and doesn't need a separate normal-tier skill.
+Every one of the 32 `roles: ["normal"]`-only archetypes carries a `skillIds` entry (see "Regular monster skill kits" below). Skeleton Guard is the one exception, since it has a full Elite/Boss kit for its guard-room role and doesn't need a separate normal-tier skill.
 
 ### Regular monster skill kits
 
-Every regular-combat archetype (except Skeleton Guard, see above) carries at least **1 flavor skill**, each thematically distinct, reusing existing status effects where the theme matches and introducing new ones where it doesn't (`corroded`, `webbed` — see below).
+Every regular-combat archetype (except Skeleton Guard, see above) carries at least **1 flavor skill**, each thematically distinct, reusing shared status effects where the theme matches and using monster-specific ones where it doesn't (`corroded`, `webbed` — see below).
 
 **Usage rate**: for most archetypes, `actionWeights.normal` (`data/monsters.json`) gives the flavor skill a real per-turn chance alongside the basic attack. A handful (e.g. Zombie, Skeleton Warrior) keep their skill listed at weight 0 — present so it can still be tuned in the rebalance editor, which only accepts keys an archetype already has, but never rolled by the normal weighted roll; their skill is exclusively triggered by the `aiPattern: "defensive"` low-HP logic above (a Zombie randomly self-healing at full HP would waste turns; a self-heal should only ever fire when it's actually needed). Current weights: `data/monsters.json`.
 
@@ -264,28 +264,27 @@ Notes on some of them:
 - `blood-drain` (Black Bat) — `damage` + `lifestealPercent` (see below).
 - `acid-spit` (Slime) — `damage` + chance to `applyStatusEffect "corroded"`.
 - `regeneration` (Zombie) — `heal`. Trigger: **only** via the `defensive` low-HP logic above.
-- `poison-bite` (Snake) — `damage` + chance to `applyStatusEffect "poisoned"` (existing — `01-class-skill.md` §1.7).
+- `poison-bite` (Snake) — `damage` + chance to `applyStatusEffect "poisoned"` (`01-class-skill.md` §1.6).
 - `web-spit` (Spider) — `damage` + chance to `applyStatusEffect "webbed"`.
-- `guard-stance` (Skeleton Warrior) — `applyStatusEffect "guard"` (existing — `01-class-skill.md` §1.7). Trigger: **only** via the `defensive` low-HP logic above.
+- `guard-stance` (Skeleton Warrior) — `applyStatusEffect "guard"` (`01-class-skill.md` §1.6). Trigger: **only** via the `defensive` low-HP logic above.
 
-*Snake keeps plain `poisoned` (already its established theme) while Spider gets `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 poison-adjacent archetypes rather than having them share an identical proc.*
+*Snake uses plain `poisoned` while Spider gets `webbed` instead of also using `poisoned` — this deliberately differentiates the 2 poison-adjacent archetypes rather than having them share an identical proc.*
 
-#### New status effects — 2
+#### Monster-specific status effects — `corroded`, `webbed`
 
-**`corroded`** (Slime's Acid Spit) — deliberately reserved for reuse by Plague Doctor's kit (`01-class-skill.md` §1.6 lists `burning`/`poisoned`/`weakened`/`blinded`; an acid/corrosion debuff was not among them and fits the "debuffer" theme, though Plague Doctor doesn't currently use it):
+**`corroded`** (Slime's Acid Spit) — a defense reduction. No class kit applies it:
 
 ```json
 {
   "id": "corroded",
   "name": "Corroded",
   "perTurnEffects": [
-    { "kind": "damage", "amount": "<see data/status-effects.json>" },
     { "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }
   ]
 }
 ```
 
-Distinct from both `weakened` (`01-class-skill.md` §1.7 — pure defense reduction, no DoT) and `poisoned` (pure DoT, no defense change) — acid does both at once, at a lighter magnitude than either alone.
+Distinct from `weakened` (`01-class-skill.md` §1.6) — a lighter defense cut, which Acid Spit lands together with `acid-burn` (damage over time) as one application (`alsoApplyStatusEffectIds`), so the acid does both at once.
 
 **`webbed`** (Spider's Web Spit):
 
@@ -299,18 +298,18 @@ Distinct from both `weakened` (`01-class-skill.md` §1.7 — pure defense reduct
 }
 ```
 
-#### New `SkillEffect` field — `lifestealPercent`
+#### `SkillEffect` field `lifestealPercent`
 
-Black Bat's Blood Drain needs the caster to heal off its own damage — no existing effect kind supports this. Adds an optional field to the `damage` effect kind:
+Lets a `damage` effect heal its caster off the damage it deals (Black Bat's Blood Drain). An optional field on the `damage` effect kind:
 
 ```
 SkillEffect (kind: "damage") {
-  ...existing fields (amount, chance?, ignoreDefensePercent?, ...)
+  ...other fields (amount, chance?, ignoreDefensePercent?, ...)
   lifestealPercent?: number   // heals the source actor by this % of the damage actually dealt, capped at maxHp
 }
 ```
 
-This required a resolver change (`resolver.ts`): after computing final mitigated damage for a `damage` effect that carries `lifestealPercent`, apply a `heal` to the source actor for `round(finalDamage * lifestealPercent / 100)`, clamped to `maxHp`. Monster skill kits live in `data/monsters.json` (`skillIds`, `actionWeights.normal`) and `data/monster-skills.json` (skill entries, same file/shape already used for Elite/Boss skills), with the 2 new status effects in `data/status-effects.json`; on the code side, `SkillEffect.lifestealPercent` (`src/types.ts` + `src/engine/resolver.ts`) and the `aiPattern: "defensive"` branch in `runMonsterTurn` (`src/engine/monsterAI.ts`, see "AI patterns" above) are the only additions.
+After computing final mitigated damage for a `damage` effect that carries `lifestealPercent`, the resolver (`src/engine/resolver.ts`) applies a `heal` to the source actor for `round(finalDamage * lifestealPercent / 100)`, clamped to `maxHp`. Monster skill kits live in `data/monsters.json` (`skillIds`, `actionWeights.normal`) and `data/monster-skills.json` (skill entries, same file/shape as Elite/Boss skills), with `corroded`/`webbed` in `data/status-effects.json`.
 
 ### Writing `description` text (monster archetypes, monster skills, class skills)
 
@@ -338,7 +337,7 @@ Skeleton Guard (triple-role, shared with regular combat) plus the archetypes wit
 
 ### Monster Balance Points
 
-Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skill.md`) to monster archetypes, using the same `speed` term the char formula now has — neither char nor monster `speed` scales with level/floor depth (see "Scaling formula by floor depth" above), so there's no `tier1` growth rate to derive a conversion constant from the way `attack`/`defense`/`maxHp` do; both use the same hand-picked `speedRate` instead.
+Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skill.md`) to monster archetypes, using the same `speed` term the char formula has — neither char nor monster `speed` scales with level/floor depth (see "Scaling formula by floor depth" above), so there's no `tier1` growth rate to derive a conversion constant from the way `attack`/`defense`/`maxHp` do; both use the same hand-picked `speedRate` instead.
 
 **Formula**:
 
@@ -346,7 +345,7 @@ Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skil
 MonsterBalancePoints = baseAttack/tier1.attack + baseDefense/tier1.defense + baseHp/tier1.maxHp + baseSpeed/speedRate
 ```
 
-using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`), plus `speedRate`, a hand-picked constant in `tools/game-editor/calc.ts` (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). Starting point was the pooled average `baseSpeed` across every monster archetype and character class (~10.4), nudged up during tuning. `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
+using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`), plus `speedRate`, a hand-picked constant in `tools/game-editor/calc.ts` (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). It sits a little above the pooled average `baseSpeed` across every monster archetype and character class (~10.4). `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
 
 This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliberately ignores `monsterType` — the type multiplier only reshapes the *scaled instance* (see "Monster type" above), so it doesn't shift an archetype's base-stat BalancePoints or its tier band.
 
