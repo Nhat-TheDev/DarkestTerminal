@@ -59,7 +59,7 @@ Each class additionally has `growthWeights: { attack, defense, maxHp, maxMp, mag
 classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
 ```
 
-`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` §1.1) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills (including the basic attacks of Mage/Acolyte). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
+`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` §1.1) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills. The basic attacks of Mage, Acolyte, Plague Doctor and Summoner are flagged `isMagic` and use `magicPower` (`data/classes.json`). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
 
 `growthWeights` applies only to characters (`party.ts`); monsters use the unweighted `growthBonus()` for the floor-depth curve itself, weighted separately afterward by `monsterType` (§6.6).
 
@@ -100,7 +100,7 @@ The monster-scaling formula in §6.6 does not apply a level-cap clamp to `floorD
 
 `growthBonusForDepth(stat, floorDepth)` — uses the same cumulative-sum-by-tier formula as `growthBonus`, but drops the ceiling clamp (keeping only the floor clamp at level 1), relying on `tierFor()` falling back to the last tier when no tier matches. Once `floorDepth` exceeds the last tier's `maxLevel`, monsters keep growing their stats at that last tier's rate.
 
-**Consequence**: character level caps at `MAX_LEVEL` (§6.9); floor level is unlimited. Once the party hits max level, character power plateaus while monsters/bosses keep getting stronger indefinitely. Nothing sets `gameOver` to `"victory"` — defeating a boss always leads on through `advanceToNextFloor()`.
+**Consequence**: character level caps at `MAX_LEVEL` (§6.9); floor level is unlimited. Once the party hits max level, character power plateaus while monsters/bosses keep getting stronger indefinitely. Nothing sets `gameOver` to `"victory"` — defeating a boss always leads on through `advanceToNextFloor()`. The one stop is the ending checkpoint at depth `endings.checkpointFloorDepth` (100) (`10-event-narrative.md` Part F.1): there `advanceToNextFloor()` offers the ending choice instead, and Stay, Let Go or Leave end the run.
 
 ### 6.11 Elite vs real Boss — Boss is stronger, demands more tactics
 

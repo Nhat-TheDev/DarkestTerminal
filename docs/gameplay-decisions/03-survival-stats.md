@@ -108,8 +108,6 @@ Fear does not increase while moving between rooms — it only increases during c
 | 3 | Panicked |
 | 4 | Broken |
 
-Exact numeric ranges for each tier: `combat.fearTierThresholds` in `data/balance-config.json`, read by `getFearTier`.
-
 ---
 
 ## Rest room
@@ -192,7 +190,7 @@ rather than repeat. It is armed on entering the Rest room but shown only once th
     but independent of that function's eventOutcomes/firedOnceEventIds writes. */
 loreExposureCount: number;
 
-/** Set at rest-room entry (moveToRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
+/** Set at rest-room entry (enterRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
     computed fresh from loreExposureCount each time, not stored — is higher than the highest tier
     already present in campReflectionChoices. Skipped if state.pendingReflection is currently set
     (narrow defensive check only, not a dependency). Cleared once the player picks a response. */

@@ -1,6 +1,6 @@
 # §12. World Bible — hidden lore, never shown directly to the player
 
-*(item 11 of `00-index.md`)*
+*(item 12 of `00-index.md`)*
 
 **Status**: internal ground truth only. Nothing in this file is ever stated directly to the
 player, in any UI, event description, or reflection line. Existing text stays compliant with
@@ -8,22 +8,8 @@ player, in any UI, event description, or reflection line. Existing text stays co
 sees a **trace**") — this document exists so future flavor text stays consistent with a single
 coherent truth behind that trace, not to expose that truth.
 
-**Revision note**: fourth pass on §12. The first draft over-explained mechanics as literal law
-(fixed by §12.2). The second and third passes found and fixed internal contradictions — Dream
-recognizing things it has no way to recognize, `collapsed-floor` claimed both inside and outside
-the Balance, the Stranger placed on a road he never walked. This pass is different in kind: the
-logic held up, but the document was still doing more *telling* than *furnishing material to show*.
-Added: concrete, opposed ritual vocabulary for the Covenant's two readings (§12.6) so the split is
-usable in a scene, not just statable as belief; an explicit line that the drift in §12.5 never
-takes away a character's actual choice, only their habit of questioning it; a small toolkit of
-recurring sensory images (§12.11) to reach for instead of narrating the dream directly; a
-one-observable-change rule for drafting new events; and a fix to the reflection-stance mapping
-(§12.13) so no single stance reads as the "wrong" one to have.
-
-**Supersedes**: `10-event-narrative.md`'s "Considered and not chosen — framing narrative" note.
-That file recorded a deliberate decision *not* to commit to a single reason the party descends.
-This document reverses that decision — §12.5 below is now the canonical reason, still never told
-to the player. `10-event-narrative.md` has been updated to point here.
+**The reason the party descends** is settled in §12.5 and is never told to the player;
+`10-event-narrative.md` defers to it.
 
 ---
 
@@ -52,9 +38,9 @@ attached to it at all. When this document describes something in clean, systemic
 is meant to stay messier than any single clean description of it — including the ones in this
 document.
 
-This reframes every section below: where earlier drafts treated a mechanic as something the lore
-had to justify point-for-point, this draft treats the mechanic as an approximation, and asks what
-approximation of *this* dream would produce a rule shaped like that one. The difference matters —
+This reframes every section below: a mechanic is not something the lore has to justify
+point-for-point. It is an approximation, and the question is what approximation of *this* dream
+would produce a rule shaped like that one. The difference matters —
 "the dream has a law that says X" invites a player to eventually solve it like a system. "The
 dream tends toward something X approximates" doesn't.
 
@@ -72,8 +58,8 @@ dream tends toward something X approximates" doesn't.
 
 ## 12.4 Three tiers, locked: Sleeper, the dream, the Balance
 
-This is the piece most worth getting exactly right, because getting it wrong is what produced the
-first, too-systemic draft.
+This is the piece most worth getting exactly right, because getting it wrong turns the whole bible
+into a system.
 
 - **Sleeper has no will.** It doesn't choose, want, judge, or notice. Nothing in this bible should
   ever describe Sleeper *doing* something on purpose.
@@ -195,8 +181,8 @@ Same symbol, two very different kinds of contact with the dream.
 
 ## 12.7 Contact, not hierarchy
 
-The first draft of this bible drew a clean org chart — Sleeper above Covenant above three NPCs
-above the party. That chart quietly contradicted itself: two of the three recurring NPCs were
+A clean org chart — Sleeper above Covenant above three NPCs above the party — would contradict
+itself: two of the three recurring NPCs were
 never part of the Covenant at all. A hierarchy implies membership; what actually varies between
 figures who've had genuine contact with the dream isn't rank, it's **how much repeated contact
 each one has had, and what they've done with it.**
@@ -381,9 +367,10 @@ reason it was, the setting has quietly drifted.
 ## 12.12 Where each event sits in the Balance
 
 Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§12.4).
-Check this before touching an event's flavor text. 11 of them are transactions of some kind; the
-8 narrative-layer events (`10-event-narrative.md` Part D) mostly carry no transaction at all, which
-is its own facet, not an oversight.
+Check this before touching an event's flavor text. Of the first 11, all but `open-chest` are
+transactions of some kind; the 8 narrative-layer events (`10-event-narrative.md` Parts C.3 and D)
+mostly carry no transaction at all, which is its own facet, not an oversight. The table covers
+these nineteen only: `the-wanderer`, `the-one-who-stayed` and `the-gatekeeper` sit outside it.
 
 | Event | Facet |
 |---|---|
@@ -407,7 +394,7 @@ is its own facet, not an oversight.
 | `still-breathing` | Evidence, not a transaction — the deepest evidence in the game, and still no cost attached to finding it |
 
 **A detail worth protecting in any future HP-cost writing**: `blood-altar` and `collapsed-floor`
-share Chain 3's counter (§8.5), and now share a category above, despite one being ritual/Covenant
+share Chain 3's counter (§8.5), and share a category above, despite one being ritual/Covenant
 and the other plain heroism. That's not a coincidence to explain away — it's §12.10's point made
 mechanical: **the dream doesn't read why a cost was paid, only that it was.** Don't give
 `collapsed-floor` a "moral" flavor implying its HP cost is somehow cleaner than `blood-altar`'s —
@@ -416,7 +403,7 @@ consistently, not just where it's convenient.
 
 ## 12.13 Chain escalation tiers and reflection stances, resolved
 
-**Deeper chain escalation tiers** — a tier-2 escalation (well past the current single threshold,
+**Deeper chain escalation tiers** — a tier-2 escalation (past a chain's first threshold,
 §8.5) should read as a further step down §12.5's drift, from dependence toward unawareness: not
 just "the exchange no longer asks," but the encounter's *specificity* starting to erode, sounding
 less like something happening to this party in this place and more like a transaction being
@@ -446,4 +433,4 @@ bug in the writing, not a reflection of anything true about curiosity, wariness,
 trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the
 party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
 `EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
-Part A for the full mechanical writeup.
+Part B.3 for the full mechanical writeup.

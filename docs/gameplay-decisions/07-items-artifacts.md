@@ -24,7 +24,7 @@ The 2 concepts are kept clearly separate, not sharing 1 system:
 
 ### 7.1.1 Data structure
 
-The `ItemDefinition` shape lives in `src/types.ts`, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` §1.8 "Design notes" last bullet, where `usesPerCombat` is reserved for items):
+The `ItemDefinition` shape lives in `src/types.ts`, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` §1.8 "Design notes", the `usesPerCombat` bullet, where `usesPerCombat` is reserved for items):
 
 ```
 ItemDefinition {
@@ -52,7 +52,7 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 - **General pool** — every other drop: the items with no `archetypeIds`.
 - **Weight inside a bucket** = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight does not scale with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
 
-With every consumable in one general pool, any given potion is an uncommon drop, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
+With every consumable in one general pool, any given potion drops rarely, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
 
 A dropped item is added directly to `GameState.inventory[itemId] += 1`. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
@@ -178,7 +178,7 @@ ArtifactDefinition {
 
 ### 7.2.5 Engine hooks for the Group 2-4 effects
 
-None of the Group 2-4 effects goes through the skill/status system (`01-class-skill.md`) — each one has its own dedicated hook in the engine:
+None of the Group 2-4 effects is a skill/status effect kind (`01-class-skill.md`) — each one has its own dedicated hook in the engine:
 
 - **`reflectDamage`**: after a monster successfully deals `damage` to the **exact character wearing this artifact** (not another party member), roll `percent`; if it hits, deal `percent × the damage just taken` back at that monster (doesn't go through the monster's `defense` — a reflect isn't a regular attack).
 - **`poisonOnHit`**: after the **exact character wearing this artifact** successfully deals `damage` to a monster (any skill/basic attack of theirs, not just Poison Coat), roll `chance`; if it hits, `applyStatusEffect` of the effect's own `statusEffectId` on that monster for the effect's own `durationTurns` — the same "on-hit rider" mechanic already used for Poison Coat (`docs/technical-decisions.md` §4.2), differing only in that the trigger source is an artifact instead of a temporary status. Another party member landing a hit does **not** trigger this effect unless they also have their own `poisonOnHit` artifact equipped.
@@ -199,7 +199,7 @@ None of the Group 2-4 effects goes through the skill/status system (`01-class-sk
 |---|---|---|
 | Killing an **Elite** (floor's final room, not Boss) | Guaranteed | Rarity rolled from the `elite` odds at the current floor depth (`artifactRarityWeights`, `src/data/artifacts.ts`) — never Epic |
 | Killing a **real Boss** (every `bossFloorInterval` floors, `06-level-system.md` §6.11) | Guaranteed | Rarity rolled from the `boss` odds at the current floor depth — mostly Common/Rare on floors 1–20, Unique/Epic-heavy from floor 31 |
-| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.8) is the "guaranteed artifact, no combat" room. Rarity uses the `treasureOrEvent` odds at the current floor depth (there is no separate Treasure room type; the name covers Event rooms), except the exchange events, see below |
+| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.8) is the "guaranteed artifact, no combat" room. Rarity uses the `treasureOrEvent` odds at the current floor depth (`treasureOrEvent` is only the odds table's name, also used by the Merchant's offers; there is no Treasure room type), except the exchange events, see below |
 
 **Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (`09-currency.md`). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the Event room drop Artifacts.
 
@@ -207,7 +207,7 @@ None of the Group 2-4 effects goes through the skill/status system (`01-class-sk
 
 ### 7.2.7 Rarity & drop rate per tier
 
-**Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". Two rules hold at every depth: **Elite never rolls Epic** (its Epic anchor is 0, and a zero anchor stays zero at every depth), and Treasure/Event sit between Elite and Boss in average quality.
+**Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". **Elite never rolls Epic** at any depth (its Epic anchor is 0, and a zero anchor stays zero at every depth). Treasure/Event sits between Elite and Boss in average quality from the anchor step down; on the shallowest steps it rolls slightly below Elite, since its Epic share vanishes and its Rare/Unique anchors are lower than Elite's (see the odds table below).
 
 Not depth-scaled, on purpose: **Sacrificial Circle** and **Wandering Hermit** roll through `rollArtifactWithMinRarity`, which keeps the fixed `events.exchangeRarityWeights` table (common / rare / unique / epic) renormalized above the required minimum, and **Gambling Den** picks its jackpot rarity directly from `events.gamblingDenRounds`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
 
@@ -275,7 +275,7 @@ catalog needed coverage.
 down here exchanges them, matching the established pattern), no resolved motive, no confirmed fact
 that would settle anything on §12.9's open list. Sentence openings vary hard across the whole
 catalog — entries open with the object itself, a fact, a number, or embedded dialogue far more often
-than with "Whoever," which appears only mid-sentence, never as the first word.
+than with "Whoever," which never opens a description.
 
 No entry names "Sleeper," "Covenant," or "the Balance," or resolves anything on §12.9's open list
 (who anyone was, whether a bargain paid off, what a Guardian actually is, whether either side of a

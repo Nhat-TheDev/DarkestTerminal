@@ -5,8 +5,9 @@
 **Scope**: the narrative layer over the event system — how events relate to each other, how one
 event's text reacts to what the party did at another, how the event chains escalate with depth,
 the discovery curve at floors 15/35/70, the narrative-layer events' specs, the Wanderer, and the
-floor-100/120 ending system. The player-facing mechanics are in `08-events.md` §8.2-§8.6. The
-hidden ground-truth worldview behind this text (what the Sleeper/Covenant actually are, never told
+floor-100/120 ending system. The player-facing mechanics are in `08-events.md`: the shared
+worldview, recurring characters, chains and reflection in §8.2-§8.6, and each event's own entry
+from §8.7 on. The hidden ground-truth worldview behind this text (what the Sleeper/Covenant actually are, never told
 to the player) lives in `12-world-bible.md`, which also settles the party's single reason for
 descending (§12.5, "the Call") — never told to the player either. Every quote below has passed a
 craft review (cringe/slop/craft) and a compliance check against `12-world-bible.md`.
@@ -88,7 +89,7 @@ Thread 1 (communion use) ──────► guardian-fight / desecrated-altar
                                    half-a-warning (floor 35)
                                           │
                                           ▼
-                                   blood-altar (pair 8 — echoes back into Thread 1)
+                                   blood-altar (pair 17 — echoes back into Thread 1)
 ```
 
 **Thread 3 — The three NPCs** (§12.7-12.8's contact line)
@@ -121,8 +122,8 @@ the-delay stays unconnected — pure dream-logic, no institution, no remnant-of-
 ```
 floor 15 ── vigil-candle (pure atmosphere, deliberately unconnected)
          └─ broken-seal (Thread 2)
-floor 35 ── half-a-warning (deepens Thread 2, echoes into Thread 1 via pair 8)
-floor 70 ── still-breathing (recontextualizes the spiral itself, echoes into Thread 3 via pair 7)
+floor 35 ── half-a-warning (deepens Thread 2, echoes into Thread 1 via pair 17)
+floor 70 ── still-breathing (recontextualizes the spiral itself, echoes into Thread 3 via pair 16)
 ```
 
 Pacing rationale, one sentence per milestone: floor 15 is where the party first notices a history
@@ -140,7 +141,7 @@ exact boundary those events exist to hold. Checked, not overlooked.
 
 ---
 
-## Part B — Cross-event continuity & description variants
+## Part B — Cross-event continuity, description variants & stance echo
 
 ### B.1 — Cross-event continuity
 
@@ -154,7 +155,7 @@ established character (§12.8) — never specific ("you visited blood-altar").
 
 **Density cap**: the strongest version of drift — the body acting before the mind decides ("your
 hand is already moving") — is reserved for exactly 2 pairs across the whole graph: pair 3 (the
-literal return to `blood-altar`) and pair 8 in C.3 (the `half-a-warning`-informed return, where
+literal return to `blood-altar`) and pair 17 in C.3 (the `half-a-warning`-informed return, where
 the point is specifically that knowing better doesn't stop it). Every other Thread-1-exposure pair
 below stays in the same emotional register — foreknowledge, dulled reaction, a pattern being
 noticed — without repeating that exact motor-control image. A single Thread-1-heavy run can trigger
@@ -184,12 +185,15 @@ crossEventVariants?: CrossEventVariant[];
 eventOutcomes: Partial<Record<Id, string>>;
 ```
 
-**Resolution priority in `pickEventText()`**:
-`returnDescription` → chain buildup/forced/forced2/forced3 → chain escalated/escalated2/escalated3
-→ **`crossEventVariants`** (first array entry whose condition matches) → **`descriptionVariants`**
-random pool → `description` fallback. Chain states return immediately and never also show a
-cross-event variant — stacking 2 special states in one scene violates the one-observable-change
-rule.
+**Resolution priority in `pickEventText()`** (`src/engine/dungeon.ts`), first match wins: chain
+state — Chain 1's room-pinned buildup/forced/forced2/forced3 on the guardian events, Chain 2/3's
+escalated3/escalated2/escalated (highest tier first), Chain 4's escalation on the free-take events
+→ `returnDescription` on a return visit to a recurring figure, with its `stanceEcho` (B.3) and
+`campReflectionUnawareEcho` lines appended → **`crossEventVariants`** (first array entry whose
+condition matches) → **`descriptionVariants`** (the pick pinned to the room) → `description`
+fallback. Chain states return immediately and never
+also show a cross-event variant — stacking 2 special states in one scene violates the
+one-observable-change rule.
 
 **Outcome tags to record** (only where the generic `"resolved"` fallback isn't precise enough):
 
@@ -198,6 +202,7 @@ rule.
 | `blood-altar` | `"paid"` / `"declined"` | `bloodAltarPay()` / `bloodAltarLeave()`, before `closeEvent()` |
 | `collapsed-floor` | `"rescued"` / `"failed"` / `"declined"` | `collapsedFloorAttempt()` (whether the trapped person was reached in time) / the skip path |
 | `sacrificial-circle` | `"sacrificed"` | `sacrifice()`, on any successful call |
+| `wandering-hermit` | `"traded"` | `hermitExchangeFortune()`, on a completed trade (gates its reflection) |
 | `guardian-fight` / `desecrated-altar` | `"resolved"` / `"skipped"` | `game.ts`'s combat-victory reward block (the win path never reaches `closeEvent()`) / the skip path |
 
 The `collapsed-floor` split is what lets a later `collapsed-floor` visit (its own 2 variants,
@@ -263,12 +268,13 @@ history:
   groan echoes up from below. Last time, it just stopped, partway through. You don't let yourself
   think about which sound this is."*
 
-`merchant` ← `still-breathing` and `blood-altar` ← `half-a-warning` are listed under C.3, since
-they depend on events defined there.
+Pairs 16-17 (`merchant` ← `still-breathing` and `blood-altar` ← `half-a-warning`) are listed
+under C.3, since they depend on events defined there.
 
 **Base descriptions for `waiting-supplies` and `broken-seal`** (what a party that hasn't resolved
-the source event sees): `waiting-supplies`' base is pair 11 without the "in the same knot you've
-started to recognize" clause, which presupposes having met `merchant`; `broken-seal`'s base is the
+the source event sees): `waiting-supplies`' base is pair 11 with the spiral and the recognition
+taken out of the knot ("The rope is knotted tight, every turn laid the same way."), since
+recognizing it presupposes having met `merchant`; `broken-seal`'s base is the
 2 sentences both its variants share, with the interpretive final sentence ("The chain wasn't
 unlocked...") added only by whichever variant matches. Their `reflection` text is in
 `data/events.json`.
@@ -338,9 +344,20 @@ tell):
   around it."
 
 The other events (`blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`,
-`wandering-hermit`, `gambling-den`, `collapsed-floor`, and the 8 events in D below) have no
-variants yet: `descriptionVariants` is optional per event and can be added one event at a time.
+`wandering-hermit`, `gambling-den`, `collapsed-floor`, and the narrative-layer events in C.3 and
+D: `old-count`, `doubled-back`, `the-delay`, `waiting-supplies`, `vigil-candle`, `broken-seal`,
+`half-a-warning`, `still-breathing`) have no variants yet: `descriptionVariants` is optional per event and can be added one event at a time.
 `the-wanderer` uses the same field for its own pool.
+
+### B.3 — Reflection stance echo
+
+`12-world-bible.md` §12.13's direction — flavor only, never mechanical, never a strict classifier,
+each stance readable more than one way — is `EventDefinition.stanceEcho?: { curious, wary,
+dismissive }`. `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the party's most-picked
+stance across `GameState.eventReflectionStances` (undefined if none recorded yet or tied) and
+appends the matching line to a `returnDescription` visit. Only `wandering-hermit` carries one: he's
+the 1 of the 3 recurring figures whose own backstory (§12.8) makes him plausible to notice a pattern
+in someone else. `merchant`/`gambling-den` could take their own `stanceEcho` the same way.
 
 ---
 
@@ -348,9 +365,10 @@ variants yet: `descriptionVariants` is optional per event and can be added one e
 
 ### C.1 — Chain tier 2
 
-Chains 1-3 (`08-events.md` §8.5, `12-world-bible.md` §12.13) each escalate twice, not once. Tier 2 is gated by `circleRemembersThreshold2`/`bloodDebtThreshold2`/
-`guardianGrudgeFiredCount` **and** `chainTier2MinFloorDepth: 15` together — a chain can't reach
-tier 2 on counter alone. Engine side: `src/engine/dungeon.ts`, `src/engine/events/guardianFight.ts`,
+Chains 1-3 (`08-events.md` §8.5, `12-world-bible.md` §12.13) each escalate past their first
+tier: tier 2 here, tier 3 in C.2. Tier 2 is gated by `circleRemembersThreshold2`/
+`bloodDebtThreshold2`/`guardianGrudgeFiredCount` **and** `chainTier2MinFloorDepth: 15` together —
+a chain can't reach tier 2 on counter alone. Engine side: `src/engine/dungeon.ts`, `src/engine/events/guardianFight.ts`,
 `src/engine/events/shared.ts`.
 
 ### C.2 — Chain tier 3
@@ -431,7 +449,7 @@ dismissive: "Scratch marks on a wall. Everyone down here thinks theirs matter."
 
 Testimony, not doctrine — "I won't write what was left of them" implies something severe without
 spending the restraint budget describing it (§12.11's show-don't-state). Seeds `waiting-supplies`:
-its bundle, tied "in a spiral, pulled tight" — never switched — reads differently once a player has
+its bundle's knot, "every turn laid the same way" — never switched — reads differently once a player has
 found testimony that switching gets people killed.
 
 `id: "half-a-warning"`, `kind: "instantReward"`, `tier: "rare"`, `minFloorDepth: 35`,
@@ -466,28 +484,18 @@ confirm any §12.9 item: the embedded object is generic, never tied to a specifi
 reveal strong enough not to need a mechanical reward attached is the point; needing one would be a
 sign the reveal wasn't landing.
 
-**Pairs 7-8 — how the milestones echo forward** (§12.5's drift shouldn't stop meaning anything once
-the scene that taught it ends):
+**Pairs 16-17 — how the milestones echo forward** (§12.5's drift shouldn't stop meaning anything
+once the scene that taught it ends; numbered on from B.1's 15):
 
-- `merchant` ← `still-breathing` (resolved): *"A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows. You don't look at the cloth the way you used to."*
-- `blood-altar` ← `half-a-warning` (resolved): *"Ancient carvings on the stone pedestal ooze a dark,
-  still-warm liquid, a spiral unwound and open at its center. You hesitate half a step longer than
-  you used to, before your hand decides for you."*
+16. `merchant` ← `still-breathing` (resolved): *"A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows. You don't look at the cloth the way you used to."*
+17. `blood-altar` ← `half-a-warning` (resolved): *"Ancient carvings on the stone pedestal ooze a dark,
+    still-warm liquid, a spiral unwound and open at its center. You hesitate half a step longer than
+    you used to, before your hand decides for you."*
 
 Only these 2 — knowing the warning doesn't stop the drift, it just adds a beat of resistance before
 the same reflex wins anyway (more honest to §12.5 than a version where knowledge simply fixes
 behavior). Not wired into every event after every milestone — that would violate the same
 one-observable-change discipline holding the rest of this file together.
-
-### C.4 — Reflection stance echo
-
-`12-world-bible.md` §12.13's direction — flavor only, never mechanical, never a strict classifier,
-each stance readable more than one way — is `EventDefinition.stanceEcho?: { curious, wary,
-dismissive }`. `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the party's most-picked
-stance across `GameState.eventReflectionStances` (undefined if none recorded yet or tied) and
-appends the matching line to a `returnDescription` visit. Only `wandering-hermit` carries one: he's
-the 1 of the 3 recurring figures whose own backstory (§12.8) makes him plausible to notice a pattern
-in someone else. `merchant`/`gambling-den` could take their own `stanceEcho` the same way.
 
 ---
 
@@ -569,7 +577,7 @@ and then walked away from. When a new low-stakes event is wanted, this is the sh
 before reaching for another Covenant-adjacent scene.
 
 **`waiting-supplies`** — Thread 3 & 4, common tier. Base text and `merchant`-sourced variant are in
-C.1, entry 11. `guaranteedArtifactId: "travelers-ration"`.
+B.1, entry 11. `guaranteedArtifactId: "travelers-ration"`.
 
 **`the-gatekeeper`** — the scene that opens every run, outside the dungeon (`08-events.md` §8.7). The
 party are fortune-seekers who came down for treasure that would change their lives. The man at the
@@ -596,7 +604,7 @@ Deliberately compatible with §12.9's open questions: no variant of this event e
 a given wanderer is really still alive down there, made it out, or is something else entirely.
 
 **Mechanics**: `id: "the-wanderer"`, `kind: "instantReward"`, `tier: "rare"`, `noArtifactReward:
-true` (reuses the exact pattern `still-breathing` established, Part D — no new `EventKind`),
+true` (reuses the exact pattern `still-breathing` established, Part C.3 — no new `EventKind`),
 `minFloorDepth: 10` (a light gate — encountering a fellow lost soul reads better once the party's
 been down a while; low enough to still be common relative to the floor-70-deep events). **Not**
 `onceLifetime` — can recur any number of times in a run, each time picked from the same
@@ -674,7 +682,9 @@ plays out as an ordinary floor up to that point — normal rooms, events, and am
 `Game.advanceToNextFloor()` (`src/engine/game.ts`) checks the cleared depth against
 `ENDING_CHECKPOINT_FLOOR_DEPTH` (`src/data/endings.ts`) and sets `pendingEndingCheckpoint` instead
 of building the next floor; `syncUiToGameState()` (`src/ui/app.ts`) shows it ahead of every other
-screen. Floor 120 works the same way through `FOUNDER_FLOOR_DEPTH`/`pendingFounderDialogue`.
+screen. Floor 120 is flagged on arrival instead, and only after Continue: once the new depth
+equals `FOUNDER_FLOOR_DEPTH`, the floor is built and `pendingFounderDialogue` replaces the entry
+room's ambush check, with the same screen priority.
 
 **3 mutually exclusive modes**, decided by 2 gates checked in the order below the moment floor 100's
 boss falls — never all 4 endings competing on 1 menu:
@@ -736,8 +746,9 @@ Resolution, once chosen:
 
 > "The way back up is where it always was. No one climbs it. Packs come off and are left on the stone; the torch burns down to a height it does not drop below again. Much later, another party comes down this corridor. They do not know your names. Something in how they move through it is easier than it should be."
 
-Plain declaratives with 2 physical frames (the packs, the torch) before the abstraction — not a
-negate-then-correct spine, which the other endings would otherwise share.
+Plain declaratives with 2 physical frames (the packs, the torch) before the abstraction — not the
+negate-then-correct spine that Let Go ("None of you feel yourselves stop") and Leave ("There is no
+staying here…") already open on.
 
 Deliberately doesn't explain the mechanism (how staying "helps" — left open, matching §12.9's own
 discipline about not over-explaining what the dungeon's structure actually is). The run ends here —
@@ -752,8 +763,8 @@ different, more personal shape: it names the specific class that stayed.
 > Not one of you. One from before, who never came back up. They don't seem surprised to see you.
 > 'You got further than we did,' they say."
 
-The party is 4 classes picked from 6 (`party.size`), so a living character of that exact class
-is often standing in the party when this is read. The text names the figure as explicitly **a
+A party holds `party.size` classes picked from the whole class roster, so a living character of
+that exact class is often standing in the party when this is read. The text names the figure as explicitly **a
 different one** ("Not one of you"), which turns a bug-like reading into uncanny doubling. The
 closing line is one only this character could say, not a stock returning-ally quip.
 
@@ -768,8 +779,10 @@ No combat, no cost — matches the established "just talk, no transaction" shape
 
 **The persistence layer**, `src/engine/profile.ts`: a small `profile.json`, living in
 the same app-data directory `save.ts`'s per-run saves already use, but never imported by (or
-importing) `save.ts`/`game.ts` circularly. Holds `{ retiredCharacters: { classId }[],
-shownRetiredCharacterEvent: boolean }`. `addRetiredCharacter()` is called the moment Ending 1 is
+importing) `save.ts`/`game.ts` circularly. Holds `{ version, unlockedAbilityIds,
+retiredCharacters: { classId }[], shownRetiredCharacterEvent: boolean }` — `version` and
+`unlockedAbilityIds` come from `AbilityProfile` (`src/types.ts`), the ability unlocks that share
+the file. `addRetiredCharacter()` is called the moment Ending 1 is
 chosen (`Game.pickEndingChoice`); a fresh `Game` reads the profile once at construction and, if a
 retired character exists and the payoff hasn't already been shown in any previous run, pre-fills
 `GameState.retiredCharacterClassId` and leaves `"the-one-who-stayed"` *out* of the freshly-built
@@ -778,8 +791,9 @@ to `rollEvent()` itself; eligibility is entirely encoded by whether that 1 id st
 `markRetiredCharacterEventShown()` fires from `closeEvent()` the moment the event actually resolves,
 persisting the "already shown" fact across every future run, not just this one.
 
-`profile.json` sits in the same directory as the per-run saves but lacks the `SaveFile` shape, so
-`forEachSaveFile` (and with it `deleteSavesForRun`/`listSaves`) skips `PROFILE_FILENAME` by name.
+`profile.json` sits in the same directory as the save slots, but slot listing and deletion
+(`listSlots()`/`deleteSlot()`, `src/engine/save.ts`) only ever touch the fixed slot filenames, so
+the profile survives a run's permadeath slot-clear and is never read as a save.
 
 ### F.3 Ending 2 — Let Go
 
@@ -858,8 +872,9 @@ also feeds the *bad* one. It's also excluded from Elite kills, `merchant`, `curs
 `twin-altars`, and `sacrificial-circle`. It appears from exactly **2** sources instead:
 
 - **A Boss kill** (`02-monster.md` §2, every `bossFloorInterval` floors) — part of the normal `boss`
-  rarity-weight roll (Unique/Epic only, `07-items-artifacts.md` §7.2), no special logic needed beyond
-  the exclusion above.
+  rarity roll (`artifactRarityWeights`, `07-items-artifacts.md` §7.2 — every rarity can come up,
+  weighted by floor depth), so the shard is only possible when that roll lands on Unique, its own
+  rarity. No special logic needed beyond the exclusion above.
 - **`blood-altar`** (§8.15) — but only once `narrativeCounters.altarPaymentsCount >=
   events.bloodDebtThreshold2` (8 payments, the same counter Chain 3 already tracks). Below that
   count, a `blood-altar` payment rolls normally, `waystone-shard` excluded like everywhere
@@ -967,7 +982,7 @@ time — a direct, load-bearing warning rather than 2 unrelated endings coexisti
 The founder's own account is framed as **his own**, not an authorial confirmation — a party that
 picks `wary` or `dismissive` reflection stances earlier in the run is fully entitled to read every
 line above as a dying, corroded mind's self-serving myth rather than history. Nothing in the
-delivery ever confirms which reading is correct. This is what keeps the requirement "don't rob
+delivery ever confirms which reading is correct. This is what keeps the design rule "don't rob
 the player's own judgment" intact even while giving real, citable answers to some of it.
 
 **The fight**: `the-founder` (`data/monsters.json`), a Boss-tier `MonsterArchetype` with

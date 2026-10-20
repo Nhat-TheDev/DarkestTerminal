@@ -143,7 +143,7 @@ Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
 
 ### AI patterns (`MonsterAiPattern`)
 - **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/monsterAI.ts`).
-- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes remains unchanged (still weighted-by-`aggro`, same as `aggressive`) — only skill-choice priority was added.
+- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes is the same weighted-by-`aggro` rule as `aggressive`; only skill choice differs.
 
   This only takes effect for archetypes that (a) are `aiPattern: "defensive"` and (b) have at least 1 entry in `skillIds` — that's Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The branch looks for a skill whose `target` is `self`, not for the first entry in `skillIds` — since `skillIds` holds every skill an archetype can roll at any tier, a positional pick would have a normal-tier Skeleton Guard swinging its own Cleaving Strike at itself. The other `defensive` archetypes (Zombie Knight, Dark Knight, Skeleton Guard) own no self-targeted skill, so it's a no-op for them.
 - **`opportunistic`**: the **mirror** of the default rule. Every living character's `aggro` is reflected across the party's own current range — `weight = max(1, (highest aggro + lowest aggro) - X.aggro)` — so the quietest character is picked as often as the loudest would otherwise have been. `pickInverseAggroWeighted`, `src/engine/monsterAI.ts`.
@@ -284,7 +284,7 @@ Notes on some of them:
 }
 ```
 
-Distinct from `weakened` (`01-class-skill.md` §1.6) — a lighter defense cut, which Acid Spit lands together with `acid-burn` (damage over time) as one application (`alsoApplyStatusEffectIds`), so the acid does both at once.
+`corroded` cuts less defense than `weakened` (`01-class-skill.md` §1.6). Acid Spit lands it together with `acid-burn` (damage over time, §1.6) as one application (`alsoApplyStatusEffectIds`), so the acid does both at once.
 
 **`webbed`** (Spider's Web Spit):
 
@@ -345,7 +345,7 @@ Extends the char "Base stats balancing formula (Balance Points)" (`01-class-skil
 MonsterBalancePoints = baseAttack/tier1.attack + baseDefense/tier1.defense + baseHp/tier1.maxHp + baseSpeed/speedRate
 ```
 
-using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`), plus `speedRate`, a hand-picked constant in `tools/game-editor/calc.ts` (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). It sits a little above the pooled average `baseSpeed` across every monster archetype and character class (~10.4). `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
+using the same `tier1` rates as the char formula (`data/level-growth.json` → `tiers[0]`), plus `speedRate`, a hand-picked constant in `tools/game-editor/calc.ts` (not derived from any growth table; there isn't a `tier1`-equivalent for speed to derive one from). It sits a little above the pooled average `baseSpeed` across every monster archetype and character class (`data/monsters.json`, `data/classes.json`). `maxMp`/`magicPower` terms from the char formula are dropped entirely (not set to 0) since monster archetypes don't carry those stats.
 
 This formula is computed off raw `baseAttack`/`baseDefense`/`baseHp` and deliberately ignores `monsterType` — the type multiplier only reshapes the *scaled instance* (see "Monster type" above), so it doesn't shift an archetype's base-stat BalancePoints or its tier band.
 

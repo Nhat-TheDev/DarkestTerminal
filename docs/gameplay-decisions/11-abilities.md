@@ -176,10 +176,13 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
   "{target} throws off {status}."; a status that would have missed anyway logs
   nothing. No RNG is drawn when the bearer has no `debuffResist`, so a
   bearer without it leaves the seeded stream untouched.
-- **Stacking:** Artifacts can carry `debuffResist` too. Each equipped
-  Artifact and the Ability scale the land chance down on their own, so they
-  combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent`) and never reach 100% from
-  sources below 100%.
+- **Stacking:** Artifacts can carry `debuffResist` too, and the Acolyte's
+  passive (Devotion, `debuffResistPercent` per rank in `data/classes.json`)
+  adds one more source for an Acolyte bearer. Each equipped Artifact, the
+  Ability and the passive scale the land chance down on their own, so they
+  combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent` and `combinePercents`,
+  `src/engine/artifacts.ts`; `acolyteDebuffResistPercent`,
+  `src/engine/combat.ts`) and never reach 100% from sources below 100%.
 - **Scope:** only enemy skills acting on a Character inside combat, at the
   same call site as `alwaysHit`'s per-effect roll (`applySkillEffects`,
   `src/engine/combat.ts`). Statuses from events, hunger, items or allies are
@@ -257,7 +260,7 @@ of the Artifact drop on the same kill.
   combat-log line the way a passive Item pickup is. A permanent catalog
   unlock earns the same popup weight as an Artifact, since it changes the
   persistent profile the same way an Artifact changes the run; only the
-  Boss's Stardust grant stays a log line (§ below), matching how coin
+  Boss's Stardust grant stays a log line (next bullet), matching how coin
   gains are logged rather than revealed. There is no per-run ability pool
   at all — an ability found mid-run either becomes real immediately, or
   the roll simply missed.
@@ -325,7 +328,8 @@ whatever Elites a floor happens to offer.
 Runs from `Game.triggerDefeat()` (`src/engine/game.ts`), the one place
 `gameOver` becomes `"defeat"` — reached from `postMoveCheck()` and from a
 lost combat — before `App.syncUiToGameState()` triggers `deleteSlot`. A run
-that ends at an Ending checkpoint (`stay`, `letGo`, `leave`) does not run
+that ends at the floor-100 Ending checkpoint (Stay, Let Go or Leave, which set
+`gameOver` to `stay`, `letGo`, `leaveEscaped` or `leaveAmbushed`) does not run
 it, so no equipped ability is lost there:
 
 1. **Guaranteed loss, no roll.** For every character whose
@@ -396,19 +400,16 @@ shallow, lower-investment runs.
   finishing later — only the *next* character-select screen sees the
   updated pool.
 - **Individual character deaths before the final wipe don't matter.**
-  `postMoveCheck()`'s wipe condition is `party.every(c => !c.isAlive)` —
-  by definition, every character is dead by the time the death flow runs,
+  Both entry points require every character dead (`postMoveCheck()`'s
+  `party.every(c => !c.isAlive)`, and a combat lost with no living
+  character left) — so every character is dead by the time the death flow runs,
   regardless of the order they fell in. There's no special case for "a
   character died 10 floors before the wipe" vs. "died on the final round"
   — every equipped non-common ability in the party is evaluated the same
   way.
-- **Save-scumming has higher stakes here than for Artifacts.** A player
-  can quicksave before an Elite/Boss fight and reload if the roll
-  disappoints; Abilities share the same exposure through the same drop
-  hook. An Artifact reroll only affects the current run, while an Ability
-  reroll can permanently inflate the persistent profile, so the temptation
-  to reload-farm a specific rare/unique/epic ability is stronger. Not
-  solved — see Open follow-ups.
+- **Save-scumming has higher stakes here than for Artifacts**: an Ability
+  reroll can permanently inflate the persistent profile, not just the
+  current run. Not solved — see §11.3.
 - **No-duplicate enforcement only ever needs to check the party's current
   4 `equippedAbilityId`s**, at character select only — the Stardust
   buyback can't create a duplicate in the first place, since every
@@ -572,8 +573,9 @@ used for `magicPower`**: that method gives an absurd result.
 `speed`'s own conversion rate in the game's `BalancePoints` formula is
 `speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
 matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
-would mean `speed +32` to `+48`. `speed` only ranges `8`-`17` across all 6
-classes at level 1 (`data/classes.json`) — a `+32` would make the
+would mean `speed +32` to `+48`. `speed` only spans a narrow range across
+all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Vanguard slowest,
+Rogue fastest) — a `+32` would make the
 *slowest* class in the game faster than the *fastest* one, by a wide
 margin. The reason the formula breaks down here: `attack`/`defense`/
 `maxHp` all **grow with level** (`data/level-growth.json`), so a Rare-tier
@@ -585,7 +587,7 @@ grow with level at all** (`docs/gameplay-decisions/05-character-stats.md`)
 the entire run, never diluted. Matching a decaying stat's day-1 magnitude
 with a never-decaying one's day-1 magnitude systematically overpays the
 one that never decays. `+5` was chosen directly against `speed`'s own
-real spread instead: it closes roughly half of the roster's entire speed gap, a
+real spread instead: it closes under half of the roster's speed gap, a
 permanent, always-relevant nudge without redefining the turn order on its
 own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 
@@ -697,7 +699,10 @@ already causes.
   non-common catalog may be exhausted quickly. Worth simulating — the drop
   rate or the catalog size may need adjusting before the Stardust-side
   numbers do.
-- **Save-scumming the ability roll**: the roll draws from the live RNG
-  stream, so a quicksave before an Elite/Boss fight lets a player reroll it.
-  Seeding the roll off the room's own seed would close it; that is an
-  RNG-architecture change.
+- **Save-scumming the ability roll**: the roll shares the Artifact drop's
+  hook and draws from the run's live RNG stream. A save stores the RNG state
+  (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
+  actions reproduces the same roll — but a player who quicksaves before or
+  during an Elite/Boss fight and then acts differently consumes a different
+  number of draws and gets a fresh roll. Seeding the roll off the room's own
+  seed would close this; that is an RNG-architecture change.

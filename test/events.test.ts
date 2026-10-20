@@ -918,7 +918,7 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
   });
 });
 
-describe("Part C.3: chain tier 3 (10-event-narrative.md)", () => {
+describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
   test("Chain 2 tier 3: sacrificial-circle needs both threshold3 and chainTier3MinFloorDepth, not tier 2's bar alone", () => {
     const game = new Game(70);
     const c = game.state.party[0]!;
@@ -1014,7 +1014,7 @@ describe("Part C.3: chain tier 3 (10-event-narrative.md)", () => {
   });
 });
 
-describe("Part C.1: cross-event continuity (10-event-narrative.md)", () => {
+describe("Part B.1: cross-event continuity (10-event-narrative.md)", () => {
   test("a matching crossEventVariant replaces the base description", () => {
     const game = new Game(90);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -1101,7 +1101,7 @@ describe("Part C.1: cross-event continuity (10-event-narrative.md)", () => {
   });
 });
 
-describe("Part C.2: description variant pool (10-event-narrative.md)", () => {
+describe("Part B.2: description variant pool (10-event-narrative.md)", () => {
   test("a variant is picked once at roll time and stays pinned across re-renders of the same room", () => {
     const seenIndexes = new Set<number>();
     let sawMultipleVariants = false;
@@ -1127,7 +1127,7 @@ describe("Part C.2: description variant pool (10-event-narrative.md)", () => {
   });
 });
 
-describe("Part C.4/C.5: depth gates and once-lifetime events (10-event-narrative.md)", () => {
+describe("Part C.3/D: depth gates and once-lifetime events (10-event-narrative.md)", () => {
   test("rollEvent never returns a depth-gated event before its minFloorDepth", () => {
     const rng = new Rng(10);
     const gatedIds = new Set(["vigil-candle", "broken-seal", "half-a-warning", "still-breathing"]);
