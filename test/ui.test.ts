@@ -711,7 +711,7 @@ describe("a panel scrolled with the mouse wheel", () => {
   });
 });
 
-describe("layout below the full height", () => {
+describe("layout", () => {
   const panelRows = (frame: string, title: string) => panelContentRows(frame.split("\n"), title);
 
   /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
@@ -728,44 +728,63 @@ describe("layout below the full height", () => {
     const app = new App(setup.renderer, game, { autoReveal: false });
     await setup.renderOnce();
     expect(app.debugUiState.kind).toBe("pickAction");
-    return { ...setup, game };
+    return { ...setup, game, app };
   }
 
-  test("at 120x40 the Path panel goes, the Log keeps 3 lines and the Dungeon panel gets room for its choices", async () => {
-    const { captureCharFrame, game } = await openFight(120, 40);
+  test("at 150x45 the Log sits beside the battlefield, as tall as it, and the Dungeon panel has room", async () => {
+    const { captureCharFrame, game } = await openFight(150, 45);
     const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
+    const rows = frame.split("\n");
+    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(frame, t("ui.panelLog"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
+    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(10);
+    expect(rows[44]).toContain("[Ctrl+C] Quit");
     for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
-  test("at 120x40 a boss keeps the battlefield's full height, so its sprite is not cut", async () => {
-    const { captureCharFrame } = await openFight(120, 40, true);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
-    expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(1);
+  test("the Log keeps its width on a wide terminal, and a long entry wraps under its icon", async () => {
+    const { captureCharFrame, renderOnce, app } = await openFight(200, 45);
+    app.pushToast("Vanguard uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
+    app.tickReveal(); // the first tick renders, which queues the toast
+    for (let i = 0; i < 500 && app.debugRevealActive; i++) app.tickReveal();
+    await renderOnce();
+    const rows = captureCharFrame().split("\n");
+    const top = rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`));
+    const left = rows[top]!.indexOf(`─${t("ui.panelLog")}`) - 1;
+    expect(rows[top]!.indexOf("┐", left) - left + 1).toBe(35);
+    const panel = rows.slice(top + 1, top + 1 + UNIT_BLOCK_HEIGHT).map((r) => r.slice(left + 1, left + 34));
+    const first = panel.findIndex((line) => line.includes("Vanguard uses"));
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(panel[first + 1]).toMatch(/^ {2}\S/);
   });
 
-  test("at full height the layout is unchanged", async () => {
-    const { captureCharFrame } = await openFight(120, 70);
-    const frame = captureCharFrame();
-    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(frame, t("ui.panelLog"))).toBe(6);
-    expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(20);
+  test("the Log and the Monsters panel below it share their left edge", async () => {
+    for (const width of [150, 200]) {
+      const { captureCharFrame, renderer } = await openFight(width, 45);
+      const rows = captureCharFrame().split("\n");
+      const leftEdge = (title: string) => rows.find((r) => r.includes(`─${title}`))!.indexOf(`─${title}`) - 1;
+      expect(leftEdge(t("ui.panelLog")), `${width}`).toBe(leftEdge(t("ui.panelMonsters")));
+      renderer.destroy();
+    }
   });
 
-  test("resizing the terminal switches between the two layouts at once", async () => {
-    const { captureCharFrame, resize, renderOnce } = await openFight(120, 70);
-    resize(120, 40);
+  test("the battlefield is as tall in an ordinary fight as against a boss", async () => {
+    for (const boss of [false, true]) {
+      const { captureCharFrame, renderer } = await openFight(150, 45, boss);
+      expect(panelRows(captureCharFrame(), t("ui.panelBattlefield")), boss ? "boss" : "ordinary").toBe(UNIT_BLOCK_HEIGHT);
+      renderer.destroy();
+    }
+  });
+
+  test("a taller terminal gives its extra rows to the Dungeon panel, not the battlefield", async () => {
+    const { captureCharFrame, resize, renderOnce } = await openFight(150, 45);
+    const before = panelRows(captureCharFrame(), t("ui.panelMain"))!;
+    resize(150, 70);
     await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBeNull();
-    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    resize(120, 70);
-    await renderOnce();
-    expect(panelRows(captureCharFrame(), t("ui.panelProgress"))).toBe(1);
-    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(20);
+    expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
+    expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
   });
 });

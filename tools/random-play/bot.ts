@@ -35,12 +35,12 @@ export interface Size {
 
 /** Tall enough that every panel fits on screen. */
 export const PLAY_SIZES: Size[] = [
-  { width: 120, height: 70 },
-  { width: 160, height: 70 },
+  { width: 150, height: 70 },
+  { width: 180, height: 70 },
   { width: 220, height: 70 },
 ];
 /** The smallest supported terminal; each new screen is also checked once at this size. */
-export const MIN_SIZE: Size = { width: 120, height: 40 };
+export const MIN_SIZE: Size = { width: 150, height: 45 };
 
 const START_DEPTHS = [1, 1, 1, 5, 15, 40, 80, 99];
 /** Party level relative to floor depth, spread so runs reach both deep content and defeat. */
