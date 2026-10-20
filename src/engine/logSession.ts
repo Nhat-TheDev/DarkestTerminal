@@ -2,7 +2,7 @@ import type { CombatState, CombatantSnapshot, Id, LogSession, SkillEffect } from
 import { getStatusEffect } from "../data/statusEffects";
 import { isPlayerSide, isSummon, statDirection, statusRole, type Actor } from "./resolver";
 
-/** The battlefield unit an actor is drawn as: a summon has no sprite of its own, so it stands for its owner. */
+/** A summon has no sprite of its own, so it is drawn as its owner. */
 export function unitId(actor: Actor): Id {
   return isSummon(actor) ? actor.ownerId : actor.id;
 }
@@ -11,12 +11,11 @@ function addUnique(list: Id[], id: Id): void {
   if (!list.includes(id)) list.push(id);
 }
 
-/** Records that `actor`, if it is a summon, took part in the running session. */
 function noteSummon(session: LogSession, actor: Actor): void {
   if (isSummon(actor)) addUnique(session.summonIds, actor.ownerId);
 }
 
-/** What a non-damage effect means for a unit on the caster's own side, or `null` when it is a cost/drawback rather than help. */
+/** `null` when the effect is a cost or drawback rather than help. */
 function sameSideRole(effect: SkillEffect): "healed" | "buffed" | null {
   switch (effect.kind) {
     case "heal":
@@ -38,17 +37,14 @@ function sameSideRole(effect: SkillEffect): "healed" | "buffed" | null {
   }
 }
 
-/** An effect that lowers a stat on its target: a status that does, or a direct stat cut. */
 function isStatDebuff(effect: SkillEffect): boolean {
   if (effect.kind === "applyStatusEffect") return effect.statusEffectId !== undefined && statusRole(getStatusEffect(effect.statusEffectId)) === "debuff";
   return effect.kind === "modifyCombatStat" && statDirection(effect) < 0;
 }
 
 /**
- * Records which role `target` plays in the running session, from the effects that apply to it.
- * `skillDealsDamage` is a property of the whole skill, not of this target: a skill that hits one
- * enemy and debuffs all of them is an attack on all of them. Called before accuracy rolls, so a
- * missed or dodged target is still shown as targeted.
+ * `skillDealsDamage` is per skill, not per target: a skill that hits one enemy and debuffs all of
+ * them attacks all of them. Called before accuracy rolls, so a missed target still shows as targeted.
  */
 export function noteSkillTarget(combat: CombatState, source: Actor, target: Actor, effects: SkillEffect[], skillDealsDamage: boolean): void {
   const session = combat.activeSession;
@@ -74,12 +70,10 @@ export function noteSkillTarget(combat: CombatState, source: Actor, target: Acto
   if (!helped && effects.some((e) => e.kind !== "summon")) addUnique(session.affectedIds, id);
 }
 
-/** A plain attack (a monster's or summon's basic attack, a charge, an on-hit AoE) has no skill to read effects from. */
 export function noteBasicAttack(combat: CombatState, source: Actor, target: Actor): void {
   noteSkillTarget(combat, source, target, [{ kind: "damage" }], true);
 }
 
-/** Lights `actor` in the running session without giving it a role (DoT tick, dying damage, an artifact's bearer). */
 export function noteAffected(combat: CombatState, actor: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -87,7 +81,6 @@ export function noteAffected(combat: CombatState, actor: Actor): void {
   noteSummon(session, actor);
 }
 
-/** The attack aimed at `target` missed or was dodged: the battlefield says "miss" instead of a number. */
 export function noteMiss(combat: CombatState, target: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -95,7 +88,7 @@ export function noteMiss(combat: CombatState, target: Actor): void {
   noteSummon(session, target);
 }
 
-/** `target` threw off everything the action tried to put on it: still lit as the one aimed at, with a miss in place of a debuff icon. */
+/** Still lit as targeted, with a miss in place of a debuff icon. */
 export function noteResisted(combat: CombatState, target: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -106,7 +99,6 @@ export function noteResisted(combat: CombatState, target: Actor): void {
   noteMiss(combat, target);
 }
 
-/** A damage-over-time or heal-over-time tick moved `actor`'s HP: the battlefield shows each kind it received, not just the net change. */
 export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" | "heal"): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -114,7 +106,6 @@ export function noteDotEffect(combat: CombatState, actor: Actor, kind: "damage" 
   noteSummon(session, actor);
 }
 
-/** `actor`'s turn is cancelled — stunned, too afraid to act, or interrupted — so the battlefield marks it as such. */
 export function noteLostTurn(combat: CombatState, actor: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -122,14 +113,12 @@ export function noteLostTurn(combat: CombatState, actor: Actor): void {
   noteSummon(session, actor);
 }
 
-/** `character`'s fear rose or fell in the running session. */
 export function noteFearChange(combat: CombatState, character: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
   addUnique(session.fearChangedIds, character.id);
 }
 
-/** `actor` drained HP from the damage it just dealt. */
 export function noteLifesteal(combat: CombatState, actor: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
@@ -138,16 +127,14 @@ export function noteLifesteal(combat: CombatState, actor: Actor): void {
 }
 
 export interface SessionOptions {
-  /** Units lit from the start (an actor-less block that already knows who it touches). */
   affectedIds?: Id[];
   cause?: LogSession["cause"];
-  /** The session is one summon's own action, so it counts as a summon session. */
   bySummon?: boolean;
-  /** Combatant state to attach to the session's entries, taken when each run of them ends. */
+  /** Taken when each run of the session's entries ends. */
   snapshot?: () => CombatantSnapshot[];
 }
 
-/** A session's entries not yet tagged: they start at `from` and end where the session is interrupted or finishes. */
+/** Untagged entries from `from` up to where the session is interrupted or finishes. */
 interface Run {
   session: LogSession;
   from: number;
@@ -156,7 +143,6 @@ interface Run {
 
 const openRuns = new WeakMap<LogSession, Run>();
 
-/** Tags the run's untagged entries with its session, and with the combatant state as of now. */
 function closeRun(combat: CombatState, run: Run): void {
   let snapshot: CombatantSnapshot[] | undefined;
   for (let i = run.from; i < combat.log.length; i++) {
@@ -176,12 +162,9 @@ function closeRun(combat: CombatState, run: Run): void {
 }
 
 /**
- * Runs `body` and tags every log entry it adds with one shared `LogSession`. Entries already tagged
- * by a nested session keep theirs. A body that logs nothing leaves no session behind. The session's
- * id is the index of the first entry it actually tags, so nested sessions can never collide.
- *
- * Each contiguous run of the session's entries carries the state as of the end of that run: a nested
- * session first closes the outer's run so far, so neither shows HP changes that belong to the other.
+ * Entries a nested session tagged keep theirs. The id is the first tagged entry's index, so nested
+ * sessions never collide. A nested session first closes the outer's run, so neither snapshot shows
+ * HP changes that belong to the other.
  */
 export function runInSession<T>(combat: CombatState, actorId: Id | null, body: () => T, options: SessionOptions = {}): T {
   const outer = combat.activeSession;
@@ -222,10 +205,7 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
   return result;
 }
 
-/**
- * One actor-less session for a whole block of per-unit ticks (DoT, stat-mod expiry): units whose
- * tick logged nothing stay grey, and the block costs one hold on screen rather than one per unit.
- */
+/** One session for a block of ticks: costs one hold on screen, and units whose tick logged nothing stay grey. */
 export function runTicksInSession(combat: CombatState, actors: Actor[], tick: (actor: Actor) => void, options: Omit<SessionOptions, "affectedIds"> = {}): void {
   runInSession(
     combat,

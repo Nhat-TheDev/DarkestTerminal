@@ -2,12 +2,12 @@
 
 *(section 5 of `00-index.md`)*
 
-Sections 1-4 (`01-class-skill.md`, `02-monster.md`, `03-survival-stats.md`, `04-fear-combat.md`) already defined the effects of `fear`/satiety, of `attack`/`defense` (via the damage formula in `docs/technical-decisions.md` §3), of `aggro` (targeting, `02-monster.md` section 2), and of `speed` (turn order, `docs/technical-decisions.md` §2). What's still missing: **how HP/MP work**, and **how stats change when a character levels up**.
+Sections 1-4 (`01-class-skill.md`, `02-monster.md`, `03-survival-stats.md`, `04-fear-combat.md`) define the effects of `fear`/satiety, of `attack`/`defense` (via the damage formula in `docs/technical-decisions.md` §3), of `aggro` (targeting, `02-monster.md` section 2), and of `speed` (turn order, `docs/technical-decisions.md` §2). This section covers **how HP/MP work**, and **how stats change when a character levels up**.
 
 ### HP
 - HP hitting 0 (from any source — combat damage, the Dying condition's per-round DOT from `03-survival-stats.md` §3, or a status effect's `perTurnEffects`) → `Character.isAlive = false` **immediately**. True permadeath (per section 1.2 of the main design doc): no effect, skill, or item can revive a character once `isAlive = false`.
-- If this happens mid-fight, the character that just died is skipped when `turnQueue` reaches its next turn (the skip handling already exists in `docs/technical-decisions.md` §2 — no extra logic needed).
-- Monster hp ≤ 0 → no longer counts as a valid target/turn (`isActorAlive` returns `false`); there's no separate `isAlive` field for monsters (monsters don't have narrative permadeath — they simply vanish from the fight in practice, even though the entry stays in `CombatState.combatants`).
+- If this happens mid-fight, the character that just died is skipped when `turnQueue` reaches its next turn (the skip handling in `docs/technical-decisions.md` §2).
+- Monster hp ≤ 0 → stops counting as a valid target/turn (`isActorAlive` returns `false`); there's no separate `isAlive` field for monsters (monsters don't have narrative permadeath — they simply vanish from the fight in practice, even though the entry stays in `CombatState.combatants`).
 
 ### MP
 - Not having enough MP to cover a skill's `mpCost` → that skill is **not selectable** at the action-selection step (validated by the caller/UI, the same way `usesPerCombat` is checked before the resolver is invoked — `docs/technical-decisions.md` §3); the resolver never encounters an insufficient-MP case.

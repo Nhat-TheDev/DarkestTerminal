@@ -5,10 +5,6 @@ import { getFloorMilestoneOmen } from "../../data/floorMilestones";
 import type { UiState } from "../state";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
-/** §4 of the design spec — an atmospheric line shown after a milestone floor's boss/guard room is
-    cleared, once any pending artifact decision, event reflection and camp reflection are dealt with
-    (the order in `syncUiToGameState`). Enter dismisses it and continues with `proceedAfterVictory`.
-    No mechanical effect of its own. */
 export type FloorMilestoneUiState = Extract<UiState, { kind: "floorMilestone" }>;
 
 export function handleKey(ctx: ScreenContext, _ui: FloorMilestoneUiState, key: KeyEvent, _digit: number | null): void {

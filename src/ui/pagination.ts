@@ -1,4 +1,3 @@
-/** Digit keys only cover 1-9, so any selectable list longer than this needs paging. */
 export const PAGE_SIZE = 9;
 
 export function pageCount(total: number, pageSize: number = PAGE_SIZE): number {

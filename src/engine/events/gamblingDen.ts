@@ -14,7 +14,7 @@ function activeGambleOrError(state: GameState): PartyActionError | NonNullable<G
   return active;
 }
 
-/** Rolls the round at `roundIndex` (0-based) against the already-staked pot, and resolves the outcome. */
+/** `roundIndex` is 0-based. */
 function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot: number): void {
   const cfg = ROUNDS[roundIndex]!;
   const won = ctx.rng.chance(cfg.winChance);

@@ -1,33 +1,19 @@
-# §11. World Bible — hidden lore, never shown directly to the player
+# §12. World Bible — hidden lore, never shown directly to the player
 
-*(item 11 of `00-index.md`)*
+*(item 12 of `00-index.md`)*
 
 **Status**: internal ground truth only. Nothing in this file is ever stated directly to the
 player, in any UI, event description, or reflection line. Existing text stays compliant with
-§8.13's principle ("no event ever *names* the Sleeper or the Covenant... the player only ever
+§8.2's principle ("no event ever *names* the Sleeper or the Covenant... the player only ever
 sees a **trace**") — this document exists so future flavor text stays consistent with a single
 coherent truth behind that trace, not to expose that truth.
 
-**Revision note**: fourth pass on §11. The first draft over-explained mechanics as literal law
-(fixed by §11.2). The second and third passes found and fixed internal contradictions — Dream
-recognizing things it has no way to recognize, `collapsed-floor` claimed both inside and outside
-the Balance, the Stranger placed on a road he never walked. This pass is different in kind: the
-logic held up, but the document was still doing more *telling* than *furnishing material to show*.
-Added: concrete, opposed ritual vocabulary for the Covenant's two readings (§11.6) so the split is
-usable in a scene, not just statable as belief; an explicit line that the drift in §11.5 never
-takes away a character's actual choice, only their habit of questioning it; a small toolkit of
-recurring sensory images (§11.11) to reach for instead of narrating the dream directly; a
-one-observable-change rule for drafting new events; and a fix to the reflection-stance mapping
-(§11.13) so no single stance reads as the "wrong" one to have.
-
-**Supersedes**: `10-event-narrative.md`'s "Considered and not chosen — framing narrative" note.
-That file recorded a deliberate decision *not* to commit to a single reason the party descends.
-This document reverses that decision — §11.5 below is now the canonical reason, still never told
-to the player. `10-event-narrative.md` has been updated to point here.
+**The reason the party descends** is settled in §12.5 and is never told to the player;
+`10-event-narrative.md` defers to it.
 
 ---
 
-## 11.1 The core image: the dungeon is not a place, it's a dream
+## 12.1 The core image: the dungeon is not a place, it's a dream
 
 Sleeper is not dead, and not awake. It is caught mid-way — dying, but kept from finishing that
 death, and never strong enough to wake. What it does instead, endlessly, is dream.
@@ -38,7 +24,7 @@ walk into.
 
 This single image is the source for everything below.
 
-## 11.2 Mechanics are a translation, not a mirror
+## 12.2 Mechanics are a translation, not a mirror
 
 Before anything else: `08-events.md` describes a system with clean rules — fixed thresholds,
 counters, tiers, event kinds. A dream is not clean. It doesn't have thresholds; it has moods that
@@ -52,28 +38,28 @@ attached to it at all. When this document describes something in clean, systemic
 is meant to stay messier than any single clean description of it — including the ones in this
 document.
 
-This reframes every section below: where earlier drafts treated a mechanic as something the lore
-had to justify point-for-point, this draft treats the mechanic as an approximation, and asks what
-approximation of *this* dream would produce a rule shaped like that one. The difference matters —
+This reframes every section below: a mechanic is not something the lore has to justify
+point-for-point. It is an approximation, and the question is what approximation of *this* dream
+would produce a rule shaped like that one. The difference matters —
 "the dream has a law that says X" invites a player to eventually solve it like a system. "The
 dream tends toward something X approximates" doesn't.
 
-## 11.3 What this explains, mechanically (read this before writing new content)
+## 12.3 What this explains, mechanically (read this before writing new content)
 
 | Existing mechanic | The dream-truth this is a translation of |
 |---|---|
 | Floors regenerate differently every run (`technical-decisions.md` §1) | A dream never re-forms identically. The floor generator isn't hiding a fixed dungeon — it's redreaming one. |
 | Fear rises with floor depth (`03-survival-stats.md`, `04-fear-combat.md`) | Fear is the friction of a waking mind being pulled deeper into someone else's unconscious. Deeper = closer to whatever is left of Sleeper's actual dreaming core. |
-| Chain 1 forces a fight after enough skips (§8.15) | The same thing, avoided long enough, seems to stop being avoidable — nothing decides this; it's just what a mood worn thin looks like from outside. The threshold is a game-legible stand-in for that. |
-| Chain 2/3 stop "asking" once escalated (§8.15) | Repeated use of the same exchange has moved a party from *using* it toward *depending* on it — see §11.5. The threshold is where the game has to draw a line; the underlying drift has no such line. |
-| Permadeath, no revival | Dying here isn't leaving. Nobody has ever come back to say what it is instead — see §11.9. |
+| Chain 1 forces a fight after enough skips (§8.5) | The same thing, avoided long enough, seems to stop being avoidable — nothing decides this; it's just what a mood worn thin looks like from outside. The threshold is a game-legible stand-in for that. |
+| Chain 2/3 stop "asking" once escalated (§8.5) | Repeated use of the same exchange has moved a party from *using* it toward *depending* on it — see §12.5. The threshold is where the game has to draw a line; the underlying drift has no such line. |
+| Permadeath, no revival | Dying here isn't leaving. Nobody has ever come back to say what it is instead — see §12.9. |
 | Artifacts, some Cursed | Objects that don't belong to normal reality — fragments the dream sheds. A Cursed one still carries something unresolved from whatever produced it. |
-| Recurring event types across randomized floors (§8.14) | Certain acts, repeated at certain kinds of places, seem to make those places hold their shape a little longer than the dream otherwise would. See §11.6 — including the doubt about whether this is really cause and effect. |
+| Recurring event types across randomized floors (§8.3) | Certain acts, repeated at certain kinds of places, seem to make those places hold their shape a little longer than the dream otherwise would. See §12.6 — including the doubt about whether this is really cause and effect. |
 
-## 11.4 Three tiers, locked: Sleeper, the dream, the Balance
+## 12.4 Three tiers, locked: Sleeper, the dream, the Balance
 
-This is the piece most worth getting exactly right, because getting it wrong is what produced the
-first, too-systemic draft.
+This is the piece most worth getting exactly right, because getting it wrong turns the whole bible
+into a system.
 
 - **Sleeper has no will.** It doesn't choose, want, judge, or notice. Nothing in this bible should
   ever describe Sleeper *doing* something on purpose.
@@ -95,7 +81,7 @@ close it.
 No part of this implies the dream is intelligent. A whirlpool "finds" the drain without knowing
 what a drain is.
 
-## 11.5 The Call — why the party is here (supersedes 10-event-narrative.md)
+## 12.5 The Call — why the party is here (supersedes 10-event-narrative.md)
 
 Sleeper's dying reflex is not a summons and not mind control. More often than not, it seems to
 find its easiest hold on a mind already cracked open in some way of its own — grief, an unpaid
@@ -109,7 +95,7 @@ stay that way in future writing.** Some who make it back describe hearing someth
 Others insist they decided on their own, for their own reasons, and don't care for the
 suggestion otherwise. A few, after enough visits, can no longer say which one was true of their
 own first descent. Both readings should stay equally available. This isn't a gap waiting to be
-filled — it's the same uncertainty §11.4 keeps around Dream's own agency, pointed at the humans
+filled — it's the same uncertainty §12.4 keeps around Dream's own agency, pointed at the humans
 walking into it instead.
 
 This is why there's no single canonical protagonist backstory, and why a party is a fresh group of
@@ -124,9 +110,9 @@ slow drift, not stations a person cleanly arrives at or leaves behind:
 2. **Optimization** — after enough rooms, reaching for the exchange that works best, not just the
    one in front of them — already thinking in the dream's terms without meaning to.
 3. **Dependence** — the exchange stops being a choice made and starts being the choice reached
-   for. Chain escalation's first threshold (§8.15) sits roughly here — not a marker the dream
+   for. Chain escalation's first threshold (§8.5) sits roughly here — not a marker the dream
    places, just the game's way of noting that leaning has become reflex.
-4. **Unawareness** — no longer noticing the exchanging at all. The hooded figure (§11.8) is what
+4. **Unawareness** — no longer noticing the exchanging at all. The hooded figure (§12.8) is what
    this looks like carried to its end — not a fate assigned to anyone, just how far "long enough"
    can go.
 
@@ -148,7 +134,7 @@ the second one is true here.
 A party's *want* (money, redemption, an answer, an escape) and the dungeon's *offer* are the same
 object — that tension, not a summons, is the actual engine under the combat/item systems.
 
-## 11.6 The Covenant
+## 12.6 The Covenant
 
 Not the dungeon's architects, and not people who understand what they're standing in. The Covenant
 is what forms *after* — people pulled in by the Call who survived, and chose to come back on
@@ -157,7 +143,7 @@ same dream-contact can walk out with two different, equally "true" readings of i
 formed splits, from its own founding, into two readings that never resolve: some treat what they
 went through as a duty to contain something dangerous; others as communion with something sacred.
 Neither side is wrong in-fiction, and neither side has ever produced evidence that would settle it
-for the other. This is *why* §8.13's ambiguity is real, not a writing device.
+for the other. This is *why* §8.2's ambiguity is real, not a writing device.
 
 **Where this split stops being belief and becomes something a scene can show:** the two readings
 don't just differ in what they believe, they differ in gesture. Those who read it as containment
@@ -193,10 +179,10 @@ The spiral mark is the Covenant's own sigil, adopted for the shape of whatever i
 they're protecting — burned into traded goods (the hooded figure), scarred into skin (the Hermit).
 Same symbol, two very different kinds of contact with the dream.
 
-## 11.7 Contact, not hierarchy
+## 12.7 Contact, not hierarchy
 
-The first draft of this bible drew a clean org chart — Sleeper above Covenant above three NPCs
-above the party. That chart quietly contradicted itself: two of the three recurring NPCs were
+A clean org chart — Sleeper above Covenant above three NPCs above the party — would contradict
+itself: two of the three recurring NPCs were
 never part of the Covenant at all. A hierarchy implies membership; what actually varies between
 figures who've had genuine contact with the dream isn't rank, it's **how much repeated contact
 each one has had, and what they've done with it.**
@@ -214,21 +200,21 @@ identification (contact repeated long enough that it stops being something a per
                 and becomes what's left of them)
 ```
 
-The Covenant sits at "interpretation." The Hermit and the hooded figure (§11.8) sit at further
+The Covenant sits at "interpretation." The Hermit and the hooded figure (§12.8) sit at further
 points along this same line — habit and identification, respectively — independent of whether
 they ever passed through the Covenant's story on the way. The party is still at "contact." None of
 this implies the party is heading anywhere in particular; it only describes where two people who
 kept going ended up, which says more about how far *they* walked than about where the line leads.
 
-**This line doesn't include the Stranger.** He's addressed separately in §11.8 — his relationship
+**This line doesn't include the Stranger.** He's addressed separately in §12.8 — his relationship
 to the dream isn't a further point of contact, it's a refusal, or possibly an absence, of contact
 altogether.
 
-## 11.8 Three people, three things they tell themselves
+## 12.8 Three people, three things they tell themselves
 
 Everything below is written from the outside, but each of the three would describe themselves
 differently — and there's no guarantee any of them are right about themselves. Two of them (the
-Hermit, the hooded figure) are further points on §11.7's line of repeated contact. The third (the
+Hermit, the hooded figure) are further points on §12.7's line of repeated contact. The third (the
 Stranger) may never have made real contact at all — his story runs alongside the other two, not
 along the same line. What the three have in common isn't a shared road; it's that each has built a
 story to live inside, in response to something none of them can fully see.
@@ -251,7 +237,7 @@ insight — it was a single, blunt certainty, learned the way a burned hand lear
 understanding of the mechanism attached: *never uneven, not even a little, not even out of love.*
 That rule is his whole practice now. He doesn't teach it as wisdom — he can't explain why it
 works, only that it does, and that he's never once tested what happens if he breaks it again. He
-closes his eyes only during the exchange itself (§8.16 reflection text, §8.14
+closes his eyes only during the exchange itself (§8.6 reflection text, §8.3
 `returnDescription`); he couldn't say why anymore, only that he's done it every time since. He
 doesn't think of it as removing a curse — he wouldn't describe what he does that way at all. What
 he does is put a lopsided exchange back where it should have landed the first time. A Cursed
@@ -264,30 +250,30 @@ the dream. A transaction is one of the most rigid shapes a mind can carry — a 
 bow — and everything else about him may have eroded around that one shape long before anyone
 noticed. Whether there's still someone "in there" running the transaction, or only the shape
 itself still executing, isn't answered here. `"The same hooded figure — or one just like it"`
-(§8.14) can be read literally: whatever holds this position may already have outlasted whoever
+(§8.3) can be read literally: whatever holds this position may already have outlasted whoever
 first held it.
 
-**The Hermit and the hooded figure are two people who went far down §11.7's line, in very
+**The Hermit and the hooded figure are two people who went far down §12.7's line, in very
 different directions. The Stranger went somewhere else entirely.** The party's own repeated
-exchanges at `blood-altar`/`sacrificial-circle` (§8.15) resemble the same early steps the Hermit
+exchanges at `blood-altar`/`sacrificial-circle` (§8.5) resemble the same early steps the Hermit
 and the hooded figure once took — not because any of it is scripted to happen, but because that
-resemblance is what §11.5's unawareness looks like from outside, on the rare person who walks far
+resemblance is what §12.5's unawareness looks like from outside, on the rare person who walks far
 enough into it. Neither of them is a destination waiting for the party. They're what "far enough"
 has looked like on two people who aren't the party, and never will be.
 
-## 11.9 Deliberately left open (do not resolve these in future writing)
+## 12.9 Deliberately left open (do not resolve these in future writing)
 
 - Whether the Covenant's ritual genuinely stabilizes anything, or only claims credit for locations
-  that were always going to recur (§11.6).
+  that were always going to recur (§12.6).
 - Whether Guardians are actually guarding anything, or "guard" is simply the first word a
-  frightened, ritual-minded person reached for (§11.6).
+  frightened, ritual-minded person reached for (§12.6).
 - Whether the Stranger actually "won" against the dream, or was simply never worth touching in the
   first place.
 - Whether the hooded figure is still, in any sense, a continuous person — or purely a
   self-sustaining pattern.
 - Who the Hermit's companion was, and what happened to them.
 - Whether the Covenant's "warden" or "worshipper" reading is closer to true.
-- Whether any given descent is a pull answered or a choice made — see §11.5.
+- Whether any given descent is a pull answered or a choice made — see §12.5.
 - Whether Sleeper could ever fully wake, or is only ever further dying — never state a direction.
   When writing anything that makes the dream feel more dangerous with depth, it's worth
   occasionally balancing it with something that could just as easily read as weakening — the point
@@ -299,7 +285,7 @@ has looked like on two people who aren't the party, and never will be.
   which asserts a mechanism nobody in-fiction, including this document, actually has grounds to
   claim.
 
-These aren't gaps to fill later. Leaving them open is the point — see §8.13's existing principle.
+These aren't gaps to fill later. Leaving them open is the point — see §8.2's existing principle.
 This bible resolves *tendencies*, not verified facts.
 
 **The 1 confirmed exception**: the true ending (`10-event-narrative.md` Part F.5, floor 120)
@@ -310,12 +296,12 @@ this list — and the founder's own account is framed as his, not as this docume
 so a player is never told which parts of what he says to trust. Reaching the deepest point in the
 game earns some real answers; it does not unlock permission to resolve the rest of this section.
 
-## 11.10 A note on motive
+## 12.10 A note on motive
 
-One idea underneath all of §11 is worth stating outright, because it's easy to lose track of while
+One idea underneath all of §12 is worth stating outright, because it's easy to lose track of while
 writing individual events: **the dream doesn't read why a cost was paid, only that it was.** A
 sacrifice made out of desperate love and a sacrifice made out of greed look identical to it. A
-sacred toll and a desperate rescue attempt (§11.12 — `blood-altar` and `collapsed-floor` sharing a
+sacred toll and a desperate rescue attempt (§12.12 — `blood-altar` and `collapsed-floor` sharing a
 category and a counter) are the same shape to something that only tracks shape.
 
 This isn't an oversight to patch. **Humans need a reason. The dream only needs the transaction.**
@@ -330,17 +316,17 @@ describes it, would register any difference at all if the same shape of cost wer
 opposite reason. If it wouldn't, the event is on-theme. If the dream starts seeming to care which
 reason it was, the setting has quietly drifted.
 
-## 11.11 Writing guidance for future event/flavor text
+## 12.11 Writing guidance for future event/flavor text
 
-- Never name "Sleeper" or "Covenant" in player-facing text, per §8.13 — this document doesn't
+- Never name "Sleeper" or "Covenant" in player-facing text, per §8.2 — this document doesn't
   change that rule, it only makes sure new text agrees with what's true underneath the silence.
 - Never let "the Balance" become a term a player could learn or name. It should only ever surface
   through concrete images — *something is always taken*, *nothing leaves unchanged*, *you give
   something, something else moves* — never as a named mechanism a character could explain or a
   player could look up.
-- Keep §11.2 in mind: describe the dream as having *tendencies*, not rules. A future writer reading
+- Keep §12.2 in mind: describe the dream as having *tendencies*, not rules. A future writer reading
   this bible should come away with a mood, not a spec.
-- **Agency stays real, always.** When writing anything at stage 3-4 of §11.5's drift, the
+- **Agency stays real, always.** When writing anything at stage 3-4 of §12.5's drift, the
   character is still choosing — what's changed is that they've stopped asking why. Never write a
   scene where the dream makes the choice and the game merely narrates it as the character's own;
   that's a different, weaker kind of horror than the one this world is built on.
@@ -359,7 +345,7 @@ reason it was, the setting has quietly drifted.
   - a sound that repeats itself once too precisely, a fraction of a beat off from the first time
   - a gesture performed exactly the same way every time, until once it's performed with one small,
     wrong difference
-  - the spiral mark (§11.6), glimpsed somewhere it has no reason to be
+  - the spiral mark (§12.6), glimpsed somewhere it has no reason to be
   - an object that's shifted position between one glance and the next, with nobody having touched
     it
   - a line of dialogue that quietly loses its subject or its tense partway through, as if the
@@ -367,10 +353,10 @@ reason it was, the setting has quietly drifted.
 
   Any one of these, used once, does more work than a paragraph of explanation. Don't use more than
   one per scene — see the one-observable-change rule above.
-- If a new recurring NPC is ever added, decide first whether they belong on §11.7's line of
+- If a new recurring NPC is ever added, decide first whether they belong on §12.7's line of
   contact or run parallel to it the way the Stranger does — and give them their own
-  self-description (in the style of §11.8), not a slot on a spectrum.
-- A reflection stance (§8.16) can *echo* toward one of §11.8's figures in later text, but should
+  self-description (in the style of §12.8), not a slot on a spectrum.
+- A reflection stance (§8.6) can *echo* toward one of §12.8's figures in later text, but should
   never be written as a strict classifier — a wary party can still end up consumed; a curious
   party can still stay disciplined. Treat it as a leaning, not a verdict. If an implementation
   ever makes this mapping feel deterministic, that's the implementation overreaching, not the
@@ -378,12 +364,13 @@ reason it was, the setting has quietly drifted.
 - Depth = proximity to Sleeper's dreaming core. A floor-depth-gated reveal should read as "getting
   closer," not as "unlocking a new area."
 
-## 11.12 Where each event sits in the Balance
+## 12.12 Where each event sits in the Balance
 
-Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§11.4).
-Check this before touching an event's flavor text. The original 11 are transactions of some kind;
-8 more were added later (`10-event-narrative.md` Part C) — most of those carry no transaction at
-all, which is its own facet, not an oversight.
+Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§12.4).
+Check this before touching an event's flavor text. Of the first 11, all but `open-chest` are
+transactions of some kind; the 8 narrative-layer events (`10-event-narrative.md` Parts C.3 and D)
+mostly carry no transaction at all, which is its own facet, not an oversight. The table covers
+these nineteen only: `the-wanderer`, `the-one-who-stayed` and `the-gatekeeper` sit outside it.
 
 | Event | Facet |
 |---|---|
@@ -391,10 +378,10 @@ all, which is its own facet, not an oversight.
 | `guardian-fight` / `desecrated-altar` | Enforcement — a toll not offered as a choice; avoiding it long enough forces payment anyway (Chain 1) |
 | `merchant` | Commerce — the Balance domesticated into something that looks fully transparent: known price, known goods |
 | `blood-altar` | Submission — blind sacrifice of the body for an unknown return; the rawest form, closest to literal worship |
-| `collapsed-floor` | Submission, framed as heroism — the same HP-for-uncertain-outcome shape as `blood-altar`, wrapped in a different human story; the dream doesn't read the difference (§11.10) |
+| `collapsed-floor` | Submission, framed as heroism — the same HP-for-uncertain-outcome shape as `blood-altar`, wrapped in a different human story; the dream doesn't read the difference (§12.10) |
 | `cursed-shrine` | Informed risk — the same submission as `blood-altar`, seen in full before it's accepted |
 | `twin-altars` | Scarcity — a choice refused the option of being avoided or doubled; the price is the option not taken |
-| `sacrificial-circle` | Escalating dependence — like-for-like trade that, repeated, stops requiring consent (Chain 2) — the clearest small-scale preview of §11.5's unawareness |
+| `sacrificial-circle` | Escalating dependence — like-for-like trade that, repeated, stops requiring consent (Chain 2) — the clearest small-scale preview of §12.5's unawareness |
 | `wandering-hermit` | Correction — the one place damage already done can be reversed, run by the one person with a hard-won, unexplainable feel for how |
 | `gambling-den` | Imitation — a human-made copy of the shape (stakes, odds, doubling) that never actually touches Sleeper; Balance-shaped, not Balance-real |
 | `old-count` | Outside the Balance — a stranger's compulsion, not an exchange; nothing offered, nothing taken |
@@ -407,17 +394,17 @@ all, which is its own facet, not an oversight.
 | `still-breathing` | Evidence, not a transaction — the deepest evidence in the game, and still no cost attached to finding it |
 
 **A detail worth protecting in any future HP-cost writing**: `blood-altar` and `collapsed-floor`
-share Chain 3's counter (§8.15), and now share a category above, despite one being ritual/Covenant
-and the other plain heroism. That's not a coincidence to explain away — it's §11.10's point made
+share Chain 3's counter (§8.5), and share a category above, despite one being ritual/Covenant
+and the other plain heroism. That's not a coincidence to explain away — it's §12.10's point made
 mechanical: **the dream doesn't read why a cost was paid, only that it was.** Don't give
 `collapsed-floor` a "moral" flavor implying its HP cost is somehow cleaner than `blood-altar`'s —
 to whatever in the dream is counting, they're the same act, and this bible should keep saying so
 consistently, not just where it's convenient.
 
-## 11.13 Chain escalation tiers and reflection stances, resolved
+## 12.13 Chain escalation tiers and reflection stances, resolved
 
-**Deeper chain escalation tiers** — a tier-2 escalation (well past the current single threshold,
-§8.15) should read as a further step down §11.5's drift, from dependence toward unawareness: not
+**Deeper chain escalation tiers** — a tier-2 escalation (past a chain's first threshold,
+§8.5) should read as a further step down §12.5's drift, from dependence toward unawareness: not
 just "the exchange no longer asks," but the encounter's *specificity* starting to erode, sounding
 less like something happening to this party in this place and more like a transaction being
 processed. Concrete draft lines per chain, and the reasoning behind each, are tracked in
@@ -426,19 +413,19 @@ live; this section only needs to state the direction, not the wording. Exact thr
 balance decision, not a lore one.
 
 **Does a reflection stance ever pay off?** — Yes, as flavor only, never as a mechanical effect
-(§8.16's "purely characterization" rule is unchanged). Per §11.11, this is a *leaning*, not a
+(§8.6's "purely characterization" rule is unchanged). Per §12.11, this is a *leaning*, not a
 classifier — and each stance should be able to echo toward more than one place, so that no single
 stance quietly reads as the "wrong" one to pick:
 
 - Consistently **dismissive** can read, in later text, like the Stranger's protective flatness —
   or, just as easily, like a party that's stopped caring about its own choices entirely, which is
-  its own quiet way of drifting toward §11.5's unawareness.
+  its own quiet way of drifting toward §12.5's unawareness.
 - Consistently **wary** can read like the Hermit's hard-won carefulness — or like a vigilance
   tipped into its own obsession, the same kind of thing that leaves a mind "cracked open" enough
-  for the Call to find in the first place (§11.5).
+  for the Call to find in the first place (§12.5).
 - Consistently **curious** can read like the pull that, carried far enough, wears someone down
   toward the hooded figure's shape — or like the same curiosity that built the Covenant's
-  communion reading (§11.6): wanting to understand, not just wanting more.
+  communion reading (§12.6): wanting to understand, not just wanting more.
 
 No stance should consistently point toward only the frightening reading or only the sympathetic
 one. If a future implementation ever makes one stance reliably "the bad one," that asymmetry is a
@@ -446,4 +433,4 @@ bug in the writing, not a reflection of anything true about curiosity, wariness,
 trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the
 party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
 `EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
-Part A for the full mechanical writeup.
+Part B.3 for the full mechanical writeup.

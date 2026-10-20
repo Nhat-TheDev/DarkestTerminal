@@ -1,7 +1,7 @@
 import type { GameState } from "../../src/types";
 import type { EngineContext } from "../../src/engine/combat";
 
-/** One problem a check found. `detail` must not name the screen or seed — the report groups findings by `type` + `detail`. */
+/** `detail` must not name the screen or seed: the report groups findings by `type` + `detail`. */
 export interface Finding {
   type: string;
   detail: string;
@@ -75,12 +75,10 @@ export function findInvariantViolations(state: GameState, ctx: EngineContext): F
   return [...new Set(found)].map((detail) => ({ type: "invariant", detail }));
 }
 
-/** What the footer advertises, read off the screen the way a player reads it. */
 export interface FooterInfo {
   text: string;
-  /** Keys a bot may press, as `mockInput.pressKey` names. Ctrl+C is left out. */
+  /** As `mockInput.pressKey` names them; Ctrl+C is left out. */
   keys: string[];
-  /** Every digit any hint advertises (`[1-4]`, `[5]`). */
   digits: Set<number>;
   hasPaging: boolean;
   /** A `[` with no closing `]` — the footer was cut mid-token. */
@@ -89,7 +87,6 @@ export interface FooterInfo {
 
 const BOX_CHARS = /^[┌└│├─┐┘]/;
 
-/** The footer sits below the last panel: the trailing non-blank lines that don't start with a box border. */
 export function footerText(frame: string): string {
   const lines = frame.split("\n").map((l) => l.trimEnd());
   while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
@@ -125,7 +122,6 @@ export function parseFooter(text: string): FooterInfo {
   return { text, keys: [...keys], digits, hasPaging, broken: lastOpen > text.lastIndexOf("]") };
 }
 
-/** What a keypress changed; A3 decides from this whether an advertised key did nothing or an unadvertised one did something. */
 export interface KeyEffect {
   key: string;
   advertised: boolean;
@@ -153,7 +149,7 @@ export function classifyKeyEffect(effect: KeyEffect, footer: FooterInfo): { fail
   return { failures: [], warnings: [] };
 }
 
-/** The always-available global hint every footer ends with — if it is visible, nothing to its left was cut. */
+/** Every footer ends with this; if it is visible, nothing to its left was cut. */
 export const LAST_GLOBAL_HINT = "[Ctrl+C] Quit";
 
 export function findFooterIssues(footer: FooterInfo): Finding[] {
@@ -164,7 +160,6 @@ export function findFooterIssues(footer: FooterInfo): Finding[] {
   return found;
 }
 
-/** Panels that must be on screen, and how many content rows the main (choices) panel must keep. */
 export interface LayoutRequirement {
   panelTitles: string[];
   mainPanelTitle: string;
@@ -187,7 +182,6 @@ export function findLayoutIssues(frame: string, req: LayoutRequirement): { failu
   return { failures, warnings };
 }
 
-/** Rows inside the border of the panel titled `title`, or null when it is not on screen. */
 export function panelContentRows(lines: string[], title: string): number | null {
   const top = lines.findIndex((l) => l.includes(`─${title}`));
   if (top < 0) return null;

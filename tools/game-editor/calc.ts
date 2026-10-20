@@ -1,7 +1,3 @@
-// Balance-calculation core for the rebalance editor. Formulas are imported straight from the
-// real engine/data modules, so results never drift; this file only adds read-only derived views
-// (growth breakdowns, %maxHp, hits-to-kill, EV per round, ...) and never mutates game state.
-
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
 import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
@@ -37,13 +33,7 @@ export function badInput(message: string): { error: string } {
   return { error: message };
 }
 
-// ---------------------------------------------------------------------------
-// Balance Points — character and monster formulas share the same shape,
-// including the speed term. Rates are read via growthBonus() rather than
-// hand-copied, so this never drifts from level-growth.json.
-// ---------------------------------------------------------------------------
-
-/** Hand-picked constant, not derived from any growth table — speed never scales for char or monster. */
+/** Hand-picked: speed has no growth curve to derive a rate from. */
 const BALANCE_POINTS_SPEED_RATE = 12;
 
 function balancePointsRate(stat: GrowthStat): number {
@@ -64,10 +54,6 @@ export function characterBalancePoints(base: { attack: number; defense: number; 
 export function monsterBalancePoints(base: { attack: number; defense: number; hp: number; speed: number }): number {
   return base.attack / balancePointsRate("attack") + base.defense / balancePointsRate("defense") + base.hp / balancePointsRate("maxHp") + base.speed / BALANCE_POINTS_SPEED_RATE;
 }
-
-// ---------------------------------------------------------------------------
-// Catalog (static reference data for populating the UI)
-// ---------------------------------------------------------------------------
 
 export function getCatalog() {
   return {
@@ -119,10 +105,6 @@ export function getCatalog() {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Character inspector
-// ---------------------------------------------------------------------------
-
 export interface CharacterComputation {
   classId: string;
   level: number;
@@ -130,13 +112,11 @@ export interface CharacterComputation {
   growthBonusUnweighted: Record<GrowthStat, number>;
   growthBonusWeighted: Record<GrowthStat, number>;
   final: { maxHp: number; maxMp: number; attack: number; defense: number; magicPower: number; aggro: number; speed: number };
-  /** Base-stat Balance Points — computed off `base`, not `final`/leveled stats. */
   balancePoints: number;
   unlockedSkillIds: string[];
   skills: (SkillDefinition & { unlocked: boolean; rankInfo: { current: number; total: number; nextUnlockLevel: number | null } | null })[];
 }
 
-/** Which rank of `skill` is active at `level`, plus when the next one (if any) unlocks. Null if the skill has no ranks. */
 function rankInfoAt(skill: SkillDefinition, level: number): { current: number; total: number; nextUnlockLevel: number | null } | null {
   if (!skill.ranks || skill.ranks.length === 0) return null;
   const sorted = [...skill.ranks].sort((a, b) => a.rank - b.rank);
@@ -188,40 +168,28 @@ export function computeCharacter(classId: string, level: number): CharacterCompu
   };
 }
 
-// ---------------------------------------------------------------------------
-// Monster inspector
-// ---------------------------------------------------------------------------
-
 export interface MonsterComputation {
   archetypeId: string;
   depth: number;
   tier: MonsterTier;
   base: { hp: number; attack: number; defense: number; speed: number };
-  /** Base-stat Balance Points — computed off `base`, before eliteMultiplier/bossMultiplier or floor-depth scaling. */
   balancePoints: number;
-  /** Raw depth-growth curve, before monsterType's weight — mirrors a character's growthBonusUnweighted. */
   growthBonus: { maxHp: number; attack: number; defense: number };
-  /** growthBonus × monsterType's weight (monsterGrowthBonus — mirrors classGrowthBonus for characters).
-   *  Added to `base` BEFORE tier/depth-buff/race scale the total — monsterType never touches `base` itself. */
+  /** Added to `base` before tier, depth buff and race scale the total. */
   growthBonusWeighted: { maxHp: number; attack: number; defense: number };
   monsterType: MonsterArchetype["monsterType"];
   typeMultiplier: { maxHp: number; attack: number; defense: number };
   multiplier: { maxHp: number; attack: number; defense: number; exp: number } | null;
-  /** Depth-bracket buff (level-growth.json's monsterDepthBuffBracket*) — applied by spawnMonster()
-   *  on top of growth/type/tier multipliers, per stat via depthBuffStatCoefficients. 0 before the
-   *  first bracket floor. */
+  /** Applied after growth/type/tier, per stat via depthBuffStatCoefficients; 0 before the first bracket floor. */
   depthBuffPercent: number;
   depthBuffStatCoefficients: { maxHp: number; attack: number; defense: number };
-  /** Race+subRace+traits statBuff, resolved and summed (resolveRaceProfile) — the last multiplicative
-   *  factor spawnMonster applies, after type/tier/depth-buff. 0 for a race/subRace/trait combo with
-   *  no statBuff on that stat. */
+  /** The last multiplier spawnMonster applies, after type/tier/depth buff. */
   raceStatBuffPercent: { maxHp: number; attack: number; defense: number };
   final: { hp: number; maxHp: number; attack: number; defense: number; speed: number; expReward: number };
   isBossFloor: boolean;
   skillKit: {
     basicAttack: { amount: number };
-    /** Every skill the archetype can roll, at any tier. Whether one is reachable at the tier being
-     *  computed is `actionWeights` — it is listed there exactly when it is. */
+    /** Skills at any tier; one is reachable at this tier only if `actionWeights` lists it. */
     skills: SkillDefinition[];
     /** Outside the weighted roll: charges a turn, then always releases. Boss tier only. */
     execute: SkillDefinition | null;
@@ -276,24 +244,18 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
   };
 }
 
-// ---------------------------------------------------------------------------
-// Damage calculator (freeform + skill-against-target previews)
-// ---------------------------------------------------------------------------
-
 export interface DamageBreakdown {
   offense: number;
   defense: number;
   effectiveDefense: number;
   amount: number;
   mitigatedOffense: number;
-  /** Damage the hit would deal if the target had 0 effective defense (amount + offense, fear-adjusted). */
   unmitigatedTotal: number;
-  /** How much of that unmitigated damage was removed by defense, as a percentage of unmitigatedTotal. */
   defenseReductionPercent: number;
   rawTotal: number;
   fearDamageMultiplier: number;
   finalDamage: number;
-  /** The range one hit reads over, by `combat.damageVariancePercent`: what a single swing can show, not an average. */
+  /** Range of a single hit under damage variance, not an average. */
   finalDamageMin: number;
   finalDamageMax: number;
   percentOfTargetMaxHp: number | null;
@@ -324,7 +286,6 @@ export function computeDamage(opts: {
   const variance = BALANCE.combat.damageVariancePercent / 100;
   const finalDamageMin = Math.max(1, Math.floor(rawTotal * (1 - variance)));
   const finalDamageMax = Math.max(1, Math.ceil(rawTotal * (1 + variance)));
-  // "Original" damage = the same hit against 0 defense; the gap to finalDamage is what defense removed.
   const unmitigatedTotal = (amount + offense) * fearDamageMultiplier;
   const defenseReductionPercent = unmitigatedTotal > 0 ? Math.max(0, (1 - rawTotal / unmitigatedTotal) * 100) : 0;
   const hitChancePercent = sourceIsCharacter ? (1 - getFearAccuracyPenalty(fearTier)) * 100 : 100;
@@ -359,18 +320,13 @@ export interface SkillDamagePreview {
   skillName: string;
   target: string;
   perEffect: (DamageBreakdown & { effectAmount: number; effectChancePercent: number | null; appliesStatusEffectId?: string })[];
-  /** `damage` effects that override their target to "self" (e.g. Self-Destruct) — resolved
-   *  against the CASTER, never the enemy target, mirroring resolveSkillEffect's `isSelfTick`
-   *  path (flat `amount`, no offense/defense/mitigation involved at all). Kept out of `perEffect`
-   *  and every total* below so a self-inflicted hit never gets folded into "damage dealt to the
-   *  enemy" or mitigated by the enemy's defense. */
+  /** Self-targeting damage, resolved against the caster; kept out of `perEffect` and the totals. */
   selfEffects: { effectAmount: number; finalDamage: number; percentOfCasterMaxHp: number | null; killsSelf: boolean | null }[];
   totalUnmitigatedDamage: number;
   totalFinalDamage: number;
   totalExpectedDamage: number;
 }
 
-/** Previews every `damage` effect of a skill against a single defense/maxHp target. Non-damage effects (heal/status/etc.) are omitted from the numeric preview but their status-effect ids are still attached where relevant so the caller can look them up. */
 export function previewSkillDamage(
   skill: SkillDefinition,
   source: { attack: number; magicPower?: number; maxHp?: number },
@@ -380,15 +336,10 @@ export function previewSkillDamage(
 ): SkillDamagePreview {
   const baseOffense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
   const allDamageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
-  // Matches applySkillEffects' isOverrideEffect check in src/engine/combat.ts for a damage effect:
-  // a `target` that differs from the skill's own target resolves against a separate population —
-  // for "self" specifically, that population is just the caster.
+  // Mirrors combat.ts isOverrideEffect: a "self" effect on a non-self skill hits only the caster.
   const selfDamageEffects = allDamageEffects.filter((e) => e.target === "self" && e.target !== skill.target);
   const damageEffects = allDamageEffects.filter((e) => !(e.target === "self" && e.target !== skill.target));
   const perEffect = damageEffects.map((e) => {
-    // Mirrors resolveSkillEffect's offenseMultiplier in src/engine/resolver.ts — an effect that
-    // scales the caster's offense before mitigation (e.g. Self-Destruct's 200%) must apply that
-    // scaling here too, or this preview understates/overstates the damage the real engine deals.
     const offense = baseOffense * ((e.offenseMultiplierPercent ?? 100) / 100);
     const breakdown = computeDamage({
       offense,
@@ -403,8 +354,7 @@ export function previewSkillDamage(
     return { ...breakdown, effectAmount: e.amount ?? 0, effectChancePercent: e.chance !== undefined ? e.chance * 100 : null };
   });
   const selfEffects = selfDamageEffects.map((e) => {
-    // isSelfTick in resolveSkillEffect: flat `amount`, no offense/defense/crit/mitigation at all
-    // (race resist/weak is skipped here too — this preview doesn't model race anywhere else either).
+    // Like resolveSkillEffect's isSelfTick: flat `amount`, no mitigation. Race resist/weak is not modeled.
     const finalDamage = Math.max(1, Math.round(e.amount ?? 0));
     return {
       effectAmount: e.amount ?? 0,
@@ -427,7 +377,6 @@ export function previewSkillDamage(
 
 const BASIC_ATTACK_SKILL: SkillDefinition = { id: "basic-attack", name: "Basic Attack", description: "The free, unassigned slot-0 attack every character/monster has.", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 0 }], slot: 0, unlockLevel: 1 };
 
-/** Looks up a skill by id across every catalog, so the UI can preview any skill without knowing its source. */
 export function findSkillById(skillId: string): SkillDefinition | undefined {
   if (skillId === "basic-attack") return BASIC_ATTACK_SKILL;
   try {
@@ -446,14 +395,12 @@ export function computeSkillPreview(opts: {
   skillId: string;
   sourceAttack: number;
   sourceMagicPower?: number;
-  /** The caster's own maxHp — only needed to preview a self-targeting effect (e.g. Self-Destruct)
-   *  as "% of own maxHp" / "kills the caster". Omitted, those fields just come back null. */
+  /** Only used by self-targeting effects; omitted, their caster-hp fields are null. */
   sourceMaxHp?: number;
   targetDefense: number;
   targetMaxHp?: number;
   fearTier?: FearTier;
   sourceIsCharacter?: boolean;
-  /** When the source is a character, resolves the skill to the rank active at this level (see getEffectiveSkill). No-op for monster skills, which have no ranks. */
   characterLevel?: number;
 }): SkillDamagePreview | { error: string } {
   let skill = findSkillById(opts.skillId);
@@ -470,10 +417,6 @@ export function computeSkillPreview(opts: {
     opts.sourceIsCharacter ?? true
   );
 }
-
-// ---------------------------------------------------------------------------
-// Matchup — character vs monster, both directions
-// ---------------------------------------------------------------------------
 
 export function computeMatchup(opts: { classId: string; level: number; archetypeId: string; depth: number; tier: MonsterTier; fearTier?: FearTier }) {
   const character = computeCharacter(opts.classId, opts.level);
@@ -496,8 +439,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
   const weightTotal = weights ? Object.values(weights).reduce((a: number, b) => a + (b ?? 0), 0) : 0;
   const weightPercent = (key: string) => (weights && weightTotal > 0 ? ((weights[key] ?? 0) / weightTotal) * 100 : null);
 
-  // Gated by the weights of the tier being computed, not by what the archetype owns overall — a
-  // skill the archetype has but this tier never names is simply absent from the table.
   incoming.push({ ...previewSkillDamage(BASIC_ATTACK_SKILL, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent("basicAttack") });
   for (const skill of monster.skillKit.skills) {
     if (!weights || weights[skill.id] === undefined) continue;
@@ -522,10 +463,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
   };
 }
 
-// ---------------------------------------------------------------------------
-// Floor depth <-> average character level projection
-// ---------------------------------------------------------------------------
-
 export interface LevelByDepthRow {
   depth: number;
   isBossFloor: boolean;
@@ -537,12 +474,11 @@ export interface LevelByDepthRow {
 
 const LEVEL_BY_DEPTH_SEED_STRIDE = 104729;
 
-/** The Rng seed `simulateLevelByDepth` generates the floors of its seed number `seed` from. */
 export function levelByDepthFloorSeed(seed: number): number {
   return seed * LEVEL_BY_DEPTH_SEED_STRIDE + 7;
 }
 
-/** Replays createFloor from floor 1, walking one random path per floor (entry room to the last stage) and summing the expReward of the monsters in the rooms on that path, averaged across `seeds` seeds. */
+/** Walks one random entry-to-end path per floor from floor 1 and averages the cumulative exp over `seeds` seeds. */
 export function simulateLevelByDepth(seeds: number, maxDepth: number): LevelByDepthRow[] {
   if (!Number.isFinite(seeds) || seeds < 1 || seeds > 500) throw new Error("seeds must be an integer in [1, 500].");
   if (!Number.isFinite(maxDepth) || maxDepth < 1 || maxDepth > 500) throw new Error("maxDepth must be an integer in [1, 500].");

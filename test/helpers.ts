@@ -38,7 +38,6 @@ export function pickAnyAction(
   return { skillId: skill.id, targets };
 }
 
-/** Pins fields of `BALANCE.combat` for the enclosing describe and puts them back after it. */
 export function pinCombatBalance(values: Partial<typeof BALANCE.combat>): void {
   const saved: Partial<typeof BALANCE.combat> = {};
   beforeAll(() => {

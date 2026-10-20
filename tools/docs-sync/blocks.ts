@@ -3,9 +3,8 @@ import { renderMarkdown } from "./render";
 import type { DocsData, Finding, GeneratorSpec } from "./types";
 
 interface Block {
-  /** Text between `docs:begin` and `-->`. */
   marker: string;
-  /** 0-based line indexes of the two marker lines. */
+  /** 0-based indexes of the two marker lines. */
   begin: number;
   end: number;
 }
@@ -55,11 +54,9 @@ function parseMarker(marker: string): { name: string; args: Record<string, strin
 export interface BlockSyncResult {
   text: string;
   errors: Finding[];
-  /** One entry per block whose content differs from what its generator produces. */
   stale: Finding[];
 }
 
-/** Regenerates every block in `text`. Nothing outside the markers is touched. */
 export function syncBlocks(file: string, text: string, registry: Registry, data: DocsData): BlockSyncResult {
   const lines = text.split("\n");
   const { blocks, errors } = findBlocks(file, lines);

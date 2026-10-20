@@ -315,7 +315,7 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
 
       saveRun(game);
       const save = loadSave("slot1");
-      delete save.summons; // simulates a save written before this field existed
+      delete save.summons; // as written before this field existed
 
       const resumed = gameFromSave(save, "slot1");
 

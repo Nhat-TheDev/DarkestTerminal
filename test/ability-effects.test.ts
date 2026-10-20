@@ -16,7 +16,6 @@ import { CLASSES } from "../src/data/classes";
 import { buildRewardEntries } from "../src/ui/state";
 import type { LogEntry, SkillDefinition } from "../src/types";
 
-/** Expected delta of an Ability `statBoost` on a pre-equipment `base`, per the documented minPercent rule. Deliberately independent of the engine so the test checks the hook against the data, and data edits can't silently break it again. */
 function expectedAbilityStatBoost(abilityId: string, stat: string, base: number): number {
   const effect = getAbility(abilityId).effects.find((e) => e.kind === "statBoost" && "stat" in e && e.stat === stat) as
     | { amount: number; minPercent?: number }
@@ -44,7 +43,7 @@ describe("Abilities: stat boosts", () => {
     c.equippedAbilityId = null;
     recomputeCharacterStats(c, 0);
     const exhaustedAttack = c.attack;
-    expect(exhaustedAttack).toBeLessThan(base.attack); // satiety 0 really is penalizing
+    expect(exhaustedAttack).toBeLessThan(base.attack);
 
     c.equippedAbilityId = "battle-instinct";
     recomputeCharacterStats(c, 0);
@@ -385,9 +384,7 @@ function wipeParty(game: Game): void {
     c.hp = 0;
     c.isAlive = false;
   }
-  // `triggerDefeat` is private — this is the exact same transition `postMoveCheck`/`resolve()`
-  // trigger internally on a real party wipe; reaching it directly keeps this test independent of
-  // the combat pipeline that would otherwise be needed to produce a wipe.
+  // `triggerDefeat` is private; it is the transition `postMoveCheck`/`resolve()` run on a real wipe.
   (game as unknown as { triggerDefeat: () => void }).triggerDefeat();
 }
 
@@ -491,9 +488,7 @@ describe("Elite/Boss ability unlock: revealed on the room-clear reward screen, l
 describe("Abilities: run entry", () => {
   test("an equipped Ability's stat boost is live before the first combat, at full hp", () => {
     const classIds = CLASSES.map((c) => c.id);
-    // thornhide grants a maxHp statBoost (amount 60, minPercent 10); battle-instinct grants an
-    // attack statBoost (amount 5, minPercent 5) — each resolved against the character's
-    // pre-equipment base (a fresh run starts at level 1, satiety 100 → no Exhausted multiplier).
+    // Each boost resolves against the level-1 pre-equipment base (satiety 100: no Exhausted multiplier).
     const game = new Game(11, classIds, undefined, ["thornhide", "battle-instinct"]);
     const [vanguard, mage] = game.state.party;
     const vanguardMaxHp = statsForLevel(getClass(vanguard!.classId), vanguard!.level).maxHp;
@@ -503,8 +498,7 @@ describe("Abilities: run entry", () => {
     expect(vanguard!.hp).toBe(vanguard!.maxHp);
     expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 
-    // The bonus must survive the first recompute rather than being clamped away into a permanent
-    // hp shortfall — `recomputeCharacterStats` only ever clamps hp down.
+    // `recomputeCharacterStats` only clamps hp down, so the bonus must survive it.
     recomputeCharacterStats(vanguard!, game.state.satiety);
     expect(vanguard!.hp).toBe(vanguard!.maxHp);
   });

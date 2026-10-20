@@ -23,10 +23,6 @@ function toFearTier(value: unknown): FearTier {
   return (n === 1 || n === 2 || n === 3 || n === 4 ? n : 1) as FearTier;
 }
 
-// ---------------------------------------------------------------------------
-// File I/O
-// ---------------------------------------------------------------------------
-
 async function readJsonFile(name: string): Promise<unknown> {
   const raw = await readFile(path.join(DATA_DIR, name), "utf8");
   return JSON.parse(raw);
@@ -35,10 +31,6 @@ async function readJsonFile(name: string): Promise<unknown> {
 async function writeJsonFile(name: string, data: unknown): Promise<void> {
   await writeFile(path.join(DATA_DIR, name), JSON.stringify(data, null, 2) + "\n", "utf8");
 }
-
-// ---------------------------------------------------------------------------
-// Rebalance Editor Logics
-// ---------------------------------------------------------------------------
 
 function applyNumericPatch(target: Record<string, unknown>, patch: Record<string, unknown>, allowedKeys: readonly string[]): string | null {
   for (const [key, value] of Object.entries(patch)) {
@@ -82,10 +74,6 @@ function applyTierRangePatch(target: Record<string, unknown>, patch: Record<stri
   }
   return null;
 }
-
-// ---------------------------------------------------------------------------
-// Sprite Editor Logics
-// ---------------------------------------------------------------------------
 
 interface SpriteData {
   rows: string[];
@@ -139,15 +127,6 @@ function validateSprite(sprite: unknown, category: Category): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Auto sprite placeholders — a monster archetype with no sprite for one of its
-// roles fails assertMonsterSpritesConsistent() and takes the whole game/test
-// suite down with it (see src/ui/sprites.ts). Creating an archetype through
-// the Data Editor is exactly how that gap gets introduced, so a brand new
-// entry gets a blank, valid placeholder for every role it declares — never
-// overwrites a sprite that already exists.
-// ---------------------------------------------------------------------------
-
 const ROLE_TO_SPRITE_CATEGORY: Record<MonsterTier, Category> = { normal: "monsters", elite: "elites", boss: "bosses" };
 
 function emptySprite(category: Category): SpriteData {
@@ -156,6 +135,8 @@ function emptySprite(category: Category): SpriteData {
   return { rows: Array.from({ length: height }, () => ".".repeat(width)), palette: {} };
 }
 
+// A role with no sprite fails assertMonsterSpritesConsistent() and crashes the game and tests,
+// so a new archetype gets a blank placeholder per role.
 async function ensureMonsterSprites(entry: { id: string; roles?: MonsterTier[] }): Promise<void> {
   const categories = [...new Set((entry.roles ?? []).map((r) => ROLE_TO_SPRITE_CATEGORY[r]))];
   if (categories.length === 0) return;
@@ -170,12 +151,6 @@ async function ensureMonsterSprites(entry: { id: string; roles?: MonsterTier[] }
   }
   if (changed) await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
 }
-
-// ---------------------------------------------------------------------------
-// Data Editor Logics — generic CRUD over any data/*.json file that's a flat
-// array of objects with a unique `id` (monsters, artifacts, items, status
-// effects, monster skills all share this shape).
-// ---------------------------------------------------------------------------
 
 const ENTITY_TYPES = ["monster", "artifact", "item", "status", "monster-skill"] as const;
 type EntityType = (typeof ENTITY_TYPES)[number];
@@ -207,17 +182,13 @@ type ItemEntry = { id: string; tier?: string; archetypeIds?: string[]; effects?:
 
 const isTrophy = (item: ItemEntry | undefined): boolean => !!item?.archetypeIds?.length;
 
-/** A trophy is paired with an entry in data/barter.json, which this editor doesn't write; refuses edits that would leave the two files out of step (the game won't load them). */
+/** Trophies pair with data/barter.json, which this editor doesn't write, so edits that would desync the two are refused. */
 function trophyPairingError(before: ItemEntry | undefined, after: ItemEntry | undefined): string | null {
   if (!isTrophy(before) && !isTrophy(after)) return null;
   if (isTrophy(after) && after!.effects?.length) return "A trophy must have no effects.";
   const samePairing = isTrophy(before) && isTrophy(after) && before!.id === after!.id && before!.tier === after!.tier;
   return samePairing ? null : "Creating, deleting, renaming, re-tiering or converting a trophy needs a matching change in data/barter.json — edit items.json and barter.json together by hand.";
 }
-
-// ---------------------------------------------------------------------------
-// Server
-// ---------------------------------------------------------------------------
 
 Bun.serve({
   port: PORT,
@@ -491,10 +462,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
         if (pairingError) return badRequest(pairingError);
         entries.push(entry);
-        // Must run BEFORE writeJsonFile below: monsters.json is statically imported by src/data/monsters.ts,
-        // so writing it makes `bun --watch` restart this very process — any await placed after that write
-        // races the restart and can be cut off before it runs (sprites.json is never statically imported,
-        // so writing it here first doesn't trigger a restart of its own).
+        // Must run before writing monsters.json: that write makes `bun --watch` restart this process,
+        // cutting off any await after it. sprites.json isn't imported, so writing it doesn't restart.
         if (entityType === "monster") await ensureMonsterSprites(entry as { id: string; roles?: MonsterTier[] });
         await writeJsonFile(file, entries);
         return json({ ok: true });

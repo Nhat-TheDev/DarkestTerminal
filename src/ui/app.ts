@@ -83,14 +83,10 @@ const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
 const LOG_HEIGHT = 8;
-/** Below this many terminal rows the full layout can no longer show a 4-member party with no Ability
-    or status lines, so it goes compact: the Path panel is hidden, the Log keeps 3 lines and the
-    battlefield drops the blank rows it keeps for sprites taller than any on it — the Dungeon panel's
-    choices get that room. A party panel with more lines than that scrolls. */
+/** Below this many rows a bare 4-member party no longer fits the full layout, so it goes compact. */
 const COMPACT_LAYOUT_BELOW_ROWS = 61;
 const COMPACT_LOG_HEIGHT = 5;
 
-/** Room-progress icons: " " (blank) for combat/boss, "○" for event, "△" for rest. The current room always renders as "■" regardless of its type. */
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
 
@@ -114,15 +110,13 @@ export class App implements ScreenContext {
   private fullLogText: TextRenderable;
   private fullLogScroll: ScrollBoxRenderable;
   private fullLogJustOpened = false;
-  /** `runLogVersion` the run-log screen was last built from. */
   private fullLogBuiltFrom = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
-  /** A combat that ended before its last round was narrated: the enemy side, the Monsters panel and the round in the header are drawn from it until that reveal drains. */
+  /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
   private narratedCombat: CombatState | null = null;
-  /** Toasts written while no combat is open but a finished one is still being narrated: they join the reveal after its lines. */
+  /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
-  /** The screen the main panel last drew, so a new screen starts unscrolled. */
   private mainUi: UiState | null = null;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
@@ -131,9 +125,7 @@ export class App implements ScreenContext {
   /** Bumped on every append: runLog's length stops changing once it is full. */
   private runLogVersion = 0;
   private reveal = new RevealQueue();
-  /** HP change per unit over the lit session, worked out when it lights up (shown from its impact). */
   private focusDeltas = new Map<Id, number>();
-  /** Fear change per character over the lit session, shown once its fear beat comes. */
   private focusFearDeltas = new Map<Id, number>();
   private deltasFor: LogSession | null = null;
   private autoReveal: boolean;
@@ -249,9 +241,7 @@ export class App implements ScreenContext {
     this.root.add(footerBox);
 
     renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // Crossing COMPACT_LAYOUT_BELOW_ROWS changes panel heights, which only render() sets. OpenTUI
-    // shields keypress handlers from a throw but not resize listeners, so a draw error here is logged
-    // the same way rather than ending the run.
+    // OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
     renderer.on("resize", () => {
       try {
         this.render();
@@ -324,7 +314,6 @@ export class App implements ScreenContext {
     this.listPage = value;
   }
 
-  /** List length behind the current screen's digit-selectable options, or null if it isn't a paginated list. */
   private listCountFor(ui: UiState): number | null {
     switch (ui.kind) {
       case "pickItemOutOfCombat":
@@ -348,29 +337,21 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
-    // The Gatekeeper scene opens a new run, before the party is in any room.
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
       return;
     }
-    // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls, checked before
-    // anything else (including a pending artifact decision from that same boss kill).
+    // Checked before a pending artifact decision from the same boss kill.
     if (this.game.state.pendingEndingCheckpoint) {
       this.ui = { kind: "endingCheckpoint" };
       return;
     }
-    // Part F.5 — the founder's dialogue, same "block everything else" priority, checked right
-    // after the floor-100 checkpoint since it's the same kind of guaranteed, non-rolled beat.
     if (this.game.state.pendingFounderDialogue) {
       this.ui = { kind: "founderDialogue" };
       return;
     }
     if (this.game.state.gameOver) {
-      // Every terminal ending (not just ordinary defeat) clears this run's slot the same way —
-      // Stay/Let Go/Leave are conclusions, not a state a later Continue should ever resume from.
-      // "abilityBuyback" is also part of the post-death flow — the slot must still be cleared
-      // exactly once on the first transition into either screen, not re-fired every time
-      // syncUiToGameState is called while the buyback is still in progress.
+      // Cleared once, on the first transition into either post-death screen: this re-runs throughout the buyback.
       if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
         deleteSlot(this.game.currentSaveSlot);
         this.game.currentSaveSlot = null;
@@ -395,7 +376,6 @@ export class App implements ScreenContext {
       }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       const restOpen = room.type === "rest" && !room.cleared;
-      // Camp Reflection is armed on entering a Rest room but waits until the room's own choice is made.
       if (this.game.state.pendingCampReflectionTier !== null && !restOpen) {
         this.ui = { kind: "campReflection" };
         return;
@@ -417,9 +397,7 @@ export class App implements ScreenContext {
         this.ui = eventUiState(room.rolledEventId);
         return;
       }
-      // A cleared boss room is only ever left by the floor advance. The camp offer and the advance
-      // are held here rather than in the save, so a run reloaded between the boss kill and the
-      // advance picks the post-victory sequence back up instead of stranding the party.
+      // The camp offer and floor advance are not saved, so a run reloaded after the boss kill re-arms them here.
       if (room.type === "boss" && room.cleared) {
         this.pendingCampOffer = true;
         this.pendingFloorAdvance = true;
@@ -685,16 +663,12 @@ export class App implements ScreenContext {
     const room = getRoom(s.floor, s.currentRoomId);
     this.syncRoomLog();
 
-    // Reveal-state bookkeeping runs before the header/party/monster panels below so all of them can
-    // read the same "as of the last revealed log line" snapshot, instead of the header alone jumping
-    // straight to the live post-combat totals while HP/MP/status are still catching up to the log.
+    // Runs before the header/party/monster panels so they all read the same last-revealed snapshot.
     const combat = s.combat;
     const fresh: LogEntry[] = [];
-    // The combat whose round-start state a fresh reveal starts from: normally the current one, but the
-    // round that wipes the party ends the combat before this render runs.
+    // Not always the current combat: a party-wiping round ends the combat before this render runs.
     let revealSource = combat;
     if (combat !== this.observedCombat) {
-      // Whatever the previous combat logged after the last line this screen saw still has to be narrated.
       const finished = this.observedCombat;
       if (finished && finished.log.length > this.lastLogLength) {
         fresh.push(...finished.log.slice(this.lastLogLength));
@@ -704,8 +678,7 @@ export class App implements ScreenContext {
       this.lastLogLength = 0;
       this.displaySnapshot = null;
       this.displayPartySnapshot = null;
-      // A save loaded mid-fight or on the combat-over screen arrives with its resolved rounds already in
-      // the log: the player saw them before saving, so they are not replayed.
+      // A loaded save's resolved rounds were seen before saving, so they are not replayed.
       if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
     if (combat && combat.log.length > this.lastLogLength) {
@@ -714,8 +687,7 @@ export class App implements ScreenContext {
     }
     fresh.push(...this.deferredToasts.splice(0));
     if (fresh.length > 0) {
-      // Only a fresh reveal starts from the round-start state and takes its first step now. Lines queued
-      // behind a running reveal (a toast, a quicksave) neither rewind HP/MP/coins nor add a tick.
+      // Lines queued behind a running reveal neither rewind HP/MP/coins nor add a tick.
       const wasIdle = !this.reveal.active;
       if (wasIdle) {
         const fromRound = fresh.some((e) => e.snapshot !== undefined);
@@ -738,7 +710,6 @@ export class App implements ScreenContext {
     const logHeight = compact ? COMPACT_LOG_HEIGHT : LOG_HEIGHT;
     if (this.logBox.height !== logHeight) this.logBox.height = logHeight;
     if (inFullLog) {
-      // Rebuilt only when it changed: a running reveal renders every tick, mostly without a new line.
       if (this.fullLogBuiltFrom !== this.runLogVersion) {
         this.fullLogBuiltFrom = this.runLogVersion;
         this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
@@ -815,8 +786,7 @@ export class App implements ScreenContext {
     this.keepScrollInRange(this.monsters);
     if (revealing) {
       this.main.content = t("ui.revealingCombat");
-      // The reveal swallows every key except the globals handled before it, and `[b]` is not one
-      // of them — so the party hint is suppressed rather than advertised as a dead key.
+      // The reveal swallows `[b]`, so the party hint is suppressed.
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
@@ -828,13 +798,13 @@ export class App implements ScreenContext {
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
   }
 
-  /** A unit's HP change as its marker reads right now: its hits one by one when it took several, else the net; and whether that was a crit. */
+  /** Its hits one by one when it took several, else the net. */
   private markerFor(id: Id): MarkerReading | undefined {
     const net = this.focusDeltas.get(id);
     return net === undefined ? undefined : markerReading(this.reveal.focusHits.get(id), net, this.reveal.hitStep, this.reveal.focusHealCrits.has(id));
   }
 
-  /** What the summons `ownerId` owns did to their HP over the lit session; they are drawn as the owner. */
+  /** Summons are drawn as their owner, so their HP changes are summed onto it. */
   private summonFocus(ownerId: Id): SummonFocus {
     let delta = 0;
     let crit = false;
@@ -849,15 +819,11 @@ export class App implements ScreenContext {
     return { delta, crit, beat: this.reveal.summonBeat };
   }
 
-  /**
-   * The mouse wheel scrolls a panel's text, and the offset outlives the text: a shorter screen drawn after a long one would open with its first lines hidden.
-   * The range is counted in wrapped rows (`maxScrollY`), the same unit the wheel scrolls in.
-   */
+  /** Reassigning scrollY clamps it to `maxScrollY` (wrapped rows); the wheel offset otherwise outlives a longer text. */
   private keepScrollInRange(panel: TextRenderable, reset = false): void {
     panel.scrollY = reset ? 0 : panel.scrollY;
   }
 
-  /** The room log belongs to one room: the first thing written (or rendered) after the player changes room starts it afresh. */
   private syncRoomLog(): void {
     const s = this.game.state;
     if (s.floor !== this.roomLogFloor || s.currentRoomId !== this.roomLogRoomId) {
@@ -884,7 +850,6 @@ export class App implements ScreenContext {
     this.log.content = joinLines(logLines(this.roomLog));
   }
 
-  /** Makes lines visible: they enter the logs and the HP/MP/coin snapshots they carry become the displayed state. */
   private applyRevealed(entries: LogEntry[]): void {
     if (entries.length > 0) this.appendLog(entries);
     const focus = this.reveal.focus;
@@ -905,7 +870,7 @@ export class App implements ScreenContext {
     }
   }
 
-  /** Called only when lines were queued on an idle queue: shows the first line immediately, then lets the timer carry on. */
+  /** Only for lines queued on an idle queue. */
   private startReveal(): void {
     this.applyRevealed(this.reveal.tick());
     this.scheduleRevealTick();
@@ -919,7 +884,6 @@ export class App implements ScreenContext {
     }, REVEAL_TICK_MS);
   }
 
-  /** One reveal step: the log line, the HP/MP snapshot and the battlefield highlight all move together, in this single render. */
   tickReveal(): void {
     this.applyRevealed(this.reveal.tick());
     this.scheduleRevealTick();
@@ -967,7 +931,6 @@ export class App implements ScreenContext {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
 
-    // Ability, then artifacts, then buffs, then debuffs — each on its own line, buffs/debuffs tagged with turns left.
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
     const buffLines: TextChunk[][] = [];
@@ -1051,8 +1014,7 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  /** In the compact layout the rows above the tallest sprite on screen are dropped: every block is
-      bottom-aligned in a boss-height slot with its icons one band above its own frame, so those rows are always blank. */
+  /** Compact drops the rows above the tallest sprite on screen: blocks are bottom-aligned in boss-height slots, so those rows are blank. */
   private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, compact: boolean): TextChunk[][] {
     const s = this.game.state;
     const impact = focus !== null && !this.reveal.holding;
@@ -1068,7 +1030,7 @@ export class App implements ScreenContext {
       const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
-      // One pawn per living summon, read from the replayed snapshot so a clone spawned later in the round isn't shown early.
+      // Read from the replayed snapshot so a clone spawned later in the round isn't shown early.
       const summonCount = this.game.ctx.summons.filter((m) => m.ownerId === c.id && (hpOverride ? hpOverride.get(m.id)?.isAlive === true : m.hp > 0)).length;
       const label = summonCount > 0 ? `${style.abbr} ${FOCUS_GLYPH.summon.repeat(summonCount)}` : style.abbr;
       return focusedUnit({ sprite: spriteForClass(c.classId), label, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
@@ -1266,7 +1228,6 @@ export class App implements ScreenContext {
     }
   }
 
-  /** Paging is driven centrally by `listCountFor`, so the `[←/→]` hint is derived from the same source rather than written into each screen's footer string. */
   private isPaginated(): boolean {
     const count = this.listCountFor(this.ui);
     return count !== null && pageCount(count, pageSizeFor(this.ui.kind)) > 1;

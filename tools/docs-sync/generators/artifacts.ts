@@ -3,7 +3,6 @@ import { capitalize } from "../format";
 import { list } from "./args";
 import type { GeneratorSpec } from "../types";
 
-/** The artifacts named in `ids`, in that order: rarity, the effect text the game shows, and the story. */
 export const artifacts: GeneratorSpec = {
   source: "`data/artifacts.json`",
   args: ["ids"],

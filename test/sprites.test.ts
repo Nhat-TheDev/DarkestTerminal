@@ -68,8 +68,7 @@ describe("sprite dimensions and palette consistency", () => {
     }
   });
 
-  // A missing entry here is what made half the bestiary render as "??" in the battlefield and
-  // monster panels: `monsterStyle` falls back when the table drifts behind `data/monsters.json`.
+  // `monsterStyle` falls back to "??" when this table drifts behind data/monsters.json.
   test("every monster archetype has a MONSTER_STYLE entry", () => {
     for (const archetype of MONSTER_ARCHETYPES) {
       expect(MONSTER_STYLE[archetype.id]).toBeDefined();

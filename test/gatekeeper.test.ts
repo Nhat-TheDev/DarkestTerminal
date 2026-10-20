@@ -166,7 +166,6 @@ describe("the Gatekeeper screen", () => {
     let frame = captureCharFrame();
     expect(frame).toContain("The Gatekeeper");
     expect(frame).toContain("[1-2] Choose");
-    // No saving at the gate: neither key is advertised, and neither does anything.
     expect(frame).not.toContain("[q] Save");
     expect(frame).not.toContain("[s] Quicksave");
     mockInput.pressKey("s");
@@ -181,7 +180,6 @@ describe("the Gatekeeper screen", () => {
     await renderOnce();
     frame = captureCharFrame();
     expect(game.state.gatekeeperAnswer).toBe("paid");
-    // The way in is floor 1's entry room, listed inside the Dungeon panel like a cleared room's paths; the blessing line goes to the log.
     const entry = getRoom(game.state.floor, game.state.floor.entryRoomId);
     const pathLine = `[1] ${entry.name} (${entry.type})`;
     expect(frame).toContain("Paths:");
@@ -199,7 +197,7 @@ describe("the Gatekeeper screen", () => {
     expect(frame).not.toContain(pathLine);
     expect(frame).toContain("[q] Save");
     expect(frame).toContain("[s] Quicksave");
-    // The blessing lasts the whole fight, so the party panel shows (∞), and the header carries no room count.
+    // (∞) in the party panel; the header (top 3 lines) leaves the blessing out.
     expect(frame).toContain("Blessed (∞)");
     expect(frame.split("\n").slice(0, 3).join("\n")).not.toContain("Blessed");
     const info = characterInfoScreen.renderMain(game, { kind: "characterInfo", characterIndex: 0, previousUi: { kind: "room" } });

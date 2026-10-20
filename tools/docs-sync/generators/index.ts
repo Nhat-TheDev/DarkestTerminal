@@ -15,5 +15,4 @@ import { rarityOdds } from "./rarityOdds";
 import { shopOdds } from "./shopOdds";
 import { statusEffects } from "./statusEffects";
 
-/** Every generator a `docs:begin` marker can name. */
 export const REGISTRY: Readonly<Record<string, GeneratorSpec>> = { abilities, artifacts, balancePoints, basicAttacks, classSkills, classStats, coinDropByTier, deathBursts, eventTiers, gamblingRounds, map, minionSkills, minions, monsterSkills, monsterTypeWeights, passives, rarityOdds, shopOdds, statusEffects };

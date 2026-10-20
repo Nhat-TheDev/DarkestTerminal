@@ -6,9 +6,7 @@ import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 
-/** 10-event-narrative.md Part F.1's floor-100 checkpoint. Which options are shown is computed live
-    from existing state (`endingCheckpointMode`) — nothing about the mode is ever stored, and none
-    of it is ever hinted to the player beyond the options actually offered. */
+/** The mode is computed live from state (`endingCheckpointMode`), never stored. */
 export type EndingCheckpointUiState = Extract<UiState, { kind: "endingCheckpoint" }>;
 
 export function handleKey(ctx: ScreenContext, _ui: EndingCheckpointUiState, _key: KeyEvent, digit: number | null): void {

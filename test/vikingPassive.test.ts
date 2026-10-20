@@ -56,7 +56,7 @@ describe("Viking passive: low-HP damage buff with self-cost", () => {
   test("landing an attack while under the threshold costs the Viking 3% of maxHp, regardless of rank", () => {
     const { ctx } = makeCtx();
     const viking = ctx.party.find((p) => p.classId === "viking")!;
-    viking.level = 5; // rank 1: threshold 40%, bonus 20% — different rank than the other tests
+    viking.level = 5; // rank 1: threshold 40%, bonus 20%
     viking.hp = Math.round(viking.maxHp * 0.3); // below the 40% threshold
     const before = viking.hp;
     const combat = startCombat("test-room", [], ctx, false);

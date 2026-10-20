@@ -46,7 +46,7 @@ describe("headless UI smoke test", () => {
       await renderOnce();
     }
     expect(app.debugUiState.kind).toBe("artifactDecision");
-    expect(game.state.floor.depth).toBe(1); // must not have advanced yet — the decision comes first
+    expect(game.state.floor.depth).toBe(1); // the decision comes first
 
     mockInput.pressKey("1"); // Equip
     await renderOnce();
@@ -54,13 +54,13 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     expect(game.state.pendingArtifactDecision).toBeNull();
-    expect(app.debugUiState.kind).toBe("campPrompt"); // Camp offer comes after the decision, before the floor advances
+    expect(app.debugUiState.kind).toBe("campPrompt"); // after the decision, before the floor advances
     expect(game.state.floor.depth).toBe(1);
 
     mockInput.pressKey("RETURN"); // skip Camp
     await renderOnce();
 
-    expect(game.state.floor.depth).toBe(2); // now it advances
+    expect(game.state.floor.depth).toBe(2);
   }, 20000);
 
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
@@ -220,9 +220,7 @@ describe("key handler lifecycle", () => {
     new App(renderer, new Game(7, classIds));
     await renderOnce();
 
-    // `.once("keypress", ...)` looks right here but never removes itself under
-    // InternalKeyHandler.emit, which left the menu re-registering a handler on every single
-    // keypress for the rest of the run.
+    // `.once("keypress", ...)` never removes itself under InternalKeyHandler.emit, so the menu would stack a handler per keypress.
     const settled = listeners();
     for (const key of ["b", "b", "1", "2", "b"]) await press(key);
 
@@ -530,7 +528,7 @@ describe("Rest room runner screens", () => {
     mockInput.pressKey("1"); // buy the single Small Health Potion for 15
     await renderOnce();
     expect(game.state.coins).toBe(85);
-    expect(app.debugUiState.kind).toBe("runnerShop"); // buying doesn't throw the player back to the Rest screen
+    expect(app.debugUiState.kind).toBe("runnerShop");
     expect(game.state.restRunner?.offers[0]?.sold).toBe(true);
 
     mockInput.pressKey("r"); // refresh costs 10
@@ -542,7 +540,7 @@ describe("Rest room runner screens", () => {
     await renderOnce();
     expect(room.cleared).toBe(true);
     expect(game.state.restRunner).toBeNull();
-    expect(app.debugUiState.kind).toBe("campReflection"); // the reflection comes after the choice
+    expect(app.debugUiState.kind).toBe("campReflection");
   });
 
   test("an artifact's detail view offers Back as its only option", () => {
@@ -739,7 +737,6 @@ describe("layout below the full height", () => {
     expect(panelRows(frame, t("ui.panelProgress"))).toBeNull();
     expect(panelRows(frame, t("ui.panelLog"))).toBe(3);
     expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(8);
-    // Only blank rows above the sprites were trimmed: every character's name and HP row is still drawn.
     expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(15);
     for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);

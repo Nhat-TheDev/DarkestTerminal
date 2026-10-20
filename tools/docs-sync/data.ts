@@ -12,7 +12,6 @@ import { SUMMON_ARCHETYPES, SUMMON_CASTS, SUMMON_SKILLS } from "../../src/data/s
 import type { DocsData } from "./types";
 
 const DATA_DIR = resolve(import.meta.dir, "../../data");
-/** Large files with no balance numbers in them. */
 const NOT_BALANCE = new Set(["sprites.json", "strings.json"]);
 
 /** Names too generic to say anything about which number a doc means. */
@@ -32,7 +31,6 @@ function collect(value: unknown, into: Map<number, Set<string>>, key?: string, o
   }
 }
 
-/** Every number in `data/*.json` except the sprites and the UI strings, with the names that hold it. */
 function loadDataValues(): Map<number, Set<string>> {
   const values = new Map<number, Set<string>>();
   for (const name of readdirSync(DATA_DIR)) {
@@ -41,7 +39,6 @@ function loadDataValues(): Map<number, Set<string>> {
   return values;
 }
 
-/** Everything the generators read, from the same loaders the game uses. */
 export function loadDocsData(): DocsData {
   return {
     balance: BALANCE,

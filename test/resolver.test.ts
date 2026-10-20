@@ -56,15 +56,13 @@ describe("resolver", () => {
     const target = ctx.party[1]!;
     const executeBonus = { hpPercentThreshold: 30, bonusDamagePercent: 50, bonusDamageFlat: 10 };
 
-    // Above the threshold: no bonus at all.
     target.hp = target.maxHp;
     const beforeAbove = target.hp;
     resolveSkillEffect({ kind: "damage", amount: 5 }, attacker, target, { log: [], executeBonus });
     const plainHit = beforeAbove - target.hp;
     expect(plainHit).toBe(Math.max(1, Math.round(5 + mitigatedOffense(attacker.attack, target.defense))));
 
-    // Below the threshold: both the flat add and the % multiplier apply. maxHp is bumped so the
-    // hit doesn't exceed remaining HP and get capped at 0 before the full delta can be observed.
+    // maxHp bumped so the hit can't be capped by remaining HP.
     target.maxHp = 500;
     target.hp = Math.round(target.maxHp * 0.2);
     const beforeBelow = target.hp;
@@ -217,7 +215,6 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(220);
 
-    // Recast while still active — refreshes the same entry rather than stacking a 2nd instance.
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(220);
     expect(vanguard.activeStatusEffects).toHaveLength(1);
@@ -240,7 +237,7 @@ describe("resolver", () => {
     expect(victim.activeStatusEffects[0]!.stacks).toBe(2);
     expect(log.at(-1)!.text).toMatch(/stacks to 2/);
 
-    // Once capped at maxStacks, a further reapply gains no new stack and falls back to a plain refresh.
+    // At maxStacks a reapply falls back to a plain refresh.
     victim.activeStatusEffects[0]!.stacks = 5;
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 }, victim, victim, { log });
     expect(victim.activeStatusEffects[0]!.stacks).toBe(5);
@@ -285,17 +282,15 @@ describe("resolver", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
     expect(vanguard.defense).toBe(220);
 
-    vanguard.defense += 500; // an unrelated change to the same stat, e.g. a 2nd buff/item — recomputing the floor now would disagree with what was actually applied
+    vanguard.defense += 500; // an unrelated change to the same stat; re-deriving the floor now would disagree with what was applied
 
     tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(700); // 220 + 500, minus the stored 20 - not a re-derived floor off the new 720 (which would undo 72)
+    expect(vanguard.defense).toBe(700); // minus the stored 20, not a floor re-derived off 720
     expect(vanguard.activeStatusEffects).toHaveLength(0);
   });
 
   test("a status effect's own damage tick (DoT) is flat (amount + maxHpPercent), not attack-minus-defense", () => {
-    // goblin (Demi-Human > Marauder) has no physical resist/weak, so this test's untyped
-    // (default "physical") DoT tick isn't perturbed by race resist/weak — unlike a random floor-1
-    // monster, which could land on a race with a physical weakness/resist by chance.
+    // goblin has no physical resist/weak, so race doesn't perturb the untyped DoT tick.
     const victim = spawnMonster("goblin", 1);
     const log: LogEntry[] = [];
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });

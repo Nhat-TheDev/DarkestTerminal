@@ -103,7 +103,6 @@ export function renderMain(game: Game, ui: ArtifactDecisionUiState): string {
 
 export function renderFooter(ui: ArtifactDecisionUiState, game: Game): string {
   switch (ui.kind) {
-    // A forced-equip artifact has no discard option, so only [1] is live.
     case "artifactDecision":
       return digitHint("ui.footerArtifactDecision", game.state.pendingArtifactDecision?.forceEquip ? 1 : 2);
     case "artifactDecisionPickCharacter":

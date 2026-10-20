@@ -2,17 +2,15 @@
 const INTEGER_NOISE = 1e-9;
 const nearWhole = (value: number) => Math.abs(value - Math.round(value)) < INTEGER_NOISE;
 
-/** A value from the data as it is: a whole number without a decimal, anything else with the noise of a sum or product removed. */
+/** `toPrecision(12)` strips the float noise of a sum or product. */
 export function formatNumber(value: number): string {
   return nearWhole(value) ? String(Math.round(value)) : String(Number(value.toPrecision(12)));
 }
 
-/** A computed value, such as an odds weight, to one decimal place; a whole number prints without one. */
 export function formatRounded(value: number): string {
   return nearWhole(value) ? String(Math.round(value)) : value.toFixed(1);
 }
 
-/** Any field value as table text: numbers through `formatNumber`, an array with slashes, an object as `key value` pairs. */
 export function showValue(value: unknown): string {
   if (typeof value === "number") return formatNumber(value);
   if (Array.isArray(value)) return value.map(showValue).join(" / ");
@@ -24,12 +22,10 @@ export function showValue(value: unknown): string {
   return String(value);
 }
 
-/** `low–high` with an en dash, or one number when the two ends are the same. */
 export function formatRange(low: number, high: number): string {
   return low === high ? formatNumber(low) : `${formatNumber(low)}–${formatNumber(high)}`;
 }
 
-/** A rate such as 0.7 as `70%`. */
 export function formatPercent(rate: number): string {
   return `${formatNumber(rate * 100)}%`;
 }

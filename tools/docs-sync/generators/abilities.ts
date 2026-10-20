@@ -2,7 +2,6 @@ import { formatAbilityEffect } from "../../../src/data/abilities";
 import { required } from "./args";
 import type { GeneratorSpec } from "../types";
 
-/** The abilities of one rarity, with the effect text the game itself shows. */
 export const abilities: GeneratorSpec = {
   source: "`data/abilities.json`",
   args: ["rarity"],

@@ -5,9 +5,6 @@ import { campReflectionContent } from "../../data/loreExposure";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
 
-/** 03-survival-stats.md's Camp Reflection — deliberately its own screen, not a variant of
-    `eventReflection` (events.ts): different trigger (rest-room entry, not `closeEvent()`),
-    different content source, no shared state with that mechanism. */
 export type CampReflectionUiState = Extract<UiState, { kind: "campReflection" }>;
 
 export function handleKey(ctx: ScreenContext, _ui: CampReflectionUiState, _key: KeyEvent, digit: number | null): void {

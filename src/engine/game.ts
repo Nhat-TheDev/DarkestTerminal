@@ -64,7 +64,6 @@ export class Game {
   readonly ctx: EngineContext;
   readonly state: GameState;
 
-  /** Save slot this run writes to; null for runs that aren't persisted (tests, dev tools). */
   public currentSaveSlot: Id | null = null;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
@@ -74,7 +73,7 @@ export class Game {
     classIds?: Id[],
     restore?: { state: GameState; monsters: Monster[]; summons: Summon[]; rngState: number; playTimeSec: number },
     abilityIds?: (Id | null)[],
-    /** A real new run opens on the Gatekeeper scene, which holds floor 1's entry ambush until `enterDungeon()`. Tests and dev tools leave it off. */
+    /** Holds floor 1's entry ambush until `enterDungeon()`. */
     withGatekeeper = false
   ) {
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
@@ -87,10 +86,8 @@ export class Game {
     }
     const { floor, monsters } = createFloor(rng);
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
-    // No 2 characters may carry the same Ability — `11-abilities.md` §11.1 treats this as an
-    // invariant the death flow relies on (each dead character loses a distinct id). The select
-    // screen already narrows its options per pick; this is the engine-side backstop for every other
-    // caller, and a later duplicate simply enters the run with nothing equipped.
+    // No two characters may share an Ability: the death flow relies on each one losing a distinct id.
+    // A later duplicate enters the run with nothing equipped.
     const takenAbilityIds = new Set<Id>();
     const party = classes.map((cls, i) => {
       const character = createCharacter(`p${i + 1}`, cls.name, cls);
@@ -101,9 +98,7 @@ export class Game {
     });
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, summons: [], rng, inventory };
-    // Part F.2's persistence layer — read once per fresh run. Eligibility (and therefore whether
-    // "the-one-who-stayed" can ever roll this run) is entirely encoded by whether its id starts
-    // pre-inserted into firedOnceEventIds below; no other code needs to know why.
+    // Whether "the-one-who-stayed" can roll this run is encoded only by whether its id starts in firedOnceEventIds.
     const profile = loadProfile();
     const retiredCharacter = profile.retiredCharacters.at(-1);
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
@@ -150,12 +145,8 @@ export class Game {
       pendingAbilityBuyback: null,
       abilityDeathResults: null,
     };
-    // Abilities are equipped after `createCharacter` filled hp/mp from unbuffed base stats, so the
-    // party's stats must be rebuilt before anything reads them — the first combat starts inside
-    // `checkEntryRoomAmbush()` below, and turn order there is keyed off `speed`. The refill matters
-    // as much as the recompute: `recomputeCharacterStats` only ever clamps hp DOWN to maxHp, so a
-    // +maxHp Ability whose bonus lands after this point would leave the character permanently short
-    // of that many HP for the whole run.
+    // Abilities were equipped after `createCharacter` filled hp/mp from base stats. Rebuild before the
+    // entry ambush reads `speed`, and refill because recompute only clamps hp down to maxHp.
     recomputeAllPartyStats(this.state);
     for (const character of this.state.party) {
       character.hp = character.maxHp;
@@ -164,7 +155,6 @@ export class Game {
     if (!withGatekeeper) this.checkEntryRoomAmbush();
   }
 
-  /** Seconds played across every session of this run: the saved total plus the time since this Game was created. */
   playTimeSec(): number {
     return this.playTimeBaseSec + Math.floor((Date.now() - this.sessionStart) / 1000);
   }
@@ -179,13 +169,11 @@ export class Game {
     }
   }
 
-  /** The party's answer at the gate; only while the scene is up and unanswered. */
   answerGatekeeper(answer: "paid" | "refused"): PartyActionError | null {
     if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer !== null) return null;
     return answerGatekeeper(this.state, answer);
   }
 
-  /** Leaves the Gatekeeper scene: the party steps into floor 1's entry room, which counts as the blessing's first room, and its ambush starts. */
   enterDungeon(): void {
     if (!this.state.pendingGatekeeper || this.state.gatekeeperAnswer === null) return;
     this.state.pendingGatekeeper = false;
@@ -214,17 +202,7 @@ export class Game {
     }
   }
 
-  /**
-   * The only place `gameOver` becomes "defeat" — both `postMoveCheck` and `resolve()`'s defeat
-   * branch funnel through here, and the `gameOver !== null` guard makes it safe to call from both
-   * without running the ability death flow twice. App reacts to `gameOver` becoming non-null to
-   * invalidate this run's saves (permadeath) — `11-abilities.md` §11.1 "Death flow" runs first, since
-   * it needs the party's still-current `equippedAbilityId`s before anything else changes.
-   */
-  /** Dismisses any still-living summon and drops `state.combat` — shared by `clearFinishedCombat`
-      (victory) and `triggerDefeat` (a party wipe), since `syncUiToGameState` (src/ui/app.ts) checks
-      `gameOver` before `combat.phase === "over"`, so the "combatOver" screen never runs on defeat and
-      `clearFinishedCombat` itself never gets called for that path. No-op if combat already ended. */
+  /** Defeat needs this too: the UI checks `gameOver` first, so `clearFinishedCombat` never runs on a wipe. */
   private endCombat(): void {
     if (!this.state.combat) return;
     dismissSummonsAtCombatEnd(this.ctx);
@@ -238,13 +216,7 @@ export class Game {
     this.runAbilityDeathFlow();
   }
 
-  /**
-   * Guaranteed loss (no roll) for every equipped non-`common` Ability, persisted to `profile.json`
-   * immediately. If anything was lost, sets up `pendingAbilityBuyback` for the UI to walk through one
-   * entry at a time via `resolveAbilityBuyback`; otherwise leaves `abilityDeathResults` as an empty
-   * array so the results screen has something to render right away. `11-abilities.md` §11.1
-   * "Death flow" steps 1-2.
-   */
+  /** With nothing lost, `abilityDeathResults` is `[]` rather than null so the results screen renders at once. */
   private runAbilityDeathFlow(): void {
     const profile = loadProfile();
     const lostSet: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[] = [];
@@ -261,10 +233,6 @@ export class Game {
     this.state.abilityDeathResults = lostSet.length > 0 ? null : [];
   }
 
-  /** One decision for the lost-set entry currently at `resolvedIndex` — "reclaim" pays
-   * `stardustCostByRarity[rarity]` from `runStardust` to re-add the exact lost id back to the
-   * persistent profile; "skip" leaves it lost. Advances to the next entry (or clears
-   * `pendingAbilityBuyback` once the last one resolves). `11-abilities.md` §11.1 "Death flow" step 3. */
   resolveAbilityBuyback(action: "reclaim" | "skip"): PartyActionError | null {
     const pending = this.state.pendingAbilityBuyback;
     const entry = pending?.entries[pending.resolvedIndex];
@@ -330,7 +298,7 @@ export class Game {
     if (this.state.restRunner) this.state.restRunner.noticeShown = true;
   }
 
-  /** Ends the Rest room after trading: the Trade choice replaces the room's rest action. */
+  /** Trading uses up the Rest room's rest action. */
   leaveRunner(): void {
     const room = getRoom(this.state.floor, this.state.currentRoomId);
     if (room.type !== "rest" || room.cleared || !this.state.restRunner) return;
@@ -361,7 +329,7 @@ export class Game {
     return livingPlayerSideRefs(this.state.combat, this.ctx);
   }
 
-  /** Real characters only, no summons — summons never get a player-queued action (they act automatically via AI), so the command-phase "who needs an action queued next" loop must not wait on one. */
+  /** Characters only: summons act via AI and never get a queued action. */
   livingCharactersNeedingAction(): CombatantRef[] {
     if (!this.state.combat) return [];
     return livingCharacterRefs(this.state.combat, this.ctx);
@@ -384,9 +352,7 @@ export class Game {
     if (item.target === "singleEnemy" || item.target === "allEnemies" || item.effects.some((e) => e.kind === "applyStatusEffect")) return { reason: t("errors.itemNotUsableOutOfCombat") };
 
     const log: LogEntry[] = [];
-    // `satiety` effects are party-wide (GameState-scoped, not per-character) — for an "allAllies" item,
-    // applying them once per living character would multiply the effect by party size. Apply those once;
-    // apply every other effect per character as usual.
+    // Satiety is party-wide, so apply it once rather than once per character.
     const partyWideEffects = item.effects.filter((e) => e.kind === "modifyStat" && e.stat === "satiety");
     const perCharacterEffects = item.effects.filter((e) => !(e.kind === "modifyStat" && e.stat === "satiety"));
     const applyTo = (character: (typeof this.state.party)[number]) => {
@@ -530,7 +496,6 @@ export class Game {
     return err;
   }
 
-  /** §10.5 — resolves `state.pendingReflection`, no reward/mechanical effect. */
   pickReflectionStance(stance: "curious" | "wary" | "dismissive"): void {
     const pending = this.state.pendingReflection;
     if (!pending) return;
@@ -538,9 +503,7 @@ export class Game {
     this.state.pendingReflection = null;
   }
 
-  /** 03-survival-stats.md's Camp Reflection. Records the choice at the pending tier, clears it, and
-      at tier 4 writes the 1 synthetic bridge tag the-wanderer/wandering-hermit's crossEventVariants
-      read — the only place Camp Reflection ever touches `eventOutcomes`. */
+  /** Tier 4 writes the synthetic tag the-wanderer/wandering-hermit's crossEventVariants read. */
   pickCampReflectionChoice(choice: 0 | 1 | 2): void {
     const tier = this.state.pendingCampReflectionTier;
     if (tier === null) return;
@@ -551,8 +514,7 @@ export class Game {
 
   resolve(): void {
     if (!this.state.combat) return;
-    // Coins/EXP/satiety never change mid-round (only in the reward block below, once combat ends), so
-    // this baseline is what the reveal should show for every log line this round produces up front.
+    // Coins/EXP/satiety only change in the reward block below, so this is the reveal's baseline for the whole round.
     this.state.combat.roundStartPartySnapshot = { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety };
     resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
     if (this.state.combat.phase === "over") {
@@ -592,17 +554,11 @@ export class Game {
             droppedItemIds.push(itemId);
           }
           if (monster.tier === "elite" || monster.tier === "boss") {
-            // §F.4 — only a real Boss kill may roll waystone-shard; Collapsed Floor separately
-            // rolls this same "boss" rarity table without qualifying (bloodAltar.ts is the only
-            // other allowed source, gated on its own condition, not this one).
+            // Only a real Boss kill may roll boss-restricted artifacts; Collapsed Floor rolls the same table without qualifying.
             const artifactId = rollArtifact(monster.tier, this.ctx.rng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
             grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
 
-            // Ability roll: instant, free, permanent unlock — no pool, no gate. `11-abilities.md`
-            // §11.1 "Mid-run acquisition". Revealed the same way an Artifact drop is (the room-clear
-            // reward screen), not a combat-log line — a permanent catalog unlock earns the same
-            // popup weight as an Artifact, not a passive item pickup's footnote.
             const profile = loadProfile();
             const abilityId = rollAbility(monster.tier, this.state.floor.depth, this.ctx.rng, profile.unlockedAbilityIds);
             if (abilityId) {
@@ -610,8 +566,6 @@ export class Game {
               saveProfile(profile);
               droppedAbilityIds.push(abilityId);
             }
-            // Boss kills additionally, unconditionally grant 1 Stardust — unrelated to whether the
-            // ability roll above hit. Its only use is the death-flow buyback.
             if (monster.tier === "boss") {
               this.state.runStardust += 1;
               this.state.combat.log.push({ text: t("game.stardustGained"), kind: "info" });
@@ -626,18 +580,11 @@ export class Game {
           const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng, this.state.floor.depth);
           grantArtifact(this.state, artifactId);
           droppedArtifactIds.push(artifactId);
-          // Part C.1 pair 8 — guardian-fight/desecrated-altar's win path never calls closeEvent()
-          // (see the reflection-trigger comment below), so the generic outcome tag is written here
-          // instead, at the same point their reflection already gets triggered from.
+          // This win path never reaches closeEvent(), so its outcome tag and lore count are written here.
           this.state.eventOutcomes[room.rolledEventId] = "resolved";
-          // Camp Reflection's loreExposureCount (03-survival-stats.md) needs the same stand-in,
-          // for the same reason — this win path never reaches closeEvent()'s own increment.
           this.state.loreExposureCount += 1;
         }
-        // Part F.5 — defeating the founder permanently removes every Covenant-institution event
-        // from the roll pool. No new mechanism needed: rollEvent() already excludes any id present
-        // in firedOnceEventIds; this just bulk-inserts every flagged id in 1 pass, deduping defensively in
-        // case any were already onceLifetime-fired earlier this run.
+        // Deduped: some of these ids are onceLifetime and may have fired already.
         if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === "the-founder")) {
           for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
             if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);
@@ -647,14 +594,10 @@ export class Game {
           droppedItemIds.length > 0 || droppedArtifactIds.length > 0 || droppedAbilityIds.length > 0
             ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds, abilityIds: droppedAbilityIds }
             : null;
-        // The reward block above (buff expiry, satiety drain, EXP/level, coins) is the only place these
-        // values change outside resolveRound()'s own per-action tagging — tag it the same way, so the
-        // reveal shows coins/EXP/satiety/status exactly when it reaches these lines, not upfront.
+        // Tag the reward block like resolveRound tags its actions, so the reveal shows these values when it reaches them.
         tagLogRange(this.state.combat, rewardBlockStart, snapshotCombatants(this.state.combat, this.ctx));
         tagPartySnapshotRange(this.state.combat, rewardBlockStart, { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety });
-        // §10.5 — guardian-fight/desecrated-altar's win path never calls closeEvent() (only Skip
-        // does), so this is the only trigger point for their reflection. No-ops for every other
-        // combat room (not "event" type, or not a reflection-eligible event).
+        // A combat event's win path never calls closeEvent(), so this is its only reflection trigger.
         maybeTriggerReflection(this.state, this.ctx);
       } else if (this.state.combat.outcome === "defeat") {
         this.triggerDefeat();
@@ -664,12 +607,7 @@ export class Game {
   }
 
   advanceToNextFloor(): void {
-    // Part F.1 — a guaranteed, non-rolled story beat once floor 100's own boss falls (not merely on
-    // arrival). This only ever runs via the normal boss-clear -> floor-advance pipeline
-    // (clearFinishedCombat sets pendingFloorAdvance, finishVictorySequence calls this method), so
-    // `this.state.floor.depth` is still 100 here — floor 100 itself was played through normally.
-    // `continuedPastCheckpoint` guards this same check from refiring on the recursive call
-    // pickEndingChoice("continue") makes below to actually reach floor 101.
+    // Depth is still the cleared floor's here. `continuedPastCheckpoint` stops this refiring on the call pickEndingChoice("continue") makes.
     if (this.state.floor.depth === ENDING_CHECKPOINT_FLOOR_DEPTH && !this.state.continuedPastCheckpoint) {
       this.state.pendingEndingCheckpoint = true;
       return;
@@ -683,8 +621,6 @@ export class Game {
     this.state.currentRoomId = floor.entryRoomId;
     this.state.roomPath = [floor.entryRoomId];
     this.state.message = t("game.nextFloor", { depth: nextDepth });
-    // Part F.5 — the founder encounter, guaranteed the same way, only for a party that chose
-    // Continue. Never rolled, never repeats (advancing further only ever happens once past it).
     if (nextDepth === FOUNDER_FLOOR_DEPTH && this.state.continuedPastCheckpoint) {
       this.state.pendingFounderDialogue = true;
       return;
@@ -692,9 +628,6 @@ export class Game {
     this.checkEntryRoomAmbush();
   }
 
-  /** Part F.1's floor-100 checkpoint. `choice` must match what `endingCheckpointMode()` actually
-      offers — an out-of-mode choice is a no-op, same defensive shape as every other pending-state
-      picker in this class. */
   pickEndingChoice(choice: "stay" | "letGo" | "leave" | "continue"): void {
     if (!this.state.pendingEndingCheckpoint) return;
     const mode = endingCheckpointMode(this.state);
@@ -705,11 +638,7 @@ export class Game {
     this.state.pendingEndingCheckpoint = false;
     if (choice === "stay") {
       this.state.gameOver = "stay";
-      // Part F.2 — which of the party "stays" isn't a choice the spec asks the player to make;
-      // picked the same way any other unattributed detail in this run is (via rng), and persisted
-      // immediately so a later run can find it regardless of whether this save is ever reopened.
-      // Only a living character can stay: the checkpoint fires whenever the party isn't wiped, so
-      // it's reachable with some members already dead, and a corpse greeting a later run is wrong.
+      // Persisted at once so a later run finds it even if this save is never reopened. Party members may already be dead here.
       const living = this.state.party.filter((c) => c.isAlive);
       addRetiredCharacter(this.ctx.rng.pick(living.length > 0 ? living : this.state.party).classId);
     } else if (choice === "letGo") {
@@ -717,19 +646,12 @@ export class Game {
     } else if (choice === "leave") {
       this.state.gameOver = hasWaystoneShardEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
     } else {
-      // Continue: resumes the boss-clear -> floor-advance flow the checkpoint intercepted, now
-      // toward floor 120 (§F.5) — continuedPastCheckpoint is set first so the depth-100 gate above
-      // doesn't refire, then advanceToNextFloor() actually generates floor 101 (and will fire the
-      // founder encounter once floor 120 is reached).
+      // Set first so advanceToNextFloor's checkpoint gate doesn't refire.
       this.state.continuedPastCheckpoint = true;
       this.advanceToNextFloor();
     }
   }
 
-  /** Part F.5 — dismisses the founder's pre-fight dialogue and starts the fight itself: the
-      current room becomes a boss room with exactly 1 monster, "the-founder", scaled the same way
-      any other Boss-tier monster is (`spawnMonster`'s depth scaling already makes floor 120's
-      instance the strongest fight in the game — no bespoke stat multiplier needed). */
   enterFounderFight(): void {
     if (!this.state.pendingFounderDialogue) return;
     this.state.pendingFounderDialogue = false;

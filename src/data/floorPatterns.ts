@@ -64,10 +64,6 @@ function pickBranchStages(rng: Rng, minStage: number, maxStage: number): number[
   return stages;
 }
 
-/** Picks up to `MAX_REST_ROOMS_PER_PATH` stages, never 2 adjacent — each pick also removes its
- *  immediate neighbors from the pool, so every later pick is guaranteed non-adjacent to every
- *  earlier one without needing to reject-and-retry. Falls short of the target count only when the
- *  candidate pool itself runs out, same as the pre-existing `MIN_REST_ROOMS_PER_PATH` floor. */
 function pickRestStages(rng: Rng, candidates: number[]): number[] {
   const count = rng.int(MIN_REST_ROOMS_PER_PATH, Math.min(MAX_REST_ROOMS_PER_PATH, candidates.length));
   let pool = [...candidates];

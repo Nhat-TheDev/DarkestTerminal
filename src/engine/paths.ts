@@ -14,10 +14,5 @@ function resolveSaveDir(): string {
   return join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), APP_DIR_NAME);
 }
 
-/**
- * The one directory holding every per-run save plus the global `profile.json`. Lives in its own
- * leaf module — importing nothing from the engine — because both `save.ts` and `profile.ts` need it
- * and `save.ts` imports `Game` (which imports `profile.ts`): resolving it inside either of those
- * would close an import cycle and crash at load time depending on which module loads first.
- */
+/** In a leaf module: save.ts and profile.ts both need it, and defining it in either would close an import cycle. */
 export const SAVE_DIR = resolveSaveDir();

@@ -3,7 +3,6 @@ import { describeEffects, joinRanks } from "../effects";
 import { formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** What a skill adds on top of its per-rank effects: a bonus that needs a status, and an execute bonus. */
 function modifiers(skill: SkillDefinition): string[] {
   const out: string[] = [];
   const conditional = skill.conditionalBonus;
@@ -26,7 +25,6 @@ function flags(skill: SkillDefinition): string {
   return set.length === 0 ? "—" : set.join(" · ");
 }
 
-/** A class's ranked skills (slot 1 and up): cost, unlock level and effects at each rank. */
 export const classSkills: GeneratorSpec = {
   source: "`data/classes.json`",
   args: ["class"],

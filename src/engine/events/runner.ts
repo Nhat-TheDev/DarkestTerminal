@@ -6,7 +6,6 @@ import { getItem } from "../../data/items";
 import { rollBarterOffers, rollShopOffers } from "../../data/shopStock";
 import { t } from "../../data/strings";
 
-/** Rolls the Merchant's Runner for a Rest room the party just entered; a room that already has one keeps it. */
 export function rollRestRunner(state: GameState, room: Room, ctx: EngineContext): void {
   if (state.restRunner?.roomId === room.id) return;
   if (!ctx.rng.chance(BALANCE.runner.appearChance)) {
@@ -29,7 +28,7 @@ export function shopPrice(tier: ItemTier, lot: boolean): number {
   return lot ? price.lot : price.single;
 }
 
-/** What the Runner pays for one `item`, or null when he refuses it: he doesn't buy what he never sells (Legendary trophies, items above Rare in the general pool). */
+/** null when refused: he doesn't buy what he never sells. */
 export function buybackPrice(item: ItemDefinition): number | null {
   const neverSold = item.tier === "legendary" || (!item.archetypeIds?.length && (item.tier === "unique" || item.tier === "epic"));
   if (neverSold) return null;

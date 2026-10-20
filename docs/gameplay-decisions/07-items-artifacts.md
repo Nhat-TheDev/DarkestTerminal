@@ -22,9 +22,9 @@ The 2 concepts are kept clearly separate, not sharing 1 system:
 
 ## 7.1 Items (consumables)
 
-### Data structure
+### 7.1.1 Data structure
 
-The `ItemDefinition` shape lives in `src/types.ts`, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` section 1.5 "Design notes" last bullet, where `usesPerCombat` is reserved for items):
+The `ItemDefinition` shape lives in `src/types.ts`, simplified for the current scope (consumables only — no `equipment`/`keyItem`, see `01-class-skill.md` §1.8 "Design notes", the `usesPerCombat` bullet, where `usesPerCombat` is reserved for items):
 
 ```
 ItemDefinition {
@@ -32,7 +32,7 @@ ItemDefinition {
   name: string
   description: string
   target: SkillTarget
-  effects: SkillEffect[]     // reuses the exact same existing resolver — no new effect kind needed for items
+  effects: SkillEffect[]     // resolved by the same resolver as skills
   tier: ItemTier             // common | uncommon | rare | unique | epic | legendary — sets the drop weight, see "Drop source" below
   archetypeIds?: Id[]        // a trophy: drops only from these monsters, see "Trophies" below
   groupItem?: boolean        // a trophy shared by several monsters of one race: its drop weight is scaled down
@@ -40,23 +40,23 @@ ItemDefinition {
 }
 ```
 
-Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the exact same existing `resolveSkillEffect` (0 changes to `resolver.ts`). An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters; monsters have no `magicPower`, so such an effect only ever lands on characters and summons. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
+Used in combat: during the command phase, a character chooses "use item" instead of a skill (only items with `combatUsable !== false`, checked by `checkItemUsable` in `src/engine/combat.ts`) — 1 count is subtracted from `GameState.inventory[itemId]`, and `effects` are applied through the same `resolveSkillEffect` that skills use. An item can also deal flat damage (a `damage` effect with `offenseMultiplierPercent: 0` ignores the user's attack) and target `allEnemies`; both are combat-only. `useItemOutOfCombat` rejects `singleEnemy` and `allEnemies` items, and any item with an `applyStatusEffect` effect: its status counts down in combat turns and lasts until the next victory, so used beforehand it would be a free pre-buff. `magicPower` is a combat stat like `attack`, so an item's status can buff it for casters; monsters have no `magicPower`, so such an effect only ever lands on characters and summons. Items that do not apply a status can also be used outside combat via `Game.useItemOutOfCombat` (e.g. restoring satiety while walking the dungeon loop — Exploration Kit is `combatUsable: false` but still usable this way, no need to wait for combat).
 
-### Drop source
+### 7.1.2 Drop source
 
-Drops randomly when killing **any monster** (regular/Elite/Boss), gated by `data/balance-config.json` field `items.itemDropChance` (0.9, `ITEM_DROP_CHANCE`, `src/data/items.ts`). Doesn't drop from Treasure/Event rooms (those 2 rooms are reserved for Artifacts — section 7.2, also see `08-events.md`).
+Drops randomly when killing **any monster** (regular/Elite/Boss), gated by `data/balance-config.json` field `items.itemDropChance` (0.9, `ITEM_DROP_CHANCE`, `src/data/items.ts`). Doesn't drop from Event rooms (reserved for Artifacts — section 7.2, also see `08-events.md`).
 
 When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a bucket, then an item inside it:
 
 - **Trophy bucket** — chosen with probability `items.trophyDropShare` (0.4), only for a monster that has trophies (`archetypeIds` containing its archetype). A monster with no trophy (Lesser Vampire, The Founder) skips this step.
 - **General pool** — every other drop: the items with no `archetypeIds`.
-- **Weight inside a bucket** = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight no longer scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
+- **Weight inside a bucket** = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight does not scale with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
 
-With every consumable in the general pool, a given potion drops far less often than when the pool held a handful of items, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
+With every consumable in one general pool, any given potion drops rarely, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
 
-Added directly to `GameState.inventory[itemId] += 1` as before, with no change to the in/out-of-combat item-use mechanics. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
+A dropped item is added directly to `GameState.inventory[itemId] += 1`. A room with multiple monsters rolls the drop independently per monster (no cap on stacking).
 
-### Catalog — general pool
+### 7.1.3 Catalog — general pool
 
 Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
 
@@ -79,13 +79,13 @@ Each buff or debuff item has its own status in `data/status-effects.json` (id = 
 - **Cures** name the status they remove and have no number to size.
 <!-- docs:intent-end -->
 
-### Trophies
+### 7.1.4 Trophies
 
 A trophy is a monster remnant with `effects: []`: it can be used, which only consumes it and shows "It has no effect at all. Strange." (in a combat log or as the room message), and its purpose is to be traded to the Merchant's Runner: sold for coins or bartered for a combat buff (`03-survival-stats.md`). The inventory and reward screens list its effect as "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
 
 - **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss. <!-- docs:intent -->
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.
-- A handful of older items (Grave Dust, Rotten Flesh, Broken Blade Fragment, Rat Tail, Venom Gland) are trophies with a tier set by hand.
+- Grave Dust, Rotten Flesh, Broken Blade Fragment, Rat Tail and Venom Gland are trophies with a tier set by hand.
 
 How the catalog is laid out: in each race group, one representative monster also keeps its own lower-tier individual trophy, and every other member drops only the group trophy. An archetype whose roles are exactly elite and boss has its own trophy and belongs to no group. A trophy's description must never promise an effect, since it has none. Two monsters have no trophy: Lesser Vampire and The Founder, the scripted final boss.
 
@@ -93,7 +93,7 @@ How the catalog is laid out: in each race group, one representative monster also
 
 ## 7.2 Artifacts (permanent relics for the run)
 
-### Equipment — permanent, one-shot decision on pickup
+### 7.2.1 Equipment — permanent, one-shot decision on pickup
 
 An Artifact is **equipment**, attached to 1 specific character (not the whole party). Unlike a normal equipment system, there is **no free reassignment**: the moment an Artifact is granted, the player makes a single, immediate, permanent decision.
 
@@ -102,30 +102,30 @@ Character.equippedArtifactIds: Id[]   // capped per data/balance-config.json fie
 GameState.pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null
 ```
 
-There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` is the only transient state: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.10, 2 Epics), decisions resolve **sequentially**: the 2nd artifact isn't even rolled/revealed until the 1st is fully resolved.
+There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` is the only transient state: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.19, 2 Epics), decisions resolve **sequentially**: the 2nd artifact isn't even rolled/revealed until the 1st is fully resolved.
 
 **The decision flow**, every time an Artifact is granted:
 
 1. **Reveal** — name, rarity, full effect list, description.
 2. **Decision**:
    - **Ordinary artifact**: **Equip** (choose any character — including one already at 3/3, which becomes a voluntary *replacement*: pick 1 of that character's own currently-equipped *ordinary*, non-Cursed artifacts to permanently discard, freeing the slot) or **Discard** (gone for good, never offered for a Cursed artifact).
-   - **Cursed artifact** (`isCursed: true`) or an event marked `forceEquip: true` (Twin Altars, §8.8): **no Discard option** — the player must designate a character, including one at 3/3 (same forced-replacement rule as above, still restricted to discarding an *ordinary* artifact on that character).
-3. Equipping consumes 1 of that character's `party.maxEquippedArtifacts` (3) personal slots, **permanently** — see "Ways an Artifact can leave a character" below for the only 3 exceptions.
+   - **Cursed artifact** (`isCursed: true`) or an event marked `forceEquip: true` (Twin Altars, §8.17): **no Discard option** — the player must designate a character, including one at 3/3 (same forced-replacement rule as above, still restricted to discarding an *ordinary* artifact on that character).
+3. Equipping consumes 1 of that character's `party.maxEquippedArtifacts` (3) personal slots, **permanently** — see "Ways an equipped Artifact can leave a character" below for the only 3 exceptions.
 
 - **Capped Artifacts per character** (`party.maxEquippedArtifacts`, `data/balance-config.json`) — multiplied by the party size, `party.size` (4), gives the total equip-slot budget for a run.
 - **Effects only apply to the exact character wearing it** (except `expBoost`, an exception because EXP is shared — see the "Who it applies to" note below).
 
 Implementation: `grantArtifact`/`resolveArtifactEquip`/`discardPendingArtifact`/`removeArtifactFromCharacter` (`src/engine/party.ts`); UI flow in `src/ui/screens/artifactDecision.ts`, given top priority by `App.syncUiToGameState()` and `finishVictorySequence` (`src/ui/screens/context.ts`) — a pending decision is always resolved before the player can act on anything else, including a fresh floor's entry-room ambush.
 
-### Ways an equipped Artifact can still leave a character
+### 7.2.2 Ways an equipped Artifact can leave a character
 
-1. **Wandering Hermit — Exchange fortune** (50 coins, any artifact including Cursed, §8.11) — the room's only service; this is also the *only* way to shed a Cursed artifact.
-2. **Sacrificial Circle** — sacrifice-for-reroll (§8.9).
+1. **Wandering Hermit — Exchange fortune** (50 coins, any artifact including Cursed, §8.20) — the room's only service; this is also the *only* way to shed a Cursed artifact.
+2. **Sacrificial Circle** — sacrifice-for-reroll (§8.18).
 3. **Replacement on a full character** (the decision flow above) — voluntary for an ordinary artifact, mandatory for a Cursed/`forceEquip` one; either way, only ever costs an *ordinary* artifact.
 
-Nothing else ever unequips or reassigns an artifact — there's no free swap screen for artifacts anymore. Pressing `a` in-game opens a **view-only** artifact list (name, rarity, wearer, full effect text) rather than a management screen.
+Nothing else ever unequips or reassigns an artifact — there is no swap screen for artifacts. Pressing `a` in-game opens a **view-only** artifact list (name, rarity, wearer, full effect text) rather than a management screen.
 
-### Effect data structure
+### 7.2.3 Effect data structure
 
 Effects are **passive, additive**, and don't go through the combat resolver like a skill/item — grouped into 4 categories:
 
@@ -153,7 +153,7 @@ ArtifactEffect =
   | { kind: "fearResist"; percent: number }       // reduces % of every fear-gain source for the EXACT equipping character (`Character.survival.fear` is already per-character — `03-survival-stats.md`), doesn't apply to active fear reduction
   | { kind: "cooldownReduction"; turns: number }  // reduces the `cooldownTurns` of the EXACT equipping character's skills directly (minimum 0) — `Character.cooldownsRemaining` is already per-character
 
-  // Cursed-only (§8.6) — never appears on an ordinary artifact
+  // Cursed-only (§8.4) — never appears on an ordinary artifact
   | { kind: "curseAggroBoost"; amount: number }   // adds aggro to the EXACT equipping character, monsters prioritize targeting them
 
 ArtifactDefinition {
@@ -162,7 +162,7 @@ ArtifactDefinition {
   description: string
   rarity: ArtifactRarity
   effects: ArtifactEffect[]   // usually just 1, epic ones may combine several
-  isCursed?: boolean          // §8.6
+  isCursed?: boolean          // §8.4
 }
 ```
 
@@ -172,28 +172,46 @@ ArtifactDefinition {
 
 **Who it applies to**: `statBoost` adds directly to the stats of the **exact equipping character** (not multiplied by `growthWeights`) — computed alongside the Exhausted multiplier in `recomputeCharacterStats` (`src/engine/party.ts`, `03-survival-stats.md`), applied *after* it so Exhausted never reduces an artifact bonus. All Group 2-4 effects likewise only count for the exact equipping character (except `expBoost`, noted above) — computed at the `Character` level (field `equippedArtifactIds`).
 
-### Drop source
+### 7.2.4 `autoDamage` trigger mechanism
 
-4 sources, non-exclusive (unlike Elite/Boss in `02-monster.md` section 2, where those 2 types are mutually exclusive per floor):
+`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md`), picking 1 living monster **uniformly at random** (uniform, like the `opportunistic` pattern in `02-monster.md` section 2, not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn. An `autoDamage` with `offenseMultiplierPercent` (Abilities and the two `autoDamage` Artifacts) is resolved as a normal `damage` effect instead of a raw HP subtraction, so its log line reads like a skill hit and the target's defense applies.
+
+### 7.2.5 Engine hooks for the Group 2-4 effects
+
+None of the Group 2-4 effects is a skill/status effect kind (`01-class-skill.md`) — each one has its own dedicated hook in the engine:
+
+- **`reflectDamage`**: after a monster successfully deals `damage` to the **exact character wearing this artifact** (not another party member), roll `percent`; if it hits, deal `percent × the damage just taken` back at that monster (doesn't go through the monster's `defense` — a reflect isn't a regular attack).
+- **`poisonOnHit`**: after the **exact character wearing this artifact** successfully deals `damage` to a monster (any skill/basic attack of theirs, not just Poison Coat), roll `chance`; if it hits, `applyStatusEffect` of the effect's own `statusEffectId` on that monster for the effect's own `durationTurns` — the same "on-hit rider" mechanic already used for Poison Coat (`docs/technical-decisions.md` §4.2), differing only in that the trigger source is an artifact instead of a temporary status. Another party member landing a hit does **not** trigger this effect unless they also have their own `poisonOnHit` artifact equipped.
+- **`lifesteal`**: hooks into the exact spot where the resolver computes `finalDamage` for a `damage` effect dealt by the **exact character wearing this artifact** (`resolver.ts`) — after subtracting the target's hp, adds `round(finalDamage × percent)` to their own hp (capped at `maxHp`).
+- **`dodgeChance`**: rolled **before** the `finalDamage` calculation step when a monster targets `damage` at the **exact character wearing this artifact** — on a hit, the entire effect is skipped (damage = 0, not just reduced), distinct from the existing fear-based accuracy roll (`04-fear-combat.md` section 4, which only applies to character skills targeting enemies, not monster attacks targeting characters). A monster targeting a different ally doesn't roll this dodge.
+- **`healOnKill`**: hooks into the exact point where a monster is removed from `CombatState.combatants` (hp ≤ 0) — **only triggers if the finishing blow (the final `damage` effect that brought hp to ≤ 0) was dealt by the exact character wearing this artifact**, healing `amount` straight to themself (capped at `maxHp`, not applicable to other allies). With `minPercent` set (Abilities only) the heal is the larger of `amount` or that percent of the bearer's base max HP (class base plus level growth).
+- **`alwaysHit` / `debuffResist`**: read by the same `combat.ts` call sites as the Ability versions (`rollsAlwaysHit`, the per-effect chance roll in `applySkillEffects`) — the sums in `src/engine/artifacts.ts` cover equipped Artifacts and the Ability together. Mechanics: `11-abilities.md` §11.1.1 and §11.1.2.
+- **`expBoost`**: multiplies into the step where `applyPartyExp` receives `expGained` from `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + sum of percent across every expBoost artifact currently equipped by anyone in the party))`. This is the **only effect not restricted to the person who landed the kill** — `partyExp` is a single value shared by the whole party (§6.9).
+- **`fearResist`**: multiplies into **every fear gain** of the **exact character wearing this artifact** — the per-round gain, the gain from a monster's hit, and a skill or item that raises fear (`resistedFearGain` — `03-survival-stats.md`) — via `actualFear = gain × (1 − sum of percent)`, kept to one decimal place, doesn't apply to active fear reduction (Acolyte skill/item, unaffected, counted at full 100%) or victory relief. Allies not wearing this artifact still receive fear at full rate as usual.
+- **`cooldownReduction`**: subtracted directly from the `cooldownTurns` assigned when 1 of the **exact character wearing this artifact**'s skills goes on cooldown (`Character.cooldownsRemaining[skillId] = skill.cooldownTurns − sum of turns`, minimum 0) — doesn't instantly refresh a skill already on cooldown from before the artifact was equipped, doesn't affect other allies' cooldowns.
+- **`curseAggroBoost`**: added directly to `Character.aggro` in `recomputeCharacterStats` (`src/engine/party.ts`), on top of the class base + Exhausted multiplier — see §8.4.
+
+### 7.2.6 Drop source
+
+3 sources, non-exclusive (unlike Elite/Boss in `02-monster.md` section 2, where those 2 types are mutually exclusive per floor):
 
 | Source | Drop chance for 1 Artifact | Notes |
 |---|---|---|
 | Killing an **Elite** (floor's final room, not Boss) | Guaranteed | Rarity rolled from the `elite` odds at the current floor depth (`artifactRarityWeights`, `src/data/artifacts.ts`) — never Epic |
 | Killing a **real Boss** (every `bossFloorInterval` floors, `06-level-system.md` §6.11) | Guaranteed | Rarity rolled from the `boss` odds at the current floor depth — mostly Common/Rare on floors 1–20, Unique/Epic-heavy from floor 31 |
-| **Treasure room** | — | Was spec'd as its own guaranteed-Artifact room type, but never wired into the floor generator; the placeholder `RoomType` value has since been removed from the codebase as dead code, so there's no such room type in code at all |
-| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.2) fills the "guaranteed artifact, no combat" role Treasure room was meant to have. Rarity uses the `treasureOrEvent` odds at the current floor depth, except the exchange events, see below |
+| **Event room** | Guaranteed, when visited | See `08-events.md` §8 for the specific event types (`data/events.json`) — `open-chest` (§8.8) is the "guaranteed artifact, no combat" room. Rarity uses the `treasureOrEvent` odds at the current floor depth (`treasureOrEvent` is only the odds table's name, also used by the Merchant's offers; there is no Treasure room type), except the exchange events, see below |
 
-**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (see below). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the Event room drop Artifacts.
+**Regular monsters** (non-Elite/Boss) **don't** drop Artifacts — only Items (section 7.1) and Cursed Coins (`09-currency.md`). The 2 sources stay separate: regular/Elite/Boss monsters can all drop Items, but only Elite/Boss/the Event room drop Artifacts.
 
-**1 exception to this table**: `waystone-shard` (New catalog entries, Category D, below) opts out of the normal per-rarity pool entirely via `restrictedDropSources` — it never appears from Elite kills or the Event room's standard roll, only from a Boss kill or from `blood-altar` once paid enough times. See its own entry for the full mechanism.
+**1 exception to this table**: `waystone-shard` (Catalog, "Older Than the Mark", below) opts out of the normal per-rarity pool entirely via `restrictedDropSources` — it never appears from Elite kills or the Event room's standard roll, only from a Boss kill or from `blood-altar` once paid enough times. See its own entry for the full mechanism.
 
-### Rarity & drop rate per tier
+### 7.2.7 Rarity & drop rate per tier
 
-**Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". Two rules survive from the earlier fixed tables: **Elite never rolls Epic** (its Epic anchor is 0, and a zero anchor stays zero at every depth), and Treasure/Event sit between Elite and Boss in average quality.
+**Elite, Boss and Treasure/Event each have their own odds, and all three shift with floor depth** (`artifactRarityWeights`, `src/data/artifacts.ts`; numbers in `data/balance-config.json` → `artifacts`). The formula is below under "Level bands & drop schedule". **Elite never rolls Epic** at any depth (its Epic anchor is 0, and a zero anchor stays zero at every depth). Treasure/Event sits between Elite and Boss in average quality from the anchor step down; on the shallowest steps it rolls slightly below Elite, since its Epic share vanishes and its Rare/Unique anchors are lower than Elite's (see the odds table below).
 
 Not depth-scaled, on purpose: **Sacrificial Circle** and **Wandering Hermit** roll through `rollArtifactWithMinRarity`, which keeps the fixed `events.exchangeRarityWeights` table (common / rare / unique / epic) renormalized above the required minimum, and **Gambling Den** picks its jackpot rarity directly from `events.gamblingDenRounds`. Catalog size per rarity: `data/artifacts.json`, grouped by `rarity`.
 
-### Level bands & drop schedule
+### 7.2.8 Level bands & drop schedule
 
 Each rarity is tuned for a character level band, and floor depth stands in for level (a monster at floor `d` is built on the same growth curve as a character at level `d`; that equivalence is an assumption, not measured from play):
 
@@ -207,7 +225,7 @@ Each rarity is tuned for a character level band, and floor depth stands in for l
 <!-- docs:intent-begin -->
 **Stat budget for pure-stat artifacts.** One artifact should improve its stat's *effect* by about **6% (Common), 8% (Rare), 10% (Unique), 12% (Epic)** at the middle of its band, measured against the mean stat of the classes that actually use it (level 8 / 23 / 38 / 60). For `attack`, `magicPower`, `maxHp` and `maxMp` that is a plain share of the stat. For `defense` the share is of effective HP, `bonus / (defenseMitigationX + defense)` (`defenseMitigationX` is 40 in `data/balance-config.json`), because of the mitigation curve (`mitigatedOffense`, `resolver.ts`); a defense point buys far less than its share of the stat suggests. An artifact with two stats counts each at 0.7, one with three at 0.5. Catalog values at or above the budget stay as they are, so it is a floor for new items rather than a cap; `cracked-spiral-stone` (`maxMp +22`) and `fused-twin-coins` (`attack +13`) sit on it.
 
-**Stats stay flat; `autoDamage` scales.** Artifacts are swapped during a run, so their stat bonuses are flat numbers, not shares of the bearer's base stats (Abilities, which last the whole run, use `minPercent` instead). The exception is `autoDamage`, whose fixed damage falls to 1–2% of a monster's HP at its level band. `thunder-totem` deals `6 + 25%` of the bearer's base `magicPower` and `crown-of-destruction` deals `12 + 30%` of base `attack` (plus its `poisonOnHit`), resolved as a normal `damage` hit against defense on 1 random living monster per round. That is about 4.3% of a floor-38 monster's HP for the totem and 5.2% of a floor-60 monster's for the crown (1.4% and 2.1% before scaling), roughly half of `thunderous-aura` and `lodestone` at the same tier. A class with none of the scaling stat (a Rogue with the totem, a Mage with the crown) gets a weaker tick than the old fixed one, since the flat part is now mitigated too.
+**Stats stay flat; `autoDamage` scales.** Artifacts are swapped during a run, so their stat bonuses are flat numbers, not shares of the bearer's base stats (Abilities, which last the whole run, use `minPercent` instead). The exception is `autoDamage`, whose fixed damage falls to 1–2% of a monster's HP at its level band. `thunder-totem` deals `6 + 25%` of the bearer's base `magicPower` and `crown-of-destruction` deals `12 + 30%` of base `attack` (plus its `poisonOnHit`), resolved as a normal `damage` hit against defense on 1 random living monster per round. That is about 4.3% of a floor-38 monster's HP for the totem and 5.2% of a floor-60 monster's for the crown (1.4% and 2.1% from the flat part alone), roughly half of `thunderous-aura` and `lodestone` at the same tier. A class with none of the scaling stat (a Rogue with the totem, a Mage with the crown) gets only the flat part, and that is mitigated by defense too.
 <!-- docs:intent-end -->
 
 **Rarity odds by depth.** Depth is grouped into steps of `artifacts.floorsPerStep` (10) floors, so every floor in a step shares one set of odds. The step containing `artifacts.anchorFirstFloor` (31) uses the source's `anchorWeights`; every other step follows
@@ -244,33 +262,38 @@ Resulting odds (%):
 | 51–60 | 0.7 / 12.4 / 86.9 / 0 | 0.1 / 2.6 / 36.0 / 61.3 | 0.4 / 5.2 / 36.9 / 57.6 |
 <!-- docs:end -->
 
-The first band of floors almost never drops a Unique or Epic, which is the point of the schedule. The exponential shape also means that, deep enough, only Unique and Epic still drop. Past `artifacts.maxStepsFromAnchor` (10) steps from the anchor the odds stop changing. Anchors and `tilt` are first-pass numbers; the whole schedule is tuned from `balance-config.json` without touching code. Collapsed Floor rolls the Boss odds at the current depth, so on shallow floors its reward is a Common or Rare rather than a guaranteed Unique/Epic.
+The first band of floors almost never drops a Unique or Epic, which is the point of the schedule. The exponential shape also means that, deep enough, only Unique and Epic still drop. Past `artifacts.maxStepsFromAnchor` (10) steps from the anchor the odds stop changing. Anchors and `tilt` are first-pass numbers; the whole schedule is tuned from `balance-config.json` without touching code. Collapsed Floor rolls the Boss odds at the current depth, so on shallow floors its reward is usually a Common or Rare, not a Unique/Epic.
 
-### Catalog
+### 7.2.9 Lore-bearing descriptions
 
-Full list (id, name, rarity, effects): `data/artifacts.json`. Loosely, higher rarities carry a bigger `statBoost`, a more distinctive Group 2/3 effect, or (Epic only) a combination of several effects — but treat the JSON as authoritative rather than this description.
-
-### Lore-bearing descriptions
-
-**Every** artifact in the catalog (all 34 existing, Common included, plus 10 new + 3 event-tied
-below) gets its `description` written as a genuine short story — a specific, implied character
+**Every** artifact in the catalog, Common included, has its `description` written as a genuine short story — a specific, implied character
 and moment, not a static image plus 1 appended detail. None of these are required to connect back
 to an existing event or thread; where one does, it's because the story wanted it, not because the
 catalog needed coverage.
 
-**Craft discipline carried over from the event-writing side of this project**: no names (nobody
+**Same craft discipline as the event writing**: no names (nobody
 down here exchanges them, matching the established pattern), no resolved motive, no confirmed fact
-that would settle anything on §11.9's open list. Sentence openings vary hard across the whole
-batch — entries open with the object itself, a fact, a number, or embedded dialogue far more often
-than with "Whoever," which appears only mid-sentence, never as the first word.
+that would settle anything on §12.9's open list. Sentence openings vary hard across the whole
+catalog — entries open with the object itself, a fact, a number, or embedded dialogue far more often
+than with "Whoever," which never opens a description.
 
-No entry names "Sleeper," "Covenant," or "the Balance," or resolves anything on §11.9's open list
+No entry names "Sleeper," "Covenant," or "the Balance," or resolves anything on §12.9's open list
 (who anyone was, whether a bargain paid off, what a Guardian actually is, whether either side of a
 broken schism was right). No item is written with its own will or intent — phrasing like "it
 doesn't stop" or "it's still waiting" describes a fact about the object, never the object choosing
 anything.
 
-#### Common (10 of 10 — every 1 rewritten)
+### 7.2.10 Catalog
+
+Full list (id, name, rarity, effects): `data/artifacts.json`. Loosely, higher rarities carry a bigger `statBoost`, a more distinctive Group 2/3 effect, or (Epic only) a combination of several effects — but treat the JSON as authoritative rather than this description.
+
+The catalog is grouped by purpose. Every group rolls through the same rarity tables ("Rarity & drop rate per tier" above), except where an entry says otherwise.
+
+#### 7.2.10.1 Stat and combat-effect artifacts
+
+Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
+
+**Common**
 
 <!-- docs:begin artifacts ids=iron-gauntlet,worn-wooden-shield,charm-of-life,small-mana-gem,sharp-claw,stone-of-endurance,ring-of-focus,warriors-necklace,pendant-of-calm,travelers-ration -->
 *Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
@@ -289,7 +312,7 @@ anything.
 | `travelers-ration` | Common | +15 max HP. | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
 <!-- docs:end -->
 
-#### Rare, non-Cursed (9 of 9)
+**Rare**
 
 <!-- docs:begin artifacts ids=ancient-sword,heart-of-stone,eternal-vial,arcane-core,thorned-armor,venomous-dagger-relic,vampiric-fang,featherweight-boots,quickcharge-rune -->
 *Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
@@ -307,20 +330,7 @@ anything.
 | `quickcharge-rune` | Rare | -1 turn skill cooldown. | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
 <!-- docs:end -->
 
-#### Rare, Cursed (4 of 4)
-
-<!-- docs:begin artifacts ids=blackened-locket,shackle-of-hunger,unstable-core,heavy-guilt -->
-*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
-
-| id | Rarity | Effect | Story |
-|---|---|---|---|
-| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The portrait was burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
-| `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
-| `unstable-core` | Rare | +25 aggro. +30 max MP. | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
-| `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
-<!-- docs:end -->
-
-#### Unique (7 of 7)
+**Unique**
 
 <!-- docs:begin artifacts ids=spiked-cloak,serpent-ring,thunder-totem,armor-of-wholeness,bloodthirsty-blade,phantom-step,scholars-insight -->
 *Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
@@ -336,7 +346,7 @@ anything.
 | `scholars-insight` | Unique | +15% EXP gained for the party. | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
 <!-- docs:end -->
 
-#### Epic (4 of 4)
+**Epic**
 
 <!-- docs:begin artifacts ids=crown-of-destruction,immortal-heart,reapers-covenant,eternal-scholars-tome -->
 *Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
@@ -349,11 +359,50 @@ anything.
 | `eternal-scholars-tome` | Epic | +25% EXP gained for the party. -1 turn skill cooldown. | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
 <!-- docs:end -->
 
-### New catalog entries — 4 categories, 11 items
+#### 7.2.10.2 Cursed artifacts
 
-11 wholly new `ArtifactDefinition` entries, grouped into 4 named categories for design purposes only
-— mechanically, plain artifacts rolled through the same rarity tables as everything else in §7.2, no
-collection mechanic, no tracked set, no special drop source.
+All Rare, `isCursed: true` (§8.4): a real bonus paired with a penalty, never offered with a Discard option.
+
+<!-- docs:begin artifacts ids=blackened-locket,shackle-of-hunger,unstable-core,heavy-guilt -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The portrait was burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
+| `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
+| `unstable-core` | Rare | +25 aggro. +30 max MP. | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
+| `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
+<!-- docs:end -->
+
+#### 7.2.10.3 Caster, speed and debuff-resist artifacts
+
+Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `speed`, and can carry `alwaysHit` and `debuffResist` (shared with Abilities, `11-abilities.md`). `aggro` stays Ability-only. `magicPower` also lifts every `isMagic` heal (`resolver.ts`), so these serve healers as much as nukers. Descriptions follow the rules in "Lore-bearing descriptions" above.
+
+<!-- docs:begin artifacts ids=cracked-scrying-glass,knotted-red-thread,resonant-tuning-fork,runners-ankle-cord,bitter-root-charm,hunters-tally-stick,censer-of-ash,signal-whistle,threshold-salt-pouch,stormglass-orb,unbroken-seal -->
+*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
+
+| id | Rarity | Effect | Story |
+|---|---|---|---|
+| `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
+| `knotted-red-thread` | Common | Harmful statuses enemies apply are 6% less likely to land. | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
+| `resonant-tuning-fork` | Rare | +8 magic power. | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
+| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
+| `bitter-root-charm` | Rare | Harmful statuses enemies apply are 10% less likely to land. | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
+| `hunters-tally-stick` | Rare | 8% chance to bypass a hit or debuff-chance roll entirely. | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
+| `censer-of-ash` | Unique | +12 magic power. | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
+| `signal-whistle` | Unique | +4 speed. | "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look." |
+| `threshold-salt-pouch` | Unique | Harmful statuses enemies apply are 15% less likely to land. | "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one." |
+| `stormglass-orb` | Epic | +15 magic power. -1 turn skill cooldown. | "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again." |
+| `unbroken-seal` | Epic | Harmful statuses enemies apply are 20% less likely to land. -15% fear accumulated. | "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside." |
+<!-- docs:end -->
+
+**Calibration.** `magicPower` and `attack` are interchangeable stats (`11-abilities.md`, Common), so `magicPower` reuses the `attack` ladder: `+3` Common (`iron-gauntlet`), `+8` Rare (`ancient-sword`), `+15` Epic (`snapped-ritual-blade`); Unique `+12` is interpolated between Rare and Epic, the way `executioners-instinct` is in the Ability catalog. `speed` is deliberately small (`+2` Rare, `+4` Unique): it never grows with level and only spans `8`–`17` across the classes, and three equipped Artifacts stack, so a Rare-tier `+8` would be absurd. `alwaysHit` and `debuffResist` values (`8%`; `6% / 10% / 15% / 20%`) sit below the Ability rungs (`10 / 15 / 20`; `10 / 16 / 24 / 32`) because up to three of them stack. None of these numbers is derived from an expected-value model; they are first-pass and meant to be tuned in play. <!-- docs:intent -->
+
+#### 7.2.10.4 Story-category artifacts
+
+These entries are grouped into 4 named categories for design purposes only — mechanically, plain artifacts
+rolled through the same rarity tables as everything else in §7.2, no collection mechanic, no tracked
+set, no special drop source (except Waystone Shard, below).
 
 **A — Belongings of Those Before** (Thread 4) — deliberately mundane and personal:
 
@@ -390,53 +439,29 @@ collection mechanic, no tracked set, no special drop source.
 
 **D — Older Than the Mark** (echoes `still-breathing`'s reveal without repeating it):
 
-- **Cracked Spiral Stone** (Unique, `statBoost maxMp +20`): "Scratched into stone with something
+- **Cracked Spiral Stone** (Unique, `statBoost maxMp +22`): "Scratched into stone with something
   that wasn't a chisel, long before anyone down here started using one. This wasn't a copy of
   anything. Every spiral cut since has been copying this, several hands removed, and none of them
   know it."
-- **Fused Twin Coins** (Epic, `statBoost attack +10` + `statBoost defense +10`): "2 coins from 2
+- **Fused Twin Coins** (Epic, `statBoost attack +13` + `statBoost defense +10`): "2 coins from 2
   different people, melted together by something neither of them chose. One face stays closed in
   on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear
   either owner would have wanted them to."
-- **Waystone Shard** (Unique, no `statBoost` — its purpose is entirely the check in
-  `10-event-narrative.md` §F.4, so it carries only a token effect, e.g. a small `statBoost maxHp`):
+- **Waystone Shard** (Unique, only a small token `statBoost maxHp` — its purpose is entirely the check in
+  `10-event-narrative.md` §F.4):
   "A shard of something that was never carved, only grown that way — smooth on every broken edge
   except where it snapped. This was already broken long before anyone started marking these walls
   with a spiral." *(the floor-100 "Leave" ending's escape condition — §F.4)* **Restricted drop
-  source, an exception to the "Drop source" table below**: excluded from the standard
+  source, an exception to the "Drop source" table above**: excluded from the standard
   `treasureOrEvent` roll (so never from Chain 4's 7 zero-cost events, Elite kills, `merchant`,
   `cursed-shrine`, `twin-altars`, or `sacrificial-circle`) — appears only from a Boss kill, or from
   `blood-altar` once `altarPaymentsCount >= events.bloodDebtThreshold2` (8 payments). Full rationale
-  and the `restrictedDropSources` mechanism this needs: `10-event-narrative.md` §F.4.
+  and the `restrictedDropSources` mechanism: `10-event-narrative.md` §F.4.
 
-### Caster, speed and debuff-resist artifacts — 11 items
+#### 7.2.10.5 Event-tied artifacts
 
-Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `speed`, and can carry `alwaysHit` and `debuffResist` (introduced for Abilities, `11-abilities.md`). `aggro` stays Ability-only. `magicPower` also lifts every `isMagic` heal (`resolver.ts`), so these serve healers as much as nukers. Descriptions follow the rules in "Lore-bearing descriptions" above.
-
-<!-- docs:begin artifacts ids=cracked-scrying-glass,knotted-red-thread,resonant-tuning-fork,runners-ankle-cord,bitter-root-charm,hunters-tally-stick,censer-of-ash,signal-whistle,threshold-salt-pouch,stormglass-orb,unbroken-seal -->
-*Generated from `data/artifacts.json` by `bun run docs:sync`. Do not edit.*
-
-| id | Rarity | Effect | Story |
-|---|---|---|---|
-| `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
-| `knotted-red-thread` | Common | Harmful statuses enemies apply are 6% less likely to land. | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
-| `resonant-tuning-fork` | Rare | +8 magic power. | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
-| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
-| `bitter-root-charm` | Rare | Harmful statuses enemies apply are 10% less likely to land. | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
-| `hunters-tally-stick` | Rare | 8% chance to bypass a hit or debuff-chance roll entirely. | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
-| `censer-of-ash` | Unique | +12 magic power. | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
-| `signal-whistle` | Unique | +4 speed. | "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look." |
-| `threshold-salt-pouch` | Unique | Harmful statuses enemies apply are 15% less likely to land. | "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one." |
-| `stormglass-orb` | Epic | +15 magic power. -1 turn skill cooldown. | "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again." |
-| `unbroken-seal` | Epic | Harmful statuses enemies apply are 20% less likely to land. -15% fear accumulated. | "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside." |
-<!-- docs:end -->
-
-**Calibration.** `magicPower` and `attack` are interchangeable stats (`11-abilities.md`, Common), so `magicPower` reuses the `attack` ladder: `+3` Common (`iron-gauntlet`), `+8` Rare (`ancient-sword`), `+15` Epic (`snapped-ritual-blade`); Unique `+12` is interpolated between Rare and Epic, the way `executioners-instinct` is in the Ability catalog. `speed` is deliberately small (`+2` Rare, `+4` Unique): it never grows with level and only spans `8`–`17` across the classes, and three equipped Artifacts stack, so a Rare-tier `+8` would be absurd. `alwaysHit` and `debuffResist` values (`8%`; `6% / 10% / 15% / 20%`) sit below the Ability rungs (`10 / 15 / 20`; `10 / 16 / 24 / 32`) because up to three of them stack. None of these numbers is derived from an expected-value model; they are first-pass and meant to be tuned in play. <!-- docs:intent -->
-
-### Event-tied artifacts
-
-Some items are tied to a specific event, especially the once-lifetime ones. `still-breathing` stays
-`noArtifactReward: true` (a locked decision, `10-event-narrative.md` Part C.4 — "the reveal is the
+Some items are tied to a specific event, especially the once-lifetime ones. `still-breathing` is
+`noArtifactReward: true` (a locked decision, `10-event-narrative.md` Part C.3 — "the reveal is the
 reward, no mechanical effect of any kind").
 
 **Mechanism**:
@@ -456,8 +481,8 @@ if (!event.noArtifactReward) {
 }
 ```
 
-**Wired**: `waiting-supplies` → `travelers-ration` (`10-event-narrative.md` Part A, addressing the
-"too many free common rewards" finding), plus the 3 once-lifetime events below, each pointing
+**Events that use it**: `waiting-supplies` → `travelers-ration` (`10-event-narrative.md` Part D),
+plus the 3 once-lifetime events below, each pointing
 `guaranteedArtifactId` at its own dedicated Unique artifact in `data/artifacts.json`:
 
 - **Vigil Cloth** (`vigil-candle`'s guaranteed drop, Unique, `fearResist 15%`): "Folded before it
@@ -469,22 +494,3 @@ if (!event.noArtifactReward) {
 - **Worn Chalk Stub** (`half-a-warning`'s guaranteed drop, Unique, `cooldownReduction 1 turn`):
   "Worn down to a nub, carving something into stone that should have taken half as long. Whatever
   hand held it needed to stay steady right up until it didn't."
-
-### `autoDamage` trigger mechanism
-
-`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md`), picking 1 living monster **uniformly at random** (uniform, like the `opportunistic` pattern in `02-monster.md` section 2, not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn. An `autoDamage` with `offenseMultiplierPercent` (Abilities and the two `autoDamage` Artifacts) is resolved as a normal `damage` effect instead of a raw HP subtraction, so its log line reads like a skill hit and the target's defense applies.
-
-### Engine hooks for the Group 2-4 effects
-
-None of the Group 2-4 effects exist in any form in the current skill/status system (`01-class-skill.md` section 1.5) — each one has its own dedicated hook in the engine:
-
-- **`reflectDamage`**: after a monster successfully deals `damage` to the **exact character wearing this artifact** (not another party member), roll `percent`; if it hits, deal `percent × the damage just taken` back at that monster (doesn't go through the monster's `defense` — a reflect isn't a regular attack).
-- **`poisonOnHit`**: after the **exact character wearing this artifact** successfully deals `damage` to a monster (any skill/basic attack of theirs, not just Poison Coat), roll `chance`; if it hits, `applyStatusEffect` of the effect's own `statusEffectId` on that monster for the effect's own `durationTurns` — the same "on-hit rider" mechanic already used for Poison Coat (`docs/technical-decisions.md` §4.2), differing only in that the trigger source is an artifact instead of a temporary status. Another party member landing a hit does **not** trigger this effect unless they also have their own `poisonOnHit` artifact equipped.
-- **`lifesteal`**: hooks into the exact spot where the resolver computes `finalDamage` for a `damage` effect dealt by the **exact character wearing this artifact** (`resolver.ts`) — after subtracting the target's hp, adds `round(finalDamage × percent)` to their own hp (capped at `maxHp`).
-- **`dodgeChance`**: rolled **before** the `finalDamage` calculation step when a monster targets `damage` at the **exact character wearing this artifact** — on a hit, the entire effect is skipped (damage = 0, not just reduced), distinct from the existing fear-based accuracy roll (`04-fear-combat.md` section 4, which only applies to character skills targeting enemies, not monster attacks targeting characters). A monster targeting a different ally doesn't roll this dodge.
-- **`healOnKill`**: hooks into the exact point where a monster is removed from `CombatState.combatants` (hp ≤ 0) — **only triggers if the finishing blow (the final `damage` effect that brought hp to ≤ 0) was dealt by the exact character wearing this artifact**, healing `amount` straight to themself (capped at `maxHp`, not applicable to other allies). With `minPercent` set (Abilities only) the heal is the larger of `amount` or that percent of the bearer's base max HP (class base plus level growth).
-- **`alwaysHit` / `debuffResist`**: read by the same `combat.ts` call sites as the Ability versions (`rollsAlwaysHit`, the per-effect chance roll in `applySkillEffects`) — the sums in `src/engine/artifacts.ts` now cover equipped Artifacts and the Ability together. Mechanics: `11-abilities.md` §11.1.1 and §11.1.2.
-- **`expBoost`**: multiplies into the step where `applyPartyExp` receives `expGained` from `game.ts` (`06-level-system.md` §6.9) — `expGained = round(expGained × (1 + sum of percent across every expBoost artifact currently equipped by anyone in the party))`. This is the **only effect not restricted to the person who landed the kill** — `partyExp` is a single value shared by the whole party (§6.9).
-- **`fearResist`**: multiplies into **every fear gain** of the **exact character wearing this artifact** — the per-round gain, the gain from a monster's hit, and a skill or item that raises fear (`resistedFearGain` — `03-survival-stats.md`) — via `actualFear = gain × (1 − sum of percent)`, kept to one decimal place, doesn't apply to active fear reduction (Acolyte skill/item, unaffected, counted at full 100%) or victory relief. Allies not wearing this artifact still receive fear at full rate as usual.
-- **`cooldownReduction`**: subtracted directly from the `cooldownTurns` assigned when 1 of the **exact character wearing this artifact**'s skills goes on cooldown (`Character.cooldownsRemaining[skillId] = skill.cooldownTurns − sum of turns`, minimum 0) — doesn't instantly refresh a skill already on cooldown from before the artifact was equipped, doesn't affect other allies' cooldowns.
-- **`curseAggroBoost`**: added directly to `Character.aggro` in `recomputeCharacterStats` (`src/engine/party.ts`), on top of the class base + Exhausted multiplier — see §8.6.

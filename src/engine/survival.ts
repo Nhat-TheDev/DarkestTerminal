@@ -34,29 +34,24 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** Live-computed, not a stored status effect. */
 export function isPartyExhausted(satiety: number): boolean {
   return satiety <= EXHAUSTED_THRESHOLD;
 }
 
-/** Live-computed; stacks with Exhausted below the Dying threshold. */
 export function isPartyDying(satiety: number): boolean {
   return satiety <= DYING_THRESHOLD;
 }
 
-/** Applied to a character's own base stat, before artifact `statBoost` is added on top (maxHp/maxMp are never touched). */
 export function applyExhaustedMultiplier(baseStat: number, satiety: number): number {
   return isPartyExhausted(satiety) ? Math.round(baseStat * EXHAUSTED_STAT_MULTIPLIER) : baseStat;
 }
 
-/** Rest rooms never call this — call sites pass 0 satiety drain for them instead. */
 export function drainSatiety(state: GameState, amount: number, log: LogEntry[]): void {
   if (amount <= 0) return;
   state.satiety = clamp(state.satiety - amount, 0, 100);
   log.push({ text: t("survival.satietyDrained", { satiety: state.satiety }), kind: "debuff" });
 }
 
-/** Mirrors Poisoned II's tick, applied once per combat round while Dying. */
 export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   for (const c of party) {
     if (!c.isAlive) continue;
@@ -69,29 +64,26 @@ export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   }
 }
 
-/** Fear is kept to one decimal place (0.0-100.0), so a small gain still shows its fearResist reduction. */
+/** One decimal place, so a small gain still shows its fearResist reduction. */
 export function roundFear(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-/** `+2.1`-style text for a fear amount: one decimal, dropped when it is `.0`. */
 export function formatFear(value: number): string {
   return String(roundFear(value));
 }
 
-/** Every fear gain, whatever its source, is reduced by the character's fearResist. */
 export function resistedFearGain(character: Character, amount: number): number {
   return roundFear(amount * fearResistMultiplier(character));
 }
 
-/** The one place fear is written: clamped to 0-100 and rounded. Returns the change actually made. */
+/** The one place fear is written. Returns the change actually made. */
 export function adjustFear(character: Character, delta: number): number {
   const before = character.survival.fear;
   character.survival.fear = roundFear(clamp(before + delta, 0, 100));
   return roundFear(character.survival.fear - before);
 }
 
-/** `base` grown by floor depth, capped, then reduced by the character's fearResist. */
 function scaledFearGain(character: Character, base: number, cap: number, floorDepth: number): number {
   const growthMultiplier = 1 + FEAR_PER_ROUND_DEPTH_GROWTH * (floorDepth - 1);
   const scaled = Math.min(base * growthMultiplier, cap);
@@ -113,12 +105,10 @@ export function applyRoundFear(character: Character, floorDepth: number): number
   return character.isAlive ? adjustFear(character, fearGainForRound(character, floorDepth)) : 0;
 }
 
-/** A monster's damage effect landed on `character`. */
 export function applyHitFear(character: Character, floorDepth: number): number {
   return character.isAlive ? adjustFear(character, fearGainForHit(character, floorDepth)) : 0;
 }
 
-/** Relief depends on how fast the fight was won; quick-win and normal relief aren't additive. Returns who it calmed. */
 export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: boolean, roundNumber: number): Character[] {
   const relief = isEliteOrBossFight
     ? roundNumber < FEAR_ELITE_OR_BOSS_QUICK_VICTORY_ROUND_THRESHOLD
@@ -130,19 +120,17 @@ export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: b
   return party.filter((c) => c.isAlive && adjustFear(c, -relief) !== 0);
 }
 
-/** Rest room "Eat & Drink": restores each character's HP/MP. Satiety is party-wide — restore it once via `restEatDrinkSatiety`, not per character. */
+/** Satiety is party-wide: restore it once via `restEatDrinkSatiety`. */
 export function restEatDrink(character: Character): void {
   if (!character.isAlive) return;
   character.hp = clamp(character.hp + Math.round(character.maxHp * EAT_DRINK_RESTORE_FRACTION), 0, character.maxHp);
   character.mp = clamp(character.mp + Math.round(character.maxMp * EAT_DRINK_RESTORE_FRACTION), 0, character.maxMp);
 }
 
-/** Party-wide satiety restore for "Eat & Drink" — called once per rest action, not per character. */
 export function restEatDrinkSatiety(state: GameState): void {
   state.satiety = clamp(state.satiety + EAT_DRINK_SATIETY_RESTORE, 0, 100);
 }
 
-/** Rest room "Chat": only hp/mp/fear, no satiety. */
 export function restChat(character: Character): void {
   if (!character.isAlive) return;
   character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_FRACTION), 0, character.maxHp);
@@ -150,7 +138,6 @@ export function restChat(character: Character): void {
   adjustFear(character, -CHAT_FEAR_RELIEF);
 }
 
-/** Post-victory option distinct from the Rest room: costs 1 Exploration Kit, restores satiety only. */
 export function campAction(state: GameState): { reason: string } | null {
   const kits = state.inventory["exploration-kit"] ?? 0;
   if (kits <= 0) return { reason: t("errors.noExplorationKits") };

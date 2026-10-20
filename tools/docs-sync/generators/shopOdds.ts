@@ -41,7 +41,6 @@ function oddsTable({ balance }: DocsData, bands: readonly number[]): DocTable {
   };
 }
 
-/** Odds of each shop tier by floor depth. `part=anchors` is the anchor table, `part=odds` the odds per band of floors. */
 export const shopOdds: GeneratorSpec = {
   source: "`data/balance-config.json` (`shop`)",
   args: ["part", "bands"],

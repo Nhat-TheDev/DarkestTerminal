@@ -1,7 +1,6 @@
 import { capitalize, formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** The event roll: each tier's weight, and the events in it with their floor gate and once-per-run flag. */
 export const eventTiers: GeneratorSpec = {
   source: "`data/events.json` and `data/balance-config.json` (`events`)",
   args: [],

@@ -9,10 +9,8 @@ import { checkPairs } from "./pairs";
 import { checkReferences, type RefSource } from "./refs";
 import type { DocsData, Finding, GeneratorSpec } from "./types";
 
-/** How many findings the command prints before it summarises the rest. */
 const MAX_PRINTED = 20;
 
-/** Repo-relative paths (always with `/`) of the files under `dir` that `keep` accepts. */
 function listFiles(root: string, dir: string, keep: (name: string) => boolean): string[] {
   const start = join(root, dir);
   if (!existsSync(start)) return [];
@@ -32,30 +30,27 @@ function listFiles(root: string, dir: string, keep: (name: string) => boolean): 
 }
 
 const isMarkdown = (name: string) => name.endsWith(".md");
-/** Docs the coverage check leaves alone: specs under `docs/specs/`, and the narrative docs, which hold no balance numbers. */
-const NOT_COVERED = (file: string) => file.startsWith("docs/specs/") || file.endsWith("10-event-narrative.md") || file.endsWith("11-world-bible.md");
+/** Specs and narrative docs hold no balance numbers. */
+const NOT_COVERED = (file: string) => file.startsWith("docs/specs/") || file.endsWith("10-event-narrative.md") || file.endsWith("12-world-bible.md");
 const BASELINE_PATH = "tools/docs-sync/coverage-baseline.json";
 const isSource = (name: string) => name.endsWith(".ts") || name.endsWith(".html");
 
 export interface RunOptions {
   root: string;
-  /** Rewrite what is out of step. When false nothing is written and every finding is reported. */
+  /** When false, fixable findings are reported instead of fixed. */
   write: boolean;
   data: DocsData;
   registry?: Readonly<Record<string, GeneratorSpec>>;
 }
 
 export interface RunResult {
-  /** Numbers in prose that equal a value in the data and are not protected, in the docs the coverage check covers. */
   candidates: Candidate[];
   findings: Finding[];
-  /** Pairs the check could not compare. Information only. */
   unchecked: Finding[];
-  /** Docs whose text is, or in write mode was, rewritten. */
+  /** In check mode, the docs a write would rewrite. */
   changed: string[];
 }
 
-/** The recorded counts per doc; a missing file is an empty baseline, an unreadable one throws. */
 function readBaseline(path: string): Record<string, number> {
   if (!existsSync(path)) return {};
   const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
@@ -65,10 +60,7 @@ function readBaseline(path: string): Record<string, number> {
   return parsed as Record<string, number>;
 }
 
-/**
- * Compares the count of unprotected numbers per doc with the recorded baseline; progress lowers it, a rise is a finding.
- * A doc, or the whole file, missing from the baseline counts as zero, so nothing here can raise it.
- */
+/** The baseline only ratchets down: a rise is a finding, a drop lowers it, a missing entry counts as zero. */
 function checkBaseline(root: string, write: boolean, candidates: readonly Candidate[], covered: readonly string[]): Finding[] {
   const path = join(root, BASELINE_PATH);
   let baseline: Record<string, number>;
@@ -164,7 +156,6 @@ export function formatFinding({ file, line, message }: Finding): string {
   return `${file}:${line}  ${message}`;
 }
 
-/** `--check` and `--coverage` only read; with neither, the command rewrites what is out of step. */
 export function parseMode(argv: readonly string[]): { check: boolean; listCoverage: boolean; write: boolean } {
   const check = argv.includes("--check");
   const listCoverage = argv.includes("--coverage");

@@ -6,14 +6,9 @@ import { BALANCE } from "./balanceConfig";
 
 export type BarterBoostStat = "attack" | "defense" | "speed";
 
-/**
- * One piece of a buff. `statBoost` adds `percent` of the stat's effect once, when the fight starts
- * (`attack` also raises magic power; `defense` is a share of effective HP). `healOverTime` heals that
- * percent of max HP at the start of each round of the fight.
- */
+/** `statBoost` applies once at fight start (`attack` also raises magic power; `defense` is a share of effective HP); `healOverTime` heals at the start of each round. */
 export type BarterEffect = { kind: "statBoost"; stat: BarterBoostStat; percent: number } | { kind: "healOverTime"; maxHpPercentPerTurn: number };
 
-/** What one trophy kind buys from the Runner: how many of it a trade takes, and the buff it gives. */
 export interface BarterEntry {
   itemId: Id;
   cost: number;
@@ -26,11 +21,10 @@ const BOOST_STATS: readonly BarterBoostStat[] = ["attack", "defense", "speed"];
 
 type BarterConfig = typeof BALANCE.barter;
 
-// Every key each map must have; typed as a full Record so a new stat or tier fails to compile until it is listed.
+// Full Records so a new stat or tier fails to compile until it is listed here.
 const STATUS_STATS: Record<keyof BarterConfig["statStatusIds"], true> = { attack: true, magicPower: true, defense: true, speed: true };
 const ITEM_TIERS: Record<ItemTier, true> = { common: true, uncommon: true, rare: true, unique: true, epic: true, legendary: true };
 
-/** Every stat and every tier names a status, and each status exists, so a typo or a missing key fails at load rather than mid-fight. */
 export function validateBarterStatusIds(config: BarterConfig): void {
   const check = (field: string, map: Record<string, string>, keys: string[]) => {
     for (const key of keys) {
@@ -58,7 +52,7 @@ for (const entry of BARTER_ENTRIES) {
       if (!BOOST_STATS.includes(effect.stat)) throw new Error(`data/barter.json: "${entry.itemId}" has an unknown stat "${effect.stat}"`);
       if (!(effect.percent > 0)) throw new Error(`data/barter.json: "${entry.itemId}" needs a positive percent for "${effect.stat}"`);
     } else if (effect.kind === "healOverTime") {
-      // Healing runs through one status per tier (data/status-effects.json), so the entry's percent must be that status's.
+      // The tier's regen status does the healing, so the entry's percent must match it.
       const regenId = BALANCE.barter.regenStatusIdByTier[item.tier];
       if (getStatusEffect(regenId).perTurnEffects[0]?.maxHpPercent !== effect.maxHpPercentPerTurn) {
         throw new Error(`data/barter.json: "${entry.itemId}" maxHpPercentPerTurn must equal ${regenId}'s maxHpPercent`);

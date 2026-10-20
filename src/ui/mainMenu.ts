@@ -7,7 +7,7 @@ import { listSlots, APP_VERSION } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
 
-/** Below this width the battlefield/event panels start clipping content, so nudge the player to widen. */
+/** Below this width the battlefield/event panels clip. */
 const NARROW_TERMINAL_WIDTH = 100;
 
 export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
@@ -76,8 +76,7 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
 
     const hasSaves = listSlots().some((slot) => slot.meta !== null);
 
-    // Pre-game screens have no `App` footer bar, so they anchor their own in the same bottom-left
-    // spot the in-game one occupies — the key hints never move between screens.
+    // Pre-game screens have no App footer, so they anchor their own in the same spot.
     const footer = new TextRenderable(renderer, {
       id: "menu-footer",
       content: joinLines([highlightKeyHints(t("mainMenu.pressAnyKey"))]),
@@ -133,10 +132,7 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
       renderer.keyInput.on("keypress", onChoiceKey);
     };
 
-    // Never `.once()` here: `InternalKeyHandler.emit` calls the unwrapped listeners directly, so a
-    // `once` wrapper never removes itself — it would keep re-running `showChoice()` on every key
-    // for the rest of the session, stacking a fresh `onChoiceKey` each time. Persistent `on` plus
-    // an explicit `off` is the pattern every other screen in this codebase uses.
+    // Never `.once()`: `InternalKeyHandler.emit` calls unwrapped listeners, so a `once` wrapper never removes itself.
     const onKey = (_key: KeyEvent) => {
       renderer.keyInput.off("keypress", onKey);
       showChoice();

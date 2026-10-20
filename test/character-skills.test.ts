@@ -9,9 +9,7 @@ import type { CombatantRef, LogEntry, SkillDefinition, Character } from "../src/
 import { makeCtx, spawnInto, pickAnyAction, withoutDamageRolls } from "./helpers";
 import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from "../src/data/summons";
 
-// Several tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills to exercise new mechanics.
-// Bun shares module state across test files within one run, so truncate back to the original length once
-// this file's tests are done to avoid leaking mock entries into other test files' assertions.
+// Tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills; Bun shares module state across test files, so truncate back afterwards.
 const initialStatusEffectsCount = STATUS_EFFECTS.length;
 const initialVanguardSkillsCount = CLASSES[0]!.skills.length;
 afterAll(() => {
@@ -109,9 +107,7 @@ describe("new skill mechanics", () => {
   test("Poison Coat buff makes a landed hit auto-apply Poisoned", () => {
     const { ctx } = makeCtx();
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
-    // lesser-golem (Golem race, 40% physical resist) rather than skeleton-guard (its Skeletal
-    // subRace is now 30% WEAK to physical) — this test needs the monster to survive round 1's
-    // party-wide attacks so round 2 can verify Poison Coat's on-hit proc.
+    // A physical-resistant monster, so it survives round 1 for round 2's Poison Coat proc.
     const tanky = spawnInto(ctx, "lesser-golem");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: rogue.id };
@@ -229,15 +225,12 @@ describe("new skill mechanics", () => {
     vanguard.unlockedSkillIds.push("sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
     vanguard.mp = 999;
     vanguard.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
-    // vampire-bat (Beast race, Predator subRace) rather than skeleton-guard — its Skeletal subRace
-    // is 30% weak to physical, which would inflate actualDamage past amountOnlyScaledDamage and
-    // confound this test's whole point (isolating the fear-tier scaling formula, not race damage).
+    // Not skeleton-guard: its physical weakness would inflate damage past what this isolates.
     const enemy = spawnInto(ctx, "vampire-bat");
     const combat = startCombat("r1", [enemy.id], ctx, false);
     const enemyRef: CombatantRef = { kind: "monster", id: enemy.id };
     const enemyActor = getActorByRef(enemyRef, ctx);
-    // If only `amount` were scaled (the pre-fix behavior), damage would be
-    // round(30*0.6) + mitigatedOffense(vanguard.attack*0.85, defense) — the offense-scaled term unaffected.
+    // Scaling only `amount` would give round(30*0.6) + the unscaled offense term.
     const amountOnlyScaledDamage = Math.max(1, Math.round(30 * 0.6) + mitigatedOffense(vanguard.attack * 0.85, enemyActor.defense));
 
     queueAction(combat, { kind: "character", id: vanguard.id }, "sword-judgment", [enemyRef], ctx);
@@ -561,9 +554,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     vanguard.unlockedSkillIds.push("test-conditional-skill");
     vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
     const tanky = spawnInto(ctx, "skeleton-guard");
-    // Explicit high defense, independent of skeleton-guard's current base stats: the ignoreDefensePercent
-    // bonus only becomes visible in rounded damage once defense is high enough to cross a rounding
-    // boundary — a hand-set value keeps that margin regardless of how base archetype stats get retuned.
+    // Hand-set defense, high enough that ignoreDefensePercent crosses a rounding boundary whatever the archetype's base stats.
     tanky.defense = 30;
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
@@ -788,10 +779,7 @@ describe("Mage skill ranks", () => {
 });
 
 
-/** Every base stat must be a finite non-negative number and growthWeights must have exactly the 5 expected
- * keys, each a finite non-negative number. Reads whatever is currently in data/classes.json rather than
- * pinning exact tuned numbers — those are expected to change via the rebalance-editor tool, and a test that
- * hard-codes a rebalance's output just breaks on the next legitimate rebalance instead of catching real bugs. */
+/** Checks shape and range only, never tuned numbers, so a legitimate rebalance doesn't break it. */
 function expectValidCharacterBase(cls: ReturnType<typeof getClass>) {
   for (const key of ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const) {
     expect(Number.isFinite(cls[key])).toBe(true);
@@ -1039,9 +1027,7 @@ describe("Viking class", () => {
     resolveRound(combat, ctx);
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-ii")).toBe(true);
 
-    // storm-empowered's own onHitAoeDamage splash also lands on the same single enemy every cast, independent of
-    // whether Frenzied Slash's conditionalBonus applies — so the fix must be verified on the DIRECT hit's exact
-    // damage (parsed from the log), not the round's total HP delta, which the splash would confound either way.
+    // storm-empowered's splash also hits this enemy, so check the direct hit's damage from the log, not the HP delta.
     const withBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense * 0.7)));
     const noBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense)));
     expect(withBonusDamage).toBeGreaterThan(noBonusDamage);
@@ -1098,8 +1084,6 @@ describe("Rogue skill ranks + poison exclusivity", () => {
 
   test("Poison Coat's on-hit rider always applies plain poisoned, even at rank 2/3", () => {
     const coat = getSkill("poison-coat");
-    // Ranks 2/3 apply the same base "poison-coated" rider status alongside a separate attack-buff
-    // status (venom-edge/-ii) — the on-hit rider itself never changes rank.
     expect(getStatusEffect("poison-coated").onHitStatusEffectId).toBe("poisoned");
 
     const { ctx } = makeCtx();
@@ -1252,7 +1236,6 @@ describe("Ninja class", () => {
       { kind: "damage", amount: 18, offenseMultiplierPercent: 90, extraHitChance: 0.5 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.8, durationTurns: 3 },
     ]);
-    // No executeBonus on this skill (by design) — Death Mark carries the ninja's execute mechanic instead.
     expect(skill.executeBonus).toBeUndefined();
   });
 
@@ -1326,7 +1309,7 @@ describe("Summoner class", () => {
     const skill = getSkill("summon-goblin");
     const castId = getEffectiveSkill(skill, 1).effects?.[0]?.summonCastId;
     expect(castId).toBe("summon-goblin");
-    // The same cast profile is referenced at every rank — the per-rank growth lives inside it as a tuple.
+    // The per-rank growth lives inside the one cast profile as a tuple.
     expect(getEffectiveSkill(skill, 7).effects?.[0]?.summonCastId).toBe(castId);
     expect(getEffectiveSkill(skill, 15).effects?.[0]?.summonCastId).toBe(castId);
     const attackFormula = getSummonCast(castId!).stat.attack;
@@ -1371,10 +1354,6 @@ describe("Summoner class", () => {
     }
   });
 
-  // Reads the actual cast profile rather than hardcoding balance numbers, so a rebalance pass
-  // (retuning base/percent in data/summons.json) doesn't need a matching edit here too.
-  // Every Summoner's minions get the passive's maxHp/attack bonus baked in from spawn (§11 of the
-  // design spec) — 0/20/10 (maxHp%/attack%) at rank 0/1, 25/13 at rank 2, 30/17 at rank 3.
   function summonerPassiveBonusPercent(owner: Character, statName: "maxHp" | "attack"): number {
     const rank = getUnlockedPassiveRank(getClass("summoner").passiveSkill, owner.level);
     const byRank = { 0: { maxHp: 0, attack: 0 }, 1: { maxHp: 20, attack: 10 }, 2: { maxHp: 25, attack: 13 }, 3: { maxHp: 30, attack: 17 } } as const;
@@ -1399,7 +1378,6 @@ describe("Summoner class", () => {
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower");
     expect(goblin).toBeDefined();
     expect(goblin!.maxHp).toBe(expectedStat("summon-goblin", "maxHp", summoner, 1));
-    // Physical-attacking minion, but funded by the magic-leaning Summoner's magicPower, not its own weak attack.
     expect(getSummonCast("summon-goblin").stat.attack.sourceStat).toBe("magicPower");
     expect(goblin!.attack).toBe(expectedStat("summon-goblin", "attack", summoner, 1));
   });

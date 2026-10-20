@@ -11,7 +11,7 @@ import type { CombatantRef, LogSession, Summon } from "../src/types";
 import { pickAnyAction } from "./helpers";
 
 const PARTY = ["vanguard", "mage", "ninja", "summoner"];
-/** Ids a build before the rename used: a skill, a status and a summon archetype that are no longer in data/*.json. */
+/** Ids an older build used that are no longer in data/*.json. */
 const OLD_SKILL = "vanguard-slash";
 const OLD_STATUS = "mage-shred";
 const OLD_SUMMON = "ninja-clone";
@@ -20,11 +20,7 @@ function summon(id: string, ownerId: string, archetypeId: string, extra: Partial
   return { id, ownerId, archetypeId, name: archetypeId, hp: 20, maxHp: 20, attack: 4, defense: 2, magicPower: 0, aggro: 5, speed: 1, activeStatusEffects: [], actionsTaken: 0, maxActions: 3, ...extra };
 }
 
-/**
- * A real save taken mid-fight, after one resolved round, then given the ids an older build wrote:
- * a summon of a removed archetype (with a buff tied to it), a queued action and skill counters under
- * an old skill id, an old status in every snapshot, and log sessions missing their newer id lists.
- */
+/** A real mid-fight save rewritten with an older build's ids, its log sessions missing their newer id lists. */
 function oldMidFightSave(): { save: SaveFile; goblinRef: CombatantRef } {
   const game = new Game(7, PARTY);
   game.currentSaveSlot = "slot1";

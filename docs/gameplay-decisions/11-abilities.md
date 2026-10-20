@@ -2,19 +2,14 @@
 
 *(section 11 of `00-index.md`)*
 
-**Status**: implemented. `data/abilities.json` is now the authoritative
-catalog — this document should stop being copied from for catalog content,
-same as `07-items-artifacts.md` already does for Items/Artifacts. Engine
-logic lives in `src/engine/profile.ts` (persistent pool), `src/data/abilities.ts`
+`data/abilities.json` is the authoritative catalog; the tables in §11.2 are
+generated from it. Engine logic lives in `src/engine/profile.ts` (persistent pool), `src/data/abilities.ts`
 (catalog + roll), `src/engine/artifacts.ts` (shared effect hooks),
 `src/engine/combat.ts` (`alwaysHit`), and `src/engine/game.ts` (drop/grant on
 Elite/Boss kill, death-flow guaranteed loss + Stardust buyback). UI lives in
 `src/ui/abilitySelect.ts`, `src/ui/screens/abilityBuyback.ts`, and the
 Elite/Boss unlock reveal folded into `src/ui/screens/rewards.ts` alongside
 Item/Artifact drops.
-
-Full mechanic decision trail (rejected alternatives, rationale for every
-number below): `.hermes/features/abilities/BRAINSTORM.md`.
 
 What an Ability is, vs. an Item, vs. an Artifact:
 
@@ -27,10 +22,9 @@ What an Ability is, vs. an Item, vs. an Artifact:
 | Lost when | Used up | Party wipe (with the run) | **Guaranteed on party wipe** if non-common — every non-common equipped ability is struck from the persistent profile the moment the run ends, no roll involved (recoverable only by spending that run's Stardust, §11.1 "Death flow") |
 | Rarity | None | Common/Rare/Unique/Epic | **Common/Rare/Unique/Epic** (reuses `ArtifactRarity`) |
 
-Abilities are the game's first mechanic with state that outlives a single
-run. Everything else in the game (`SaveFile`, `src/engine/save.ts`) is
-destroyed on permadeath (`deleteSlot`) — the persistent ability
-profile is deliberately the one exception.
+Ability state outlives a single run. A run's save (`SaveFile`,
+`src/engine/save.ts`) is destroyed on permadeath (`deleteSlot`); the
+persistent profile deliberately is not.
 
 ---
 
@@ -42,9 +36,8 @@ Reuses `ArtifactRarity` (`src/types.ts`) as-is, no forked rarity type.
 Reuses the exact `ArtifactEffect` union (`src/types.ts`) minus
 `curseAggroBoost`, which stays exclusive to cursed Artifacts — Abilities
 are never cursed. That union includes `alwaysHit` (§11.1.1),
-`debuffResist` (§11.1.2) and `statBoost` on `magicPower`/`speed`, all
-introduced for Abilities and since shared with Artifacts
-(`07-items-artifacts.md`). On top of that, Abilities get 1 thing Artifacts
+`debuffResist` (§11.1.2) and `statBoost` on `magicPower`/`speed`, which
+Abilities and Artifacts share (`07-items-artifacts.md`). On top of that, Abilities get 1 thing Artifacts
 don't have:
 
 - `statBoost` on `aggro`, which `ArtifactEffect` reserves for the
@@ -81,7 +74,7 @@ its flat behavior:
   (otherwise) times the percent, mitigated by the target's defense, like a skill's `offenseMultiplierPercent`. Which stat
   it uses follows the Ability's own nature: Thunderous Aura (lightning, no weapon) is magic; Eye of the
   Storm (paired with an aggro boost, a front-line ability) is physical. Without the field the tick is
-  the legacy fixed, unmitigated `amount`, which no shipped Ability or Artifact uses any more. The combat log names
+  a fixed, unmitigated `amount`; no shipped Ability or Artifact uses that form. The combat log names
   the source ("X takes N damage from Y's Thunderous Aura", or the Artifact's name).
 
 Note: this deliberately produces 2 union members both tagged
@@ -109,21 +102,19 @@ An Ability's `id` is its `name` in kebab-case with apostrophes dropped
 fixed for the entire run (no mid-run swapping, no respec). The
 `ArtifactEffect`-derived part of `AbilityEffect` applies through the exact
 same engine hooks Artifacts already use (`07-items-artifacts.md` §7.2
-"Engine hooks for the Group 2-4 effects") — those hooks generalize from
-"scan `equippedArtifactIds`" to "scan `equippedArtifactIds` + the 1
-`equippedAbilityId`," nothing about the hooks' actual logic changes.
-`alwaysHit` needs its own, new hook — see §11.1.1.
+"Engine hooks for the Group 2-4 effects") — those hooks scan
+`equippedArtifactIds` plus the 1 `equippedAbilityId`. `alwaysHit` has its
+own hook — see §11.1.1.
 
 #### 11.1.1 `alwaysHit` — pre-empts the game's own hit/proc rolls
 
-A new mechanic, not a reused one: before either of the 2 places the
-combat engine already rolls dice to decide whether something lands,
-**re-roll the wearer's `alwaysHit` chance first.** On a hit, skip the
+Before either of the 2 places the combat engine rolls dice to decide
+whether something lands, **roll the wearer's `alwaysHit` chance first.** On a hit, skip the
 roll that was about to happen and treat it as an automatic success. On a
 miss, fall through to that roll exactly as if `alwaysHit` didn't exist —
 it can only ever help, never hurt.
 
-The 2 existing roll points it intercepts, both in
+The 2 roll points it intercepts, both in
 `applySkillEffects` (`src/engine/combat.ts`):
 
 1. **The fear-accuracy roll** (`rollHits`, `src/engine/resolver.ts`) —
@@ -183,12 +174,15 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
 - **One draw:** the roll that decides the application also decides the log line.
   When it fails but would have passed without the Ability, the log reads
   "{target} throws off {status}."; a status that would have missed anyway logs
-  nothing. No RNG is drawn when the bearer has no `debuffResist`, so seeded
-  streams are unchanged for every existing run.
-- **Stacking:** Artifacts can carry `debuffResist` too. Each equipped
-  Artifact and the Ability scale the land chance down on their own, so they
-  combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent`) and never reach 100% from
-  sources below 100%.
+  nothing. No RNG is drawn when the bearer has no `debuffResist`, so a
+  bearer without it leaves the seeded stream untouched.
+- **Stacking:** Artifacts can carry `debuffResist` too, and the Acolyte's
+  passive (Devotion, `debuffResistPercent` per rank in `data/classes.json`)
+  adds one more source for an Acolyte bearer. Each equipped Artifact, the
+  Ability and the passive scale the land chance down on their own, so they
+  combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent` and `combinePercents`,
+  `src/engine/artifacts.ts`; `acolyteDebuffResistPercent`,
+  `src/engine/combat.ts`) and never reach 100% from sources below 100%.
 - **Scope:** only enemy skills acting on a Character inside combat, at the
   same call site as `alwaysHit`'s per-effect roll (`applySkillEffects`,
   `src/engine/combat.ts`). Statuses from events, hunger, items or allies are
@@ -199,7 +193,7 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
 
 ### The persistent profile
 
-New file, sibling to per-run saves in the same directory
+A file beside the per-run saves in the same directory
 (`resolveSaveDir()`, `src/engine/save.ts`) — **`profile.json`**:
 
 ```
@@ -247,10 +241,10 @@ generator runs.
 
 ### Mid-run acquisition — both Elite and Boss unlock instantly; only Boss also grants Stardust
 
-Both still hook into the exact same trigger point as the guaranteed
+Both hook into the exact same trigger point as the guaranteed
 Artifact drop (`07-items-artifacts.md` §7.2 "Drop source" —
 `src/engine/game.ts`, the per-monster loop on room-clear,
-`monster.tier === "elite" || "boss"`), and both still roll independently
+`monster.tier === "elite" || "boss"`), and both roll independently
 of the Artifact drop on the same kill.
 
 - **Ability roll (Elite and Boss alike): instant, permanent, free.** On a
@@ -266,16 +260,15 @@ of the Artifact drop on the same kill.
   combat-log line the way a passive Item pickup is. A permanent catalog
   unlock earns the same popup weight as an Artifact, since it changes the
   persistent profile the same way an Artifact changes the run; only the
-  Boss's Stardust grant stays a log line (§ below), matching how coin
+  Boss's Stardust grant stays a log line (next bullet), matching how coin
   gains are logged rather than revealed. There is no per-run ability pool
   at all — an ability found mid-run either becomes real immediately, or
   the roll simply missed.
 - **Boss kills additionally, unconditionally, grant exactly 1 Stardust**,
   `GameState.runStardust: number += 1`, regardless of whether the ability
   roll above hit or missed. Since a real Boss only appears every
-  `bossFloorInterval` floors (5, `data/level-growth.json`), this is also
-  "1 Stardust every 5 floors" — the cadence the feature was originally
-  requested with. Stardust has exactly one use: buying back a lost
+  `bossFloorInterval` floors (5, `data/level-growth.json`), this works out to
+  1 Stardust every 5 floors. Stardust has exactly one use: buying back a lost
   ability at this run's death flow (below) — it plays no role in mid-run
   acquisition itself.
 
@@ -286,9 +279,8 @@ sources:
   deliberately below `items.itemDropChance` (0.9) since an Ability
   affects the permanent profile, a much higher-stakes reward than a
   consumable.
-- **The roll excludes any ability id already in `unlockedAbilityIds`.**
-  This directly implements "drops only surface abilities not already in the shared pool": a hit always surfaces something the player doesn't
-  already have.
+- **The roll excludes any ability id already in `unlockedAbilityIds`**, so
+  a hit always surfaces something the player doesn't already have.
   - **Catalog-exhaustion fallback**: if every ability in the rolled
     rarity tier is already unlocked, re-roll the rarity excluding that
     tier and redistribute its weight across the rest. If literally every
@@ -303,7 +295,7 @@ sources:
   just applied per-rarity with a plain interpolation):
 
 ```
-// data/balance-config.json, new "abilities" block
+// data/balance-config.json, "abilities" block
 "abilities": {
   "dropChance": 0.35,
   "depthCap": 30,
@@ -331,18 +323,21 @@ Boss kills stay the better free-unlock roll *and* the only Stardust
 source, which is what makes reaching Bosses worth the detour on top of
 whatever Elites a floor happens to offer.
 
-### Death flow (the only end-state — no "victory" exists in the game today)
+### Death flow (party wipe)
 
-Hooks into the sole place `gameOver` becomes `"defeat"`
-(`Game.postMoveCheck()`, `src/engine/game.ts`), before
-`App.syncUiToGameState()` triggers `deleteSlot`:
+Runs from `Game.triggerDefeat()` (`src/engine/game.ts`), the one place
+`gameOver` becomes `"defeat"` — reached from `postMoveCheck()` and from a
+lost combat — before `App.syncUiToGameState()` triggers `deleteSlot`. A run
+that ends at the floor-100 Ending checkpoint (Stay, Let Go or Leave, which set
+`gameOver` to `stay`, `letGo`, `leaveEscaped` or `leaveAmbushed`) does not run
+it, so no equipped ability is lost there:
 
 1. **Guaranteed loss, no roll.** For every character whose
    `equippedAbilityId` resolves to a non-`common` ability, immediately
    remove that id from `unlockedAbilityIds`. Since §11.1 "Character-select
-   flow" now forbids 2 characters sharing an id, every character with a
+   flow" forbids 2 characters sharing an id, every character with a
    non-common ability equipped is necessarily losing a *distinct* one —
-   there's no "shared id, split outcome" case left to reconcile.
+   there's no "shared id, split outcome" case to reconcile.
 2. **Collect the lost set** — 1 entry per character who just lost an
    ability: `{ characterId, lostAbilityId, rarity }`. A character who
    entered the run with `common` or no ability equipped contributes
@@ -405,23 +400,16 @@ shallow, lower-investment runs.
   finishing later — only the *next* character-select screen sees the
   updated pool.
 - **Individual character deaths before the final wipe don't matter.**
-  `postMoveCheck()`'s wipe condition is `party.every(c => !c.isAlive)` —
-  by definition, every character is dead by the time the death flow runs,
+  Both entry points require every character dead (`postMoveCheck()`'s
+  `party.every(c => !c.isAlive)`, and a combat lost with no living
+  character left) — so every character is dead by the time the death flow runs,
   regardless of the order they fell in. There's no special case for "a
   character died 10 floors before the wipe" vs. "died on the final round"
   — every equipped non-common ability in the party is evaluated the same
   way.
-- **Save-scumming is a pre-existing risk class, not a new one — but the
-  stakes are higher here.** A player can already quicksave before an
-  Elite/Boss fight and reload if the Artifact roll disappoints; Abilities
-  inherit the exact same exposure through the same drop hook. What's
-  different is the incentive: an Artifact reroll only affects the current
-  run, while an Ability reroll can permanently inflate the persistent
-  profile, so the temptation to reload-farm a specific rare/unique/epic
-  ability is materially stronger. Not solved by this spec — flagged as a
-  known follow-up (e.g. a future move to seed the roll off the room's own
-  seed rather than the live RNG stream would close it, but that's an RNG-
-  architecture change out of scope here).
+- **Save-scumming has higher stakes here than for Artifacts**: an Ability
+  reroll can permanently inflate the persistent profile, not just the
+  current run. Not solved — see §11.3.
 - **No-duplicate enforcement only ever needs to check the party's current
   4 `equippedAbilityId`s**, at character select only — the Stardust
   buyback can't create a duplicate in the first place, since every
@@ -436,13 +424,14 @@ shallow, lower-investment runs.
   enough catalog that a dedicated player could plausibly unlock all of
   them across enough runs. From that point on, Elite/Boss ability rolls
   permanently yield nothing (the roll's exclusion rule has nothing left to
-  offer), which is an acceptable "collection complete" end state for now,
-  flagged under Open follow-ups as a likely spot to expand the catalog
-  later.
+  offer), which is an acceptable "collection complete" end state.
+- **`expBoost` on an Ability is party-wide**, the same rule Artifacts follow
+  (§7.2): even though it sits on a single character, it boosts the shared
+  `partyExp`.
 
 ---
 
-## 11.2 Catalog (design content — becomes `data/abilities.json`)
+## 11.2 Catalog
 
 34 abilities: 9 Common (always available), 10 Rare, 8 Unique, 7 Epic.
 Magnitudes are calibrated against `data/artifacts.json`'s values at the
@@ -455,13 +444,9 @@ invented.
 
 **Writing rule for descriptions, not inherited from Artifacts: every
 multi-effect (Epic) description gestures at each effect it grants — no
-effect left silently unaddressed by the flavor text.** Caught by an
-independent craft review (`.claude/skills/narrative-craft-panel`) finding
-`thornhide`'s original description named only its `reflectDamage` half
-and said nothing about its `statBoost maxHp` half, while every other Epic
-already covered both of its effects. Stated explicitly here so the next
-multi-effect Ability added doesn't quietly repeat the gap — a quick check
-against the other 4 Epic rows below is enough, no rigid template needed.
+effect left silently unaddressed by the flavor text.** Check a new
+multi-effect Ability against the Epic rows below; no rigid template is
+needed.
 
 **Balance rule specific to Abilities, not inherited from Artifacts: no 2
 abilities in the same rarity tier may buff the same stat/effect axis.**
@@ -497,10 +482,7 @@ ability owns a distinct axis.
 
 9 abilities, 9 distinct axes (attack / defense / maxHp / maxMp /
 fearResist / dodgeChance / lifesteal / magicPower / debuffResist) — no 2 abilities
-compete for the same pick. `arcane-aptitude` replaces the original
-`poisonOnHit`-based 8th slot — see "Why `poisonOnHit` was removed
-entirely" below the Rare table for the reasoning, which applies to every
-tier at once, not just Common.
+compete for the same pick.
 
 `arcane-aptitude`'s `+5` isn't copied from `battle-instinct`'s `+5`
 attack by coincidence: `magicPower` and `attack` share the *exact same*
@@ -575,8 +557,7 @@ specific abilities are actually worth to the character holding them.
 The first 5 mirror their Rare-tier artifact counterparts
 (`ancient-sword`/`heart-of-stone`/`eternal-vial`, `featherweight-boots`), except
 `bloodletting`: 8% against `vampiric-fang`'s 5%, per the dodge/lifesteal
-calibration above. `restless-vigor` replaces the original
-`poisonOnHit`-based `toxic-touch` and is calibrated directly against
+calibration above. `restless-vigor` is calibrated directly against
 `speed`'s own spread (see below), not against an Artifact.
 
 `deepened-channel` mirrors `predators-edge` (`magicPower` and `attack` are
@@ -586,45 +567,17 @@ interchangeable, see Common); `wellspring` doubles `deep-reserves`'s `+10`.
 §11.1.2. The matching Artifacts (`hunters-tally-stick`, `bitter-root-charm`,
 `07-items-artifacts.md`) sit lower because up to three of them stack.
 
-### Why `poisonOnHit` was removed from the Ability catalog entirely
-
-Not a rebalance — a removal, at every tier that had it (`toxic-touch`
-here, the old Common 8th slot, and half of the Epic `lodestone` below).
-The `poisoned` status effect it procs deals a flat `4` damage/turn for `3`
-turns (`data/status-effects.json`) — a fixed `12`-damage payout that never
-scales with anything, while monster HP keeps climbing with floor depth on
-the same growth curve characters use (`tier1.maxHp` rate `14`/depth,
-`data/level-growth.json`). Computed directly against a representative
-weak monster's HP (Slime, base `52`): that flat `12` is **23% of its HP at
-depth 1**, but only **11% at depth 5**, **6.7% at depth 10**, and **3.8%
-at depth 20** — an effect that keeps getting weaker for the entire rest of
-a run, on a mechanic (Abilities) that's explicitly meant to matter for the
-long haul, not just the opening floors. `dodgeChance`/`lifesteal` don't
-have this problem (a `%` of a *current* incoming/outgoing hit scales
-automatically with however big that hit already is), which is exactly why
-they stayed and `poisonOnHit` didn't. This only removes `poisonOnHit` from
-the *Ability* catalog — the Artifact catalog's own `venomous-dagger-relic`/
-`serpent-ring` and Rogue's Poison Coat/Bomb skills keep the exact same
-mechanic; fixing poison's scaling everywhere it appears in the base game
-is a much bigger, already-shipped-code change, out of scope here.
-
-The 3 freed slots (Common, Rare, half of Epic) went to 3 stats no
-Artifact or Ability had ever touched before — `magicPower` (Common,
-above), `speed` (here), and `aggro` (Epic, below) — rather than being
-left empty or refilled with a 4th `dodgeChance`/`lifesteal` copy at a
-different number, which would've just been more of what the catalog
-already had plenty of.
-
 **Why `speed +5`, not a number matched to Rare's other 3 flat-stat
 abilities (attack+10/defense+8/maxHp+50) by the same balance-points method
-used for `magicPower`**: it was tried, and the result was absurd.
+used for `magicPower`**: that method gives an absurd result.
 `speed`'s own conversion rate in the game's `BalancePoints` formula is
 `speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
 matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
-would mean `speed +32` to `+48`. `speed` only ranges `8`-`17` across all 6
-classes at level 1 (`data/classes.json`) — a `+32` would make the
-*slowest* class in the game faster than the *fastest* one is today, by a
-wide margin. The reason the formula breaks down here: `attack`/`defense`/
+would mean `speed +32` to `+48`. `speed` only spans a narrow range across
+all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Vanguard slowest,
+Rogue fastest) — a `+32` would make the
+*slowest* class in the game faster than the *fastest* one, by a wide
+margin. The reason the formula breaks down here: `attack`/`defense`/
 `maxHp` all **grow with level** (`data/level-growth.json`), so a Rare-tier
 bonus that looks big at level 1 is deliberately front-loaded — it shrinks
 in relative terms as the character levels, the same way Rare's own flat
@@ -634,7 +587,7 @@ grow with level at all** (`docs/gameplay-decisions/05-character-stats.md`)
 the entire run, never diluted. Matching a decaying stat's day-1 magnitude
 with a never-decaying one's day-1 magnitude systematically overpays the
 one that never decays. `+5` was chosen directly against `speed`'s own
-real spread instead: it closes roughly half of the roster's entire speed gap, a
+real spread instead: it closes under half of the roster's speed gap, a
 permanent, always-relevant nudge without redefining the turn order on its
 own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 
@@ -693,9 +646,7 @@ occupy 1 slot and don't need to match an Artifact's full effect count to
 match its per-effect magnitude.
 
 `lodestone` mirrors `crown-of-destruction`'s `autoDamage` half; its
-`statBoost aggro +15` half has no Artifact counterpart to copy (see "Why
-`poisonOnHit` was removed" under the Rare table for why this axis exists
-at all) — it pairs naturally with `autoDamage`'s flavor: everyone's eyes
+`statBoost aggro +15` half has no Artifact counterpart to copy — it pairs naturally with `autoDamage`'s flavor: everyone's eyes
 are drawn to it, while something near it is struck by no visible hand.
 `+15` was calibrated against `aggro`'s own targeting-weight formula
 (`P(target = X) = X.aggro / total party aggro)`,
@@ -724,12 +675,10 @@ magnitude: it's the only effect in the whole catalog that touches 2
 different combat rolls at once, on every enemy-targeting skill the wearer
 ever uses, for the entire run — a kind of universal, always-relevant
 utility no single-target stat or proc-chance effect can match, which is
-the same reason the other 4 Epics justify their slot by combining 2
-effects instead of maxing out 1. `alwaysHit 20%` was set from the user's
-own example value directly (`.hermes/features/abilities/BRAINSTORM.md`
-D13 has the full reasoning for why 20% and paired `fearResist 12%` were
-kept rather than tuned against the other Epics' numbers, which don't
-share a comparable unit to calibrate against). `fearResist` reappearing
+the same reason the other Epics justify their slot by combining 2
+effects instead of maxing out 1. `alwaysHit 20%` and the paired
+`fearResist 12%` are not tuned against the other Epics' numbers, which
+don't share a comparable unit to calibrate against. `fearResist` reappearing
 here (Common's `unshaken-resolve` is the only other user of this axis, at
 10%) is a deliberate thematic pairing, not filler: both halves of this
 ability are about fear specifically failing to cost the wearer anything —
@@ -741,25 +690,19 @@ already causes.
 
 ## 11.3 Open follow-ups (not blocking, tracked for later tuning)
 
-- All numeric constants above live in `data/balance-config.json`/this
-  catalog — expect rebalancing once the feature is actually played
-  (drop rate, the Stardust cost table, and the depth-1/depth-cap weight
-  tables are the most likely candidates to need adjustment).
-- No Ability currently uses `expBoost`'s party-wide exception behavior
-  differently from how Artifacts already handle it (§7.2) — same rule
-  applies: even though it's a single character's equipped ability, its
-  `expBoost` still boosts the shared `partyExp`.
-- **Catalog size vs. the free instant-unlock rate**: since both Elite and
-  Boss kills hand out permanent unlocks for free the moment they roll (no
-  Stardust, no death gate — Stardust only ever buys back losses), the
-  25-ability non-common catalog could get exhausted faster than originally
-  modeled when this doc still gated *all* acquisition behind the death
-  flow. Worth simulating once implemented — either drop rate or catalog
-  size may need adjusting sooner than the Stardust-side numbers.
-- **The base game's `poisonOnHit`/Poison Coat/Poison Bomb mechanic has the
-  same non-scaling flaw** that got it removed from this catalog (§"Why
-  `poisonOnHit` was removed") — its flat damage-per-turn doesn't grow with
-  floor depth the way monster HP does, so it likely gets weaker over the
-  same run for Artifacts and Rogue skills too. Out of scope for this doc
-  (that's already-shipped code, not part of the unimplemented Abilities
-  feature), but worth a separate look.
+- The numbers above (drop rate, the Stardust cost table, the depth-1 and
+  depth-cap weight tables) are the most likely candidates for rebalancing
+  after playtesting.
+- **Catalog size vs. the free instant-unlock rate**: both Elite and Boss
+  kills hand out permanent unlocks for free the moment they roll (no
+  Stardust, no death gate — Stardust only ever buys back losses), so the
+  non-common catalog may be exhausted quickly. Worth simulating — the drop
+  rate or the catalog size may need adjusting before the Stardust-side
+  numbers do.
+- **Save-scumming the ability roll**: the roll shares the Artifact drop's
+  hook and draws from the run's live RNG stream. A save stores the RNG state
+  (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
+  actions reproduces the same roll — but a player who quicksaves before or
+  during an Elite/Boss fight and then acts differently consumes a different
+  number of draws and gets a fresh roll. Seeding the roll off the room's own
+  seed would close this; that is an RNG-architecture change.

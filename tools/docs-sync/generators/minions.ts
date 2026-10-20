@@ -13,7 +13,6 @@ function formula({ base, percent, sourceStat }: SummonStatFormula): string {
   return base === 0 ? scaled : `${scaled} + ${formatNumber(base)}`;
 }
 
-/** Each minion cast: who it summons, how long it lasts, and how its stats follow the owner's. */
 export const minions: GeneratorSpec = {
   source: "`data/summons.json`",
   args: [],
@@ -39,7 +38,6 @@ export const minions: GeneratorSpec = {
   }),
 };
 
-/** The skills the minions use, and the archetypes that pick them. */
 export const minionSkills: GeneratorSpec = {
   source: "`data/summons.json`",
   args: [],
@@ -66,7 +64,6 @@ function burst(onDeath: NonNullable<SummonCast["onDeath"]>): string {
   return `${damage}; status ${onDeath.statusEffectId} (${turns} ${turns === 1 ? "turn" : "turns"}, ${chance}% chance)`;
 }
 
-/** What a cast's minion does when it dies, at each rank of the summoning skill. */
 export const deathBursts: GeneratorSpec = {
   source: "`data/summons.json`",
   args: [],

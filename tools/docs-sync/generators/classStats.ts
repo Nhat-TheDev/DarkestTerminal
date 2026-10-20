@@ -2,7 +2,6 @@ import { characterBalancePoints } from "../../game-editor/calc";
 import { formatNumber, formatRounded } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** The base stats every class starts with at level 1. */
 export const classStats: GeneratorSpec = {
   source: "`data/classes.json`",
   args: [],
@@ -14,7 +13,6 @@ export const classStats: GeneratorSpec = {
   }),
 };
 
-/** Each class's Balance Points (the game editor's formula) against the roster average. */
 export const balancePoints: GeneratorSpec = {
   source: "`data/classes.json` and `data/level-growth.json`, scored by `tools/game-editor/calc.ts`",
   args: [],

@@ -7,8 +7,6 @@ import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import roomNamesJson from "../../data/room-names.json";
 
-/** Room names per room type. Event rooms get their own pool: the combat-room names ("Bone Vault")
-    read as fight-flavored and clash with merchant/altar/gambling scenes. */
 const ROOM_NAMES = roomNamesJson as Record<RoomType, string[]>;
 for (const type of ["combat", "rest", "boss", "event"] satisfies RoomType[]) {
   const pool: unknown = ROOM_NAMES[type];
@@ -63,8 +61,6 @@ function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
 
 const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
 
-// Guarding a treasure/event reward should feel like a real threat — never draw from the weak tier
-// (e.g. a lone dungeon rat "guarding" a chest reads as a joke, not a guardian).
 const EVENT_GUARDIAN_ARCHETYPES = [...ARCHETYPES_BY_TIER.medium, ...ARCHETYPES_BY_TIER.strong];
 
 export function spawnEventGuardianMonsters(rng: Rng, depth: number): Monster[] {

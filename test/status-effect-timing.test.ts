@@ -5,9 +5,7 @@ import { makeCtx, spawnInto } from "./helpers";
 
 describe("status effect turn-countdown timing, per category", () => {
   test("DoT/HoT: casting round deals no damage; the tick lands at the start of the following round", () => {
-    // Burning must land via an actual mid-round cast (not a direct pre-round apply, which would look
-    // identical to "already active before round 1" and defeat the point of this test) — Fireball's
-    // burn chance is 30%, so search seeds for one where it procs on the first cast.
+    // Burning must come from a real mid-round cast, not a pre-round apply; Fireball's 30% burn chance means searching seeds.
     for (let seed = 0; seed < 300; seed++) {
       const { ctx } = makeCtx(seed);
       const mage = ctx.party.find((p) => p.classId === "mage")!;
@@ -25,7 +23,7 @@ describe("status effect turn-countdown timing, per category", () => {
       queueAction(combat, mageRef, "fireball", [rat1Ref], ctx);
       resolveRound(combat, ctx);
       const burning = rat1.activeStatusEffects.find((s) => s.statusEffectId === "burning");
-      if (!burning) continue; // this seed's roll didn't proc Burning — try another
+      if (!burning) continue;
       expect(burning.turnsRemaining).toBe(2);
       const hpAfterRound1 = rat1.hp;
 
@@ -101,7 +99,6 @@ describe("status effect turn-countdown timing, per category", () => {
     resolveRound(combat, ctx);
     expect(rogue.activeStatusEffects.find((s) => s.statusEffectId === "poison-coated")?.turnsRemaining).toBe(3);
 
-    // Bypass the skill's own cooldown so it can be re-cast immediately, purely to exercise the refresh path.
     rogue.cooldownsRemaining["poison-coat"] = 0;
     queueAction(combat, self, "poison-coat", [self], ctx);
     resolveRound(combat, ctx);

@@ -2,7 +2,6 @@ import { describeEffects } from "../effects";
 import { formatNumber } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** How each monster type scales an archetype's attack, defense and max HP. */
 export const monsterTypeWeights: GeneratorSpec = {
   source: "`data/growth-weights.json` (`monsterGrowthWeights`)",
   args: [],
@@ -17,7 +16,6 @@ export const monsterTypeWeights: GeneratorSpec = {
   }),
 };
 
-/** Every monster skill, its effects, and the archetypes that carry it with their AI pattern. */
 export const monsterSkills: GeneratorSpec = {
   source: "`data/monster-skills.json` and `data/monsters.json`",
   args: [],

@@ -4,10 +4,10 @@
 **Project type**: Personal side project / for fun — not a serious product intended for release
 
 This document describes the game's current design, matching exactly what has
-been implemented in code. Parts that haven't been implemented yet (mini-games,
-FOV/pathfinding, new classes) are grouped separately under "Future direction"
-at the end of the document — they are not mixed in with the description of
-existing gameplay.
+been implemented in code. Parts that haven't been implemented yet
+(FOV/pathfinding, diff-based rendering, a treasure room) are grouped separately
+under "Future direction" at the end of the document — they are not mixed in
+with the description of existing gameplay.
 
 ---
 
@@ -39,24 +39,24 @@ existing gameplay.
 - Each class has a shared **basic attack** (free, same structure across all classes, deals pure weapon damage) + several class-specific skills, defined in `data/classes.json`, unlocked gradually as the character levels up (`unlockLevel` field)
 - Class stats: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first) — values in `data/classes.json`
 - Some class-specific skills also have a **per-turn cooldown** (`cooldownTurns` field)
-- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor)
+- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (all 9 classes)
 
 ### 1.6 Item & Artifact
 - **Consumable items**: restore HP/MP/fear/satiety, usable in or out of combat unless flagged `combatUsable: false` (e.g. the Camp-only Exploration Kit), dropped randomly by monsters
 - **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, **permanent for the run once equipped — no manual unequip** beyond 3 narrow exceptions, with multiple rarity tiers, dropped by Elites/Bosses/event rooms. Every pickup is a single immediate decision: equip now (on a chosen character, replacing 1 of their own artifacts if full) or discard for good.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
-### 1.6b Abilities (meta-progression)
-- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a new `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's character select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
+### 1.7 Abilities (meta-progression)
+- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's character select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
 - Full spec (mechanics, rarity/drop tables, full ability catalog, Stardust-buyback death flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
 
-### 1.7 Event room
+### 1.8 Event room
 - Event room: stepping in rolls randomly for one of several event types, split by rarity tier
 - 3 of these events spend **Cursed Coins**, a party-wide currency earned from every monster kill, instead of HP
 - Details of each event type: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
 
-### 1.8 Status Effect (buff/debuff)
-- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns`, without stacking — reapplying one only refreshes its duration
+### 1.9 Status Effect (buff/debuff)
+- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns` — reapplying one only refreshes its duration, except a status marked `stackable` in `data/status-effects.json` (`bleeding`, Mage's `shredded`), which also adds a stack up to its `maxStacks`
 - List of status effects and how they interact with skills: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1
 
 ---
@@ -86,14 +86,14 @@ Main type groups:
 - `Room`, `Floor` (dungeon structure)
 - `EventDefinition` (event room)
 - `Monster`, `Combatant`, `QueuedAction`, `CombatState` (`phase: "command" | "resolution"`)
-- `GameState` — includes `coins` (Cursed Coins, §1.7/§9), `satiety` (§1.3), and `pendingArtifactDecision` (the in-flight Artifact equip/discard decision, §1.6)
+- `GameState` — includes `coins` (Cursed Coins, §1.8/§9), `satiety` (§1.3), and `pendingArtifactDecision` (the in-flight Artifact equip/discard decision, §1.6)
 
 ---
 
 ## 5. Detailed decisions (split into separate files)
 
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
-- The class roster + stat table + skill list per class (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor), plus the 3-rank skill power-scaling system — `data/classes.json`
+- The class roster + stat table + skill list for each of the 9 classes, plus the 3-rank skill power-scaling system — `data/classes.json`
 - Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns + regular-monster skill kits — `data/monsters.json`
 - Fear/Satiety thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
 - Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`
@@ -116,7 +116,6 @@ The sections below are **not present in the current code** — they're kept as
 a reference spec for future implementation, and do not describe the game's
 current state.
 
-- **4 mini-games** (Snake, Tetris, Brick Breaker, Magic Tiles) used to cure debuffs and as boss phases — specific numbers + Magic Tiles mechanics (hit/miss, combo, score/time): **[`minigame-decisions.md`](./minigame-decisions.md)**
 - **FOV** (shadowcasting) and **pathfinding** (A* for monsters)
 - **Diff-based rendering**
-- **Treasure room** — a room type that always drops an Artifact, spec'd in `gameplay-decisions/07-items-artifacts.md` §7.2, but never wired into the floor generator — its placeholder `RoomType` value is not present in the codebase, so no such room type exists in code at all right now. `open-chest` (`gameplay-decisions/08-events.md` §8.2) fills the same role in practice as one of several Event room outcomes
+- **Treasure room** — a dedicated room type that always drops an Artifact. No `RoomType` value exists for it and the floor generator never places one; `open-chest` (`gameplay-decisions/08-events.md` §8.8) fills the same role in practice as one of several Event room outcomes

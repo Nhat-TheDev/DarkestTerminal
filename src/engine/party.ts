@@ -11,10 +11,7 @@ import { GROWTH_WEIGHTS } from "../data/growthWeights";
 
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
-/** Net modifyCombatStat delta the character's active status effects actually applied to `stat` — the
- *  `appliedAmounts` each application stored (minPercent floors, a caster's magnitude override and every
- *  stack included), which is exactly what `expireStatusEffect` will undo. The status's own JSON `amount`
- *  is only a fallback for an entry saved without `appliedAmounts`. */
+/** Sums the stored `appliedAmounts` (what `expireStatusEffect` will undo); the JSON `amount` is only a fallback for entries saved without them. */
 export function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
   let sum = 0;
   for (const active of character.activeStatusEffects) {
@@ -47,7 +44,7 @@ interface LevelStats {
   unlockedSkillIds: string[];
 }
 
-/** The character's class base plus level growth — before any Artifact/Ability/status/Exhausted modifier. The reference every percentage scaling of an Ability is measured against. */
+/** Before any Artifact/Ability/status/Exhausted modifier: what an Ability's percentage scaling is measured against. */
 export function characterBaseStats(character: Character): LevelStats {
   return statsForLevel(getClass(character.classId), character.level);
 }
@@ -93,9 +90,7 @@ export function createCharacter(id: string, name: string, cls: CharacterClass, l
 
 export type CharacterStat = "maxHp" | "maxMp" | "attack" | "defense" | "magicPower" | "speed" | "aggro";
 
-/** One stat split by source. `total` is always the sum of the other numbers. `base` is the class base plus
- *  level growth, already scaled down while Exhausted (`isExhausted`); `artifact`/`ability` are the equipped
- *  bonuses; `passive` is the class passive's own share; `status` is what active statuses applied. */
+/** `total` is the sum of the parts; `base` is already scaled down while Exhausted. */
 export interface StatBreakdown {
   base: number;
   isExhausted: boolean;
@@ -106,10 +101,8 @@ export interface StatBreakdown {
   total: number;
 }
 
-/** The single formula every character stat is built from — `recomputeCharacterStats` writes the totals, the
- *  Character Info screen shows the parts. `satiety`'s Exhausted penalty scales the base of every stat but
- *  maxHp/maxMp. Vanguard's passive (§11 of the design spec) multiplies maxHp/defense after equipment and adds
- *  flat aggro; status deltas come last and flat, the same way the resolver applies and undoes them mid-fight. */
+/** Exhausted scales the base of every stat but maxHp/maxMp. Vanguard's passive multiplies maxHp/defense after
+ *  equipment; status deltas come last and flat, the way the resolver applies and undoes them. */
 export function characterStatBreakdown(character: Character, satiety: number): Record<CharacterStat, StatBreakdown> {
   const cls = getClass(character.classId);
   const base = statsForLevel(cls, character.level);
@@ -159,12 +152,12 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   character.mp = Math.min(character.mp, character.maxMp);
 }
 
-/** Call whenever `GameState.satiety` changes — Exhausted is party-wide, so every character needs refreshing. */
+/** Call whenever `GameState.satiety` changes: Exhausted is party-wide. */
 export function recomputeAllPartyStats(state: GameState): void {
   for (const c of state.party) recomputeCharacterStats(c, state.satiety);
 }
 
-/** Removes an artifact from wherever it's equipped, permanently — no pool to return it to. Used only by Wandering Hermit exchange, Sacrificial Circle, and the forced-replacement step of the pending-artifact-decision flow; never a free-standing player action. */
+/** Permanent: there is no pool to return it to. */
 export function removeArtifactFromCharacter(state: GameState, characterId: Id, artifactId: Id): PartyActionError | null {
   const character = state.party.find((c) => c.id === characterId);
   if (!character) return { reason: t("errors.characterNotFound") };
@@ -176,12 +169,11 @@ export function removeArtifactFromCharacter(state: GameState, characterId: Id, a
   return null;
 }
 
-/** An artifact was just rolled/revealed; sets it awaiting the player's equip/discard decision. `forceEquip` covers events (Twin Altars) that force the flow regardless of the artifact's own `isCursed` flag. */
 export function grantArtifact(state: GameState, artifactId: Id, forceEquip = false): void {
   state.pendingArtifactDecision = { artifactId, forceEquip: forceEquip || getArtifact(artifactId).isCursed === true };
 }
 
-/** Called after a pending decision resolves — chains in Gambling Den's 2nd jackpot artifact, since decisions resolve sequentially, never simultaneously. */
+/** Decisions resolve one at a time, so Gambling Den's second jackpot artifact waits until this one is done. */
 function chainNextGrantIfAny(state: GameState): void {
   if (!state.secondJackpotArtifactId) return;
   const nextId = state.secondJackpotArtifactId;
@@ -189,7 +181,6 @@ function chainNextGrantIfAny(state: GameState): void {
   grantArtifact(state, nextId);
 }
 
-/** Discard branch. Only valid for an ordinary (non-Cursed, non-forceEquip) pending artifact. */
 export function discardPendingArtifact(state: GameState): PartyActionError | null {
   const pending = state.pendingArtifactDecision;
   if (!pending) return { reason: t("errors.noPendingArtifactDecision") };
@@ -200,11 +191,6 @@ export function discardPendingArtifact(state: GameState): PartyActionError | nul
   return null;
 }
 
-/**
- * Equip branch (voluntary and forced-equip paths). If the target character is already at
- * 3/3, `replaceArtifactId` must name 1 of their own equipped *ordinary* (non-Cursed) artifacts
- * to discard and make room — a Cursed artifact they wear can never be discarded this way.
- */
 export function resolveArtifactEquip(state: GameState, characterId: Id, replaceArtifactId?: Id): PartyActionError | null {
   const pending = state.pendingArtifactDecision;
   if (!pending) return { reason: t("errors.noPendingArtifactDecision") };

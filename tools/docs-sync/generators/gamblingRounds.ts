@@ -1,7 +1,6 @@
 import { capitalize, formatNumber, formatPercent } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** The Wandering Gambling Den's rounds: the stake, the odds, and what a win pays. */
 export const gamblingRounds: GeneratorSpec = {
   source: "`data/balance-config.json` (`events.gamblingDenRounds`)",
   args: [],

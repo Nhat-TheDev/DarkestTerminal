@@ -5,7 +5,6 @@ import { Game } from "../src/engine/game";
 import { STRINGS } from "../src/data/strings";
 import { composeFooter, globalHints, withPageHint, digitRange, digitHint, HINT_GAP } from "../src/ui/keyHints";
 
-/** Every string whose job is to advertise keys — see `docs/developer-guide.md` §"Key hints". */
 const FOOTER_KEYS = Object.keys(STRINGS).filter(
   (k) =>
     k.startsWith("ui.footer") ||
@@ -23,24 +22,21 @@ describe("key-hint grammar (R2/R3)", () => {
       const value = STRINGS[key]!;
       if (value === "") return; // a screen may contribute nothing but the globals
 
-      // R2 — tokens, not prose.
       expect(value).not.toContain("Press ");
       expect(value.endsWith(".")).toBe(false);
       expect(value).toBe(value.trim());
 
-      // R2 — hints are separated by exactly HINT_GAP, and every one is `[key] Label`.
       // `{{keys}}` is the digit-range placeholder each screen fills in from its own option count.
       for (const hint of value.replace("{{keys}}", "1-4").split(HINT_GAP)) {
         expect(hint).toMatch(/^\[[^\]]+\] [^\[\]]+$/);
       }
 
-      // R3 — one bracket, one key: no alternates crammed in with a slash (arrows excepted).
       for (const bracket of value.match(/\[[^\]]+\]/g) ?? []) {
         if (bracket === "[←/→]" || bracket === "[{{keys}}]") continue;
         expect(bracket).not.toContain("/");
       }
 
-      // R6 — a hard-coded [1-9] would advertise digits most screens never accept.
+      // A hard-coded [1-9] would advertise digits most screens never accept.
       expect(value).not.toContain("[1-9]");
     });
   }
@@ -105,7 +101,7 @@ describe("hints render into the footer, never into the body (R1)", () => {
   test("the room screen lists paths only — the [i]/[a] keys live in the footer", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
     const game = new Game(7);
-    // Every run opens on an ambush; softening it just lets the test reach the room screen quickly.
+    // Softens the opening ambush so the test reaches the room screen quickly.
     game.ctx.monsters.forEach((m) => (m.hp = 1));
     const app = new App(renderer, game);
     await renderOnce();
@@ -157,7 +153,6 @@ describe("footers resolve against a live game", () => {
     const app = new App(renderer, game);
     await renderOnce();
 
-    // The opening ambush puts the action picker on screen: Fight + Use item, never 9 of anything.
     mockInput.pressKey("RETURN");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("pickAction");
@@ -172,7 +167,6 @@ describe("footers resolve against a live game", () => {
     }
     expect(app.debugUiState.kind).toBe("room");
 
-    // An empty bag must not advertise [i] — handleKey ignores the key there.
     expect(app.debugGame.state.inventory).toBeDefined();
     const exits = app.debugGame.connectedRoomChoices().length;
     expect(exits).toBeLessThan(9);
@@ -198,7 +192,6 @@ describe("footers resolve against a live game", () => {
 });
 
 describe("room footer tracks what the room can actually do", () => {
-  /** Clears the opening ambush so the dungeon room screen itself is on show. */
   async function reachRoom(mockInput: { pressKey: (k: string) => void }, renderOnce: () => Promise<void>, app: App) {
     let guard = 0;
     while (app.debugUiState.kind !== "room" && guard < 200) {

@@ -7,7 +7,6 @@ import { getItem } from "../../data/items";
 import { getBarterEntry, type BarterEffect } from "../../data/barter";
 import { t } from "../../data/strings";
 
-/** The buff a trophy buys, from `data/barter.json`. */
 export function barterBuffFor(itemId: Id): BarterEffect[] {
   return getBarterEntry(itemId).effects;
 }
@@ -17,17 +16,12 @@ function applyStatus(character: Character, statusEffectId: string, amount?: numb
   resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns: BALANCE.barter.activeDurationTurns, amount }, character, character, { log: quiet });
 }
 
-/** `percent` of `base`, rounded, but never less than 1 for a stat the buff raises: at low stats a small percent would round away to nothing. */
+/** Never below 1 for a raised stat, or a small percent would round away at low stats. */
 export function statBonus(percent: number, base: number): number {
   return percent > 0 && base > 0 ? Math.max(1, Math.round((percent / 100) * base)) : 0;
 }
 
-/**
- * Applies every pending barter buff to the living party as the elite/boss room's fight begins. A stat
- * that several buffs raise is applied once with their percents added (a status already active would
- * only refresh); regeneration is applied once per distinct tier. The buffs then expire with the
- * fight, like any other buff (`Game.resolve`), and the pending list is emptied.
- */
+/** A stat several buffs raise is applied once with their percents added: a status already active would only refresh. */
 export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, log: LogEntry[]): void {
   const pending = state.pendingBarterBuffs ?? [];
   if (pending.length === 0) return;
@@ -61,16 +55,11 @@ export function applyPendingBarterBuffs(state: GameState, ctx: EngineContext, lo
   state.pendingBarterBuffs = [];
 }
 
-/** How many of the trophy a trade takes, from `data/barter.json`. */
 export function barterCost(itemId: Id): number {
   return getBarterEntry(itemId).cost;
 }
 
-/**
- * Trades the Runner's `offerIndex`-th trophy kind for a buff: takes `barterCost` of that trophy from
- * the inventory and queues the buff for this floor's elite/boss room. The buff is not described
- * here — it stays hidden until that fight (`applyPendingBarterBuffs`).
- */
+/** The buff stays hidden until this floor's elite/boss fight (`applyPendingBarterBuffs`). */
 export function runnerBarter(state: GameState, offerIndex: number): PartyActionError | null {
   const runner = state.restRunner;
   if (!runner) return { reason: t("errors.noRunner") };

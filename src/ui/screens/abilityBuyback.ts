@@ -8,12 +8,6 @@ import type { ScreenContext } from "./context";
 
 export type AbilityBuybackUiState = Extract<UiState, { kind: "abilityBuyback" }>;
 
-/**
- * 1 decision at a time (`Game.resolveAbilityBuyback`) — Reclaim or Skip the lost-set entry currently
- * at `pendingAbilityBuyback.resolvedIndex`. Once the last entry resolves, `pendingAbilityBuyback`
- * clears and `syncUiToGameState` routes on to the results-bearing `gameover` screen.
- * `11-abilities.md` §11.1 "Death flow" step 3.
- */
 export function handleKey(ctx: ScreenContext, _ui: AbilityBuybackUiState, _key: KeyEvent, digit: number | null): void {
   const pending = ctx.game.state.pendingAbilityBuyback;
   if (!pending) {

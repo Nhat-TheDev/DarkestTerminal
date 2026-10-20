@@ -43,8 +43,7 @@ function emptyResolved(): ResolvedRaceProfile {
   return { resistPercent, weakPercent, statBuff: { maxHpPercent: 0, attackPercent: 0, defensePercent: 0, speedFlat: 0 } };
 }
 
-/** Race -> subRace: resistPercent/weakPercent keys REPLACE the race's value for that exact damage
- *  type (unmentioned keys stay inherited). statBuff fields ADD to the race's. */
+/** Resist/weak keys replace the inherited value per damage type, but statBuff still adds. */
 function applyOverride(base: ResolvedRaceProfile, layer: RaceProfile): void {
   for (const [k, v] of Object.entries(layer.resistPercent ?? {})) base.resistPercent[k as DamageType] = v as number;
   for (const [k, v] of Object.entries(layer.weakPercent ?? {})) base.weakPercent[k as DamageType] = v as number;
@@ -54,7 +53,6 @@ function applyOverride(base: ResolvedRaceProfile, layer: RaceProfile): void {
   }
 }
 
-/** (Race+subRace) -> traits: every field ADDS (sum, not override). */
 function applyAdditive(base: ResolvedRaceProfile, layer: RaceProfile): void {
   for (const [k, v] of Object.entries(layer.resistPercent ?? {})) base.resistPercent[k as DamageType] += v as number;
   for (const [k, v] of Object.entries(layer.weakPercent ?? {})) base.weakPercent[k as DamageType] += v as number;
@@ -103,8 +101,8 @@ export function assertRaceDataConsistent(archetypes: MonsterArchetype[]): void {
   for (const trait of TRAITS) checkProfile(`data/monster-traits.json: trait "${trait.id}"`, trait.profile);
 
   for (const archetype of archetypes) {
-    getRace(archetype.race); // throws if unknown
-    if (archetype.subRace) getSubRace(archetype.race, archetype.subRace); // throws if unknown or mismatched
-    for (const traitId of archetype.traitIds ?? []) getTrait(traitId); // throws if unknown
+    getRace(archetype.race);
+    if (archetype.subRace) getSubRace(archetype.race, archetype.subRace);
+    for (const traitId of archetype.traitIds ?? []) getTrait(traitId);
   }
 }

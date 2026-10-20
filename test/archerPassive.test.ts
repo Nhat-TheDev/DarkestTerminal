@@ -5,10 +5,7 @@ import { mitigatedOffense } from "../src/engine/resolver";
 import { spawnMonster } from "../src/data/monsters";
 import { makeCtx, withoutDamageRolls } from "./helpers";
 
-/** A floor-1 monster's HP pool is far too small to survive a high-level Archer's hit at all,
- *  crit or not — every trial would one-shot and clamp `dealt` to the same maxHp value regardless
- *  of the crit roll, masking the very thing these tests check. Inflating `target.hp` (the damage
- *  clamp only reads `target.hp`, never `target.maxHp`) removes that confound. */
+/** Inflated hp, so no trial one-shots and clamps `dealt` to the same value whatever the crit roll (the clamp reads `hp`, not `maxHp`). */
 function tankyTarget() {
   const target = spawnMonster("goblin", 1);
   target.hp = 1_000_000;
@@ -72,7 +69,7 @@ describe("Archer passive: character-level crit", () => {
 
     const effect = skill.effects![0]!;
     const base = (effect.amount ?? 0) + mitigatedOffense(archer.attack * ((effect.offenseMultiplierPercent ?? 100) / 100), target.defense);
-    const expectedWithArcherMultiplier = Math.max(1, Math.round(base * 1.8)); // rank-3 passive multiplier (180%) beats the skill's own default (150%)
+    const expectedWithArcherMultiplier = Math.max(1, Math.round(base * 1.8)); // rank-3 passive 180% beats the skill's default 150%
     expect(dealt).toBe(expectedWithArcherMultiplier);
   });
 

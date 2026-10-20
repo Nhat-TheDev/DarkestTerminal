@@ -45,7 +45,6 @@ export function showCharacterSelect(renderer: CliRenderer, classes: CharacterCla
         lines.push([colorChunk(t("charSelect.fullWarning"), PALETTE.dead)]);
       }
       body.content = joinLines(lines);
-      // `[Enter] Start` only appears once the party is actually full — the key does nothing before that.
       footer.content = joinLines([highlightKeyHints(joinHints(digitHint("charSelect.hint", classes.length), picked.length >= PARTY_SIZE ? t("charSelect.readyHint") : null))]);
     };
     render();

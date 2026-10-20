@@ -2,7 +2,6 @@ const SEGMENT = /(\w+)|\[(\d+)\]/g;
 
 export type Resolved = { found: true; value: unknown } | { found: false };
 
-/** Follows `a.b[0].c` through parsed JSON. `found` is false as soon as a segment is missing. */
 export function resolvePath(root: unknown, path: string): Resolved {
   let current: unknown = root;
   for (const segment of path.matchAll(SEGMENT)) {

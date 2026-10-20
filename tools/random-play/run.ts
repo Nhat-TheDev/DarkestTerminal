@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "../dev-save-dump/args";
 
-// SAVE_DIR is read once when the engine is first imported, so it must point at a throwaway
-// directory before anything from src/ loads — every run wipes it to start from an empty profile.
+// SAVE_DIR is read when the engine is first imported, so it must be set before anything from src/ loads.
 process.env.DARKEST_TERMINAL_SAVE_DIR = mkdtempSync(join(tmpdir(), "darkest-terminal-random-play-saves-"));
 const { playRun } = await import("./bot");
 const { renderReport } = await import("./report");
@@ -15,7 +14,7 @@ const maxSteps = Number(args["max-steps"] ?? 2000);
 const single = args["game-seed"] !== undefined;
 const runs = single ? 1 : Number(args.runs ?? 20);
 const seedStart = Number(args["seed-start"] ?? 1);
-// "none" skips report.html and failures.json: the failure list printed below and the exit code are the whole result (CI).
+// "none" (CI) writes no files: the printed failures and exit code are the whole result.
 const reportMode = args.report ?? "html";
 if (reportMode !== "html" && reportMode !== "none") throw new Error(`--report must be html or none, not "${reportMode}"`);
 

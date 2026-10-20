@@ -1,20 +1,16 @@
 import type { Finding } from "./types";
 
-/** `docs/<path>.md`. */
 const FULL_PATH = /(?<![\w.\/-])docs\/[\w.\/-]+\.md/g;
-/** `NN-name.md`, the naming of the gameplay-decisions files, written without a directory. */
+/** A gameplay-decisions file named without its directory. */
 const NUMBERED_NAME = /(?<![\w.\/-])\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md/g;
 
 export interface RefSource {
-  /** Repo-relative path of the file being scanned. */
   file: string;
   text: string;
 }
 
 export interface RefTargets {
-  /** True when the repo-relative path exists on disk. */
   exists(path: string): boolean;
-  /** The names of the files under `docs/`, without their directory. */
   docNames: ReadonlySet<string>;
 }
 

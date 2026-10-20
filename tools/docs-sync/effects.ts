@@ -1,7 +1,6 @@
 import type { SkillEffect } from "../../src/types";
 import { formatNumber, showValue } from "./format";
 
-/** One field's values across ranks: a single value when they all agree, otherwise `a / b / c`. */
 export function joinRanks(values: readonly string[]): string {
   return values.every((value) => value === values[0]) ? values[0]! : values.join(" / ");
 }
@@ -10,11 +9,7 @@ export type OffenseStat = "ATK" | "MAG";
 
 const percent = (rate: number) => formatNumber(rate * 100);
 
-/**
- * One effect as it reads across ranks, e.g. `damage 10 / 13 / 16 + 100 / 105 / 110% ATK (fire)`.
- * `ranks` holds the same effect at rank 1, 2 and 3. A field this has no wording for is printed as
- * `name value`, never dropped, so a number added to the data shows up in the docs on its own.
- */
+/** A field with no wording is printed as `name value`, never dropped, so new data still shows up in the docs. */
 export function describeEffect(ranks: readonly SkillEffect[], offenseStat: OffenseStat): string {
   const first = ranks[0]!;
   if (ranks.some((effect) => effect.kind !== first.kind)) {
@@ -106,7 +101,6 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
   return shown.length === 0 ? head : `${head} (${shown.join(", ")})`;
 }
 
-/** Every effect of a skill, one string per effect position; identical neighbours become `… ×N`. */
 export function describeEffects(byRank: readonly (readonly SkillEffect[])[], offenseStat: OffenseStat): string[] {
   const count = Math.max(0, ...byRank.map((effects) => effects.length));
   const each = Array.from({ length: count }, (_, index) =>

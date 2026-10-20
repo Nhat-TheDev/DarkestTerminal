@@ -13,13 +13,10 @@ export interface DumpOptions {
   level: number;
   floorDepth: number;
   roomArg: string;
-  /** Pins the event room's roll instead of letting `resolveEventEntry` pick one at random — lets a
-      caller jump straight to a specific event id for testing, bypassing its own `isEligible` gate.
-      A `scripted` event is refused: it is never a room's event. */
+  /** Pins the event room's roll, bypassing `isEligible`. Scripted events are refused. */
   forceEventId?: Id;
 }
 
-/** Mutates `game` in place to the requested level/floor/room, returning the room it landed in. */
 export function applyDump(game: Game, opts: DumpOptions): Room {
   if (opts.forceEventId && getEvent(opts.forceEventId).kind === "scripted") {
     throw new Error(`"${opts.forceEventId}" is a scripted scene, not a room event.`);
@@ -30,8 +27,7 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
   const { floor, monsters } = createFloor(game.ctx.rng, floorDepth);
   game.ctx.monsters = monsters;
   game.state.floor = floor;
-  // The Game constructor already ran its own entry-room ambush check against floor 1's monsters —
-  // stale here since we just replaced both the floor and the monster list.
+  // Clears the constructor's floor-1 entry ambush, stale now that the floor is replaced.
   game.state.combat = null;
   // A dump lands mid-run, past the gate: the Gatekeeper scene never shows and counts as refused.
   game.state.pendingGatekeeper = false;
@@ -53,11 +49,7 @@ export function applyDump(game: Game, opts: DumpOptions): Room {
   game.state.roomPath = roomId === floor.entryRoomId ? [roomId] : [floor.entryRoomId, roomId];
   const room = getRoom(floor, roomId);
 
-  // Mirrors `Game.advanceToNextFloor()`'s own precedence: the founder encounter is a guaranteed
-  // story beat that blocks everything else the moment the party reaches that depth, checked before
-  // any room-type logic. The floor-100 checkpoint has no equivalent here — it now fires only after
-  // floor 100's own boss is defeated (Part F.1), not on arrival, so dumping to depth 100 lands on it
-  // like any ordinary floor.
+  // Mirrors Game.advanceToNextFloor(): the founder encounter preempts any room logic.
   if (floorDepth === FOUNDER_FLOOR_DEPTH && game.state.continuedPastCheckpoint) {
     game.state.pendingFounderDialogue = true;
     return room;

@@ -53,8 +53,6 @@ export const TOMBSTONE_SPRITE: Sprite = {
   },
 };
 
-// Sourced from data/sprites.json (edit via the sprite editor tool's "rest"/"treasure" categories)
-// rather than hardcoded here, so they're actually reachable from the visual editor.
 export const CAMPFIRE_SPRITE: Sprite = REST_SPRITES["campfire"]!;
 export const TREASURE_CHEST_SPRITE: Sprite = TREASURE_SPRITES["chest"]!;
 
@@ -71,11 +69,6 @@ export function spriteForMonster(archetypeId: string, tier: MonsterTier): Sprite
   return sprite;
 }
 
-/**
- * Every role an archetype declares must have exactly one sprite, and no extras:
- * ["normal"] = 1 normal sprite, ["elite","boss"] = elite + boss only,
- * ["normal","elite","boss"] = all 3, final boss = boss only.
- */
 export function assertMonsterSpritesConsistent(archetypes: MonsterArchetype[]): void {
   for (const archetype of archetypes) {
     const expected: MonsterTier[] = archetype.roles;
@@ -142,10 +135,7 @@ export function renderSpriteInSlot(sprite: Sprite, slotHeight: number, slotWidth
   return lines;
 }
 
-/**
- * Where each sprite starts on a row of `sprites`, one slot each. A sprite wider than its slot pushes
- * the whole row right so nothing starts at a negative column; `starts` already include that shift.
- */
+/** A sprite wider than its slot pushes the whole row right; `starts` already include that shift. */
 export function spriteSlotLayout(sprites: Sprite[], slotWidth: number, gap: number): { starts: number[]; canvasWidth: number } {
   const rawStarts = sprites.map((sprite, i) => i * (slotWidth + gap) + Math.floor((slotWidth - spriteWidth(sprite)) / 2));
   const shift = -Math.min(0, ...rawStarts);
