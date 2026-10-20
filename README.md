@@ -32,14 +32,14 @@ dungeon that goes as deep as you dare.
 Pick 4 characters from a roster of 9 classes and lead them down an endless,
 procedurally generated dungeon. Every floor is freshly built, every branch
 eventually leads back to a guarded boss room, and every fight is turn-based —
-command your whole party, then watch the round play out in speed order. There
-is no "you win" screen: you play until your party falls, permanently. Manage
+command your whole party, then watch the round play out in speed order. Death
+is permanent: when your party falls, the run is over. Manage
 hunger and fear alongside HP and MP, gear up on items and permanent
 Artifacts, spend the coin you loot on gambles and favors from strange
 wanderers, and see how far down you can get.
 
-![Title screen](./docs/images/title-screen.svg)
-![Battlefield mid-combat: header, party, monsters, and log](./docs/images/battlefield-combat.svg)
+![Title screen — the menu with Start and Continue](./docs/images/title-screen.svg)
+![Battlefield mid-combat: header, path, party, monsters, and the log beside the battlefield](./docs/images/battlefield-combat.svg)
 
 ## 🚀 Installation
 
@@ -60,42 +60,51 @@ bun run start
 ## 🎮 How to Play
 
 **Starting up.** You'll first see the title (splash) screen — press any key
-to reach the menu, then choose **New Game** or **Continue** (Continue only
-shows up once you have a save). New Game takes you straight to the character
-select screen.
+to reach the menu, then choose **Start** or **Continue** (Continue only
+shows up once you have a save). Start asks for a save slot, then takes you to
+the party select screen.
 
-**Building your party.** Pick exactly 4 characters from the 9-class roster —
-number keys to select/deselect a class, any key to confirm once you have 4.
-Each class plays differently, so a mix of roles (a tank, some damage, some
-support) will serve you better than four of the same idea.
+**Building your party.** Pick 4 different classes from the 9-class roster.
+Browse them with **←/→** — each page shows a class's stats, passive and
+opening skills — and press **Enter** to recruit one; **Esc** takes back the
+last pick. Each class plays differently, so a mix of roles (a tank, some
+damage, some support) will serve you better than four of the same idea.
 
-![Character select — choosing 4 characters for the expedition party from the 9-class roster](./docs/images/character-select.svg)
+![Party select — browsing the 9-class roster one class at a time](./docs/images/party-select.svg)
 
-**Picking abilities.** Right after character select, each character gets one
-ability pick from the persistent pool you've unlocked so far (or skip) —
+**Picking abilities.** Each recruit gets one ability pick right after you
+choose them, from the persistent pool you've unlocked so far (or skip) —
 these carry over between runs, unlike anything else tied to a save.
 
-![Ability select — choosing a permanent ability for a party member right after character select](./docs/images/ability-select.svg)
+![Ability select — choosing a permanent ability for a recruit right after picking the class](./docs/images/ability-select.svg)
+
+**The way in.** Once the party is set, the run opens at the mouth of the cave,
+where a Gatekeeper asks for a toll before floor 1.
+
+![The Gatekeeper — the opening scene at the cave mouth, with a choice to leave the toll or keep the coins](./docs/images/gatekeeper.svg)
 
 **Controls.** Everything in the game is driven by a **number** key — moving
 between rooms, choosing skills/items, picking targets, rest-room choices,
 event choices. After a round of combat resolves, the log plays back what
 happened one line at a time (press any key to skip straight to the end),
 then press any key again to move on. Use **↑/↓** to scroll back through the
-combat log, and **q** to quit.
+combat log and **l** to open the full run log. **q** opens the pause menu
+(save, or save and exit), **s** quicksaves, and **Ctrl+C** quits.
+
+![Skill select — a fight's first round, with the party's skills listed under the Dungeon panel](./docs/images/skill-select.svg)
 
 ![Room cleared — coins/satiety in the header, satiety drain and coins earned in the log](./docs/images/room-cleared.svg)
 
 **The loop.** Move from room to room, fight whatever's guarding the way,
 collect coins/items/Artifacts, and keep your party's Fear and Satiety in
 check between fights. Clear the guarded room at the end of a floor and the
-next floor generates immediately — there's no final boss to "beat the game,"
-just how deep you can push before your party doesn't make it back.
+next floor generates immediately. The dungeon keeps going; how deep you push
+before your party doesn't make it back is up to you.
 
 ## ✨ Features
 
-- **An endless, hand-crafted-feeling dungeon** — no two runs look the same,
-  and there's no scripted ending. You play until you can't.
+- **A dungeon that keeps going** — floors are generated as you descend, so no
+  two runs look the same.
 - **9 classes, a party of 4** — Vanguard, Mage, Rogue, Acolyte, Viking, Plague
   Doctor, Archer, Ninja, and Summoner. Each plays differently.
 - **Turn-based tactical combat** — command your party, then watch the round
@@ -114,9 +123,6 @@ just how deep you can push before your party doesn't make it back.
 - **Cursed Coins** — a currency to spend, gamble, or trade away.
 - **Event rooms with real narrative** — random encounters, some of them tied
   to faces you'll see again.
-
-  ![Event room — a treasure chest encounter offering a choice before the party moves on](./docs/images/event-room.svg)
-
 - **Save & continue** — pick up a run later from a list of your saves.
 - **Pixel art rendered directly in the terminal** — every character and
   monster is hand-drawn pixel art, composited straight into your terminal
@@ -124,7 +130,6 @@ just how deep you can push before your party doesn't make it back.
 
 ## 📚 For developers
 
-The rest of this README used to live here — it now lives in
-**[`docs/developer-guide.md`](./docs/developer-guide.md)**, which serves as
-the entry point for understanding how the game is built: architecture, data
-files, code layout, and how to run the test suite.
+**[`docs/developer-guide.md`](./docs/developer-guide.md)** is the entry point
+for understanding how the game is built: architecture, data files, code
+layout, and how to run the test suite.
