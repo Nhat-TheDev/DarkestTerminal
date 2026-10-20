@@ -41,7 +41,7 @@ const RARE_TIER_WEIGHT = BALANCE.events.rareTierWeight;
 function isEligible(event: EventDefinition, depth: number, firedOnceEventIds: Id[]): boolean {
   if (event.kind === "scripted") return false;
   if (event.minFloorDepth !== undefined && depth < event.minFloorDepth) return false;
-  if (event.onceLifetime && firedOnceEventIds.includes(event.id)) return false;
+  if ((event.onceLifetime || event.removedOnFounderVictory) && firedOnceEventIds.includes(event.id)) return false;
   return true;
 }
 

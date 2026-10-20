@@ -584,6 +584,7 @@ export class Game {
           this.state.eventOutcomes[room.rolledEventId] = "resolved";
           this.state.loreExposureCount += 1;
         }
+        // Deduped: some of these ids are onceLifetime and may have fired already.
         if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === "the-founder")) {
           for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
             if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);

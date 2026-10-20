@@ -15,7 +15,8 @@ import {
 } from "../src/data/endings";
 import { migrateGameState } from "../src/engine/migration";
 import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, PROFILE_FILENAME } from "../src/engine/profile";
-import { EVENTS } from "../src/data/events";
+import { EVENTS, rollEvent } from "../src/data/events";
+import { Rng } from "../src/engine/rng";
 
 /** Floor 100 with its boss just cleared, as the boss-clear pipeline leaves it before `advanceToNextFloor()`; not arriving from floor 99. */
 function toFloor100BossCleared(game: Game) {
@@ -319,7 +320,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
     expect(game.state.combat).not.toBeNull();
   });
 
-  test("defeating the founder bulk-inserts all 11 Covenant events into firedOnceEventIds", () => {
+  test("defeating the founder removes all 11 Covenant events from the roll pool", () => {
     const game = new Game(424, ["vanguard"]);
     toFloor119Continued(game);
     game.advanceToNextFloor();
@@ -342,6 +343,10 @@ describe("Part F.5: Continue → the founder encounter", () => {
     expect(game.state.combat!.outcome).toBe("victory");
     for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
       expect(game.state.firedOnceEventIds).toContain(id);
+    }
+    const rng = new Rng(426);
+    for (let i = 0; i < 4000; i++) {
+      expect(FOUNDER_VICTORY_REMOVED_EVENT_IDS).not.toContain(rollEvent(rng, game.state.floor.depth, game.state.firedOnceEventIds));
     }
   });
 

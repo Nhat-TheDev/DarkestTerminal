@@ -781,7 +781,7 @@ export interface GameState {
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
   /** Set once an event's defining choice resolves; most get the generic "resolved" from `closeEvent()`. */
   eventOutcomes: Partial<Record<Id, string>>;
-  /** `onceLifetime` events already fired, excluded from future rolls. */
+  /** `onceLifetime` events already fired, plus every `removedOnFounderVictory` id once the founder falls; excluded from future rolls. */
   firedOnceEventIds: Id[];
   /** 1 per Boss kill; spent only in this run's death flow. */
   runStardust: number;

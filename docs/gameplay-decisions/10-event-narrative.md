@@ -1008,8 +1008,10 @@ Covenant as an institution — `guardian-fight`, `desecrated-altar`, `merchant`,
 `half-a-warning` — plus `still-breathing`, made narratively redundant once the bigger reveal above
 has already landed. **Mechanism**: each of these events carries `removedOnFounderVictory: true` in
 `data/events.json` (`FOUNDER_VICTORY_REMOVED_EVENT_IDS`, `src/data/endings.ts`); the founder's
-defeat bulk-inserts all 11 ids into `GameState.firedOnceEventIds` in 1 pass, the exclusion list
-`rollEvent()` (`src/data/events.ts`) reads. Staying in the pool, unaffected: `open-chest`, `collapsed-floor`, `old-count`, `doubled-back`, `the-delay`,
+defeat bulk-inserts all 11 ids into `GameState.firedOnceEventIds` in 1 pass, and `rollEvent()`
+(`src/data/events.ts`) excludes a `removedOnFounderVictory` event whose id is in that array, the
+same check it applies to spent `onceLifetime` events. Staying in the pool, unaffected: `open-chest`,
+`collapsed-floor`, `old-count`, `doubled-back`, `the-delay`,
 `waiting-supplies`, `vigil-candle` (mundane/pure-dream-logic, no institutional tie), `gambling-den`
 (the Stranger, explicitly not Covenant, §12.8), `the-wanderer` (Part E), and Ending 1's
 retired-character event (§F.2).
