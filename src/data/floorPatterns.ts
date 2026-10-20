@@ -29,6 +29,9 @@ export const MAX_BRANCHES = BALANCE.floorGeneration.maxBranches;
 export const MIN_BRANCH_START_STAGE = BALANCE.floorGeneration.minBranchStartStage;
 export const MIN_BRANCH_SPACING = BALANCE.floorGeneration.minBranchSpacing;
 export const MAX_EVENT_ROOMS_PER_PATH = BALANCE.floorGeneration.maxEventRoomsPerPath;
+export const MIN_EVENT_ROOMS_PER_FLOOR = BALANCE.floorGeneration.minEventRoomsPerFloor;
+export const MIN_STANDALONE_EVENT_ROOMS = BALANCE.floorGeneration.minStandaloneEventRooms;
+export const MAX_STANDALONE_EVENT_ROOMS = BALANCE.floorGeneration.maxStandaloneEventRooms;
 export const MIN_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.minRestRoomsPerPath;
 export const MAX_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.maxRestRoomsPerPath;
 
@@ -64,6 +67,23 @@ function pickBranchStages(rng: Rng, minStage: number, maxStage: number): number[
   return stages;
 }
 
+function pickStandaloneEventStages(rng: Rng, branchStages: number[], lastStage: number): number[] {
+  const rolled = rng.int(MIN_STANDALONE_EVENT_ROOMS, MAX_STANDALONE_EVENT_ROOMS);
+  const needed = Math.max(rolled, MIN_EVENT_ROOMS_PER_FLOOR - branchStages.length);
+  const count = Math.min(needed, MAX_EVENT_ROOMS_PER_PATH - branchStages.length);
+  let pool: number[] = [];
+  for (let s = MIN_BRANCH_START_STAGE; s < lastStage; s++) {
+    if (branchStages.every((b) => Math.abs(s - b) > 1)) pool.push(s);
+  }
+  const picked: number[] = [];
+  while (picked.length < count && pool.length > 0) {
+    const stage = pool[rng.int(0, pool.length - 1)]!;
+    picked.push(stage);
+    pool = pool.filter((s) => Math.abs(s - stage) > 1);
+  }
+  return picked;
+}
+
 function pickRestStages(rng: Rng, candidates: number[]): number[] {
   const count = rng.int(MIN_REST_ROOMS_PER_PATH, Math.min(MAX_REST_ROOMS_PER_PATH, candidates.length));
   let pool = [...candidates];
@@ -83,10 +103,11 @@ export function generateFloorLayout(rng: Rng): RoomToken[][] {
 
   const branchStages = pickBranchStages(rng, MIN_BRANCH_START_STAGE, lastStage - 1);
   const branchSet = new Set(branchStages);
+  const standaloneEventSet = new Set(pickStandaloneEventStages(rng, branchStages, lastStage));
 
   const restCandidates: number[] = [];
   for (let s = 1; s < lastStage; s++) {
-    if (!branchSet.has(s)) restCandidates.push(s);
+    if (!branchSet.has(s) && !standaloneEventSet.has(s)) restCandidates.push(s);
   }
   const restStages = new Set(pickRestStages(rng, restCandidates));
 
@@ -100,6 +121,8 @@ export function generateFloorLayout(rng: Rng): RoomToken[][] {
         { stage: s, roomId: nextRoomId++, tag: "" },
         { stage: s, roomId: nextRoomId++, tag: "event" },
       ]);
+    } else if (standaloneEventSet.has(s)) {
+      stages.push([{ stage: s, roomId: nextRoomId++, tag: "event" }]);
     } else if (restStages.has(s)) {
       stages.push([{ stage: s, roomId: nextRoomId++, tag: "free" }]);
     } else {
@@ -167,4 +190,13 @@ export function validateGeneratedStages(stages: RoomToken[][]): void {
   if (bounds.rest.min < MIN_REST_ROOMS_PER_PATH || bounds.rest.max > MAX_REST_ROOMS_PER_PATH) {
     throw new Error(`every path must pass through ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, this layout allows between ${bounds.rest.min} and ${bounds.rest.max}`);
   }
+
+  const eventStageIndices = stages.flatMap((stage, s) => (stage.some((r) => r.tag === "event") ? [s] : []));
+  if (eventStageIndices.length < MIN_EVENT_ROOMS_PER_FLOOR) throw new Error(`layout has ${eventStageIndices.length} event stages, need >= ${MIN_EVENT_ROOMS_PER_FLOOR}`);
+  for (let i = 0; i < eventStageIndices.length; i++) {
+    if (eventStageIndices[i]! < MIN_BRANCH_START_STAGE) throw new Error(`event stage ${eventStageIndices[i]} is before allowed start stage ${MIN_BRANCH_START_STAGE}`);
+    if (i > 0 && eventStageIndices[i]! - eventStageIndices[i - 1]! <= 1) throw new Error(`event stages ${eventStageIndices[i - 1]} and ${eventStageIndices[i]} are adjacent`);
+  }
+  const standaloneEventCount = stages.filter((stage) => stage.length === 1 && stage[0]!.tag === "event").length;
+  if (standaloneEventCount > MAX_STANDALONE_EVENT_ROOMS) throw new Error(`layout has ${standaloneEventCount} standalone event stages, max allowed is ${MAX_STANDALONE_EVENT_ROOMS}`);
 }

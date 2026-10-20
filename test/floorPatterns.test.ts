@@ -9,6 +9,8 @@ import {
   MIN_BRANCH_START_STAGE,
   MIN_BRANCH_SPACING,
   MAX_EVENT_ROOMS_PER_PATH,
+  MIN_EVENT_ROOMS_PER_FLOOR,
+  MAX_STANDALONE_EVENT_ROOMS,
   MIN_REST_ROOMS_PER_PATH,
   MAX_REST_ROOMS_PER_PATH,
 } from "../src/data/floorPatterns";
@@ -81,6 +83,14 @@ describe("generateFloorLayout", () => {
       test(`every path has at most ${MAX_EVENT_ROOMS_PER_PATH} event rooms`, () => {
         const eventStageCount = stages.filter((s) => s.some((r) => r.tag === "event")).length;
         expect(eventStageCount).toBeLessThanOrEqual(MAX_EVENT_ROOMS_PER_PATH);
+      });
+
+      test(`at least ${MIN_EVENT_ROOMS_PER_FLOOR} event room(s) on the floor, standalone ones at most ${MAX_STANDALONE_EVENT_ROOMS} and none before stage ${MIN_BRANCH_START_STAGE}`, () => {
+        const eventStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.some((r) => r.tag === "event"));
+        expect(eventStages.length).toBeGreaterThanOrEqual(MIN_EVENT_ROOMS_PER_FLOOR);
+        for (const { i } of eventStages) expect(i).toBeGreaterThanOrEqual(MIN_BRANCH_START_STAGE);
+        const standalone = eventStages.filter(({ s }) => s.length === 1);
+        expect(standalone.length).toBeLessThanOrEqual(MAX_STANDALONE_EVENT_ROOMS);
       });
 
       test(`every path has ${MIN_REST_ROOMS_PER_PATH}-${MAX_REST_ROOMS_PER_PATH} rest rooms, never on a branch stage`, () => {
@@ -236,5 +246,51 @@ describe("validateGeneratedStages rejects layouts that break the rules", () => {
       stage([[7, "boss"]], 6),
     ];
     expect(() => validateGeneratedStages(layout)).toThrow(/rest rooms/);
+  });
+
+  test("rejects a floor with no event room", () => {
+    const layout = [
+      stage([[1, ""]], 0),
+      stage([[2, "free"]], 1),
+      ...Array.from({ length: 4 }, (_, i) => stage([[10 + i, ""]], i + 2)),
+      stage([[20, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(layout)).toThrow(/event stages, need/);
+  });
+
+  test("rejects a standalone event room adjacent to another event room", () => {
+    const layout = [
+      stage([[1, ""]], 0),
+      stage([[2, "free"]], 1),
+      stage([[3, "event"]], 2),
+      stage(
+        [
+          [4, ""],
+          [5, "event"],
+        ],
+        3,
+      ),
+      stage([[6, ""]], 4),
+      stage([[7, ""]], 5),
+      stage([[8, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(layout)).toThrow(/adjacent/);
+  });
+
+  test("rejects a standalone event room before MIN_BRANCH_START_STAGE", () => {
+    const layout = [
+      stage([[1, ""]], 0),
+      stage([[2, "event"]], 1),
+      stage([[3, "free"]], 2),
+      ...Array.from({ length: 3 }, (_, i) => stage([[10 + i, ""]], i + 3)),
+      stage([[20, "boss"]], 6),
+    ];
+    expect(() => validateGeneratedStages(layout)).toThrow(/before allowed start stage/);
+  });
+
+  test("rejects more standalone event rooms than the maximum", () => {
+    const tags = ["", "free", "event", "", "event", "", "event", "", "boss"];
+    const layout = tags.map((tag, i) => stage([[i + 1, tag]], i));
+    expect(() => validateGeneratedStages(layout)).toThrow(/standalone event stages/);
   });
 });

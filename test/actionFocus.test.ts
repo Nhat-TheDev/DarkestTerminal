@@ -462,7 +462,7 @@ describe("battlefield and log stay in step", () => {
       expect(frame).toContain(t("ui.roundHeader", { round: 1 }));
       expect(frame).not.toContain(t("ui.exploring"));
       expect(frame).not.toContain(t("ui.notEncountered"));
-      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters[0]!).abbr} `);
+      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters.at(-1)!).abbr} `);
       expect(count(frame, FOCUS_GLYPH.shield)).toBe(fight.app.debugFocus?.attackedIds.length ?? 0);
       frames++;
       fight.app.tickReveal();

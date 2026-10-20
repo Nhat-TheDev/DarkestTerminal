@@ -122,9 +122,11 @@ converges back to the boss.
 
 Stage 0 is always the entrance (1 room), and the final stage is always the
 boss room (1 room). Branch points insert 1 combat room + 1 event room side by
-side; rest rooms are scattered randomly across the remaining stages. The
-detailed rules (min/max room counts, number of branch points, spacing between
-branch points, ...) and invariants are covered by a property-based test:
+side; an event room can also stand alone on a stage, and every floor has at
+least one event room. Rest rooms are scattered randomly across the remaining
+stages. The detailed rules (min/max room counts, number of branch points,
+spacing between branch points, ...) and invariants are covered by a
+property-based test:
 **[`technical-decisions.md`](./technical-decisions.md)** §1.
 
 Room names, and the monster types/counts for each combat room, are
