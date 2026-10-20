@@ -81,8 +81,8 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-/** Width of the Battlefield's content: the party, the divider and the widest enemy side a fight starts
-    with (a boss and two summoned adds). Its panel takes every column the Log leaves and centres it. */
+/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
+    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
 const BATTLEFIELD_CONTENT_WIDTH = 113;
 /** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
 const SIDE_PANEL_WIDTH = 35;
