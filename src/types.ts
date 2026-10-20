@@ -1,7 +1,7 @@
 export type Id = string;
 
 export interface SurvivalStats {
-  /** 0.0-100.0, one decimal place (`adjustFear`). */
+  /** 0.0-100.0, one decimal place. */
   fear: number;
 }
 
@@ -22,95 +22,65 @@ export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower"
 export interface SkillEffect {
   kind: SkillEffectKind;
   amount?: number;
-  /** "satiety" is party-wide (GameState.satiety), so resolveSkillEffect needs a GameState reference to apply it. */
+  /** "satiety" is party-wide, so resolving it needs the GameState. */
   stat?: keyof SurvivalStats | "satiety";
   combatStat?: CombatStat;
   statusEffectId?: Id;
-  /** For `applyStatusEffect`: extra status ids applied alongside `statusEffectId` under the same roll/target, so a multi-status proc lands or misses atomically. */
+  /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
   alsoApplyStatusEffectIds?: Id[];
   chance?: number;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
-  /** Scales the caster's offensive stat (attack/magicPower) before mitigation — e.g. 60 = the skill only uses 60% of it. Absent/100 = today's unscaled behavior. */
+  /** Percent of the caster's attack/magicPower used before mitigation; absent = 100. */
   offenseMultiplierPercent?: number;
-  /** 2 different combining rules depending on `kind`, so it keeps pace with HP growth across levels either way:
-   *  for a `damage` DoT-tick perTurnEffect, adds `target.maxHp * maxHpPercent / 100` on top of `amount`; for a
-   *  `heal` effect, floors `amount` at `target.maxHp * maxHpPercent / 100` (whichever is larger — same idiom
-   *  `modifyCombatStat`'s `minPercent` uses), so a heal doesn't go stale as the healed actor's maxHp grows. */
+  /** On a `damage` tick, adds `target.maxHp * maxHpPercent / 100` to `amount`; on a `heal`, floors `amount` at that value. */
   maxHpPercent?: number;
-  /** Rolled independently of the accuracy roll, same pattern as `chance` on a proc effect — on a hit, the damage is multiplied by `critMultiplierPercent` (or the shared default). */
   critChance?: number;
-  /** Overrides `BALANCE.combat.defaultCritMultiplierPercent` for this skill's own crits. */
+  /** Absent = `BALANCE.combat.defaultCritMultiplierPercent`. */
   critMultiplierPercent?: number;
-  /** Rolled independently after the main hit — on success, this effect resolves a 2nd time against the same target (its own independent damage + proc rolls). */
+  /** On success the effect resolves a second time against the same target. */
   extraHitChance?: number;
-  /** For an `allEnemies` `damage` effect: how many times each enemy is struck, rolled per enemy within `[min, max]` inclusive. Absent = struck once. */
+  /** For an `allEnemies` damage effect: hits per enemy, rolled per enemy, inclusive. Absent = 1. */
   hitCountRange?: { min: number; max: number };
-  /** Scales this `damage` effect by `1 + (stacks * percentPerStack / 100)`, where `stacks` is the target's current stack count of `statusEffectId` (0 if absent). */
+  /** Damage multiplier `1 + stacks * percentPerStack / 100`, counting the target's stacks of `statusEffectId`. */
   scalesWithStatusStacks?: { statusEffectId: Id; percentPerStack: number };
-  /** For `kind: "summon"`: spawns a `Summon` via the cast profile named here (`data/summons.json` → `casts`, looked up with `getSummonCast`). Re-casting the same archetype replaces the owner's existing one; a different archetype is added alongside it up to the owner's active-minion cap (1 by default), evicting the oldest once at that cap. */
+  /** Recasting the same archetype replaces the owner's summon; another archetype is added up to the minion cap (default 1), evicting the oldest. */
   summonCastId?: Id;
-  /** For `applyStatusEffect`: how many turns this specific application lasts (shared by `alsoApplyStatusEffectIds`, if any) — absent defaults to 1. Each skill declares its own duration; the status definition itself no longer carries one, so the same status can last a different number of turns depending on what applied it. */
+  /** Turns this application lasts (also for `alsoApplyStatusEffectIds`); absent = 1. */
   durationTurns?: number;
-  /** For `applyStatusEffect` of a status that carries `onHitStatusEffectId` (an on-hit rider, e.g. `poison-coated`): how many turns the status each hit applies lasts on the target — absent defaults to 1. Declared here rather than on the status so the skill or item that grants the rider decides it. */
+  /** Turns the status an on-hit rider applies lasts on each hit target; absent = 1. */
   onHitDurationTurns?: number;
-  /** Overrides the skill's own `target` for just this effect, resolved separately from every other effect in the skill — e.g. a skill that both damages `allEnemies` and needs a `summon` effect to always land on the caster sets `target: "self"` on that one effect. Only resolvable target kinds that need no player picking (`self`/`allAllies`/`allEnemies`/`allAlliesAndEnemies`) are supported; a `single*` override is silently skipped, since there's no UI for picking a 2nd target within one cast. */
+  /** Per-effect target override; only `self`/`all*` kinds resolve, a `single*` override is skipped. */
   target?: SkillTarget;
-  /** Restricts this effect to only the targets already resolved by the skill's own `target` that are on the given side (relative to `isPlayerSide`, not relative to the caster) — e.g. one `heal` effect with `appliesToRelation: "ally"` and one `damage` effect with `"enemy"` on a skill targeting `allAlliesAndEnemies` replaces the old `effectsByRelation` split. Unlike `target`, this filters within the already-resolved population rather than resolving a different one — the only shape that correctly expresses a skill like Purify, whose `singleAllyOrEnemy` target is 1 player-picked actor whose side decides which effect fires. */
+  /** Filters the skill's already-resolved targets by side, relative to `isPlayerSide`, not the caster. */
   appliesToRelation?: "ally" | "enemy";
-  /** For `modifyCombatStat`: the applied delta is whichever has the larger magnitude of `amount` or `actorStat * minPercent / 100` (read from the actor's stat before this delta is applied), sign preserved — so a flat buff/debuff stays meaningful once the underlying stat has grown well past where `amount` alone would be negligible. Absent = today's flat-only behavior. */
+  /** For `modifyCombatStat`: delta is the larger magnitude of `amount` or `actorStat * minPercent / 100`, sign kept. */
   minPercent?: number;
-  /** Only meaningful when kind === "damage". Defaults to "physical" when absent — every existing
-   *  effect (monster skills, artifacts, abilities, items) stays untagged and keeps that default. */
+  /** Absent = "physical". */
   damageType?: DamageType;
-  /** For `applyStatusEffect`: ties this status's expiry to the summon this same skill cast also
-   *  spawns via its own `summon` effect (resolved first — see `applySkillEffects` in combat.ts) —
-   *  Totem Recall's "the buff lasts until the totem dies" mechanism, instead of a fixed duration. */
+  /** The status expires with the summon this skill casts; the `summon` effect must resolve first. */
   linksToCasterSummon?: boolean;
-  /** Excludes `Summon` targets from this specific effect within an `allAllies`/`allAlliesAndEnemies`
-   *  resolution — Totem Recall's buff reaches party members but not the caster's own minions. */
   excludesSummonTargets?: boolean;
 }
 
-/** A caster stat a minion's own stat can be derived from (`SummonStatFormula.sourceStat`). */
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
 
-/**
- * One minion stat's value: `base + (percent / 100) * owner[sourceStat]` — e.g. a physically-attacking
- * minion whose power is meant to scale off a magic-focused caster's investment sets
- * `sourceStat: "magicPower"` on its `attack` formula (Summoner's Goblin Thrower/Stone Golem,
- * `01-class-skill.md` §1.11.1). `percent` is a single number when it doesn't change across the
- * casting skill's 3 ranks, or a `[rank1, rank2, rank3]` tuple when it does (e.g. a minion's own
- * attack growing with the summon skill's rank) — one cast profile is shared by all 3 ranks either way.
- */
+/** Value = `base + percent / 100 * owner[sourceStat]`; a tuple `percent` is indexed by the casting skill's rank. */
 export interface SummonStatFormula {
   base: number;
   percent: number | [number, number, number];
   sourceStat: SummonSourceStat;
 }
 
-/**
- * A minion-summoning skill's full cast configuration — `data/summons.json` → `casts`, referenced from
- * `SkillEffect.summonCastId`. A skill's ranks 1-3 all reference 1 shared cast profile;
- * `effectiveSkillRank` of the summoning skill (`skillId`) resolves which rank is currently active
- * to pick the right element out of any `SummonStatFormula.percent` tuple.
- */
+/** Shared by all 3 ranks of `skillId`; that skill's effective rank picks from any per-rank tuple. */
 export interface SummonCast {
   id: Id;
-  /** The summoning `SkillDefinition` whose rank this cast follows. */
   skillId: Id;
   archetypeId: Id;
   maxActions: number;
   stat: Record<SummonSourceStat, SummonStatFormula>;
   aggro: number;
-  /**
-   * An AoE burst fired once when a summon spawned from this cast is removed by dying in combat, a
-   * DoT tick, or running out of `maxActions` — never on a manual dismiss/replace (recasting the same
-   * archetype, or eviction at the owner's minion cap). `offenseMultiplierPercent`/`amount`/
-   * `statusEffectChance` resolve per the casting skill's rank (scalar or `[r1, r2, r3]` tuple, same
-   * convention as `SummonStatFormula.percent`) and are frozen onto the `Summon` at spawn time
-   * (`Summon.deathBurst`), using the owner's `sourceStat` as it was at that moment.
-   */
+  /** AoE burst when the summon dies or runs out of `maxActions`, never on dismiss/replace; tuples resolve by rank and are frozen onto `Summon.deathBurst` at spawn. */
   onDeath?: {
     offenseMultiplierPercent: number | [number, number, number];
     amount: number | [number, number, number];
@@ -141,15 +111,13 @@ export interface SkillDefinition {
   id: Id;
   name: string;
   description: string;
-  /** Terser version of `description`, sized to fit on the compact pickSkill list line without
-   *  wrapping/truncating — `description` itself stays full-length for the skillDetail screen. */
   shortDescription?: string;
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
   slot: 0 | 1 | 2 | 3 | 4 | 5;
   unlockLevel: number;
-  /** Set only on the stand-in skill built for a used item (`actionDefinition`): an item's damage and heal never crit. */
+  /** Set only on the stand-in skill for a used item: item damage and heals never crit. */
   fromItem?: true;
   usesPerCombat?: number;
   cooldownTurns?: number;
@@ -158,34 +126,32 @@ export interface SkillDefinition {
   isMagic?: boolean;
   ranks?: SkillRankDefinition[];
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
-  /** If the target's current HP is below `hpPercentThreshold` (of its own maxHp) when this skill resolves, its `damage` effects get an extra bonus. Distinct from the unrelated Boss "Execute" charge-up mechanic (`Monster.executeCooldownTurns`). */
+  /** Bonus damage while the target's HP is below `hpPercentThreshold` of its maxHp; unrelated to the Boss execute charge. */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
 }
 
-/** One class's mechanic fields, all optional since a given class's passive only ever reads its
- *  own handful — same "one shared shape, many optional fields" pattern as `SkillEffect`. */
 export interface PassiveRankDefinition {
   rank: 1 | 2 | 3;
   unlockLevel: number;
-  maxHpPercent?: number; // Vanguard
-  defensePercent?: number; // Vanguard
-  aggroFlat?: number; // Vanguard
-  onHitStatusEffectId?: Id; // Mage — which status this rank stacks on the target, 1 id per rank
-  durationTurns?: number; // Mage / Plague Doctor — how many turns the status this rank applies lasts (a Mage hit refreshes it)
-  bonusPercent?: number; // Rogue
-  bonusFlat?: number; // Rogue
-  healBoostPercent?: number; // Acolyte
-  debuffResistPercent?: number; // Acolyte
-  hpThresholdPercent?: number; // Viking
-  thresholdStatusEffectId?: Id; // Viking — the status this rank keeps applied while HP is below hpThresholdPercent, 1 id per rank (the status carries the attack bonus)
-  procChancePercent?: number; // Plague Doctor
-  critChancePercent?: number; // Archer
-  critMultiplierPercent?: number; // Archer
-  dodgePercent?: number; // Ninja
-  secondCloneChancePercent?: number; // Ninja
-  minionMaxHpPercent?: number; // Summoner
-  minionAttackPercent?: number; // Summoner
-  maxActiveMinions?: number; // Summoner
+  maxHpPercent?: number;
+  defensePercent?: number;
+  aggroFlat?: number;
+  onHitStatusEffectId?: Id;
+  durationTurns?: number;
+  bonusPercent?: number;
+  bonusFlat?: number;
+  healBoostPercent?: number;
+  debuffResistPercent?: number;
+  hpThresholdPercent?: number;
+  thresholdStatusEffectId?: Id; // kept applied while HP is below hpThresholdPercent
+  procChancePercent?: number;
+  critChancePercent?: number;
+  critMultiplierPercent?: number;
+  dodgePercent?: number;
+  secondCloneChancePercent?: number;
+  minionMaxHpPercent?: number;
+  minionAttackPercent?: number;
+  maxActiveMinions?: number;
 }
 
 export interface PassiveSkillDefinition {
@@ -193,13 +159,13 @@ export interface PassiveSkillDefinition {
   name: string;
   description: string;
   ranks: PassiveRankDefinition[]; // exactly 3
-  requiresTargetStatusId?: Id; // Rogue — bonus only fires while the target carries this status (or a rankOf variant of it)
-  bonusDamageType?: DamageType; // Rogue
-  selfDamagePerHitMaxHPPercent?: number; // Viking — fixed across ranks, not scaled
-  maxClones?: number; // Ninja — fixed across ranks, not scaled
-  cloneSummonCastId?: Id; // Ninja — the summon cast (`data/summons.json` → `casts`) the second-clone proc spawns, and whose archetype `maxClones` counts
-  secondCloneName?: string; // Ninja — the name the proc's clone carries, telling it apart from the one Shadow Clone casts
-  debuffPool?: Id[]; // Plague Doctor — same pool at every rank
+  requiresTargetStatusId?: Id; // also matches a rankOf variant of this status
+  bonusDamageType?: DamageType;
+  selfDamagePerHitMaxHPPercent?: number;
+  maxClones?: number;
+  cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
+  secondCloneName?: string;
+  debuffPool?: Id[];
 }
 
 export interface GrowthWeights {
@@ -218,10 +184,7 @@ export interface GrowthWeightsData {
 export interface CharacterClass {
   id: Id;
   name: string;
-  /** Player-facing summary of the class's role and fantasy — what it feels like to play,
-      not a recap of its stats or skill names. Shown at character select. */
   description: string;
-  /** Short team-role labels ("Tank", "Healer", "AoE"), rendered as chips in the class-detail panel. */
   roleTags: string[];
   baseMaxHp: number;
   baseMaxMp: number;
@@ -255,7 +218,7 @@ export interface Character {
   usesRemainingThisCombat: Record<Id, number>;
   cooldownsRemaining: Record<Id, number>;
   equippedArtifactIds: Id[];
-  /** Set once at character select, fixed for the whole run — `11-abilities.md` §11.1 "Character-select flow". `null`/absent = no ability equipped. */
+  /** Fixed at character select for the whole run; `null`/absent = none. */
   equippedAbilityId?: Id | null;
 }
 
@@ -269,27 +232,23 @@ export interface StatusEffectDefinition {
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
-  /** If set, this status is a higher-rank variant of `rankOf` (e.g. "storm-empowered-ii" of "storm-empowered") — used to match ranks and compose the displayed name. */
   rankOf?: Id;
   rankLevel?: 2 | 3 | 4 | 5 | 6;
-  /** Overrides the turn-countdown schedule inferred from `perTurnEffects`' shape — for a status whose shape alone doesn't capture its intended timing, e.g. a pure stat-mod rider that must tick in lockstep with a "special" status it's always co-applied with. */
+  /** Overrides the countdown schedule inferred from `perTurnEffects`' shape. */
   tickCategory?: "dot" | "statMod" | "special";
-  /** Re-applying this status to a target that already carries it adds a stack (up to `maxStacks`) instead of only refreshing duration. */
   stackable?: boolean;
   maxStacks?: number;
-  /** Each stack beyond the first multiplies the status's `damage` perTurnEffects by `1 + perStackBonusPercent / 100`. */
+  /** Each stack beyond the first multiplies `damage` ticks by `1 + perStackBonusPercent / 100`. */
   perStackBonusPercent?: number;
-  /** While the bearer carries this status, the moment resolution reaches the next monster's turn, the bearer reactively attacks that monster first — a hit discards the monster's turn entirely. Consumed after the first monster reached, hit or miss. */
+  /** The bearer attacks the next monster to act first, and a hit cancels that monster's turn; spent after one shot, hit or miss. */
   triggersOverwatch?: boolean;
-  /** The Overwatch shot's own damage (flat `amount` + `offenseMultiplierPercent` of the bearer's attack); absent = a plain basic-attack-strength shot. */
+  /** Absent = a plain basic-attack-strength shot. */
   overwatchShot?: { amount: number; offenseMultiplierPercent: number };
-  /** Chance (0–1) that a landed Overwatch shot also discards the monster's turn; absent = always. */
+  /** 0-1 chance a landed Overwatch shot cancels the turn; absent = always. */
   interruptChance?: number;
-  /** While active, the bearer is excluded from every enemy skill's target resolution (singleEnemy/allEnemies target-picking skips it, same as a dead combatant). */
   untargetable?: boolean;
-  /** Bonus applied to the attack that breaks this status (only meaningful alongside `untargetable`) — the status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
+  /** The status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
-  /** While active, every enemy attack aimed at the bearer has this percent chance to be dodged, rolled through `rollDodge` alongside Artifact and passive dodge. */
   dodgePercent?: number;
 }
 
@@ -301,11 +260,10 @@ export interface ItemDefinition {
   description: string;
   target: SkillTarget;
   effects: SkillEffect[];
-  /** Drives the item's drop weight (`BALANCE.items.tierWeights`). */
   tier: ItemTier;
   /** A trophy: an effect-less barter token dropped only by these monsters. */
   archetypeIds?: Id[];
-  /** A trophy shared by several monsters of one race; its drop weight is scaled by `BALANCE.items.groupDropMultiplier`. */
+  /** A trophy shared by one race's monsters; drop weight scaled by `BALANCE.items.groupDropMultiplier`. */
   groupItem?: boolean;
   combatUsable?: boolean;
 }
@@ -313,27 +271,23 @@ export interface ItemDefinition {
 export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
 
 export type ArtifactEffect =
-  /** `minPercent`: the applied boost is whichever has the larger magnitude of `amount` or `base * minPercent / 100`,
-      where `base` is the character's own class-base-plus-level-growth value for `stat` (before any Artifact/Ability/status/Exhausted modifier) —
-      so a flat boost stays meaningful once that stat has grown well past where `amount` alone would be negligible,
-      the same idea as `SkillEffect.minPercent` for status effects. Absent = today's flat-only behavior. Currently
-      only set by `data/abilities.json` entries; Artifacts don't use it. */
+  /** `minPercent`: boost is the larger of `amount` or `base * minPercent / 100`, `base` being the class-plus-level stat before any modifier. */
   | { kind: "statBoost"; stat: "attack" | "defense" | "maxHp" | "maxMp" | "magicPower" | "speed"; amount: number; minPercent?: number }
   | { kind: "reflectDamage"; percent: number }
-  /** Each damaging hit by the bearer has `chance` percent to apply `statusEffectId` to the target for `durationTurns`. */
+  /** `chance` is a percent per damaging hit. */
   | { kind: "poisonOnHit"; chance: number; statusEffectId: Id; durationTurns: number }
   | { kind: "lifesteal"; percent: number }
   | { kind: "dodgeChance"; chance: number }
-  /** `minPercent`: the heal is whichever has the larger magnitude of `amount` or `baseMaxHp * minPercent / 100` (the bearer's class-base-plus-level max HP, not the live one), so a flat heal stays meaningful as max HP grows — the same floor idea as `statBoost.minPercent`. Absent = flat `amount`. Only `data/abilities.json` entries set it; Artifacts don't. */
+  /** `minPercent` floors the heal at `baseMaxHp * minPercent / 100` (class-plus-level max HP, not the live one). */
   | { kind: "healOnKill"; amount: number; minPercent?: number }
-  /** `offenseMultiplierPercent`: when set, the tick is a real `damage` resolution — `amount` + the bearer's BASE `magicPower` (if `isMagic`) or `attack` (otherwise, class base plus level growth, ignoring live buffs/equipment) times this percent, mitigated by the target's defense, same as `SkillEffect.offenseMultiplierPercent`. Absent = the legacy fixed, unmitigated `amount`. Set by `data/abilities.json` entries and by the Artifacts that carry `autoDamage` (`thunder-totem`, `crown-of-destruction`). */
+  /** With `offenseMultiplierPercent`, a mitigated hit scaling off the bearer's base attack/magicPower; absent = fixed, unmitigated `amount`. */
   | { kind: "autoDamage"; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
-  /** The bearer's own enemy-targeting hit and debuff-chance rolls each have this percent chance to succeed outright before they are rolled. Stacks across equipped sources as independent chances. `11-abilities.md` §11.1.1. */
+  /** Percent chance the bearer's hit and debuff rolls succeed outright; independent chances across sources. */
   | { kind: "alwaysHit"; chance: number }
-  /** Reduces the land chance of every harmful status an enemy skill applies to the bearer by this percent, relative (60% with `percent: 30` becomes 42%; an effect with no `chance` counts as 100%). Stacks across equipped sources multiplicatively. `11-abilities.md` §11.1.2. */
+  /** Relative cut to enemy debuff land chance (60% at 30 becomes 42%; no `chance` counts as 100%); stacks multiplicatively. */
   | { kind: "debuffResist"; percent: number }
   | { kind: "curseAggroBoost"; amount: number };
 
@@ -344,17 +298,13 @@ export interface ArtifactDefinition {
   rarity: ArtifactRarity;
   effects: ArtifactEffect[];
   isCursed?: boolean;
-  /** Excluded from every roll (Elite/Boss kills, the Event room's standard table, Merchant,
-      Ritual Circle) except the source(s) listed here — `10-event-narrative.md` §F.4. Callers opt
-      in explicitly via `rollArtifact`'s `allowRestrictedSource` param; nothing infers it from the
-      rarity table alone (Collapsed Floor rolls the same "boss" table without being a Boss kill). */
+  /** Excluded from every roll except these sources, opted into via `rollArtifact`'s `allowRestrictedSource` (the "boss" table alone doesn't imply a Boss kill). */
   restrictedDropSources?: ("boss" | "blood-altar")[];
 }
 
-/** The one effect kind only Abilities can use: a `statBoost` on `aggro`, which `ArtifactEffect` reserves for the cursed-only `curseAggroBoost`. See `docs/gameplay-decisions/11-abilities.md` §11.1. */
+/** An `aggro` statBoost, which `ArtifactEffect` reserves for the cursed `curseAggroBoost`. */
 export type AbilityOnlyEffect = { kind: "statBoost"; stat: "aggro"; amount: number; minPercent?: number };
 
-/** Reuses every `ArtifactEffect` kind except `curseAggroBoost` (cursed-Artifact-only) — Abilities are never cursed — plus `AbilityOnlyEffect`. */
 export type AbilityEffect = Exclude<ArtifactEffect, { kind: "curseAggroBoost" }> | AbilityOnlyEffect;
 
 export interface AbilityDefinition {
@@ -365,7 +315,7 @@ export interface AbilityDefinition {
   effects: AbilityEffect[];
 }
 
-/** Persisted separately from any run's `SaveFile` — `docs/gameplay-decisions/11-abilities.md` §11.1 "The persistent profile". Survives permadeath's slot-clear (`deleteSlot`). */
+/** Persisted outside any run's `SaveFile`; survives permadeath's `deleteSlot`. */
 export interface AbilityProfile {
   version: number;
   unlockedAbilityIds: Id[];
@@ -382,19 +332,16 @@ export type EventKind =
   | "artifactExchange"
   | "rescueGamble"
   | "coinGamble"
-  /** Shown by the engine at a fixed point (the-gatekeeper, before floor 1), never rolled into a room. */
+  /** Shown at a fixed point (the-gatekeeper), never rolled into a room. */
   | "scripted";
 
-/** A single condition an event's outcome tag must match, for `CrossEventVariant.when`
-    (10-event-narrative.md Part C.1). `outcome` is compared against `GameState.eventOutcomes[eventId]`. */
+/** `outcome` is compared against `GameState.eventOutcomes[eventId]`. */
 export interface EventOutcomeCondition {
   eventId: Id;
   outcome: string;
 }
 
-/** One conditional description an event can show instead of its base `description`, keyed off other
-    events' outcome tags (Part C.1). Array order matters: `pickEventText()` uses first-match-wins, so
-    a more specific condition must be listed before a more general one targeting the same event. */
+/** First match wins, so a more specific condition must come before a general one on the same event. */
 export interface CrossEventVariant {
   when: EventOutcomeCondition[];
   match: "all" | "any";
@@ -408,97 +355,45 @@ export interface EventDefinition {
   kind: EventKind;
   tier: EventTier;
   forceEquip?: boolean;
-  /** Minimum `floor.depth` at which this event can be rolled at all (Part C.4/C.5) — checked by
-      `rollEvent()`, not by `pickEventText()`. Absent means no depth gate. */
   minFloorDepth?: number;
-  /** This event can fire at most once per run — `rollEvent()` excludes it once its id is in
-      `GameState.firedOnceEventIds`, set by `closeEvent()` (Part C.4/C.5). */
   onceLifetime?: boolean;
-  /** §8.15 Chain 4, "Taken, Never Given" — this event grants an Artifact for no cost of any kind
-      and has no decline option, so every resolution counts toward `freeRewardsTakenCount` and the
-      chain's escalated text applies to it. */
+  /** Grants an Artifact at no cost with no decline; every resolution counts toward `freeRewardsTakenCount`. */
   freeTake?: boolean;
-  /** §10.5 — the reflection describes the event's core action having happened, so it only shows
-      when `GameState.eventOutcomes[id]` holds this tag (a decline or a skip writes a different one). */
+  /** The reflection shows only when `GameState.eventOutcomes[id]` holds this tag. */
   reflectionRequiresOutcome?: string;
-  /** Part F.5 — tied to the Covenant as an institution; permanently removed from the roll pool once
-      the founder falls. 10-event-narrative.md §F.5 lists which events carry it and which deliberately
-      stay (e.g. `still-breathing` goes as redundant; `gambling-den` and `the-wanderer` stay). */
+  /** Leaves the roll pool for good once the founder falls. */
   removedOnFounderVictory?: boolean;
-  /** `instantReward` only: skip the usual rollArtifact/grantArtifact — still-breathing is
-      deliberately "no artifact, no stat effect of any kind" (Part C.4). */
   noArtifactReward?: boolean;
-  /** `instantReward` only: grants this specific artifact instead of rolling from the standard
-      table — for a scene whose reward is a specific object described in the text itself, not a
-      generic loot beat (e.g. waiting-supplies' bundle). Ignored if `noArtifactReward` is set. */
+  /** `instantReward` only: grant this artifact instead of rolling; ignored with `noArtifactReward`. */
   guaranteedArtifactId?: Id;
-  /** `instantReward` only: items added to the inventory on top of the artifact reward — for a scene
-      whose bundle also holds consumables (e.g. waiting-supplies' Exploration Kits). */
   guaranteedItems?: { itemId: Id; count: number }[];
-  /** Overrides the generic "Open the chest" confirm-option text in the `eventOpenChest` UI screen
-      for `instantReward` events whose scene isn't a chest. */
+  /** Replaces "Open the chest" on `eventOpenChest` for a scene that isn't a chest. */
   instantRewardActionLabel?: string;
-  /** Shown instead of `description` from the 2nd encounter onward (10-event-narrative.md §10.2).
-      Only merchant/wandering-hermit/gambling-den set this. gambling-den needs to branch on the
-      outcome of the player's last visit, so it uses the object form instead of a plain string. */
+  /** Replaces `description` from the 2nd encounter on; the object form branches on the last visit's outcome. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
-  /** Appended to `returnDescription` based on the party's dominant recorded reflection stance
-      (`GameState.eventReflectionStances`) — 11-world-bible.md §11.13's payoff: flavor only, never
-      mechanical, and each line must stay readable more than one way (a leaning, not a verdict). */
+  /** Appended to `returnDescription` by the party's dominant reflection stance; flavor only. */
   stanceEcho?: { curious: string; wary: string; dismissive: string };
-  /** Appended to a `returnDescription` visit once `GameState.eventOutcomes["camp-reflection"]` is
-      `"unaware"` (03-survival-stats.md's Camp Reflection, tier 4) — the counterpart to this event's
-      own `crossEventVariants` entry for the same tag: that variant only ever shows on a party's
-      *first* meeting with this NPC (crossEventVariants never wins over returnDescription past the
-      1st encounter, `pickEventText`), which is the less common case for a state this late-game.
-      This field covers every visit after the first instead. Wandering Hermit only, so far. */
+  /** Appended to a `returnDescription` visit once `eventOutcomes["camp-reflection"]` is "unaware"; `crossEventVariants` only cover the first meeting. */
   campReflectionUnawareEcho?: string;
-  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches 2
-      (10-event-narrative.md §10.3 Chain 1) — a subtle, non-warning variant. Only guardian-fight and
-      desecrated-altar set this. */
+  /** Replaces `description` once `narrativeCounters.guardianFightsSkipped` reaches 2. */
   chainBuildupDescription?: string;
-  /** Shown instead of `description` once `narrativeCounters.guardianFightsSkipped` reaches the
-      forced threshold (§10.3 Chain 1) — Skip is hidden/rejected on this room. Only guardian-fight
-      and desecrated-altar set this. */
+  /** Replaces `description` at the forced threshold, where Skip is rejected. */
   chainForcedDescription?: string;
-  /** Shown instead of `chainForcedDescription` from the 2nd forced encounter onward this run
-      (`narrativeCounters.guardianGrudgeFiredCount >= 1`) and only past `events.chainTier2MinFloorDepth`
-      (11-world-bible.md §11.13) — Skip stays rejected, same as tier 1. Deliberately shared verbatim
-      between guardian-fight/desecrated-altar (unlike the tier-1 fields, which are per-id) — tier 2 is
-      about losing that specificity, not keeping it. */
+  /** Replaces `chainForcedDescription` once `guardianGrudgeFiredCount >= 1` and past `events.chainTier2MinFloorDepth`. */
   chainForced2Description?: string;
-  /** Shown instead of `chainForced2Description` once `guardianGrudgeFiredCount >= 2` AND floor depth
-      is past `events.chainTier3MinFloorDepth` (10-event-narrative.md Part C.3) — Skip stays rejected,
-      same as tier 1/2. Shared verbatim between guardian-fight/desecrated-altar, same reasoning as
-      tier 2. */
+  /** Replaces `chainForced2Description` once `guardianGrudgeFiredCount >= 2` and past `events.chainTier3MinFloorDepth`. */
   chainForced3Description?: string;
-  /** Shown instead of `description` once the relevant `narrativeCounters` threshold is crossed
-      (10-event-narrative.md §10.3 Chain 2/3) — permanent, no reset. Set by sacrificial-circle
-      (`artifactsSacrificed`) and blood-altar (`altarPaymentsCount`); also reused verbatim by Chain
-      4's 7 events (§8.15, `freeRewardsTakenCount`) — a single tier, unlike Chain 2/3's 3. */
+  /** Replaces `description` once the event's `narrativeCounters` threshold is crossed; permanent. */
   chainEscalatedDescription?: string;
-  /** Shown instead of `chainEscalatedDescription` once the higher tier-2 threshold
-      (`circleRemembersThreshold2`/`bloodDebtThreshold2`) is crossed AND floor depth is past
-      `events.chainTier2MinFloorDepth` (11-world-bible.md §11.13) — permanent, no reset, same as tier 1.
-      Only sacrificial-circle and blood-altar set this. */
+  /** Replaces `chainEscalatedDescription` past the tier-2 threshold and `events.chainTier2MinFloorDepth`; permanent. */
   chainEscalated2Description?: string;
-  /** Shown instead of `chainEscalated2Description` once the tier-3 threshold
-      (`circleRemembersThreshold3`/`bloodDebtThreshold3`) is crossed AND floor depth is past
-      `events.chainTier3MinFloorDepth` (Part C.3) — permanent, no reset. Only sacrificial-circle and
-      blood-altar set this. */
+  /** Replaces `chainEscalated2Description` past the tier-3 threshold and `events.chainTier3MinFloorDepth`; permanent. */
   chainEscalated3Description?: string;
-  /** Conditional variants keyed off other events' outcome tags (Part C.1) — checked after all chain
-      states, before `descriptionVariants`. First array entry whose condition matches wins. */
+  /** Checked after all chain states, before `descriptionVariants`. */
   crossEventVariants?: CrossEventVariant[];
-  /** Alternate base-scene descriptions (Part C.2) — `pickEventText()`'s lowest-priority fallback
-      picks uniformly among `[description, ...descriptionVariants]`, `description` always being
-      option 0. Picked once per room at roll time and pinned via `Room.descriptionVariantIndex`. */
+  /** Picked uniformly with `description` as option 0, pinned per room via `Room.descriptionVariantIndex`. */
   descriptionVariants?: string[];
-  /** Post-event reflection content (10-event-narrative.md §10.5) — set on the 9 in-scope events
-      (all but open-chest and collapsed-floor). `escalatedPrompt` is only set on the 4 events §10.3
-      can escalate (guardian-fight, desecrated-altar, sacrificial-circle, blood-altar).
-      `escalated2Prompt`/`escalated3Prompt` are only set on those same 4, shown once the tier-2/3
-      escalation is what just resolved (see the `chain*Description` fields above). */
+  /** `escalated*Prompt` shows when that escalation tier is what just resolved. */
   reflection?: {
     prompt: string;
     escalatedPrompt?: string;
@@ -511,16 +406,13 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
-  /** Current stack count for a `stackable` status (`StatusEffectDefinition.stackable`); absent/undefined for non-stackable statuses. */
   stacks?: number;
-  /** The exact combat-stat delta(s) actually applied for this status's `modifyCombatStat` perTurnEffects, keyed by stat — set once when the status is first applied (after resolving any `minPercent` floor against the actor's stat at that moment) and read back on expiry to undo precisely that amount, since recomputing from `amount`/`minPercent` at expiry could disagree if the actor's stat moved in between (e.g. a 2nd, unrelated buff/debuff on the same stat). Absent for a status with no `modifyCombatStat` perTurnEffects. */
+  /** Deltas actually applied by `modifyCombatStat`, undone exactly on expiry since the stat may have moved in between. */
   appliedAmounts?: Partial<Record<CombatStat, number>>;
-  /** If set, this status is force-expired the instant the named `Summon` (by id) leaves combat —
-   *  Totem Recall's "the buff lasts until the totem dies" mechanism (`SkillEffect.linksToCasterSummon`). */
+  /** Force-expired the instant this summon leaves combat. */
   linkedSummonId?: Id;
-  /** The caster's `magicPower` when a magic skill applied (or refreshed) this status — set only for a status whose `heal` perTurnEffects scale by `offenseMultiplierPercent` (Healing Draught's `mending`), so each later tick heals off the caster rather than the bearer. */
+  /** Caster's magicPower at application, so `heal` ticks scale off the caster rather than the bearer. */
   sourceMagicPower?: number;
-  /** `SkillEffect.onHitDurationTurns` of the application that granted this on-hit rider, read back each time the rider fires. */
   onHitDurationTurns?: number;
 }
 
@@ -533,19 +425,17 @@ export interface ShopOffer {
 
 export interface BarterOffer {
   itemId: Id;
-  /** Already traded this visit. */
   done?: boolean;
 }
 
 export interface RestRunner {
   roomId: Id;
-  /** The appearance notice has been dismissed. */
   noticeShown: boolean;
-  /** Which appearance text this visit uses, so it stays the same across save/load. */
+  /** Kept so the appearance text survives save/load. */
   noticeVariant: number;
   offers: ShopOffer[];
   refreshCount: number;
-  /** Trophies he will trade for a buff this visit; empty once the floor's barter has been used. */
+  /** Empty once the floor's barter has been used. */
   barterOffers?: BarterOffer[];
 }
 
@@ -559,12 +449,8 @@ export interface Room {
   monsterIds: Id[];
   cleared: boolean;
   rolledEventId?: Id;
-  /** Which text variant this room's event resolved to (10-event-narrative.md §10.3 Chain 1) — set
-      by `resolveEventEntry`, left undefined otherwise. */
   chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
-  /** Index into `[event.description, ...event.descriptionVariants]` for this room's rolled event
-      (Part C.2) — picked once by `resolveEventEntry` when the event is freshly rolled, so re-renders
-      within the same visit stay consistent. Undefined if the event has no `descriptionVariants`. */
+  /** Index into `[event.description, ...event.descriptionVariants]`; undefined when the event has no variants. */
   descriptionVariantIndex?: number;
 }
 
@@ -576,30 +462,26 @@ export interface Floor {
 
 export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
 
-/** Stat-budget archetype, mirroring how `classGrowthWeights` splits a character class's budget across stats — see `monsterGrowthWeights` (`data/growth-weights.json`). Multipliers sum to 3 (1 per stat) the same way `classGrowthWeights` sums to 5. */
+/** Its `monsterGrowthWeights` multipliers sum to 3. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
 
 export interface RaceProfile {
-  // Recommended range for a single race/subRace/trait entry: 10-100. Final resolved value
-  // (after merging race -> subRace -> traits) is clamped to 0-100 regardless — summed
-  // trait+subRace contributions can legitimately land above what any single source declares.
+  // Recommended 10-100 per entry; the merged race+subRace+traits value is clamped to 0-100.
   resistPercent?: Partial<Record<DamageType, number>>;
-  // Recommended range for a single entry: 10-50. Final resolved value is clamped to 0-100, same
-  // reasoning as resistPercent.
+  // Recommended 10-50 per entry; the merged value is clamped to 0-100.
   weakPercent?: Partial<Record<DamageType, number>>;
   statBuff?: {
     maxHpPercent?: number;
     attackPercent?: number;
     defensePercent?: number;
-    speedFlat?: number; // flat add, not a percent — speed is never percent-scaled anywhere else
+    speedFlat?: number;
   };
 }
 
 export interface SubRaceDefinition {
   id: Id;
   name: string;
-  /** Per-key override on top of the parent race's resistPercent/weakPercent; statBuff fields ADD
-   *  to the parent's instead (see resolveRaceProfile in src/data/monsterRaces.ts). */
+  /** resistPercent/weakPercent keys override the parent race's; statBuff fields add to it. */
   profile: RaceProfile;
 }
 
@@ -619,9 +501,6 @@ export interface TraitDefinition {
 export interface MonsterArchetype {
   id: Id;
   name: string;
-  /** Player-facing flavor only — what the thing looks or feels like in the room. Never mechanics,
-   *  never a number, never another archetype or skill by name: see "Writing `description` text" in
-   *  `docs/gameplay-decisions/02-monster.md` for why each of those is banned. */
   description: string;
   baseHp: number;
   baseAttack: number;
@@ -629,31 +508,22 @@ export interface MonsterArchetype {
   baseSpeed: number;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
-  /** Every role this archetype can spawn as. Exactly one of:
-   *  `["normal"]` (trash), `["normal","elite","boss"]` (triple-role),
-   *  `["elite","boss"]` (guard-only), `["boss"]` + `finalBoss: true` (final boss).
-   *  Must match the keys of `actionWeights` exactly. */
+  /** Exactly one of `["normal"]`, `["normal","elite","boss"]`, `["elite","boss"]`, or `["boss"]` with `finalBoss`; must match `actionWeights`' keys. */
   roles: MonsterTier[];
-  /** True for the single scripted final boss. Never enters any random roll. */
+  /** Never enters any random roll. */
   finalBoss?: boolean;
-  /** Every skill this archetype can roll, at any tier. Which tier each one is usable at, and how
-   *  often, is `actionWeights` — a skill is available at a tier exactly when that tier's weights
-   *  name it. Does not include `executeSkillId`, which never goes through the weighted roll. */
+  /** A skill is usable at a tier when that tier's `actionWeights` name it; excludes `executeSkillId`. */
   skillIds: Id[];
   expReward: number;
-  /** The charged finisher: telegraphs for a turn, then always releases, then cools down. Outside
-   *  the weighted roll entirely, which is why it is a field of its own rather than a skillIds entry. */
+  /** Charged finisher outside the weighted roll: telegraphs a turn, always releases, then cools down. */
   executeSkillId?: Id;
   powerTier?: "weak" | "medium" | "strong";
-  /** Per tier: `"basicAttack"` plus any id from `skillIds`, mapped to its relative weight. Keys are
-   *  checked against `skillIds` when `data/monsters.json` loads, so a typo throws instead of
-   *  silently leaving the monster with nothing but its basic attack. */
+  /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
-  race: Id;           // data/monster-races.json race id
+  race: Id;
   subRace?: Id;        // must belong to that race's subRaces if present
-  traitIds?: Id[];      // data/monster-traits.json ids, default []
-  /** Multiple of 10, undefined only for the finalBoss archetype — the depth below which floor.ts
-   *  will never pick this archetype at random. See §5 of the design spec. */
+  traitIds?: Id[];      // default []
+  /** Multiple of 10; never picked at random below this depth. Absent only on the final boss. */
   minFloor?: number;
 }
 
@@ -681,18 +551,10 @@ export interface Monster {
   executeTargetId?: Id;
 }
 
-/**
- * A temporary, player-side combatant summoned by a character's skill (Ninja's clone, Summoner's
- * minions — `01-class-skill.md` §1.12.4). Shaped like `Monster` (no MP/fear/abilities — those stay
- * `Character`-only), but fights on the player's side: it can be targeted and killed by enemies,
- * draws enemy aggro like a real ally, and takes its own turn in `turnQueue`. Vanishes once
- * `actionsTaken` reaches `maxActions` (a turn skipped by stun does not count) or its `hp` hits 0.
- */
+/** Player-side combatant from a skill; gone once `actionsTaken` reaches `maxActions` (a stunned turn doesn't count) or `hp` hits 0. */
 export interface Summon {
   id: Id;
-  /** The character who summoned it — whose stats it was derived from at cast time. */
   ownerId: Id;
-  /** Which kind of summon this is (`"shadow-clone"`, `"goblin-thrower"`, ...) — keys into `data/summons.json`. */
   archetypeId: Id;
   name: string;
   hp: number;
@@ -705,9 +567,9 @@ export interface Summon {
   activeStatusEffects: ActiveStatusEffect[];
   actionsTaken: number;
   maxActions: number;
-  /** Spawned by its owner's passive (Ninja's second clone) rather than a cast: a recast never replaces it and it doesn't count toward the owner's minion cap. */
+  /** Spawned by the owner's passive: a recast never replaces it and it doesn't count toward the minion cap. */
   fromPassive?: boolean;
-  /** Resolved once from `SummonCast.onDeath` at spawn time (`spawnSummon`) — fires via `triggerSummonDeathBurst` the moment this summon is removed from combat by dying or running out of actions. `offensiveStatOverride` is the owner's `onDeath.sourceStat` value frozen at cast time. */
+  /** Frozen from `SummonCast.onDeath` at spawn; `offensiveStatOverride` is the owner's stat at cast time. */
   deathBurst?: {
     amount: number;
     offenseMultiplierPercent: number;
@@ -721,18 +583,14 @@ export interface Summon {
 export interface SummonArchetype {
   id: Id;
   name: string;
-  /** Fixed trait of this creature, independent of the owner's own `speed` — used for its turn-order
-   *  position every round it's out (its first action, right after the cast, ignores speed — see `runCharacterTurn`,
-   *  `src/engine/combat.ts`). */
+  /** Independent of the owner's speed; its first action, right after the cast, ignores speed. */
   speed: number;
-  /** `"basicAttack"` plus any id from `signatureSkillIds`, mapped to its relative weight — same shape as `MonsterArchetype.actionWeights`, just without the tier dimension (a summon has only 1 tier). */
+  /** Same as `MonsterArchetype.actionWeights`, without the tier level. */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];
-  /** Never takes a turn — no skill, no basic-attack fallback, and `actionsTaken` never increments, so
-   *  it can't expire by running out of actions either. For a summon whose whole purpose is to just
-   *  stand there (Totem Recall) rather than fight, so its lifetime depends only on actually dying. */
+  /** Never acts and `actionsTaken` never increments, so it only leaves by dying. */
   passive?: boolean;
-  /** Each landed basic attack rolls `chance` (0–1) to apply `statusEffectId` to its target for `durationTurns`. */
+  /** `chance` is 0-1. */
   basicAttackOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
 }
 
@@ -766,7 +624,6 @@ export interface CombatantSnapshot {
   activeStatusEffects?: ActiveStatusEffect[];
 }
 
-/** Party-wide stats (not per-combatant) captured alongside a log entry, so the reveal can freeze coins/EXP/satiety in sync with the log the same way CombatantSnapshot freezes HP/MP/level/status. */
 export interface PartyStateSnapshot {
   coins: number;
   partyExp: number;
@@ -774,51 +631,45 @@ export interface PartyStateSnapshot {
 }
 
 /**
- * One actor's action (or one actor-less tick block) as the battlefield should present it. Every
- * `LogEntry` produced by the action shares the same object, so the UI can group consecutive
- * entries by `id` and light exactly the units named here. All ids are battlefield unit ids — a
- * summon is recorded as its owner, since it has no sprite of its own.
+ * One actor's action (or one actor-less tick block); every `LogEntry` it produces shares this object.
+ * Ids are battlefield unit ids, so a summon is recorded as its owner.
  */
 export interface LogSession {
-  /** Index in `CombatState.log` of the first entry this session tagged: unique within a combat, stable across a save round trip. */
+  /** Index in `CombatState.log` of its first entry; stable across a save round trip. */
   id: number;
   actorId: Id | null;
-  /** Opposing-side targets of a skill that deals damage, hit or missed. */
+  /** Opposing-side targets of a damaging skill, hit or missed. */
   attackedIds: Id[];
-  /** Opposing-side targets of a skill with no damage (debuff-only). */
+  /** Opposing-side targets of a skill with no damage. */
   debuffedIds: Id[];
   buffedIds: Id[];
   healedIds: Id[];
   /** Opposing-side targets whose attack or debuff missed or was dodged. */
   missedIds: Id[];
-  /** Units that drained HP from the damage they dealt (lifesteal), as opposed to any other self-heal. */
+  /** Healed by lifesteal, not by any other self-heal. */
   lifestealIds: Id[];
-  /** DoT sessions only: units whose HP a damage-over-time tick actually lowered (a heal-over-time tick on the same unit is in `healedIds`). */
+  /** DoT sessions only: units a damage tick actually lowered. */
   tickDamageIds: Id[];
-  /** Units that lost a buff in this session — it ran out, was removed, or was spent. Filled from the entries' `buffLostOf`. */
   buffLostIds: Id[];
-  /** Units whose turn was cancelled: stunned, too afraid to act, or interrupted by an Overwatch shot. */
+  /** Stunned, too afraid to act, or interrupted by an Overwatch shot. */
   lostTurnIds: Id[];
-  /** Owners whose summon took part in this session — acted, was targeted, ticked, lost a buff or fell. The battlefield draws a summon as its owner, so this tells the two apart. Not set for the session that summons it. */
+  /** Owners whose summon took part; not set for the session that summons it. */
   summonIds: Id[];
-  /** Units lit without a role of their own: DoT ticks, dying damage, an artifact's bearer, the owner of a summon that expires. */
+  /** Lit without a role: DoT ticks, dying damage, an artifact's bearer, an expiring summon's owner. */
   affectedIds: Id[];
-  /** Characters whose fear rose or fell in this session; the battlefield shows it a beat after their other changes. */
+  /** Shown a beat after the character's other changes. */
   fearChangedIds: Id[];
-  /** Opposing-side units a debuff actually landed on (not missed or thrown off), filled from the entries' `statusLandedOf`. */
   debuffLandedIds: Id[];
-  /** Opposing-side units a damage-over-time status actually landed on, filled from the entries' `statusLandedOf`. */
   dotLandedIds: Id[];
-  /** Opposing-side units a damage-over-time status could not land on because their race fully resists it, filled from the entries' `statusImmuneOf`. */
+  /** Fully resisted a DoT by race; filled from the entries' `statusImmuneOf`. */
   immuneIds: Id[];
-  /** What an actor-less session was, so its lit units can wear the matching icon. */
+  /** What an actor-less session was, so its lit units get the matching icon. */
   cause?: "dot" | "dying" | "artifact" | "fear";
 }
 
-/** One direct hit as the battlefield shows it: its full damage, the part of it the target had no HP left to take, and whether it was a critical hit. */
 export interface HitMark {
   amount: number;
-  /** Absent when the target took all of `amount`; a hit that comes after the target has fallen is all overkill. */
+  /** Absent = the target took all of `amount`; a hit after the target has fallen is all overkill. */
   overkill?: number;
   crit?: true;
 }
@@ -829,21 +680,18 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
-  /** Carries a session that has no line to show (party-wide fear at the end of a round or on a victory); never rendered in a log. */
+  /** Carries a session that has no line to show; never rendered. */
   hidden?: true;
-  /** Set on the line of a direct hit (not a damage-over-time tick): the actor it landed on and its full damage, with the overkill the target had no HP to take. */
+  /** Direct hits only, not damage-over-time ticks. */
   hit?: HitMark & { targetId: Id };
-  /** Set on the line of a critical heal: the actor it landed on. */
   healCritOf?: Id;
-  /** Set on the line that reports a buff leaving a unit (a status whose `statusRole` is "buff": one that raises a stat or grants a dodge chance, so Stealthed never sets it): the battlefield unit that lost it (a summon's owner). */
+  /** Unit (a summon's owner) that lost a status whose `statusRole` is "buff". */
   buffLostOf?: Id;
-  /** Set with `buffLostOf` when the unit that lost the buff is a summon. */
   buffLostOfSummon?: true;
-  /** Set on the line that reports a debuff or damage-over-time status landing on the opposing side: the battlefield unit it landed on (a summon's owner). */
+  /** Opposing-side unit (a summon's owner) a debuff or DoT landed on. */
   statusLandedOf?: Id;
-  /** Which kind of status `statusLandedOf` received. */
   statusLanded?: "debuff" | "dot";
-  /** Set on the line that reports an opposing-side unit immune to a damage-over-time status: the battlefield unit it was aimed at. */
+  /** Opposing-side unit immune to the DoT aimed at it. */
   statusImmuneOf?: Id;
 }
 
@@ -859,9 +707,9 @@ export interface CombatState {
   log: LogEntry[];
   roundStartSnapshot?: CombatantSnapshot[];
   roundStartPartySnapshot?: PartyStateSnapshot;
-  /** Summons that left the fight, with the HP they left with: a snapshot keeps showing them, so a summon's last hit is still a change. A fade-away leaves with its HP unchanged, a death with 0. */
+  /** Snapshots keep showing departed summons: HP unchanged for a fade-away, 0 for a death. */
   departedSummons?: { id: Id; hp: number; maxHp: number }[];
-  /** Transient: the session being built while an actor's turn runs (see `runInSession`). */
+  /** Transient: built while an actor's turn runs (`runInSession`). */
   activeSession?: LogSession;
   outcome?: "victory" | "defeat";
 }
@@ -871,128 +719,73 @@ export interface GameState {
   party: Character[];
   floor: Floor;
   currentRoomId: Id;
-  /** The rooms entered on this floor, in order, ending with `currentRoomId` — what the progress bar draws. */
   roomPath: Id[];
   combat: CombatState | null;
   message: string;
-  /** `"stay"`/`"letGo"`/`"leaveAmbushed"`/`"leaveEscaped"` are the Ending System's 4 immediate
-      terminal endings (10-event-narrative.md Part F.2-F.4) — narrative conclusions distinct from
-      an ordinary loss, but terminal the same way `"defeat"` is (no further play on this save).
-      `"leaveAmbushed"` is deliberately not folded into `"defeat"`: it's framed as unresolved fate,
-      never a confirmed death. Continuing past floor 100 (Ending 3) sets nothing here — the run
-      keeps playing normally toward floor 120, per §F.5. */
+  /** All but "victory"/"defeat" are terminal story endings; "leaveAmbushed" is unresolved fate, not a death. */
   gameOver: "victory" | "defeat" | "stay" | "letGo" | "leaveAmbushed" | "leaveEscaped" | null;
-  /** Set when the party defeats floor 100's own boss (Part F.1) — a guaranteed, non-rolled
-      story beat, checked before anything else in `syncUiToGameState()`. Which endings are actually
-      offered is computed live from existing state (`src/data/endings.ts`'s `endingCheckpointMode`),
-      never stored, so nothing here needs to change if that state changes before the player answers
-      (it can't, since normal play is blocked while this is true). Cleared by
-      `Game.pickEndingChoice()`. */
+  /** Set on beating floor 100's boss and blocks normal play until `Game.pickEndingChoice()`; the offered endings are computed live, never stored. */
   pendingEndingCheckpoint: boolean;
-  /** Set true by `pickEndingChoice("continue")` (Part F.5) — never reset. Read only at floor-120
-      entry to decide whether the guaranteed founder encounter fires; otherwise inert. */
+  /** Never reset; read at floor-120 entry to decide whether the founder encounter fires. */
   continuedPastCheckpoint: boolean;
-  /** Set when the run advances to floor 120 with `continuedPastCheckpoint` true — the founder's
-      pre-fight dialogue and boss visual, shown before `Game.enterFounderFight()` starts combat.
-      Same "block everything else" priority as `pendingEndingCheckpoint`. */
+  /** The founder's pre-fight scene, shown before `Game.enterFounderFight()`; blocks everything else. */
   pendingFounderDialogue: boolean;
-  /** The Gatekeeper scene (`the-gatekeeper`) is on screen: set at construction for a real new run, it
-      blocks floor 1's entry ambush until `Game.enterDungeon()` clears it. */
+  /** Blocks floor 1's entry ambush until `Game.enterDungeon()` clears it. */
   pendingGatekeeper: boolean;
-  /** The answer given at the gate this run; `null` until answered. */
   gatekeeperAnswer: "paid" | "refused" | null;
-  /** Floor-1 rooms the gatekeeper's blessing still covers, counted on entry; rest rooms don't count. */
+  /** Floor-1 rooms the blessing still covers, counted on entry; rest rooms don't count. */
   blessingRoomsLeft: number;
-  /** The room the blessing covers right now: a fight that starts in it starts with the blessing applied. */
+  /** A fight that starts in this room starts with the blessing applied. */
   blessedRoomId: Id | null;
-  /** Part F.2's cross-run persistence layer — set once, at fresh-run construction, from
-      `src/engine/profile.ts`'s on-disk profile: the most recently retired class, if any exist and
-      `the-one-who-stayed` hasn't already been shown in a previous run. `null` means either nobody
-      has stayed yet, or the payoff has already been shown — either way the event is pre-excluded
-      from this run's `firedOnceEventIds` at construction, so this field is only ever read to fill
-      in the event's text once it does roll, never to gate anything itself. */
+  /** From the on-disk profile at run start; only fills in `the-one-who-stayed`'s text, never gates it. */
   retiredCharacterClassId: Id | null;
   partyExp: number;
   inventory: Record<Id, number>;
   coins: number;
   satiety: number;
   pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
-  /** Gambling Den's round-4 jackpot grants 2 Epic artifacts; the 2nd waits here until the 1st is resolved. */
+  /** Gambling Den's 2nd jackpot artifact, waiting until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
   activeEvent?: { eventId: Id; offerArtifactIds: Id[]; gambleState?: { round: number; pot: number; maxRounds: number }; refreshCount?: number } | null;
-  /** The Merchant's Runner in the current uncleared Rest room, rolled once on entering it. `null`/absent when no Runner is there. */
+  /** Rolled once on entering an uncleared Rest room; `null`/absent when no Runner is there. */
   restRunner?: RestRunner | null;
-  /** Trophies traded to the Runner for a buff, waiting for this floor's elite/boss room; applied when its combat starts, dropped if the floor ends first. */
+  /** Applied when this floor's elite/boss combat starts; dropped if the floor ends first. */
   pendingBarterBuffs?: Id[];
-  /** Floor depth on which a buff was last bartered, so later Rest rooms on that floor offer no barter. */
+  /** Later Rest rooms on this depth offer no barter. */
   barterUsedDepth?: number | null;
   lastRoomDrops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] } | null;
-  /** Ids of personified events (merchant/wandering-hermit/gambling-den) already met this run —
-      drives the "return" flavor text in 10-event-narrative.md §10.2. */
+  /** Drives the "return" text of merchant/wandering-hermit/gambling-den. */
   metNarrativeNpcIds: Id[];
-  /** Outcome of the player's most recent Gambling Den visit — undefined until the 1st visit closes.
-      Drives which `returnDescription` variant gambling-den shows on the next visit. "declined"
-      covers leaving before any round was played. */
+  /** "declined" covers leaving before any round was played. */
   lastGamblingDenOutcome?: "won" | "lost" | "declined";
-  /** Running counters that unlock the escalated event variants in 10-event-narrative.md §10.3.
-      Never decrease, except `guardianFightsSkipped` which resets to 0 once its forced encounter
-      is entered. */
+  /** Never decrease, except `guardianFightsSkipped`, which resets to 0 once its forced encounter is entered. */
   narrativeCounters: {
     guardianFightsSkipped: number;
     artifactsSacrificed: number;
     altarPaymentsCount: number;
-    /** How many times Chain 1's forced encounter has been entered this run (11-world-bible.md
-        §11.13 tier 2) — unlike `guardianFightsSkipped`, this never resets, so it can tell "is this
-        the 1st time the chain has fired, or the 2nd+" even after the skip counter resets to 0. */
+    /** Forced guardian encounters entered; never resets, unlike `guardianFightsSkipped`. */
     guardianGrudgeFiredCount: number;
-    /** §8.15 Chain 4, "Taken, Never Given" — increments once per resolved event among the 7
-        zero-cost reward ids (open-chest, old-count, doubled-back, waiting-supplies, vigil-candle,
-        broken-seal, half-a-warning). Never decreases. Feeds `10-event-narrative.md` §F.1's 2nd
-        Leave trigger alongside `altarPaymentsCount`/`artifactsSacrificed` staying at 0. */
+    /** Resolved `freeTake` events. */
     freeRewardsTakenCount: number;
   };
-  /** A post-event reflection is waiting to be shown (10-event-narrative.md §10.5) — set by
-      `maybeTriggerReflection()`, cleared by `Game.pickReflectionStance()`. */
   pendingReflection?: { eventId: Id } | null;
-  /** Player's most recent post-event reflection choice per event id (§10.5) — overwritten on each
-      re-trigger, not a history log. Purely flavor today. */
   eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
-  /** 03-survival-stats.md's Camp Reflection — entirely independent of `narrativeCounters`,
-      `eventOutcomes`, `pendingReflection`, and `eventReflectionStances` above; a 4th, unrelated
-      piece of rest-room content. Increments by 1 each time the party resolves an event in
-      `LORE_EXPOSURE_EVENT_IDS` (`src/data/loreExposure.ts`) — every event id except open-chest.
-      Never resets, never decreases. Written in `closeEvent()` (src/engine/events/shared.ts). */
+  /** Events resolved from `LORE_EXPOSURE_EVENT_IDS`; never decreases. */
   loreExposureCount: number;
-  /** Set at rest-room entry (`moveToRoom`'s "rest" branch, src/engine/dungeon.ts) when a newly
-      computed tier is higher than the highest tier already answered in `campReflectionChoices`.
-      Skipped if `pendingReflection` is currently set. Cleared once the player picks a response
-      (`Game.pickCampReflectionChoice`). */
+  /** Set on rest-room entry when a new tier exceeds the highest answered one; skipped while `pendingReflection` is set. */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
-  /** Set by `Game.clearFinishedCombat()` on a boss-room victory at a milestone floor (a multiple of
-      `data/floor-milestones.json`'s `interval`) to the id of the omen picked for it; the floorMilestone
-      screen resolves the text from that id. Cleared by `Game.dismissFloorMilestoneMessage()`. */
+  /** The omen picked on a milestone-floor boss victory; cleared by `Game.dismissFloorMilestoneMessage()`. */
   pendingFloorMilestoneOmenId?: Id | null;
-  /** Ids of the floor-milestone omens (`data/floor-milestones.json`) already shown this run, in order —
-      what keeps an omen from repeating and lets one held back to its `maxFloor` be shown there. */
+  /** In order; keeps an omen from repeating and lets one held back to its `maxFloor` show there. */
   shownFloorMilestoneIds: Id[];
-  /** Which option (0/1/2) was picked at each Camp Reflection tier — a genuine per-tier record,
-      unlike `eventReflectionStances`, since each tier fires exactly once per run. */
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
-  /** Outcome tag per event id, set once that event's defining choice resolves (10-event-narrative.md
-      Part C.1) — read by `crossEventVariants`. Never reset mid-run. Most events only ever get the
-      generic `"resolved"` fallback, written by `closeEvent()`; a handful of handlers
-      (bloodAltarPay/Leave, collapsedFloorAttempt/Leave, sacrifice) write a more specific tag first. */
+  /** Set once an event's defining choice resolves; most get the generic "resolved" from `closeEvent()`. */
   eventOutcomes: Partial<Record<Id, string>>;
-  /** Ids of events with `onceLifetime: true` that have already fired this run (Part C.4/C.5) —
-      `rollEvent()` excludes them from future rolls. Marked by `closeEvent()`. */
+  /** `onceLifetime` events already fired, excluded from future rolls. */
   firedOnceEventIds: Id[];
-  /** Stardust earned this run (1 per Boss kill, unconditional) — spent only at this run's own death
-      flow, never carried to the next run. `11-abilities.md` §11.1 "Mid-run acquisition". */
+  /** 1 per Boss kill; spent only in this run's death flow. */
   runStardust: number;
-  /** Set once at death (party wipe) when at least 1 character lost a non-common ability — walks the
-      player through reclaiming lost-set entries one at a time. `11-abilities.md` §11.1 "Death flow". */
+  /** Set at a party wipe when a non-common ability was lost; walks through reclaiming each entry. */
   pendingAbilityBuyback?: { entries: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[]; resolvedIndex: number } | null;
-  /** Final outcome per lost-set entry, set once the buyback (if any) finishes — drives the death
-      results screen. `null` until the death flow completes. */
   abilityDeathResults?: { characterId: Id; lostAbilityId: Id; outcome: "reclaimed" | "lost" }[] | null;
 }

@@ -15,17 +15,14 @@ import type { ScreenContext } from "./context";
 
 export type RunnerUiState = Extract<UiState, { kind: "runnerNotice" } | { kind: "runnerShop" } | { kind: "runnerSell" } | { kind: "runnerBarter" }>;
 
-/** Offers still on the cloth, numbered on screen in order; `index` is the offer's place in the runner's stock. */
 function unsoldOffers(game: Game): { offer: ShopOffer; index: number }[] {
   return (game.state.restRunner?.offers ?? []).map((offer, index) => ({ offer, index })).filter(({ offer }) => !offer.sold);
 }
 
-/** Inventory items the runner will buy. */
 export function sellableEntries(game: Game) {
   return inventoryEntries(game.state.inventory).filter(({ item }) => buybackPrice(item) !== null);
 }
 
-/** Barter offers still open, numbered on screen in order; `index` is the offer's place in the runner's list. */
 function openBarterOffers(game: Game): { itemId: string; index: number }[] {
   return (game.state.restRunner?.barterOffers ?? []).map((offer, index) => ({ itemId: offer.itemId, index, done: offer.done })).filter((offer) => !offer.done);
 }
@@ -144,7 +141,6 @@ export function renderMain(game: Game, ui: RunnerUiState, page = 0): string {
   }
 }
 
-/** Only keys that do something right now are advertised: `[r]` while a refresh is left, `[x]` while there is something to sell. */
 export function renderFooter(ui: RunnerUiState, game: Game, page = 0): string {
   switch (ui.kind) {
     case "runnerNotice":

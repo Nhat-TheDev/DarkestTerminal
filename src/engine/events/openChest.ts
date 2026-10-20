@@ -13,10 +13,7 @@ export function openChest(state: GameState, ctx: EngineContext): PartyActionErro
   if (room.cleared || !room.rolledEventId) return { reason: t("errors.nothingToDecide") };
   const event = getEvent(room.rolledEventId);
   if (event.kind !== "instantReward") return { reason: t("errors.nothingToDecide") };
-  // Part C.4 — still-breathing is deliberately "no artifact, no stat effect of any kind."
   if (!event.noArtifactReward) {
-    // A scene whose reward is a specific object described in the text itself (waiting-supplies'
-    // bundle, vigil-candle's offering) grants exactly that artifact, not a random roll.
     const artifactId = event.guaranteedArtifactId ?? rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth);
     grantArtifact(state, artifactId);
   }

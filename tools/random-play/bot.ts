@@ -33,17 +33,17 @@ export interface Size {
   height: number;
 }
 
-/** Every check and every gallery shot runs at full height so the whole party and every panel is on screen. */
+/** Tall enough that every panel fits on screen. */
 export const PLAY_SIZES: Size[] = [
   { width: 120, height: 70 },
   { width: 160, height: 70 },
   { width: 220, height: 70 },
 ];
-/** The smallest terminal the game supports; each new screen is also checked once at this size. */
+/** The smallest supported terminal; each new screen is also checked once at this size. */
 export const MIN_SIZE: Size = { width: 120, height: 40 };
 
 const START_DEPTHS = [1, 1, 1, 5, 15, 40, 80, 99];
-/** Party level relative to floor depth: over-levelled runs reach deep content, under-levelled ones reach defeat and high fear. */
+/** Party level relative to floor depth, spread so runs reach both deep content and defeat. */
 const LEVEL_OFFSETS = [-3, 0, 0, 10, 25];
 const PARTY_SIZE = 4;
 const SAVE_SLOT = "slot1";
@@ -98,7 +98,6 @@ function layoutRequirement(uiKind: string, atMinSize: boolean): LayoutRequiremen
   return { panelTitles: panels.map((key) => t(key)), mainPanelTitle: main, minMainRows: 1 };
 }
 
-/** The key a cautious player would press, so runs get past the first fights often enough to reach later content. */
 function sensibleKey(app: App, footer: FooterInfo): string | null {
   const ui = app.debugUiState;
   const game = app.debugGame;
@@ -115,10 +114,7 @@ function sensibleKey(app: App, footer: FooterInfo): string | null {
   return offer("1") ?? offer("RETURN");
 }
 
-/**
- * A looping bot is usually stuck in a submenu that never changes the run (character sheet, log, save menu…),
- * so it backs out and favours the keys that move a run forward over global ones like [b] [l] [s].
- */
+/** A looping bot is usually stuck in a submenu, so it backs out and favours keys that move the run forward. */
 export function loopBreakKey(rng: Rng, footer: FooterInfo): string {
   if (footer.keys.length === 0) return pick(rng, ["RETURN", "ESCAPE", "1"]);
   if (footer.keys.includes("ESCAPE") && rng.next() < LOOP_ESCAPE_CHANCE) return "ESCAPE";
@@ -307,7 +303,6 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         stateChanged: stateAfter !== stateBefore,
         saveWritten: saveFileStamp() !== savedBefore,
       };
-      // Named after the screen the key was pressed on, not the one it led to.
       const keyFindings = classifyKeyEffect(effect, footer);
       if (keyFindings.failures.length + keyFindings.warnings.length > 0) {
         const evidence = capture();

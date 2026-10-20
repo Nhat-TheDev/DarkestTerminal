@@ -15,12 +15,10 @@ import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
 
-/** Whether a status with this many turns left is long enough to outlast any fight. */
 export function lastsWholeFight(turns: number): boolean {
   return turns >= BALANCE.combat.statusLastsFightFromTurns;
 }
 
-/** A status's remaining-turns suffix: " (3t)", or " (∞)" once it lasts the whole fight. */
 export function statusTurnsSuffix(turns: number): string {
   return lastsWholeFight(turns) ? t("ui.statusLastsFightSuffix") : t("ui.statusTurnsSuffix", { turns });
 }
@@ -35,7 +33,6 @@ const COMBAT_STAT_LABEL: Record<CombatStat, string> = {
 };
 const SURVIVAL_STAT_LABEL: Record<string, string> = { fear: t("ui.statLabelFear"), satiety: t("ui.statLabelSatiety") };
 
-/** Who a skill's effects land on, derived from the skill's own `target` field — every effect in a skill shares the same targets. */
 const TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
   self: t("ui.targetSuffixSelf"),
   singleAlly: t("ui.targetSuffixSingleAlly"),
@@ -44,13 +41,7 @@ const TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
   allEnemies: t("ui.targetSuffixAllEnemies"),
 };
 
-/**
- * Who this specific effect lands on — usually just the skill's own `target`, but an effect can
- * override that (`effect.target`, e.g. a `summon` effect that always lands on the caster) or narrow
- * it to 1 side of an already-resolved population (`effect.appliesToRelation`, e.g. Purify's ally-only
- * `removeStatusEffect` vs its enemy-only `damage`) — the plurality (1 ally vs "your party") still
- * follows the skill's own target, since `appliesToRelation` only filters, it doesn't resolve its own set.
- */
+/** An effect may override the skill's target or narrow it with `appliesToRelation`; plurality still follows the skill's target, since `appliesToRelation` only filters. */
 function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
   if (e.target) return TARGET_SUFFIX[e.target] ?? "";
   if (e.appliesToRelation) {
@@ -62,13 +53,7 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
   return TARGET_SUFFIX[sk.target] ?? "";
 }
 
-/**
- * One bulleted line per skill effect, built entirely from the skill's own data — never the caster's
- * live stats. Damage gets its own shape — "80% Base Attack + 10" — describing the damage formula
- * itself (the effect's own offenseMultiplierPercent, absent/100 meaning unscaled, of the caster's
- * Attack stat, plus the skill's own flat `amount`), not a trigger chance. Every other effect kind is
- * prefixed with its actual trigger chance (100% when guaranteed), and every bullet ends with who it targets.
- */
+/** Damage reads as its formula (offenseMultiplierPercent of Attack, absent meaning 100, plus flat `amount`), not a trigger chance; other kinds lead with their trigger chance. */
 export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
   const targetSuffix = targetSuffixFor(e, sk);
   if (e.kind === "damage") {
@@ -115,7 +100,6 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
   return body === null ? null : t("ui.skillEffectBullet", { chance, body, targetSuffix });
 }
 
-/** A summon effect's bullet: the minion, how often it acts and how much aggro it draws, then its signature skills — all from data/summons.json, never the caster's live stats. */
 function summonEffectLine(castId: string): string {
   const cast = getSummonCast(castId);
   const archetype = getSummonArchetype(cast.archetypeId);
@@ -126,7 +110,6 @@ function summonEffectLine(castId: string): string {
   return skills.length > 0 ? `${head}\n${t("ui.skillEffectSummonSkills", { skills: skills.join(", ") })}` : head;
 }
 
-/** Skill-level mechanics no `SkillEffect` bullet carries: the ultimate's always-hit/fear rule, `executeBonus`, `conditionalBonus`, and each distinct crit chance (the effect's own plus the base chance every hit has, at most 100%) among its damage effects. */
 export function skillMechanicLines(sk: SkillDefinition): string[] {
   const lines: string[] = [];
   if (sk.isUltimate) lines.push(t("ui.skillUltimateLine"));
@@ -160,7 +143,6 @@ export type CombatUiState = Extract<
   | { kind: "combatOver" }
 >;
 
-/** Shared by the pickSkill list and the skillDetail screen so the estimate formula lives in one place. */
 function skillMeta(actor: Character, sk: SkillDefinition): { dmgAmount: number | null; usesLeft: number | null } {
   const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
   const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
@@ -357,8 +339,7 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
 
 export function renderFooter(ui: CombatUiState, game: Game, page = 0): string {
   switch (ui.kind) {
-    // "Use item" stays on the list even with an empty bag (it renders with a "no items" tag), so
-    // the footer counts what the panel actually shows rather than hiding a visible option.
+    // "Use item" stays listed with an empty bag, so the footer counts it.
     case "pickAction":
       return digitHint("ui.footerChooseAction", 2);
     case "pickSkill": {

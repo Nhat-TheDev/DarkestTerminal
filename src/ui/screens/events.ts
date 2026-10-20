@@ -43,7 +43,6 @@ function partyHpPickerLines(party: Character[]): string[] {
   return party.map((c, i) => `  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`);
 }
 
-/** The flavor text authored for the current room's rolled event, shown as an intro line above the mechanical prompt. */
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.rolledEventId) return "";
@@ -368,9 +367,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventGuardianFight": {
       const room = getRoom(s.floor, s.currentRoomId);
       const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
-      // §10.3 Chain 1: past the forced threshold ("forced" or tier-2/3 "forced2"/"forced3"), Skip
-      // isn't offered at all — cosmetic half of the guard, the engine side (guardianFightSkip
-      // rejecting it) is the 2nd line of defense.
+      // Skip is hidden past the forced threshold; `guardianFightSkip` also rejects it.
       if (room.chainVariant !== "forced" && room.chainVariant !== "forced2" && room.chainVariant !== "forced3") lines.push(t("ui.guardianFightSkipOption"));
       return lines.join("\n");
     }
@@ -394,15 +391,11 @@ export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
     case "eventHpGamblePickPayer":
       return digitHint("ui.footerChooseCharacter", s.party.length);
     case "eventMerchant": {
-      // The offer detail is its own Buy/Cancel view, and `[r]` is only worth advertising while the
-      // visit still has a refresh left (see `merchantRefresh`).
       if (ui.viewingOfferIndex !== null) return digitHint("ui.detailFooter", 2);
-      // Every offer is numbered, plus a trailing "Leave empty-handed".
       const options = (s.activeEvent?.offerArtifactIds.length ?? 0) + 1;
       return digitHint((s.activeEvent?.refreshCount ?? 0) >= MERCHANT_MAX_REFRESHES ? "ui.footerChoose" : "ui.footerMerchant", options);
     }
     case "eventArtifactPick": {
-      // The sacrifice list keeps its last slot for "leave the ritual", so it is never empty.
       const { pageItems } = paginate(ownedArtifactEntries(s.party), page, SACRIFICE_PAGE_SIZE);
       return digitHint("ui.footerChoose", pageItems.length + 1);
     }
@@ -411,7 +404,6 @@ export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
       return digitHint("ui.footerChooseArtifact", pageItems.length);
     }
     case "eventGuardianFight": {
-      // Past the forced threshold the Skip option is not offered at all — §10.3 Chain 1.
       const room = getRoom(s.floor, s.currentRoomId);
       const forced = room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3";
       return digitHint("ui.footerChoose", forced ? 1 : 2);

@@ -8,7 +8,7 @@ import { closeEvent, findArtifactOwner } from "./shared";
 
 const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
 
-/** The room's only service; also the sole way a Cursed artifact can leave a character. */
+/** The only way a Cursed artifact can leave a character. */
 export function hermitExchangeFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
   const owner = findArtifactOwner(state, artifactId);
   if (!owner) return { reason: t("errors.artifactNotOwned") };
@@ -20,7 +20,7 @@ export function hermitExchangeFortune(state: GameState, ctx: EngineContext, arti
   const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
   state.message = t("game.hermitExchanged", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name, cost: HERMIT_EXCHANGE_COST_COINS });
   grantArtifact(state, newArtifactId);
-  state.eventOutcomes["wandering-hermit"] = "traded"; // gates reflection — see its `reflectionRequiresOutcome` in events.json
+  state.eventOutcomes["wandering-hermit"] = "traded";
   closeEvent(state);
   return null;
 }

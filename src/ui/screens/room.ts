@@ -46,7 +46,6 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
   }
 }
 
-/** One numbered path in a "Paths:" list. */
 export function pathChoiceLine(index: number, room: Room): string {
   return `  [${index}] ${room.name} (${room.type})`;
 }
@@ -77,7 +76,7 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
 export function renderFooter(ui: RoomUiState, game: Game): string {
   switch (ui.kind) {
     case "room": {
-      // `[i]` is silently ignored on an empty bag (see handleKey), so it is not advertised there.
+      // `[i]` is ignored on an empty bag, so it is not advertised there.
       const itemsKey = inventoryEntries(game.state.inventory).length > 0 ? "ui.footerRoom" : "ui.footerRoomNoItems";
       return digitHint(itemsKey, game.connectedRoomChoices().length);
     }

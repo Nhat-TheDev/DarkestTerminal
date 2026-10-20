@@ -13,22 +13,13 @@ export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   return true;
 }
 
-/**
- * Which way a stat change pushes: the sign of `amount`, or of `minPercent` when `amount` is 0 (an
- * effect written only as a share of the stat, e.g. amount 0 with minPercent -15). 0 means no change either way.
- */
+/** Sign of `amount`, or of `minPercent` when `amount` is 0. */
 export function statDirection(effect: { amount?: number; minPercent?: number }): number {
   return Math.sign(effect.amount ?? 0) || Math.sign(effect.minPercent ?? 0);
 }
 
 export type StatusRole = "buff" | "debuff" | "heal";
 
-/**
- * What a status is on the battlefield. A status that changes a stat is a buff or a debuff (by the
- * direction of the change); a stun and a blind are debuffs of their own, though they change no stat;
- * a dodge chance is a buff; one that restores HP or MP over time is a heal; everything else — damage
- * over time, vulnerability, stealth, a stance — is neither.
- */
 export function statusRole(def: StatusEffectDefinition): StatusRole | null {
   const statChanges = def.perTurnEffects.filter((e) => e.kind === "modifyCombatStat");
   if (statChanges.length > 0) return statChanges.some((e) => statDirection(e) < 0) ? "debuff" : "buff";
@@ -40,13 +31,6 @@ export function statusRole(def: StatusEffectDefinition): StatusRole | null {
 
 export type StatusCategory = "dot" | "statMod" | "special";
 
-/**
- * Which of the 3 turn-countdown schedules a status follows. Normally inferred from its own
- * perTurnEffects shape (a status is either a HP/MP-over-time effect, a stat modifier, or a
- * "special" effect with no per-turn tick of its own, e.g. stuns/on-hit riders) — `tickCategory`
- * overrides that inference for a status whose shape doesn't match its intended timing, e.g. a
- * pure stat-mod rider that must stay in lockstep with a "special" status it's always co-applied with.
- */
 export function statusCategory(def: StatusEffectDefinition): StatusCategory {
   if (def.tickCategory) return def.tickCategory;
   if (def.perTurnEffects.some((e) => e.kind === "damage" || e.kind === "heal" || e.kind === "restoreMp")) return "dot";
@@ -72,7 +56,7 @@ export function isMonster(actor: Actor): actor is Monster {
   return "archetypeId" in actor && !isSummon(actor);
 }
 
-/** True for anything fighting on the player's side — a real `Character` or a `Summon` (Ninja's clone, Summoner's minions). Use this instead of `isCharacter` for enemy-facing/ally-facing checks; `isCharacter` alone is for things genuinely exclusive to real characters (MP, fear, abilities, skill ranks). */
+/** Use for side checks; `isCharacter` is only for what real characters alone have (MP, fear, abilities, skill ranks). */
 export function isPlayerSide(actor: Actor): boolean {
   return isCharacter(actor) || isSummon(actor);
 }
@@ -125,18 +109,16 @@ function damageMultiplierFor(source: Actor): number {
 
 function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
   if (stat === "aggro") {
-    // Monster has no `aggro` field (only the party's aggro decides monster targeting) — a Summon does, since it's a real target on the player's side.
+    // Monsters have no aggro or magicPower field, so the change is dropped for them.
     if (isCharacter(actor) || isSummon(actor)) actor.aggro += amount;
     return;
   }
   if (stat === "magicPower") {
-    // Monster has no `magicPower` field either.
     if (isCharacter(actor) || isSummon(actor)) actor.magicPower += amount;
     return;
   }
   if (stat === "maxHp") {
-    // Gaining max HP raises current HP by the same amount, so the HP already lost stays the same (a
-    // fallen actor stays at 0); losing it only trims HP that would now sit above the new max.
+    // Gaining max HP raises HP by the same amount (a fallen actor stays at 0); losing it only clamps.
     actor.maxHp += amount;
     actor.hp = amount > 0 ? (actor.hp > 0 ? actor.hp + amount : 0) : Math.min(actor.hp, actor.maxHp);
     return;
@@ -150,12 +132,7 @@ function getCombatStatValue(actor: Actor, stat: CombatStat): number {
   return actor[stat];
 }
 
-/**
- * The delta a `modifyCombatStat` effect actually applies: `effect.amount` unless `effect.minPercent`
- * is set and `actorStat * minPercent / 100` (read from the actor's stat *before* this delta lands) has
- * the larger magnitude — sign preserved either way, so a negative `minPercent` floors a debuff the same
- * way a positive one floors a buff. A tie keeps the flat `amount`.
- */
+/** `amount`, unless `minPercent` of the stat (read before this delta lands) has the larger magnitude. */
 function computeCombatStatDelta(actor: Actor, effect: SkillEffect): number {
   const amount = effect.amount ?? 0;
   if (!effect.minPercent || !effect.combatStat) return amount;
@@ -166,32 +143,27 @@ function computeCombatStatDelta(actor: Actor, effect: SkillEffect): number {
 export interface ResolveContext {
   log: LogEntry[];
   statusEffectName?: string;
-  /** Name of the skill this effect came from, shown in the damage log line ("X takes N damage from Y's Skill."). Omit for basic attacks and other unnamed sources. */
   skillName?: string;
   isMagic?: boolean;
-  /** Required for a `modifyStat` effect targeting `"satiety"` — that stat lives on GameState (party-wide), not on the Character. */
+  /** Required for a `modifyStat` on satiety, which is party-wide. */
   gameState?: GameState;
-  /** Set by the caller (after rolling `effect.critChance`) to apply this effect's crit multiplier. Left undefined, a caller that passes `rollDamage` gets the base crit chance rolled for it. */
+  /** The caller's own crit roll. Undefined with `rollDamage` set: the base crit chance is rolled here. */
   isCrit?: boolean;
-  /** The casting skill's own `SkillDefinition.executeBonus` (a `SkillDefinition`-level field, so the caller threads it through same as `skillName`/`isMagic`). */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
-  /** A flat extra % applied to this specific damage instance, on top of everything else — e.g. Ninja's stealth-break bonus on a skill attack. */
   bonusDamagePercent?: number;
-  /** Replaces the source's live `attack`/`magicPower` as the stat a `damage` effect's `offenseMultiplierPercent` scales — used by an Ability's `autoDamage`, which scales off the bearer's base stat, not whatever buffs/equipment currently sit on top of it. */
+  /** Replaces the source's live attack/magicPower as the stat `offenseMultiplierPercent` scales. */
   offensiveStatOverride?: number;
-  /** Set by the caller (combat.ts) when this effect came from the source's own class skill, as opposed
-   *  to an item or another class's skill — the only thing Acolyte's own-healing-output passive boosts. */
+  /** The effect came from the source's own class skill; only these heals get the Acolyte passive boost. */
   castByOwnClassSkill?: boolean;
-  /** For `applyStatusEffect` with `effect.linksToCasterSummon` — the id of the summon (from this same
-   *  skill's own `summon` effect) this status's expiry is tied to. Set by combat.ts's `applySkillEffects`. */
+  /** For a `linksToCasterSummon` status: the summon whose departure expires it. */
   linkedSummonId?: Id;
-  /** Called by a damage/heal-over-time tick when one of its effects actually moved the bearer's HP, so the caller can record each kind of tick, not just the net change. */
+  /** Called per over-time effect that actually moved the bearer's HP. */
   onDotEffect?: (kind: "damage" | "heal") => void;
-  /** A uniform draw in [0, 1) from the rng of a caller making a direct hit or heal: the base crit chance, then for damage the ±`damageVariancePercent` factor and its rounding. Absent (a damage- or heal-over-time tick): no crit and no variance. */
+  /** Uniform [0, 1) draw for a direct hit or heal (crit, then variance and its rounding). Absent for over-time ticks: no crit, no variance. */
   rollDamage?: () => number;
-  /** A direct hit of a multi-hit cast that comes after the target has already fallen: its damage, crit and variance are rolled and it is logged as overkill and recorded for the battlefield, but nothing is dealt or healed. */
+  /** A multi-hit follow-up after the target fell: rolled and logged as overkill, but nothing is dealt. */
   unapplied?: true;
-  /** The share of its max HP (0-1) to test `executeBonus` against, instead of the target's current HP: an `unapplied` hit reads the share the target had just before the hit that felled it, so it matches that hit. */
+  /** HP share (0-1) tested against `executeBonus` instead of current HP; an `unapplied` hit passes the share before the felling hit. */
   executeHpFraction?: number;
 }
 
@@ -200,14 +172,13 @@ function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
   return source.attack;
 }
 
-/** Whether a direct hit or heal crits: the caller's own roll when it made one, else the base chance every actor has. Draws only for a caller that passes `rollDamage`, so an over-time tick never crits. */
+/** Draws only when `rollDamage` is passed, so an over-time tick never crits. */
 function critRolled(ctx: ResolveContext): boolean {
   if (ctx.isCrit !== undefined) return ctx.isCrit;
   const chance = BALANCE.combat.baseCritChancePercent / 100;
   return ctx.rollDamage !== undefined && chance > 0 && ctx.rollDamage() < chance;
 }
 
-/** The multiplier of a crit: the effect's own `critMultiplierPercent`, else the shared default. */
 function critMultiplierOf(effect: SkillEffect): number {
   return (effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent) / 100;
 }
@@ -216,9 +187,6 @@ export function mitigatedOffense(off: number, def: number): number {
   return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
 }
 
-/** Resist/weak only ever applies to a Monster target — a Character is never affected, per this
- *  feature's design (see 02-monster.md, "Race, subRace & traits"). Returns 1 (no-op) for anything
- *  that isn't a Monster. */
 function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   if (!isMonster(target)) return 1;
   const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);
@@ -300,10 +268,6 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
           ? 1 + (passiveRankDef(getClass("acolyte").passiveSkill, source.level)?.healBoostPercent ?? 0) / 100
           : 1;
-      // Whichever is larger between the flat amount and maxHpPercent of the TARGET's current maxHp
-      // (same "floor" idiom modifyCombatStat's minPercent already uses) — a heal that should keep
-      // pace with the target's maxHp growth across levels/floors sets maxHpPercent instead of relying
-      // on a flat number that gets proportionally weaker every time maxHp grows.
       const baseHeal = Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100);
       const crit = critRolled(ctx);
       const critMultiplier = crit ? critMultiplierOf(effect) : 1;
@@ -321,10 +285,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
     }
     case "applyStatusEffect": {
       if (!effect.statusEffectId) return 0;
-      // A status normally applies its own JSON-declared modifyCombatStat magnitude; passing
-      // amount/minPercent on the *effect* here (unused by "applyStatusEffect" otherwise) overrides
-      // it — needed by Totem Recall's buff and Viking's passive, each of which needs 1 status id
-      // to express 3 different rank magnitudes rather than needing a separate status per rank.
+      // amount/minPercent on this effect override the status's own modifyCombatStat magnitude, so
+      // one status id can carry a different magnitude per rank.
       const magnitudeOverride =
         effect.amount !== undefined || effect.minPercent !== undefined ? { amount: effect.amount, minPercent: effect.minPercent } : undefined;
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
@@ -381,9 +343,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
     case "summon": {
-      // Spawning a combatant needs CombatState/EngineContext (to register it in `combat.combatants`
-      // and `ctx.summons`), which this function doesn't have — `applySkillEffects` (combat.ts)
-      // intercepts a "summon" effect before it ever reaches here.
+      // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register it.
       return 0;
     }
   }
@@ -397,8 +357,6 @@ function nameOf(actor: Actor): string {
   return actor.name;
 }
 
-/** `amount`/`minPercent` override the status's own JSON-declared magnitude for every modifyCombatStat
- *  perTurnEffect it has — see the "applyStatusEffect" case in resolveSkillEffect. */
 interface StatusMagnitudeOverride {
   amount?: number;
   minPercent?: number;
@@ -410,10 +368,7 @@ function modifyCombatStatEffects(def: StatusEffectDefinition, override: StatusMa
     .map((e) => (override ? { ...e, amount: override.amount ?? e.amount, minPercent: override.minPercent ?? e.minPercent } : e));
 }
 
-/**
- * A status whose only effect is damage ticks the target's race fully resists would sit on it doing
- * nothing, so it never lands. One that also stuns, blinds, changes a stat or grants a dodge still does.
- */
+/** Only a status that does nothing but damage the race fully resists; one with any role still lands. */
 function isImmuneToStatus(actor: Actor, def: StatusEffectDefinition): boolean {
   return (
     statusRole(def) === null &&
@@ -422,7 +377,6 @@ function isImmuneToStatus(actor: Actor, def: StatusEffectDefinition): boolean {
   );
 }
 
-/** Marks the line of a debuff or damage-over-time landing on the opposing side, so the battlefield can show it on the unit `landedOf`. */
 function statusLandedTag(def: StatusEffectDefinition, landedOf: Id | undefined): Pick<LogEntry, "statusLandedOf" | "statusLanded"> {
   if (landedOf === undefined) return {};
   if (statusRole(def) === "debuff") return { statusLandedOf: landedOf, statusLanded: "debuff" };
@@ -454,18 +408,15 @@ function applyStatusEffectToActor(
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
-    // Replaced, not mutated in place: a fresh object identity keeps a refreshed "special" status out of
-    // the eligibility snapshot tickSpecialEffects checks (see specialStatusSnapshot), so re-casting an
-    // active special status doesn't lose a tick to the very turn that refreshed it — same as a first cast.
+    // Replaced, not mutated: the new identity drops a refreshed special status out of
+    // specialStatusSnapshot, so it doesn't tick on the turn that refreshed it.
     const existing = actor.activeStatusEffects[existingIndex]!;
     const stackedBefore = existing.stacks ?? 1;
     const stackedAfter = def.stackable ? Math.min(def.maxStacks ?? 1, stackedBefore + 1) : existing.stacks;
     const gainedANewStack = def.stackable && stackedAfter !== undefined && stackedAfter > stackedBefore;
     const appliedAmounts = { ...existing.appliedAmounts };
     if (gainedANewStack) {
-      // A fresh, independent delta for this new stack — computed against the actor's CURRENT stat
-      // value, then accumulated on top of whatever earlier stacks already applied (not overwritten),
-      // so expireStatusEffect's undo still unwinds the correct running total.
+      // Accumulated, not overwritten, so expireStatusEffect undoes the running total.
       for (const e of statEffects) {
         const delta = computeCombatStatDelta(actor, e);
         applyCombatStatDelta(actor, e.combatStat!, delta);
@@ -481,9 +432,6 @@ function applyStatusEffectToActor(
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
     };
-    // A stackable status that actually gained a stack gets its own message — otherwise a Bleeding
-    // reapply always logged "refreshes", even while its stack count (and tick damage) was climbing,
-    // making the stacking mechanic invisible to the player.
     ctx.log.push({
       text: gainedANewStack
         ? t("resolver.statusStack", { actor: nameOf(actor), effect: statusDisplayName(def), stacks: stackedAfter })
@@ -493,8 +441,7 @@ function applyStatusEffectToActor(
     });
     return;
   }
-  // Computed before any delta is applied, so a status with 2+ modifyCombatStat entries (e.g. storm-recoil's
-  // defense debuff + aggro buff) never has one entry's own delta bleed into another's minPercent floor.
+  // All deltas computed before any lands, so one entry's delta never shifts another's minPercent floor.
   const appliedAmounts: Partial<Record<CombatStat, number>> = {};
   for (const e of statEffects) appliedAmounts[e.combatStat!] = computeCombatStatDelta(actor, e);
   const entry: ActiveStatusEffect = {
@@ -516,10 +463,7 @@ function applyStatusEffectToActor(
 }
 
 function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | undefined, ctx: ResolveContext): void {
-  // Every no-id use in data/classes.json is a "cleanse 1 debuff" effect (appliesToRelation: "ally") —
-  // the target is specifically the first harmful status, never just whatever sits at index 0. If the
-  // actor is carrying no debuff at all, there is nothing for this effect to do; falling back to index
-  // 0 would strip a helpful buff instead, which no skill in the data intends.
+  // No id means cleanse: the first harmful status, never whatever buff sits at index 0.
   const target = statusEffectId
     ? actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId)
     : actor.activeStatusEffects.find((s) => !isHelpfulStatusEffect(getStatusEffect(s.statusEffectId)));
@@ -531,9 +475,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
   const def = getStatusEffect(active.statusEffectId);
   for (const e of def.perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
-      // Undoes the exact value stored at apply time, not a fresh recompute — the actor's stat may
-      // have moved since (e.g. a 2nd, unrelated buff/debuff on the same stat), which would make a
-      // recomputed minPercent floor disagree with what was actually added.
+      // Undo the stored delta, not a recompute: the stat may have moved since it was applied.
       applyCombatStatDelta(actor, e.combatStat, -(active.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
     }
   }
@@ -554,19 +496,11 @@ function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   return multiplier;
 }
 
-/**
- * Every active-status-effect entry currently on `actor` whose category is "special" — used to
- * snapshot which ones existed *before* this actor's own turn runs, so tickSpecialEffects can tell
- * "already active" from "just applied (or refreshed) by this very turn" without a per-status flag.
- * Tracked by object identity, not statusEffectId: a refresh replaces the entry's identity (see
- * applyStatusEffectToActor), so a status re-cast on its own actor's turn falls out of this snapshot
- * exactly like a first cast would.
- */
+/** Tracked by object identity: a refresh replaces the entry, so it falls out like a first cast would. */
 export function specialStatusSnapshot(actor: Actor): ReadonlySet<ActiveStatusEffect> {
   return new Set(actor.activeStatusEffects.filter((s) => statusCategory(getStatusEffect(s.statusEffectId)) === "special"));
 }
 
-/** Shared tail for every tick path: decrement, then expire once it runs out. */
 function decrementAndMaybeExpire(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
   active.turnsRemaining -= 1;
   if (active.turnsRemaining <= 0) {
@@ -574,7 +508,6 @@ function decrementAndMaybeExpire(actor: Actor, active: ActiveStatusEffect, ctx: 
   }
 }
 
-/** Shared by tickDotEffects/tickStatModEffects — both always tick everything of their category. */
 function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", ctx: ResolveContext): void {
   for (const active of [...actor.activeStatusEffects]) {
     const def = getStatusEffect(active.statusEffectId);
@@ -604,34 +537,20 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
   }
 }
 
-/**
- * Called once at the very start of resolveRound, before any actions this round. A DoT/HoT applied
- * *during* this round can't have existed yet when this round's start-tick ran, so it's naturally
- * untouched until the following round's start-tick — a free round with no bookkeeping needed.
- */
+/** Runs at round start, so a DoT/HoT applied this round first ticks next round. */
 export function tickDotEffects(actor: Actor, ctx: ResolveContext): void {
   tickCategoryUnconditionally(actor, "dot", ctx);
 }
 
-/**
- * Called once at the end of resolveRound, for every combatant, unconditionally. A fresh stat
- * modifier ticks down the instant the round it was cast in ends — no free round.
- */
+/** Runs at round end for every combatant, so a fresh stat modifier ticks in the round it was cast. */
 export function tickStatModEffects(actor: Actor, ctx: ResolveContext): void {
   tickCategoryUnconditionally(actor, "statMod", ctx);
 }
 
 /**
- * Called once per combatant, immediately after resolveRound processes that combatant's own turn
- * (whether they acted, fizzled, or were skipped for being stunned) — only for statuses present in
- * `eligible` (a snapshot taken *before* that turn ran, via specialStatusSnapshot). Skipping anything
- * not in that snapshot is what stops a status from ticking on the very turn that applied (or
- * refreshed) it — e.g. a self-cast buff's own casting action must not count as its first "turn used".
- * Because each combatant gets exactly one turn per round, this alone reproduces the full range of
- * expected timing: a self-cast status (the casting action IS this round's turn) starts ticking next
- * round; a status inflicted on a slower target who hasn't acted yet this round — already present
- * before their own turn runs — ticks as soon as that still-pending turn resolves, later in this same
- * round.
+ * Runs right after the actor's own turn, only for statuses in `eligible` (snapshotted before that
+ * turn), so a status never ticks on the turn that applied or refreshed it. A self-cast status starts
+ * next round; one inflicted on a slower target ticks after that target's turn this round.
  */
 export function tickSpecialEffects(actor: Actor, eligible: ReadonlySet<ActiveStatusEffect>, ctx: ResolveContext): void {
   for (const active of [...actor.activeStatusEffects]) {

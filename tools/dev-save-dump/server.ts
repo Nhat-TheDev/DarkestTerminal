@@ -1,15 +1,3 @@
-/**
- * Dev-only save generator, web UI — pick a level/floor/room/party (class + ability + artifacts
- * per member) in the browser instead of passing CLI flags, so testing high floors doesn't require
- * actually playing there first. Refuses to run outside dev mode (never true for a released binary
- * — see src/engine/devMode.ts), and the save it writes is itself unloadable outside dev mode
- * (src/engine/save.ts's `isDevDumpAllowed`), so this can't leak a shortcut into a published build
- * even if the file is copied out and shared.
- *
- * Usage:
- *   bun run tools/dev-save-dump/server.ts
- *   (then open http://localhost:4592)
- */
 import { readFile } from "fs/promises";
 import path from "path";
 import { DEV_MODE } from "../../src/engine/devMode";
@@ -55,8 +43,7 @@ function badRequest(message: string): Response {
   return Response.json({ ok: false, error: message }, { status: 400 });
 }
 
-// Written straight into a filename (savePath, src/engine/save.ts) — reject anything but a plain
-// id so a request can't write or read outside SAVE_DIR (e.g. "../../etc/passwd").
+// Used as a filename; a plain id keeps requests inside SAVE_DIR.
 const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
 
 interface PartyMemberInput {
@@ -156,8 +143,7 @@ function validateParty(party: unknown): ValidatedMember[] | { error: string } {
   return members;
 }
 
-/** `items` is optional — omitted entirely means "keep Game's own default starting inventory";
-    provided (even `{}`) means "replace it with exactly this". Only counts > 0 are kept. */
+/** Omitted keeps Game's default inventory; provided (even `{}`) replaces it. */
 function validateItems(items: unknown): { inventory: Record<Id, number> } | { error: string } | undefined {
   if (items === undefined) return undefined;
   if (typeof items !== "object" || items === null || Array.isArray(items)) return { error: "items must be an object of {itemId: count}." };
@@ -187,8 +173,7 @@ function validateEventId(id: unknown, field: string): Id | { error: string } {
   return id;
 }
 
-/** `event` is optional and only ever pins a room whose destination turns out to actually be an
-    event room — landing on any other room type, this is validated but simply unused. */
+/** Validated always, but only used when the target room is an event room. */
 function validateEvent(event: unknown): ValidatedEvent | { error: string } | undefined {
   if (event === undefined) return undefined;
   if (typeof event !== "object" || event === null) return { error: "event must be an object." };
@@ -232,9 +217,7 @@ function validateEvent(event: unknown): ValidatedEvent | { error: string } | und
     }
     const outcomes: Record<Id, string> = {};
     for (const [eventId, outcome] of Object.entries(raw.eventOutcomes as Record<string, unknown>)) {
-      // "camp-reflection" isn't a real event id — it's a synthetic tag Camp Reflection writes
-      // straight into eventOutcomes (Game.pickCampReflectionChoice, game.ts) for events'
-      // campReflectionUnawareEcho to read; every other key must be a real event id.
+      // "camp-reflection" is a synthetic eventOutcomes key written by Game.pickCampReflectionChoice.
       if (eventId !== "camp-reflection") {
         const validated = validateEventId(eventId, "event.eventOutcomes key");
         if (typeof validated !== "string") return validated;
@@ -282,11 +265,8 @@ async function handleGenerate(req: Request): Promise<Response> {
   const abilityIds = members.map((m) => m.abilityId);
 
   const game = new Game(seed, classIds, undefined, abilityIds);
-  // firedOnceEventIds/metNarrativeNpcIds are unioned onto the Game constructor's own defaults
-  // (e.g. its one-time exclusion of "the-one-who-stayed" for an eligible retired-character profile)
-  // rather than replacing them outright — the UI always sends both fields once Room=event, even as
-  // an empty array when the user never touched those pickers, and a plain replace would silently
-  // wipe a default the player never asked to clear.
+  // Union, not replace: the UI always sends these lists (maybe empty), and replacing would wipe
+  // the Game constructor's own defaults.
   if (eventResult?.narrativeCounters) Object.assign(game.state.narrativeCounters, eventResult.narrativeCounters);
   if (eventResult?.firedOnceEventIds) {
     game.state.firedOnceEventIds = Array.from(new Set([...game.state.firedOnceEventIds, ...eventResult.firedOnceEventIds]));

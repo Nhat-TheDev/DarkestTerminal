@@ -72,12 +72,8 @@ export interface DepthTierCurve {
 }
 
 /**
- * Tier odds (weights summing to 100) at floor `depth`, for tiers listed lowest to highest in `order`.
- * The step containing `anchorFirstFloor` uses `anchor`; each step away from it scales tier `i`
- * (lowest 0 …) by `tilt ^ (i × stepsFromAnchor)`, then the result is renormalized — deeper floors
- * shift weight toward the higher tiers, shallower ones toward the lowest. A tier anchored at 0 stays
- * 0 at every depth. `maxStepsFromAnchor` freezes the odds beyond that many steps either way, which
- * also keeps `tilt ** exponent` finite for very deep floors.
+ * Weights summing to 100, `order` lowest tier first. Each step away from the anchor's step scales tier `i`
+ * by `tilt ^ (i × steps)` before renormalizing; clamping to `maxStepsFromAnchor` also keeps the power finite on deep floors.
  */
 export function tierWeightsByDepth<T extends string>(order: readonly T[], anchor: Partial<Record<T, number>>, depth: number, curve: DepthTierCurve): Record<T, number> {
   const { floorsPerStep, anchorFirstFloor, tilt, maxStepsFromAnchor } = curve;
@@ -88,7 +84,6 @@ export function tierWeightsByDepth<T extends string>(order: readonly T[], anchor
   return Object.fromEntries(order.map((tier, i) => [tier, (100 * scaled[i]!) / total])) as Record<T, number>;
 }
 
-/** Rarity odds (weights summing to 100) for `source` at floor `depth`; see `tierWeightsByDepth`. Elite's Epic is anchored at 0, so it never rolls. */
 export function artifactRarityWeights(source: ArtifactSource, depth: number): Record<ArtifactRarity, number> {
   const { anchorWeights, ...curve } = BALANCE.artifacts;
   return tierWeightsByDepth(RARITY_ORDER, anchorWeights[source], depth, curve);
@@ -100,10 +95,7 @@ export function rollArtifactRarity(source: ArtifactSource, rng: Rng, depth: numb
   return rng.weightedPick(entries, ([, w]) => w)[0];
 }
 
-/** Restricted-source artifacts (§F.4, `restrictedDropSources`) are excluded from the pool unless
-    `allowRestrictedSource` names the exact source rolling right now — a bare rarity match isn't
-    enough, since more than 1 caller can roll the same rarity table for different reasons (Collapsed
-    Floor rolls the "boss" table without being a Boss kill). */
+/** `allowRestrictedSource` must name the source actually rolling, not just its table: Collapsed Floor rolls the "boss" table without being a Boss kill. */
 export function pickArtifactOfRarity(rarity: ArtifactRarity, rng: Rng, allowRestrictedSource?: "boss" | "blood-altar"): Id {
   const pool = ARTIFACTS.filter(
     (a) => a.rarity === rarity && (!a.restrictedDropSources || (!!allowRestrictedSource && a.restrictedDropSources.includes(allowRestrictedSource)))

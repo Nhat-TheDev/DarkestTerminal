@@ -7,7 +7,7 @@ export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
 export const DIVIDER_WIDTH = 3;
 export const EMPTY_ENEMY_WIDTH = 30;
-/** Rows reserved above the sprites for role icons: one icon row plus one blank row, so an icon never touches a sprite. */
+/** One icon row plus one blank row, so an icon never touches a sprite. */
 export const ICON_BAND_ROWS = 2;
 export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
 
@@ -18,13 +18,7 @@ export function centerText(text: string, width: number): string {
   return " ".repeat(left) + text + " ".repeat(pad - left);
 }
 
-/**
- * Last-resort label for an archetype nobody added to `MONSTER_STYLE`: the last hyphen-separated
- * word of the id, uppercased to 3 letters (`swamp-slime` -> `SLI`). Ugly, but it still names the
- * thing on screen — the previous `??` told the player nothing and hid the fact that half the
- * bestiary had drifted out of the style table. `MONSTER_STYLE` coverage is asserted in
- * `test/sprites.test.ts`, so reaching this is a test failure, not a silent shrug.
- */
+/** Fallback for an archetype missing from `MONSTER_STYLE` (`swamp-slime` -> `SLI`); coverage is asserted in `test/sprites.test.ts`. */
 function derivedAbbr(archetypeId: string): string {
   const lastWord = archetypeId.split("-").pop() ?? archetypeId;
   return lastWord.slice(0, 3).toUpperCase();
@@ -41,8 +35,7 @@ export function truncateText(text: string, maxLen: number): string {
   return text.slice(0, maxLen - 1).trimEnd() + "…";
 }
 
-/** Greedy word wrap. Words longer than `width` get their own line rather than being cut — nothing
-    on these panels is long enough for that to matter, and losing characters would be worse. */
+/** Greedy; a word longer than `width` gets its own line rather than being cut. */
 export function wrapText(text: string, width: number): string[] {
   if (width <= 0) return [text];
   const lines: string[] = [];

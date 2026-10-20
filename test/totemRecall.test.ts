@@ -27,8 +27,7 @@ describe("Totem Recall: ally buff linked to the totem's lifetime", () => {
       expect(buff).toBeDefined();
     }
     expect(totem.activeStatusEffects.find((s) => s.statusEffectId === "totems-strength")).toBeUndefined();
-    // max(20, round(baseAttack * 0.20)) — at level 1 (every non-Summoner party member), the flat
-    // term always wins since 20% of a level-1 attack stat is nowhere close to 20.
+    // At level 1 the flat 20 always beats 20% of attack.
     expect(summoner.attack).toBeGreaterThan(0);
   });
 
@@ -44,7 +43,7 @@ describe("Totem Recall: ally buff linked to the totem's lifetime", () => {
     expect(summoner.activeStatusEffects.some((s) => s.statusEffectId === "totems-strength")).toBe(true);
     const attackWithBuff = summoner.attack;
 
-    totem.hp = 0; // simulate the totem being killed in combat
+    totem.hp = 0;
     resolveRound(combat, ctx);
 
     expect(summoner.activeStatusEffects.some((s) => s.statusEffectId === "totems-strength")).toBe(false);

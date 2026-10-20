@@ -24,14 +24,12 @@ const STAT_LABEL: Record<string, string> = {
   magicPower: t("ability.statLabelMagicPower"),
 };
 
-/** Text for an `autoDamage` effect, shared with `formatArtifactEffect` — Artifacts can carry the scaled form too. */
 export function autoDamageSummary(effect: Extract<ArtifactEffect, { kind: "autoDamage" }>): string {
   if (effect.offenseMultiplierPercent === undefined) return t("artifact.effectAutoDamage", { amount: effect.amount });
   const stat = effect.isMagic ? "magicPower" : "attack";
   return t("ability.effectAutoDamageScaled", { amount: effect.amount, percent: effect.offenseMultiplierPercent, stat: STAT_LABEL[stat] ?? stat });
 }
 
-/** Text for a `poisonOnHit` effect, shared with `formatArtifactEffect` — the status it applies is named by the effect, not fixed. */
 export function poisonOnHitSummary(effect: Extract<ArtifactEffect, { kind: "poisonOnHit" }>): string {
   return t("artifact.effectPoisonOnHit", { chance: effect.chance, status: getStatusEffect(effect.statusEffectId).name });
 }
@@ -80,7 +78,6 @@ export type AbilitySource = "elite" | "boss";
 
 const RARITIES: ArtifactRarity[] = ["common", "rare", "unique", "epic"];
 
-/** Linear interpolation between the depth-1 and depth-cap weight tables — `11-abilities.md` §11.1 "Mid-run acquisition". */
 function interpolateWeight(atDepth1: number, atDepthCap: number, depth: number, depthCap: number): number {
   if (depthCap <= 1) return atDepth1;
   const clampedDepth = Math.max(1, Math.min(depthCap, depth));
@@ -101,18 +98,11 @@ export function abilitiesOfRarity(rarity: ArtifactRarity): AbilityDefinition[] {
   return ABILITIES.filter((a) => a.rarity === rarity);
 }
 
-/** Non-common abilities of `rarity` not already in `unlockedAbilityIds` — the roll only ever surfaces something new. */
 export function availableAbilitiesOfRarity(rarity: ArtifactRarity, unlockedAbilityIds: Id[]): AbilityDefinition[] {
   return abilitiesOfRarity(rarity).filter((a) => !unlockedAbilityIds.includes(a.id));
 }
 
-/**
- * Elite and Boss both resolve identically: gated by `dropChance`, then a depth-interpolated rarity
- * roll excluding any tier already fully unlocked (redistributing its weight across the rest), then a
- * random pick within that tier excluding ids already unlocked. Resolves to `null` when the roll
- * misses, the rolled rarity is `common` (always available already, nothing to unlock), or the whole
- * non-common catalog is exhausted. `11-abilities.md` §11.1 "Mid-run acquisition".
- */
+/** Common abilities are always unlocked, so a `common` roll keeps its weight but yields null (no drop). */
 export function rollAbility(source: AbilitySource, depth: number, rng: Rng, unlockedAbilityIds: Id[]): Id | null {
   if (!rng.chance(BALANCE.abilities.dropChance)) return null;
   const weights = weightsAtDepth(source, depth);

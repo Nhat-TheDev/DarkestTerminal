@@ -4,8 +4,7 @@ import { BALANCE } from "../src/data/balanceConfig";
 import { loadDocsData } from "../tools/docs-sync/data";
 import { formatFinding, runDocsSync } from "../tools/docs-sync/index";
 
-// The one test that checks the real docs against the real data. It goes red after a rebalance until
-// `bun run docs:sync` has rewritten the numbers the docs mirror; that is its job.
+// Goes red after a rebalance until `bun run docs:sync` rewrites the numbers the docs mirror; that is its job.
 test("the docs are in step with data/balance-config.json (fix with `bun run docs:sync`)", () => {
   const result = runDocsSync({ root: resolve(import.meta.dir, ".."), write: false, data: loadDocsData() });
   expect(result.findings.map(formatFinding)).toEqual([]);

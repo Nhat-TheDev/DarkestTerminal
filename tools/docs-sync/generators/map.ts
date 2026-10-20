@@ -3,7 +3,6 @@ import { resolvePath } from "../paths";
 import { required } from "./args";
 import type { GeneratorSpec } from "../types";
 
-/** Any map of numbers in the balance config as a two-column table: key, value. */
 export const map: GeneratorSpec = {
   source: "`data/balance-config.json`",
   args: ["path", "keyHeader", "valueHeader"],

@@ -18,10 +18,6 @@ function slotNumber(id: Id): number {
   return Number(id.replace("slot", ""));
 }
 
-/**
- * "new" lists all five slots (an occupied one asks before it is overwritten); "continue" lists only
- * the occupied ones. Resolves to the chosen slot id, or null on Esc.
- */
 export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<Id | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
@@ -69,9 +65,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     const finish = (result: Id | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
-      // The remove above schedules a frame that can run before an immediate continuation could mount the
-      // next screen, and OpenTUI drops that screen's render request while the frame is still settling
-      // — Esc back to the main menu would leave a blank terminal. Resolving a tick later avoids it.
+      // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
       setTimeout(() => resolve(result), 0);
     };
 

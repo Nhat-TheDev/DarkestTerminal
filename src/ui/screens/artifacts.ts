@@ -64,7 +64,6 @@ export function renderMain(game: Game, ui: ArtifactsUiState, page = 0): string {
 export function renderFooter(ui: ArtifactsUiState, game: Game, page = 0): string {
   switch (ui.kind) {
     case "artifactMenu": {
-      // The menu opens from the room even with nothing equipped, so an empty page really happens.
       const { pageItems } = paginate(ownedArtifactEntries(game.state.party), page);
       return digitHint("ui.footerChooseArtifact", pageItems.length);
     }

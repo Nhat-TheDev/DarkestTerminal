@@ -1,6 +1,5 @@
 import type { GeneratorSpec } from "../types";
 
-/** Each class's free slot 0 attack, and the stat its damage comes from. */
 export const basicAttacks: GeneratorSpec = {
   source: "`data/classes.json`",
   args: [],

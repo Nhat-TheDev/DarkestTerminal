@@ -9,7 +9,6 @@ import { getActorByRef, livingPlayerSideEnemyFacingRefs, hasStunningStatus, appl
 import { Rng } from "./rng";
 import { noteBasicAttack, noteLostTurn, noteMiss } from "./logSession";
 
-/** A monster's targeting pool: every living character/summon not currently `untargetable` (a stealthed Ninja). */
 type Targetable = Character | Summon;
 
 function pickMonsterTarget(actor: Monster, livingTargets: Targetable[], rng: Rng): Targetable {
@@ -39,9 +38,7 @@ function monsterSkillLogLine(actor: Monster, skill: SkillDefinition, targets: Ac
 }
 
 function resolveMonsterSkillTargets(skill: SkillDefinition, actor: Monster, livingTargets: Targetable[], rng: Rng): Actor[] {
-  // A monster's self-targeted skill (Regeneration, Guard Stance) has to land on the monster.
-  // Without this branch it falls through to the enemy case and the monster heals or buffs a
-  // party member instead — reachable the moment such a skill is given a non-zero action weight.
+  // Without this, a self-targeted skill falls through to the enemy case and heals or buffs a party member.
   if (skill.target === "self") return [actor];
   if (skill.target === "allEnemies") return livingTargets;
   return [pickMonsterTarget(actor, livingTargets, rng)];
@@ -81,11 +78,7 @@ export function runMonsterTurn(ref: CombatantRef, combat: CombatState, ctx: Engi
     actor.executeCooldownTurns = (actor.executeCooldownTurns ?? 0) - 1;
   }
 
-  // A defensive monster low on HP reaches for its own self-heal / self-buff. Resolved inside the
-  // branch rather than above it: this is a rare case, and every monster turn would otherwise pay
-  // for a catalog lookup per skill id. It has to be a self-targeted skill specifically — skillIds
-  // holds every skill an archetype can roll at any tier, so taking the first one would have a
-  // normal-tier Skeleton Guard swinging Cleaving Strike at itself.
+  // skillIds spans every tier, so this must pick a self-targeted skill, not just the first one.
   if (actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {
     const selfSkillId = archetype.skillIds.find((id) => getMonsterSkill(id).target === "self");
     if (selfSkillId !== undefined && ctx.rng.chance(BALANCE.combat.defensiveLowHpSkillChance)) {
@@ -127,15 +120,8 @@ function pickAggroWeighted(characters: Targetable[], rng: Rng): Targetable {
   return rng.weightedPick(characters, (c) => Math.max(1, c.aggro));
 }
 
-/**
- * The mirror of pickAggroWeighted: every aggro value is reflected across the party's own current
- * range, so the quietest character is picked as often as the loudest would otherwise have been.
- * Reflecting rather than inverting (1/aggro) keeps whatever spread the party actually has instead
- * of flattening it to a fixed ratio no matter how hard anyone taunts.
- *
- * The consequence is deliberate: Shield Guard's +40 aggro pushes the Vanguard out of danger and
- * pulls the rest of the party into it, so taunting is the wrong move against these archetypes.
- */
+/** Reflects each aggro across the party's current range (max + min - aggro), so the quietest is
+ *  picked as often as the loudest would be, keeping the party's actual spread rather than 1/aggro. */
 function pickInverseAggroWeighted(characters: Targetable[], rng: Rng): Targetable {
   const aggros = characters.map((c) => c.aggro);
   const mirror = Math.max(...aggros) + Math.min(...aggros);

@@ -90,8 +90,7 @@ function refEquals(a: CombatantRef, b: CombatantRef): boolean {
 }
 
 export function startCombat(roomId: string, monsterIds: string[], ctx: EngineContext, isBossFight: boolean): CombatState {
-  // A summon never outlives its combat: any still alive here is in no combatant list of this fight,
-  // so it is dismissed rather than left to linger as a ghost.
+  // A summon never outlives its combat.
   dismissSummonsAtCombatEnd(ctx);
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
@@ -131,7 +130,6 @@ export function livingSummonRefs(combat: CombatState, ctx: EngineContext): Comba
     .filter((ref) => isActorAlive(getActorByRef(ref, ctx)));
 }
 
-/** Every living combatant on the player's side — real characters plus any active summons (Ninja's clone, Summoner's minions). */
 export function livingPlayerSideRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
   return [...livingCharacterRefs(combat, ctx), ...livingSummonRefs(combat, ctx)];
 }
@@ -143,12 +141,7 @@ export function livingMonsterRefs(combat: CombatState, ctx: EngineContext): Comb
     .filter((ref) => isActorAlive(getActorByRef(ref, ctx)));
 }
 
-/**
- * `livingPlayerSideRefs`, minus anyone currently `untargetable` (a stealthed Ninja) — the pool a
- * MONSTER's target-picking draws from. Allies still see (and can target) a stealthed teammate
- * normally; only enemy-facing targeting excludes them, so use `livingPlayerSideRefs` for the
- * player's own ally-targeting.
- */
+/** The pool monsters target from: minus anyone `untargetable`. Ally targeting uses `livingPlayerSideRefs`. */
 export function livingPlayerSideEnemyFacingRefs(combat: CombatState, ctx: EngineContext): CombatantRef[] {
   return livingPlayerSideRefs(combat, ctx).filter((ref) => {
     const a = getActorByRef(ref, ctx);
@@ -204,9 +197,8 @@ export function queueAction(
   const err = checkSkillUsable(actor, skill);
   if (err) return err;
 
-  // mp/usesPerCombat/cooldown are committed when the skill actually executes in turn order
-  // (runCharacterTurn), not here — otherwise a character's resources would look spent before
-  // their turn has even come up during the round's reveal.
+  // MP, uses and cooldown are committed when the skill executes (runCharacterTurn), so they don't
+  // look spent before the character's turn comes up during the round's reveal.
   combat.queuedActions.push({ actor: actorRef, source: { kind: "skill", skillId }, targets: chosenTargets });
   return null;
 }
@@ -239,8 +231,6 @@ export function allLivingCharactersHaveQueuedActions(combat: CombatState, ctx: E
   return living.every((ref) => combat.queuedActions.some((qa) => refEquals(qa.actor, ref)));
 }
 
-/** A skill that summons (goblin/spirit/golem, totem recall, shadow clone) always follows normal
- *  speed order, even when it's also flagged `isBuff` — only a summon-free buff cuts the line. */
 function isSummonSkill(def: SkillDefinition): boolean {
   return (def.effects ?? []).some((e) => e.kind === "summon");
 }
@@ -287,7 +277,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
   return [...present, ...departed];
 }
 
-/** Gives every entry from `fromIndex` on that has no snapshot yet (a session tags its own) the state as of now. */
+/** Skips entries a session already tagged with its own snapshot. */
 export function tagLogRange(combat: CombatState, fromIndex: number, snapshot: CombatantSnapshot[]): void {
   for (let i = fromIndex; i < combat.log.length; i++) {
     const entry = combat.log[i];
@@ -295,12 +285,11 @@ export function tagLogRange(combat: CombatState, fromIndex: number, snapshot: Co
   }
 }
 
-/** The `snapshot` option every combat session passes, so each of its runs carries the state as of its own end. */
 function sessionSnapshot(combat: CombatState, ctx: EngineContext): () => CombatantSnapshot[] {
   return () => snapshotCombatants(combat, ctx);
 }
 
-/** An actor-less session for party-wide fear (end of round, victory). It has no line to show, so a hidden entry carries it. */
+/** Party-wide fear has no actor or line of its own, so a hidden entry carries the session. */
 function runFearSession(combat: CombatState, ctx: EngineContext, changeFear: () => Character[]): void {
   runInSession(
     combat,
@@ -317,7 +306,6 @@ function runFearSession(combat: CombatState, ctx: EngineContext, changeFear: () 
   );
 }
 
-/** Same idea as tagLogRange, for the party-wide (coins/EXP/satiety) snapshot instead of the per-combatant one. */
 export function tagPartySnapshotRange(combat: CombatState, fromIndex: number, partySnapshot: PartyStateSnapshot): void {
   for (let i = fromIndex; i < combat.log.length; i++) {
     const entry = combat.log[i];
@@ -364,14 +352,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
   );
 }
 
-/**
- * Overwatch (Archer): the first living character carrying a `triggersOverwatch` status reactively
- * attacks `monsterRef` right before that monster's own turn would resolve, with the status's own
- * `overwatchShot` damage. A landed shot then rolls the status's `interruptChance`; on success the
- * caller skips `runMonsterTurn` for this ref entirely — the monster's turn for this round is
- * discarded, not just delayed. Consumed either way (hit or miss, interrupted or not). Also returns
- * true when the shot kills the monster, so the caller never runs a dead monster's turn.
- */
+/** Fires before the monster's turn. True when that turn must be skipped (interrupted or killed); the status is consumed either way. */
 function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx: EngineContext): boolean {
   const watcher = ctx.party.find((c) => c.isAlive && c.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).triggersOverwatch));
   if (!watcher) return false;
@@ -403,7 +384,7 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
         rollDamage: () => ctx.rng.next(),
       });
       expireStatusEffect(watcher, active, { log: combat.log });
-      // The monster's turn is discarded, not just delayed (a killed monster has no turn left to lose).
+      // A killed monster has no turn left to lose.
       if (interrupts && isActorAlive(target)) noteLostTurn(combat, target);
       return interrupts || !isActorAlive(target);
     },
@@ -460,7 +441,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
   }
 
   if (isCombatOver(combat, ctx)) {
-    // Combat ended before some queued characters got to act — refund what was pre-committed for them.
+    // Refund what was pre-committed for characters who never got to act.
     for (const queued of combat.queuedActions) {
       if (queued.actor.kind !== "character") continue;
       if (actedRefs.some((ref) => refEquals(ref, queued.actor))) continue;
@@ -505,7 +486,7 @@ export function hasStunningStatus(actor: Actor): boolean {
   return actor.activeStatusEffects.some((a) => getStatusEffect(a.statusEffectId).stuns === true);
 }
 
-/** Refunds the inventory item queueItemAction pre-committed for an action that ends up never executing — stunned, feared, or its target(s) died before its turn came up. Skills commit nothing until they actually execute (see runCharacterTurn), so there's nothing to refund for them. */
+/** Only items are pre-committed; skills commit nothing until they execute. */
 function refundQueuedAction(queued: QueuedAction, ctx: EngineContext): void {
   if (queued.source.kind !== "item") return;
   ctx.inventory[queued.source.itemId] = (ctx.inventory[queued.source.itemId] ?? 0) + 1;
@@ -538,8 +519,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
     return;
   }
 
-  // Committed only now that the skill is confirmed to execute — mpCost is always 0 for the item
-  // pseudo-skill (see actionDefinition), so this is a safe no-op for item actions.
+  // Committed only now that the skill is confirmed to execute.
   if (queued.source.kind === "skill") {
     actor.mp -= skill.mpCost;
     if (skill.usesPerCombat !== undefined) {
@@ -561,9 +541,8 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
   });
   if (queued.source.kind === "item" && getItem(queued.source.itemId).effects.length === 0) combat.log.push({ text: t("game.itemNoEffect"), kind: "item" });
   const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
-  // A summon spawned mid-round isn't in this round's `turnQueue` (built before it existed), so it acts
-  // once right after being cast, whatever its speed, then takes its normal turns from next round on.
-  // That turn is the summon's own session, as in `resolveRound`, not part of the cast.
+  // A summon spawned mid-round isn't in this round's turnQueue, so it acts once right after the cast,
+  // in its own session, then takes normal turns from next round.
   if (spawnedSummon && !getSummonArchetype(spawnedSummon.archetypeId).passive && !isCombatOver(combat, ctx)) {
     runInSession(
       combat,
@@ -612,10 +591,6 @@ function ultimateEffectivenessMultiplier(fear: number): number {
   return BALANCE.combat.ultimateMultiplierByFearTier[getFearTier(fear) - 1]!;
 }
 
-/** Scales BOTH the flat `amount` and the stat-scaled `offenseMultiplierPercent` by the same fear-tier
-    coefficient, so the whole pre-mitigation power budget (`offenseMultiplierPercent% of base stat +
-    amount`) shrinks together — scaling `amount` alone left the (usually much larger) stat-scaled
-    portion of an ultimate's damage/heal completely unaffected by Fear. */
 function scaleEffectForUltimate(effect: SkillEffect, source: Actor): SkillEffect {
   if (!isCharacter(source)) return effect;
   if (effect.kind !== "damage" && effect.kind !== "heal") return effect;
@@ -670,39 +645,27 @@ function consumeConditionalBonusStatus(skill: SkillDefinition, source: Actor, bo
   source.activeStatusEffects = source.activeStatusEffects.filter((a) => !statusSatisfiesRequirement(a.statusEffectId, requiredId));
 }
 
-/** The bearer's `alwaysHit` chance (Artifacts and Ability combined), re-rolled fresh for the wearer's own enemy-targeting rolls only — a hit here skips whatever roll it's guarding entirely; a miss falls through to that roll exactly as if `alwaysHit` didn't exist. `11-abilities.md` §11.1.1. */
+/** Enemy-facing only. A success skips the roll it guards; a failure falls through to that roll. */
 function rollsAlwaysHit(source: Actor, isEnemyFacing: boolean, ctx: EngineContext): boolean {
   if (!isEnemyFacing || !isCharacter(source)) return false;
-  // `Rng.chance` advances the stream even at p = 0, so a party with no `alwaysHit` Ability would
-  // otherwise pay a draw on every accuracy and every `effect.chance` roll — and shift the whole
-  // seeded stream along with it.
+  // `Rng.chance` draws even at p = 0; skipping it keeps seeded streams unchanged without alwaysHit.
   const chance = alwaysHitChance(source);
   return chance > 0 && ctx.rng.chance(chance / 100);
 }
 
-/** The first harmful status an enemy skill's `applyStatusEffect` is about to put on a Character — the only application the bearer's `debuffResist` (Artifacts and Ability combined) reduces. `11-abilities.md` §11.1.2. */
+/** The only kind of application `debuffResist` reduces. */
 function harmfulStatusOnCharacter(effect: SkillEffect, target: Actor, isEnemyFacing: boolean) {
   if (!isEnemyFacing || !isCharacter(target) || effect.kind !== "applyStatusEffect") return null;
   const ids = [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])].filter((id): id is Id => id !== undefined);
   return ids.map((id) => getStatusEffect(id)).find((def) => !isHelpfulStatusEffect(def)) ?? null;
 }
 
-/** Acolyte's passive (§11 of the design spec) — a self-only harmful-status resist, unlocked at
- *  level 5/20/35. Combines with the bearer's Artifact/Ability `debuffResist` (see `harmfulStatusOnCharacter`'s
- *  call site) the same multiplicative way independent resist sources always combine. */
 export function acolyteDebuffResistPercent(target: Character): number {
   if (target.classId !== "acolyte") return 0;
   return passiveRankDef(getClass("acolyte").passiveSkill, target.level)?.debuffResistPercent ?? 0;
 }
 
-/** Viking's passive (§11 of the design spec) — a below-a-HP-threshold attack buff, unlocked at level
- *  5/20/35. Keeps the status its rank names (`thresholdStatusEffectId` — a `modifyCombatStat` buff
- *  like any other, whose own magnitude is the bonus) applied whenever a non-buff Viking skill
- *  resolves, so it stays applied/removed exactly as long as the live HP ratio said it should the
- *  last time the Viking actually attacked.
- *  The caller never syncs it for an `isBuff` skill (never triggers on a buff-only skill). Landing an
- *  attack while it's active costs a fixed `selfDamagePerHitMaxHPPercent` of maxHp (harsher trade-off,
- *  deliberately not scaled by rank), gated by `landedDamageHit`. */
+/** Applies or removes the rank's threshold status from the live HP ratio; returns whether it is active. */
 function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
   if (!isCharacter(source) || source.classId !== "viking") return false;
   const passive = getClass("viking").passiveSkill;
@@ -710,9 +673,7 @@ function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
   const belowThreshold = rankDef !== null && source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100;
   const ownStatusIds = passive.ranks.flatMap((r) => (r.thresholdStatusEffectId ? [r.thresholdStatusEffectId] : []));
   const active = source.activeStatusEffects.find((s) => ownStatusIds.includes(s.statusEffectId));
-  // Only apply/remove on an actual transition — re-resolving "applyStatusEffect" every turn while
-  // already active would just refresh turnsRemaining (the status isn't stackable, so no new
-  // delta lands) but still logs a spurious "refreshes the Bloodrage effect" line every single turn.
+  // Only on a transition: re-applying while active would log a spurious refresh every turn.
   if (belowThreshold && !active && rankDef?.thresholdStatusEffectId) {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.thresholdStatusEffectId, durationTurns: 99 }, source, source, { log });
   } else if (!belowThreshold && active) {
@@ -721,10 +682,7 @@ function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
   return belowThreshold;
 }
 
-/** Ninja's passive (§11 of the design spec) — a chance, on any hit the Ninja lands, to spawn a 2nd
- *  independent shadow clone (capped at `maxClones`), unlocked at level 5/20/35. Goes through
- *  `spawnAdditionalSummon` rather than the normal `summon` skill-effect path (which always replaces
- *  a same-archetype summon on recast) since the whole point is to stack a 2nd one. */
+/** Uses `spawnAdditionalSummon` because the normal summon path replaces a same-archetype summon. */
 function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   if (source.classId !== "ninja") return;
   const passive = getClass("ninja").passiveSkill;
@@ -744,20 +702,13 @@ function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: Engin
   });
 }
 
-/** The bearer's active status (if any) whose `breakBonus` applies to the attack that's about to break it — Ninja's `stealthed`. */
 function findBreakBonusStatus(source: Actor) {
   return source.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).breakBonus);
 }
 
-/** Archer's passive (§11 of the design spec) — a character-level crit chance/multiplier, unlocked
- *  at level 5/20/35, that adds on top of (not replaces) whatever crit a skill's own effect already
- *  carries: chance is additive, multiplier is whichever of the two is larger. */
 interface OneHitOptions {
-  /** For an `applyStatusEffect` with `linksToCasterSummon`: the summon its expiry is tied to. */
   linkedSummonId?: Id;
-  /** The hit comes after the target fell: shown, not dealt (`ResolveContext.unapplied`). */
   unapplied?: boolean;
-  /** `ResolveContext.executeHpFraction`: the share of max HP an `unapplied` hit tests `executeBonus` against. */
   executeHpFraction?: number;
 }
 
@@ -801,12 +752,8 @@ function resolveOneDamageEffect(
   );
 }
 
-// Dismissing a summon only drops its `hp` to 0 and removes its ref from `combat.combatants` — the
-// dead entry stays in `ctx.summons` (same pattern as a dead Character/Monster staying in its own
-// array). An id that repeats would make `getActorByRef`'s `.find()` resolve every lookup to the stale
-// dead entry — and `pruneDeadSummons` would detonate it in place of the live summon. So each id is
-// derived from the ids already in `ctx.summons`, dead summons included, which are saved with the run,
-// so a reloaded run never reissues one.
+// Dead summons stay in `ctx.summons` (and in saves), so ids count past every existing one, dead
+// included: a reused id would make getActorByRef resolve to the stale dead entry.
 function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
   const prefix = `${ownerId}-${archetypeId}-`;
   let highest = 0;
@@ -818,8 +765,6 @@ function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
   return `${prefix}${highest + 1}`;
 }
 
-/** How many minions of *different* archetypes `owner` may keep active at once — 1 by default, raised
- *  to 2/3 purely by the Summoner's passive rank (level 20/35), independent of anything being cast. */
 function maxActiveMinionsFor(owner: Character): number {
   if (owner.classId !== "summoner") return 1;
   return passiveRankDef(getClass("summoner").passiveSkill, owner.level)?.maxActiveMinions ?? 1;
@@ -829,10 +774,7 @@ function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
   return ctx.summons.filter((s) => s.ownerId === ownerId && s.hp > 0);
 }
 
-/** Force-expires any active status on any party member that was linked to this exact summon
- *  (`ActiveStatusEffect.linkedSummonId` — Totem Recall's "the buff lasts until the totem dies"
- *  mechanism) — called wherever a summon actually leaves combat, whether by dying, running out of
- *  actions, or being evicted/replaced. */
+/** Called wherever a summon leaves combat: death, out of actions, eviction or replacement. */
 function expireLinkedAllyBuffs(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const character of ctx.party) {
     for (const active of [...character.activeStatusEffects]) {
@@ -843,7 +785,6 @@ function expireLinkedAllyBuffs(summon: Summon, combat: CombatState, ctx: EngineC
   }
 }
 
-/** Keeps what a summon leaves the fight with in `combat.departedSummons`, so the snapshots that follow still list it. */
 function recordDeparture(summon: Summon, combat: CombatState): void {
   (combat.departedSummons ??= []).push({ id: summon.id, hp: summon.hp, maxHp: summon.maxHp });
 }
@@ -856,27 +797,21 @@ function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, 
   expireLinkedAllyBuffs(summon, combat, ctx, log);
 }
 
-/** Summoner's passive (§11 of the design spec) — applied at spawn time to every minion, always,
- *  once the owner is level 5+. Replaces the old cast-based Mastery/`empowersMinions` status entirely. */
 function empowermentBonusFor(owner: Character): { maxHpPercent: number; attackPercent: number } {
   if (owner.classId !== "summoner") return { maxHpPercent: 0, attackPercent: 0 };
   const rankDef = passiveRankDef(getClass("summoner").passiveSkill, owner.level);
   return { maxHpPercent: rankDef?.minionMaxHpPercent ?? 0, attackPercent: rankDef?.minionAttackPercent ?? 0 };
 }
 
-/** `formula.base + (formula.percent / 100) * owner[formula.sourceStat]`, with `bonusPercent` (Mastery's empowerment) scaling the source-derived portion only — the flat `base` term isn't boosted. */
-/** Resolves a scalar-or-`[r1, r2, r3]` value to a plain number for `rank` (1-3) — a scalar is used as-is; a tuple (a value that scales with the casting skill's rank) picks the matching element. Shared by `SummonStatFormula.percent` and `SummonCast.onDeath`'s per-rank fields. */
 function resolveRankValue(value: number | [number, number, number], rank: number): number {
   return Array.isArray(value) ? value[Math.min(2, Math.max(0, rank - 1))]! : value;
 }
 
-/** Resolves `formula.percent` to a plain number for `rank` (1-3) — a scalar is used as-is; a `[r1, r2, r3]` tuple (a stat that scales with the casting skill's rank) picks the matching element. */
 function resolveStatPercent(formula: SummonStatFormula, rank: number): number {
   return resolveRankValue(formula.percent, rank);
 }
 
-/** The owner's stat a summon is derived from, without the owner's active status deltas — a buff or debuff
- *  on the owner lasts a few turns and must not be frozen into a minion that outlives it. */
+/** Without the owner's status deltas, so a short buff or debuff isn't frozen into a longer-lived minion. */
 function ownerSourceStat(owner: Character, stat: SummonSourceStat): number {
   return owner[stat] - activeStatusCombatStatSum(owner, stat);
 }
@@ -886,22 +821,17 @@ function computeSummonStat(formula: SummonStatFormula, owner: Character, rank: n
 }
 
 interface SummonSpawnOptions {
-  /** Overrides the archetype's name (Ninja's passive clone is "Shadow Clone II"). */
   name?: string;
   fromPassive?: boolean;
-  /** Overrides the "{{owner}} summons {{summon}}." spawn line. */
   logKey?: string;
 }
 
-/** Builds and registers 1 new summon from `effect.summonCastId` — no eviction, no cap check; the
- *  caller decides whether/what to evict first (`spawnSummon`) or whether a cap even applies
- *  (`spawnAdditionalSummon`). */
+/** No eviction or cap check; callers handle those. */
 function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[], opts: SummonSpawnOptions = {}): Summon | undefined {
   if (!effect.summonCastId) return undefined;
   const cast = getSummonCast(effect.summonCastId);
   const archetype = getSummonArchetype(cast.archetypeId);
-  // A cast profile is shared by all 3 ranks of the summoning skill (`cast.skillId`), so the
-  // stat formulas alone don't say which rank is currently active — re-derive it from the caster's level.
+  // A cast is shared by all ranks of its skill, so the rank comes from the caster's level.
   const rank = effectiveSkillRank(getSkill(cast.skillId), owner.level) || 1;
   const { stat } = cast;
   const { maxHpPercent, attackPercent } = empowermentBonusFor(owner);
@@ -957,10 +887,7 @@ function spawnSummon(effect: SkillEffect, owner: Character, combat: CombatState,
   return addSummon(effect, owner, combat, ctx, log);
 }
 
-/** Adds an extra summon of an archetype `owner` may already have active, bypassing `spawnSummon`'s
- *  same-type-replaces eviction rule that every ordinary summon skill follows on a recast — used by
- *  Ninja's passive to stack up to 2 shadow clones instead of replacing the first. The caller is
- *  responsible for its own cap check before calling this. */
+/** Bypasses spawnSummon's same-archetype replacement; the caller does its own cap check. */
 export function spawnAdditionalSummon(effect: SkillEffect, owner: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[], opts: SummonSpawnOptions = {}): Summon | undefined {
   return addSummon(effect, owner, combat, ctx, log, opts);
 }
@@ -977,7 +904,7 @@ function pickSummonAction(archetype: ReturnType<typeof getSummonArchetype>, rng:
   return rng.weightedPick(candidates, ([, weight]) => weight)[0];
 }
 
-/** Fires a summon's `deathBurst` (Ninja's Shadow Clone) once, right before it leaves combat — an AoE hit to every living enemy plus a chance to apply its configured status, both computed off the owner's stat frozen at spawn time (`spawnSummon`), not whatever the summon or owner carries now. No-op for a summon with no `deathBurst` (every other archetype today). */
+/** Fires once, right before the summon leaves, off the owner's stat frozen at spawn. */
 function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   const burst = summon.deathBurst;
   if (!burst) return;
@@ -1006,50 +933,27 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
   );
 }
 
-/**
- * Removes a summon from combat once it's actually done — killed (hp 0, from a hit or a DoT tick) or
- * out of actions — firing its `deathBurst` first. Safe to call repeatedly/from multiple checkpoints
- * each round (`resolveRound`'s DoT-tick and per-turn sweeps, plus the direct call at the end of the
- * summon's own turn): once a summon is done, it's dropped from `combat.combatants`, so a later sweep
- * simply won't find it again and this becomes a no-op. Does *not* run for a manual dismiss/replace
- * (`dismissSummon` — recasting the same archetype, or eviction at the owner's minion cap) — the burst
- * is meant to be the cost of the summon actually falling in battle, not a free nuke on recast.
- */
+/** Idempotent: a finished summon leaves `combat.combatants`, so later sweeps skip it. A dismiss never bursts. */
 function expireSummonIfDone(summon: Summon, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   if (summon.actionsTaken < summon.maxActions && summon.hp > 0) return;
   noteAffected(combat, summon);
-  // A summon with a deathBurst announces its own departure via the detonation line below — logging
-  // the generic "fades away" line first would read as a contradictory two-line narration (a gentle
-  // fade immediately followed by a violent explosion) for what's really one event.
+  // A deathBurst's own line announces the departure.
   if (!summon.deathBurst) log.push({ text: t("combat.summonExpired", { summon: summon.name }), kind: "info" });
   triggerSummonDeathBurst(summon, combat, ctx, log);
   combat.combatants = combat.combatants.filter((c) => !(c.ref.kind === "summon" && c.ref.id === summon.id));
-  // Without this, ownedSummons()'s `hp > 0` filter keeps counting an action-expired summon toward
-  // its owner's active-minion cap forever (it's already gone from combat.combatants, but a later
-  // spawnSummon of a different archetype would still see it as "owned" and could evict a real minion).
+  // Without hp 0, ownedSummons keeps counting an action-expired summon toward the minion cap.
   recordDeparture(summon, combat);
   summon.hp = 0;
   expireLinkedAllyBuffs(summon, combat, ctx, log);
 }
 
-/**
- * Clears every summon still standing (`hp > 0`) when its combat ends — a summon otherwise only
- * leaves `ctx.summons` via `expireSummonIfDone` (dying or running out of actions) or `dismissSummon`
- * (recast/eviction), both of which only fire *during* a round. One that's still alive and hasn't
- * used up its actions when the last monster falls would otherwise linger in `ctx.summons` forever —
- * visible as a stale HP line in the party panel, and wrongly counted by `ownedSummons` on the next
- * cast. No `deathBurst` here: that's the cost of falling in battle, not of the fight simply ending.
- * Called when a combat ends (`clearFinishedCombat`, a party wipe), after which `combat.combatants`
- * itself is discarded anyway, and again when the next one starts (`startCombat`), so no summon
- * left alive ever carries into a new fight.
- */
+/** Zeroes every summon still alive, or it would linger in `ctx.summons` and count in `ownedSummons`. No deathBurst. */
 export function dismissSummonsAtCombatEnd(ctx: EngineContext): void {
   for (const summon of ctx.summons) {
     if (summon.hp > 0) summon.hp = 0;
   }
 }
 
-/** Sweeps every summon still in `combat.combatants` for one that just died (a hit, a DoT tick) or ran out of actions, and finalizes it (`expireSummonIfDone`). Called after every point in a round a summon could take lethal damage or use up its last action — see that function's own doc for why repeated calls are safe. */
 function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
   for (const c of combat.combatants) {
     if (c.ref.kind !== "summon") continue;
@@ -1058,7 +962,6 @@ function pruneDeadSummons(combat: CombatState, ctx: EngineContext, log: LogEntry
   }
 }
 
-/** Living character (never a summon/clone) with the lowest current HP% — Healer Spirit's default heal target. */
 function pickLowestHpCharacter(combat: CombatState, ctx: EngineContext): CombatantRef | null {
   const characters = livingCharacterRefs(combat, ctx);
   let best: CombatantRef | null = null;
@@ -1081,7 +984,6 @@ function isHealSkill(skill: SkillDefinition): boolean {
 function resolveSummonSkillTargets(skill: SkillDefinition, ref: CombatantRef, combat: CombatState, ctx: EngineContext): CombatantRef[] {
   const auto = autoResolveTargets(skill.target, ref, combat, ctx);
   if (auto) {
-    // Healer Spirit's heals (and any future summon heal) must land on real characters only — never itself or another clone/summon.
     return isHealSkill(skill) ? auto.filter((r) => r.kind === "character") : auto;
   }
   if (skill.target === "singleEnemy") {
@@ -1132,7 +1034,6 @@ function runSummonTurn(ref: CombatantRef, combat: CombatState, ctx: EngineContex
   expireSummonIfDone(summon, combat, ctx, combat.log);
 }
 
-/** A monster's damage landed on `target`: a character gains fear, noted on the running session. */
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
   if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
@@ -1151,20 +1052,14 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   };
   let brokeStealthThisCast = false;
 
-  // An effect with its own `target` resolves against a separate population from the skill's main
-  // target(s) — e.g. Summoner's ultimate needs its `summon` effect to always land on the caster while
-  // its `damage` effect still hits allEnemies. Resolved once here, per override effect, before the main
-  // per-target loop below (which skips every such effect via the `isOverrideEffect` check). A `summon`
-  // effect is always treated as an override — even with no explicit `target` — since it must always
-  // land on the caster regardless of what the skill's own target happens to be.
+  // An effect with its own `target`, and every `summon` effect (it lands on the caster), resolves here
+  // against its own population, before the per-target loop below, which skips it.
   const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || (e.target !== undefined && e.target !== skill.target);
   const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
-  // A property of the whole skill (not of one target): damage that reaches the opposing side makes every opposing target an attack target.
-  // `appliesToRelation` names a side of the board ("ally" = the player's side), not a side relative to the caster.
+  // Damage reaching the opposing side marks every opposing target as attacked, whatever its own effects.
+  // `appliesToRelation` names a board side ("ally" = the player's side), not one relative to the caster.
   const skillDealsDamage = (skill.effects ?? []).some((e) => e.kind === "damage" && (!e.appliesToRelation || (e.appliesToRelation === "ally") !== isPlayerSide(source)));
-  // Set by this cast's own `summon` override effect (resolved first, in array order) so a later
-  // override effect in the same cast — e.g. Totem Recall's ally buff — can tie its own expiry to
-  // the summon it was cast alongside (`SkillEffect.linksToCasterSummon`).
+  // Set by this cast's summon effect (resolved first, in array order) for a later `linksToCasterSummon` effect.
   let spawnedSummonId: Id | undefined;
   let spawnedSummon: Summon | undefined;
   if (overrideEffects.length > 0) {
@@ -1260,14 +1155,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       const wasAliveBefore = isActorAlive(target);
       const sourceHpBefore = source.hp;
       const fearBefore = isCharacter(target) ? target.survival.fear : 0;
-      // Summed across every hit (hitCountRange's multi-hit and any extraHitChance bonus hit), not just
-      // the last one — onDamageDealt-driven lifesteal/reflect/poison-on-hit must see the full damage
-      // a multi-hit skill actually dealt this cast, not just its final swing.
+      // Summed over every hit, so onDamageDealt hooks see the cast's full damage, not its last swing.
       let appliedAmount = 0;
-      // A hit that comes after the target has fallen is shown, not dealt (`ResolveContext.unapplied`): the
-      // battlefield reads every hit of the cast at its full damage, and nothing else of it takes effect. Its
-      // execute bonus is tested against the share of HP the target had before the hit that felled it, so it
-      // reads like that hit.
+      // Hits after the target falls are shown, not dealt, and test execute against the HP share before the felling hit.
       let hpFraction = target.hp / target.maxHp;
       const swing = (): number => {
         const fallen = !isActorAlive(target);

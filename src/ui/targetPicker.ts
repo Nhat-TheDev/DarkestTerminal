@@ -5,9 +5,7 @@ import { t } from "../data/strings";
 import { statDirection, statusRole, type Actor } from "../engine/resolver";
 import { colorChunk, hpColorFor, plainChunk } from "./theme";
 
-/** The one flagged as most hurt must be below this share of its max HP. */
 export const MOST_HURT_BELOW = 0.5;
-/** Enemies are flagged only when there are at least this many to tell apart. */
 const MIN_ENEMIES_TO_FLAG = 2;
 
 const STAT_ABBR_KEY: Record<CombatStat, string> = {
@@ -19,14 +17,13 @@ const STAT_ABBR_KEY: Record<CombatStat, string> = {
   maxHp: "ui.statAbbrMaxHp",
 };
 
-/** What an ally in the target list is shown with: HP for a heal, the raised stats for a buff, plain HP otherwise. */
 export type AllyTargetInfo = { kind: "heal" } | { kind: "stats"; stats: CombatStat[] } | { kind: "plain" };
 
 export function allyTargetInfo(effects: SkillEffect[]): AllyTargetInfo {
   return sideTargetInfo(effects, "ally");
 }
 
-/** What the effects do to the picked target on one side: an effect restricted to the other side (`appliesToRelation`), or resolved on a target of its own (`target`), is left out. */
+/** Effects restricted to the other side, or resolved on a target of their own, are left out. */
 function sideTargetInfo(effects: SkillEffect[], side: "ally" | "enemy"): AllyTargetInfo {
   let heals = false;
   const stats = new Set<CombatStat>();
@@ -48,7 +45,6 @@ function sideTargetInfo(effects: SkillEffect[], side: "ally" | "enemy"): AllyTar
   return stats.size > 0 ? { kind: "stats", stats: [...stats] } : { kind: "plain" };
 }
 
-/** Index of the unit to flag as most hurt: the lowest share of max HP, if that is under `MOST_HURT_BELOW` (the first on a tie), else -1. */
 export function mostHurtIndex(units: { hp: number; maxHp: number }[], minUnits = 1): number {
   if (units.length < minUnits) return -1;
   let best = -1;
@@ -68,12 +64,7 @@ export interface TargetCandidate {
   actor: Actor;
 }
 
-/**
- * The rows of a target list. Only the HP figure is coloured (the party panel's thresholds). A heal flags
- * the most hurt ally with `*`; what does neither heal nor buff an enemy (an attack, a debuff) flags the most
- * hurt enemy, once there are two or more; a stat buff shows the stats it raises in place of HP and flags
- * nobody. A list of both sides is judged per side, by the effects that reach that side.
- */
+/** A list of both sides is judged per side, by the effects that reach that side. */
 export function targetChoiceLines(candidates: TargetCandidate[], effects: SkillEffect[], withSidePrefix: boolean): TextChunk[][] {
   const info = allyTargetInfo(effects);
   const isEnemy = (c: TargetCandidate) => c.ref.kind === "monster";

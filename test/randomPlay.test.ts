@@ -137,7 +137,6 @@ describe("random-play bot", () => {
 });
 
 describe("random-play CLI", () => {
-  /** Runs the CLI as CI does, with its temp files kept in a directory of their own. */
   function cli(...args: string[]) {
     const tmp = mkdtempSync(join(tmpdir(), "random-play-cli-"));
     const run = Bun.spawnSync(["bun", "run", "tools/random-play/run.ts", ...args], { env: { ...process.env, TMPDIR: tmp }, stdout: "pipe", stderr: "pipe" });
@@ -149,7 +148,6 @@ describe("random-play CLI", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("0 failures");
     expect(stdout).not.toContain("report:");
-    // Only the throwaway save directory every run needs.
     expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
   }, 30000);
 

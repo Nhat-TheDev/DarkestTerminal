@@ -17,7 +17,6 @@ interface Written {
   a: number;
   b: number;
   separator: string;
-  /** Where the written value sits inside the parentheses. */
   start: number;
   end: number;
 }
@@ -41,7 +40,7 @@ const close = (x: number, y: number) => Math.abs(x - y) < EXACT;
 
 interface Verdict {
   ok: boolean;
-  /** What to write instead; undefined when the mismatch cannot be repaired by rewriting. */
+  /** Undefined when rewriting cannot repair the mismatch. */
   replacement?: string;
   shown: string;
 }
@@ -75,10 +74,8 @@ function compare(written: Written, value: unknown, path: string): Verdict | "unc
 }
 
 export interface PairResult {
-  /** `text` with every repairable pair rewritten. */
   text: string;
   findings: Finding[];
-  /** Pairs on a field whose shape the check cannot compare. Information only. */
   unchecked: Finding[];
 }
 

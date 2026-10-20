@@ -32,29 +32,13 @@ const signed = (amount: number): string => (amount > 0 ? "+" : "");
 const statTag = (amount: number, color: string): TextChunk =>
   colorChunk(t("ui.characterInfoStatTag", { sign: signed(amount), amount }), color);
 
-/**
- * Width the wrapped effect/description text under an Artifact/Ability/Status entry may occupy.
- * Fixed rather than measured: this screen renders into the middle panel, which is whatever the
- * terminal has left after the 34-wide party panel and the 32-wide monster panel — 32 usable
- * columns at 100. `ui.characterInfoDetailLine` indents by DETAIL_INDENT, so the wrap budget is
- * what remains after that; wrapping to the full 32 would push every line 5 columns past the edge.
- */
+/** Fixed, not measured: the middle panel is 32 columns on a 100-column terminal, less the detail indent. */
 const DETAIL_INDENT = 5;
 const DETAIL_WIDTH = 32 - DETAIL_INDENT;
 
-/** The "what does this actually do" line under a list entry — wrapped, indented, dimmed. */
 const detailLines = (text: string): TextChunk[][] =>
   wrapText(text, DETAIL_WIDTH).map((line) => [colorChunk(t("ui.characterInfoDetailLine", { text: line }), PALETTE.dim)]);
 
-/**
- * The passive's actual mechanical effect at its currently-unlocked rank, composed straight from
- * `rankDef`'s fields — never a hand-typed number, so this can never drift from what the engine
- * applies (`party.ts`/`resolver.ts`/`combat.ts`/`combatHooks.ts`/`artifacts.ts` all read the exact
- * same `data/classes.json` fields). Driven by which fields are present, not by `classId` — same
- * shape as `formatArtifactEffect`/`formatStatusEffectMechanics` switching on effect kind rather
- * than on which artifact/status it came from, so a class needs no code change here unless it
- * introduces a genuinely new field.
- */
 export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: PassiveRankDefinition): string {
   const parts: string[] = [];
   if (rankDef.maxHpPercent !== undefined) {
@@ -103,14 +87,7 @@ export function formatPassiveEffect(passive: PassiveSkillDefinition, rankDef: Pa
   return parts.join(" ");
 }
 
-/**
- * One stat as `Name  total`, then its sources on an indented line: the base value followed by one
- * bracketed number per source, each summed into a single figure and told apart by colour alone
- * (gold = Artifacts, blue = Ability, purple = class passive, green/red = status effects). The base
- * itself turns red while Exhausted is scaling it down, which is why that penalty needs no bracket of
- * its own. The breakdown wraps onto its own line because this screen renders into the middle panel,
- * only ~32 columns wide on an 80-100 column terminal.
- */
+/** Sources are told apart by colour alone; the base turns red while Exhausted scales it down. */
 function statLines(name: string, stat: StatBreakdown, total: number): TextChunk[][] {
   const sources: TextChunk[] = [colorChunk(t("ui.characterInfoBaseTag", { base: stat.base }), stat.isExhausted ? PALETTE.hpLow : PALETTE.dim)];
   const push = (chunk: TextChunk) => {
@@ -136,7 +113,6 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
   const cls = getClass(character.classId);
   const stats = characterStatBreakdown(character, game.state.satiety);
 
-  // Which digit switches to whom — the only place the party's indices are visible on this screen.
   const picker: TextChunk[] = [];
   party.forEach((member, i) => {
     if (i > 0) picker.push(plainChunk("  "));
@@ -153,7 +129,6 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
       colorChunk(t("ui.characterInfoMp", { mp: character.mp, maxMp: character.maxMp }), PALETTE.mp),
     ],
     [],
-    // maxHp/maxMp sit above the combat stats because they are what the HP:/MP: line above is measured against.
     ...statLines(t("ui.characterInfoStatMaxHp"), stats.maxHp, character.maxHp),
     ...statLines(t("ui.characterInfoStatMaxMp"), stats.maxMp, character.maxMp),
     ...statLines(t("ui.characterInfoStatAttack"), stats.attack, character.attack),
@@ -206,9 +181,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
   } else {
     for (const active of character.activeStatusEffects) {
       const def = getStatusEffect(active.statusEffectId);
-      // statusDisplayName, not `def.name`: ranked variants share one `name`, so Storm-Empowered
-      // II would otherwise render identical to Storm-Empowered while the line below it reports a
-      // different number. The party panel has always used the composed name.
+      // Ranked variants share `def.name`.
       const name = statusDisplayName(def);
       lines.push([
         colorChunk(
@@ -220,9 +193,7 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
           PALETTE.text
         ),
       ]);
-      // Composed from the status's own mechanical fields (not `description`), so what the player
-      // reads here and what the engine applies can never disagree. `appliedAmounts` carries a stat
-      // delta a casting skill set (Totem Recall) or a floor resolved at cast time.
+      // `appliedAmounts` carries a stat delta or floor resolved at cast time.
       lines.push(...detailLines(formatStatusEffectMechanics(def, { applied: active.appliedAmounts })));
     }
   }

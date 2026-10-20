@@ -61,7 +61,6 @@ export const ARTIFACT_ICON = "✦";
 export const ABILITY_ICON = "◆";
 export const SUMMON_ICON = "☾";
 
-/** "⚔" for items used against an opponent, "✚" for recovery (heal/MP), "↑" for buffs/utility. */
 export function itemIcon(item: ItemDefinition): string {
   if (item.target === "singleEnemy" || item.target === "allEnemies") return "⚔";
   if (item.effects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "✚";
@@ -84,7 +83,6 @@ export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[]; ab
   return entries;
 }
 
-/** Every artifact the party owns is equipped on someone — there's no unequipped pool anymore. */
 export function ownedArtifactEntries(party: Character[]): { character: Character; artifactId: Id }[] {
   return party.flatMap((character) => character.equippedArtifactIds.map((artifactId) => ({ character, artifactId })));
 }

@@ -52,11 +52,7 @@ export const EXP_REWARD_DEPTH_RATE = DATA.expRewardDepthRate;
 export const BOSS_FLOOR_INTERVAL = DATA.bossFloorInterval;
 export const MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS: DepthBuffStatCoefficients = DATA.monsterDepthBuffStatCoefficients;
 
-/** Step function, not interpolated — a monster spawned right after crossing a bracket boundary
- *  gets the full new bracket's bonus immediately (02-monster.md, "Floor-depth buff"). Bonus is the
- *  cumulative sum of each bracket's increment; once
- *  the configured increments run out, the last one keeps applying every subsequent bracket
- *  forever — depth is uncapped, so the bonus never plateaus. */
+/** Past the configured increments the last one repeats every bracket, so the bonus never plateaus on uncapped depth. */
 export function monsterDepthBuffPercent(floorDepth: number): number {
   const bracketFloors = DATA.monsterDepthBuffBracketFloors;
   const increments = DATA.monsterDepthBuffBracketIncrements;
@@ -103,9 +99,6 @@ export function classGrowthBonus(stat: GrowthStat, level: number, weights: Growt
   return Math.round(growthBonus(stat, level) * weights[stat]);
 }
 
-/** Monster-archetype equivalent of `classGrowthBonus` — `monsterType`'s multiplier
- *  (`monsterGrowthWeights` in growth-weights.json) scales only the depth-growth curve, the same
- *  way a class's growth weight scales only `growthBonus` and never touches `baseX`. */
 export function monsterGrowthBonus(stat: GrowthStat, floorDepth: number, typeWeight: number): number {
   return Math.round(growthBonusForDepth(stat, floorDepth) * typeWeight);
 }

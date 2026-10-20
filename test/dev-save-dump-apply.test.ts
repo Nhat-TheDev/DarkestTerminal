@@ -28,9 +28,7 @@ describe("dev-save-dump applyDump", () => {
     expect(game.state.floor.depth).toBe(77);
   });
 
-  // Regression: the Game constructor's own entry-room ambush check already ran against floor 1's
-  // monsters before applyDump replaces the floor — a rest/event room on the new floor must not be
-  // left holding that stale combat state (it used to reference monster ids that no longer exist).
+  // Regression: the constructor's entry-room ambush check runs against floor 1 before applyDump swaps the floor; that stale combat must not survive.
   test("landing in a non-combat room leaves no stale combat state from the original floor-1 entry", () => {
     const game = new Game(3, PARTY);
     const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "rest" });

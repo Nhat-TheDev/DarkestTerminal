@@ -31,7 +31,6 @@ describe("formatPassiveEffect", () => {
     const viking = CLASSES.find((c) => c.id === "viking")!;
     const vikingRank1 = viking.passiveSkill.ranks.find((r) => r.rank === 1)!;
     expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(`costs ${viking.passiveSkill.selfDamagePerHitMaxHPPercent}%`);
-    // The bonus is read off the status the rank names, so the text cannot drift from what the status does.
     expect(formatPassiveEffect(viking.passiveSkill, vikingRank1)).toContain(formatStatusEffectMechanics(getStatusEffect(vikingRank1.thresholdStatusEffectId!)));
 
     const ninja = CLASSES.find((c) => c.id === "ninja")!;
@@ -86,8 +85,6 @@ describe("stat breakdown always adds up to the character's real stat", () => {
           recomputeCharacterStats(c, satiety);
           expectSums(c, satiety, "equipped");
 
-          // Applied mid-fight through the resolver: a minPercent floor, a caster magnitude override, a
-          // stacked debuff, and buffs on max HP and magic power.
           applyStatus(c, "rallied-iii");
           applyStatus(c, "weakened");
           applyStatus(c, "totems-strength", { amount: 14, minPercent: 15 });
@@ -97,7 +94,6 @@ describe("stat breakdown always adds up to the character's real stat", () => {
           applyStatus(c, "stone-skin");
           expectSums(c, satiety, "buffed");
 
-          // A recompute with statuses still active (e.g. debuffs carried past a won fight) changes nothing.
           recomputeCharacterStats(c, satiety);
           expectSums(c, satiety, "recomputed");
 

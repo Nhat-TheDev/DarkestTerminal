@@ -9,7 +9,6 @@ import { getArchetype } from "./monsters";
 export const CONSUMABLE_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare"];
 export const TROPHY_TIERS: readonly ItemTier[] = ["common", "uncommon", "rare", "unique", "epic"];
 
-/** A trophy can be offered once at least one monster that drops it can appear at `depth`. */
 function trophyAvailableAt(item: ItemDefinition, depth: number): boolean {
   return (item.archetypeIds ?? []).some((id) => (getArchetype(id).minFloor ?? 0) <= depth);
 }
@@ -23,7 +22,7 @@ function pickByTier(pool: ItemDefinition[], tiers: readonly ItemTier[], anchor: 
   return rng.pick(pool.filter((i) => i.tier === tier));
 }
 
-/** The trophy kinds the Runner will trade for a buff: `barter.offerCount` different ones that can drop at `depth`, Legendary included. */
+/** Unlike the shop stock, Legendary trophies are included. */
 export function rollBarterOffers(rng: Rng, depth: number): BarterOffer[] {
   const pool = BARTER_ENTRIES.map((entry) => getItem(entry.itemId)).filter((item) => trophyAvailableAt(item, depth));
   const offers: BarterOffer[] = [];
@@ -34,12 +33,7 @@ export function rollBarterOffers(rng: Rng, depth: number): BarterOffer[] {
   return offers;
 }
 
-/**
- * The Runner's stock for a visit at floor `depth`: `runner.offerCount` distinct items. Each is a
- * trophy with `runner.trophyOfferChance`, otherwise a consumable from the general pool; its tier is
- * rolled with the depth curve in `BALANCE.shop`, and a tier with nothing left to offer is dropped
- * from the roll. Exploration Kit (Unique) and Legendary trophies are never offered.
- */
+/** The tier lists keep Exploration Kit (Unique) and Legendary trophies out of the stock. */
 export function rollShopOffers(rng: Rng, depth: number): ShopOffer[] {
   const { offerCount, trophyOfferChance, singleChance } = BALANCE.runner;
   const consumables = ITEMS.filter((i) => !i.archetypeIds?.length && CONSUMABLE_TIERS.includes(i.tier));

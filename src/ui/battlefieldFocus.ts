@@ -16,7 +16,6 @@ export interface FocusIcon {
 export interface UnitFocus {
   dim: boolean;
   icons: FocusIcon[];
-  /** The session's outcome for the unit once it lands: "-12", "+8", "miss" or "immune", written after the icons. */
   marker: FocusIcon | null;
 }
 
@@ -36,7 +35,7 @@ export const FOCUS_GLYPH = {
   fear: "◉",
 } as const;
 
-/** The HP change of the summons a unit owns over the lit session, whether one of them was hit or healed critically, and whether the beat that shows it after the owner's own has come. */
+/** `beat`: the owner's own marker has shown, so the summons' may replace it. */
 export interface SummonFocus {
   delta: number;
   crit?: boolean;
@@ -45,10 +44,9 @@ export interface SummonFocus {
 
 const NO_SUMMON: SummonFocus = { delta: 0, beat: false };
 
-/** Blue is the player's side, red the enemy's — by the side of the unit wearing the icon, whoever attacks. */
+/** By the side of the unit wearing the icon, not the attacker's. */
 export const FOCUS_COLOR: Record<UnitSide, string> = { party: PALETTE.mp, monster: PALETTE.hpLow };
 
-/** Damage reads white on a monster and red on a character; heal is green, lighter on a character, deeper on a monster. */
 export const MARKER_COLOR = {
   damage: { party: PALETTE.markerDamageParty, monster: PALETTE.markerDamageMonster } as Record<UnitSide, string>,
   heal: { party: PALETTE.markerHealParty, monster: PALETTE.markerHealMonster } as Record<UnitSide, string>,
@@ -57,7 +55,6 @@ export const MARKER_COLOR = {
   fearDown: PALETTE.markerHealParty,
 };
 
-/** Share of the original brightness a bystander keeps. */
 const DIM_FACTOR = 0.55;
 
 export function dimColor(hex: string): string {
@@ -74,13 +71,7 @@ export function dimSprite(sprite: Sprite): Sprite {
   return { rows: sprite.rows, palette: Object.fromEntries(Object.entries(sprite.palette).map(([key, color]) => [key, dimColor(color)])) };
 }
 
-/**
- * Who is lit and what each lit unit wears in `session`. With no session everyone is shown normally.
- * `delta` is the unit's HP change over the session (known from its start, so a DoT tick can pick its
- * icon at once); the marker that prints it appears only once `impact` is reached. `fearChange` is passed
- * only once the session's fear beat has come: it then replaces everything else the unit wears (`◉ +2.1`, `◉ -15`).
- * `crit` ends the HP number with "!" (`-80!`): what `delta` reads was a critical hit or heal.
- */
+/** `delta` is known from the session start, but its marker shows only once `impact` is reached. A non-zero `fearChange` replaces everything else the unit wears. */
 export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearChange = 0, crit = false): UnitFocus {
   if (!session) return { dim: false, icons: [], marker: null };
   const color = FOCUS_COLOR[side];
@@ -105,7 +96,7 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   }
   if (session.lifestealIds.includes(id)) icons.push(icon(FOCUS_GLYPH.lifesteal));
   if (session.actorId === null && session.affectedIds.includes(id)) {
-    // Which ticks a unit got, not their net: a heal and a poison on one unit show both glyphs (the heal glyph comes from `healedIds` below).
+    // Which ticks a unit got, not their net: a heal and a poison on one unit show both glyphs.
     if (session.cause === "dot") {
       if (session.tickDamageIds.includes(id)) icons.push(icon(FOCUS_GLYPH.dot));
     } else if (session.cause === "dying") icons.push(icon(FOCUS_GLYPH.dying));
@@ -118,15 +109,13 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   // `debuffedIds` is the aim of a debuff-only skill; beside an attack only a debuff that landed shows.
   const debuffed = (session.debuffedIds.includes(id) && !attacked) || debuffLanded;
   if (attacked) icons.push(icon(FOCUS_GLYPH.shield));
-  // A hit that leaves a debuff or a damage-over-time status behind wears it after ⛨ (`⛨▼`, `⛨⁂`).
   if (debuffed) icons.push(icon(FOCUS_GLYPH.debuff));
   if (dotLanded) icons.push(icon(FOCUS_GLYPH.dot));
   if (session.buffedIds.includes(id)) icons.push(icon(FOCUS_GLYPH.buff));
   if (session.lostTurnIds.includes(id)) icons.push(icon(FOCUS_GLYPH.skip));
-  // Losing a buff reads like being debuffed: the same glyph, once.
   if (session.buffLostIds.includes(id) && !debuffed) icons.push(icon(FOCUS_GLYPH.debuff));
   if (healed) icons.push(icon(FOCUS_GLYPH.heal));
-  // The unit is drawn for its owner: this says the action belongs to, or lands on, the summon.
+  // The unit is drawn for its owner: this marks the summon's part.
   if (session.summonIds.includes(id)) icons.push(icon(FOCUS_GLYPH.summon));
 
   const participates =
@@ -145,7 +134,6 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
   return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, summon, crit) : null };
 }
 
-/** Each unit's change in `read` from `before` to `after`, skipping units where either side has no value. */
 function snapshotDeltas(before: CombatantSnapshot[] | null, after: CombatantSnapshot[] | null, read: (c: CombatantSnapshot) => number | undefined): Map<Id, number> {
   const deltas = new Map<Id, number>();
   if (!before || !after) return deltas;
@@ -158,32 +146,22 @@ function snapshotDeltas(before: CombatantSnapshot[] | null, after: CombatantSnap
   return deltas;
 }
 
-/** Each unit's HP change from `before` (what the screen shows) to `after` (where a session ends). */
 export function hpDeltas(before: CombatantSnapshot[] | null, after: CombatantSnapshot[] | null): Map<Id, number> {
   return snapshotDeltas(before, after, (c) => c.hp);
 }
 
-/** Each character's fear change from `before` to `after`, rounded to fear's one decimal place; one fallen by `after` shows none. */
 export function fearDeltas(before: CombatantSnapshot[] | null, after: CombatantSnapshot[] | null): Map<Id, number> {
   const deltas = snapshotDeltas(before, after, (c) => (c.isAlive ? c.fear : undefined));
   for (const [id, delta] of deltas) deltas.set(id, roundFear(delta));
   return deltas;
 }
 
-/** What a unit's marker reads: the HP change, and whether it was a critical hit or heal. */
 export interface MarkerReading {
   amount: number;
   crit: boolean;
 }
 
-/**
- * The HP change a unit's marker reads at hit `step`: each direct hit in turn at its full damage, the
- * last held and each with its own crit, so a hit that was more than the unit had left still reads in
- * full and the hits that came after it fell are not skipped. Only when the hits account for the whole
- * change (`net`, which stops at 0 HP); a heal on the same unit in the same session leaves the net, which
- * is then all there is to show, and it is a crit when any hit on the unit, or a heal that landed on it
- * (`healCrit`), was.
- */
+/** Hits read one at a time at full damage only when, minus overkill, they add up to `net`; otherwise (e.g. a heal in the same session) the net shows. */
 export function markerReading(hits: readonly HitMark[] | undefined, net: number, step: number, healCrit = false): MarkerReading {
   if (hits && hits.length > 0 && hits.reduce((sum, hit) => sum + hit.amount - (hit.overkill ?? 0), 0) === -net) {
     const hit = hits[Math.min(step, hits.length - 1)]!;
@@ -197,11 +175,7 @@ function hpMarker(amount: number, side: UnitSide, prefix = "", crit = false): Fo
   return amount < 0 ? { glyph: `${prefix}-${-amount}${mark}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}${mark}`, color: MARKER_COLOR.heal[side] };
 }
 
-/**
- * The number written beside a unit's icons. A summon is drawn as its owner, so its own HP change is
- * shown there too: alone it reads like the owner's; when the owner changed as well, the owner's
- * number comes first and the summon's replaces it a beat later, led by the summon icon.
- */
+/** A summon is drawn as its owner: when both changed, the owner's number shows first and the summon's replaces it on the summon beat. */
 function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, summon: SummonFocus, crit: boolean): FocusIcon | null {
   if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon, summon.crit);
   if (delta !== 0) return hpMarker(delta, side, "", crit);
@@ -216,13 +190,12 @@ export interface BattlefieldUnit {
   labelColor: string;
   statusText: string;
   statusColor: string;
-  /** Tallest sprite the unit's tier allows (`tierFrameHeight`): its icons sit one blank row above it. */
+  /** From `tierFrameHeight`; icons sit one blank row above it. */
   frameHeight: number;
   icons: FocusIcon[];
   marker: FocusIcon | null;
 }
 
-/** The tallest sprite a tier may draw: characters and normal monsters share one height. */
 export function tierFrameHeight(tier: MonsterTier | "party"): number {
   if (tier === "boss") return MAX_BOSS_HEIGHT;
   if (tier === "elite") return MAX_ELITE_HEIGHT;
@@ -235,13 +208,7 @@ export function focusedUnit(unit: Omit<BattlefieldUnit, "icons" | "marker">, foc
   return { ...unit, sprite: dimSprite(unit.sprite), labelColor: dimColor(unit.labelColor), statusColor: dimColor(unit.statusColor), ...worn };
 }
 
-/**
- * A side's sprites, bottom-aligned in `ICON_BAND_ROWS + MAX_BOSS_HEIGHT` rows, with each unit's icons
- * (then a space and its marker, e.g. `⛨ -12`) one blank row above the tallest sprite of its tier — so
- * every unit of a tier wears them on the same row, and a boss uses the whole band. The whole label is
- * centred over the middle of the unit's own sprite, not its nominal slot (a wide sprite or a boss sits
- * off the slot grid); when it cannot be exact, the spare column goes to its left.
- */
+/** Icons sit above the tier's tallest sprite, so a tier shares one row; they centre on the sprite itself, not its slot (wide sprites sit off the grid). */
 export function buildSideSpriteArea(
   units: Pick<BattlefieldUnit, "sprite" | "icons" | "marker" | "frameHeight">[],
   slotWidth: number,
@@ -268,7 +235,6 @@ export function buildSideSpriteArea(
   return rows;
 }
 
-/** The same band for a block that has no units (campfire, chest, event, empty room). */
 export function blankIconBand(width: number): TextChunk[][] {
   return Array.from({ length: ICON_BAND_ROWS }, () => [plainChunk(" ".repeat(width))]);
 }

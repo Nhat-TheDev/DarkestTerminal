@@ -17,9 +17,7 @@ import { migrateGameState } from "../src/engine/migration";
 import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, PROFILE_FILENAME } from "../src/engine/profile";
 import { EVENTS } from "../src/data/events";
 
-/** Simulates the real trigger path: floor 100 already fully played through and its own boss just
-    defeated (the boss-clear -> floor-advance pipeline calls `advanceToNextFloor()` while still on
-    the floor whose boss was just cleared) — not merely arriving at floor 100 from floor 99. */
+/** Floor 100 with its boss just cleared, as the boss-clear pipeline leaves it before `advanceToNextFloor()`; not arriving from floor 99. */
 function toFloor100BossCleared(game: Game) {
   game.state.combat = null;
   game.state.floor.depth = 100;
@@ -245,10 +243,7 @@ describe("migration default for pendingEndingCheckpoint", () => {
 
 describe("migration backfill for narrativeCounters", () => {
   test("individually backfills every sub-field, not just guardianGrudgeFiredCount/freeRewardsTakenCount", () => {
-    // narrativeCounters already exists (so the whole-object fallback is skipped) but predates
-    // artifactsSacrificed/altarPaymentsCount/guardianFightsSkipped — a real shape from before those
-    // fields were added. Left `undefined`, the next `+= 1` on any of them would compute NaN,
-    // permanently breaking that counter's threshold checks for the run.
+    // narrativeCounters exists but lacks the later sub-fields; left undefined, the next `+= 1` makes NaN.
     const legacy = {
       party: [],
       inventory: {},
@@ -338,7 +333,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
     const founder = game.ctx.monsters.find((m) => m.id === room.monsterIds[0])!;
     founder.hp = 1;
     const vanguard = game.state.party[0]!;
-    vanguard.speed = founder.speed + 1; // this test is about the victory bookkeeping, not turn order: the killing blow must land first
+    vanguard.speed = founder.speed + 1; // the killing blow must land first
     const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
     const founderRef: CombatantRef = { kind: "monster", id: founder.id };
     expect(game.queue(vanguardRef, "slash", [founderRef])).toBeNull();

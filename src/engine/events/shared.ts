@@ -19,53 +19,38 @@ export function closeEvent(state: GameState): void {
   const room = getRoom(state.floor, state.currentRoomId);
   room.cleared = true;
   state.activeEvent = null;
-  // Mark personified events (10-event-narrative.md §10.2) as met only once the visit fully closes,
-  // not on room entry — currentEventDescription() re-derives the same alreadyMet check on every
-  // re-render within a visit, so marking it "met" any earlier would flip the header to the "return"
-  // text mid-way through the player's 1st ever visit.
+  // Marked only once the visit closes: the events screen re-derives alreadyMet on every re-render, so
+  // marking it earlier would switch to the return text mid-way through the first visit.
   if (room.rolledEventId) {
     const event = getEvent(room.rolledEventId);
     if (event.returnDescription && !state.metNarrativeNpcIds.includes(event.id)) {
       state.metNarrativeNpcIds.push(event.id);
     }
-    // Part C.4/C.5 — spent once-lifetime events never roll again this run.
     if (event.onceLifetime && !state.firedOnceEventIds.includes(event.id)) {
       state.firedOnceEventIds.push(event.id);
     }
-    // Part C.1 — generic fallback outcome tag; a handler that already wrote a specific tag
-    // (bloodAltarPay/Leave, collapsedFloorAttempt/Leave, sacrifice) is never overwritten.
     if (state.eventOutcomes[event.id] === undefined) {
       state.eventOutcomes[event.id] = "resolved";
     }
-    // §8.15 Chain 4 — counts every resolution of a zero-cost event, regardless of chain state.
     if (event.freeTake) {
       state.narrativeCounters.freeRewardsTakenCount += 1;
     }
-    // 03-survival-stats.md's Camp Reflection — fully independent tracking, incremented alongside
-    // (not instead of) the writes above, for every event except open-chest.
     if (LORE_EXPOSURE_EVENT_IDS.has(event.id)) {
       state.loreExposureCount += 1;
     }
-    // Part F.2 — the payoff persists across runs, not just this one's firedOnceEventIds.
     if (event.id === "the-one-who-stayed") {
       markRetiredCharacterEventShown();
     }
   }
 }
 
-/**
- * §10.5 — call after any action that might have just closed an event room. Safe to call
- * unconditionally, including after actions that DON'T close the event (e.g. a Gambling Den round
- * that continues rather than ending the visit): it no-ops until `room.cleared` is actually true, so
- * it never consumes an `rng` draw when it isn't applicable.
- */
+/** Safe to call after any event action: until the room is cleared it no-ops and draws no rng. */
 export function maybeTriggerReflection(state: GameState, ctx: EngineContext): void {
   if (state.pendingReflection) return;
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.cleared || !room.rolledEventId) return;
   const event = getEvent(room.rolledEventId);
-  // An event's reflection may describe its core action having happened (a payment taken, a
-  // guardian beaten); `reflectionRequiresOutcome` skips it when the party merely left.
+  // A reflection may describe the event's core action; `reflectionRequiresOutcome` skips it when the party merely left.
   if (!event.reflection) return;
   if (event.reflectionRequiresOutcome && state.eventOutcomes[event.id] !== event.reflectionRequiresOutcome) return;
   const alreadySeen = event.id in state.eventReflectionStances;
@@ -77,15 +62,10 @@ function isTier2Escalated(state: GameState, counter: number, threshold2: number)
   return counter >= threshold2 && state.floor.depth >= BALANCE.events.chainTier2MinFloorDepth;
 }
 
-/** 10-event-narrative.md Part C.3 — same shape as `isTier2Escalated`, one gate deeper. */
 function isTier3Escalated(state: GameState, counter: number, threshold3: number): boolean {
   return counter >= threshold3 && state.floor.depth >= BALANCE.events.chainTier3MinFloorDepth;
 }
 
-/** Picks the reflection prompt for the event pending in `state.pendingReflection` — the tier-3
-    escalated variant (Part C.3) if that's what just resolved, else tier-2 (11-world-bible.md
-    §11.13), else the tier-1 escalated variant if this resolution was a §10.3 chain-escalated one,
-    otherwise the base prompt. */
 export function pickReflectionPrompt(state: GameState, room: Room, event: EventDefinition): string | undefined {
   if (!event.reflection) return undefined;
 

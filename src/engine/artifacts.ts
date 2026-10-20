@@ -5,20 +5,19 @@ import { getClass, passiveRankDef } from "../data/classes";
 import { getStatusEffect } from "../data/statusEffects";
 import type { Rng } from "./rng";
 
-/** The part of `AbilityEffect` that isn't `AbilityOnlyEffect` — structurally identical to `Exclude<ArtifactEffect, { kind: "curseAggroBoost" }>`, so it's safely usable wherever `ArtifactEffect[]` is expected below. */
+/** Structurally identical to `Exclude<ArtifactEffect, { kind: "curseAggroBoost" }>`, so usable wherever `ArtifactEffect[]` is expected. */
 type AbilitySharedEffect = Exclude<AbilityEffect, AbilityOnlyEffect>;
 
 function isArtifactCompatible(effect: AbilityEffect): effect is AbilitySharedEffect {
   return !(effect.kind === "statBoost" && effect.stat === "aggro");
 }
 
-/** The character's 1 equipped Ability's effects that share a kind with `ArtifactEffect` — everything except the Ability-only `statBoost` on `aggro` (handled separately in `party.ts`). Reusing the exact `ArtifactEffect` shape here is what lets every sum function below (and every engine hook in `07-items-artifacts.md` §7.2) apply to Abilities with zero changes to their own logic — `11-abilities.md` §11.1. */
+/** Everything but the Ability-only aggro `statBoost`, in `ArtifactEffect` shape so every artifact hook applies to Abilities unchanged. */
 function abilitySharedEffects(character: Character): ArtifactEffect[] {
   if (!character.equippedAbilityId) return [];
   return getAbility(character.equippedAbilityId).effects.filter(isArtifactCompatible);
 }
 
-/** Every equipped effect paired with the name of the Artifact/Ability it came from (for log lines). */
 function equippedEntries(character: Character): { effect: ArtifactEffect; sourceName: string }[] {
   const fromArtifacts = character.equippedArtifactIds.flatMap((id) => {
     const artifact = getArtifact(id);
@@ -33,12 +32,8 @@ function equippedEffects(character: Character): ArtifactEffect[] {
   return equippedEntries(character).map((e) => e.effect);
 }
 
-/** Every stat an Ability's `statBoost` can name: the 6 it shares with Artifacts plus `aggro`. */
 export type AbilityStatBoostTarget = Extract<AbilityEffect, { kind: "statBoost" }>["stat"];
 
-/** `effect.amount` unless `effect.minPercent` is set and `base * minPercent / 100` has the larger magnitude — see
- *  the `statBoost`/`healOnKill` doc comments on `ArtifactEffect`. `base` is the caller-supplied reference value
- *  (a stat's pre-equipment value for `statBoost`, the bearer's max HP for `healOnKill`). */
 function amountWithFloor(base: number, effect: { amount: number; minPercent?: number }): number {
   if (!effect.minPercent) return effect.amount;
   const floor = Math.round((base * effect.minPercent) / 100);
@@ -46,13 +41,8 @@ function amountWithFloor(base: number, effect: { amount: number; minPercent?: nu
 }
 
 /**
- * The equipped Ability's own `statBoost` on `stat` — 0 if no Ability is equipped or it doesn't touch
- * `stat`. It is the only way to tell an Ability's contribution apart from an Artifact's, since
- * `artifactStatBoostSum` deliberately sums both together; `party.ts` also calls it for `aggro`, the one stat
- * only an Ability can boost. `base` is `stat`'s own class-base-plus-level value (before Artifact/Ability/
- * status/Exhausted) — the `minPercent` floor's reference point; pass the constant `cls.baseAggro`/`cls.baseSpeed`
- * for those 2 (never scale with level, so no ability there needs `minPercent` in practice, but the reference
- * still has to be right).
+ * The only way to tell an Ability's share from an Artifact's, which `artifactStatBoostSum` sums together.
+ * `base` is the stat's class-base-plus-level value, the `minPercent` reference.
  */
 export function abilityWidenedStatBoost(character: Character, stat: AbilityStatBoostTarget, base: number): number {
   if (!character.equippedAbilityId) return 0;
@@ -61,17 +51,15 @@ export function abilityWidenedStatBoost(character: Character, stat: AbilityStatB
     .reduce((sum, e) => sum + amountWithFloor(base, e), 0);
 }
 
-/** Two independent chances (percents) combined into the chance that at least one succeeds. */
+/** Percent chance that at least one of two independent percent chances succeeds. */
 export function combinePercents(a: number, b: number): number {
   return a + b - (a * b) / 100;
 }
 
-/** The bearer's `alwaysHit` chance (a percent, e.g. `20` for 20%) across every equipped Artifact and Ability, each source an independent chance — 0 if none carries it. */
 export function alwaysHitChance(character: Character): number {
   return equippedEffects(character).reduce((total, e) => (e.kind === "alwaysHit" ? combinePercents(total, e.chance) : total), 0);
 }
 
-/** The bearer's `debuffResist` percent across every equipped Artifact and Ability; each source scales the land chance down on its own, so they combine as `1 − Π(1 − pᵢ)` — 0 if none carries it. */
 export function debuffResistPercent(character: Character): number {
   return equippedEffects(character).reduce((total, e) => (e.kind === "debuffResist" ? combinePercents(total, e.percent) : total), 0);
 }
@@ -84,9 +72,7 @@ function sumOf<K extends ArtifactEffect["kind"]>(character: Character, kind: K, 
 
 type StatBoostStat = Extract<ArtifactEffect, { kind: "statBoost" }>["stat"];
 
-/** `base` is each stat's own class-base-plus-level value (`characterBaseStats`; `cls.baseSpeed` for speed) — the
- *  `minPercent` floor's reference point for any Ability `statBoost` in the mix (Artifacts never set `minPercent`,
- *  so theirs always fall through to the flat `amount`). */
+/** `base` is each stat's class-base-plus-level value, the `minPercent` reference. Artifacts never set `minPercent`. */
 export function artifactStatBoostSum(character: Character, base: Record<StatBoostStat, number>): Record<StatBoostStat, number> {
   const sums: Record<StatBoostStat, number> = { attack: 0, defense: 0, maxHp: 0, maxMp: 0, magicPower: 0, speed: 0 };
   for (const effect of equippedEffects(character)) {
@@ -106,7 +92,6 @@ export function rollDodge(character: Character, rng: Rng): boolean {
   return dodgePercent > 0 && rng.chance(dodgePercent / 100);
 }
 
-/** The first equipped `poisonOnHit` effect whose roll lands, so the caller applies the status and duration that effect declares. */
 export function rollPoisonOnHit(character: Character, rng: Rng): Extract<ArtifactEffect, { kind: "poisonOnHit" }> | undefined {
   return equippedEffects(character).find((e): e is Extract<ArtifactEffect, { kind: "poisonOnHit" }> => e.kind === "poisonOnHit" && rng.chance(e.chance / 100));
 }
@@ -119,7 +104,7 @@ export function totalLifestealPercent(character: Character): number {
   return sumOf(character, "lifesteal", "percent");
 }
 
-/** `baseMaxHp` is the bearer's class-base-plus-level max HP (`characterBaseStats`), the `minPercent` floor's reference. */
+/** `baseMaxHp` (class base plus level) is the `minPercent` reference. */
 export function totalHealOnKill(character: Character, baseMaxHp: number): number {
   return equippedEffects(character)
     .filter((e): e is Extract<ArtifactEffect, { kind: "healOnKill" }> => e.kind === "healOnKill")

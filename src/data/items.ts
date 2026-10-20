@@ -19,7 +19,7 @@ export function signed(amount: number): string {
   return `${amount >= 0 ? "+" : ""}${amount}`;
 }
 
-/** An `applyStatusEffect` effect's `amount`/`minPercent` override the status's own magnitude (resolver.ts), so the summary shows those. */
+/** The effect's `amount`/`minPercent` override the status's own magnitude (resolver.ts), so the summary shows those. */
 function statusEffectSummary(statusEffectId: Id, effect: SkillEffect): string {
   const status = getStatusEffect(statusEffectId);
   const body = formatStatusEffectMechanics(status, { amount: effect.amount, minPercent: effect.minPercent });
@@ -63,7 +63,6 @@ const TARGET_NOTE: Record<string, string> = {
   allEnemies: t("item.targetNoteAllEnemies"),
 };
 
-/** What the item does, without who it can be used on. */
 export function describeItemEffects(item: ItemDefinition): string {
   if (item.effects.length === 0) return t("item.effectNone");
   return item.effects.map(itemEffectSummary).join(". ") + ".";
@@ -81,7 +80,6 @@ for (const item of ITEMS) {
   if (item.archetypeIds?.length && item.effects.length > 0) throw new Error(`data/items.json: trophy "${item.id}" must have no effects`);
 }
 
-/** Trophies (items with `archetypeIds`) drop only from their own monsters; everything else is the general pool. */
 const TROPHIES = ITEMS.filter((i) => i.archetypeIds?.length);
 const GENERAL_ITEMS = ITEMS.filter((i) => !i.archetypeIds?.length);
 

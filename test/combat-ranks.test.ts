@@ -27,9 +27,7 @@ describe("combat round structure", () => {
   test("higher speed acts before lower speed in the resolution phase", () => {
     const { ctx } = makeCtx();
 
-    // lesser-golem (Golem race, 40% physical resist) rather than skeleton-guard (its Skeletal
-    // subRace is now 30% WEAK to physical) — this test is about turn order surviving to see both
-    // characters act, not about how many hits it takes to down the monster.
+    // A physical-resistant monster, so it survives long enough for both characters to act.
     const tanky = spawnInto(ctx, "lesser-golem");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     for (const ref of livingCharacterRefs(combat, ctx)) {
@@ -188,11 +186,10 @@ describe("Archer Overwatch (interrupt)", () => {
 
     resolveRound(combat, ctx);
 
-    // Archer's own fear is 0 at combat start, so rollHits always succeeds — the shot lands.
+    // Archer's fear is 0 at combat start, so the shot always lands.
     expect(rat.hp).toBeLessThan(hpBefore);
     expect(archer.activeStatusEffects.some((s) => s.statusEffectId === "overwatched")).toBe(false);
     expect(combat.log.some((l) => l.text.includes("Overwatch"))).toBe(true);
-    // runMonsterTurn never ran for the rat this round, so it never logged an action of its own.
     expect(combat.log.some((l) => l.text.startsWith(`${rat.name} attacks`) || l.text.startsWith(`${rat.name} uses`))).toBe(false);
   });
 
@@ -235,7 +232,6 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     // Its 1st action comes right after the cast, still in round 1.
     expect(clone.actionsTaken).toBe(1);
 
-    // Round 2: the clone takes its 2nd action and expires.
     resolveRound(combat, ctx);
     expect(clone.actionsTaken).toBe(2);
     expect(livingSummonRefs(combat, ctx)).toHaveLength(0);
@@ -244,7 +240,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
   test("Shadow Clone's maxHp is flat (doesn't scale with the Ninja's own maxHp), and its aggro is a flat 20", () => {
     const { ctx } = makeCtx();
     const ninja = ctx.party.find((p) => p.classId === "ninja")!;
-    ninja.maxHp = 999; // if maxHp scaling ever crept back in, the clone's maxHp would move with this
+    ninja.maxHp = 999; // the clone's maxHp must not follow this
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
@@ -300,7 +296,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     resolveRound(combat, ctx);
 
     const clone = getActorByRef(livingSummonRefs(combat, ctx)[0]!, ctx) as Summon;
-    clone.hp = 0; // simulates being killed by enemy damage before its 2nd action
+    clone.hp = 0; // killed before its 2nd action
     const hpBeforeDeath = rat.hp;
 
     resolveRound(combat, ctx);
@@ -340,8 +336,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     queueAction(combat, self, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
-    // Summons are saved with the run, dead ones included, while the id counter starts over with the
-    // process: the leftover below holds the id a freshly started process would hand out next.
+    // Saved summons keep dead entries while the id counter restarts per process: this leftover holds the id a fresh process would hand out next.
     const first = ctx.summons[0]!;
     const nextId = first.id.replace(/\d+$/, (n) => String(Number(n) + 1));
     ctx.summons.push({ ...first, id: nextId, hp: 0, actionsTaken: first.maxActions });
@@ -367,7 +362,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     queueAction(combat, { kind: "character", id: ninja.id }, "shadow-strike", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
-    expect(ctx.summons.some((s) => s.hp > 0)).toBe(true); // e.g. a save written mid-fight, then resumed in a later room
+    expect(ctx.summons.some((s) => s.hp > 0)).toBe(true); // as after a mid-fight save resumed in a later room
 
     const next = spawnInto(ctx, "dungeon-rat");
     const nextCombat = startCombat("r2", [next.id], ctx, false);
@@ -381,9 +376,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     const ninja = game.state.party.find((p) => p.classId === "ninja")!;
     ninja.mp = ninja.maxMp;
     ninja.cooldownsRemaining["shadow-strike"] = 0;
-    // Summon-casting skills no longer get the isBuff turn-priority bonus (they resolve in plain
-    // speed order — see turnOrderSortKey), so the cast must actually be the fastest action this
-    // round for the clone to exist before the 1-hp rat dies to someone else's queued attack.
+    // Summon casts resolve in plain speed order, so the cast must be fastest for the clone to exist before the 1-hp rat dies.
     ninja.speed = 999;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;
@@ -403,8 +396,6 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     }
     game.resolve();
 
-    // The rat dies this same round (1 hp), before the freshly-spawned clone ever gets a turn of its
-    // own — so it's still hp > 0 and actionsTaken 0 when combat.phase flips to "over".
     expect(game.state.combat?.phase).toBe("over");
     expect(game.state.combat?.outcome).toBe("victory");
     const clone = game.ctx.summons.find((s) => s.ownerId === ninja.id)!;
@@ -422,7 +413,7 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
     ninja.cooldownsRemaining["shadow-strike"] = 0;
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 99999;
-    rat.attack = 0; // never actually deals the killing blow — the wipe below is simulated directly
+    rat.attack = 0; // the wipe below is simulated directly
     game.ctx.monsters.push(rat);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.monsterIds = [rat.id];
@@ -437,14 +428,13 @@ describe("Ninja Shadow Clone (summon combatant)", () => {
       game.queue(ref, skillId, targets);
     }
     game.resolve();
-    expect(game.state.combat?.phase).not.toBe("over"); // the rat survives, combat is still ongoing
+    expect(game.state.combat?.phase).not.toBe("over");
 
     const clone = game.ctx.summons.find((s) => s.ownerId === ninja.id)!;
     expect(clone).toBeDefined();
     expect(clone.hp).toBeGreaterThan(0);
 
-    // Same helper `postMoveCheck`/`resolve()`'s defeat branch call internally on a real party wipe
-    // (test/ability-effects.test.ts's `wipeParty` uses the same pattern).
+    // What the defeat branch of `postMoveCheck`/`resolve()` does on a real wipe.
     for (const c of game.state.party) {
       c.hp = 0;
       c.isAlive = false;
@@ -695,8 +685,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(err1).toBeNull();
     resolveRound(combat, ctx);
 
-    // Summon Goblin has a cooldown, so clear it to actually exercise a 2nd cast this test — a
-    // queueAction call that silently no-ops on cooldown would make this test pass for the wrong reason.
+    // Clear the cooldown, or the 2nd queueAction would silently no-op and the test pass for the wrong reason.
     summoner.cooldownsRemaining["summon-goblin"] = 0;
     summoner.mp = summoner.maxMp;
     const err2 = queueAction(combat, self, "summon-goblin", [self], ctx);
@@ -705,8 +694,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
 
     expect(ctx.summons.filter((s) => s.hp > 0 && s.archetypeId === "goblin-thrower")).toHaveLength(1);
 
-    // The stale, dismissed entry must not shadow the live one when resolved by combatant ref
-    // (each summon gets an id no entry in ctx.summons uses — see `nextSummonId` in combat.ts).
+    // The dismissed entry must not shadow the live one when resolved by ref.
     const summonRef = combat.combatants.find((c) => c.ref.kind === "summon")!.ref;
     const resolved = getActorByRef(summonRef, ctx) as Summon;
     expect(resolved.hp).toBeGreaterThan(0);
@@ -721,7 +709,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
     queueAction(combat, self, "summon-goblin", [self], ctx);
-    resolveRound(combat, ctx); // action 1 — Goblin Thrower is faster than the Summoner, so it acts the moment it spawns
+    resolveRound(combat, ctx); // action 1: Goblin Thrower outspeeds the Summoner, so it acts on spawn
     resolveRound(combat, ctx); // action 2
     resolveRound(combat, ctx); // action 3 — goblin-thrower's maxActions, expires this round
     resolveRound(combat, ctx); // no-op: goblin already expired and pruned
@@ -731,8 +719,6 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     expect(goblin.hp).toBe(0);
     expect(combat.combatants.some((c) => c.ref.kind === "summon")).toBe(false);
 
-    // A different-type summon right after must not see the expired goblin as still "owned" —
-    // it should be added cleanly, not treated as if the owner were already at any cap.
     summoner.cooldownsRemaining["summon-spirit"] = 0;
     summoner.mp = summoner.maxMp;
     queueAction(combat, self, "summon-spirit", [self], ctx);
@@ -749,9 +735,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     summoner.unlockedSkillIds.push("summon-golem");
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
-    // Goblin Thrower is faster than the Summoner, so it now gets an extra immediate action the round
-    // it's cast (see `runCharacterTurn`'s summon-speed check) — high HP keeps that from ending combat
-    // early and skipping the Summoner's later turns, which is what this test is actually about.
+    // Goblin Thrower acts the round it is cast; high HP keeps the rat alive for the Summoner's later turns.
     rat.hp = 500;
     rat.maxHp = 500;
     const combat = startCombat("r1", [rat.id], ctx, false);
@@ -765,7 +749,6 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     let active = ctx.summons.filter((s) => s.hp > 0);
     expect(active.map((s) => s.archetypeId).sort()).toEqual(["goblin-thrower", "healer-spirit"]);
 
-    // A 3rd different type, still under the same rank-2 cap of 2, evicts the oldest (goblin).
     queueAction(combat, self, "summon-golem", [self], ctx);
     resolveRound(combat, ctx);
     active = ctx.summons.filter((s) => s.hp > 0);
@@ -784,9 +767,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     resolveRound(combat, ctx);
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
 
-    // Computed directly from the cast formula + the passive's rank-3 bonus, not by comparing against
-    // an unbuffed instance at a different level — the Summoner's own maxHp/magicPower (the formula's
-    // sourceStat) also grows with level, which would confound a simple before/after ratio.
+    // From the cast formula, not a before/after ratio: the Summoner's sourceStat also grows with level.
     const cast = getSummonCast("summon-goblin");
     const skillRank = effectiveSkillRank(getSkill("summon-goblin"), summoner.level) || 1;
     const maxHpPercent = cast.stat.maxHp.percent as number;
@@ -832,8 +813,8 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     resolveRound(combat, ctx); // spirit spawns mid-round, doesn't act yet
 
     const goblin = ctx.summons.find((s) => s.archetypeId === "goblin-thrower")!;
-    goblin.hp = 1; // far lower HP% than any character — before the fix this was a valid (and often winning) heal target
-    goblin.actionsTaken = 0; // keep it from expiring (unrelated to this test) before the Spirit's turn below
+    goblin.hp = 1; // lowest HP% on the field, so it would win any heal that may target summons
+    goblin.actionsTaken = 0; // keep it from expiring before the Spirit's turn
     vanguard.hp = Math.max(1, Math.round(vanguard.maxHp * 0.5));
 
     const logLengthBeforeSpiritTurn = combat.log.length;
@@ -841,8 +822,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const newLogEntries = combat.log.slice(logLengthBeforeSpiritTurn);
     const healEntries = newLogEntries.filter((l) => l.kind === "heal");
     expect(healEntries.length).toBeGreaterThan(0);
-    // Checked by log target name, not goblin.hp — attack=0 doesn't make the rat harmless (damage
-    // floors at 1), so a heal-unrelated hit landing on the goblin the same round must not fail this.
+    // By log name, not goblin.hp: damage floors at 1, so a hit on the goblin this round must not fail this.
     expect(healEntries.some((l) => l.text.includes(goblin.name))).toBe(false);
   });
 

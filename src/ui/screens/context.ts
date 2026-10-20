@@ -24,11 +24,7 @@ export function advanceFloorWithAutoSave(ctx: ScreenContext): void {
   if (ctx.game.state.floor.depth > depthBefore) saveRun(ctx.game);
 }
 
-/**
- * A still-pending artifact decision must resolve before the floor advances — otherwise the new
- * floor's entry-room ambush could bury it under a fresh fight. If one is pending, show it and leave
- * `pendingFloorAdvance` set; the artifact-decision screen calls this again once resolved.
- */
+/** A pending artifact decision resolves before the floor advances, or the new floor's entry ambush could bury it; that screen calls this again. */
 export function finishVictorySequence(ctx: ScreenContext): void {
   if (ctx.game.state.pendingArtifactDecision) {
     ctx.syncUiToGameState();
@@ -41,11 +37,7 @@ export function finishVictorySequence(ctx: ScreenContext): void {
   ctx.syncUiToGameState();
 }
 
-/**
- * Post-victory order: artifact decision, then camp offer, then floor advance. A pending artifact
- * decision takes priority so the player judges it before being asked to spend an Exploration Kit;
- * the camp-offer flag is left untouched so it still fires once resolved.
- */
+/** The camp-offer flag is left set so it still fires once a pending artifact decision resolves. */
 export function proceedAfterVictory(ctx: ScreenContext): void {
   if (ctx.game.state.pendingArtifactDecision) {
     ctx.syncUiToGameState();

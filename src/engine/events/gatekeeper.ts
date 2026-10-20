@@ -15,7 +15,6 @@ for (const effect of getStatusEffect(BALANCE.gatekeeper.blessingStatusId).perTur
   }
 }
 
-/** Records the answer given at the gate. Leaving the coins takes the toll and arms the blessing for floor 1's first rooms; a party short of the toll can only keep them. */
 export function answerGatekeeper(state: GameState, answer: "paid" | "refused"): PartyActionError | null {
   if (answer === "paid" && state.coins < BALANCE.gatekeeper.tollCoins) return { reason: t("errors.notEnoughCoins") };
   state.gatekeeperAnswer = answer;
@@ -25,11 +24,7 @@ export function answerGatekeeper(state: GameState, answer: "paid" | "refused"): 
   return null;
 }
 
-/**
- * Counts `room` against the blessing as the party enters it, before anything in the room happens.
- * Rest rooms don't count. The guard (boss) room ends the blessing outright and is never blessed.
- * Returns the line to show when the blessing ends here, or null.
- */
+/** Call on entry, before anything in the room happens. Returns the line to show when the blessing ends here. */
 export function countBlessedRoom(state: GameState, room: Room): string | null {
   if (room.type === "rest") return null;
   const hadRoomsLeft = state.blessingRoomsLeft > 0;
@@ -48,7 +43,7 @@ export function countBlessedRoom(state: GameState, room: Room): string | null {
   return null;
 }
 
-/** A fight starting in the blessed room starts with the blessing on every living party member; it ends with the fight, like the barter buffs. */
+/** The blessing expires with the fight, like any buff. */
 export function applyBlessing(state: GameState, ctx: EngineContext, roomId: Id): void {
   if (state.blessedRoomId !== roomId) return;
   const quiet: LogEntry[] = [];

@@ -13,18 +13,11 @@ import { SAVE_DIR } from "./paths";
 import { DEV_MODE } from "./devMode";
 import pkg from "../../package.json";
 
-/** Save-format version, stamped on every save at write time. Tied to the app's own release version (package.json). */
 export const APP_VERSION: string = pkg.version;
 
-/** Sentinel for a save file with no `saveVersion` field (written before this versioning feature existed). */
 export const UNVERSIONED = "unversioned";
 
-/**
- * The oldest save version the current code still loads. Every version from here up to `APP_VERSION`
- * loads, upgraded by `VERSION_MIGRATIONS` (migration.ts); anything older, newer, unversioned or not an
- * x.y.z version is hidden from Continue (file stays on disk, untouched). Raise it only to drop support
- * for older saves.
- */
+/** Saves outside this..APP_VERSION are hidden from Continue but left on disk. Raise only to drop support for older saves. */
 export const OLDEST_LOADABLE_SAVE_VERSION = "1.1.0";
 
 export function isSaveVersionAllowed(version: string | undefined): boolean {
@@ -41,19 +34,15 @@ export interface SaveMeta {
   floorDepth: number;
   partyLevel: number;
   partyClassIds: Id[];
-  /** Absent on saves written before this versioning feature existed. */
   saveVersion?: string;
-  /** Absent on saves written before runId existed. */
   runId?: string;
-  /** Set only by `writeDevDumpSave` (tools/dev-save-dump). Gates loading — see `isDevDumpAllowed`. */
+  /** Set only by `writeDevDumpSave`; see `isDevDumpAllowed`. */
   devDump?: true;
-  /** Seconds played across every session of the run, up to this save. */
+  /** Seconds, across every session of the run. */
   playTime: number;
 }
 
-/** A `devDump` save only loads/lists in dev mode — a release binary can never load one, hard-gated
-    at compile time via `DEV_MODE`. `devMode` is overridable only so tests can exercise the blocked
-    branch; every real call site relies on the default. */
+/** `devMode` is a parameter only so tests can exercise the blocked branch. */
 export function isDevDumpAllowed(meta: Pick<SaveMeta, "devDump">, devMode: boolean = DEV_MODE): boolean {
   return !meta.devDump || devMode;
 }
@@ -63,11 +52,10 @@ export interface SaveFile {
   state: GameState;
   monsters: Monster[];
   rngState: number;
-  /** Absent on saves written before this field existed — treated as `[]` on load (`gameFromSave`). */
+  /** Absent means `[]`. */
   summons?: Summon[];
 }
 
-/** `meta` is null for an empty slot (or one whose file can't be loaded — see `listSlots`). */
 export interface SlotEntry {
   id: Id;
   meta: SaveMeta | null;
@@ -77,9 +65,7 @@ function ensureSaveDir(): void {
   if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
 }
 
-// `id` ends up straight in a filename here — reject anything else so a caller passing an untrusted
-// id (e.g. tools/dev-save-dump/server.ts's user-supplied save name) can't write or read outside
-// SAVE_DIR via a path-traversal id.
+// `id` goes straight into a filename and can be user input (dev save dump): block path traversal.
 const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
 
 function savePath(id: Id): string {
@@ -114,14 +100,11 @@ function writeSave(game: Game, id: Id, devDump?: true): SaveMeta {
   return save.meta;
 }
 
-/** Writes the run to its slot. A run with no slot (tests, dev tools) isn't persisted. */
 export function saveRun(game: Game): SaveMeta | null {
   if (!game.currentSaveSlot) return null;
   return writeSave(game, game.currentSaveSlot);
 }
 
-/** Only entry point that writes a `devDump` save (tools/dev-save-dump) — refuses outside dev mode
-    so the tool can't accidentally produce a save a release binary would then also refuse to load. */
 export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
   if (!DEV_MODE) throw new Error("writeDevDumpSave is only available in dev mode");
   return writeSave(game, id, true);
@@ -141,8 +124,7 @@ function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
   return catalog.some((entry) => entry.id === id);
 }
 
-// Skips inventory item-id existence on purpose — migrateGameState already prunes unknown ids on
-// load, so checking here would hide old-but-valid saves that migration would fix cleanly.
+// Inventory item ids aren't checked: migrateGameState prunes unknown ones.
 export function isSaveStateValid(state: GameState): boolean {
   if (state.party.length !== BALANCE.party.size) return false;
   for (const c of state.party) {
@@ -152,7 +134,7 @@ export function isSaveStateValid(state: GameState): boolean {
     if (!Number.isFinite(c.maxHp) || c.maxHp <= 0) return false;
     if (!Number.isFinite(c.mp) || c.mp < 0 || c.mp > c.maxMp) return false;
     if (!Number.isFinite(c.maxMp) || c.maxMp < 0) return false;
-    // Debuffs (e.g. Webbed: -20 speed) can legitimately push these negative — only non-finite is invalid.
+    // Debuffs can push these negative; only non-finite is invalid.
     if (!Number.isFinite(c.attack) || !Number.isFinite(c.defense) || !Number.isFinite(c.magicPower) || !Number.isFinite(c.aggro) || !Number.isFinite(c.speed)) {
       return false;
     }
@@ -179,8 +161,7 @@ export function isSaveStateValid(state: GameState): boolean {
   return true;
 }
 
-/** Always one entry per slot. A slot whose file is unreadable, from a disallowed version, a dev dump
-    outside dev mode, or fails validation reads as empty (the file itself is left on disk). */
+/** A slot that can't be loaded reads as empty; its file stays on disk. */
 export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
     try {
@@ -201,11 +182,8 @@ export function loadSave(id: Id): SaveFile {
   return JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
 }
 
-// A save written before `summons` existed on `SaveFile`, or holding a summon `migrateSummons` dropped,
-// would leave `state.combat` pointing at a summon `getActorByRef` can never resolve, throwing
-// "Unknown summon" the instant that ref is looked up. Rather than crash, drop the dangling refs — the
-// summon silently doesn't come back, same as if it had expired the moment the save was made, so the
-// buffs that last only while it stands (`linkedSummonId`) go with it.
+// A ref to a summon that wasn't saved (or that `migrateSummons` dropped) would make `getActorByRef`
+// throw. Drop it as if the summon had expired, along with the buffs linked to it.
 function pruneOrphanedSummonRefs(state: GameState, summons: Summon[]): void {
   const validIds = new Set(summons.map((s) => s.id));
   for (const character of state.party) {
@@ -219,7 +197,7 @@ function pruneOrphanedSummonRefs(state: GameState, summons: Summon[]): void {
   combat.queuedActions = combat.queuedActions.filter((a) => !isOrphaned(a.actor)).map((a) => ({ ...a, targets: a.targets.filter((t) => !isOrphaned(t)) }));
 }
 
-// Binds the loaded run to the slot it was read from. Re-validates rather than trusting the caller pre-filtered.
+// Re-validates rather than trusting the caller pre-filtered.
 export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   if (!isSaveVersionAllowed(save.meta.saveVersion)) throw new Error(`Save version not allowed: ${save.meta.saveVersion ?? UNVERSIONED}`);
   if (!isDevDumpAllowed(save.meta)) throw new Error("Dev-dump saves can only be loaded in dev mode");

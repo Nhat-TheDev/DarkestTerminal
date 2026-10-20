@@ -5,7 +5,6 @@ import type { GeneratorSpec } from "../types";
 
 const signed = (value: number) => (value > 0 ? `+${formatNumber(value)}` : formatNumber(value));
 
-/** One per-turn effect of a status: a damage or heal tick, or a stat change. */
 function perTurn(effect: SkillEffect): string {
   const percent = effect.maxHpPercent === undefined ? "" : `${formatNumber(effect.maxHpPercent)}% max HP`;
   const scaling = effect.offenseMultiplierPercent === undefined ? "" : ` + ${formatNumber(effect.offenseMultiplierPercent)}% caster MAG`;
@@ -25,12 +24,10 @@ function perTurn(effect: SkillEffect): string {
 
 const SKIPPED = new Set(["id", "name", "description", "perTurnEffects"]);
 
-/** A status field with no wording of its own: `name value`, objects as `key value` pairs. */
 function field(key: string, value: unknown): string {
   return value === true ? key : `${key} ${showValue(value)}`;
 }
 
-/** The statuses named in `ids`, in that order: what they do each turn and every special field they carry. */
 export const statusEffects: GeneratorSpec = {
   source: "`data/status-effects.json`",
   args: ["ids"],

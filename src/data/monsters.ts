@@ -33,15 +33,7 @@ export function getMonsterSkill(id: string): SkillDefinition {
   return found;
 }
 
-/**
- * An action-weight key names a skill and nothing else, so a typo used to be invisible: nothing
- * resolved it, and the monster quietly spent the rest of its life on basic attacks. Checked once
- * for the whole catalog, here, where the error can name the archetype that caused it.
- *
- * `roles` is the single source of truth for where an archetype can appear:
- * ["normal"] = trash, ["normal","elite","boss"] = triple-role,
- * ["elite","boss"] = guard-only, ["boss"] + finalBoss = scripted final boss.
- */
+/** An action-weight key nothing resolves would silently leave the monster on basic attacks, so it must name a declared skill. */
 export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): void {
   const validTiers: MonsterTier[] = ["normal", "elite", "boss"];
   let finalBossCount = 0;
@@ -85,7 +77,7 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
     }
     const declared = new Set(archetype.skillIds);
     for (const id of archetype.executeSkillId ? [...archetype.skillIds, archetype.executeSkillId] : archetype.skillIds) {
-      getMonsterSkill(id); // throws on an unknown id
+      getMonsterSkill(id);
     }
     for (const [tier, weights] of Object.entries(archetype.actionWeights ?? {})) {
       for (const key of Object.keys(weights)) {
@@ -109,15 +101,12 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
 assertMonsterDataConsistent(MONSTER_ARCHETYPES);
 assertRaceDataConsistent(MONSTER_ARCHETYPES);
 
-/** Ordinary combat rooms: every archetype with a normal kit. */
 export const COMBAT_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("normal"));
 
-/** Guard rooms: every archetype able to act as elite and boss, excluding the scripted final boss. */
 export const GUARD_ROOM_ARCHETYPES = MONSTER_ARCHETYPES.filter(
   (a) => a.roles.includes("elite") && a.roles.includes("boss") && !a.finalBoss
 );
 
-/** The single scripted final boss. */
 export const FINAL_BOSS_ARCHETYPE = MONSTER_ARCHETYPES.find((a) => a.finalBoss)!;
 
 let monsterCounter = 0;
@@ -139,9 +128,6 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
   const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
   const depthBonus = monsterDepthBuffPercent(floorDepth);
 
-  // monsterType's multiplier scales only the depth-growth curve — same rule as a class's growth
-  // weight (classGrowthBonus) — so `baseX` itself never gets touched by it. Everything else
-  // (tier, depth buff, race/subRace/traits) still scales the whole base+growth total.
   const weightedGrowthMaxHp = monsterGrowthBonus("maxHp", floorDepth, typeMultiplier.maxHp);
   const weightedGrowthAttack = monsterGrowthBonus("attack", floorDepth, typeMultiplier.attack);
   const weightedGrowthDefense = monsterGrowthBonus("defense", floorDepth, typeMultiplier.defense);

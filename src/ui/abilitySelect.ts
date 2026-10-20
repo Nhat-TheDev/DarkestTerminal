@@ -8,18 +8,12 @@ import { t } from "../data/strings";
 
 const PAGE_SIZE = 9;
 
-/** Every `common` ability, plus every non-`common` id currently in the persistent profile, minus whatever the party has already picked this screen — `11-abilities.md` §11.1 "Character-select flow". */
 function selectableAbilities(alreadyPicked: Id[]): AbilityDefinition[] {
   const profile = loadProfile();
   return ABILITIES.filter((a) => (a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id)) && !alreadyPicked.includes(a.id));
 }
 
-/**
- * 1 ability pick per character, in party order, run right after `showCharacterSelect` and before
- * `Game` construction. No 2 characters may end up with the same id (enforced by narrowing the
- * options list as each pick locks in), commons included. `0` skips — a character can enter the run
- * with no ability equipped.
- */
+/** No two characters may pick the same id, commons included; `0` skips. */
 export function showAbilitySelect(renderer: CliRenderer, classNames: string[]): Promise<(Id | null)[]> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {

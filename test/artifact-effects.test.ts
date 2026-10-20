@@ -44,7 +44,6 @@ describe("artifacts", () => {
   test("artifactRarityWeights: deeper floors shift weight up the rarities, one 10-floor step at a time", () => {
     for (const source of ["elite", "boss", "treasureOrEvent"] as const) {
       const at = (depth: number) => artifactRarityWeights(source, depth);
-      // floors within the same step share odds; crossing a multiple of 10 changes them
       expect(at(1)).toEqual(at(10));
       expect(at(10)).not.toEqual(at(11));
       let previous = at(1);
@@ -352,7 +351,7 @@ describe("artifacts", () => {
 
     recomputeCharacterStats(c, 30); // Exhausted threshold
     expect(c.attack).toBe(Math.round(baseAttack * (2 / 3)) + 3);
-    expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp); // never reduced
+    expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp);
   });
 
   test("reflectDamage: a monster's attack on the bearer reflects a percent back", () => {
@@ -399,8 +398,7 @@ describe("artifacts", () => {
     rat.hp = 99999;
     rat.defense = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    // offenseMultiplierPercent: 0 keeps each hit's damage a deterministic flat 20, regardless of the
-    // Vanguard's own attack stat, so the expected total (3 x 20 = 60) is exact, not just "greater than".
+    // offenseMultiplierPercent 0 makes each hit a flat 20, so the total (60) is exact.
     const multiHitSkill: SkillDefinition = {
       id: "test-multi-hit",
       name: "Test Multi Hit",
@@ -413,7 +411,7 @@ describe("artifacts", () => {
     };
     const hpBefore = vanguard.hp;
     applySkillEffects(multiHitSkill, vanguard, [rat], combat, ctx, combat.log);
-    // Lifesteal must scale off all 3 hits (60 total), not just the last one: round(60*0.08)=5.
+    // round(60 * 0.08) = 5: lifesteal scales off all 3 hits, not the last.
     expect(vanguard.hp - hpBefore).toBe(5);
   });
 
@@ -464,8 +462,7 @@ describe("artifacts", () => {
     const self: CombatantRef = { kind: "character", id: rogue.id };
     expect(queueAction(combat, self, "poison-coat", [self], ctx)).toBeNull();
     resolveRound(combat, ctx);
-    // cooldownTurns 4 - cooldownReduction 1 = 3, set when the skill executes mid-round, then ticked
-    // down by 1 more at this same round's end-of-round cooldown tick.
+    // 4 - 1 reduction = 3 when cast mid-round, then the same round's end tick takes it to 2.
     expect(rogue.cooldownsRemaining["poison-coat"]).toBe(2);
   });
 

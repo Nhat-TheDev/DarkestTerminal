@@ -66,7 +66,6 @@ export function renderFooter(ui: InventoryUiState, game: Game, page = 0): string
       const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
       return digitHint("ui.footerChooseItemEsc", pageItems.length);
     }
-    // Out of combat the detail view is back-only; in combat it also offers "Use".
     case "itemDetail":
       return digitHint("ui.detailFooter", ui.origin.kind === "combat" ? 2 : 1);
   }

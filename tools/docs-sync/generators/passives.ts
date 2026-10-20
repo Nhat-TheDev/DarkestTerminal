@@ -2,7 +2,6 @@ import { joinRanks } from "../effects";
 import { showValue } from "../format";
 import type { GeneratorSpec } from "../types";
 
-/** Each class's passive: when each rank unlocks, and every parameter it carries at each rank. */
 export const passives: GeneratorSpec = {
   source: "`data/classes.json`",
   args: [],

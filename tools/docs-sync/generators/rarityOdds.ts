@@ -33,7 +33,6 @@ function oddsTable({ balance }: DocsData, bands: readonly number[]): DocTable {
   };
 }
 
-/** Odds of each artifact rarity by floor depth. `part=anchors` is the anchor table, `part=odds` the odds per band of floors. */
 export const rarityOdds: GeneratorSpec = {
   source: "`data/balance-config.json` (`artifacts`)",
   args: ["part", "bands"],

@@ -8,11 +8,10 @@ import { characterBaseStats } from "./party";
 import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
-  /** Fires once per damage effect that resolves against a target. */
+  /** Fires per damage effect that resolves against a target, even when it deals nothing. */
   onHit?(source: Actor, target: Actor, log: LogEntry[]): void;
-  /** Fires after a "damage" effect resolves with appliedAmount > 0. */
+  /** Fires only when the damage dealt is > 0. */
   onDamageDealt?(source: Actor, target: Actor, damage: number, ctx: EngineContext, log: LogEntry[]): void;
-  /** Fires when a damage effect's target was alive before and dead after. */
   onKill?(source: Actor, target: Actor, log: LogEntry[]): void;
 }
 
@@ -82,13 +81,6 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-/** Rogue's passive (§11 of the design spec) — bonus damage (type + required target status both
- *  driven by `passiveSkill.bonusDamageType`/`requiresTargetStatusId` in `data/classes.json`, not
- *  hardcoded here) on a hit that lands against a target already carrying that status — or a
- *  `rankOf` variant of it (`statusSatisfiesRequirement`, the same family-match Viking's own
- *  `conditionalBonus` skills use for "storm-empowered", e.g. Frenzied Slash — see
- *  `data/status-effects.json`'s "poisoned-ii"/"-iii" `rankOf: "poisoned"`). The flat term is fixed,
- *  not attack-scaled (confirmed). */
 const roguePoisonBonusHook: SkillEffectHooks = {
   onDamageDealt(source, target, damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "rogue") return;
@@ -101,10 +93,8 @@ const roguePoisonBonusHook: SkillEffectHooks = {
     const flat = rankDef?.bonusFlat ?? 0;
     if (percent === 0 && flat === 0) return;
     const bonusAmount = Math.round(damage * (percent / 100)) + flat;
-    // ignoreDefensePercent: 100 + offenseMultiplierPercent: 0 together zero out
-    // mitigatedOffense(...) entirely (see resolver.ts), so the bonus is bonusAmount times race
-    // resist/weak and the source's fear-tier penalty, then the crit and variance every direct
-    // hit rolls (`rollDamage`) — not bonusAmount re-added to a full attack-vs-defense roll.
+    // These two fields zero out mitigatedOffense, so the bonus is bonusAmount scaled only by race,
+    // fear, crit and variance, not a second attack-vs-defense roll.
     resolveSkillEffect(
       { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,
@@ -114,11 +104,6 @@ const roguePoisonBonusHook: SkillEffectHooks = {
   },
 };
 
-/** Mage's passive (§11 of the design spec) — every hit the Mage lands stacks a defense-shredding
- *  status on the target (up to 3 stacks), magnitude scaling with the passive's unlocked rank. Each
- *  rank names its own status id ("shredded"/"-ii"/"-iii", see `data/classes.json`) rather than 1
- *  status id whose magnitude gets overridden at runtime — the same rank-to-status mapping Poison
- *  Bomb (Rogue) uses for "poisoned"/"-ii"/"-iii". */
 const mageShredHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, _ctx, log) {
     if (!isCharacter(source) || source.classId !== "mage") return;
@@ -128,8 +113,6 @@ const mageShredHook: SkillEffectHooks = {
   },
 };
 
-/** Plague Doctor's passive (§11 of the design spec) — every hit rolls twice (independently) for a
- *  random debuff from `debuffPool`, unlocked at level 5/20/35. */
 const plagueDoctorDebuffProcHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
     if (!isCharacter(source) || source.classId !== "plague-doctor") return;

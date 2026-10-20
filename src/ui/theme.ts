@@ -21,7 +21,6 @@ export const PALETTE = {
   dead: "#6a5a52",
   disabled: "#5a5248",
   chipFg: "#12100c",
-  // Battlefield outcome numbers (MARKER_COLOR, src/ui/battlefieldFocus.ts).
   markerDamageParty: "#e5484d",
   markerDamageMonster: "#f2f2f2",
   markerHealParty: "#8fd694",
@@ -105,7 +104,6 @@ export function chip(label: string, color: string): TextChunk {
   return bg(color)(fg(PALETTE.chipFg)(bold(` ${label} `))) as TextChunk;
 }
 
-/** Splits `text` on `[...]` segments (e.g. "[Esc]", "[i]"), rendering each bracketed key hint bold in the accent color and everything else dim — used for footer/hint lines that call out specific keys. */
 export function highlightKeyHints(text: string): TextChunk[] {
   const chunks: TextChunk[] = [];
   const pattern = /\[[^\]]+\]/g;

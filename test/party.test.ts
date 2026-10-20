@@ -3,9 +3,7 @@ import { getClass } from "../src/data/classes";
 import { createCharacter, recomputeCharacterStats } from "../src/engine/party";
 
 describe("Vanguard passive: permanent stat buff", () => {
-  // aggro never grows with level on its own (createCharacter sets it to cls.baseAggro flat, and
-  // recomputeCharacterStats's non-passive terms are all 0 for a fresh character with no artifacts/
-  // curses/statuses) — so any aggro above cls.baseAggro at level 5+ can only come from the passive.
+  // aggro has no level growth, so anything above cls.baseAggro on a fresh character comes from the passive.
   test("below level 5 (rank 0), aggro stays at the class base", () => {
     const cls = getClass("vanguard");
     const vanguard = createCharacter("v1", "Vanguard", cls, 4);
@@ -35,12 +33,6 @@ describe("Vanguard passive: permanent stat buff", () => {
   });
 
   test("rank 1/2/3 grant +5%/+10%/+15% maxHp and +7%/+10%/+14% defense over the same level with the passive artificially removed", () => {
-    // Isolate the passive's contribution by comparing a Vanguard against a hypothetical
-    // non-Vanguard class at the same level is unreliable (different base stats/growth weights).
-    // Instead, verify the exact expected values directly from the formula: recomputeCharacterStats
-    // applies the passive as a final multiplier on (base + artifact boost), and a fresh character
-    // with no artifacts/curses/statuses has boost = 0, so maxHp/defense should equal
-    // base.maxHp/base.defense scaled by exactly the rank's percent.
     const cls = getClass("vanguard");
     for (const [level, hpPercent, defPercent] of [
       [5, 5, 7],
@@ -50,8 +42,7 @@ describe("Vanguard passive: permanent stat buff", () => {
       const withPassive = createCharacter(`v-${level}`, "Vanguard", cls, level);
       recomputeCharacterStats(withPassive, 100);
       const noPassive = createCharacter(`v-${level}-base`, "Vanguard", cls, level);
-      // noPassive.maxHp/defense are the raw createCharacter values (statsForLevel's output, i.e.
-      // the passive-free base) since createCharacter never calls recomputeCharacterStats itself.
+      // createCharacter never runs recomputeCharacterStats, so this is the passive-free base.
       expect(withPassive.maxHp).toBe(Math.round(noPassive.maxHp * (1 + hpPercent / 100)));
       expect(withPassive.defense).toBe(Math.round(noPassive.defense * (1 + defPercent / 100)));
     }

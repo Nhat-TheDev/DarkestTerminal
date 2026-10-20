@@ -20,10 +20,7 @@ function guardianFightRoomOrError(state: GameState): Room | PartyActionError {
 export function guardianFightEnter(state: GameState, ctx: EngineContext): PartyActionError | null {
   const room = guardianFightRoomOrError(state);
   if ("reason" in room) return room;
-  // §10.3 Chain 1: this is the "forced" encounter the player kept skipping — reset the counter now
-  // that they're finally taking it, so the chain can fire again later rather than exactly once.
-  // `guardianGrudgeFiredCount` never resets (11-world-bible.md §11.13 tier 2, Part C.3 tier 3) —
-  // it's how a later firing of this same chain can tell it isn't the first.
+  // Reset so the chain can fire again later; `guardianGrudgeFiredCount` never resets.
   if (room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3") {
     state.narrativeCounters.guardianFightsSkipped = 0;
     state.narrativeCounters.guardianGrudgeFiredCount += 1;
@@ -40,16 +37,11 @@ export function guardianFightEnter(state: GameState, ctx: EngineContext): PartyA
 export function guardianFightSkip(state: GameState): PartyActionError | null {
   const room = guardianFightRoomOrError(state);
   if ("reason" in room) return room;
-  // §10.3 Chain 1: past the forced threshold, Skip isn't offered — this is a 2nd line of defense
-  // behind the UI hiding the option, not the primary gate. Tier 2/3 ("forced2"/"forced3") stay just
-  // as non-skippable as tier 1.
+  // Backstop: the UI already hides Skip for forced variants.
   if (room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3") return { reason: t("errors.nothingToDecide") };
   state.narrativeCounters.guardianFightsSkipped += 1;
   state.message = t("dungeon.skippedGuardianFight", { room: room.name });
-  // Distinct from the win path's "resolved" tag (set in game.ts's combat-victory block) — gates
-  // reflection (the event's `reflectionRequiresOutcome`) so skipping never shows a reflection written for
-  // having actually fought, and keeps broken-seal's containment reading (Part C.1 pair 15) tied to
-  // an actual won fight rather than a mere skip.
+  // Distinct from the win path's "resolved", so outcome-gated text written for a won fight never follows a skip.
   state.eventOutcomes[room.rolledEventId!] = "skipped";
   closeEvent(state);
   return null;

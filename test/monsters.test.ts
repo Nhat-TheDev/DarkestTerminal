@@ -110,10 +110,7 @@ describe("spawnMonster applies the floor-depth buff", () => {
   });
 
   test("the depth-buff term alone (isolated from base growth/race) contributes more to maxHp than attack, and more to attack than defense", () => {
-    // The per-stat coefficient (1.5/1/0.75) only multiplies the depth-bonus TERM, not the whole
-    // stat — comparing raw before/after ratios on a real archetype is numerically unstable for any
-    // stat with a small base value (e.g. goblin's baseDefense: 1 makes any ratio involving it
-    // enormous and meaningless). Isolate the depth-bonus multiplier itself instead.
+    // Isolates the depth-bonus multiplier: raw stat ratios blow up on small bases (goblin's baseDefense is 1).
     const depthBonus = monsterDepthBuffPercent(20);
     const hpMultiplier = 1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.maxHp) / 100;
     const attackMultiplier = 1 + (depthBonus * MONSTER_DEPTH_BUFF_STAT_COEFFICIENTS.attack) / 100;
@@ -128,8 +125,7 @@ describe("spawnMonster applies the floor-depth buff", () => {
     const depthBonus = monsterDepthBuffPercent(depth);
     const typeMultiplier = MONSTER_TYPE_MULTIPLIER[archetype.monsterType];
     const race = resolveRaceProfile(archetype.race, archetype.subRace, archetype.traitIds ?? []);
-    // monsterType's multiplier scales only the depth-growth curve (monsterGrowthBonus, mirroring
-    // classGrowthBonus for characters) — baseX is added back in unscaled before tier/depth-buff/race apply.
+    // monsterType scales only the growth term; baseX is added back unscaled before tier/depth-buff/race.
     const weightedGrowthMaxHp = monsterGrowthBonus("maxHp", depth, typeMultiplier.maxHp);
     const weightedGrowthAttack = monsterGrowthBonus("attack", depth, typeMultiplier.attack);
     const weightedGrowthDefense = monsterGrowthBonus("defense", depth, typeMultiplier.defense);

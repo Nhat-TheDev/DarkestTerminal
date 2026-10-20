@@ -185,7 +185,6 @@ describe("RevealQueue", () => {
   });
 });
 
-/** One damage line per amount, each a direct hit on `targetId`. */
 function hitEntries(s: LogSession, targetId: string, amounts: number[]): LogEntry[] {
   return amounts.map((amount, i) => ({ text: `hit${i}`, kind: "attack" as const, session: s, hit: { targetId, amount } }));
 }
@@ -308,7 +307,6 @@ describe("RevealQueue paces a session's lines by hit beat", () => {
   const hit = (text: string, targetId: string, s: LogSession, extra: Partial<LogEntry> = {}): LogEntry => ({ text, kind: "attack", session: s, hit: { targetId, amount: 50 }, ...extra });
   const plain = (text: string, s: LogSession): LogEntry => ({ text, kind: "info", session: s });
 
-  /** The tick each line is revealed on, by text. */
   function revealTicks(queue: RevealQueue): Record<string, number> {
     const at: Record<string, number> = {};
     for (let tick = 0; queue.active && tick < 200; tick++) for (const entry of queue.tick()) at[entry.text] = tick;

@@ -9,16 +9,13 @@ export interface Candidate {
   token: string;
 }
 
-/** A line that ends with this says its numbers are intent or arithmetic, not a copy of the data. */
+/** A line ending with this holds intent or arithmetic, not a copy of the data. */
 export const INTENT_MARKER = "<!-- docs:intent -->";
-/** Everything between these two lines is a record of reasoning: its numbers are as of the decision, not a claim about the data. */
+/** Numbers between these lines are as of a past decision, not claims about the data. */
 export const INTENT_BEGIN = "<!-- docs:intent-begin -->";
 export const INTENT_END = "<!-- docs:intent-end -->";
 
-/**
- * Which lines sit inside an intent section, and what is wrong with the markers. A marker in a fenced
- * block or a generated block is text, not a marker. A section that never closes would exempt the rest of the doc.
- */
+/** A marker inside a fenced or generated block is text, not a marker. */
 function scanIntent(lines: readonly string[], kinds: readonly LineKind[]): { inside: boolean[]; errors: { line: number; message: string }[] } {
   const inside: boolean[] = [];
   const errors: { line: number; message: string }[] = [];
@@ -38,13 +35,11 @@ function scanIntent(lines: readonly string[], kinds: readonly LineKind[]): { ins
   return { inside, errors };
 }
 
-/** Findings for intent markers that do not pair up. */
 export function checkIntentMarkers(file: string, text: string): Finding[] {
   const lines = text.split("\n");
   return scanIntent(lines, classifyLines(lines)).errors.map(({ line, message }) => ({ file, line, message, fixable: false }));
 }
 
-/** Text whose digits are not data: section references, versions, links, file names, list numbers. */
 const MASKS: RegExp[] = [
   /§\s*\d+(?:\.\d+)*/g,
   /\b(?:sections?|items?|design doc|doc)\s+\d+(?:\.\d+)*(?:\s*(?:,|and|-|–)\s*\d+(?:\.\d+)*)*/gi,
@@ -64,16 +59,9 @@ function mask(line: string): string {
 /** A whole number up to this turns up all over the data by chance; it counts only next to a name that holds it. */
 const CHANCE_LIMIT = 100;
 const WORD = /[A-Za-z][\w-]*/g;
-/** How far from a number, in characters, a name still counts as being about it. */
 const NEAR = 40;
 
-/**
- * Numbers in prose that equal a value somewhere in `data/*.json` and so may be a copy of it. `values`
- * maps each value to the names that hold it in the data (the field name and the id of its entry).
- * A decimal, or a whole number above `CHANCE_LIMIT`, always counts; a whole number up to it (a percentage
- * included) counts only when one of its names appears within `NEAR` characters of it, because such numbers coincide
- * with the data too often to mean anything on their own.
- */
+/** Prose numbers equal to a data value. A whole number up to `CHANCE_LIMIT` counts only with a holding name within `NEAR`. */
 export function findCandidates(file: string, text: string, values: ReadonlyMap<number, ReadonlySet<string>>): Candidate[] {
   const lines = text.split("\n");
   const kinds = classifyLines(lines);

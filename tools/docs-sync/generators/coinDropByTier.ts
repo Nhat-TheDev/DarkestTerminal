@@ -9,7 +9,6 @@ const GROUPS = [
   { key: "boss", label: "Boss" },
 ] as const;
 
-/** The coins one kill drops, by the monster's group. */
 export const coinDropByTier: GeneratorSpec = {
   source: "`data/balance-config.json` (`currency.coinDropByTier`)",
   args: [],

@@ -122,17 +122,13 @@ describe("elite/boss skill kit", () => {
   });
 
   test("every monster skill log line derives from the skill's own target, not from which weight key rolled it", () => {
-    // Single-target skills all name their target now, whatever tier or weight key produced them —
-    // a plain monster's skill and a boss's debuff used to print without one.
     const lines: string[] = [];
     for (let seed = 0; seed < 40; seed++) {
       for (const [id, tier] of [["dungeon-rat", "normal"], ["skeleton-guard", "boss"]] as const) {
         const { ctx } = makeCtx(seed);
         const monster = spawnMonster(id, 1, tier === "normal" ? undefined : { tier });
         monster.executeCooldownTurns = 99;
-        // makeCtx's party has 1 character per class — their combined opening damage would otherwise
-        // kill a low-HP monster like Dungeon Rat before it ever gets a turn to use its named skill,
-        // which is what this test is actually checking for.
+        // High HP so the party's opening damage doesn't kill it before it uses its skill.
         monster.hp = monster.maxHp = 9999;
         ctx.monsters.push(monster);
         const combat = startCombat("r1", [monster.id], ctx, false);
@@ -161,7 +157,7 @@ describe("elite/boss skill kit", () => {
       "elite-cleave-the-founder": 15,
       "boss-debuff-the-founder": 35,
     });
-    // Never spawned at elite tier, so it deliberately has no elite weights and no elite sprite.
+    // Never spawned at elite tier.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });
 
@@ -173,8 +169,7 @@ describe("elite/boss skill kit", () => {
       ctx.monsters.push(monster);
       const combat = startCombat("r1", [monster.id], ctx, false);
       for (let round = 0; round < 6 && seen.size < 2; round++) {
-        // Execute charges/releases on its own cycle and bypasses the weighted pool entirely;
-        // hold it off so every boss turn goes through pickMonsterAction().
+        // Execute runs on its own cycle outside the weighted pool; hold it off.
         monster.executeCooldownTurns = 99;
         monster.isChargingExecute = false;
         queueTrivialActions(ctx, combat);
@@ -234,9 +229,7 @@ describe("regular monster skills", () => {
       expect(a.skillIds.length).toBe(1);
       expect(a.actionWeights?.normal).toEqual({ basicAttack: 70, [a.skillIds[0]!]: 30 });
     }
-    // Zombie and Skeleton Warrior keep their skill at weight 0 — it fires only from the low-HP
-    // branch below, never from the weighted roll. The key stays so the rebalance editor can still
-    // reach it: its PATCH endpoint only accepts keys the archetype already has.
+    // Weight 0: the skill fires only from the low-HP branch. The key stays because the rebalance editor's PATCH only accepts existing keys.
     for (const id of ["zombie", "skeleton-warrior"]) {
       const a = getArchetype(id);
       expect(a.skillIds.length).toBe(1);
@@ -261,10 +254,7 @@ describe("regular monster skills", () => {
     expect(() => assertMonsterDataConsistent([ghost])).toThrow(/Unknown monster skill: no-such-skill/);
   });
 
-  // data/monsters.json reaches src/data/monsters.ts through an `as unknown as MonsterArchetype[]`
-  // cast, so TypeScript never checks it — an archetype added without a description would ship
-  // silently. The digit check enforces 02-monster.md's rule that this field carries no numbers:
-  // it is flavor a player reads, not a place to write down a balance fact.
+  // The JSON loads through an unchecked cast, so a missing description would ship silently; descriptions are flavor and carry no numbers.
   test("every archetype carries a player-facing description, and no description states a number", () => {
     for (const archetype of MONSTER_ARCHETYPES) {
       expect(archetype.description?.trim() ?? "").not.toBe("");
@@ -317,9 +307,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
   });
 
   test("a defensive archetype whose only skills target enemies never turns one on itself below 40% HP", () => {
-    // Skeleton Guard is defensive, spawns at normal tier in ordinary combat rooms, and since
-    // skillIds became "every skill at any tier" its first entry is Cleaving Strike. Picking by
-    // position instead of by target would have it hitting itself.
+    // Skeleton Guard's first skillId is Cleaving Strike: picking the low-HP skill by position instead of by target would have it hit itself.
     const guard = getArchetype("skeleton-guard");
     expect(guard.skillIds.length).toBeGreaterThan(0);
     expect(guard.skillIds.some((id) => getMonsterSkill(id).target === "self")).toBe(false);
@@ -337,9 +325,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
   });
 
   test("a self-targeted monster skill rolled from the weighted pool heals the monster, never the party", () => {
-    // Regeneration sits at weight 0 today, but the rebalance editor exists to change exactly that:
-    // its PATCH endpoint allows any key already present, and "regeneration" is present at 0. Before
-    // this was fixed, raising it made the Zombie heal a party member instead of itself.
+    // Regeneration is at weight 0, but the rebalance editor can raise any existing key.
     const zombieArchetype = getArchetype("zombie");
     const originalWeights = { ...zombieArchetype.actionWeights!.normal };
     zombieArchetype.actionWeights!.normal = { basicAttack: 0, regeneration: 100 };
@@ -364,8 +350,7 @@ describe("aiPattern: \"defensive\" HP<40% self-skill bias", () => {
 
   test("the low-HP self-skill branch only applies at normal tier", () => {
     const { ctx } = makeCtx();
-    // Zombie is normal-only so it can never spawn as boss; flip the tier after spawn
-    // to verify the branch itself is gated on actor.tier, not on the archetype.
+    // Zombie never spawns as boss; flip the tier to prove the branch reads actor.tier.
     const zombieAsBoss = spawnMonster("zombie", 1);
     zombieAsBoss.tier = "boss";
     zombieAsBoss.hp = Math.floor(zombieAsBoss.maxHp * 0.1);
@@ -495,9 +480,7 @@ describe("aiPattern targeting: aggressive follows aggro, opportunistic mirrors i
       }
       return n;
     }
-    // This is the deliberate trade-off of the mirrored rule, not an accident: against an
-    // opportunistic archetype, taunting makes the Vanguard *safer* and the rest of the party
-    // more exposed.
+    // Against an opportunistic archetype, taunting makes the Vanguard safer and the rest of the party more exposed.
     expect(hitsOnVanguardWithTaunt("skeleton")).toBeGreaterThan(hitsOnVanguardWithTaunt("skeleton-archer"));
   });
 

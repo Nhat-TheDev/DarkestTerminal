@@ -5,8 +5,7 @@ import { BALANCE } from "./balanceConfig";
 
 export const EVENTS = eventsJson as unknown as EventDefinition[];
 
-/** Outcome tags an event handler writes only when the party actually engaged (paid, sacrificed,
-    traded, or won/finished the scene) — the only values `reflectionRequiresOutcome` can usefully name. */
+/** Outcomes written only when the party engaged, so the only ones `reflectionRequiresOutcome` can usefully name. */
 const ENGAGEMENT_OUTCOMES: ReadonlySet<string> = new Set(["paid", "sacrificed", "traded", "resolved"]);
 
 export function assertEventDataConsistent(events: EventDefinition[]): void {
@@ -39,8 +38,6 @@ const EVENTS_BY_TIER: Record<EventTier, EventDefinition[]> = {
 const COMMON_TIER_WEIGHT = BALANCE.events.commonTierWeight;
 const RARE_TIER_WEIGHT = BALANCE.events.rareTierWeight;
 
-/** Part C.4/C.5 — an event is eligible to be rolled if it isn't `scripted`, the run's floor depth meets
-    its `minFloorDepth` (if any) and it isn't a spent `onceLifetime` event. */
 function isEligible(event: EventDefinition, depth: number, firedOnceEventIds: Id[]): boolean {
   if (event.kind === "scripted") return false;
   if (event.minFloorDepth !== undefined && depth < event.minFloorDepth) return false;
@@ -53,8 +50,7 @@ export function rollEvent(rng: Rng, depth: number, firedOnceEventIds: Id[]): Id 
   const rarePool = EVENTS_BY_TIER.rare.filter((e) => isEligible(e, depth, firedOnceEventIds));
   const tier: EventTier = rng.chance(COMMON_TIER_WEIGHT / (COMMON_TIER_WEIGHT + RARE_TIER_WEIGHT)) ? "common" : "rare";
   const pool = tier === "common" ? commonPool : rarePool;
-  // Depth/once-lifetime gates should never empty both pools at once given today's event roster —
-  // if the rolled tier's pool is empty, fall back to the other tier rather than crashing.
+  // Depth and once-lifetime gates can empty the rolled tier's pool; fall back to the other tier.
   const fallback = tier === "common" ? rarePool : commonPool;
   return rng.pick(pool.length > 0 ? pool : fallback).id;
 }
