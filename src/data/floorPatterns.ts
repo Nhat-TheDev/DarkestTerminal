@@ -32,6 +32,7 @@ export const MAX_EVENT_ROOMS_PER_PATH = BALANCE.floorGeneration.maxEventRoomsPer
 export const MIN_EVENT_ROOMS_PER_FLOOR = BALANCE.floorGeneration.minEventRoomsPerFloor;
 export const MIN_STANDALONE_EVENT_ROOMS = BALANCE.floorGeneration.minStandaloneEventRooms;
 export const MAX_STANDALONE_EVENT_ROOMS = BALANCE.floorGeneration.maxStandaloneEventRooms;
+export const MIN_STANDALONE_EVENT_STAGE = BALANCE.floorGeneration.minStandaloneEventStage;
 export const MIN_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.minRestRoomsPerPath;
 export const MAX_REST_ROOMS_PER_PATH = BALANCE.floorGeneration.maxRestRoomsPerPath;
 
@@ -71,21 +72,20 @@ function pickStandaloneEventStages(rng: Rng, branchStages: number[], lastStage: 
   const rolled = rng.int(MIN_STANDALONE_EVENT_ROOMS, MAX_STANDALONE_EVENT_ROOMS);
   const needed = Math.max(rolled, MIN_EVENT_ROOMS_PER_FLOOR - branchStages.length);
   const count = Math.min(needed, MAX_EVENT_ROOMS_PER_PATH - branchStages.length);
-  let pool: number[] = [];
-  for (let s = MIN_BRANCH_START_STAGE; s < lastStage; s++) {
+  const pool: number[] = [];
+  for (let s = MIN_STANDALONE_EVENT_STAGE; s < lastStage; s++) {
     if (branchStages.every((b) => Math.abs(s - b) > 1)) pool.push(s);
   }
-  const picked: number[] = [];
-  while (picked.length < count && pool.length > 0) {
-    const stage = pool[rng.int(0, pool.length - 1)]!;
-    picked.push(stage);
-    pool = pool.filter((s) => Math.abs(s - stage) > 1);
-  }
-  return picked;
+  return pickSpacedStages(rng, pool, count);
 }
 
 function pickRestStages(rng: Rng, candidates: number[]): number[] {
   const count = rng.int(MIN_REST_ROOMS_PER_PATH, Math.min(MAX_REST_ROOMS_PER_PATH, candidates.length));
+  return pickSpacedStages(rng, candidates, count);
+}
+
+/** Picks up to `count` stages from `candidates`, never 2 adjacent ones; stops early if the pool runs out. */
+function pickSpacedStages(rng: Rng, candidates: number[], count: number): number[] {
   let pool = [...candidates];
   const picked: number[] = [];
   while (picked.length < count && pool.length > 0) {
@@ -193,10 +193,12 @@ export function validateGeneratedStages(stages: RoomToken[][]): void {
 
   const eventStageIndices = stages.flatMap((stage, s) => (stage.some((r) => r.tag === "event") ? [s] : []));
   if (eventStageIndices.length < MIN_EVENT_ROOMS_PER_FLOOR) throw new Error(`layout has ${eventStageIndices.length} event stages, need >= ${MIN_EVENT_ROOMS_PER_FLOOR}`);
-  for (let i = 0; i < eventStageIndices.length; i++) {
-    if (eventStageIndices[i]! < MIN_BRANCH_START_STAGE) throw new Error(`event stage ${eventStageIndices[i]} is before allowed start stage ${MIN_BRANCH_START_STAGE}`);
-    if (i > 0 && eventStageIndices[i]! - eventStageIndices[i - 1]! <= 1) throw new Error(`event stages ${eventStageIndices[i - 1]} and ${eventStageIndices[i]} are adjacent`);
+  for (let i = 1; i < eventStageIndices.length; i++) {
+    if (eventStageIndices[i]! - eventStageIndices[i - 1]! <= 1) throw new Error(`event stages ${eventStageIndices[i - 1]} and ${eventStageIndices[i]} are adjacent`);
   }
-  const standaloneEventCount = stages.filter((stage) => stage.length === 1 && stage[0]!.tag === "event").length;
-  if (standaloneEventCount > MAX_STANDALONE_EVENT_ROOMS) throw new Error(`layout has ${standaloneEventCount} standalone event stages, max allowed is ${MAX_STANDALONE_EVENT_ROOMS}`);
+  const standaloneEventStages = stages.flatMap((stage, s) => (stage.length === 1 && stage[0]!.tag === "event" ? [s] : []));
+  for (const s of standaloneEventStages) {
+    if (s < MIN_STANDALONE_EVENT_STAGE) throw new Error(`standalone event stage ${s} is before allowed start stage ${MIN_STANDALONE_EVENT_STAGE}`);
+  }
+  if (standaloneEventStages.length > MAX_STANDALONE_EVENT_ROOMS) throw new Error(`layout has ${standaloneEventStages.length} standalone event stages, max allowed is ${MAX_STANDALONE_EVENT_ROOMS}`);
 }

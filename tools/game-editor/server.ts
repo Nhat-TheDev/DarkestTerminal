@@ -56,7 +56,7 @@ const BALANCE_SURVIVAL_FIELDS = [
 ] as const;
 const BALANCE_PARTY_FIELDS = ["maxEquippedArtifacts", "startingExplorationKits"] as const;
 const BALANCE_ITEMS_FIELDS = ["itemDropChance", "trophyDropShare", "groupDropMultiplier"] as const;
-const BALANCE_FLOOR_GENERATION_FIELDS = ["minPathRooms", "maxPathRooms", "maxBranches", "minBranchStartStage", "minBranchSpacing", "maxEventRoomsPerPath", "minEventRoomsPerFloor", "minStandaloneEventRooms", "maxStandaloneEventRooms", "minRestRoomsPerPath", "maxRestRoomsPerPath"] as const;
+const BALANCE_FLOOR_GENERATION_FIELDS = ["minPathRooms", "maxPathRooms", "maxBranches", "minBranchStartStage", "minBranchSpacing", "maxEventRoomsPerPath", "minEventRoomsPerFloor", "minStandaloneEventRooms", "maxStandaloneEventRooms", "minStandaloneEventStage", "minRestRoomsPerPath", "maxRestRoomsPerPath"] as const;
 const BALANCE_EVENTS_FIELDS = ["commonTierWeight", "rareTierWeight", "merchantOfferCount", "merchantRefreshCostCoins", "merchantMaxRefreshes", "bloodAltarHpPercent", "collapsedFloorHpPercent", "collapsedFloorSuccessChance", "eventGuardianStatMultiplier", "wanderingHermitExchangeCostCoins"] as const;
 const COIN_DROP_TIERS = ["weak", "medium", "strong", "elite", "boss"] as const;
 const LEVEL_GROWTH_MULTIPLIER_FIELDS = ["maxHp", "attack", "defense", "exp"] as const;

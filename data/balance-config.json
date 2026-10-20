@@ -279,6 +279,7 @@
     "minEventRoomsPerFloor": 1,
     "minStandaloneEventRooms": 0,
     "maxStandaloneEventRooms": 1,
+    "minStandaloneEventStage": 2,
     "minRestRoomsPerPath": 1,
     "maxRestRoomsPerPath": 2,
     "roomCompositionTemplates": [

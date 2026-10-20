@@ -189,6 +189,7 @@ interface BalanceConfig {
     minEventRoomsPerFloor: number;
     minStandaloneEventRooms: number;
     maxStandaloneEventRooms: number;
+    minStandaloneEventStage: number;
     minRestRoomsPerPath: number;
     maxRestRoomsPerPath: number;
     /** Each template is one possible combat room's monster tiers. */

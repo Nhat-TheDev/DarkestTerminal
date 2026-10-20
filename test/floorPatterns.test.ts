@@ -11,6 +11,7 @@ import {
   MAX_EVENT_ROOMS_PER_PATH,
   MIN_EVENT_ROOMS_PER_FLOOR,
   MAX_STANDALONE_EVENT_ROOMS,
+  MIN_STANDALONE_EVENT_STAGE,
   MIN_REST_ROOMS_PER_PATH,
   MAX_REST_ROOMS_PER_PATH,
 } from "../src/data/floorPatterns";
@@ -85,11 +86,11 @@ describe("generateFloorLayout", () => {
         expect(eventStageCount).toBeLessThanOrEqual(MAX_EVENT_ROOMS_PER_PATH);
       });
 
-      test(`at least ${MIN_EVENT_ROOMS_PER_FLOOR} event room(s) on the floor, standalone ones at most ${MAX_STANDALONE_EVENT_ROOMS} and none before stage ${MIN_BRANCH_START_STAGE}`, () => {
+      test(`at least ${MIN_EVENT_ROOMS_PER_FLOOR} event room(s) on the floor, standalone ones at most ${MAX_STANDALONE_EVENT_ROOMS} and none before stage ${MIN_STANDALONE_EVENT_STAGE}`, () => {
         const eventStages = stages.map((s, i) => ({ s, i })).filter(({ s }) => s.some((r) => r.tag === "event"));
         expect(eventStages.length).toBeGreaterThanOrEqual(MIN_EVENT_ROOMS_PER_FLOOR);
-        for (const { i } of eventStages) expect(i).toBeGreaterThanOrEqual(MIN_BRANCH_START_STAGE);
         const standalone = eventStages.filter(({ s }) => s.length === 1);
+        for (const { i } of standalone) expect(i).toBeGreaterThanOrEqual(MIN_STANDALONE_EVENT_STAGE);
         expect(standalone.length).toBeLessThanOrEqual(MAX_STANDALONE_EVENT_ROOMS);
       });
 
@@ -277,7 +278,7 @@ describe("validateGeneratedStages rejects layouts that break the rules", () => {
     expect(() => validateGeneratedStages(layout)).toThrow(/adjacent/);
   });
 
-  test("rejects a standalone event room before MIN_BRANCH_START_STAGE", () => {
+  test("rejects a standalone event room before MIN_STANDALONE_EVENT_STAGE", () => {
     const layout = [
       stage([[1, ""]], 0),
       stage([[2, "event"]], 1),
@@ -285,7 +286,7 @@ describe("validateGeneratedStages rejects layouts that break the rules", () => {
       ...Array.from({ length: 3 }, (_, i) => stage([[10 + i, ""]], i + 3)),
       stage([[20, "boss"]], 6),
     ];
-    expect(() => validateGeneratedStages(layout)).toThrow(/before allowed start stage/);
+    expect(() => validateGeneratedStages(layout)).toThrow(/standalone event stage 1 is before allowed start stage/);
   });
 
   test("rejects more standalone event rooms than the maximum", () => {
