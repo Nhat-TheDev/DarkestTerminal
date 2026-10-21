@@ -20,7 +20,7 @@ const count = (frame: string, glyph: string) => frame.split(glyph).length - 1;
 /** An app standing at the first command prompt of a fight against 2 sturdy goblins, reveal clock under test control. */
 async function openFight(options: { goblinAttack?: number; partyHp?: number; satiety?: number; expiringBuff?: boolean; stunnedMonsters?: boolean } = {}) {
   // Kitty key encoding sends Esc as a full sequence, so a lone Esc is not held back to tell it from the start of one.
-  const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 62, kittyKeyboard: true });
+  const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 62, kittyKeyboard: true });
   const game = new Game(7, PARTY);
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   const goblins = [spawnMonster("goblin", 1), spawnMonster("goblin", 1)];
@@ -462,7 +462,7 @@ describe("battlefield and log stay in step", () => {
       expect(frame).toContain(t("ui.roundHeader", { round: 1 }));
       expect(frame).not.toContain(t("ui.exploring"));
       expect(frame).not.toContain(t("ui.notEncountered"));
-      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters[0]!).abbr} `);
+      expect(frame).toContain(` ${monsterStyle(fight.game.ctx.monsters.at(-1)!).abbr} `);
       expect(count(frame, FOCUS_GLYPH.shield)).toBe(fight.app.debugFocus?.attackedIds.length ?? 0);
       frames++;
       fight.app.tickReveal();
@@ -488,7 +488,7 @@ describe("battlefield and log stay in step", () => {
   }, 30000);
 
   test("a save loaded mid-fight does not replay the rounds already played", async () => {
-    const { renderer, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const { renderer, renderOnce } = await createTestRenderer({ width: 150, height: 62 });
     const game = new Game(7, PARTY);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const goblin = spawnMonster("goblin", 1);
@@ -516,7 +516,7 @@ describe("battlefield and log stay in step", () => {
     fight.mockInput.pressKey("s");
     await fight.renderOnce();
 
-    const { renderer, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const { renderer, renderOnce } = await createTestRenderer({ width: 150, height: 62 });
     const loaded = gameFromSave(loadSave("slot1"), "slot1");
     expect(loaded.state.combat!.phase).toBe("over");
     const app = new App(renderer, loaded, { autoReveal: false });
@@ -539,7 +539,7 @@ describe("room log", () => {
   }, 30000);
 
   test("walking into another room clears it but keeps the line that announces the new room", async () => {
-    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 130, height: 62 });
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 150, height: 62 });
     const game = new Game(7, PARTY);
     game.state.combat = null;
     const app = new App(renderer, game, { autoReveal: false });

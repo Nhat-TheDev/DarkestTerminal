@@ -30,7 +30,6 @@ import {
   spriteForMonster,
   spriteForEvent,
   renderSpriteInSlot,
-  spriteHeight,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   CAMPFIRE_SPRITE,
@@ -82,10 +81,13 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-const LOG_HEIGHT = 8;
-/** Below this many rows a bare 4-member party no longer fits the full layout, so it goes compact. */
-const COMPACT_LAYOUT_BELOW_ROWS = 61;
-const COMPACT_LOG_HEIGHT = 5;
+/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
+    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
+const BATTLEFIELD_CONTENT_WIDTH = 113;
+/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
+const SIDE_PANEL_WIDTH = 35;
+/** Columns a Log line can use: the panel minus its border and the scrollbar. */
+const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
@@ -103,14 +105,12 @@ export class App implements ScreenContext {
   private logScroll: ScrollBoxRenderable;
   private footer: TextRenderable;
   private chrome: BoxRenderable[];
-  private progressBox: BoxRenderable;
-  private battlefieldBox: BoxRenderable;
-  private logBox: BoxRenderable;
   private fullLogBox: BoxRenderable;
   private fullLogText: TextRenderable;
   private fullLogScroll: ScrollBoxRenderable;
   private fullLogJustOpened = false;
   private fullLogBuiltFrom = -1;
+  private fullLogBuiltWidth = -1;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
@@ -169,20 +169,24 @@ export class App implements ScreenContext {
     headerBox.add(this.header);
     this.root.add(headerBox);
 
-    this.progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
+    const progressBox = new BoxRenderable(renderer, { id: "progress-box", ...panel, height: 3, title: t("ui.panelProgress") });
     this.progress = new TextRenderable(renderer, { id: "progress", content: "", fg: PALETTE.text });
-    this.progressBox.add(this.progress);
-    this.root.add(this.progressBox);
+    progressBox.add(this.progress);
+    this.root.add(progressBox);
 
-    this.battlefieldBox = new BoxRenderable(renderer, {
+    const arena = new BoxRenderable(renderer, { id: "arena", flexDirection: "row", height: UNIT_BLOCK_HEIGHT + 2, flexShrink: 0, backgroundColor: PALETTE.bg });
+    this.root.add(arena);
+
+    const battlefieldBox = new BoxRenderable(renderer, {
       id: "battlefield-box",
       ...panel,
-      height: UNIT_BLOCK_HEIGHT + 2,
+      flexGrow: 1,
+      alignItems: "center",
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
-    this.battlefieldBox.add(this.battlefield);
-    this.root.add(this.battlefieldBox);
+    battlefieldBox.add(this.battlefield);
+    arena.add(battlefieldBox);
 
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
@@ -197,12 +201,12 @@ export class App implements ScreenContext {
     mainBox.add(this.main);
     body.add(mainBox);
 
-    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: 32, title: t("ui.panelMonsters") });
+    const monstersBox = new BoxRenderable(renderer, { id: "monsters-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelMonsters") });
     this.monsters = new TextRenderable(renderer, { id: "monsters", content: "", fg: PALETTE.text });
     monstersBox.add(this.monsters);
     body.add(monstersBox);
 
-    this.logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, height: LOG_HEIGHT, title: t("ui.panelLog") });
+    const logBox = new BoxRenderable(renderer, { id: "log-box", ...panel, width: SIDE_PANEL_WIDTH, flexShrink: 0, title: t("ui.panelLog") });
     this.logScroll = new ScrollBoxRenderable(renderer, {
       id: "log-scroll",
       width: "100%",
@@ -214,11 +218,10 @@ export class App implements ScreenContext {
     });
     this.log = new TextRenderable(renderer, { id: "log", content: "", fg: PALETTE.dim });
     this.logScroll.add(this.log);
-    this.logBox.add(this.logScroll);
-    this.root.add(this.logBox);
+    logBox.add(this.logScroll);
+    arena.add(logBox);
 
-    // The Path panel is left out: render() also hides it in the compact layout.
-    this.chrome = [headerBox, this.battlefieldBox, body, this.logBox];
+    this.chrome = [headerBox, progressBox, arena, body];
 
     this.fullLogBox = new BoxRenderable(renderer, { id: "full-log-box", ...panel, flexGrow: 1, title: t("ui.panelFullLog", { count: RUN_LOG_SIZE }), visible: false });
     this.fullLogScroll = new ScrollBoxRenderable(renderer, {
@@ -236,12 +239,12 @@ export class App implements ScreenContext {
     this.root.add(this.fullLogBox);
 
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
-    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 3, backgroundColor: PALETTE.bg });
+    const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 1, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
     renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
+    // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
     renderer.on("resize", () => {
       try {
         this.render();
@@ -638,10 +641,6 @@ export class App implements ScreenContext {
     else this.appendLog([{ text, kind: "info" }]);
   }
 
-  private isCompactLayout(): boolean {
-    return this.renderer.height < COMPACT_LAYOUT_BELOW_ROWS;
-  }
-
   getPendingFloorAdvance(): boolean {
     return this.pendingFloorAdvance;
   }
@@ -705,14 +704,12 @@ export class App implements ScreenContext {
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
     this.fullLogBox.visible = inFullLog;
-    const compact = this.isCompactLayout();
-    this.progressBox.visible = !inFullLog && !compact;
-    const logHeight = compact ? COMPACT_LOG_HEIGHT : LOG_HEIGHT;
-    if (this.logBox.height !== logHeight) this.logBox.height = logHeight;
     if (inFullLog) {
-      if (this.fullLogBuiltFrom !== this.runLogVersion) {
+      const fullLogWidth = this.renderer.width - 3;
+      if (this.fullLogBuiltFrom !== this.runLogVersion || this.fullLogBuiltWidth !== fullLogWidth) {
         this.fullLogBuiltFrom = this.runLogVersion;
-        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog));
+        this.fullLogBuiltWidth = fullLogWidth;
+        this.fullLogText.content = this.runLog.length === 0 ? t("ui.fullLogEmpty") : joinLines(logLines(this.runLog, fullLogWidth));
       }
       if (this.fullLogJustOpened) {
         this.fullLogJustOpened = false;
@@ -762,9 +759,8 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus, compact);
-    this.battlefield.content = joinLines(battlefieldRows);
-    if (this.battlefieldBox.height !== battlefieldRows.length + 2) this.battlefieldBox.height = battlefieldRows.length + 2;
+    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
+    this.battlefield.content = joinLines(battlefieldRows.map((row) => [...row, plainChunk(" ".repeat(Math.max(0, BATTLEFIELD_CONTENT_WIDTH - row.reduce((n, c) => n + c.text.length, 0))))]));
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -847,7 +843,7 @@ export class App implements ScreenContext {
       this.log.content = this.game.state.message;
       return;
     }
-    this.log.content = joinLines(logLines(this.roomLog));
+    this.log.content = joinLines(logLines(this.roomLog, LOG_TEXT_WIDTH));
   }
 
   private applyRevealed(entries: LogEntry[]): void {
@@ -1014,8 +1010,7 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  /** Compact drops the rows above the tallest sprite on screen: blocks are bottom-aligned in boss-height slots, so those rows are blank. */
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, compact: boolean): TextChunk[][] {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     const impact = focus !== null && !this.reveal.holding;
 
@@ -1043,11 +1038,8 @@ export class App implements ScreenContext {
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
-    let tallest = tierFrameHeight("party");
     if (s.pendingGatekeeper) {
       enemyBlock = this.buildEventBlock(GATEKEEPER_EVENT_ID);
-      const gateSprite = spriteForEvent(GATEKEEPER_EVENT_ID);
-      if (gateSprite) tallest = Math.max(tallest, spriteHeight(gateSprite));
     } else if (combat) {
       const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
       if (monsterCombatants.length === 0) {
@@ -1065,18 +1057,13 @@ export class App implements ScreenContext {
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
-        tallest = Math.max(tallest, ...enemyUnits.map((u) => u.frameHeight));
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
-      tallest = Math.max(tallest, spriteHeight(CAMPFIRE_SPRITE));
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
-      tallest = Math.max(tallest, spriteHeight(TREASURE_CHEST_SPRITE));
     } else if (isEventRoom) {
       enemyBlock = this.buildEventBlock(room.rolledEventId!);
-      const eventSprite = spriteForEvent(room.rolledEventId!);
-      if (eventSprite) tallest = Math.max(tallest, spriteHeight(eventSprite));
     } else {
       const message = room.type !== "combat" && room.type !== "boss" ? "" : room.cleared ? t("ui.safe") : t("ui.notEncountered");
       enemyBlock = this.buildEmptyEnemyBlock(message);
@@ -1091,8 +1078,7 @@ export class App implements ScreenContext {
       );
     }
 
-    const rows = mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
-    return compact ? rows.slice(Math.max(0, MAX_BOSS_HEIGHT - tallest)) : rows;
+    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
   }
 
   private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {

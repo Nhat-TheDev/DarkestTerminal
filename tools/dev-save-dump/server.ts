@@ -17,7 +17,7 @@ import { applyDump } from "./applyDump";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
-const PORT = 4592;
+const PORT = 4593;
 
 const CATALOG_FILES = {
   classes: "classes.json",

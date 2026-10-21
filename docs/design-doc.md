@@ -15,7 +15,7 @@ with the description of existing gameplay.
 
 ### 1.1 Gameplay overview
 - Genre: roguelike dungeon crawler, running on a terminal (TUI)
-- A party of characters (fixed size, `PARTY_SIZE` in `src/ui/characterSelect.ts`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
+- A party of characters (fixed size, `party.size` in `data/balance-config.json`) chosen from the classes in `data/classes.json` at the start of the game, descending progressively through dungeon floors
 - Main loop: fighting monsters (combat) — exploring (moving between rooms) — surviving (survival management)
 
 ### 1.2 Combat
@@ -47,7 +47,7 @@ with the description of existing gameplay.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.7 Abilities (meta-progression)
-- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's character select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
+- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's party select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
 - Full spec (mechanics, rarity/drop tables, full ability catalog, Stardust-buyback death flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
 
 ### 1.8 Event room

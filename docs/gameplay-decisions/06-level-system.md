@@ -92,7 +92,7 @@ expReward(archetype, floorDepth) = archetype.expReward + floor(floorDepth × exp
 
 **Passive skill unlock schedule** (`01-class-skill.md` §1.5): every class's single passive skill unlocks its 3 ranks at a fixed **5 / 20 / 35**, the same for all 9 classes — a separate, uniform schedule from each class's own per-skill `unlockLevel` spacing above. Unlike an active skill, a passive's current rank is read directly off `Character.level` whenever it's needed (`getUnlockedPassiveRank`, `src/data/classes.ts`) rather than being unlocked once and cached — there's no `unlockedSkillIds`-style bookkeeping for it, since it's derived, not "learned."
 
-The number of monsters killable per floor is fixed by the generated layout (`technical-decisions.md` §1) — there's no mechanism to farm extra kills within a single floor. The event room (`08-events.md` §8) is an optional detour for Item/Artifact rewards, or the player can go straight through.
+The number of monsters killable per floor is fixed by the generated layout (`technical-decisions.md` §1) — there's no mechanism to farm extra kills within a single floor. An event room (`08-events.md` §8) on a branch point is an optional detour for Item/Artifact rewards, or the player can take the combat room beside it. A standalone event room takes the whole stage, so every path walks into it and that stage has no combat.
 
 ### 6.10 Infinite dungeon-floor level — monsters/bosses have no scaling ceiling
 
