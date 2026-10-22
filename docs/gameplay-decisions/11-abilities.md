@@ -574,7 +574,7 @@ used for `magicPower`**: that method gives an absurd result.
 `speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
 matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
 would mean `speed +32` to `+48`. `speed` only spans a narrow range across
-all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Knight slowest,
+all 12 classes at level 1 (`baseSpeed`, `data/classes.json`; Paladin slowest,
 Rogue fastest) — a `+32` would make the
 *slowest* class in the game faster than the *fastest* one, by a wide
 margin. The reason the formula breaks down here: `attack`/`defense`/
