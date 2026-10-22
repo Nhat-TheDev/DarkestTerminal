@@ -1,4 +1,6 @@
 export const PAGE_SIZE = 9;
+/** Item lists take two rows per entry. */
+export const ITEM_PAGE_SIZE = 5;
 
 export function pageCount(total: number, pageSize: number = PAGE_SIZE): number {
   return Math.max(1, Math.ceil(total / pageSize));

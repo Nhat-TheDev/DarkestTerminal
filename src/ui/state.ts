@@ -82,6 +82,10 @@ export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDef
     .map(([id, qty]) => ({ item: getItem(id), qty }));
 }
 
+export function combatInventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
+  return inventoryEntries(inventory).filter(({ item }) => item.combatUsable !== false);
+}
+
 export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] }): RewardEntry[] {
   const itemQty = new Map<Id, number>();
   for (const id of drops.itemIds) itemQty.set(id, (itemQty.get(id) ?? 0) + 1);

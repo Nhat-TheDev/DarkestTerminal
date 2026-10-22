@@ -40,8 +40,8 @@ import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIG
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
-import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
-import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
+import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
+import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { canOpenMemory, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
@@ -72,6 +72,7 @@ const RUN_LOG_SIZE = 500;
 function pageSizeFor(kind: UiState["kind"]): number {
   // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
   if (kind === "memory") return 1;
+  if (kind === "pickItemOutOfCombat" || kind === "pickItemInCombat") return ITEM_PAGE_SIZE;
   return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
 
@@ -329,8 +330,9 @@ export class App implements ScreenContext {
   private listCountFor(ui: UiState): number | null {
     switch (ui.kind) {
       case "pickItemOutOfCombat":
-      case "pickItemInCombat":
         return inventoryEntries(this.game.state.inventory).length;
+      case "pickItemInCombat":
+        return combatInventoryEntries(this.game.state.inventory).length;
       case "artifactMenu":
       case "eventArtifactPick":
       case "eventHermitPickArtifact":

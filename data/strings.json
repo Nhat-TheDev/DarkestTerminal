@@ -671,6 +671,7 @@
   "ui.statAbbrAggro": "AGG",
   "ui.statAbbrMaxHp": "MHP",
   "ui.inventoryLine": "  [{{i}}] {{name}} x{{qty}}",
+  "ui.inventoryEffectLine": "      {{effect}}",
   "ui.statusTurnsSuffix": " ({{turns}}t)",
   "ui.statusLastsFightSuffix": " (∞)",
   "ui.shellIntact": "Shell ({{hits}} hits)",

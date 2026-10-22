@@ -21,8 +21,9 @@ import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from 
 import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
+import * as inventoryScreen from "../src/ui/screens/inventory";
 import { getStatusEffect } from "../src/data/statusEffects";
-import { ITEMS } from "../src/data/items";
+import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { panelContentRows } from "../tools/random-play/checks";
@@ -382,6 +383,29 @@ describe("list paging", () => {
     mockInput.pressArrow("left");
     await renderOnce();
     expect(firstItemLine()).toBe(page1);
+  });
+});
+
+describe("item lists", () => {
+  test("each item shows its effect summary on a second line", () => {
+    const game = new Game(1);
+    game.state.inventory = { "small-health-potion": 2 };
+    const potion = getItem("small-health-potion");
+    const lines = inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" }).split("\n");
+    const row = lines.findIndex((l) => l.includes("[1] ") && l.includes(potion.name));
+    expect(lines[row + 1]).toBe(t("ui.inventoryEffectLine", { effect: describeItemEffects(potion) }));
+  });
+
+  test("an item flagged combatUsable: false is listed out of combat but not in combat", () => {
+    const game = new Game(1);
+    const kit = getItem("exploration-kit");
+    expect(kit.combatUsable).toBe(false);
+    game.state.inventory = { [kit.id]: 1, "small-health-potion": 1 };
+    expect(inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" })).toContain(kit.name);
+    const actorRef = { kind: "character", id: game.state.party[0]!.id } as const;
+    const inCombat = renderCombat(game, { kind: "pickItemInCombat", actorRef }) as string;
+    expect(inCombat).not.toContain(kit.name);
+    expect(inCombat).toContain(getItem("small-health-potion").name);
   });
 });
 
