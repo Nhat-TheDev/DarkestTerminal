@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
@@ -12,6 +12,7 @@ import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
 import { DEV_MODE } from "./devMode";
+import { LEGACY_PROFILE_FILENAME, deleteProfile, loadProfile, parseProfile, saveProfile } from "./profile";
 import pkg from "../../package.json";
 
 export const APP_VERSION: string = pkg.version;
@@ -60,6 +61,8 @@ export interface SaveFile {
 export interface SlotEntry {
   id: Id;
   meta: SaveMeta | null;
+  /** From the slot's profile; 0 for a slot that has never held a run. */
+  runCount: number;
 }
 
 function ensureSaveDir(): void {
@@ -111,6 +114,7 @@ export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
   return writeSave(game, id, true);
 }
 
+/** Clears the run only; the slot's profile survives permadeath. */
 export function deleteSlot(id: Id): void {
   const path = savePath(id);
   if (!existsSync(path)) return;
@@ -119,6 +123,30 @@ export function deleteSlot(id: Id): void {
   } catch (err) {
     console.error(`Failed to delete save file ${path}:`, err);
   }
+}
+
+/** The run and the slot's profile both: the slot starts over from nothing. */
+export function clearSlot(id: Id): void {
+  deleteSlot(id);
+  deleteProfile(id);
+}
+
+/**
+ * Before profiles were per slot, one `profile.json` served every slot. Copies it into each slot that holds a run
+ * file, then renames it aside so this never runs twice; empty slots start with a fresh profile.
+ */
+export function migrateLegacyProfile(): void {
+  const legacyPath = join(SAVE_DIR, LEGACY_PROFILE_FILENAME);
+  if (!existsSync(legacyPath)) return;
+  try {
+    const legacy = parseProfile(readFileSync(legacyPath, "utf8"));
+    for (const id of SLOT_IDS) {
+      if (existsSync(savePath(id))) saveProfile(id, { ...legacy, runCount: 1 });
+    }
+  } catch {
+    // An unreadable legacy file has nothing to carry over.
+  }
+  renameSync(legacyPath, join(SAVE_DIR, "profile.legacy.json"));
 }
 
 function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
@@ -196,9 +224,9 @@ export function listSlots(): SlotEntry[] {
         isDevDumpAllowed(save.meta) &&
         isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion)) &&
         isSaveMonstersValid(save.monsters ?? []);
-      return { id, meta: loadable ? save.meta : null };
+      return { id, meta: loadable ? save.meta : null, runCount: loadProfile(id).runCount };
     } catch {
-      return { id, meta: null };
+      return { id, meta: null, runCount: loadProfile(id).runCount };
     }
   });
 }

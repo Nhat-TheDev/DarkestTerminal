@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
-import { App } from "../src/ui/app";
+import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
+import { saveRun, loadSave, gameFromSave, listSlots } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
@@ -283,6 +283,43 @@ describe("key handler lifecycle", () => {
     void showMainMenu(renderer);
     await settle();
     expect(captureCharFrame()).toContain(t("mainMenu.tagline"));
+  });
+});
+
+describe("game over", () => {
+  async function defeatedRunInSlot() {
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
+    saveRun(game);
+    game.state.combat = null;
+    game.state.gameOver = "defeat";
+    game.state.abilityDeathResults = [];
+    const exits: RunExit[] = [];
+    const app = new App(setup.renderer, game, { onExit: (next) => exits.push(next) });
+    await setup.renderOnce();
+    return { setup, game, app, exits };
+  }
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+  test("defeat clears the run but keeps the slot for the next run", async () => {
+    const { game, app, setup } = await defeatedRunInSlot();
+    expect(app.debugUiState.kind).toBe("gameover");
+    expect(listSlots()[0]!.meta).toBeNull();
+    expect(game.currentSaveSlot).toBe("slot1");
+    expect(setup.captureCharFrame()).toContain("[1] New run   [Esc] Main menu");
+  });
+
+  test("[1] asks for a new run and [Esc] for the main menu", async () => {
+    const first = await defeatedRunInSlot();
+    first.setup.mockInput.pressKey("1");
+    await tick();
+    expect(first.exits).toEqual(["newRun"]);
+
+    const second = await defeatedRunInSlot();
+    second.setup.mockInput.pressEscape();
+    await tick();
+    await tick();
+    expect(second.exits).toEqual(["menu"]);
   });
 });
 

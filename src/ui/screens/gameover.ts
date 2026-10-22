@@ -1,6 +1,8 @@
+import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { getAbility } from "../../data/abilities";
 import { t } from "../../data/strings";
+import type { ScreenContext } from "./context";
 
 const ENDING_SCREENS: Partial<Record<NonNullable<Game["state"]["gameOver"]>, string>> = {
   victory: "ui.victoryScreen",
@@ -31,4 +33,9 @@ export function renderMain(game: Game): string {
 
 export function renderFooter(): string {
   return t("ui.footerGameOver");
+}
+
+export function handleKey(ctx: ScreenContext, key: KeyEvent, digit: number | null): void {
+  if (digit === 1) ctx.exitRun("newRun");
+  else if (key.name === "escape") ctx.exitRun("menu");
 }

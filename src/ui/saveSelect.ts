@@ -45,11 +45,12 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       slots.forEach((slot, i) => {
         const n = slotNumber(slot.id);
         if (!slot.meta) {
-          lines.push([colorChunk(t("saveSelect.emptyLine", { i: i + 1, slot: n }), PALETTE.dim)]);
+          const line = slot.runCount > 0 ? t("saveSelect.endedLine", { i: i + 1, slot: n, run: slot.runCount }) : t("saveSelect.emptyLine", { i: i + 1, slot: n });
+          lines.push([colorChunk(line, PALETTE.dim)]);
           return;
         }
         const { floorDepth, playTime, partyClassIds, timestamp } = slot.meta;
-        lines.push([colorChunk(t("saveSelect.entryLine", { i: i + 1, slot: n, depth: floorDepth, playTime: formatPlayTime(playTime) }), PALETTE.text)]);
+        lines.push([colorChunk(t("saveSelect.entryLine", { i: i + 1, slot: n, run: Math.max(1, slot.runCount), depth: floorDepth, playTime: formatPlayTime(playTime) }), PALETTE.text)]);
         lines.push([
           colorChunk(t("saveSelect.entryDetail", { classes: partyClassIds.map((id) => getClass(id).name).join(", "), time: new Date(timestamp).toLocaleString() }), PALETTE.dim),
         ]);

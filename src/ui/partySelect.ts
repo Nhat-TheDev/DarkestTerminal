@@ -29,9 +29,9 @@ export interface PartyPick {
 
 type Step = { kind: "browse"; index: number } | { kind: "ability"; classId: Id; page: number };
 
-/** Every `common` ability, plus every non-`common` id in the persistent profile, minus the ones already taken this screen — `11-abilities.md` §11.1. */
-function selectableAbilities(taken: Id[]): AbilityDefinition[] {
-  const profile = loadProfile();
+/** Every `common` ability, plus every non-`common` id in the slot's profile, minus the ones already taken this screen — `11-abilities.md` §11.1. */
+function selectableAbilities(slotId: Id, taken: Id[]): AbilityDefinition[] {
+  const profile = loadProfile(slotId);
   return ABILITIES.filter((a) => (a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id)) && !taken.includes(a.id));
 }
 
@@ -196,7 +196,7 @@ function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], pa
  * `11-abilities.md` §11.1). `Esc` steps back: out of the Ability list to the class it was for, or
  * from browsing to undo the last finished pick.
  */
-export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]): Promise<PartyPick[]> {
+export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[], slotId: Id): Promise<PartyPick[]> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "partyselect-root",
@@ -218,7 +218,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     let step: Step = { kind: "browse", index: 0 };
 
     const available = () => classes.filter((c) => !picks.some((p) => p.classId === c.id));
-    const abilityOptions = () => selectableAbilities(picks.map((p) => p.abilityId).filter((id): id is Id => id !== null));
+    const abilityOptions = () => selectableAbilities(slotId, picks.map((p) => p.abilityId).filter((id): id is Id => id !== null));
 
     const renderBrowse = (index: number) => {
       const pool = available();

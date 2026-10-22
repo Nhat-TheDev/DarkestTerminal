@@ -10,12 +10,15 @@ import {
   writeDevDumpSave,
   listSlots,
   deleteSlot,
+  clearSlot,
+  migrateLegacyProfile,
   firstFreeSlotId,
   loadSave,
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
+import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
@@ -132,7 +135,7 @@ function withGame(seed: number, fn: (game: Game) => void): void {
   try {
     fn(game);
   } finally {
-    SLOT_IDS.forEach(deleteSlot);
+    SLOT_IDS.forEach(clearSlot);
   }
 }
 
@@ -191,6 +194,51 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       deleteSlot("slot3");
       expect(listSlots().find((s) => s.id === "slot3")?.meta).toBeNull();
       expect(() => deleteSlot("slot3")).not.toThrow();
+    });
+  });
+
+  test("deleteSlot keeps the slot's profile, so the slot reads as ended on the same run number", () => {
+    withGame(8, (game) => {
+      game.currentSaveSlot = "slot2";
+      beginRun("slot2");
+      saveProfile("slot2", { ...loadProfile("slot2"), unlockedAbilityIds: ["bloodletting"] });
+      saveRun(game);
+      deleteSlot("slot2");
+      const slot = listSlots().find((s) => s.id === "slot2");
+      expect(slot?.meta).toBeNull();
+      expect(slot?.runCount).toBe(1);
+      expect(loadProfile("slot2").unlockedAbilityIds).toEqual(["bloodletting"]);
+    });
+  });
+
+  test("beginRun counts runs per slot, and clearSlot starts the slot over", () => {
+    withGame(9, (game) => {
+      beginRun("slot4");
+      beginRun("slot4");
+      expect(listSlots().find((s) => s.id === "slot4")?.runCount).toBe(2);
+      expect(listSlots().find((s) => s.id === "slot5")?.runCount).toBe(0);
+      game.currentSaveSlot = "slot4";
+      saveRun(game);
+      clearSlot("slot4");
+      expect(listSlots().find((s) => s.id === "slot4")).toEqual({ id: "slot4", meta: null, runCount: 0 });
+      expect(loadProfile("slot4").unlockedAbilityIds).toEqual([]);
+    });
+  });
+
+  test("migrateLegacyProfile copies the shared profile into slots holding a run only, once", () => {
+    withGame(10, (game) => {
+      game.currentSaveSlot = "slot3";
+      saveRun(game);
+      const legacyPath = join(SAVE_DIR, "profile.json");
+      writeFileSync(legacyPath, JSON.stringify({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [{ classId: "rogue" }], shownRetiredCharacterEvent: true }));
+      migrateLegacyProfile();
+      expect(loadProfile("slot3")).toMatchObject({ unlockedAbilityIds: ["bloodletting"], retiredCharacters: [{ classId: "rogue" }], shownRetiredCharacterEvent: true, runCount: 1 });
+      expect(loadProfile("slot1").unlockedAbilityIds).toEqual([]);
+      expect(existsSync(legacyPath)).toBe(false);
+      expect(existsSync(join(SAVE_DIR, "profile.legacy.json"))).toBe(true);
+      saveProfile("slot3", { ...loadProfile("slot3"), unlockedAbilityIds: [] });
+      migrateLegacyProfile();
+      expect(loadProfile("slot3").unlockedAbilityIds).toEqual([]);
     });
   });
 

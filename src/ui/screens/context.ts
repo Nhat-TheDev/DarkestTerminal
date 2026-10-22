@@ -10,6 +10,7 @@ export interface ScreenContext {
   syncUiToGameState(): void;
   pushToast(text: string): void;
   quit(): void;
+  exitRun(next: "newRun" | "menu"): void;
   getPendingFloorAdvance(): boolean;
   setPendingFloorAdvance(value: boolean): void;
   getPendingCampOffer(): boolean;

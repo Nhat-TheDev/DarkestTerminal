@@ -93,6 +93,8 @@ const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
 
+export type RunExit = "newRun" | "menu";
+
 export class App implements ScreenContext {
   game: Game;
   private ui: UiState = { kind: "room" };
@@ -138,9 +140,21 @@ export class App implements ScreenContext {
   private pendingCampOffer = false;
   private listPage = 0;
   private progress: TextRenderable;
+  private onExit: ((next: RunExit) => void) | undefined;
+  private exited = false;
+  private readonly onKeypress = (key: KeyEvent) => this.handleKey(key);
+  // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
+  private readonly onResize = () => {
+    try {
+      this.render();
+    } catch (error) {
+      console.error("[App] Error redrawing after a resize:", error);
+    }
+  };
 
-  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
+  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean; onExit?: (next: RunExit) => void } = {}) {
     this.autoReveal = options.autoReveal ?? true;
+    this.onExit = options.onExit;
     this.game = game ?? new Game();
 
     const panel = {
@@ -244,15 +258,8 @@ export class App implements ScreenContext {
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
-    renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
-    renderer.on("resize", () => {
-      try {
-        this.render();
-      } catch (error) {
-        console.error("[App] Error redrawing after a resize:", error);
-      }
-    });
+    renderer.keyInput.on("keypress", this.onKeypress);
+    renderer.on("resize", this.onResize);
     this.syncUiToGameState();
     this.render();
   }
@@ -358,7 +365,6 @@ export class App implements ScreenContext {
       // Cleared once, on the first transition into either post-death screen: this re-runs throughout the buyback.
       if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
         deleteSlot(this.game.currentSaveSlot);
-        this.game.currentSaveSlot = null;
         this.pushToast(t("ui.saveDeletedMsg"));
       }
       if (this.game.state.pendingAbilityBuyback) {
@@ -574,6 +580,7 @@ export class App implements ScreenContext {
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
+        gameoverScreen.handleKey(this, key, digit);
         break;
     }
     this.render();
@@ -638,6 +645,17 @@ export class App implements ScreenContext {
     }
   }
 
+  /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
+  exitRun(next: RunExit): void {
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.exited = true;
+    this.renderer.keyInput.off("keypress", this.onKeypress);
+    this.renderer.off("resize", this.onResize);
+    this.renderer.root.remove(this.root);
+    // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
+    setTimeout(() => this.onExit?.(next), 0);
+  }
+
   quit(): void {
     if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.renderer.destroy();
@@ -672,6 +690,7 @@ export class App implements ScreenContext {
   }
 
   private render(): void {
+    if (this.exited) return;
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
     this.syncRoomLog();

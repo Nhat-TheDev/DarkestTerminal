@@ -777,23 +777,23 @@ file holds to.
 No combat, no cost — matches the established "just talk, no transaction" shape (Part E).
 `noArtifactReward: true`: a pure dialogue-only beat.
 
-**The persistence layer**, `src/engine/profile.ts`: a small `profile.json`, living in
-the same app-data directory `save.ts`'s per-run saves already use, but never imported by (or
-importing) `save.ts`/`game.ts` circularly. Holds `{ version, unlockedAbilityIds,
-retiredCharacters: { classId }[], shownRetiredCharacterEvent: boolean }` — `version` and
-`unlockedAbilityIds` come from `AbilityProfile` (`src/types.ts`), the ability unlocks that share
-the file. `addRetiredCharacter()` is called the moment Ending 1 is
+**The persistence layer**, `src/engine/profile.ts`: a small `slotN.profile.json` per save slot,
+living beside that slot's run file, but never importing `save.ts`/`game.ts` (they import it).
+Holds `{ version, unlockedAbilityIds, retiredCharacters: { classId }[], shownRetiredCharacterEvent:
+boolean, runCount }` — `version` and `unlockedAbilityIds` come from `AbilityProfile`
+(`src/types.ts`), the ability unlocks that share the file. A retired character belongs to the slot
+it retired in: only a later run in that same slot can meet them. `addRetiredCharacter()` is called the moment Ending 1 is
 chosen (`Game.pickEndingChoice`); a fresh `Game` reads the profile once at construction and, if a
 retired character exists and the payoff hasn't already been shown in any previous run, pre-fills
 `GameState.retiredCharacterClassId` and leaves `"the-one-who-stayed"` *out* of the freshly-built
 `firedOnceEventIds` — otherwise the id is pre-inserted there, so it can never roll. No changes needed
 to `rollEvent()` itself; eligibility is entirely encoded by whether that 1 id starts excluded.
-`markRetiredCharacterEventShown()` fires from `closeEvent()` the moment the event actually resolves,
-persisting the "already shown" fact across every future run, not just this one.
+`markRetiredCharacterEventShown()` fires from `Game.openChest()` the moment the event actually
+resolves, persisting the "already shown" fact across every future run in the slot, not just this one.
 
-`profile.json` sits in the same directory as the save slots, but slot listing and deletion
-(`listSlots()`/`deleteSlot()`, `src/engine/save.ts`) only ever touch the fixed slot filenames, so
-the profile survives a run's permadeath slot-clear and is never read as a save.
+`deleteSlot()` (`src/engine/save.ts`) removes only the run file, so the profile survives a run's
+permadeath slot-clear and is never read as a save; only `clearSlot()`, used when New Game
+overwrites a slot that still holds a run, removes it too.
 
 ### F.3 Ending 2 — Let Go
 
