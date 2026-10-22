@@ -42,7 +42,7 @@ import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHe
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { composeFooter } from "./keyHints";
+import { canOpenMemory, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -54,6 +54,7 @@ import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
 import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
+import * as memoryScreen from "./screens/memory";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
@@ -69,6 +70,8 @@ const RUN_LOG_SIZE = 500;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
+  // Memory pages are prebuilt by row budget, so each list "entry" is a whole page.
+  if (kind === "memory") return 1;
   return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
 
@@ -338,6 +341,8 @@ export class App implements ScreenContext {
         return runnerScreen.sellableEntries(this.game).length;
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
+      case "memory":
+        return memoryScreen.memoryPages(ui.abilityIds).length;
       default:
         return null;
     }
@@ -392,6 +397,10 @@ export class App implements ScreenContext {
       }
       if (this.game.state.pendingFloorMilestoneOmenId) {
         this.ui = { kind: "floorMilestone" };
+        return;
+      }
+      if (this.game.state.pendingMemoryIntro) {
+        this.ui = { kind: "memoryIntro" };
         return;
       }
       if (restOpen) {
@@ -468,6 +477,12 @@ export class App implements ScreenContext {
     }
     if (this.reveal.active) {
       this.flushPendingReveal();
+      return;
+    }
+    if (key.name === "m" && this.memoryAvailable() && canOpenMemory(this.ui.kind)) {
+      this.ui = { kind: "memory", previous: this.ui, previousPage: this.listPage, abilityIds: this.game.memoryAbilityIds() };
+      this.listPage = 0;
+      this.render();
       return;
     }
     if (key.name === "left" || key.name === "right") {
@@ -564,6 +579,11 @@ export class App implements ScreenContext {
       case "floorMilestone":
         floorMilestoneScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "memoryIntro":
+        memoryScreen.handleIntroKey(this, key);
+        break;
+      case "memory":
+        break;
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -634,6 +654,10 @@ export class App implements ScreenContext {
       case "saveMenu":
         this.ui = this.ui.previous;
         return true;
+      case "memory":
+        this.listPage = this.ui.previousPage;
+        this.ui = this.ui.previous;
+        return true;
       case "roomReward":
         if (this.ui.viewing) {
           this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
@@ -643,6 +667,11 @@ export class App implements ScreenContext {
       default:
         return false;
     }
+  }
+
+  /** Unlocked, and the intro that introduces it has been read. */
+  private memoryAvailable(): boolean {
+    return this.game.memoryUnlocked && !this.game.state.pendingMemoryIntro;
   }
 
   /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
@@ -819,7 +848,7 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable()))]);
     }
     this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
@@ -1247,6 +1276,12 @@ export class App implements ScreenContext {
       case "floorMilestone":
         return floorMilestoneScreen.renderMain(this.game, this.ui);
 
+      case "memoryIntro":
+        return memoryScreen.renderIntro();
+
+      case "memory":
+        return memoryScreen.renderMain(this.ui, this.listPage);
+
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
 
@@ -1324,6 +1359,10 @@ export class App implements ScreenContext {
         return campReflectionScreen.renderFooter(this.ui);
       case "floorMilestone":
         return floorMilestoneScreen.renderFooter(this.ui);
+      case "memoryIntro":
+        return memoryScreen.renderIntroFooter();
+      case "memory":
+        return memoryScreen.renderFooter();
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":

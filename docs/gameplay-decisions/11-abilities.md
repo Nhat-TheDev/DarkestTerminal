@@ -206,7 +206,7 @@ AbilityProfile {
 
 Note: the slot profile (`Profile`, `src/engine/profile.ts`) also stores
 `retiredCharacters` and `shownRetiredCharacterEvent`, used by the Ending
-system's cross-run narrative state, and `runCount`, the number of runs
+system's cross-run narrative state, `memoryUnlocked` (see "Memory" below), and `runCount`, the number of runs
 started in the slot (the slot list shows it as "Run N") — not part of
 Abilities, not shown above.
 
@@ -330,6 +330,19 @@ Elite skews common/rare, Boss never rolls common and skews unique/epic —
 Boss kills stay the better free-unlock roll *and* the only Stardust
 source, which is what makes reaching Bosses worth the detour on top of
 whatever Elites a floor happens to offer.
+
+### Memory
+
+The slot's first boss-room victory (the first boss any of its runs beats) unlocks Memory, a read-only
+list of the non-common abilities the slot holds. The flag is `memoryUnlocked` in the
+slot profile, so it belongs to the slot and survives permadeath; `clearSlot` resets it.
+
+On that victory `GameState.pendingMemoryIntro` is set and a one-time intro screen
+shows (`App.syncUiToGameState`, after the floor milestone check; `proceedAfterVictory`
+routes through it ahead of the Camp offer). Dismissing it clears the flag. From then
+on `[m]` opens Memory from any dungeon screen except the Log, game over, ability
+buyback and the Gatekeeper, and `[Esc]` returns to where it was opened. The list follows
+the profile's `unlockedAbilityIds` in catalog order; commons are never listed.
 
 ### Death flow (party wipe)
 

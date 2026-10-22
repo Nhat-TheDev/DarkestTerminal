@@ -57,6 +57,8 @@ export type UiState =
   | { kind: "eventReflection" }
   | { kind: "campReflection" }
   | { kind: "floorMilestone" }
+  | { kind: "memoryIntro" }
+  | { kind: "memory"; previous: UiState; previousPage: number; abilityIds: Id[] }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
   | { kind: "gatekeeper" }

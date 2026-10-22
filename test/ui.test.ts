@@ -1,9 +1,11 @@
 import { describe, test, expect } from "bun:test";
+import { KeyEvent } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { saveRun, loadSave, gameFromSave, listSlots } from "../src/engine/save";
+import { saveRun, loadSave, gameFromSave, listSlots, clearSlot } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
+import { loadProfile, saveProfile } from "../src/engine/profile";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster, MONSTER_ARCHETYPES } from "../src/data/monsters";
@@ -55,6 +57,9 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(app.debugUiState.kind).toBe("memoryIntro");
+    mockInput.pressKey("RETURN");
+    await renderOnce();
     expect(app.debugUiState.kind).toBe("campPrompt"); // after the decision, before the floor advances
     expect(game.state.floor.depth).toBe(1);
 
@@ -67,8 +72,8 @@ describe("headless UI smoke test", () => {
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
   // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
   async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
-    let game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
-    game.currentSaveSlot = "slot1";
+    saveProfile("slot1", { ...loadProfile("slot1"), memoryUnlocked: true });
+    let game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "boss";
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
@@ -108,6 +113,7 @@ describe("headless UI smoke test", () => {
     setup.mockInput.pressKey("RETURN"); // skip Camp
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
+    clearSlot("slot1");
   }, 20000);
 
   test("a run reloaded on the post-boss Camp offer is offered Camp again and then advances", async () => {
@@ -118,6 +124,7 @@ describe("headless UI smoke test", () => {
     setup.mockInput.pressKey("RETURN"); // skip Camp
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
+    clearSlot("slot1");
   }, 20000);
 
   test("the monster panel shows a shell bearer's shell: hits left while intact, broken after the break", async () => {
@@ -866,5 +873,78 @@ describe("layout", () => {
     await renderOnce();
     expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
+  });
+});
+
+describe("memory screen", () => {
+  const SLOT = "slot1";
+
+  async function bossWinInSlot(memoryUnlocked: boolean) {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
+    const profile = loadProfile(SLOT);
+    profile.unlockedAbilityIds = ["bloodletting"];
+    profile.memoryUnlocked = memoryUnlocked;
+    saveProfile(SLOT, profile);
+    const game = new Game(7, undefined, undefined, undefined, false, SLOT);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "boss";
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = 1;
+    game.ctx.monsters.push(boss);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+    const app = new App(renderer, game);
+    await renderOnce();
+    return { game, renderer, app, mockInput, renderOnce, captureCharFrame };
+  }
+
+  test("the first boss win shows the intro, then [m] opens the slot's held abilities and Esc returns", async () => {
+    try {
+      const { renderer, app, mockInput, renderOnce, captureCharFrame } = await bossWinInSlot(false);
+      let guard = 0;
+      while (app.debugUiState.kind !== "memoryIntro" && guard < 80) {
+        guard++;
+        const kind = app.debugUiState.kind;
+        // Unlocked by now, but not offered until the intro has introduced it.
+        if (kind === "roomReward") expect(captureCharFrame()).not.toContain("[m] Memory");
+        mockInput.pressKey(kind === "roomReward" || kind === "skillDetail" ? "RETURN" : "1");
+        await renderOnce();
+      }
+      expect(app.debugUiState.kind).toBe("memoryIntro");
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memoryIntro");
+
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      expect(app.debugUiState.kind).not.toBe("memoryIntro");
+      const before = app.debugUiState.kind;
+
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memory");
+      expect(captureCharFrame()).toContain("Bloodletting");
+
+      // A lone Esc from the mock input waits on the parser's escape-sequence timeout; emitting the event directly keeps the test off the clock.
+      renderer.keyInput.emit("keypress", new KeyEvent({ name: "escape", ctrl: false, meta: false, shift: false, option: false, sequence: "\x1b", number: false, raw: "\x1b", eventType: "press", source: "raw" }));
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe(before);
+    } finally {
+      clearSlot(SLOT);
+    }
+  }, 20000);
+
+  test("a slot that has not unlocked Memory advertises nothing and ignores [m]", async () => {
+    try {
+      const { game, app, mockInput, renderOnce, captureCharFrame } = await bossWinInSlot(false);
+      expect(game.memoryUnlocked).toBe(false);
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).not.toBe("memory");
+      expect(captureCharFrame()).not.toContain("[m] Memory");
+    } finally {
+      clearSlot(SLOT);
+    }
   });
 });

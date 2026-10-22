@@ -22,6 +22,8 @@ export interface Profile extends AbilityProfile {
   shownRetiredCharacterEvent: boolean;
   /** Runs started in the slot; the current or last one is this number. */
   runCount: number;
+  /** Set by the slot's first boss-room victory; it opens the Memory screen. */
+  memoryUnlocked: boolean;
 }
 
 export function profileFilename(slotId: Id): string {
@@ -33,7 +35,7 @@ function profilePath(slotId: Id): string {
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0 };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false };
 }
 
 function isKnownAbility(id: Id): boolean {
@@ -49,6 +51,7 @@ export function parseProfile(text: string): Profile {
     retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters.map((r) => ({ classId: renamedClassId(r.classId) })) : [],
     shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
     runCount: Number.isInteger(raw.runCount) && (raw.runCount as number) > 0 ? (raw.runCount as number) : 0,
+    memoryUnlocked: raw.memoryUnlocked === true,
   };
 }
 

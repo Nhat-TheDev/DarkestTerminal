@@ -37,7 +37,7 @@ import {
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
-import { rollAbility, getAbility } from "../data/abilities";
+import { ABILITIES, rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter, markRetiredCharacterEventShown } from "./profile";
@@ -69,6 +69,7 @@ export class Game {
   readonly state: GameState;
 
   public currentSaveSlot: Id | null = null;
+  public memoryUnlocked = false;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -83,6 +84,8 @@ export class Game {
     saveSlot: Id | null = null
   ) {
     this.currentSaveSlot = saveSlot;
+    const profile = loadProfile(saveSlot);
+    this.memoryUnlocked = profile.memoryUnlocked;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
@@ -106,7 +109,6 @@ export class Game {
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, summons: [], rng, inventory };
     // Whether "the-one-who-stayed" can roll this run is encoded only by whether its id starts in firedOnceEventIds.
-    const profile = loadProfile(this.currentSaveSlot);
     const retiredCharacter = profile.retiredCharacters.at(-1);
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
@@ -138,6 +140,7 @@ export class Game {
       pendingBarterBuffs: [],
       barterUsedDepth: null,
       pendingFloorMilestoneOmenId: null,
+      pendingMemoryIntro: false,
       shownFloorMilestoneIds: [],
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
@@ -699,12 +702,29 @@ export class Game {
       this.state.shownFloorMilestoneIds.push(omen.id);
       this.state.pendingFloorMilestoneOmenId = omen.id;
     }
+    if (wasBossRoomVictory && !this.memoryUnlocked) {
+      this.memoryUnlocked = true;
+      const profile = loadProfile(this.currentSaveSlot);
+      profile.memoryUnlocked = true;
+      saveProfile(this.currentSaveSlot, profile);
+      this.state.pendingMemoryIntro = true;
+    }
     this.endCombat();
     return wasBossRoomVictory;
   }
 
   dismissFloorMilestoneMessage(): void {
     this.state.pendingFloorMilestoneOmenId = null;
+  }
+
+  dismissMemoryIntro(): void {
+    this.state.pendingMemoryIntro = false;
+  }
+
+  /** Non-common abilities the slot holds, in catalog order. */
+  memoryAbilityIds(): Id[] {
+    const held = loadProfile(this.currentSaveSlot).unlockedAbilityIds;
+    return ABILITIES.filter((a) => a.rarity !== "common" && held.includes(a.id)).map((a) => a.id);
   }
 
   className(classId: string): string {

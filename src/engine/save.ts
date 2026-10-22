@@ -264,8 +264,7 @@ export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   if (!isSaveMonstersValid(monsters)) throw new Error("Save state failed validation");
   const summons = migrateSummons(save.summons ?? []);
   pruneOrphanedSummonRefs(state, summons);
-  const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
+  const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime }, undefined, false, id);
   recomputeAllPartyStats(game.state);
-  game.currentSaveSlot = id;
   return game;
 }
