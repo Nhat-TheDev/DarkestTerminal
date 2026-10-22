@@ -39,6 +39,13 @@ describe("profile.ts — Part F.2's cross-run persistence layer", () => {
     expect(profile.retiredCharacters).toEqual([{ classId: "viking" }]);
   });
 
+  test("a retired Vanguard from before 1.2.0 loads as a Knight", () => {
+    resetProfile();
+    const path = join(process.env.DARKEST_TERMINAL_SAVE_DIR!, PROFILE_FILENAME);
+    writeFileSync(path, JSON.stringify({ version: 1, unlockedAbilityIds: [], retiredCharacters: [{ classId: "vanguard" }, { classId: "mage" }], shownRetiredCharacterEvent: false }));
+    expect(loadProfile().retiredCharacters).toEqual([{ classId: "knight" }, { classId: "mage" }]);
+  });
+
   test("a corrupt profile file is treated as empty rather than throwing", () => {
     resetProfile();
     const path = join(process.env.DARKEST_TERMINAL_SAVE_DIR!, PROFILE_FILENAME);

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Id, AbilityProfile } from "../types";
 import { ABILITIES } from "../data/abilities";
 import { SAVE_DIR } from "./paths";
+import { renamedClassId } from "./migration";
 
 /**
  * Survives permadeath's slot-clear; one global file shared by every slot. Never import `./save` or
@@ -39,7 +40,7 @@ export function loadProfile(): Profile {
     return {
       version: CURRENT_VERSION,
       unlockedAbilityIds,
-      retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters : [],
+      retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters.map((r) => ({ classId: renamedClassId(r.classId) })) : [],
       shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
     };
   } catch {

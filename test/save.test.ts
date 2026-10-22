@@ -496,6 +496,29 @@ describe("Version migrations", () => {
   }
   const span = (level: number) => expCostForLevel(level + 1) - expCostForLevel(level);
 
+  test("a 1.1.1 save with a Vanguard loads it as a Knight, at the same level and EXP", () => {
+    withGame(25, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "1.1.1";
+      const vanguard = save.state.party.find((c) => c.classId === "knight")!;
+      vanguard.classId = "vanguard";
+      vanguard.name = "Vanguard";
+      save.state.retiredCharacterClassId = "vanguard";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+
+      expect(listSlots()[0]!.meta?.saveVersion).toBe("1.1.1");
+      const state = gameFromSave(loadSave("slot1"), "slot1").state;
+      const knight = state.party.find((c) => c.id === vanguard.id)!;
+      expect(knight.classId).toBe("knight");
+      expect(knight.name).toBe(getClass("knight").name);
+      expect(knight.level).toBe(vanguard.level);
+      expect(state.partyExp).toBe(save.state.partyExp);
+      expect(state.retiredCharacterClassId).toBe("knight");
+    });
+  });
+
   test("compareVersions orders versions field by field, numerically", () => {
     expect(compareVersions("1.1.0", "1.1.1")).toBeLessThan(0);
     expect(compareVersions("1.1.1", "1.2.0")).toBeLessThan(0);
