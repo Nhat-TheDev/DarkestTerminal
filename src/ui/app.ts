@@ -36,7 +36,7 @@ import {
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
@@ -70,7 +70,7 @@ const RUN_LOG_SIZE = 500;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
-  // Memory pages are prebuilt by row budget, so each list "entry" is a whole page.
+  // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
   if (kind === "memory") return 1;
   return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
@@ -88,8 +88,6 @@ const EXP_BAR_WIDTH = 24;
 /** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
     holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
 const BATTLEFIELD_CONTENT_WIDTH = 113;
-/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
-const SIDE_PANEL_WIDTH = 35;
 /** Columns a Log line can use: the panel minus its border and the scrollbar. */
 const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
@@ -209,7 +207,7 @@ export class App implements ScreenContext {
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
 
-    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: 34, title: t("ui.panelParty") });
+    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: PARTY_PANEL_WIDTH, title: t("ui.panelParty") });
     this.party = new TextRenderable(renderer, { id: "party", content: "", fg: PALETTE.text });
     partyBox.add(this.party);
     body.add(partyBox);
@@ -342,7 +340,7 @@ export class App implements ScreenContext {
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
       case "memory":
-        return memoryScreen.memoryPages(ui.abilityIds).length;
+        return ui.pages.length;
       default:
         return null;
     }
@@ -399,7 +397,7 @@ export class App implements ScreenContext {
         this.ui = { kind: "floorMilestone" };
         return;
       }
-      if (this.game.state.pendingMemoryIntro) {
+      if (this.game.memoryIntroPending) {
         this.ui = { kind: "memoryIntro" };
         return;
       }
@@ -480,7 +478,7 @@ export class App implements ScreenContext {
       return;
     }
     if (key.name === "m" && this.memoryAvailable() && canOpenMemory(this.ui.kind)) {
-      this.ui = { kind: "memory", previous: this.ui, previousPage: this.listPage, abilityIds: this.game.memoryAbilityIds() };
+      this.ui = { kind: "memory", previous: this.ui, previousPage: this.listPage, pages: memoryScreen.memoryPages(this.game.memoryAbilityIds()) };
       this.listPage = 0;
       this.render();
       return;
@@ -600,7 +598,7 @@ export class App implements ScreenContext {
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
-        gameoverScreen.handleKey(this, key, digit);
+        gameoverScreen.handleKey(this, key);
         break;
     }
     this.render();
@@ -671,7 +669,7 @@ export class App implements ScreenContext {
 
   /** Unlocked, and the intro that introduces it has been read. */
   private memoryAvailable(): boolean {
-    return this.game.memoryUnlocked && !this.game.state.pendingMemoryIntro;
+    return this.game.memoryUnlocked && this.game.memoryIntroShown;
   }
 
   /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
@@ -681,6 +679,7 @@ export class App implements ScreenContext {
     this.renderer.keyInput.off("keypress", this.onKeypress);
     this.renderer.off("resize", this.onResize);
     this.renderer.root.remove(this.root);
+    this.root.destroyRecursively();
     // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
     setTimeout(() => this.onExit?.(next), 0);
   }

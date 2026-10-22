@@ -2,16 +2,18 @@ import type { KeyEvent } from "@opentui/core";
 import type { Id } from "../../types";
 import { t } from "../../data/strings";
 import { formatAbilityEffect, getAbility } from "../../data/abilities";
-import { wrapText } from "../layout";
+import { MIN_TERMINAL_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, wrapText } from "../layout";
+import { paginateByRows } from "../pagination";
 import type { UiState } from "../state";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type MemoryUiState = Extract<UiState, { kind: "memory" }>;
 
 export const MEMORY_PAGE_SIZE = 5;
-/** The Dungeon panel's inner size at the minimum terminal size, less the title and the blank line under it. */
+/** The Dungeon panel's inner height at the minimum terminal size, less the title and the blank line under it. */
 export const MEMORY_LIST_ROWS = 11;
-const MEMORY_LIST_WIDTH = 79;
+/** The Dungeon panel's inner width at the minimum terminal size: what the two side columns and its own border leave. */
+export const MEMORY_LIST_WIDTH = MIN_TERMINAL_WIDTH - PARTY_PANEL_WIDTH - SIDE_PANEL_WIDTH - 2;
 const EFFECT_INDENT = "      ";
 
 export function handleIntroKey(ctx: ScreenContext, key: KeyEvent): void {
@@ -34,32 +36,15 @@ function entryLines(id: Id): string[] {
   return [t("ui.memoryEntry", { name: ability.name, rarity: ability.rarity }), ...effect];
 }
 
-/** At most `MEMORY_PAGE_SIZE` entries that fit `MEMORY_LIST_ROWS` rows, so a page with long effects holds fewer; always at least one page. */
+/** Each page's lines: at most `MEMORY_PAGE_SIZE` entries that fit `MEMORY_LIST_ROWS` rows, so long effects mean fewer per page. Empty for no abilities. */
 export function memoryPages(abilityIds: Id[]): string[][] {
-  const pages: string[][] = [[]];
-  let entries = 0;
-  for (const id of abilityIds) {
-    const lines = entryLines(id);
-    const page = pages[pages.length - 1]!;
-    if (entries > 0 && (entries >= MEMORY_PAGE_SIZE || page.length + lines.length > MEMORY_LIST_ROWS)) {
-      pages.push([...lines]);
-      entries = 1;
-      continue;
-    }
-    page.push(...lines);
-    entries++;
-  }
-  return pages;
+  if (abilityIds.length === 0) return [];
+  return paginateByRows(abilityIds.map(entryLines), (lines) => lines.length, MEMORY_PAGE_SIZE, MEMORY_LIST_ROWS).map((page) => page.flat());
 }
 
 export function renderMain(ui: MemoryUiState, page: number): string {
   const lines = [t("ui.memoryTitle"), ""];
-  if (ui.abilityIds.length === 0) {
-    lines.push(t("ui.memoryEmpty"));
-    return lines.join("\n");
-  }
-  const pages = memoryPages(ui.abilityIds);
-  lines.push(...pages[Math.min(Math.max(page, 0), pages.length - 1)]!);
+  lines.push(...(ui.pages[page] ?? [t("ui.memoryEmpty")]));
   return lines.join("\n");
 }
 

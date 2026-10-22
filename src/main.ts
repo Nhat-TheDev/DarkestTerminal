@@ -7,12 +7,14 @@ import { showSlotSelect } from "./ui/saveSelect";
 import { PALETTE } from "./ui/theme";
 import { Game } from "./engine/game";
 import { CLASSES } from "./data/classes";
-import { loadSave, gameFromSave, saveRun, clearSlot, listSlots, migrateLegacyProfile } from "./engine/save";
+import { loadSave, gameFromSave, saveRun, clearSlot, migrateLegacyProfile } from "./engine/save";
 import { beginRun } from "./engine/profile";
 import type { Id } from "./types";
 
-async function startRun(renderer: CliRenderer, slotId: Id): Promise<Game> {
-  const picks = await showPartySelect(renderer, CLASSES, slotId);
+/** `overwrite` wipes the slot only once the party is picked, so quitting during party select keeps the old run. */
+async function startRun(renderer: CliRenderer, slotId: Id, overwrite = false): Promise<Game> {
+  const picks = await showPartySelect(renderer, CLASSES, overwrite ? null : slotId);
+  if (overwrite) clearSlot(slotId);
   beginRun(slotId);
   const game = new Game(
     Date.now(),
@@ -44,17 +46,15 @@ async function main() {
     const choice = await showMainMenu(renderer);
     let game: Game;
     if (choice === "new") {
-      const slotId = await showSlotSelect(renderer, "new");
-      if (!slotId) continue;
-      // Only a slot holding a run asks before it is overwritten, and overwriting starts the slot over.
-      if (listSlots().find((slot) => slot.id === slotId)?.meta) clearSlot(slotId);
-      game = await startRun(renderer, slotId);
+      const slot = await showSlotSelect(renderer, "new");
+      if (!slot) continue;
+      game = await startRun(renderer, slot.id, slot.overwrite);
     } else {
-      const slotId = await showSlotSelect(renderer, "continue");
-      if (!slotId) continue;
-      game = gameFromSave(loadSave(slotId), slotId);
+      const slot = await showSlotSelect(renderer, "continue");
+      if (!slot) continue;
+      game = gameFromSave(loadSave(slot.id), slot.id);
     }
-    // A finished run's slot stays with the player: "New run" starts the next one in it.
+    // A finished run's slot stays with the player: "New Run" starts the next one in it.
     while ((await playRun(renderer, game)) === "newRun") {
       game = await startRun(renderer, game.currentSaveSlot!);
     }

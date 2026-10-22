@@ -18,7 +18,13 @@ function slotNumber(id: Id): number {
   return Number(id.replace("slot", ""));
 }
 
-export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<Id | null> {
+/** `overwrite` is set only when the player confirmed replacing a slot that holds a run. */
+export interface SlotChoice {
+  id: Id;
+  overwrite: boolean;
+}
+
+export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<SlotChoice | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "saveselect-root",
@@ -63,16 +69,17 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     }
     draw();
 
-    const finish = (result: Id | null) => {
+    const finish = (result: SlotChoice | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
+      root.destroyRecursively();
       // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
       setTimeout(() => resolve(result), 0);
     };
 
     const onKey = (key: KeyEvent) => {
       if (pendingOverwrite) {
-        if (key.name === "1") finish(pendingOverwrite.id);
+        if (key.name === "1") finish({ id: pendingOverwrite.id, overwrite: true });
         else if (key.name === "escape") {
           pendingOverwrite = null;
           draw();
@@ -90,7 +97,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
         draw();
         return;
       }
-      finish(slot.id);
+      finish({ id: slot.id, overwrite: false });
     };
     renderer.keyInput.on("keypress", onKey);
   });

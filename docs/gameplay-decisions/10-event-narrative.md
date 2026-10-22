@@ -780,7 +780,7 @@ No combat, no cost — matches the established "just talk, no transaction" shape
 **The persistence layer**, `src/engine/profile.ts`: a small `slotN.profile.json` per save slot,
 living beside that slot's run file, but never importing `save.ts`/`game.ts` (they import it).
 Holds `{ version, unlockedAbilityIds, retiredCharacters: { classId }[], shownRetiredCharacterEvent:
-boolean, runCount }` — `version` and `unlockedAbilityIds` come from `AbilityProfile`
+boolean, runCount, memoryUnlocked, memoryIntroShown }` — `version` and `unlockedAbilityIds` come from `AbilityProfile`
 (`src/types.ts`), the ability unlocks that share the file. A retired character belongs to the slot
 it retired in: only a later run in that same slot can meet them. `addRetiredCharacter()` is called the moment Ending 1 is
 chosen (`Game.pickEndingChoice`); a fresh `Game` reads the profile once at construction and, if a

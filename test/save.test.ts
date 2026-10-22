@@ -17,7 +17,7 @@ import {
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
@@ -239,6 +239,74 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       saveProfile("slot3", { ...loadProfile("slot3"), unlockedAbilityIds: [] });
       migrateLegacyProfile();
       expect(loadProfile("slot3").unlockedAbilityIds).toEqual([]);
+    });
+  });
+
+  describe("legacy profile migration edge cases", () => {
+    const legacyPath = join(SAVE_DIR, "profile.json");
+    const backupPath = join(SAVE_DIR, "profile.legacy.json");
+    const writeLegacy = () => writeFileSync(legacyPath, JSON.stringify({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false }));
+    const cleanUp = () => {
+      rmSync(legacyPath, { recursive: true, force: true });
+      rmSync(backupPath, { recursive: true, force: true });
+    };
+
+    test("a profile.json recreated by an older build never overwrites a slot's own profile", () => {
+      withGame(12, (game) => {
+        try {
+          game.currentSaveSlot = "slot1";
+          saveRun(game);
+          saveProfile("slot1", { ...loadProfile("slot1"), runCount: 4, memoryUnlocked: true, unlockedAbilityIds: ["predators-edge"] });
+          writeLegacy();
+          migrateLegacyProfile();
+          expect(loadProfile("slot1")).toMatchObject({ runCount: 4, memoryUnlocked: true, unlockedAbilityIds: ["predators-edge"] });
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+
+    test("a slot whose run cannot be loaded gets nothing, matching the slot list that shows it as empty", () => {
+      withGame(13, (game) => {
+        try {
+          game.currentSaveSlot = "slot2";
+          saveRun(game);
+          const save = loadSave("slot2");
+          save.meta.saveVersion = "0.0.1-not-a-real-version";
+          writeFileSync(join(SAVE_DIR, "slot2.json"), JSON.stringify(save));
+          writeLegacy();
+          migrateLegacyProfile();
+          expect(loadProfile("slot2").unlockedAbilityIds).toEqual([]);
+          expect(listSlots().find((s) => s.id === "slot2")).toMatchObject({ meta: null, runCount: 0 });
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+
+    test("a rename that fails does not stop the game from starting", () => {
+      withGame(14, (game) => {
+        try {
+          game.currentSaveSlot = "slot1";
+          saveRun(game);
+          writeLegacy();
+          mkdirSync(join(backupPath, "blocker"), { recursive: true });
+          expect(() => migrateLegacyProfile()).not.toThrow();
+          expect(loadProfile("slot1").unlockedAbilityIds).toEqual(["bloodletting"]);
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+  });
+
+  test("loading a run saved before its slot had a profile counts it as the slot's first run", () => {
+    withGame(15, (game) => {
+      game.currentSaveSlot = "slot4";
+      saveRun(game);
+      expect(loadProfile("slot4").runCount).toBe(0);
+      gameFromSave(loadSave("slot4"), "slot4");
+      expect(loadProfile("slot4").runCount).toBe(1);
     });
   });
 

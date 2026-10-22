@@ -70,6 +70,7 @@ export class Game {
 
   public currentSaveSlot: Id | null = null;
   public memoryUnlocked = false;
+  public memoryIntroShown = false;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -86,6 +87,7 @@ export class Game {
     this.currentSaveSlot = saveSlot;
     const profile = loadProfile(saveSlot);
     this.memoryUnlocked = profile.memoryUnlocked;
+    this.memoryIntroShown = profile.memoryIntroShown;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
@@ -140,7 +142,6 @@ export class Game {
       pendingBarterBuffs: [],
       barterUsedDepth: null,
       pendingFloorMilestoneOmenId: null,
-      pendingMemoryIntro: false,
       shownFloorMilestoneIds: [],
       campReflectionChoices: {},
       pendingEndingCheckpoint: false,
@@ -598,6 +599,7 @@ export class Game {
             if (monster.tier === "boss") {
               this.state.runStardust += 1;
               this.state.combat.log.push({ text: t("game.stardustGained"), kind: "info" });
+              this.unlockMemory();
             }
           }
         }
@@ -702,13 +704,6 @@ export class Game {
       this.state.shownFloorMilestoneIds.push(omen.id);
       this.state.pendingFloorMilestoneOmenId = omen.id;
     }
-    if (wasBossRoomVictory && !this.memoryUnlocked) {
-      this.memoryUnlocked = true;
-      const profile = loadProfile(this.currentSaveSlot);
-      profile.memoryUnlocked = true;
-      saveProfile(this.currentSaveSlot, profile);
-      this.state.pendingMemoryIntro = true;
-    }
     this.endCombat();
     return wasBossRoomVictory;
   }
@@ -717,8 +712,25 @@ export class Game {
     this.state.pendingFloorMilestoneOmenId = null;
   }
 
+  private unlockMemory(): void {
+    if (this.memoryUnlocked) return;
+    this.memoryUnlocked = true;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.memoryUnlocked = true;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
+  /** Kept in the slot profile, not the run, so quitting before it is read cannot skip it. */
+  get memoryIntroPending(): boolean {
+    return this.memoryUnlocked && !this.memoryIntroShown;
+  }
+
   dismissMemoryIntro(): void {
-    this.state.pendingMemoryIntro = false;
+    if (!this.memoryIntroPending) return;
+    this.memoryIntroShown = true;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.memoryIntroShown = true;
+    saveProfile(this.currentSaveSlot, profile);
   }
 
   /** Non-common abilities the slot holds, in catalog order. */

@@ -35,7 +35,7 @@ export function renderFooter(): string {
   return t("ui.footerGameOver");
 }
 
-export function handleKey(ctx: ScreenContext, key: KeyEvent, digit: number | null): void {
-  if (digit === 1) ctx.exitRun("newRun");
+export function handleKey(ctx: ScreenContext, key: KeyEvent): void {
+  if (key.name === "n") ctx.exitRun("newRun");
   else if (key.name === "escape") ctx.exitRun("menu");
 }

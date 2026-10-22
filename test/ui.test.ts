@@ -5,6 +5,7 @@ import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
 import { saveRun, loadSave, gameFromSave, listSlots, clearSlot } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
+import { ABILITIES } from "../src/data/abilities";
 import { loadProfile, saveProfile } from "../src/engine/profile";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
@@ -72,7 +73,7 @@ describe("headless UI smoke test", () => {
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
   // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
   async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
-    saveProfile("slot1", { ...loadProfile("slot1"), memoryUnlocked: true });
+    saveProfile("slot1", { ...loadProfile("slot1"), memoryUnlocked: true, memoryIntroShown: true });
     let game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "boss";
@@ -313,12 +314,16 @@ describe("game over", () => {
     expect(app.debugUiState.kind).toBe("gameover");
     expect(listSlots()[0]!.meta).toBeNull();
     expect(game.currentSaveSlot).toBe("slot1");
-    expect(setup.captureCharFrame()).toContain("[1] New run   [Esc] Main menu");
+    expect(setup.captureCharFrame()).toContain("[n] New Run   [Esc] Main Menu");
   });
 
-  test("[1] asks for a new run and [Esc] for the main menu", async () => {
+  test("[n] asks for a new run and [Esc] for the main menu; a stray [1] from the screen before does nothing", async () => {
     const first = await defeatedRunInSlot();
     first.setup.mockInput.pressKey("1");
+    await tick();
+    expect(first.exits).toEqual([]);
+    expect(first.app.debugUiState.kind).toBe("gameover");
+    first.setup.mockInput.pressKey("n");
     await tick();
     expect(first.exits).toEqual(["newRun"]);
 
@@ -930,6 +935,32 @@ describe("memory screen", () => {
       renderer.keyInput.emit("keypress", new KeyEvent({ name: "escape", ctrl: false, meta: false, shift: false, option: false, sequence: "\x1b", number: false, raw: "\x1b", eventType: "press", source: "raw" }));
       await renderOnce();
       expect(app.debugUiState.kind).toBe(before);
+    } finally {
+      clearSlot(SLOT);
+    }
+  }, 20000);
+
+  test("every Memory page fits the Dungeon panel at the minimum 150x45 terminal", async () => {
+    try {
+      const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 45 });
+      const held = ABILITIES.filter((a) => a.rarity !== "common");
+      saveProfile(SLOT, { ...loadProfile(SLOT), unlockedAbilityIds: held.map((a) => a.id), memoryUnlocked: true, memoryIntroShown: true });
+      const game = new Game(7, undefined, undefined, undefined, false, SLOT);
+      game.state.combat = null;
+      const app = new App(renderer, game);
+      await renderOnce();
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memory");
+      const seen = new Set<string>();
+      let previous = "";
+      for (let guard = 0; guard < 20 && captureCharFrame() !== previous; guard++) {
+        previous = captureCharFrame();
+        for (const ability of held) if (previous.includes(`${ability.name} (${ability.rarity})`)) seen.add(ability.id);
+        mockInput.pressArrow("right");
+        await renderOnce();
+      }
+      expect([...seen].sort()).toEqual(held.map((a) => a.id).sort());
     } finally {
       clearSlot(SLOT);
     }

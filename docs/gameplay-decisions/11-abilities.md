@@ -206,7 +206,7 @@ AbilityProfile {
 
 Note: the slot profile (`Profile`, `src/engine/profile.ts`) also stores
 `retiredCharacters` and `shownRetiredCharacterEvent`, used by the Ending
-system's cross-run narrative state, `memoryUnlocked` (see "Memory" below), and `runCount`, the number of runs
+system's cross-run narrative state, `memoryUnlocked` and `memoryIntroShown` (see "Memory" below), and `runCount`, the number of runs
 started in the slot (the slot list shows it as "Run N") — not part of
 Abilities, not shown above.
 
@@ -220,10 +220,12 @@ Abilities, not shown above.
   slot then starts over from nothing.
 - A slot that has never held a run has no profile file → treated as
   `{ version: 1, unlockedAbilityIds: [] }` (only commons available).
-- Before profiles were per slot, one `profile.json` served every slot.
-  `migrateLegacyProfile()` (`src/engine/save.ts`, run at startup) copies it
-  into each slot that holds a run file, leaves empty slots fresh, and
-  renames it to `profile.legacy.json` so the copy happens once.
+- A legacy `profile.json`, shared by every slot, is copied at startup by
+  `migrateLegacyProfile()` (`src/engine/save.ts`) into each slot that holds
+  a loadable run and has no profile of its own yet, then renamed to
+  `profile.legacy.json`. A slot that already has a profile is never
+  overwritten, so a `profile.json` recreated by an older build changes
+  nothing. A run loaded into a slot without a profile counts as run 1.
 
 ### Character-select flow
 
@@ -333,14 +335,16 @@ whatever Elites a floor happens to offer.
 
 ### Memory
 
-The slot's first boss-room victory (the first boss any of its runs beats) unlocks Memory, a read-only
-list of the non-common abilities the slot holds. The flag is `memoryUnlocked` in the
-slot profile, so it belongs to the slot and survives permadeath; `clearSlot` resets it.
+The slot's first kill of a boss-tier monster (the guard of the first boss floor; the guards
+of the floors before it are elites) unlocks Memory, a read-only list of the non-common
+abilities the slot holds. It is unlocked where the boss kill grants Stardust
+(`Game.unlockMemory`), and the flag is `memoryUnlocked` in the slot profile, so it belongs
+to the slot and survives permadeath; `clearSlot` resets it.
 
-On that victory `GameState.pendingMemoryIntro` is set and a one-time intro screen
-shows (`App.syncUiToGameState`, after the floor milestone check; `proceedAfterVictory`
-routes through it ahead of the Camp offer). Dismissing it clears the flag. From then
-on `[m]` opens Memory from any dungeon screen except the Log, game over, ability
+A one-time intro screen follows (`Game.memoryIntroPending`, shown by
+`App.syncUiToGameState` after the floor milestone check; `proceedAfterVictory` routes
+through it ahead of the Camp offer). Reading it sets `memoryIntroShown` in the profile, so
+quitting before it is read only postpones it. From then on `[m]` opens Memory from any dungeon screen except the Log, game over, ability
 buyback and the Gatekeeper, and `[Esc]` returns to where it was opened. The list follows
 the profile's `unlockedAbilityIds` in catalog order; commons are never listed.
 

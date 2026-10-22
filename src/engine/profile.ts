@@ -22,8 +22,10 @@ export interface Profile extends AbilityProfile {
   shownRetiredCharacterEvent: boolean;
   /** Runs started in the slot; the current or last one is this number. */
   runCount: number;
-  /** Set by the slot's first boss-room victory; it opens the Memory screen. */
+  /** Set by the slot's first boss-tier kill; it opens the Memory screen. */
   memoryUnlocked: boolean;
+  /** The one-time Memory intro has been read; `[m]` is offered only after it. */
+  memoryIntroShown: boolean;
 }
 
 export function profileFilename(slotId: Id): string {
@@ -35,7 +37,7 @@ function profilePath(slotId: Id): string {
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false };
 }
 
 function isKnownAbility(id: Id): boolean {
@@ -52,7 +54,12 @@ export function parseProfile(text: string): Profile {
     shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
     runCount: Number.isInteger(raw.runCount) && (raw.runCount as number) > 0 ? (raw.runCount as number) : 0,
     memoryUnlocked: raw.memoryUnlocked === true,
+    memoryIntroShown: raw.memoryIntroShown === true,
   };
+}
+
+export function hasProfile(slotId: Id): boolean {
+  return existsSync(profilePath(slotId));
 }
 
 /** No slot, a missing file or an unparseable one all mean a fresh profile: only commons are available. */

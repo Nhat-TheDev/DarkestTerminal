@@ -998,8 +998,6 @@ export interface GameState {
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
   /** The omen picked on a milestone-floor boss victory; cleared by `Game.dismissFloorMilestoneMessage()`. */
   pendingFloorMilestoneOmenId?: Id | null;
-  /** Set on the slot's first boss-room victory; cleared by `Game.dismissMemoryIntro()`. */
-  pendingMemoryIntro?: boolean;
   /** In order; keeps an omen from repeating and lets one held back to its `maxFloor` show there. */
   shownFloorMilestoneIds: Id[];
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;

@@ -3,6 +3,13 @@ import type { Monster } from "../types";
 import { PALETTE, MONSTER_STYLE, BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
 import { MAX_BOSS_HEIGHT } from "./sprites";
 
+/** The smallest supported terminal width; panels are sized so their content fits at this width. */
+export const MIN_TERMINAL_WIDTH = 150;
+/** Width of the Expedition Party panel, border included. */
+export const PARTY_PANEL_WIDTH = 34;
+/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
+export const SIDE_PANEL_WIDTH = 35;
+
 export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
 export const DIVIDER_WIDTH = 3;
