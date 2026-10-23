@@ -96,7 +96,7 @@ Each Stratum carries exactly one `rule`. The engine supports a small, fixed set 
 each kind's parameters are data. Behavior that belongs to a specific monster (acid, bleed,
 targeting style, self-destruct) lives in that monster's kit or traits, not in the rule.
 
-Rules describe reflexes, never intent (`11-world-bible.md` §11.4). Player-facing text shows what
+Rules describe reflexes, never intent (`12-world-bible.md` §12.4). Player-facing text shows what
 happens (acid eats, blood draws blows, fear feeds something), never that the dungeon or its
 creatures choose or hunt.
 
@@ -157,7 +157,7 @@ Two further S4 traits are not part of the rule:
 
 - Rules appear as a short HUD tag next to the stat they affect, and their effects land visibly in
   the log. No screen explains the mechanism.
-- Entry text is one line on first entering a Stratum, following §11.11's one-observable-change
+- Entry text is one line on first entering a Stratum, following §12.11's one-observable-change
   rule. Drafts, to be finalized in M1b:
   - S1: *"The stairs give out onto stonework someone meant to keep. Nobody kept it."*
   - S2: *"The passage narrows and runs wet. Every surface down here slopes the same way."*
@@ -171,9 +171,9 @@ Two further S4 traits are not part of the rule:
 
 The four Strata follow the anatomy of a body from the outside in: outer layer, gullet, nerve and
 flesh, mind. As the dream nears its core it takes on the shape of the one dreaming it
-(`11-world-bible.md` §11.1). These labels never appear in player-facing text; the player sees only
+(`12-world-bible.md` §12.1). These labels never appear in player-facing text; the player sees only
 concrete images and draws the conclusion. M1a adds this as an internal section of
-`11-world-bible.md`.
+`12-world-bible.md`.
 
 ---
 
@@ -331,7 +331,7 @@ This staging script is shared by the TUI and Unity builds.
 
 1. Arrival: a library. Ritual circles are drawn densely across the floor and walls, the spiral mark
    turning both inward (sealing) and outward (inviting), overlapping. This is the room where the
-   schism began, and it does not say which side was right (§11.9). Books lie scattered across the
+   schism began, and it does not say which side was right (§12.9). Books lie scattered across the
    floor and the shelves. In the middle stands a low dais, and The Founder stands on it in human
    form.
 2. Dialogue: the six lines and two interleaved beats from Part F.5, unchanged. Only the arrival
@@ -340,7 +340,7 @@ This staging script is shared by the TUI and Unity builds.
 3. Transformation: the circles light, the books rise and burn, and the burning sounds like the
    things the party fought on the way down, layered over each other. The scene says only that it
    sounds like them. It never states the books made the monsters, which would make The Founder the
-   dungeon's architect and contradict §11.6 and §11.4. The Founder becomes the final form: more
+   dungeon's architect and contradict §12.6 and §12.4. The Founder becomes the final form: more
    brain than body, nerve-thick ropes trailing where legs should be. This is the existing
    description, kept because it already combines S3's nerve and flesh with S4's mind.
 4. The fight is against the final form only. The existing kit stays; stats come from floor 13 on
@@ -364,8 +364,6 @@ existing founder dialogue screen. The Unity build stages it in full.
 
 ## 7. Removed
 
-- Mini-games. Delete `docs/minigame-decisions.md` and the mini-game bullet in `design-doc.md`'s
-  "Future direction". No mini-game code exists.
 - `bossFloorInterval` (see §1).
 - The floor-100 and floor-120 ending depths (moved to the new scale).
 
@@ -393,12 +391,12 @@ existing founder dialogue screen. The Unity build stages it in full.
 
 ## 9. Docs to update during implementation
 
-- `design-doc.md`: run structure, Strata, remove mini-games.
+- `design-doc.md`: run structure, Strata.
 - `developer-guide.md`: `strata.json` and its loader, the floor-13 builder, the point-allocation
   screen.
 - `gameplay-decisions/`: 01 (skill points, new slot), 02 (roster by Stratum, self-destruct,
   `prescient`, new race), 03 and 04 (S4 fear), 06 (level cap, points), 07 (drops by Stratum), 08
-  and 10 (event gating, ending depths, Founder staging), 11-world-bible (internal body-metaphor
+  and 10 (event gating, ending depths, Founder staging), 12-world-bible (internal body-metaphor
   section).
 - Generated tables via `bun run docs:sync`.
 
