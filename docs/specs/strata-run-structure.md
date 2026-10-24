@@ -23,7 +23,7 @@ The per-slot profile (`slotN.profile.json`, `feat/save-slot-runs`) is merged bef
 
 One spec, three implementation plans, built in order:
 
-- M1a, structure: Strata, the 1–13 depth scale, path floors, the four Strata rules, floor 13,
+- M1a, structure: Strata, the 1–13 depth scale, branching floors, the four Strata rules, floor 13,
   endings, ending progress kept per slot, Endless, skill points (using existing skills and
   passives), progression compression.
 - M1b, monsters and atmosphere: monster rework and new monsters, sprites, Stratum entry text,
@@ -46,8 +46,8 @@ provisionally (§3.1), before any M1b content lands.
 | Final floor | 13 | The Founder (only after choosing Continue) |
 | Endless | 14+ | A Stratum boss every `endless.bossFloorInterval` floors |
 
-- Normal floors are built as pre-built paths (§1.4), replacing the stage graph of
-  `generateFloorLayout`.
+- Normal floors are pre-built branching floors that split and merge back into one guard room
+  (§1.4), replacing the stage graph of `generateFloorLayout`.
 - Floors 1 and 2 of a Stratum end in a guard room holding one of that Stratum's Elites, never its
   `bossArchetypeId`. Floor 3 of a Stratum ends in that Stratum's boss.
 - `level-growth.json`'s `bossFloorInterval` is removed. The true Bosses are the four Stratum
@@ -95,31 +95,35 @@ A thin loader in `src/data/strata.ts` validates the shape and exposes typed acce
   removed (see §2.5).
 - `balance-config.json`:
   - `endings`: the checkpoint depth and the Founder depth move to the new scale and stay in data.
-  - `floorGeneration`: the stage-graph fields (`minPathRooms`, `maxPathRooms`, `maxBranches`,
+  - `floorGeneration`: the stage-graph fields (`minPathRooms`, `maxPathRooms`,
     `minBranchStartStage`, `minBranchSpacing`, the standalone-event fields) are replaced by the
-    path fields in §1.4.
+    branch and route fields in §1.4; the per-path event and rest bounds become per-route.
   - new `endless` block: `bossFloorInterval`.
 
-### 1.4 Path floors
+### 1.4 Branching floors
 
-A normal floor is a shared entrance, a set of pre-built paths, and a shared guard room.
+A normal floor is built whole on entry: one entrance, branches that split from it and merge back
+together step by step, and one guard room where every branch ends.
 
-- Each path is a fixed line of rooms from the entrance to the guard room. Paths never cross or
-  rejoin.
-- `floorGeneration.paths` lists the path shapes a floor is built from, shortest first, each with
-  its own room-count range. Every floor offers at least one short and one long path.
-- Every path holds at least `minCombatRoomsPerPath` combat rooms and respects the event and rest
-  bounds (`maxEventRoomsPerPath`, `minRestRoomsPerPath`, `maxRestRoomsPerPath`). Every floor still
-  has at least `minEventRoomsPerFloor` event rooms across its paths.
-- On entering a floor, a path-choice screen shows each path's length and its sequence of room
-  types. The party commits to one path for the floor and cannot switch.
-- A long path means more combat (EXP, coins, drops) and more events, at the cost of more satiety
-  drain and fear. A short path reaches the guard room sooner with less of both.
-- The Gatekeeper's blessing on floor 1 counts rooms along the chosen path.
-- Floor 13 is a single path with its own builder (§6.2).
+- The entrance splits into `minBranches`–`maxBranches` branches. Branches then merge pairwise,
+  never splitting again once merging has begun, until a single branch remains before the guard
+  room. There are no dead ends: every room lies on some route from the entrance to the guard room.
+- A route is one way through the floor, entrance to guard room. Branches leaving the same split
+  differ in length, so the shortest and longest routes differ by at least `minRouteLengthGap`
+  rooms. Route lengths stay within `minRouteRooms`–`maxRouteRooms`.
+- Every route holds at least `minCombatRoomsPerRoute` combat rooms and respects the event and rest
+  bounds (`maxEventRoomsPerRoute`, `minRestRoomsPerRoute`, `maxRestRoomsPerRoute`). Every floor
+  still has at least `minEventRoomsPerFloor` event rooms.
+- On entering a floor, the map shows the whole layout. At each split, the choice screen shows each
+  branch's length up to the room where it merges and its sequence of room types. The party picks
+  a branch at every split and never goes back.
+- A long route means more combat (EXP, coins, drops) and more events, at the cost of more satiety
+  drain and fear. A short route reaches the guard room sooner with less of both.
+- The Gatekeeper's blessing on floor 1 counts rooms along the route taken.
+- Floor 13 is a single line of rooms with its own builder (§6.2).
 
 A property test replaces the stage-graph test (§8), and `technical-decisions.md` §1 is rewritten
-for the path builder.
+for the floor builder.
 
 ---
 
@@ -190,8 +194,8 @@ Two further S4 traits are not part of the rule:
   `targeting.profiles` like the existing six, weighting a new targeting factor, `queued`: a score
   for the character who queued a support action this round (heal, guard, a buff on an ally) or the
   highest-MP-cost skill, with its rank scores in `targeting`. No text explains this.
-- Identical rooms: every S4 room uses the same name, and the path-choice screen shows an S4 path's
-  length but not its room types. A room's type (combat, event, rest) shows only once the party
+- Identical rooms: every S4 room uses the same name, and the split choice screen shows an S4
+  branch's length but not its room types. A room's type (combat, event, rest) shows only once the party
   enters it.
 
 ### 2.5 Showing rules and atmosphere to the player
@@ -319,9 +323,9 @@ Skill points replace automatic rank unlocks entirely.
 
 This section gives method and targets only; values are tuned with `random-play` during balancing.
 
-- Level cap (`maxLevel`) is lowered. A party taking the long path should reach it at about the S4
+- Level cap (`maxLevel`) is lowered. A party taking the long routes should reach it at about the S4
   boss, at roughly two levels per floor, with the first level-up right after the first combat. A
-  party taking short paths ends below that by design; `random-play` measures how far.
+  party taking short routes ends below that by design; `random-play` measures how far.
 - Level-keyed data (`level-growth.json` growth tiers and EXP tiers, every gate in §4.2) is rescaled
   to the new cap, keeping relative order. Thresholds that would collapse onto the same level are
   spread apart.
@@ -343,8 +347,8 @@ This section gives method and targets only; values are tuned with `random-play` 
   Reflection tiers count across a slot's runs (§6.5), so they are not rescaled to one run's length.
   Balancing checks how many runs a slot takes to reach each ending.
 - `fearPerRoundDepthGrowth` is retuned for 12 floors. Satiety, Camp and rest rooms keep their
-  mechanics; balancing checks that satiety still matters on short and long paths alike.
-- `random-play` reports per Stratum and per path length chosen: survival rate through each Stratum
+  mechanics; balancing checks that satiety still matters on short and long routes alike.
+- `random-play` reports per Stratum and per route length taken: survival rate through each Stratum
   boss, average level at each Stratum boss, rooms and rounds per run, Stardust earned and buybacks
   made, and runs per slot to each ending. Target rates are set during balancing, outside this
   spec.
@@ -363,7 +367,7 @@ totals (§6.5) instead of the run's.
 
 Floor 13 has its own builder:
 
-- A single path of rooms (count from data, The Founder's room included), with no branches, rest
+- A single line of rooms (count from data, The Founder's room included), with no branches, rest
   rooms or events.
 - Every room before the last is a boss room: one Elite/Boss archetype from one Stratum at Boss
   tier, plus a number of that Stratum's normal monsters set in data. That Stratum's rule and
@@ -410,7 +414,7 @@ existing founder dialogue screen. The Unity build stages it in full.
 - Endless mode unlocks for a slot once that slot reaches any ending (Stay, Let Go, Leave or the
   true ending), recorded in the slot profile. It is chosen when starting a run in that slot.
   Floors 1–12 play exactly as in a normal run, Strata and their rules included. After floor 12
-  there is no checkpoint and no floor 13: the run continues at floor 14 with path floors, monster
+  there is no checkpoint and no floor 13: the run continues at floor 14 with branching floors, monster
   and event pools from all four Strata, and no Stratum rule. Every `endless.bossFloorInterval`
   floors, counted from floor 13, the guard room holds a Boss drawn from the four Stratum bosses.
   Death in Endless is ordinary permadeath (abilities lost, Stardust buyback).
@@ -450,9 +454,11 @@ Consequences, accepted:
 
 ## 8. Testing
 
-- Path floors: a property test over many seeds covers one shared entrance and guard room, path
-  count and per-path room ranges, at least one short and one long path, paths that never cross or
-  rejoin, `minCombatRoomsPerPath`, the event and rest bounds, and `minEventRoomsPerFloor`.
+- Branching floors: a property test over many seeds covers one entrance and one guard room that
+  every branch ends in, no dead ends, the branch count, no split after merging has begun, a single
+  branch before the guard room, route lengths in range with the shortest and longest at least
+  `minRouteLengthGap` apart, `minCombatRoomsPerRoute`, the event and rest bounds on every route,
+  and `minEventRoomsPerFloor`.
 - Floor 13: room count in range, no adjacent same-Stratum rooms, every Stratum at least twice, no
   repeated boss, The Founder alone in the last room, no rest or event rooms, and the M1a cap.
 - Strata rules:
@@ -472,16 +478,16 @@ Consequences, accepted:
   `clearSlot` resets them, and two slots never share them.
 - Save: `OLDEST_LOADABLE_SAVE_VERSION` at 2.0.0, a 1.x run rejected cleanly, the slot profile
   intact.
-- UI: key hints for the path-choice and point-allocation screens, and `random-play` layout checks
-  at 150×45 plus the per-Stratum and per-path report.
+- UI: key hints for the split choice and point-allocation screens, and `random-play` layout checks
+  at 150×45 plus the per-Stratum and per-route report.
 - Every plan ends green on `bun test`, `bun run typecheck` and `bun run docs:sync --check`.
 
 ## 9. Docs to update during implementation
 
-- `design-doc.md`: run structure, Strata, path floors.
-- `developer-guide.md`: `strata.json` and its loader, the path builder, the floor-13 builder, the
-  path-choice and point-allocation screens, the new slot-profile fields.
-- `technical-decisions.md` §1: the path builder in place of the stage graph.
+- `design-doc.md`: run structure, Strata, branching floors.
+- `developer-guide.md`: `strata.json` and its loader, the branching-floor builder, the floor-13 builder,
+  the split choice and point-allocation screens, the new slot-profile fields.
+- `technical-decisions.md` §1: the branching-floor builder in place of the stage graph.
 - `gameplay-decisions/`: 01 (skill points), 02 (roster by Stratum, self-destruct, `prescient`, new
   race), 03 and 04 (S4 fear), 06 (level cap, points), 07 (drops by Stratum), 08 and 10 (event
   gating, ending depths, slot-kept progress, Founder staging), 09 and 11-abilities (Stardust,
@@ -496,7 +502,7 @@ Consequences, accepted:
    is already losing. `random-play` measures each one separately.
 3. Floor 13. Consecutive boss rooms with only items and Camp may be close to unwinnable; it is
    balanced on its own.
-4. Short paths. A party that always takes the short path may fall too far behind the level curve.
+4. Short routes. A party that always takes the shortest route may fall too far behind the level curve.
 5. In-progress 1.x runs stop loading on upgrade.
 
 ## Open question
@@ -509,10 +515,11 @@ Consequences, accepted:
 ## Appendix: starting values (move into `data/*.json`, then delete)
 
 - 4 Strata × 3 floors.
-- Path floors: 2–3 paths per floor, 6–9 rooms each, at least one path of 6–7 rooms and one of 8–9.
+- Branching floors: the entrance splits into 2–3 branches; routes run 6–9 rooms, the shortest and
+  longest at least 2 rooms apart.
 - Floor 13: 9–12 rooms, The Founder's included.
 - Endless: a Boss every 3 floors (16, 19, ...).
-- Level cap 25, about 2 levels per floor on the long path.
+- Level cap 25, about 2 levels per floor on the long routes.
 - Skill rank-1 gates: slots 1–2 from level 2 (the first point), slot 3 at level 3, slot 4 at level
   5, slot 5 at level 7, the ultimate (slot 6) at level 12.
 - Class passive rank 1 from level 2.
