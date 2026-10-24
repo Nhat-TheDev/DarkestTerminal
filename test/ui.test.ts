@@ -9,7 +9,7 @@ import { ABILITIES } from "../src/data/abilities";
 import { loadProfile, saveProfile } from "../src/engine/profile";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
 import { getActorByRef, startCombat } from "../src/engine/combat";
-import { spawnMonster, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { spawnMonster, getArchetype, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { resolveSkillEffect } from "../src/engine/resolver";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
 import { ARTIFACTS } from "../src/data/artifacts";
@@ -905,6 +905,71 @@ describe("layout", () => {
     for (const boss of [false, true]) {
       const { captureCharFrame, renderer } = await openFight(150, 45, boss);
       expect(panelRows(captureCharFrame(), t("ui.panelBattlefield")), boss ? "boss" : "ordinary").toBe(UNIT_BLOCK_HEIGHT);
+      renderer.destroy();
+    }
+  });
+
+  async function openBossFight(archetypeId: string, tier: "boss" | "elite", meter?: number) {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const monster = spawnMonster(archetypeId, 1, { tier });
+    if (meter !== undefined) monster.telegraphMeter = meter;
+    game.ctx.monsters.push(monster);
+    room.monsterIds = [monster.id];
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    return setup;
+  }
+
+  test("a boss shows its telegraph meter under its HP, filled icons first", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("skeleton-guard", "boss", 3);
+    const rows = captureCharFrame().split("\n");
+    const hpRow = rows.findIndex((r) => r.includes(t("ui.hpLabel")) && r.includes("/") && r.includes("█"));
+    expect(rows[hpRow + 1]).toContain("◆◆◆◇◇");
+    renderer.destroy();
+  });
+
+  test("the Founder shows his phase next to his name and the bar's HP and meter of that phase", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("the-founder", "boss", 2);
+    const frame = captureCharFrame();
+    expect(frame).toContain("Phase 1/3");
+    expect(frame).toContain("◆◆◇◇");
+    renderer.destroy();
+  });
+
+  test("a boss without bars shows no phase", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("skeleton-guard", "boss");
+    expect(captureCharFrame()).not.toContain("Phase ");
+    renderer.destroy();
+  });
+
+  test("the Founder on his second bar reads Phase 2/3 with that bar's HP", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+    founder.barIndex = 1;
+    founder.maxHp = founder.hp = Math.round(founder.barBaseHp! * getArchetype("the-founder").bars![1]!.hpMultiplier);
+    founder.telegraphMeter = 1;
+    game.ctx.monsters.push(founder);
+    room.monsterIds = [founder.id];
+    game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("Phase 2/3");
+    expect(frame).toContain(`${founder.hp}/${founder.maxHp}`);
+    expect(frame).toContain("◆◇◇◇");
+    setup.renderer.destroy();
+  });
+
+  test("elites and meterless bosses show no meter", async () => {
+    for (const [id, tier] of [["skeleton-guard", "elite"], ["orc-chieftain", "boss"]] as const) {
+      const { captureCharFrame, renderer } = await openBossFight(id, tier);
+      const frame = captureCharFrame();
+      expect(frame, `${id} ${tier}`).not.toMatch(/[◆◇]/);
       renderer.destroy();
     }
   });

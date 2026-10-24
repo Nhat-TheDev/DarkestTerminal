@@ -35,7 +35,8 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
-import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory } from "./monsterAI";
+import { advanceBar } from "./monsterBars";
+import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory, fillTelegraphMeter } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
@@ -429,6 +430,8 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       fear: isCharacter ? (actor as Character).survival.fear : undefined,
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
       shell: c.ref.kind === "monster" && (actor as Monster).shell ? { ...(actor as Monster).shell! } : undefined,
+      telegraphMeter: c.ref.kind === "monster" ? (actor as Monster).telegraphMeter : undefined,
+      barIndex: c.ref.kind === "monster" ? (actor as Monster).barIndex : undefined,
     };
   });
   return [...present, ...departed];
@@ -503,6 +506,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
           const hpBefore = target.hp;
           target.hp = Math.max(0, target.hp - effect.amount);
           noteDamageTaken(target, character.id, hpBefore - target.hp);
+          if (target.hp <= 0) advanceBar(target);
           combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
         }
       }
@@ -595,6 +599,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
         } else {
           // An Overwatch shot lands before the monster's own turn, so a status it causes (a broken
           // shell's stun) already counts as present for that turn.
+          fillTelegraphMeter(actor as Monster, combat, ctx);
           const interrupted = tryTriggerOverwatch(ref, combat, ctx);
           eligibleSpecial = specialStatusSnapshot(actor);
           if (interrupted) {

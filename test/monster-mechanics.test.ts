@@ -328,26 +328,6 @@ describe("breakable shell", () => {
     });
   });
 
-  test("a break while charging delays the release instead of losing it", () => {
-    const telegraph = { id: "fx-t", name: "fx-t", description: "x", mpCost: 0, target: "singleEnemy", effects: [{ kind: "damage", amount: 1 }], slot: 0, unlockLevel: 1, telegraph: true, cooldownTurns: 6 };
-    withShell([telegraph], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
-      const { boss, combat, hit, turn, lines } = shellFight();
-      turn();
-      expect(boss.charging).toBeDefined();
-      hit();
-      hit();
-      hit();
-      turn();
-      expect(lines("is stunned")).toBe(1);
-      expect(boss.charging).toBeDefined();
-      boss.activeStatusEffects = boss.activeStatusEffects.filter((s) => s.statusEffectId !== "stunned");
-      turn();
-      expect(boss.charging).toBeUndefined();
-      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
-      expect(boss.skillCooldowns!["fx-t"]).toBe(3);
-    });
-  });
-
   test("an artifact's reflect is capped by the intact shell and does not count as a hit", () => {
     withShell([], {}, () => {
       const { boss, hitter, combat } = shellFight();

@@ -195,6 +195,8 @@ export interface MonsterComputation {
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
   /** The phases of this tier, in the order they are entered. */
   phases: MonsterPhase[];
+  /** Boss tier only: the telegraph its meter releases. */
+  bossTelegraph: MonsterArchetype["bossTelegraph"] | null;
 }
 
 export function computeMonster(archetypeId: string, depth: number, tier: MonsterTier): MonsterComputation | { error: string } {
@@ -242,6 +244,7 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
     /** The phases this tier enters, in order: each one's weights replace the tier's table once HP falls below its threshold. */
     phases: (archetype.phases ?? []).filter((p) => p.tier === tier),
+    bossTelegraph: tier === "boss" ? (archetype.bossTelegraph ?? null) : null,
   };
 }
 
@@ -455,15 +458,7 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     outgoing,
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
-    telegraphNote: telegraphNote(monster.skillKit.skills.filter((s) => s.telegraph && weights?.[s.id] !== undefined)),
   };
-}
-
-/** A telegraph is rolled like any other skill; what sets it apart is the charge turn and the cooldown it starts there. */
-export function telegraphNote(telegraphs: SkillDefinition[]): string | null {
-  if (telegraphs.length === 0) return null;
-  const list = telegraphs.map((s) => `${s.name} (cooldown ${s.cooldownTurns ?? 0})`).join(", ");
-  return `${list}: a telegraph is rolled like any other skill. When it comes up it spends that turn charging and locks its target, releases on the next turn, and can be picked again once its cooldown, counted from the charge, runs out.`;
 }
 
 export interface LevelByDepthRow {

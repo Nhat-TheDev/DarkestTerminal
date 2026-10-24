@@ -18,7 +18,7 @@ describe("normal-tier Skeleton Guard keeps its plain behaviour", () => {
   test("never gains guard-room state", () => {
     const { guard } = runNormalSkeletonGuardFight(3, 8, true);
     expect(guard.skillCooldowns === undefined || Object.keys(guard.skillCooldowns).length === 0).toBe(true);
-    expect(guard.charging).toBeUndefined();
+    expect(guard.telegraphMeter).toBeUndefined();
     expect(guard.shell).toBeUndefined();
     expect(guard.enteredPhaseIndexes).toBeUndefined();
   });

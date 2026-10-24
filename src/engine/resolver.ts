@@ -6,6 +6,7 @@ import { resolveRaceProfile } from "../data/monsterRaces";
 import { getClass, passiveRankDef } from "../data/classes";
 import { adjustFear, formatFear, resistedFearGain } from "./survival";
 import { noteShellHit, shellAdjustedDamage } from "./monsterShell";
+import { advanceBar } from "./monsterBars";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
   if (def.harmful) return false;
@@ -210,6 +211,7 @@ function raceMultiplierFor(target: Actor, damageType: DamageType): number {
 }
 
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
+  if (effect.requiresTargetStatusId && !target.activeStatusEffects.some((s) => s.statusEffectId === effect.requiresTargetStatusId)) return 0;
   switch (effect.kind) {
     case "damage": {
       const isSelfTick = source === target;
@@ -398,6 +400,7 @@ function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: Reso
 
 /** A `reviveHpPercent` status on a fallen actor spends itself to put the actor back up at that share of its max HP. */
 function reviveIfGuarded(actor: Actor, ctx: ResolveContext): void {
+  if (isMonster(actor) && advanceBar(actor)) return;
   const guard = actor.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).reviveHpPercent);
   if (!guard) return;
   const def = getStatusEffect(guard.statusEffectId);

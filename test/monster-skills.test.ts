@@ -56,30 +56,6 @@ describe("elite/boss skill kit", () => {
     expect(monsterLines.some((l) => kitNames.some((name) => l.text.includes(name)))).toBe(false);
   });
 
-  test("a boss's telegraph charges one turn, then releases on its locked target", () => {
-    const { ctx } = makeCtx();
-    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
-    boss.maxHp = 5000;
-    boss.hp = 5000;
-    ctx.monsters.push(boss);
-    const combat = startCombat("r1", [boss.id], ctx, false);
-
-    let charged = false;
-    for (let round = 0; round < 20 && combat.phase !== "over" && !charged; round++) {
-      queueTrivialActions(ctx, combat);
-      resolveRound(combat, ctx);
-      charged = boss.charging !== undefined;
-    }
-    expect(charged).toBe(true);
-    expect(boss.charging!.skillId).toBe("overhead-cut");
-    expect(combat.log.some((l) => l.text.includes("draws back for Overhead Cut"))).toBe(true);
-
-    queueTrivialActions(ctx, combat);
-    resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("unleashes Overhead Cut"))).toBe(true);
-    expect(boss.charging).toBeUndefined();
-  });
-
   test("an elite's area skill damages every living character when it fires", () => {
     let found = false;
     for (let seed = 0; seed < 50 && !found; seed++) {
@@ -142,14 +118,19 @@ describe("elite/boss skill kit", () => {
     expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party!");
   });
 
-  test("the-founder carries its own kit and two phases, weighted for boss tier only", () => {
+  test("the-founder carries its own kit and three HP bars, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "hung-lower", "the-last-of-it"]);
+    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "ask-properly", "the-answer", "hung-lower", "the-last-of-it"]);
     expect(getMonsterSkill("everything-you-asked-for").telegraph).toBe(true);
+    expect(founder.bossTelegraph!.skillId).toBe("everything-you-asked-for");
     expect(getMonsterSkill("paid-in-full").targetCount).toEqual({ min: 2, max: 3 });
     expect(getMonsterSkill("the-same-price").target).toBe("allEnemies");
-    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "everything-you-asked-for", "paid-in-full", "the-same-price", "whats-left-listening"]);
-    expect(founder.phases!.map((p) => p.onEnterSkillId)).toEqual(["hung-lower", "the-last-of-it"]);
+    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "paid-in-full", "whats-left-listening"]);
+    expect(founder.phases).toBeUndefined();
+    expect(founder.bars!.map((b) => b.onEnterSkillId)).toEqual([undefined, "hung-lower", "the-last-of-it"]);
+    expect(founder.bars!.map((b) => b.bossTelegraph?.skillId)).toEqual([undefined, "ask-properly", "the-answer"]);
+    expect(getMonsterSkill("ask-properly").targetCount).toEqual({ min: 2, max: 3 });
+    expect(getMonsterSkill("the-answer").target).toBe("allEnemies");
     // Never spawned at elite tier.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });
@@ -164,7 +145,6 @@ describe("elite/boss skill kit", () => {
       for (let round = 0; round < 6 && seen.size < 2; round++) {
         // Execute runs on its own cycle outside the weighted pool; hold it off.
         monster.skillCooldowns = { "everything-you-asked-for": 99 };
-        monster.charging = undefined;
         queueTrivialActions(ctx, combat);
         resolveRound(combat, ctx);
         if (combat.log.some((l) => l.text.includes("Paid In Full"))) seen.add("strike");
@@ -891,63 +871,6 @@ describe("monster AI rules, driven by fixture kits", () => {
       for (let i = 0; i < 20; i++) turn();
       const onMarked = combat.log.filter((l) => l.text.includes(`uses fx-a on ${marked.name}.`)).length;
       expect(onMarked).toBeGreaterThanOrEqual(18);
-    });
-  });
-
-  test("a telegraph charges without dealing damage, then releases on the locked target", () => {
-    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, effects: [{ kind: "damage", amount: 50 }] })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
-      const { ctx, boss, combat, turn } = bossFight();
-      const hp = () => ctx.party.map((c) => c.hp);
-      const before = hp();
-      turn();
-      expect(combat.log.some((l) => l.text.includes("draws back for fx-t"))).toBe(true);
-      expect(hp()).toEqual(before);
-      expect(boss.charging!.skillId).toBe("fx-t");
-      expect(boss.charging!.targetIds.length).toBe(1);
-      expect(boss.skillCooldowns!["fx-t"]).toBe(3);
-      const lockedId = boss.charging!.targetIds[0]!;
-      turn();
-      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
-      expect(boss.charging).toBeUndefined();
-      const changed = ctx.party.filter((c, i) => c.hp !== before[i]);
-      expect(changed.map((c) => c.id)).toEqual([lockedId]);
-    });
-  });
-
-  test("a telegraph whose locked target died re-picks a living one", () => {
-    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
-      const { ctx, boss, combat, turn } = bossFight();
-      turn();
-      const locked = ctx.party.find((c) => c.id === boss.charging!.targetIds[0])!;
-      kill(locked);
-      turn();
-      expect(boss.charging).toBeUndefined();
-      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
-    });
-  });
-
-  test("a stun delays a charged release instead of cancelling it", () => {
-    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 6 })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
-      const { boss, combat, turn } = bossFight();
-      turn();
-      boss.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
-      turn();
-      expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
-      expect(boss.charging).toBeDefined();
-      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(false);
-      boss.activeStatusEffects = [];
-      turn();
-      expect(boss.charging).toBeUndefined();
-      expect(combat.log.some((l) => l.text.includes("unleashes fx-t"))).toBe(true);
-    });
-  });
-
-  test("chargeEffects resolve on the caster during the charge turn", () => {
-    const charge = [{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 }];
-    withFixture([sk("fx-t", { telegraph: true, cooldownTurns: 4, chargeEffects: charge })], { actionWeights: { boss: { "fx-t": 100 } } }, () => {
-      const { boss, turn } = bossFight();
-      turn();
-      expect(boss.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
     });
   });
 

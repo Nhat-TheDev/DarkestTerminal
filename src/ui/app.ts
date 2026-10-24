@@ -12,6 +12,7 @@ import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { saveRun, deleteSlot } from "../engine/save";
 import {
   PALETTE,
@@ -1171,14 +1172,18 @@ export class App implements ScreenContext {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(t("ui.monsterDefeatedSuffix", { name: m.name }))]);
         continue;
       }
+      const maxHp = hpOverride?.get(m.id)?.maxHp ?? m.maxHp;
+      const bars = m.tier === "boss" ? getArchetype(m.archetypeId).bars : undefined;
+      const barIndex = hpOverride?.get(m.id)?.barIndex ?? m.barIndex ?? 0;
       lines.push([chip(style.abbr, style.color), plainChunk(` ${m.name}`)]);
+      if (bars) lines.push([plainChunk("  "), colorChunk(t("ui.monsterBarPhase", { n: barIndex + 1, total: bars.length }), PALETTE.dim)]);
       lines.push([
         plainChunk("  "),
-        colorChunk(t("ui.hpLabel"), hpColorFor(hp, m.maxHp)),
+        colorChunk(t("ui.hpLabel"), hpColorFor(hp, maxHp)),
         plainChunk(" "),
-        ...progressBar(hp, m.maxHp, STAT_BAR_WIDTH, hpColorFor(hp, m.maxHp)),
+        ...progressBar(hp, maxHp, STAT_BAR_WIDTH, hpColorFor(hp, maxHp)),
         plainChunk(" "),
-        colorChunk(t("ui.statValueSuffix", { cur: hp, max: m.maxHp }), hpColorFor(hp, m.maxHp)),
+        colorChunk(t("ui.statValueSuffix", { cur: hp, max: maxHp }), hpColorFor(hp, maxHp)),
       ]);
       const activeStatusEffects = hpOverride?.get(m.id)?.activeStatusEffects ?? m.activeStatusEffects;
       const shell = hpOverride?.get(m.id)?.shell ?? m.shell;
@@ -1188,6 +1193,15 @@ export class App implements ScreenContext {
           shell.state === "intact"
             ? colorChunk(shell.hitsLeft === 1 ? t("ui.shellIntactOne") : t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
             : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
+        ]);
+      }
+      const telegraph = m.tier === "boss" ? getBossTelegraph(getArchetype(m.archetypeId), barIndex) : undefined;
+      if (telegraph) {
+        const filled = Math.min(hpOverride?.get(m.id)?.telegraphMeter ?? m.telegraphMeter ?? 0, telegraph.meterLength);
+        lines.push([
+          plainChunk("  "),
+          colorChunk(t("ui.telegraphMeterFilled").repeat(filled), PALETTE.fearPanic),
+          colorChunk(t("ui.telegraphMeterEmpty").repeat(telegraph.meterLength - filled), PALETTE.dim),
         ]);
       }
       for (const eff of activeStatusEffects) {

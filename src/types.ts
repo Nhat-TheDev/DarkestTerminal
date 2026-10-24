@@ -32,6 +32,8 @@ export interface SkillEffect {
   /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
   alsoApplyStatusEffectIds?: Id[];
   chance?: number;
+  /** Skips this effect unless the target carries this status when it resolves. */
+  requiresTargetStatusId?: Id;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
   /** For a `damage` effect with `lifestealPercent`: every other living party member also heals this percent of the lifesteal the hit drew (before the caster's own missing-HP cap). */
@@ -169,6 +171,23 @@ export interface MonsterPhase {
   onEnterSkillId?: Id;
 }
 
+/**
+ * One HP bar of a boss that fights in bars: it holds `hpMultiplier` of the boss's scaled max HP, and emptying it starts the next bar
+ * with that bar's own `weights`, entry cast and telegraph. Emptying the last bar kills. A bar without `bossTelegraph` uses the archetype's.
+ */
+export interface MonsterBar {
+  hpMultiplier: number;
+  /** Replaces the boss tier's `actionWeights`; absent means the tier's own. */
+  weights?: Record<string, number>;
+  onEnterSkillId?: Id;
+  bossTelegraph?: BossTelegraph;
+}
+
+export interface BossTelegraph {
+  skillId: Id;
+  meterLength: number;
+}
+
 /** A breakable shell: while intact each direct hit is capped at a share of max HP and counts toward breaking it; breaking stuns the bearer, and it reforms later (`monsterShell.ts`). */
 export interface MonsterShellDefinition {
   hitsToBreak: { min: number; max: number };
@@ -230,7 +249,7 @@ export interface SkillDefinition {
   attackRange?: AttackRange;
   /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
   telegraph?: boolean;
-  /** Monster skills only: effects resolved on the caster during a telegraph's charge turn. */
+  /** Monster skills only: effects resolved on the caster when its boss meter fills the icon before the last. */
   chargeEffects?: SkillEffect[];
   /** Monster skills only, on a `singleEnemy` skill: hits this many distinct enemies. */
   targetCount?: { min: number; max: number };
@@ -403,7 +422,7 @@ export interface StatusEffectDefinition {
   fearResistPercent?: number;
   /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
   onActStatus?: { statusEffectId: Id; chance: number; durationTurns: number };
-  /** The bearer can only use its basic attack. An elite or boss still releases a charged telegraph. */
+  /** The bearer can only use its basic attack. A boss with a full telegraph meter cannot release it while silenced. */
   silences?: boolean;
   /** On an elite or boss, no application of this status lasts longer than this many turns. */
   eliteBossMaxTurns?: number;
@@ -714,6 +733,10 @@ export interface MonsterArchetype {
   targeting?: "random";
   /** A breakable shell the monster carries from spawn. */
   shell?: MonsterShellDefinition;
+  /** Boss only: the telegraph its meter releases once `meterLength` icons have filled. Never in an action-weight tier. */
+  bossTelegraph?: BossTelegraph;
+  /** Boss only: fights in HP bars instead of `phases`; at least two. */
+  bars?: MonsterBar[];
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
@@ -749,8 +772,13 @@ export interface Monster {
   skillUses?: Record<Id, number>;
   /** Indexes into the archetype's `phases` already entered. */
   enteredPhaseIndexes?: number[];
-  /** The telegraphed skill being charged and the targets it locked. */
-  charging?: { skillId: Id; targetIds: Id[] };
+  /** Filled icons of a boss's telegraph meter; absent means empty. */
+  telegraphMeter?: number;
+  /** A boss with `bars`: the bar it is on (absent means the first) and the scaled max HP every bar's size is a share of. */
+  barIndex?: number;
+  barBaseHp?: number;
+  /** Set when a bar emptied and the next bar's entry has not happened yet. */
+  barEntryPending?: boolean;
   /** The monster that summoned this one; it falls when its summoner does. */
   summonerId?: Id;
   /** Present on a shell bearer. */
@@ -840,6 +868,10 @@ export interface CombatantSnapshot {
   activeStatusEffects?: ActiveStatusEffect[];
   /** Monsters only: the state of a shell bearer's shell. */
   shell?: MonsterShellState;
+  /** Monsters only: filled icons of a boss's telegraph meter. */
+  telegraphMeter?: number;
+  /** Monsters only: the bar a boss with `bars` is on. */
+  barIndex?: number;
 }
 
 export interface PartyStateSnapshot {

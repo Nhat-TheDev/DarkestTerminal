@@ -110,18 +110,6 @@ describe("Interpose", () => {
     });
   });
 
-  test("a telegraphed single-target attack locked on the ally is taken by the Knight on release", () => {
-    const slam = sk("fx-slam", { telegraph: true });
-    fight([slam], { "fx-slam": 100 }, true, ({ knight, mage, turn }) => {
-      turn();
-      expect(lost(knight)).toBe(0);
-      expect(lost(mage)).toBe(0);
-      turn();
-      expect(lost(mage)).toBe(0);
-      expect(lost(knight)).toBeGreaterThan(0);
-    });
-  });
-
   test("a confused monster's blow on another monster is never intercepted", () => {
     const hit = sk("fx-hit");
     fight([hit], { "fx-hit": 100 }, true, ({ ctx, boss, knight, mage, combat, turn }) => {
