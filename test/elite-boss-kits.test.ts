@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { MONSTER_ARCHETYPES, getMonsterSkill } from "../src/data/monsters";
+import { MONSTER_ARCHETYPES, getArchetype, getBossTelegraph, getMonsterSkill } from "../src/data/monsters";
 import type { SkillEffect } from "../src/types";
 
 const GUARDS = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("boss"));
@@ -43,25 +43,54 @@ describe("elite/boss kits", () => {
     }
   });
   test("a telegraph aimed by a status tag is aimed only at the tagged", () => {
-    for (const [skillId, tag] of [["name-struck-out", "marked"], ["abyssal-judgment", "challenged"]] as const) {
-      const skill = getMonsterSkill(skillId);
+    const byArchetype = { lich: "marked", "dark-knight": "challenged" } as const;
+    for (const [archetypeId, tag] of Object.entries(byArchetype)) {
+      const skill = getMonsterSkill(getBossTelegraph(getArchetype(archetypeId))!.skillId);
       expect(skill.aiCondition?.targetHasStatusId).toBe(tag);
       expect(skill.targetRules?.some((r) => r.if.targetLacksStatusId === tag && r.weightMultiplier === 0)).toBe(true);
     }
   });
-  test("no two telegraphs share a cadence, and only Orc Chieftain and Void Amalgamation have none", () => {
-    const cadences = new Map<string, string>();
+  test("every boss-tier telegraph is driven by bossTelegraph and by no action weight", () => {
     const without: string[] = [];
     for (const a of GUARDS) {
-      const telegraphs = a.skillIds.map(getMonsterSkill).filter((s) => s.telegraph);
-      if (telegraphs.length === 0) without.push(a.id);
-      for (const s of telegraphs) {
-        const key = `${s.cooldownTurns}/${s.initialCooldownTurns ?? 0}`;
-        expect(cadences.get(key)).toBeUndefined();
-        cadences.set(key, a.id);
+      const telegraphs = a.skillIds.filter((id) => getMonsterSkill(id).telegraph);
+      if (!a.bossTelegraph) {
+        without.push(a.id);
+        expect(telegraphs).toEqual([]);
+        continue;
       }
+      expect(telegraphs).toEqual([a.bossTelegraph.skillId]);
+      const weightKeys = [...Object.values(a.actionWeights ?? {}), ...(a.phases ?? []).map((p) => p.weights)].flatMap((w) => Object.keys(w));
+      expect(weightKeys).not.toContain(a.bossTelegraph.skillId);
     }
     expect(without.sort()).toEqual(["orc-chieftain", "void-amalgamation"]);
+  });
+  test("meter lengths are 3 to 5 and differ within a band", () => {
+    const bands = [
+      ["skeleton-guard", "giant-spider"],
+      ["zombie-knight", "orc-chieftain", "vampire-lord"],
+      ["dark-knight", "void-amalgamation", "lich"],
+      ["ancient-golem", "dragon"],
+      ["the-founder"],
+    ];
+    const length = (id: string) => getBossTelegraph(getArchetype(id))?.meterLength;
+    for (const band of bands) {
+      const lengths = band.map(length).filter((n) => n !== undefined);
+      expect(new Set(lengths).size).toBe(lengths.length);
+    }
+    const lengths = Object.fromEntries(GUARDS.filter((a) => a.bossTelegraph).map((a) => [a.id, a.bossTelegraph!.meterLength]));
+    for (const n of Object.values(lengths)) expect(Number.isInteger(n) && n >= 3 && n <= 5).toBe(true);
+    expect(lengths).toEqual({
+      "skeleton-guard": 5,
+      "giant-spider": 4,
+      "zombie-knight": 5,
+      "vampire-lord": 4,
+      "dark-knight": 3,
+      lich: 5,
+      "ancient-golem": 5,
+      dragon: 4,
+      "the-founder": 4,
+    });
   });
   test("Orc Chieftain's phase summon always has room under the cap", () => {
     const call = getMonsterSkill("call-the-warband");
@@ -79,6 +108,7 @@ describe("elite/boss kits", () => {
         Object.keys(p.weights).filter((k) => k !== "basicAttack").forEach((k) => keys.add(k));
         if (p.onEnterSkillId) keys.add(p.onEnterSkillId);
       }
+      if (tier === "boss" && a.bossTelegraph) keys.add(a.bossTelegraph.skillId);
       return keys.size;
     };
     const expected: Record<string, [number | null, number]> = {

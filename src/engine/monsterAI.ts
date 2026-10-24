@@ -280,38 +280,7 @@ function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, ac
     }
   }
   commitSkill(actor, skill);
-  if (skill.telegraph) {
-    actor.charging = { skillId: skill.id, targetIds: skill.target === "singleEnemy" ? targets.map((a) => a.id) : [] };
-    if (skill.chargeEffects?.length) applySkillEffects({ ...skill, target: "self", effects: skill.chargeEffects }, actor, [actor], combat, ctx, combat.log);
-    combat.log.push({
-      text:
-        skill.target === "singleEnemy"
-          ? t("combat.telegraphCharge", { actor: actor.name, skill: skill.name, targets: joinNames(targets) })
-          : t("combat.telegraphChargeAoe", { actor: actor.name, skill: skill.name }),
-      kind: "info",
-    });
-    if (skill.target === "singleEnemy") for (const target of targets) noteBasicAttack(combat, actor, target);
-    return;
-  }
   combat.log.push({ text: monsterSkillLogLine(actor, skill, targets), kind: skill.target === "self" || skill.target === "allAllies" ? "info" : "attack" });
-  applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
-}
-
-/** Releases the charged skill: on the targets it locked (any that died are re-picked by the skill's own target rules), or on everyone alive for an area telegraph. */
-function releaseCharge(archetype: MonsterArchetype, actor: Monster, living: Targetable[], view: AiView, combat: CombatState, ctx: EngineContext): void {
-  const skill = getMonsterSkill(actor.charging!.skillId);
-  let targets: Actor[];
-  if (skill.target !== "singleEnemy") {
-    targets = resolveMonsterSkillTargets(skill, archetype, actor, living, view, ctx.rng);
-  } else {
-    const locked = actor.charging!.targetIds.map((id) => living.find((c) => c.id === id)).filter((c): c is Targetable => c !== undefined);
-    const lost = actor.charging!.targetIds.length - locked.length;
-    targets = lost > 0 ? [...locked, ...pickTargets(skill, archetype, actor, living.filter((c) => !locked.includes(c)), view, ctx.rng, lost)] : locked;
-    if (targets.length === 0) targets = pickTargets(skill, archetype, actor, living, view, ctx.rng);
-  }
-  actor.charging = undefined;
-  if (skill.target === "singleEnemy" && (skill.effects ?? []).some((e) => e.kind === "damage")) targets = interceptAll(actor, targets, combat, ctx);
-  combat.log.push({ text: t("combat.telegraphRelease", { actor: actor.name, skill: skill.name }), kind: "attack" });
   applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
 }
 
@@ -345,8 +314,6 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
 
   const archetype = getArchetype(actor.archetypeId);
   const view = monsterAiView(actor, combat, ctx);
-
-  if (actor.charging) return releaseCharge(archetype, actor, living, view, combat, ctx);
 
   const phase = phaseToEnter(archetype, actor);
   if (phase !== undefined) {

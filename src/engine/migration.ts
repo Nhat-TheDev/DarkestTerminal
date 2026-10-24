@@ -8,7 +8,7 @@ import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
 import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
-import { getArchetype } from "../data/monsters";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 
@@ -285,6 +285,11 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
 export function migrateMonsters(monsters: Monster[]): Monster[] {
   for (const monster of monsters) {
     dropUnknownStatuses(monster);
+    const saved = monster as Monster & { charging?: unknown };
+    if (saved.charging !== undefined) {
+      monster.telegraphMeter = getBossTelegraph(getArchetype(monster.archetypeId))?.meterLength ?? 0;
+      delete saved.charging;
+    }
     if (monster.race !== undefined) continue;
     const archetype = getArchetype(monster.archetypeId);
     monster.race = archetype.race;

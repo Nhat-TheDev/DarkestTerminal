@@ -377,9 +377,7 @@
     ],
     "slot": 0,
     "unlockLevel": 1,
-    "telegraph": true,
-    "cooldownTurns": 5,
-    "initialCooldownTurns": 1
+    "telegraph": true
   },
   {
     "id": "web-barrage",
@@ -472,8 +470,6 @@
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
-    "cooldownTurns": 4,
-    "initialCooldownTurns": 2,
     "targetRules": [
       {
         "if": {
@@ -630,8 +626,6 @@
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
-    "cooldownTurns": 5,
-    "initialCooldownTurns": 3,
     "chargeEffects": [
       {
         "kind": "applyStatusEffect",
@@ -734,9 +728,7 @@
     ],
     "slot": 0,
     "unlockLevel": 1,
-    "telegraph": true,
-    "cooldownTurns": 4,
-    "initialCooldownTurns": 3
+    "telegraph": true
   },
   {
     "id": "salute",
@@ -856,8 +848,6 @@
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
-    "cooldownTurns": 3,
-    "initialCooldownTurns": 2,
     "aiCondition": {
       "targetHasStatusId": "challenged"
     },
@@ -1121,8 +1111,6 @@
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
-    "cooldownTurns": 3,
-    "initialCooldownTurns": 3,
     "targetRules": [
       {
         "if": {
@@ -1266,9 +1254,7 @@
     ],
     "slot": 0,
     "unlockLevel": 1,
-    "telegraph": true,
-    "cooldownTurns": 6,
-    "initialCooldownTurns": 4
+    "telegraph": true
   },
   {
     "id": "crumbling-shell",
@@ -1386,8 +1372,6 @@
     "slot": 0,
     "unlockLevel": 1,
     "telegraph": true,
-    "cooldownTurns": 3,
-    "initialCooldownTurns": 1,
     "aiCondition": {
       "targetHasStatusId": "marked"
     },
@@ -1500,9 +1484,7 @@
     ],
     "slot": 0,
     "unlockLevel": 1,
-    "telegraph": true,
-    "cooldownTurns": 4,
-    "initialCooldownTurns": 4
+    "telegraph": true
   },
   {
     "id": "hung-lower",

@@ -1,4 +1,4 @@
-import type { MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
+import type { Id, MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import {
@@ -24,6 +24,10 @@ export function getArchetype(id: string): MonsterArchetype {
   const found = MONSTER_ARCHETYPES.find((m) => m.id === id);
   if (!found) throw new Error(`Unknown monster archetype: ${id}`);
   return found;
+}
+
+export function getBossTelegraph(archetype: MonsterArchetype): { skillId: Id; meterLength: number } | undefined {
+  return archetype.bossTelegraph;
 }
 
 export const MONSTER_SKILLS = monsterSkillsJson as unknown as SkillDefinition[];
@@ -195,6 +199,20 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
       }
       if (phase.onEnterSkillId !== undefined && !declared.has(phase.onEnterSkillId)) {
         throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is not in its skillIds`);
+      }
+    }
+    const bossTelegraph = archetype.bossTelegraph;
+    if (bossTelegraph) {
+      if (!archetype.roles.includes("boss")) throw new Error(`${where}: bossTelegraph needs the role "boss"`);
+      if (!declared.has(bossTelegraph.skillId)) throw new Error(`${where}: bossTelegraph skill "${bossTelegraph.skillId}" is not in its skillIds`);
+      if (!isTelegraph(bossTelegraph.skillId)) throw new Error(`${where}: bossTelegraph skill "${bossTelegraph.skillId}" is not a telegraph skill`);
+      if (!(Number.isInteger(bossTelegraph.meterLength) && bossTelegraph.meterLength >= 1)) {
+        throw new Error(`${where}: bossTelegraph meterLength must be a positive integer`);
+      }
+    }
+    for (const weights of [...Object.values(archetype.actionWeights ?? {}), ...(archetype.phases ?? []).map((p) => p.weights)]) {
+      for (const key of Object.keys(weights)) {
+        if (isTelegraph(key)) throw new Error(`${where}: telegraph "${key}" is in an action weight; a boss telegraph is released by its meter`);
       }
     }
     if (archetype.shell) {

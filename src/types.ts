@@ -403,7 +403,7 @@ export interface StatusEffectDefinition {
   fearResistPercent?: number;
   /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
   onActStatus?: { statusEffectId: Id; chance: number; durationTurns: number };
-  /** The bearer can only use its basic attack. An elite or boss still releases a charged telegraph. */
+  /** The bearer can only use its basic attack. A boss with a full telegraph meter cannot release it while silenced. */
   silences?: boolean;
   /** On an elite or boss, no application of this status lasts longer than this many turns. */
   eliteBossMaxTurns?: number;
@@ -714,6 +714,8 @@ export interface MonsterArchetype {
   targeting?: "random";
   /** A breakable shell the monster carries from spawn. */
   shell?: MonsterShellDefinition;
+  /** Boss only: the telegraph its meter releases once `meterLength` icons have filled. Never in an action-weight tier. */
+  bossTelegraph?: { skillId: Id; meterLength: number };
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
@@ -749,8 +751,8 @@ export interface Monster {
   skillUses?: Record<Id, number>;
   /** Indexes into the archetype's `phases` already entered. */
   enteredPhaseIndexes?: number[];
-  /** The telegraphed skill being charged and the targets it locked. */
-  charging?: { skillId: Id; targetIds: Id[] };
+  /** Filled icons of a boss's telegraph meter; absent means empty. */
+  telegraphMeter?: number;
   /** The monster that summoned this one; it falls when its summoner does. */
   summonerId?: Id;
   /** Present on a shell bearer. */
@@ -840,6 +842,8 @@ export interface CombatantSnapshot {
   activeStatusEffects?: ActiveStatusEffect[];
   /** Monsters only: the state of a shell bearer's shell. */
   shell?: MonsterShellState;
+  /** Monsters only: filled icons of a boss's telegraph meter. */
+  telegraphMeter?: number;
 }
 
 export interface PartyStateSnapshot {

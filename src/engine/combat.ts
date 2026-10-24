@@ -429,6 +429,7 @@ export function snapshotCombatants(combat: CombatState, ctx: EngineContext): Com
       fear: isCharacter ? (actor as Character).survival.fear : undefined,
       activeStatusEffects: actor.activeStatusEffects.map((s) => ({ ...s })),
       shell: c.ref.kind === "monster" && (actor as Monster).shell ? { ...(actor as Monster).shell! } : undefined,
+      telegraphMeter: c.ref.kind === "monster" ? (actor as Monster).telegraphMeter : undefined,
     };
   });
   return [...present, ...departed];

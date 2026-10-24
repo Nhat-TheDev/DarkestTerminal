@@ -737,7 +737,7 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     const add = spawnMonster("skeleton", 1);
     add.summonerId = boss.id;
     add.expReward = 0;
-    boss.charging = { skillId: "name-struck-out", targetIds: [game.state.party[0]!.id] };
+    boss.telegraphMeter = 3;
     boss.enteredPhaseIndexes = [0];
     boss.skillCooldowns = { "ledger-mark": 2, "name-struck-out": 3 };
     boss.skillUses = { "name-struck-out": 1 };
@@ -757,7 +757,7 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     return gameFromSave(loadSave("slot1"), "slot1");
   };
 
-  test("charging, phase, cooldowns, uses, shell and summoner all come back", () => {
+  test("meter, phase, cooldowns, uses, shell and summoner all come back", () => {
     withGame(14, (game) => {
       const { boss, add, golem } = midFight(game);
       const resumed = roundTrip(game);
@@ -765,6 +765,20 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
       expect(resumed.ctx.monsters.find((m) => m.id === add.id)).toEqual(add);
       expect(resumed.ctx.monsters.find((m) => m.id === golem.id)).toEqual(golem);
       expect(resumed.state.combat!.combatants).toEqual(game.state.combat!.combatants);
+    });
+  });
+
+  test("a monster saved mid-charge under the old charging field loads with a full meter", () => {
+    withGame(16, (game) => {
+      const { boss } = midFight(game);
+      boss.telegraphMeter = undefined;
+      saveRun(game);
+      const save = loadSave("slot1");
+      const saved = save.monsters.find((m) => m.id === boss.id) as typeof boss & { charging?: unknown };
+      saved.charging = { skillId: "name-struck-out", targetIds: [] };
+      const loaded = gameFromSave(save, "slot1").ctx.monsters.find((m) => m.id === boss.id)! as typeof boss & { charging?: unknown };
+      expect(loaded.telegraphMeter).toBe(5);
+      expect(loaded.charging).toBeUndefined();
     });
   });
 
@@ -776,10 +790,9 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     ["a shell on a monster whose archetype has none", (m) => { m.shell = { ...shell }; }],
     ["a shell on a normal-tier monster", (_boss, add) => { add.shell = { ...shell }; }],
     ["a null shell", (_b, _a, g) => { (g as any).shell = null; }],
-    ["a null charge", (m) => { (m as any).charging = null; }],
+    ["a negative telegraph meter", (m) => { m.telegraphMeter = -1; }],
+    ["a fractional telegraph meter", (m) => { m.telegraphMeter = 1.5; }],
     ["null cooldowns", (m) => { (m as any).skillCooldowns = null; }],
-    ["a charge on a skill that does not exist", (m) => { m.charging!.skillId = "nope"; }],
-    ["a charge with a non-string target", (m) => { (m.charging as any).targetIds = [7]; }],
     ["a negative cooldown", (m) => { m.skillCooldowns!["ledger-mark"] = -1; }],
     ["a negative use count", (m) => { m.skillUses!["name-struck-out"] = -1; }],
     ["a phase index that is not an integer", (m) => { (m.enteredPhaseIndexes as any) = ["first"]; }],

@@ -7,7 +7,7 @@ import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
-import { MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../data/monsters";
+import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
@@ -168,10 +168,7 @@ export function isSaveMonstersValid(monsters: Monster[]): boolean {
   return monsters.every((m) => {
     if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
     if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
-    if (m.charging !== undefined) {
-      if (!isRecord(m.charging) || !existsInCatalog(MONSTER_SKILLS, m.charging.skillId)) return false;
-      if (!Array.isArray(m.charging.targetIds) || !m.charging.targetIds.every((id) => typeof id === "string")) return false;
-    }
+    if (m.telegraphMeter !== undefined && !isCount(m.telegraphMeter)) return false;
     if (m.shell !== undefined) {
       // A shell only means anything on a guard-room monster whose archetype declares one.
       if (!isRecord(m.shell) || m.tier === "normal" || !MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.shell) return false;
