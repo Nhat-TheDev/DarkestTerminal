@@ -32,6 +32,8 @@ export interface SkillEffect {
   /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
   alsoApplyStatusEffectIds?: Id[];
   chance?: number;
+  /** Skips this effect unless the target carries this status when it resolves. */
+  requiresTargetStatusId?: Id;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
   /** For a `damage` effect with `lifestealPercent`: every other living party member also heals this percent of the lifesteal the hit drew (before the caster's own missing-HP cap). */

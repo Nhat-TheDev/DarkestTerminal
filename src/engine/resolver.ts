@@ -211,6 +211,7 @@ function raceMultiplierFor(target: Actor, damageType: DamageType): number {
 }
 
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
+  if (effect.requiresTargetStatusId && !target.activeStatusEffects.some((s) => s.statusEffectId === effect.requiresTargetStatusId)) return 0;
   switch (effect.kind) {
     case "damage": {
       const isSelfTick = source === target;

@@ -215,4 +215,21 @@ describe("boss telegraph meter", () => {
     expect(ally.hp).toBe(allyHp);
     expect(ctx.party.some((c, i) => c.hp < before[i]!)).toBe(true);
   });
+  test("Cocoon wraps a webbed target so it loses its turn, and still hits and poisons an un-webbed one", () => {
+    const { ctx, boss, combat, skill } = bossFight("giant-spider");
+    const [webbed, bare] = ctx.party as [(typeof ctx.party)[number], (typeof ctx.party)[number]];
+    webbed.activeStatusEffects.push({ statusEffectId: "webbed", turnsRemaining: 2 });
+    const ids = (c: typeof webbed) => c.activeStatusEffects.map((a) => a.statusEffectId);
+    const hp = [webbed.hp, bare.hp];
+    applySkillEffects(skill, boss, [webbed], combat, ctx, combat.log);
+    applySkillEffects(skill, boss, [bare], combat, ctx, combat.log);
+    expect(ids(webbed)).toContain("cocooned");
+    expect(ids(webbed)).toContain("webbed");
+    expect(ids(webbed)).toContain("poisoned-iii");
+    expect(ids(bare)).not.toContain("cocooned");
+    expect(ids(bare)).not.toContain("webbed");
+    expect(ids(bare)).toContain("poisoned-iii");
+    expect(webbed.hp).toBeLessThan(hp[0]!);
+    expect(bare.hp).toBeLessThan(hp[1]!);
+  });
 });

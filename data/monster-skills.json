@@ -463,8 +463,9 @@
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "webbed",
-        "durationTurns": 2
+        "statusEffectId": "cocooned",
+        "durationTurns": 1,
+        "requiresTargetStatusId": "webbed"
       },
       {
         "kind": "applyStatusEffect",

@@ -264,7 +264,7 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `overhead-cut` | Overhead Cut | singleEnemy | damage 60 + 190% ATK (ignores 40% defense); status weakened (2 turns) | Skeleton Guard (defensive) |
 | `web-barrage` | Web Barrage | singleEnemy | damage 10 + 40% ATK; status webbed (2 turns, 60% chance) | Giant Spider (aggressive) |
 | `venom-bite` | Venom Bite | singleEnemy | damage 22 + 60% ATK; status poisoned-ii (3 turns) | Giant Spider (aggressive) |
-| `cocoon` | Cocoon | singleEnemy | damage 40 + 190% ATK; status webbed (2 turns); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
+| `cocoon` | Cocoon | singleEnemy | damage 40 + 190% ATK; status cocooned (1 turn, requiresTargetStatusId webbed); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
 | `feed` | Feed | singleEnemy | damage 24 + 110% ATK | Giant Spider (aggressive) |
 | `into-the-rafters` | Into the Rafters | self | status airborne (1 turn) | Giant Spider (aggressive) |
 | `claw-rake` | Claw Rake | singleEnemy | damage 14 + 65% ATK (1–2 hits) | Dragon (aggressive) |

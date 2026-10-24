@@ -151,7 +151,7 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
       throw new Error(`${where}: chargeEffects resolve on the caster, so they must not deal damage`);
     }
     for (const effect of [...(skill.effects ?? []), ...(skill.chargeEffects ?? [])]) {
-      for (const id of [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])]) {
+      for (const id of [effect.statusEffectId, effect.requiresTargetStatusId, ...(effect.alsoApplyStatusEffectIds ?? [])]) {
         if (id !== undefined && !STATUS_EFFECTS.some((st) => st.id === id)) throw new Error(`${where}: status "${id}" is not in data/status-effects.json`);
       }
     }

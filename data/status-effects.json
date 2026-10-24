@@ -1904,6 +1904,13 @@
     "stuns": true
   },
   {
+    "id": "cocooned",
+    "name": "Cocooned",
+    "description": "Wound tight in silk; cannot act.",
+    "perTurnEffects": [],
+    "stuns": true
+  },
+  {
     "id": "blessed",
     "name": "Blessed",
     "description": "The words the gatekeeper said over you: raises defense, attack and magic power for the whole fight.",

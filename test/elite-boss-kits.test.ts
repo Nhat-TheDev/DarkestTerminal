@@ -1,25 +1,34 @@
 import { describe, test, expect } from "bun:test";
 import { MONSTER_ARCHETYPES, getArchetype, getBossTelegraph, getMonsterSkill } from "../src/data/monsters";
-import type { SkillEffect } from "../src/types";
+import type { SkillDefinition, SkillEffect } from "../src/types";
+
 
 const GUARDS = MONSTER_ARCHETYPES.filter((a) => a.roles.includes("boss"));
 const SUMMON_ALLOWED = new Set(["summonMonster"]);
 
+/** A status is keyed by how it is delivered: target shape, a required status on the target, and whether it is a chance roll. */
+function statusMechanism(skill: Pick<SkillDefinition, "target">, e: SkillEffect, id: string): string {
+  const parts = [`status:${id}`, e.target ?? skill.target];
+  if (e.requiresTargetStatusId) parts.push(`requires:${e.requiresTargetStatusId}`);
+  if (e.chance !== undefined && e.chance < 1) parts.push("chance");
+  return parts.join("|");
+}
+
 function mechanicsOf(skillIds: string[]): Set<string> {
   const out = new Set<string>();
-  const add = (e: SkillEffect) => {
-    if (e.kind === "applyStatusEffect") [e.statusEffectId!, ...(e.alsoApplyStatusEffectIds ?? [])].forEach((id) => out.add(`status:${id}`));
-    if (e.kind === "summonMonster") out.add("summonMonster");
-    if (e.kind === "modifyStat" && e.stat === "fear") out.add("fear");
-    if (e.kind === "removeStatusEffect") out.add("removeStatus");
-    if (e.lifestealPercent) out.add("lifesteal");
-    if (e.hitCountRange) out.add("multiHit");
-    if (e.ignoreDefensePercent) out.add("ignoreDefense");
-    if (e.critChance) out.add("crit");
-    if (e.scalesWithStatusStacks) out.add("stackScaling");
-  };
   for (const id of skillIds) {
     const s = getMonsterSkill(id);
+    const add = (e: SkillEffect) => {
+      if (e.kind === "applyStatusEffect") [e.statusEffectId!, ...(e.alsoApplyStatusEffectIds ?? [])].forEach((sid) => out.add(statusMechanism(s, e, sid)));
+      if (e.kind === "summonMonster") out.add("summonMonster");
+      if (e.kind === "modifyStat" && e.stat === "fear") out.add("fear");
+      if (e.kind === "removeStatusEffect") out.add("removeStatus");
+      if (e.lifestealPercent) out.add("lifesteal");
+      if (e.hitCountRange) out.add("multiHit");
+      if (e.ignoreDefensePercent) out.add("ignoreDefense");
+      if (e.critChance) out.add("crit");
+      if (e.scalesWithStatusStacks) out.add("stackScaling");
+    };
     [...(s.effects ?? []), ...(s.chargeEffects ?? [])].forEach(add);
     if (s.executeBonus) out.add("executeBonus");
   }
@@ -27,7 +36,22 @@ function mechanicsOf(skillIds: string[]): Set<string> {
 }
 
 describe("elite/boss kits", () => {
-  test("no mechanic appears in more than 2 archetypes (summonMonster allow-listed)", () => {
+  test("the same status delivered differently is a different mechanism", () => {
+    const key = (skillId: string) => {
+      const skill = getMonsterSkill(skillId);
+      const effect = skill.effects!.find((e) => e.kind === "applyStatusEffect" && e.statusEffectId === "stunned")!;
+      return statusMechanism(skill, effect, "stunned");
+    };
+    const judgment = key("abyssal-judgment");
+    const sealing = key("sealing-blow");
+    expect(judgment).not.toBe(sealing);
+    const copy = getMonsterSkill("abyssal-judgment");
+    expect(statusMechanism(copy, copy.effects!.find((e) => e.kind === "applyStatusEffect")!, "stunned")).toBe(judgment);
+    const cocoon = getMonsterSkill("cocoon");
+    const cocooned = cocoon.effects!.find((e) => e.statusEffectId === "cocooned")!;
+    expect(statusMechanism(cocoon, cocooned, "cocooned")).toContain("requires:webbed");
+  });
+  test("no mechanism appears in more than 2 archetypes (summonMonster allow-listed)", () => {
     const users = new Map<string, string[]>();
     for (const a of GUARDS) for (const m of mechanicsOf(a.skillIds)) users.set(m, [...(users.get(m) ?? []), a.id]);
     const over = [...users].filter(([m, ids]) => ids.length > 2 && !SUMMON_ALLOWED.has(m));
