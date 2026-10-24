@@ -35,7 +35,7 @@ import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, applyDyingDamage } from "./survival";
 import { combatHooks } from "./combatHooks";
-import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory } from "./monsterAI";
+import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory, fillTelegraphMeter } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
 import {
   type Actor,
@@ -596,6 +596,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
         } else {
           // An Overwatch shot lands before the monster's own turn, so a status it causes (a broken
           // shell's stun) already counts as present for that turn.
+          fillTelegraphMeter(actor as Monster, combat, ctx);
           const interrupted = tryTriggerOverwatch(ref, combat, ctx);
           eligibleSpecial = specialStatusSnapshot(actor);
           if (interrupted) {

@@ -1,5 +1,5 @@
 import type { AttackRange, Character, Monster, Summon, MonsterArchetype, CombatState, CombatantRef, SkillDefinition, Id } from "../types";
-import { getArchetype, getMonsterSkill } from "../data/monsters";
+import { getArchetype, getBossTelegraph, getMonsterSkill } from "../data/monsters";
 import { BALANCE, TARGETING_FACTORS, type TargetingFactor } from "../data/balanceConfig";
 import { rollDodge } from "./artifacts";
 import { resolveSkillEffect, rollHits, isCharacter, type Actor } from "./resolver";
@@ -227,7 +227,9 @@ function pickTargets(
     pool.splice(pool.indexOf(forced), 1);
   }
   while (picked.length < count && pool.length > 0) {
-    const next = archetype.targeting === "random" ? rng.pick(pool) : rng.weightedPick(pool, (c) => scoreWeight(base(c), skill?.targetRules, view, c));
+    // A tag rule nobody satisfies scores everyone 0; the base targeting decides then.
+    const rulesApply = pool.some((c) => scoreWeight(base(c), skill?.targetRules, view, c) > 0);
+    const next = archetype.targeting === "random" ? rng.pick(pool) : rng.weightedPick(pool, (c) => (rulesApply ? scoreWeight(base(c), skill?.targetRules, view, c) : base(c)));
     picked.push(next);
     pool.splice(pool.indexOf(next), 1);
   }
@@ -261,7 +263,7 @@ function monsterSkillLogLine(actor: Monster, skill: SkillDefinition, targets: Ac
   return t("combat.monsterSkillOnTargets", { actor: actor.name, skill: skill.name, targets: joinNames(targets) });
 }
 
-/** Starts the skill's cooldown and spends one of its uses; a telegraph commits both on its charge turn, not on release. */
+/** Starts the skill's cooldown and spends one of its uses. */
 function commitSkill(actor: Monster, skill: SkillDefinition): void {
   if (skill.cooldownTurns) actor.skillCooldowns = { ...actor.skillCooldowns, [skill.id]: skill.cooldownTurns };
   if (skill.usesPerCombat !== undefined) actor.skillUses = { ...actor.skillUses, [skill.id]: (actor.skillUses?.[skill.id] ?? 0) + 1 };
@@ -269,8 +271,7 @@ function commitSkill(actor: Monster, skill: SkillDefinition): void {
 
 function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, actor: Monster, living: Targetable[], view: AiView, combat: CombatState, ctx: EngineContext): void {
   let targets = resolveMonsterSkillTargets(skill, archetype, actor, living, view, ctx.rng);
-  // A telegraph is aimed when it is charged, so only an attack that lands now can be turned.
-  if (!skill.telegraph && (skill.target === "singleEnemy" || skill.target === "allEnemies")) {
+  if (skill.target === "singleEnemy" || skill.target === "allEnemies") {
     const turned = confusedTargets(actor, targets.length, skill.target === "allEnemies", combat, ctx);
     if (turned) {
       combat.log.push({ text: t("combat.confusedAttack", { actor: actor.name }), kind: "info" });
@@ -281,6 +282,31 @@ function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, ac
   }
   commitSkill(actor, skill);
   combat.log.push({ text: monsterSkillLogLine(actor, skill, targets), kind: skill.target === "self" || skill.target === "allAllies" ? "info" : "attack" });
+  applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
+}
+
+/**
+ * Fills one icon of a boss's telegraph meter at the start of each of its own turns, lost ones included.
+ * The icon before the last resolves the telegraph's `chargeEffects` on the boss and warns the party.
+ */
+export function fillTelegraphMeter(actor: Monster, combat: CombatState, ctx: EngineContext): void {
+  if (actor.tier !== "boss") return;
+  const telegraph = getBossTelegraph(getArchetype(actor.archetypeId));
+  if (!telegraph || (actor.telegraphMeter ?? 0) >= telegraph.meterLength) return;
+  actor.telegraphMeter = (actor.telegraphMeter ?? 0) + 1;
+  if (actor.telegraphMeter !== telegraph.meterLength - 1) return;
+  const skill = getMonsterSkill(telegraph.skillId);
+  if (!skill.chargeEffects?.length) return;
+  combat.log.push({ text: t("combat.telegraphChargeAoe", { actor: actor.name, skill: skill.name }), kind: "info" });
+  applySkillEffects({ ...skill, target: "self", effects: skill.chargeEffects }, actor, [actor], combat, ctx, combat.log);
+}
+
+/** Empties the meter and lands the telegraph: an area one on everyone alive, a single-target one on whoever normal targeting picks now. */
+function releaseTelegraph(skill: SkillDefinition, archetype: MonsterArchetype, actor: Monster, living: Targetable[], view: AiView, combat: CombatState, ctx: EngineContext): void {
+  let targets = resolveMonsterSkillTargets(skill, archetype, actor, living, view, ctx.rng);
+  if (skill.target === "singleEnemy" && (skill.effects ?? []).some((e) => e.kind === "damage")) targets = interceptAll(actor, targets, combat, ctx);
+  actor.telegraphMeter = 0;
+  combat.log.push({ text: t("combat.telegraphRelease", { actor: actor.name, skill: skill.name }), kind: "attack" });
   applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
 }
 
@@ -315,6 +341,14 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   const archetype = getArchetype(actor.archetypeId);
   const view = monsterAiView(actor, combat, ctx);
 
+  // A silenced monster still crosses into a new phase, but every skill of its own choosing is locked.
+  const silenced = actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).silences);
+
+  const telegraph = actor.tier === "boss" ? getBossTelegraph(archetype) : undefined;
+  if (telegraph && !silenced && (actor.telegraphMeter ?? 0) >= telegraph.meterLength) {
+    return releaseTelegraph(getMonsterSkill(telegraph.skillId), archetype, actor, living, view, combat, ctx);
+  }
+
   const phase = phaseToEnter(archetype, actor);
   if (phase !== undefined) {
     actor.enteredPhaseIndexes = [...(actor.enteredPhaseIndexes ?? []), phase];
@@ -322,9 +356,6 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
     const onEnter = archetype.phases![phase]!.onEnterSkillId;
     if (onEnter !== undefined) return useMonsterSkill(getMonsterSkill(onEnter), archetype, actor, living, view, combat, ctx);
   }
-
-  // A silenced monster still crosses into a new phase, but every skill of its own choosing is locked.
-  const silenced = actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).silences);
 
   // skillIds spans every tier, so this must pick a self-targeted skill, not just the first one.
   if (!silenced && actor.tier === "normal" && archetype.aiPattern === "defensive" && actor.hp < actor.maxHp * BALANCE.combat.defensiveLowHpThresholdFraction) {

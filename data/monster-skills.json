@@ -630,7 +630,7 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "airborne",
-        "durationTurns": 1
+        "durationTurns": 2
       }
     ]
   },
