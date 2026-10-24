@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
-import { compareVersions, isVersion, migrateGameState, migrateMonsters, migrateSummons, renamedClassId } from "./migration";
+import { compareVersions, isVersion, migrateGameState, migrateMonsters, migrateSummons } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
@@ -222,17 +222,16 @@ export function isSaveStateValid(state: GameState): boolean {
 /** A slot that can't be loaded reads as empty; its file stays on disk. */
 export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
+    const runCount = loadProfile(id).runCount;
     try {
       const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
-      const loadable =
-        isSaveVersionAllowed(save.meta.saveVersion) &&
-        isDevDumpAllowed(save.meta) &&
-        isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion)) &&
-        isSaveMonstersValid(save.monsters ?? []);
-      const meta = loadable ? { ...save.meta, partyClassIds: save.meta.partyClassIds.map(renamedClassId) } : null;
-      return { id, meta, runCount: loadProfile(id).runCount };
+      if (!isSaveVersionAllowed(save.meta.saveVersion) || !isDevDumpAllowed(save.meta)) return { id, meta: null, runCount };
+      const state = migrateGameState(save.state, save.meta.saveVersion);
+      if (!isSaveStateValid(state) || !isSaveMonstersValid(save.monsters ?? [])) return { id, meta: null, runCount };
+      // Read from the migrated party, not the stored meta, so every VERSION_MIGRATIONS step reaches the slot list too.
+      return { id, meta: { ...save.meta, partyClassIds: state.party.map((c) => c.classId) }, runCount };
     } catch {
-      return { id, meta: null, runCount: loadProfile(id).runCount };
+      return { id, meta: null, runCount };
     }
   });
 }
