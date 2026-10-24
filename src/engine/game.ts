@@ -37,10 +37,10 @@ import {
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
-import { rollAbility, getAbility } from "../data/abilities";
+import { ABILITIES, rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
-import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter } from "./profile";
+import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter, markRetiredCharacterEventShown } from "./profile";
 import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
 import { getStatusEffect } from "../data/statusEffects";
 import { getEvent } from "../data/events";
@@ -69,6 +69,8 @@ export class Game {
   readonly state: GameState;
 
   public currentSaveSlot: Id | null = null;
+  public memoryUnlocked = false;
+  public memoryIntroShown = false;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -78,8 +80,14 @@ export class Game {
     restore?: { state: GameState; monsters: Monster[]; summons: Summon[]; rngState: number; playTimeSec: number },
     abilityIds?: (Id | null)[],
     /** Holds floor 1's entry ambush until `enterDungeon()`. */
-    withGatekeeper = false
+    withGatekeeper = false,
+    /** Read before the run starts: the slot's profile decides the opening event pool. */
+    saveSlot: Id | null = null
   ) {
+    this.currentSaveSlot = saveSlot;
+    const profile = loadProfile(saveSlot);
+    this.memoryUnlocked = profile.memoryUnlocked;
+    this.memoryIntroShown = profile.memoryIntroShown;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
@@ -103,7 +111,6 @@ export class Game {
     const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, summons: [], rng, inventory };
     // Whether "the-one-who-stayed" can roll this run is encoded only by whether its id starts in firedOnceEventIds.
-    const profile = loadProfile();
     const retiredCharacter = profile.retiredCharacters.at(-1);
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
@@ -223,7 +230,7 @@ export class Game {
 
   /** With nothing lost, `abilityDeathResults` is `[]` rather than null so the results screen renders at once. */
   private runAbilityDeathFlow(): void {
-    const profile = loadProfile();
+    const profile = loadProfile(this.currentSaveSlot);
     const lostSet: { characterId: Id; lostAbilityId: Id; rarity: Exclude<ArtifactRarity, "common"> }[] = [];
     for (const character of this.state.party) {
       const abilityId = character.equippedAbilityId;
@@ -233,7 +240,7 @@ export class Game {
       lockAbility(profile, abilityId);
       lostSet.push({ characterId: character.id, lostAbilityId: abilityId, rarity: ability.rarity });
     }
-    saveProfile(profile);
+    saveProfile(this.currentSaveSlot, profile);
     this.state.pendingAbilityBuyback = lostSet.length > 0 ? { entries: lostSet, resolvedIndex: 0 } : null;
     this.state.abilityDeathResults = lostSet.length > 0 ? null : [];
   }
@@ -247,9 +254,9 @@ export class Game {
       const cost = BALANCE.abilities.stardustCostByRarity[entry.rarity];
       if (this.state.runStardust < cost) return { reason: t("errors.notEnoughStardust") };
       this.state.runStardust -= cost;
-      const profile = loadProfile();
+      const profile = loadProfile(this.currentSaveSlot);
       unlockAbility(profile, entry.lostAbilityId);
-      saveProfile(profile);
+      saveProfile(this.currentSaveSlot, profile);
       this.pushAbilityDeathResult(entry.characterId, entry.lostAbilityId, "reclaimed");
     } else {
       this.pushAbilityDeathResult(entry.characterId, entry.lostAbilityId, "lost");
@@ -410,7 +417,9 @@ export class Game {
   }
 
   openChest(): PartyActionError | null {
+    const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
     const err = openChest(this.state, this.ctx);
+    if (!err && eventId === "the-one-who-stayed") markRetiredCharacterEventShown(this.currentSaveSlot);
     maybeTriggerReflection(this.state, this.ctx);
     return err;
   }
@@ -580,16 +589,17 @@ export class Game {
             grantArtifact(this.state, artifactId);
             droppedArtifactIds.push(artifactId);
 
-            const profile = loadProfile();
+            const profile = loadProfile(this.currentSaveSlot);
             const abilityId = rollAbility(monster.tier, this.state.floor.depth, this.ctx.rng, profile.unlockedAbilityIds);
             if (abilityId) {
               unlockAbility(profile, abilityId);
-              saveProfile(profile);
+              saveProfile(this.currentSaveSlot, profile);
               droppedAbilityIds.push(abilityId);
             }
             if (monster.tier === "boss") {
               this.state.runStardust += 1;
               this.state.combat.log.push({ text: t("game.stardustGained"), kind: "info" });
+              this.unlockMemory();
             }
           }
         }
@@ -661,7 +671,7 @@ export class Game {
       this.state.gameOver = "stay";
       // Persisted at once so a later run finds it even if this save is never reopened. Party members may already be dead here.
       const living = this.state.party.filter((c) => c.isAlive);
-      addRetiredCharacter(this.ctx.rng.pick(living.length > 0 ? living : this.state.party).classId);
+      addRetiredCharacter(this.currentSaveSlot, this.ctx.rng.pick(living.length > 0 ? living : this.state.party).classId);
     } else if (choice === "letGo") {
       this.state.gameOver = "letGo";
     } else if (choice === "leave") {
@@ -700,6 +710,33 @@ export class Game {
 
   dismissFloorMilestoneMessage(): void {
     this.state.pendingFloorMilestoneOmenId = null;
+  }
+
+  private unlockMemory(): void {
+    if (this.memoryUnlocked) return;
+    this.memoryUnlocked = true;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.memoryUnlocked = true;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
+  /** Kept in the slot profile, not the run, so quitting before it is read cannot skip it. */
+  get memoryIntroPending(): boolean {
+    return this.memoryUnlocked && !this.memoryIntroShown;
+  }
+
+  dismissMemoryIntro(): void {
+    if (!this.memoryIntroPending) return;
+    this.memoryIntroShown = true;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.memoryIntroShown = true;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
+  /** Non-common abilities the slot holds, in catalog order. */
+  memoryAbilityIds(): Id[] {
+    const held = loadProfile(this.currentSaveSlot).unlockedAbilityIds;
+    return ABILITIES.filter((a) => a.rarity !== "common" && held.includes(a.id)).map((a) => a.id);
   }
 
   className(classId: string): string {

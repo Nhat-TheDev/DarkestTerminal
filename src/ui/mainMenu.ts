@@ -121,11 +121,13 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
           renderer.keyInput.off("keypress", onChoiceKey);
           renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
+          root.destroyRecursively();
           resolve("new");
         } else if (key.name === "2" && hasSaves) {
           renderer.keyInput.off("keypress", onChoiceKey);
           renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
+          root.destroyRecursively();
           resolve("continue");
         }
       };

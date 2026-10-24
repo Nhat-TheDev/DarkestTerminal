@@ -11,6 +11,24 @@ export function clampPage(page: number, total: number, pageSize: number = PAGE_S
   return page;
 }
 
+/** Greedy pages of at most `maxEntries` items whose summed heights fit `maxRows`; an item taller than `maxRows` gets a page to itself. Always at least one page. */
+export function paginateByRows<T>(items: T[], heightOf: (item: T) => number, maxEntries: number, maxRows: number): T[][] {
+  const pages: T[][] = [[]];
+  let rows = 0;
+  for (const item of items) {
+    const height = heightOf(item);
+    const page = pages[pages.length - 1]!;
+    if (page.length > 0 && (page.length >= maxEntries || rows + height > maxRows)) {
+      pages.push([item]);
+      rows = height;
+    } else {
+      page.push(item);
+      rows += height;
+    }
+  }
+  return pages;
+}
+
 export function paginate<T>(items: T[], page: number, pageSize: number = PAGE_SIZE): { pageItems: T[]; page: number; pages: number; offset: number } {
   const pages = pageCount(items.length, pageSize);
   const clamped = clampPage(page, items.length, pageSize);

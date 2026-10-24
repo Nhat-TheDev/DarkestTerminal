@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Id, AbilityProfile } from "../types";
 import { ABILITIES } from "../data/abilities";
@@ -6,11 +6,10 @@ import { SAVE_DIR } from "./paths";
 import { renamedClassId } from "./migration";
 
 /**
- * Survives permadeath's slot-clear; one global file shared by every slot. Never import `./save` or
- * `./game` here: they import this module, so the dependency would be circular.
+ * One profile per save slot, kept beside the slot's run file and surviving its permadeath clear. Never import
+ * `./save` or `./game` here: they import this module, so the dependency would be circular.
  */
-export const PROFILE_FILENAME = "profile.json";
-const PROFILE_PATH = join(SAVE_DIR, PROFILE_FILENAME);
+export const LEGACY_PROFILE_FILENAME = "profile.json";
 const CURRENT_VERSION = 1;
 
 export interface RetiredCharacter {
@@ -19,50 +18,93 @@ export interface RetiredCharacter {
 
 export interface Profile extends AbilityProfile {
   retiredCharacters: RetiredCharacter[];
-  /** Across all runs, unlike `GameState.firedOnceEventIds`. */
+  /** Across all runs in the slot, unlike `GameState.firedOnceEventIds`. */
   shownRetiredCharacterEvent: boolean;
+  /** Runs started in the slot; the current or last one is this number. */
+  runCount: number;
+  /** Set by the slot's first boss-tier kill; it opens the Memory screen. */
+  memoryUnlocked: boolean;
+  /** The one-time Memory intro has been read; `[m]` is offered only after it. */
+  memoryIntroShown: boolean;
+}
+
+export function profileFilename(slotId: Id): string {
+  return `${slotId}.profile.json`;
+}
+
+function profilePath(slotId: Id): string {
+  return join(SAVE_DIR, profileFilename(slotId));
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false };
 }
 
 function isKnownAbility(id: Id): boolean {
   return ABILITIES.some((a) => a.id === id);
 }
 
-/** A missing or unparseable file means only commons are available; unknown ids are pruned. */
-export function loadProfile(): Profile {
-  if (!existsSync(PROFILE_PATH)) return defaultProfile();
+/** Unknown ids are pruned. */
+export function parseProfile(text: string): Profile {
+  const raw = JSON.parse(text) as Partial<Profile>;
+  return {
+    version: CURRENT_VERSION,
+    unlockedAbilityIds: Array.isArray(raw.unlockedAbilityIds) ? raw.unlockedAbilityIds.filter(isKnownAbility) : [],
+    retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters.map((r) => ({ classId: renamedClassId(r.classId) })) : [],
+    shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
+    runCount: Number.isInteger(raw.runCount) && (raw.runCount as number) > 0 ? (raw.runCount as number) : 0,
+    memoryUnlocked: raw.memoryUnlocked === true,
+    memoryIntroShown: raw.memoryIntroShown === true,
+  };
+}
+
+export function hasProfile(slotId: Id): boolean {
+  return existsSync(profilePath(slotId));
+}
+
+/** No slot, a missing file or an unparseable one all mean a fresh profile: only commons are available. */
+export function loadProfile(slotId: Id | null): Profile {
+  if (!slotId || !existsSync(profilePath(slotId))) return defaultProfile();
   try {
-    const raw = JSON.parse(readFileSync(PROFILE_PATH, "utf8")) as Partial<Profile>;
-    const unlockedAbilityIds = Array.isArray(raw.unlockedAbilityIds) ? raw.unlockedAbilityIds.filter(isKnownAbility) : [];
-    return {
-      version: CURRENT_VERSION,
-      unlockedAbilityIds,
-      retiredCharacters: Array.isArray(raw.retiredCharacters) ? raw.retiredCharacters.map((r) => ({ classId: renamedClassId(r.classId) })) : [],
-      shownRetiredCharacterEvent: raw.shownRetiredCharacterEvent === true,
-    };
+    return parseProfile(readFileSync(profilePath(slotId), "utf8"));
   } catch {
     return defaultProfile();
   }
 }
 
-export function saveProfile(profile: Profile): void {
+/** A run with no slot keeps nothing. */
+export function saveProfile(slotId: Id | null, profile: Profile): void {
+  if (!slotId) return;
   if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
-  writeFileSync(PROFILE_PATH, JSON.stringify(profile));
+  writeFileSync(profilePath(slotId), JSON.stringify(profile));
 }
 
-export function addRetiredCharacter(classId: Id): void {
-  const profile = loadProfile();
+export function deleteProfile(slotId: Id): void {
+  const path = profilePath(slotId);
+  if (!existsSync(path)) return;
+  try {
+    unlinkSync(path);
+  } catch (err) {
+    console.error(`Failed to delete profile file ${path}:`, err);
+  }
+}
+
+export function beginRun(slotId: Id): void {
+  const profile = loadProfile(slotId);
+  profile.runCount += 1;
+  saveProfile(slotId, profile);
+}
+
+export function addRetiredCharacter(slotId: Id | null, classId: Id): void {
+  const profile = loadProfile(slotId);
   profile.retiredCharacters.push({ classId });
-  saveProfile(profile);
+  saveProfile(slotId, profile);
 }
 
-export function markRetiredCharacterEventShown(): void {
-  const profile = loadProfile();
+export function markRetiredCharacterEventShown(slotId: Id | null): void {
+  const profile = loadProfile(slotId);
   profile.shownRetiredCharacterEvent = true;
-  saveProfile(profile);
+  saveProfile(slotId, profile);
 }
 
 /** Does not persist; call `saveProfile` after. */

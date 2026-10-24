@@ -36,13 +36,13 @@ import {
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { composeFooter } from "./keyHints";
+import { canOpenMemory, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -54,6 +54,7 @@ import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
 import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
+import * as memoryScreen from "./screens/memory";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
@@ -69,6 +70,8 @@ const RUN_LOG_SIZE = 500;
 
 /** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
+  // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
+  if (kind === "memory") return 1;
   return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
 
@@ -85,13 +88,13 @@ const EXP_BAR_WIDTH = 24;
 /** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
     holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
 const BATTLEFIELD_CONTENT_WIDTH = 113;
-/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
-const SIDE_PANEL_WIDTH = 35;
 /** Columns a Log line can use: the panel minus its border and the scrollbar. */
 const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
+
+export type RunExit = "newRun" | "menu";
 
 export class App implements ScreenContext {
   game: Game;
@@ -138,9 +141,21 @@ export class App implements ScreenContext {
   private pendingCampOffer = false;
   private listPage = 0;
   private progress: TextRenderable;
+  private onExit: ((next: RunExit) => void) | undefined;
+  private exited = false;
+  private readonly onKeypress = (key: KeyEvent) => this.handleKey(key);
+  // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
+  private readonly onResize = () => {
+    try {
+      this.render();
+    } catch (error) {
+      console.error("[App] Error redrawing after a resize:", error);
+    }
+  };
 
-  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
+  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean; onExit?: (next: RunExit) => void } = {}) {
     this.autoReveal = options.autoReveal ?? true;
+    this.onExit = options.onExit;
     this.game = game ?? new Game();
 
     const panel = {
@@ -192,7 +207,7 @@ export class App implements ScreenContext {
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
 
-    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: 34, title: t("ui.panelParty") });
+    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: PARTY_PANEL_WIDTH, title: t("ui.panelParty") });
     this.party = new TextRenderable(renderer, { id: "party", content: "", fg: PALETTE.text });
     partyBox.add(this.party);
     body.add(partyBox);
@@ -244,15 +259,8 @@ export class App implements ScreenContext {
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
-    renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
-    renderer.on("resize", () => {
-      try {
-        this.render();
-      } catch (error) {
-        console.error("[App] Error redrawing after a resize:", error);
-      }
-    });
+    renderer.keyInput.on("keypress", this.onKeypress);
+    renderer.on("resize", this.onResize);
     this.syncUiToGameState();
     this.render();
   }
@@ -331,6 +339,8 @@ export class App implements ScreenContext {
         return runnerScreen.sellableEntries(this.game).length;
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
+      case "memory":
+        return ui.pages.length;
       default:
         return null;
     }
@@ -358,7 +368,6 @@ export class App implements ScreenContext {
       // Cleared once, on the first transition into either post-death screen: this re-runs throughout the buyback.
       if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
         deleteSlot(this.game.currentSaveSlot);
-        this.game.currentSaveSlot = null;
         this.pushToast(t("ui.saveDeletedMsg"));
       }
       if (this.game.state.pendingAbilityBuyback) {
@@ -386,6 +395,10 @@ export class App implements ScreenContext {
       }
       if (this.game.state.pendingFloorMilestoneOmenId) {
         this.ui = { kind: "floorMilestone" };
+        return;
+      }
+      if (this.game.memoryIntroPending) {
+        this.ui = { kind: "memoryIntro" };
         return;
       }
       if (restOpen) {
@@ -462,6 +475,12 @@ export class App implements ScreenContext {
     }
     if (this.reveal.active) {
       this.flushPendingReveal();
+      return;
+    }
+    if (key.name === "m" && this.memoryAvailable() && canOpenMemory(this.ui.kind)) {
+      this.ui = { kind: "memory", previous: this.ui, previousPage: this.listPage, pages: memoryScreen.memoryPages(this.game.memoryAbilityIds()) };
+      this.listPage = 0;
+      this.render();
       return;
     }
     if (key.name === "left" || key.name === "right") {
@@ -558,6 +577,11 @@ export class App implements ScreenContext {
       case "floorMilestone":
         floorMilestoneScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "memoryIntro":
+        memoryScreen.handleIntroKey(this, key);
+        break;
+      case "memory":
+        break;
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -574,6 +598,7 @@ export class App implements ScreenContext {
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
+        gameoverScreen.handleKey(this, key);
         break;
     }
     this.render();
@@ -627,6 +652,10 @@ export class App implements ScreenContext {
       case "saveMenu":
         this.ui = this.ui.previous;
         return true;
+      case "memory":
+        this.listPage = this.ui.previousPage;
+        this.ui = this.ui.previous;
+        return true;
       case "roomReward":
         if (this.ui.viewing) {
           this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
@@ -636,6 +665,23 @@ export class App implements ScreenContext {
       default:
         return false;
     }
+  }
+
+  /** Unlocked, and the intro that introduces it has been read. */
+  private memoryAvailable(): boolean {
+    return this.game.memoryUnlocked && this.game.memoryIntroShown;
+  }
+
+  /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
+  exitRun(next: RunExit): void {
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.exited = true;
+    this.renderer.keyInput.off("keypress", this.onKeypress);
+    this.renderer.off("resize", this.onResize);
+    this.renderer.root.remove(this.root);
+    this.root.destroyRecursively();
+    // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
+    setTimeout(() => this.onExit?.(next), 0);
   }
 
   quit(): void {
@@ -672,6 +718,7 @@ export class App implements ScreenContext {
   }
 
   private render(): void {
+    if (this.exited) return;
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
     this.syncRoomLog();
@@ -800,7 +847,7 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable()))]);
     }
     this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
@@ -1228,6 +1275,12 @@ export class App implements ScreenContext {
       case "floorMilestone":
         return floorMilestoneScreen.renderMain(this.game, this.ui);
 
+      case "memoryIntro":
+        return memoryScreen.renderIntro();
+
+      case "memory":
+        return memoryScreen.renderMain(this.ui, this.listPage);
+
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
 
@@ -1305,6 +1358,10 @@ export class App implements ScreenContext {
         return campReflectionScreen.renderFooter(this.ui);
       case "floorMilestone":
         return floorMilestoneScreen.renderFooter(this.ui);
+      case "memoryIntro":
+        return memoryScreen.renderIntroFooter();
+      case "memory":
+        return memoryScreen.renderFooter();
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":
