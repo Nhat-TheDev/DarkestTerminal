@@ -33,6 +33,8 @@ function playRun(renderer: CliRenderer, game: Game): Promise<RunExit> {
   return new Promise((resolve) => new App(renderer, game, { onExit: resolve }));
 }
 
+let activeRenderer: CliRenderer | undefined;
+
 async function main() {
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
@@ -40,6 +42,7 @@ async function main() {
     // OpenTUI waits 100 ms after a resize before redrawing; until then the old frame sits clipped at the new edge.
     debounceDelay: 1,
   });
+  activeRenderer = renderer;
   migrateLegacyProfile();
 
   for (;;) {
@@ -62,6 +65,8 @@ async function main() {
 }
 
 main().catch((err) => {
+  // Without this the terminal stays in the alternate screen with mouse tracking on, and the error is never seen.
+  activeRenderer?.destroy();
   console.error(err);
   process.exit(1);
 });
