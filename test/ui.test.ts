@@ -22,6 +22,7 @@ import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
 import * as inventoryScreen from "../src/ui/screens/inventory";
+import { TROPHY_ICON } from "../src/ui/state";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
@@ -406,6 +407,15 @@ describe("item lists", () => {
     const inCombat = renderCombat(game, { kind: "pickItemInCombat", actorRef }) as string;
     expect(inCombat).not.toContain(kit.name);
     expect(inCombat).toContain(getItem("small-health-potion").name);
+  });
+
+  test("a trophy is marked with its own icon", () => {
+    const game = new Game(1);
+    const trophy = ITEMS.find((i) => i.archetypeIds?.length)!;
+    game.state.inventory = { [trophy.id]: 1, "small-health-potion": 1 };
+    const list = inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" });
+    expect(list).toContain(`${TROPHY_ICON} ${trophy.name}`);
+    expect(list).toContain(`✚ ${getItem("small-health-potion").name}`);
   });
 });
 
