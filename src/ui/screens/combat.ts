@@ -5,13 +5,13 @@ import { getActorByRef, checkSkillUsable, checkItemUsable, channelStatus, comman
 import { getSkill } from "../../data/classes";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
-import { signed } from "../../data/items";
+import { describeItemEffects, signed } from "../../data/items";
 import { BALANCE } from "../../data/balanceConfig";
 import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
-import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
-import { paginate } from "../pagination";
+import { combatInventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
+import { paginate, ITEM_PAGE_SIZE } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
@@ -283,7 +283,7 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
       if (digit === 1) {
         ctx.setUi({ kind: "pickSkill", actorRef: ui.actorRef });
       } else if (digit === 2) {
-        if (inventoryEntries(ctx.game.state.inventory).length === 0) {
+        if (combatInventoryEntries(ctx.game.state.inventory).length === 0) {
           ctx.reportUnusable(t("ui.noItemsToUse"));
           break;
         }
@@ -332,7 +332,7 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
     }
     case "pickItemInCombat": {
       if (digit === null) break;
-      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
+      const { pageItems } = paginate(combatInventoryEntries(ctx.game.state.inventory), ctx.getListPage(), ITEM_PAGE_SIZE);
       const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "itemDetail", item: entry.item, origin: { kind: "combat", actorRef: ui.actorRef } });
@@ -396,7 +396,7 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
           t("ui.channelBreakOption", { skill: skill.name }),
         ].join("\n");
       }
-      const hasItems = inventoryEntries(s.inventory).length > 0;
+      const hasItems = combatInventoryEntries(s.inventory).length > 0;
       const lines = [
         t("ui.turnOfChooseAction", { actor: actor.name }),
         t("ui.fightOption"),
@@ -455,10 +455,11 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
     }
 
     case "pickItemInCombat": {
-      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
+      const { pageItems, page: p, pages } = paginate(combatInventoryEntries(s.inventory), page, ITEM_PAGE_SIZE);
       const lines = [t("ui.chooseItemToUse")];
       pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: `${itemIcon(item)} ${item.name}`, qty }));
+        lines.push(t("ui.inventoryEffectLine", { effect: describeItemEffects(item) }));
       });
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
@@ -492,7 +493,7 @@ export function renderFooter(ui: CombatUiState, game: Game, page = 0): string {
     case "pickCommandSkill":
       return digitHint("ui.footerChooseSkillEsc", commandSkillChoices(game, ui).length);
     case "pickItemInCombat": {
-      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
+      const { pageItems } = paginate(combatInventoryEntries(game.state.inventory), page, ITEM_PAGE_SIZE);
       return digitHint("ui.footerChooseItemEsc", pageItems.length);
     }
     case "pickTarget":

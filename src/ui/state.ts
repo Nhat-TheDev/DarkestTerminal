@@ -69,8 +69,10 @@ export type UiState =
 export const ARTIFACT_ICON = "✦";
 export const ABILITY_ICON = "◆";
 export const SUMMON_ICON = "☾";
+export const TROPHY_ICON = "⚱";
 
 export function itemIcon(item: ItemDefinition): string {
+  if (item.archetypeIds?.length) return TROPHY_ICON;
   if (item.target === "singleEnemy" || item.target === "allEnemies") return "⚔";
   if (item.effects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "✚";
   return "↑";
@@ -80,6 +82,10 @@ export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDef
   return Object.entries(inventory)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({ item: getItem(id), qty }));
+}
+
+export function combatInventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
+  return inventoryEntries(inventory).filter(({ item }) => item.combatUsable !== false);
 }
 
 export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] }): RewardEntry[] {
