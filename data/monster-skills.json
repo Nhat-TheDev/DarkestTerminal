@@ -370,9 +370,14 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 55,
+        "amount": 60,
         "ignoreDefensePercent": 40,
-        "offenseMultiplierPercent": 90
+        "offenseMultiplierPercent": 190
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "weakened",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -453,13 +458,13 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 30,
-        "offenseMultiplierPercent": 150
+        "amount": 40,
+        "offenseMultiplierPercent": 190
       },
       {
         "kind": "applyStatusEffect",
-        "statusEffectId": "stunned",
-        "durationTurns": 1
+        "statusEffectId": "webbed",
+        "durationTurns": 2
       },
       {
         "kind": "applyStatusEffect",
@@ -619,8 +624,13 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 34,
-        "offenseMultiplierPercent": 130
+        "amount": 10,
+        "offenseMultiplierPercent": 190
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "burning",
+        "durationTurns": 2
       }
     ],
     "slot": 0,
@@ -659,8 +669,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 24,
-        "offenseMultiplierPercent": 285
+        "amount": 50,
+        "offenseMultiplierPercent": 170
       },
       {
         "kind": "applyStatusEffect",
@@ -717,8 +727,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 50,
-        "offenseMultiplierPercent": 225
+        "amount": 60,
+        "offenseMultiplierPercent": 200
       },
       {
         "kind": "applyStatusEffect",
@@ -777,9 +787,9 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 26,
+        "amount": 50,
         "critChance": 0.25,
-        "offenseMultiplierPercent": 230
+        "offenseMultiplierPercent": 170
       }
     ],
     "slot": 0,
@@ -836,8 +846,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 60,
-        "offenseMultiplierPercent": 235
+        "amount": 70,
+        "offenseMultiplierPercent": 200
       },
       {
         "kind": "applyStatusEffect",
@@ -1103,9 +1113,9 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 45,
+        "amount": 10,
         "lifestealPercent": 100,
-        "offenseMultiplierPercent": 140
+        "offenseMultiplierPercent": 190
       }
     ],
     "slot": 0,
@@ -1211,8 +1221,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 34,
-        "offenseMultiplierPercent": 315
+        "amount": 70,
+        "offenseMultiplierPercent": 170
       }
     ],
     "slot": 0,
@@ -1227,8 +1237,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12,
-        "offenseMultiplierPercent": 155
+        "amount": 20,
+        "offenseMultiplierPercent": 110
       },
       {
         "kind": "applyStatusEffect",
@@ -1248,8 +1258,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 75,
-        "offenseMultiplierPercent": 310
+        "amount": 90,
+        "offenseMultiplierPercent": 210
+      },
+      {
+        "kind": "applyStatusEffect",
+        "statusEffectId": "stunned",
+        "durationTurns": 1,
+        "target": "allEnemies",
+        "chance": 0.6
       }
     ],
     "slot": 0,
@@ -1362,7 +1379,7 @@
       {
         "kind": "damage",
         "amount": 65,
-        "offenseMultiplierPercent": 140
+        "offenseMultiplierPercent": 280
       },
       {
         "kind": "removeStatusEffect",
@@ -1479,7 +1496,7 @@
         "kind": "damage",
         "amount": 70,
         "ignoreDefensePercent": 40,
-        "offenseMultiplierPercent": 235
+        "offenseMultiplierPercent": 250
       }
     ],
     "slot": 0,

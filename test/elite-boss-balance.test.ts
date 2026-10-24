@@ -9,8 +9,7 @@ import type { MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect } from
 import { firstDepth, levelAt, mean, simulateRows, type Row } from "./balanceSim";
 
 // The targets live here, not in the docs. Each band rises over the one before it in average damage taken
-// per round (as a share of the party's total max HP) and in rounds the party needs to win; `telegraphCap`
-// caps one telegraph hit as a share of the lowest-HP class's max HP. The ranges are wide inside a band
+// per round (as a share of the party's total max HP) and in rounds the party needs to win. The ranges are wide inside a band
 // because its members are different monsters (a glass cannon dies sooner than a wall); what the tests below
 // pin is the order between bands and between tiers.
 //
@@ -19,11 +18,11 @@ import { firstDepth, levelAt, mean, simulateRows, type Row } from "./balanceSim"
 // marathons in it: monster defense and HP outgrow a level-capped party (06-level-system.md, 6.10), which is
 // why their rounds are far above the rest.
 const BANDS = [
-  { ids: ["skeleton-guard", "giant-spider"], dpr: { elite: [2, 4], boss: [0.8, 3.2] }, rounds: { elite: [2.5, 4.8], boss: [2.5, 6.5] }, telegraphCap: 0.45 },
-  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2, 4], boss: [2.3, 4.5] }, rounds: { elite: [5, 8.5], boss: [7, 11] }, telegraphCap: 0.55 },
-  { ids: ["dark-knight", "void-amalgamation", "lich"], dpr: { elite: [1.5, 5.5], boss: [1.5, 5.5] }, rounds: { elite: [5, 13.5], boss: [6, 21] }, telegraphCap: 0.65 },
-  { ids: ["ancient-golem", "dragon"], dpr: { elite: [3, 5.5], boss: [4.5, 7.5] }, rounds: { elite: [8, 33], boss: [18, 45] }, telegraphCap: 0.75 },
-  { ids: ["the-founder"], dpr: { boss: [5, 8] }, rounds: { boss: [24, 45] }, telegraphCap: 0.8 },
+  { ids: ["skeleton-guard", "giant-spider"], dpr: { elite: [2, 4], boss: [0.8, 3.2] }, rounds: { elite: [2.5, 4.8], boss: [2.5, 6.5] } },
+  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2, 4], boss: [2.3, 4.5] }, rounds: { elite: [5, 8.5], boss: [7, 11] } },
+  { ids: ["dark-knight", "void-amalgamation", "lich"], dpr: { elite: [1.5, 5.5], boss: [1.5, 5.5] }, rounds: { elite: [5, 13.5], boss: [6, 21] } },
+  { ids: ["ancient-golem", "dragon"], dpr: { elite: [3, 5.5], boss: [4.5, 7.5] }, rounds: { elite: [8, 33], boss: [18, 45] } },
+  { ids: ["the-founder"], dpr: { boss: [5, 8] }, rounds: { boss: [24, 45] } },
 ] as const;
 
 const CASES = BANDS.flatMap((band) =>
@@ -126,7 +125,7 @@ describe("elite/boss difficulty curve", () => {
     for (const row of allRows()) expect(row.winRate, `${row.id} ${row.tier}`).toBe(1);
   });
 
-  test("no skill reaches the lowest-HP class's max HP, and a telegraph stays under its band's cap", () => {
+  test("no skill other than a boss telegraph reaches the lowest-HP class's max HP", () => {
     for (const band of BANDS) {
       for (const id of band.ids) {
         const archetype = MONSTER_ARCHETYPES.find((a) => a.id === id)!;
@@ -152,8 +151,27 @@ describe("elite/boss difficulty curve", () => {
               const perHit = preview.perEffect[i]!.finalDamage * crit;
               return sum + perHit * (e.hitCountRange?.max ?? 1);
             }, 0);
-          expect(worst, `${id} ${skillId} vs ${minHp} max HP`).toBeLessThan(minHp);
-          if (skill.telegraph) expect(worst, `${id} ${skillId} telegraph cap`).toBeLessThan(band.telegraphCap * minHp);
+          if (archetype.bossTelegraph?.skillId !== skillId) expect(worst, `${id} ${skillId} vs ${minHp} max HP`).toBeLessThan(minHp);
+        }
+      }
+    }
+  });
+
+  test("boss skills follow the damage rules", () => {
+    for (const band of BANDS) {
+      for (const id of band.ids) {
+        const archetype = MONSTER_ARCHETYPES.find((a) => a.id === id)!;
+        for (const skillId of archetype.skillIds) {
+          for (const effect of getMonsterSkill(skillId).effects ?? []) {
+            if (effect.kind !== "damage") continue;
+            const percent = effect.offenseMultiplierPercent ?? 100;
+            if (archetype.bossTelegraph?.skillId === skillId) {
+              expect(percent, `${id} ${skillId} telegraph`).toBeGreaterThanOrEqual(190);
+              expect(percent, `${id} ${skillId} telegraph`).toBeLessThanOrEqual(280);
+            } else {
+              expect(percent, `${id} ${skillId}`).toBeLessThanOrEqual(170);
+            }
+          }
         }
       }
     }

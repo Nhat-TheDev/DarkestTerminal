@@ -261,26 +261,26 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `hold-the-line` | Hold the Line | self | status held-ground (3 turns) | Skeleton Guard (defensive) |
 | `shield-bash` | Shield Bash | singleEnemy | damage 18 + 170% ATK; status enfeebled (2 turns, 50% chance) | Skeleton Guard (defensive) |
 | `riposte-stance` | Riposte Stance | self | status riposte (1 turn) | Skeleton Guard (defensive) |
-| `overhead-cut` | Overhead Cut | singleEnemy | damage 55 + 90% ATK (ignores 40% defense) | Skeleton Guard (defensive) |
+| `overhead-cut` | Overhead Cut | singleEnemy | damage 60 + 190% ATK (ignores 40% defense); status weakened (2 turns) | Skeleton Guard (defensive) |
 | `web-barrage` | Web Barrage | singleEnemy | damage 10 + 40% ATK; status webbed (2 turns, 60% chance) | Giant Spider (aggressive) |
 | `venom-bite` | Venom Bite | singleEnemy | damage 22 + 60% ATK; status poisoned-ii (3 turns) | Giant Spider (aggressive) |
-| `cocoon` | Cocoon | singleEnemy | damage 30 + 150% ATK; status stunned (1 turn); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
+| `cocoon` | Cocoon | singleEnemy | damage 40 + 190% ATK; status webbed (2 turns); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
 | `feed` | Feed | singleEnemy | damage 24 + 110% ATK | Giant Spider (aggressive) |
 | `into-the-rafters` | Into the Rafters | self | status airborne (1 turn) | Giant Spider (aggressive) |
 | `claw-rake` | Claw Rake | singleEnemy | damage 14 + 65% ATK (1–2 hits) | Dragon (aggressive) |
 | `dragon-fire-breath` | Fire Breath | allEnemies | damage 10 + 55% ATK; status burning (2 turns, 50% chance) | Dragon (aggressive) |
 | `brand` | Brand | singleEnemy | damage 12 + 90% ATK; status burning-vulnerable (3 turns) | Dragon (aggressive) |
-| `inferno` | Inferno | allEnemies | damage 34 + 130% ATK | Dragon (aggressive) |
+| `inferno` | Inferno | allEnemies | damage 10 + 190% ATK; status burning (2 turns) | Dragon (aggressive) |
 | `old-fire-wakes` | Old Fire Wakes | self | status empower (99 turns) | Dragon (aggressive) |
-| `diseased-blade` | Diseased Blade | singleEnemy | damage 24 + 285% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
+| `diseased-blade` | Diseased Blade | singleEnemy | damage 50 + 170% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
 | `guard-position` | Guard Position | self | status guard-ii (2 turns) | Zombie Knight (defensive) |
 | `undying` | Undying | self | heal 0 (35% max HP) | Zombie Knight (defensive) |
-| `rotting-embrace` | Rotting Embrace | singleEnemy | damage 50 + 225% ATK; status agony (3 turns) | Zombie Knight (defensive) |
+| `rotting-embrace` | Rotting Embrace | singleEnemy | damage 60 + 200% ATK; status agony (3 turns) | Zombie Knight (defensive) |
 | `salute` | Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
-| `measured-cut` | Measured Cut | singleEnemy | damage 26 + 230% ATK (crit 25%) | Dark Knight (defensive) |
+| `measured-cut` | Measured Cut | singleEnemy | damage 50 + 170% ATK (crit 25%) | Dark Knight (defensive) |
 | `parry-stance` | Parry Stance | self | status fortify (2 turns) | Dark Knight (defensive) |
 | `dread-presence` | Dread Presence | allEnemies | fear 6 | Dark Knight (defensive) |
-| `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 60 + 235% ATK; status stunned (1 turn) | Dark Knight (defensive) |
+| `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 70 + 200% ATK; status stunned (1 turn) | Dark Knight (defensive) |
 | `second-salute` | Second Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
 | `skullsplitter` | Skullsplitter | singleEnemy | damage 28 + 120% ATK | Orc Chieftain (aggressive) |
 | `call-the-warband` | Call the Warband | self | summonMonster (monsterArchetypeId goblin, count 1) | Orc Chieftain (aggressive) |
@@ -290,24 +290,24 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `crimson-talon` | Crimson Talon | singleEnemy | damage 20 + 80% ATK; status bleeding (3 turns) | Vampire Lord (bloodthirsty) |
 | `drink` | Drink | singleEnemy | damage 16 + 85% ATK (+20% per bleeding stack, 60% lifesteal) | Vampire Lord (bloodthirsty) |
 | `bat-swarm` | Bat Swarm | self | summonMonster (monsterArchetypeId vampire-bat, count 2) | Vampire Lord (bloodthirsty) |
-| `final-draught` | Final Draught | singleEnemy | damage 45 + 140% ATK (100% lifesteal) | Vampire Lord (bloodthirsty) |
+| `final-draught` | Final Draught | singleEnemy | damage 10 + 190% ATK (100% lifesteal) | Vampire Lord (bloodthirsty) |
 | `grasping-remnants` | Grasping Remnants | singleEnemy | damage 14 + 70% ATK; status shredded (3 turns) | Void Amalgamation (aggressive) |
 | `unravelling-tide` | Unravelling Tide | allEnemies | damage 12 + 65% ATK; status corroded (2 turns, 50% chance) | Void Amalgamation (aggressive) |
 | `old-work` | Old Work | self | status regeneration (3 turns) | Void Amalgamation (aggressive) |
 | `subsume` | Subsume | singleEnemy | damage 40 + 145% ATK (50% lifesteal) | Void Amalgamation (aggressive) |
-| `stoneshear` | Stoneshear | singleEnemy | damage 34 + 315% ATK | Ancient Golem (defensive) |
-| `tremor` | Tremor | allEnemies | damage 12 + 155% ATK; status slowed (2 turns) | Ancient Golem (defensive) |
-| `sealing-blow` | Sealing Blow | singleEnemy | damage 75 + 310% ATK | Ancient Golem (defensive) |
+| `stoneshear` | Stoneshear | singleEnemy | damage 70 + 170% ATK | Ancient Golem (defensive) |
+| `tremor` | Tremor | allEnemies | damage 20 + 110% ATK; status slowed (2 turns) | Ancient Golem (defensive) |
+| `sealing-blow` | Sealing Blow | singleEnemy | damage 90 + 210% ATK; status stunned (1 turn, target allEnemies, 60% chance) | Ancient Golem (defensive) |
 | `crumbling-shell` | Crumbling Shell | self | status empower (99 turns) | Ancient Golem (defensive) |
 | `withering-touch` | Withering Touch | singleEnemy | damage 22 + 135% ATK; status withered (3 turns) | Lich (dread) |
 | `raise-the-dead` | Raise the Dead | self | summonMonster (monsterArchetypeId skeleton-mage, count 1); summonMonster (monsterArchetypeId skeleton, count 1) | Lich (dread) |
 | `ledger-mark` | Ledger Mark | singleEnemy | status marked (4 turns) | Lich (dread) |
-| `name-struck-out` | Name Struck Out | singleEnemy | damage 65 + 140% ATK; remove marked | Lich (dread) |
+| `name-struck-out` | Name Struck Out | singleEnemy | damage 65 + 280% ATK; remove marked | Lich (dread) |
 | `unhurried` | Unhurried | allEnemies | status marked (4 turns); summonMonster (monsterArchetypeId skeleton, count 2) | Lich (dread) |
 | `paid-in-full` | Paid In Full | singleEnemy | damage 20 + 115% ATK | What's Left of Him (dread) |
 | `the-same-price` | The Same Price | allEnemies | damage 16 + 100% ATK (ignores 100% defense) | What's Left of Him (dread) |
 | `whats-left-listening` | What's Left Listening | singleEnemy | damage 22 + 155% ATK; status blinded (2 turns); fear 8 | What's Left of Him (dread) |
-| `everything-you-asked-for` | Everything You Asked For | singleEnemy | damage 70 + 235% ATK (ignores 40% defense) | What's Left of Him (dread) |
+| `everything-you-asked-for` | Everything You Asked For | singleEnemy | damage 70 + 250% ATK (ignores 40% defense) | What's Left of Him (dread) |
 | `hung-lower` | Hung Lower | self | status knitting-ii (6 turns) | What's Left of Him (dread) |
 | `the-last-of-it` | The Last of It | allEnemies | fear 12 | What's Left of Him (dread) |
 | `self-destruct` | Self-Destruct | allEnemies | damage 30 + 200% ATK (ignores 30% defense); damage 99999 + 100% ATK (target self) | Lava Slime (defensive) |
