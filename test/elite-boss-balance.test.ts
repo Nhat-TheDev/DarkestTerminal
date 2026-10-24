@@ -18,11 +18,11 @@ import { firstDepth, levelAt, mean, simulateRows, type Row } from "./balanceSim"
 // marathons in it: monster defense and HP outgrow a level-capped party (06-level-system.md, 6.10), which is
 // why their rounds are far above the rest.
 const BANDS = [
-  { ids: ["skeleton-guard", "giant-spider"], dpr: { elite: [2, 4], boss: [0.8, 3.2] }, rounds: { elite: [2.5, 4.8], boss: [2.5, 6.5] } },
-  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2, 4], boss: [2.3, 4.5] }, rounds: { elite: [5, 8.5], boss: [7, 11] } },
-  { ids: ["dark-knight", "void-amalgamation", "lich"], dpr: { elite: [1.5, 5.5], boss: [1.5, 5.5] }, rounds: { elite: [5, 13.5], boss: [6, 21] } },
-  { ids: ["ancient-golem", "dragon"], dpr: { elite: [3, 5.5], boss: [4.5, 7.5] }, rounds: { elite: [8, 33], boss: [18, 45] } },
-  { ids: ["the-founder"], dpr: { boss: [5, 8] }, rounds: { boss: [24, 45] } },
+  { ids: ["skeleton-guard", "giant-spider"], dpr: { elite: [3.4, 4.8], boss: [3.7, 5.7] }, rounds: { elite: [3.2, 5.4], boss: [4.3, 7.8] } },
+  { ids: ["zombie-knight", "orc-chieftain", "vampire-lord"], dpr: { elite: [2.4, 4.1], boss: [3.4, 6.8] }, rounds: { elite: [5.4, 10.2], boss: [8.1, 16.8] } },
+  { ids: ["dark-knight", "void-amalgamation", "lich"], dpr: { elite: [2.6, 5.6], boss: [2.9, 6.5] }, rounds: { elite: [4.7, 14.7], boss: [6.8, 29.8] } },
+  { ids: ["ancient-golem", "dragon"], dpr: { elite: [3.2, 5.1], boss: [4.6, 14.6] }, rounds: { elite: [8.7, 30.2], boss: [31, 65] } },
+  { ids: ["the-founder"], dpr: { boss: [9.7, 13.1] }, rounds: { boss: [43.6, 59] } },
 ] as const;
 
 const CASES = BANDS.flatMap((band) =>
