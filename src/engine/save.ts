@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
-import { compareVersions, isVersion, migrateGameState, migrateMonsters, migrateSummons } from "./migration";
+import { compareVersions, isVersion, migrateGameState, migrateMonsters, migrateSummons, renamedClassId } from "./migration";
 import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
@@ -229,7 +229,8 @@ export function listSlots(): SlotEntry[] {
         isDevDumpAllowed(save.meta) &&
         isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion)) &&
         isSaveMonstersValid(save.monsters ?? []);
-      return { id, meta: loadable ? save.meta : null, runCount: loadProfile(id).runCount };
+      const meta = loadable ? { ...save.meta, partyClassIds: save.meta.partyClassIds.map(renamedClassId) } : null;
+      return { id, meta, runCount: loadProfile(id).runCount };
     } catch {
       return { id, meta: null, runCount: loadProfile(id).runCount };
     }

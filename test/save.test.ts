@@ -300,6 +300,19 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
     });
   });
 
+  test("a 1.1.x slot whose metadata still names a renamed class lists the new class id", () => {
+    withGame(16, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "1.1.1";
+      save.meta.partyClassIds = ["vanguard", ...save.meta.partyClassIds.slice(1)];
+      save.state.party[0]!.classId = "vanguard";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+      expect(listSlots()[0]!.meta?.partyClassIds[0]).toBe("knight");
+    });
+  });
+
   test("loading a run saved before its slot had a profile counts it as the slot's first run", () => {
     withGame(15, (game) => {
       game.currentSaveSlot = "slot4";
