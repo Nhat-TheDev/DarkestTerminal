@@ -50,6 +50,12 @@ describe("key-hint grammar (R2/R3)", () => {
 });
 
 describe("global hints (R5)", () => {
+  test("Memory goes after the party hint once unlocked, and never on screens that cannot open it", () => {
+    expect(globalHints("room", true, true)).toBe("[b] Party   [m] Memory   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("gameover", true, true)).not.toContain("Memory");
+    expect(globalHints("room")).not.toContain("Memory");
+  });
+
   test("room offers party info, saving and quicksaving", () => {
     expect(globalHints("room")).toBe("[b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
@@ -86,6 +92,7 @@ describe("page hint placement (R4)", () => {
 
   test("is left out entirely on a single-page list", () => {
     expect(withPageHint("[1-9] Item   [Esc] Back", false)).toBe("[1-9] Item   [Esc] Back");
+    expect(withPageHint("[Esc] Back", true)).toBe("[←/→] Page   [Esc] Back");
   });
 
   test("composeFooter divides the screen's hints from the global ones", () => {

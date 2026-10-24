@@ -1,10 +1,12 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, isCharacter, resolveSkillEffect } from "./resolver";
+import { type Actor, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
+import { shellAdjustedDamage } from "./monsterShell";
+import { advanceBar } from "./monsterBars";
 import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
@@ -26,13 +28,18 @@ export function applyOnHitRider(source: Character, target: Actor, log: LogEntry[
 
 export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
   const percent = totalReflectDamagePercent(bearer);
-  const reflected = Math.round(damageDealt * (percent / 100));
+  // An intact shell caps what a reflect does to it, but a reflect is not a hit that wears it down.
+  const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100)), false);
   if (reflected <= 0) return;
+  const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);
+  noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
+  if (attacker.hp <= 0 && isMonster(attacker)) advanceBar(attacker);
   log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
 }
 
 export function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
+  if (!bearer.isAlive) return;
   const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
   if (healed <= 0) return;
   const before = bearer.hp;

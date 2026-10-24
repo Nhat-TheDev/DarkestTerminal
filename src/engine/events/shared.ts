@@ -6,7 +6,6 @@ import { getRoom } from "../dungeon";
 import { getEvent } from "../../data/events";
 import { BALANCE } from "../../data/balanceConfig";
 import { LORE_EXPOSURE_EVENT_IDS } from "../../data/loreExposure";
-import { markRetiredCharacterEventShown } from "../profile";
 
 export function payHpPercent(character: Character, percent: number): number | null {
   const cost = Math.floor((character.maxHp * percent) / 100);
@@ -37,9 +36,6 @@ export function closeEvent(state: GameState): void {
     }
     if (LORE_EXPOSURE_EVENT_IDS.has(event.id)) {
       state.loreExposureCount += 1;
-    }
-    if (event.id === "the-one-who-stayed") {
-      markRetiredCharacterEventShown();
     }
   }
 }

@@ -1,5 +1,5 @@
 import { describe, test, expect, afterAll } from "bun:test";
-import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank } from "../src/data/classes";
+import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank, SKILLS_PER_CLASS } from "../src/data/classes";
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
@@ -11,46 +11,47 @@ import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from 
 
 // Tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills; Bun shares module state across test files, so truncate back afterwards.
 const initialStatusEffectsCount = STATUS_EFFECTS.length;
-const initialVanguardSkillsCount = CLASSES[0]!.skills.length;
+const initialKnightSkillsCount = CLASSES[0]!.skills.length;
 afterAll(() => {
   STATUS_EFFECTS.length = initialStatusEffectsCount;
-  CLASSES[0]!.skills.length = initialVanguardSkillsCount;
+  CLASSES[0]!.skills.length = initialKnightSkillsCount;
 });
 
 describe("new skill mechanics", () => {
-  test("Shield Guard applies both guard and taunt in a single cast", () => {
+  test("Interpose marks the ally and records the Knight as its source", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    const self: CombatantRef = { kind: "character", id: knight.id };
+    const mage = ctx.party.find((p) => p.classId === "mage")!;
+    queueAction(combat, self, "interpose", [{ kind: "character", id: mage.id }], ctx);
     resolveRound(combat, ctx);
 
-    expect(combat.log.some((l) => l.text.includes("gains the Guard effect"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("gains the Interposed effect"))).toBe(true);
+    expect(mage.activeStatusEffects.find((s) => s.statusEffectId === "interposed")?.sourceId).toBe(knight.id);
   });
 
   test("Prayer lowers the ally's fear, fortifies them for 2 rounds, and goes on cooldown", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("prayer-test", "Acolyte Test", getClass("acolyte"), 1);
     ctx.party.push(acolyte);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.survival.fear = 50;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.survival.fear = 50;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
-    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const allyRef: CombatantRef = { kind: "character", id: knight.id };
     expect(queueAction(combat, acolyteRef, "prayer", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
-    expect(vanguard.survival.fear).toBeLessThan(40);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(true);
+    expect(knight.survival.fear).toBeLessThan(40);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(true);
     expect(acolyte.cooldownsRemaining["prayer"]).toBe(1);
 
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "fortify")).toBe(false);
     expect(acolyte.cooldownsRemaining["prayer"]).toBe(0);
   });
 
@@ -59,31 +60,31 @@ describe("new skill mechanics", () => {
     const doctor = createCharacter("draught-test", "Doctor Test", getClass("plague-doctor"), 1);
     ctx.party.push(doctor);
     doctor.magicPower = 50;
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.maxHp = 1000;
-    vanguard.magicPower = 0; // a tick reading the bearer's magicPower would heal only the flat 7
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.maxHp = 1000;
+    knight.magicPower = 0; // a tick reading the bearer's magicPower would heal only the flat 7
     const rat = spawnInto(ctx, "dungeon-rat");
-    rat.attack = 0;
+    rat.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 10 }); // its bites would blur the HP being measured
     const combat = startCombat("r1", [rat.id], ctx, false);
     const doctorRef: CombatantRef = { kind: "character", id: doctor.id };
-    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const allyRef: CombatantRef = { kind: "character", id: knight.id };
     const perHeal = 7 + 50 * 0.4;
 
-    vanguard.hp = 100;
+    knight.hp = 100;
     expect(queueAction(combat, doctorRef, "healing-draught", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
-    expect(vanguard.hp).toBe(100 + perHeal);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(true);
+    expect(knight.hp).toBe(100 + perHeal);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(true);
 
     doctor.magicPower = 0; // the snapshot taken on cast is what keeps scaling the ticks
     resolveRound(combat, ctx);
-    expect(vanguard.hp).toBe(100 + 2 * perHeal);
+    expect(knight.hp).toBe(100 + 2 * perHeal);
     resolveRound(combat, ctx);
-    expect(vanguard.hp).toBe(100 + 3 * perHeal);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(false);
+    expect(knight.hp).toBe(100 + 3 * perHeal);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "mending")).toBe(false);
 
     resolveRound(combat, ctx);
-    expect(vanguard.hp).toBe(100 + 3 * perHeal);
+    expect(knight.hp).toBe(100 + 3 * perHeal);
   });
 
   test("stuns status makes the bearer skip their turn entirely", () => {
@@ -139,8 +140,8 @@ describe("new skill mechanics", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("cp-test", "Acolyte Test", getClass("acolyte"), 10);
     ctx.party.push(acolyte);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
 
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
@@ -152,64 +153,64 @@ describe("new skill mechanics", () => {
     resolveRound(combat, ctx);
     expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore);
 
-    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const allyRef: CombatantRef = { kind: "character", id: knight.id };
     expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
   });
 
   test("Purify strips the debuff, not an earlier-applied buff, when the ally carries both", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("cp-test2", "Acolyte Test", getClass("acolyte"), 10);
     ctx.party.push(acolyte);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     // Buff applied BEFORE the debuff, so a naive "remove index 0" would strip the wrong one.
-    vanguard.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 });
-    vanguard.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
+    knight.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 });
+    knight.activeStatusEffects.push({ statusEffectId: "burning", turnsRemaining: 2 });
 
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
-    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const allyRef: CombatantRef = { kind: "character", id: knight.id };
 
     expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
   });
 
   test("Purify does nothing when the ally has a buff but no debuff, instead of stripping the buff", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("cp-test3", "Acolyte Test", getClass("acolyte"), 10);
     ctx.party.push(acolyte);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 }); // no debuff present
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "guard", turnsRemaining: 3 }); // no debuff present
 
     const tanky = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const acolyteRef: CombatantRef = { kind: "character", id: acolyte.id };
-    const allyRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const allyRef: CombatantRef = { kind: "character", id: knight.id };
 
     expect(queueAction(combat, acolyteRef, "purify", [allyRef], ctx)).toBeNull();
     resolveRound(combat, ctx);
 
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
   });
 
   test("ultimate skills always hit even at high fear, but scale damage down instead of missing", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("sword-judgment");
-    vanguard.mp = 999;
-    vanguard.survival.fear = 99;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.unlockedSkillIds.push("sword-judgment");
+    knight.mp = 999;
+    knight.survival.fear = 99;
     const skeleton = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [skeleton.id], ctx, false);
     const enemyRef: CombatantRef = { kind: "monster", id: skeleton.id };
     const enemyActor = getActorByRef(enemyRef, ctx);
-    const fullPowerDamage = Math.max(1, 30 + mitigatedOffense(vanguard.attack, enemyActor.defense));
+    const fullPowerDamage = Math.max(1, 30 + mitigatedOffense(knight.attack, enemyActor.defense));
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "sword-judgment", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "sword-judgment", [enemyRef], ctx);
     const hpBefore = enemyActor.hp;
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - enemyActor.hp;
@@ -221,19 +222,19 @@ describe("new skill mechanics", () => {
 
   test("an ultimate's fear-tier penalty scales its whole power budget (offenseMultiplierPercent-based portion included), not just its flat amount", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
-    vanguard.mp = 999;
-    vanguard.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.unlockedSkillIds.push("sword-judgment"); // rank 1: amount 30, offenseMultiplierPercent 85
+    knight.mp = 999;
+    knight.survival.fear = 99; // Fear Tier 4 -> ultimateEffectivenessMultiplier = 0.6
     // Not skeleton-guard: its physical weakness would inflate damage past what this isolates.
     const enemy = spawnInto(ctx, "vampire-bat");
     const combat = startCombat("r1", [enemy.id], ctx, false);
     const enemyRef: CombatantRef = { kind: "monster", id: enemy.id };
     const enemyActor = getActorByRef(enemyRef, ctx);
     // Scaling only `amount` would give round(30*0.6) + the unscaled offense term.
-    const amountOnlyScaledDamage = Math.max(1, Math.round(30 * 0.6) + mitigatedOffense(vanguard.attack * 0.85, enemyActor.defense));
+    const amountOnlyScaledDamage = Math.max(1, Math.round(30 * 0.6) + mitigatedOffense(knight.attack * 0.85, enemyActor.defense));
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "sword-judgment", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "sword-judgment", [enemyRef], ctx);
     const hpBefore = enemyActor.hp;
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - enemyActor.hp;
@@ -289,9 +290,9 @@ describe("new skill mechanics", () => {
 describe("queued action refund when it never executes", () => {
   test("skill mp is never spent when the last monster dies to a faster ally before the caster's own turn comes up", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
-    vanguard.speed = 999;
+    knight.speed = 999;
     rogue.speed = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.hp = 1;
@@ -299,7 +300,7 @@ describe("queued action refund when it never executes", () => {
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
     const rogueMpBefore = rogue.mp;
-    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [ratRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "slash", [ratRef], ctx);
     expect(queueAction(combat, { kind: "character", id: rogue.id }, "knife-throw", [ratRef], ctx)).toBeNull();
     expect(rogue.mp).toBe(rogueMpBefore);
 
@@ -314,17 +315,17 @@ describe("queued action refund when it never executes", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("acolyte1", "Acolyte", getClass("acolyte"));
     ctx.party.push(acolyte);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const monster = spawnInto(ctx, "skeleton-guard");
     const combat = startCombat("r1", [monster.id], ctx, false);
 
     const acolyteMpBefore = acolyte.mp;
-    expect(queueAction(combat, { kind: "character", id: acolyte.id }, "heal", [vanguardRef], ctx)).toBeNull();
+    expect(queueAction(combat, { kind: "character", id: acolyte.id }, "heal", [knightRef], ctx)).toBeNull();
     expect(acolyte.mp).toBe(acolyteMpBefore);
 
-    vanguard.hp = 0;
-    vanguard.isAlive = false;
+    knight.hp = 0;
+    knight.isAlive = false;
     resolveRound(combat, ctx);
 
     expect(combat.outcome).toBeUndefined();
@@ -334,22 +335,23 @@ describe("queued action refund when it never executes", () => {
 
   test("skill mp and cooldown are never spent when the caster is stunned before acting", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const selfRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const selfRef: CombatantRef = { kind: "character", id: knight.id };
 
-    const mpBefore = vanguard.mp;
-    expect(queueAction(combat, selfRef, "shield-guard", [selfRef], ctx)).toBeNull();
-    expect(vanguard.mp).toBe(mpBefore);
-    expect(vanguard.cooldownsRemaining["shield-guard"]).toBeUndefined();
+    const mpBefore = knight.mp;
+    const mageRef: CombatantRef = { kind: "character", id: ctx.party.find((p) => p.classId === "mage")!.id };
+    expect(queueAction(combat, selfRef, "interpose", [mageRef], ctx)).toBeNull();
+    expect(knight.mp).toBe(mpBefore);
+    expect(knight.cooldownsRemaining["interpose"]).toBeUndefined();
 
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("is stunned"))).toBe(true);
-    expect(vanguard.mp).toBe(mpBefore);
-    expect(vanguard.cooldownsRemaining["shield-guard"]).toBeUndefined();
+    expect(knight.mp).toBe(mpBefore);
+    expect(knight.cooldownsRemaining["interpose"]).toBeUndefined();
   });
 });
 
@@ -427,15 +429,15 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
     });
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "test-storm-empowered", turnsRemaining: 3 });
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
     const enemyRefs = livingMonsterRefs(combat, ctx);
     const hpBefore = enemyRefs.map((r) => getActorByRef(r, ctx).hp);
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [enemyRefs[0]!], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "slash", [enemyRefs[0]!], ctx);
     resolveRound(combat, ctx);
 
     for (let i = 0; i < enemyRefs.length; i++) {
@@ -452,10 +454,10 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30 },
     });
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.mp = 999;
-    vanguard.unlockedSkillIds.push("heavy-charge");
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-aoe", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.mp = 999;
+    knight.unlockedSkillIds.push("heavy-charge");
+    knight.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-aoe", turnsRemaining: 3 });
     const rat1 = spawnInto(ctx, "dungeon-rat");
     const rat2 = spawnInto(ctx, "dungeon-rat");
     rat1.maxHp = 500;
@@ -463,11 +465,11 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     rat2.maxHp = 500;
     rat2.hp = 500;
     const combat = startCombat("r1", [rat1.id, rat2.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     const targets = autoResolveTargets("allEnemies", self, combat, ctx) ?? [];
 
-    const directDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack * 0.7, rat1.defense) + 20));
-    const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower, rat1.defense * 0.7) + 6));
+    const directDmg = Math.max(1, Math.round(mitigatedOffense(knight.attack * 0.7, rat1.defense) + 20));
+    const splashDmg = Math.max(1, Math.round(mitigatedOffense(knight.magicPower, rat1.defense * 0.7) + 6));
 
     queueAction(combat, self, "heavy-charge", targets, ctx);
     resolveRound(combat, ctx);
@@ -491,12 +493,12 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     const offFloor = monsters.slice(0, 2);
     const offFloorHpBefore = offFloor.map((m) => m.hp);
 
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-scope", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-scope", turnsRemaining: 3 });
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
     for (let i = 0; i < offFloor.length; i++) {
@@ -513,19 +515,19 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
       onHitAoeDamage: { amount: 6, isMagic: true, ignoreDefensePercent: 30, offenseMultiplierPercent: 50 },
     });
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.magicPower = 100;
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-scaled", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.magicPower = 100;
+    knight.activeStatusEffects.push({ statusEffectId: "test-storm-empowered-scaled", turnsRemaining: 3 });
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.maxHp = 500;
     rat.hp = 500;
     const combat = startCombat("r1", [rat.id], ctx, false);
 
-    const splashDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.magicPower * 0.5, rat.defense * 0.7) + 6));
-    queueAction(combat, { kind: "character", id: vanguard.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
+    const splashDmg = Math.max(1, Math.round(mitigatedOffense(knight.magicPower * 0.5, rat.defense * 0.7) + 6));
+    queueAction(combat, { kind: "character", id: knight.id }, "slash", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
 
-    const basicAttackDmg = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, rat.defense)));
+    const basicAttackDmg = Math.max(1, Math.round(mitigatedOffense(knight.attack, rat.defense)));
     const dmgTaken = 500 - getActorByRef({ kind: "monster", id: rat.id }, ctx).hp;
     expect(dmgTaken).toBe(basicAttackDmg + splashDmg);
   });
@@ -550,23 +552,23 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     });
 
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("test-conditional-skill");
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.unlockedSkillIds.push("test-conditional-skill");
+    knight.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
     const tanky = spawnInto(ctx, "skeleton-guard");
     // Hand-set defense, high enough that ignoreDefensePercent crosses a rounding boundary whatever the archetype's base stats.
     tanky.defense = 30;
     const combat = startCombat("r1", [tanky.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     const hpBefore = getActorByRef(enemyRef, ctx).hp;
-    const noBonusDamage = Math.max(1, Math.round(mitigatedOffense(vanguard.attack, getActorByRef(enemyRef, ctx).defense)) + 10);
+    const noBonusDamage = Math.max(1, Math.round(mitigatedOffense(knight.attack, getActorByRef(enemyRef, ctx).defense)) + 10);
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "test-conditional-skill", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "test-conditional-skill", [enemyRef], ctx);
     resolveRound(combat, ctx);
     const actualDamage = hpBefore - getActorByRef(enemyRef, ctx).hp;
 
     expect(actualDamage).toBeGreaterThan(noBonusDamage);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
   });
 
   test("conditionalBonus: consumesStatus removes the status after casting", () => {
@@ -584,19 +586,19 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     });
 
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("test-consuming-skill");
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.unlockedSkillIds.push("test-consuming-skill");
+    knight.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     const hpBefore = getActorByRef(enemyRef, ctx).hp;
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "test-consuming-skill", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "test-consuming-skill", [enemyRef], ctx);
     resolveRound(combat, ctx);
 
     expect(getActorByRef(enemyRef, ctx).hp).toBeLessThan(hpBefore);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(false);
   });
 
   test("conditionalBonus: consumesStatus does NOT remove the status if the bonus effect never actually connects", () => {
@@ -613,19 +615,19 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
     });
 
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.unlockedSkillIds.push("test-whiff-consuming-skill");
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.unlockedSkillIds.push("test-whiff-consuming-skill");
+    knight.activeStatusEffects.push({ statusEffectId: "test-conditional-buff", turnsRemaining: 3 });
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     const hpBefore = getActorByRef(enemyRef, ctx).hp;
 
-    queueAction(combat, { kind: "character", id: vanguard.id }, "test-whiff-consuming-skill", [enemyRef], ctx);
+    queueAction(combat, { kind: "character", id: knight.id }, "test-whiff-consuming-skill", [enemyRef], ctx);
     resolveRound(combat, ctx);
 
     expect(getActorByRef(enemyRef, ctx).hp).toBe(hpBefore);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "test-conditional-buff")).toBe(true);
   });
 
   test("lifestealPercent heals the source by the given % of dealt damage, capped at maxHp", () => {
@@ -672,15 +674,15 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
 
   test("rollHits: a character's fear penalty and accuracyPenaltyPercent status combine, clamped at 100%", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.survival.fear = 50;
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
-    expect(getFearAccuracyPenalty(getFearTier(vanguard.survival.fear))).toBeCloseTo(0.1);
-    expect(rollHits(vanguard, () => 0.65)).toBe(false);
-    expect(rollHits(vanguard, () => 0.75)).toBe(true);
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.survival.fear = 50;
+    knight.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
+    expect(getFearAccuracyPenalty(getFearTier(knight.survival.fear))).toBeCloseTo(0.1);
+    expect(rollHits(knight, () => 0.65)).toBe(false);
+    expect(rollHits(knight, () => 0.75)).toBe(true);
 
-    vanguard.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
-    expect(rollHits(vanguard, () => 0.99)).toBe(false);
+    knight.activeStatusEffects.push({ statusEffectId: "test-blinded", turnsRemaining: 2 });
+    expect(rollHits(knight, () => 0.99)).toBe(false);
   });
 
   test("isHelpfulStatusEffect: a status with only accuracyPenaltyPercent set is a debuff, not a buff", () => {
@@ -715,24 +717,13 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
 });
 
 
-describe("Vanguard skill ranks", () => {
-  test("Shield Guard ranks resolve to guard-ii/guard-iii at lv7/lv15", () => {
-    const skill = getSkill("shield-guard");
-    expect(getEffectiveSkill(skill, 1).mpCost).toBe(8);
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
-    expect(getEffectiveSkill(skill, 7).mpCost).toBe(9);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard-ii", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
-    expect(getEffectiveSkill(skill, 15).mpCost).toBe(10);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([
-      { kind: "applyStatusEffect", statusEffectId: "guard-iii", durationTurns: 1 },
-      { kind: "applyStatusEffect", statusEffectId: "taunt", durationTurns: 1 },
-    ]);
+describe("Knight skill ranks", () => {
+  test("Interpose ranks lengthen the interposed status at lv7/lv15", () => {
+    const skill = getSkill("interpose");
+    for (const [level, mp, turns] of [[1, 8, 2], [7, 9, 3], [15, 10, 4]] as const) {
+      expect(getEffectiveSkill(skill, level).mpCost).toBe(mp);
+      expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "interposed", durationTurns: turns }]);
+    }
   });
 
   test("Sword Judgment ranks resolve to dmg 30/40/50 at lv35/70/100", () => {
@@ -770,11 +761,12 @@ describe("Mage skill ranks", () => {
     });
   });
 
-  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100", () => {
+  test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100, each chilling every target", () => {
     const skill = getSkill("ice-age");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }]);
+    const chill = { kind: "applyStatusEffect" as const, statusEffectId: "chilled", durationTurns: 2 };
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }, chill]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }, chill]);
   });
 });
 
@@ -798,10 +790,10 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
     expectValidCharacterBase(getClass("rogue"));
   });
 
-  test("Plague Doctor has valid base stats, growth weights, and 6 skills", () => {
+  test("Plague Doctor has valid base stats, growth weights, and 7 skills", () => {
     const doc = getClass("plague-doctor");
     expectValidCharacterBase(doc);
-    expect(doc.skills.length).toBe(6);
+    expect(doc.skills.length).toBe(SKILLS_PER_CLASS);
   });
 
   test("blinded status has accuracyPenaltyPercent 60, no perTurnEffects", () => {
@@ -880,9 +872,9 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
       const doc = ctx.party.find((p) => p.classId === "plague-doctor")!;
       doc.unlockedSkillIds.push("total-plague");
       doc.mp = 999;
-      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-      vanguard.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
-      vanguard.hp = 1;
+      const knight = ctx.party.find((p) => p.classId === "knight")!;
+      knight.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
+      knight.hp = 1;
       const tanky = spawnInto(ctx, "skeleton-guard");
       const combat = startCombat("r1", [tanky.id], ctx, false);
       const docRef: CombatantRef = { kind: "character", id: doc.id };
@@ -890,8 +882,8 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
       queueAction(combat, docRef, "total-plague", targets, ctx);
       resolveRound(combat, ctx);
 
-      expect(combat.log.some((l) => l.text.startsWith(vanguard.name) && l.text.includes("recovers"))).toBe(true);
-      expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
+      expect(combat.log.some((l) => l.text.startsWith(knight.name) && l.text.includes("recovers"))).toBe(true);
+      expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
       const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
       const enemyActor = getActorByRef(enemyRef, ctx);
       if (!enemyActor.activeStatusEffects.some((s) => s.statusEffectId === "poisoned" || s.statusEffectId === "burning")) continue;
@@ -904,10 +896,10 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
 
 describe("Viking class", () => {
   withoutDamageRolls();
-  test("Viking has valid base stats, growth weights, and 6 skills", () => {
+  test("Viking has valid base stats, growth weights, and 7 skills", () => {
     const viking = getClass("viking");
     expectValidCharacterBase(viking);
-    expect(viking.skills.length).toBe(6);
+    expect(viking.skills.length).toBe(SKILLS_PER_CLASS);
   });
 
   test("Lightning Axe applies storm-empowered + storm-recoil at rank 1", () => {
@@ -1153,9 +1145,9 @@ describe("Archer class", () => {
     expectValidCharacterBase(getClass("archer"));
   });
 
-  test("Archer has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Archer has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const archer = getClass("archer");
-    expect(archer.skills.length).toBe(6);
+    expect(archer.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = archer.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("quick-shot");
     expect(basic.mpCost).toBe(0);
@@ -1217,9 +1209,9 @@ describe("Ninja class", () => {
     expectValidCharacterBase(getClass("ninja"));
   });
 
-  test("Ninja has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Ninja has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const ninja = getClass("ninja");
-    expect(ninja.skills.length).toBe(6);
+    expect(ninja.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = ninja.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("kunai-strike");
     expect(basic.mpCost).toBe(0);
@@ -1288,9 +1280,9 @@ describe("Summoner class", () => {
     expectValidCharacterBase(getClass("summoner"));
   });
 
-  test("Summoner has 6 skills, slot 0 is a free flat-amount basic attack", () => {
+  test("Summoner has 7 skills, slot 0 is a free flat-amount basic attack", () => {
     const summoner = getClass("summoner");
-    expect(summoner.skills.length).toBe(6);
+    expect(summoner.skills.length).toBe(SKILLS_PER_CLASS);
     const basic = summoner.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("hollow-pulse");
     expect(basic.mpCost).toBe(0);

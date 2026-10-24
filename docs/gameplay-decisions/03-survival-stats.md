@@ -8,7 +8,7 @@ There are 2 survival stats, tracked at different scopes:
 
 | Stat | Scope | Range |
 |---|---|---|
-| `fear` | Per character (`Character.survival.fear`) | 0.0–100.0, one decimal place |
+| `fear` | Per character (`Character.survival.fear`) | 0.0–100.0, one decimal place | <!-- docs:intent -->
 | `satiety` | Party-wide (`GameState.satiety`) | 0–100 |
 
 Both are clamped to their range via `clamp(...)` wherever they're modified (`src/engine/survival.ts`, `src/engine/resolver.ts`).

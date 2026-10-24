@@ -8,7 +8,7 @@ import { loadProfile, saveProfile, unlockAbility } from "../src/engine/profile";
 
 async function openScreen() {
   const harness = await createTestRenderer({ width: 150, height: 45 });
-  const picked = showPartySelect(harness.renderer, CLASSES);
+  const picked = showPartySelect(harness.renderer, CLASSES, "slot1");
   await harness.renderOnce();
   const press = async (key: string) => {
     if (key === "LEFT" || key === "RIGHT") harness.mockInput.pressArrow(key === "LEFT" ? "left" : "right");
@@ -70,10 +70,10 @@ describe("party select", () => {
   });
 
   test("the ability block keeps its size on every page, with every ability unlocked", async () => {
-    const profile = loadProfile();
+    const profile = loadProfile("slot1");
     const before = [...profile.unlockedAbilityIds];
     for (const a of ABILITIES) unlockAbility(profile, a.id);
-    saveProfile(profile);
+    saveProfile("slot1", profile);
     try {
       const { frame, press, renderer } = await openScreen();
       await press("RETURN");
@@ -96,7 +96,7 @@ describe("party select", () => {
       renderer.destroy();
     } finally {
       profile.unlockedAbilityIds = before;
-      saveProfile(profile);
+      saveProfile("slot1", profile);
     }
   });
 

@@ -777,23 +777,23 @@ file holds to.
 No combat, no cost — matches the established "just talk, no transaction" shape (Part E).
 `noArtifactReward: true`: a pure dialogue-only beat.
 
-**The persistence layer**, `src/engine/profile.ts`: a small `profile.json`, living in
-the same app-data directory `save.ts`'s per-run saves already use, but never imported by (or
-importing) `save.ts`/`game.ts` circularly. Holds `{ version, unlockedAbilityIds,
-retiredCharacters: { classId }[], shownRetiredCharacterEvent: boolean }` — `version` and
-`unlockedAbilityIds` come from `AbilityProfile` (`src/types.ts`), the ability unlocks that share
-the file. `addRetiredCharacter()` is called the moment Ending 1 is
+**The persistence layer**, `src/engine/profile.ts`: a small `slotN.profile.json` per save slot,
+living beside that slot's run file, but never importing `save.ts`/`game.ts` (they import it).
+Holds `{ version, unlockedAbilityIds, retiredCharacters: { classId }[], shownRetiredCharacterEvent:
+boolean, runCount, memoryUnlocked, memoryIntroShown }` — `version` and `unlockedAbilityIds` come from `AbilityProfile`
+(`src/types.ts`), the ability unlocks that share the file. A retired character belongs to the slot
+it retired in: only a later run in that same slot can meet them. `addRetiredCharacter()` is called the moment Ending 1 is
 chosen (`Game.pickEndingChoice`); a fresh `Game` reads the profile once at construction and, if a
 retired character exists and the payoff hasn't already been shown in any previous run, pre-fills
 `GameState.retiredCharacterClassId` and leaves `"the-one-who-stayed"` *out* of the freshly-built
 `firedOnceEventIds` — otherwise the id is pre-inserted there, so it can never roll. No changes needed
 to `rollEvent()` itself; eligibility is entirely encoded by whether that 1 id starts excluded.
-`markRetiredCharacterEventShown()` fires from `closeEvent()` the moment the event actually resolves,
-persisting the "already shown" fact across every future run, not just this one.
+`markRetiredCharacterEventShown()` fires from `Game.openChest()` the moment the event actually
+resolves, persisting the "already shown" fact across every future run in the slot, not just this one.
 
-`profile.json` sits in the same directory as the save slots, but slot listing and deletion
-(`listSlots()`/`deleteSlot()`, `src/engine/save.ts`) only ever touch the fixed slot filenames, so
-the profile survives a run's permadeath slot-clear and is never read as a save.
+`deleteSlot()` (`src/engine/save.ts`) removes only the run file, so the profile survives a run's
+permadeath slot-clear and is never read as a save; only `clearSlot()`, used when New Game
+overwrites a slot that still holds a run, removes it too.
 
 ### F.3 Ending 2 — Let Go
 
@@ -990,14 +990,12 @@ the player's own judgment" intact even while giving real, citable answers to som
 and only ever spawned by `Game.enterFounderFight()`. `finalBoss` is what carries that exclusion
 (`GUARD_ROOM_ARCHETYPES` in `src/data/monsters.ts` filters it out explicitly). "Stronger than
 any existing boss" comes entirely from floor depth (120, deeper than any other boss) via the same
-depth-scaling every monster already uses — no bespoke stat multiplier needed. 4 skills, all
-following the exact mechanical shape of every other Elite/Boss archetype's kit: `elite-strike-the-founder`
-("Paid In Full," 20 single-target) and `elite-cleave-the-founder` ("The Same Price," 10 party-wide)
-alongside `boss-execute-the-founder` ("Everything You Asked For") and `boss-debuff-the-founder`
-("What's Left Listening," applying `blinded`). Its boss action weights lean harder on the debuff than
-a standard boss does — 30/20/15/35 against the usual 40/20/15/25 — so the fight still reads as its
-own thing rather than a reskinned Dark Knight. It carries no `elite` action weights and no elite
-sprite, because it can never spawn at Elite tier.
+depth-scaling every monster already uses — no bespoke stat multiplier needed. Its kit is its own
+and, like every guard-room archetype's, data-declared (`06-level-system.md` §6.12): ropes that reach
+several targets ("Paid In Full"), one that strikes everyone through defense ("The Same Price"), a
+gaze that blinds and raises fear ("What's Left Listening"), a telegraphed heavy hit ("Everything You
+Asked For"), and two phase skills. It carries no `elite` action weights and no elite sprite, because
+it can never spawn at Elite tier.
 
 **After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — pure
 flavor over the infinite-descent loop, which continues as normal.

@@ -9,6 +9,7 @@
     "baseSpeed": 12,
     "monsterType": "balanced",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -40,6 +41,7 @@
     "baseSpeed": 18,
     "monsterType": "striker",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "blood-drain"
     ],
@@ -71,6 +73,7 @@
     "baseSpeed": 5,
     "monsterType": "tanky",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "acid-spit"
     ],
@@ -99,6 +102,7 @@
     "baseSpeed": 16,
     "monsterType": "striker",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -127,6 +131,7 @@
     "baseSpeed": 10,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "whispered-name"
     ],
@@ -155,6 +160,7 @@
     "baseSpeed": 14,
     "monsterType": "balanced",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -182,7 +188,8 @@
     "baseDefense": 3,
     "baseSpeed": 20,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
       "blood-drain"
     ],
@@ -214,6 +221,7 @@
     "baseSpeed": 8,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "poison-bite"
     ],
@@ -245,6 +253,7 @@
     "baseSpeed": 8,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bone-throw"
     ],
@@ -273,6 +282,7 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "regeneration"
     ],
@@ -301,6 +311,7 @@
     "baseSpeed": 16,
     "monsterType": "glass",
     "aiPattern": "opportunistic",
+    "attackRange": "melee",
     "skillIds": [
       "poison-bite"
     ],
@@ -332,6 +343,7 @@
     "baseSpeed": 11,
     "monsterType": "armored",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "quick-bite"
     ],
@@ -360,6 +372,7 @@
     "baseSpeed": 16,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "web-spit"
     ],
@@ -391,6 +404,7 @@
     "baseSpeed": 12,
     "monsterType": "glass",
     "aiPattern": "defensive",
+    "attackRange": "ranged",
     "skillIds": [
       "acid-spit"
     ],
@@ -419,6 +433,7 @@
     "baseSpeed": 12,
     "monsterType": "striker",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "blood-drain"
     ],
@@ -446,7 +461,8 @@
     "baseDefense": 1,
     "baseSpeed": 18,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "grave-chill"
     ],
@@ -477,7 +493,8 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "glass",
-    "aiPattern": "defensive",
+    "aiPattern": "tactical",
+    "attackRange": "ranged",
     "skillIds": [
       "bone-throw"
     ],
@@ -505,7 +522,8 @@
     "baseDefense": 6,
     "baseSpeed": 16,
     "monsterType": "striker",
-    "aiPattern": "aggressive",
+    "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
       "quick-bite"
     ],
@@ -537,6 +555,7 @@
     "baseSpeed": 5,
     "monsterType": "tanky",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "acid-spit"
     ],
@@ -565,6 +584,7 @@
     "baseSpeed": 4,
     "monsterType": "tanky",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "self-destruct"
     ],
@@ -593,6 +613,7 @@
     "baseSpeed": 14,
     "monsterType": "striker",
     "aiPattern": "aggressive",
+    "attackRange": "ranged",
     "skillIds": [
       "ember-lash"
     ],
@@ -621,6 +642,7 @@
     "baseSpeed": 12,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "regeneration"
     ],
@@ -649,6 +671,7 @@
     "baseSpeed": 10,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "settle-into-stone"
     ],
@@ -679,7 +702,8 @@
     "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "balanced",
-    "aiPattern": "aggressive",
+    "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "roles": [
       "normal"
     ],
@@ -710,7 +734,8 @@
     "baseDefense": 7,
     "baseSpeed": 12,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "tactical",
+    "attackRange": "ranged",
     "skillIds": [
       "arrow-shot"
     ],
@@ -739,6 +764,7 @@
     "baseSpeed": 8,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -767,6 +793,7 @@
     "baseSpeed": 8,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bone-breaker"
     ],
@@ -797,7 +824,8 @@
     "baseDefense": 4,
     "baseSpeed": 15,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
       "blood-drain"
     ],
@@ -829,6 +857,7 @@
     "baseSpeed": 6,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -860,6 +889,7 @@
     "baseSpeed": 8,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "maul"
     ],
@@ -891,6 +921,7 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
       "guard-stance"
     ],
@@ -919,6 +950,7 @@
     "baseSpeed": 15,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
       "bite"
     ],
@@ -947,10 +979,12 @@
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-skeleton-guard",
-      "elite-cleave-skeleton-guard",
-      "boss-debuff-skeleton-guard"
+      "hold-the-line",
+      "shield-bash",
+      "riposte-stance",
+      "overhead-cut"
     ],
     "expReward": 15,
     "powerTier": "strong",
@@ -959,18 +993,17 @@
         "basicAttack": 100
       },
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 35,
-        "elite-cleave-skeleton-guard": 25
+        "basicAttack": 15,
+        "hold-the-line": 40,
+        "shield-bash": 45
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-skeleton-guard": 20,
-        "elite-cleave-skeleton-guard": 15,
-        "boss-debuff-skeleton-guard": 25
+        "basicAttack": 10,
+        "hold-the-line": 45,
+        "shield-bash": 60,
+        "riposte-stance": 40
       }
     },
-    "executeSkillId": "boss-execute-skeleton-guard",
     "roles": [
       "normal",
       "elite",
@@ -981,38 +1014,44 @@
     "traitIds": [
       "plated"
     ],
-    "minFloor": 0
+    "minFloor": 0,
+    "bossTelegraph": {
+      "skillId": "overhead-cut",
+      "meterLength": 5
+    }
   },
   {
     "id": "giant-spider",
     "name": "Giant Spider",
     "description": "The strands across the doorway are thick enough to lean on. What it has wrapped and set aside is overhead; enough of it has kept its shape that the limbs can be counted from where you are standing.",
-    "baseHp": 125,
-    "baseAttack": 30,
+    "baseHp": 150,
+    "baseAttack": 24,
     "baseDefense": 8,
     "baseSpeed": 14,
     "monsterType": "glass",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-giant-spider",
-      "elite-cleave-giant-spider",
-      "boss-debuff-giant-spider"
+      "web-barrage",
+      "venom-bite",
+      "cocoon",
+      "feed",
+      "into-the-rafters"
     ],
     "expReward": 16,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-giant-spider": 35,
-        "elite-cleave-giant-spider": 25
+        "basicAttack": 15,
+        "web-barrage": 35,
+        "venom-bite": 35
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-giant-spider": 20,
-        "elite-cleave-giant-spider": 15,
-        "boss-debuff-giant-spider": 25
+        "basicAttack": 10,
+        "web-barrage": 25,
+        "venom-bite": 25,
+        "feed": 15
       }
     },
-    "executeSkillId": "boss-execute-giant-spider",
     "roles": [
       "elite",
       "boss"
@@ -1022,7 +1061,24 @@
     "traitIds": [
       "venomous"
     ],
-    "minFloor": 20
+    "minFloor": 20,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 40,
+        "weights": {
+          "basicAttack": 8,
+          "venom-bite": 35,
+          "feed": 30,
+          "web-barrage": 10
+        },
+        "onEnterSkillId": "into-the-rafters"
+      }
+    ],
+    "bossTelegraph": {
+      "skillId": "cocoon",
+      "meterLength": 4
+    }
   },
   {
     "id": "dragon",
@@ -1034,26 +1090,28 @@
     "baseSpeed": 10,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-dragon",
-      "elite-cleave-dragon",
-      "boss-debuff-dragon"
+      "claw-rake",
+      "dragon-fire-breath",
+      "brand",
+      "inferno",
+      "old-fire-wakes"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-dragon": 35,
-        "elite-cleave-dragon": 25
+        "basicAttack": 15,
+        "claw-rake": 35,
+        "dragon-fire-breath": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-dragon": 20,
-        "elite-cleave-dragon": 15,
-        "boss-debuff-dragon": 25
+        "basicAttack": 10,
+        "claw-rake": 25,
+        "dragon-fire-breath": 20,
+        "brand": 15
       }
     },
-    "executeSkillId": "boss-execute-dragon",
     "roles": [
       "elite",
       "boss"
@@ -1063,7 +1121,24 @@
     "traitIds": [
       "flying"
     ],
-    "minFloor": 100
+    "minFloor": 100,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 8,
+          "claw-rake": 20,
+          "dragon-fire-breath": 30,
+          "brand": 10
+        },
+        "onEnterSkillId": "old-fire-wakes"
+      }
+    ],
+    "bossTelegraph": {
+      "skillId": "inferno",
+      "meterLength": 4
+    }
   },
   {
     "id": "zombie-knight",
@@ -1075,26 +1150,27 @@
     "baseSpeed": 6,
     "monsterType": "armored",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-zombie-knight",
-      "elite-cleave-zombie-knight",
-      "boss-debuff-zombie-knight"
+      "diseased-blade",
+      "guard-position",
+      "undying",
+      "rotting-embrace"
     ],
     "expReward": 17,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-zombie-knight": 35,
-        "elite-cleave-zombie-knight": 25
+        "basicAttack": 15,
+        "diseased-blade": 60,
+        "guard-position": 40
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-zombie-knight": 20,
-        "elite-cleave-zombie-knight": 15,
-        "boss-debuff-zombie-knight": 25
+        "basicAttack": 10,
+        "diseased-blade": 45,
+        "guard-position": 40,
+        "undying": 60
       }
     },
-    "executeSkillId": "boss-execute-zombie-knight",
     "roles": [
       "elite",
       "boss"
@@ -1104,7 +1180,11 @@
     "traitIds": [
       "plated"
     ],
-    "minFloor": 30
+    "minFloor": 30,
+    "bossTelegraph": {
+      "skillId": "rotting-embrace",
+      "meterLength": 5
+    }
   },
   {
     "id": "dark-knight",
@@ -1116,26 +1196,30 @@
     "baseSpeed": 10,
     "monsterType": "balanced",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-dark-knight",
-      "elite-cleave-dark-knight",
-      "boss-debuff-dark-knight"
+      "salute",
+      "measured-cut",
+      "parry-stance",
+      "dread-presence",
+      "abyssal-judgment",
+      "second-salute"
     ],
     "expReward": 18,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-dark-knight": 35,
-        "elite-cleave-dark-knight": 25
+        "basicAttack": 15,
+        "salute": 20,
+        "measured-cut": 65
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-dark-knight": 20,
-        "elite-cleave-dark-knight": 15,
-        "boss-debuff-dark-knight": 25
+        "basicAttack": 10,
+        "salute": 40,
+        "measured-cut": 50,
+        "parry-stance": 8,
+        "dread-presence": 8
       }
     },
-    "executeSkillId": "boss-execute-dark-knight",
     "roles": [
       "elite",
       "boss"
@@ -1145,7 +1229,25 @@
     "traitIds": [
       "plated"
     ],
-    "minFloor": 60
+    "minFloor": 60,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 8,
+          "salute": 40,
+          "measured-cut": 50,
+          "parry-stance": 8,
+          "dread-presence": 8
+        },
+        "onEnterSkillId": "second-salute"
+      }
+    ],
+    "bossTelegraph": {
+      "skillId": "abyssal-judgment",
+      "meterLength": 3
+    }
   },
   {
     "id": "orc-chieftain",
@@ -1157,26 +1259,29 @@
     "baseSpeed": 10,
     "monsterType": "bruiser",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-orc-chieftain",
-      "elite-cleave-orc-chieftain",
-      "boss-debuff-orc-chieftain"
+      "skullsplitter",
+      "call-the-warband",
+      "war-cry",
+      "rout",
+      "gets-up"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-orc-chieftain": 35,
-        "elite-cleave-orc-chieftain": 25
+        "basicAttack": 15,
+        "skullsplitter": 35,
+        "call-the-warband": 30
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-orc-chieftain": 20,
-        "elite-cleave-orc-chieftain": 15,
-        "boss-debuff-orc-chieftain": 25
+        "basicAttack": 10,
+        "skullsplitter": 25,
+        "call-the-warband": 15,
+        "war-cry": 15,
+        "rout": 25
       }
     },
-    "executeSkillId": "boss-execute-orc-chieftain",
     "roles": [
       "elite",
       "boss"
@@ -1186,45 +1291,76 @@
     "traitIds": [
       "massive"
     ],
-    "minFloor": 40
+    "minFloor": 40,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 8,
+          "skullsplitter": 40,
+          "call-the-warband": 10,
+          "war-cry": 15,
+          "rout": 20
+        },
+        "onEnterSkillId": "gets-up"
+      }
+    ]
   },
   {
     "id": "vampire-lord",
     "name": "Vampire Lord",
     "description": "Dressed, and dressed well, for somewhere that stopped existing a long time ago. None of you hold its attention until one of you starts bleeding. After that, the rest of you could leave the room unnoticed.",
     "baseHp": 110,
-    "baseAttack": 34,
+    "baseAttack": 35,
     "baseDefense": 8,
     "baseSpeed": 12,
     "monsterType": "striker",
-    "aiPattern": "opportunistic",
+    "aiPattern": "bloodthirsty",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-vampire-lord",
-      "elite-cleave-vampire-lord",
-      "boss-debuff-vampire-lord"
+      "crimson-talon",
+      "drink",
+      "bat-swarm",
+      "final-draught"
     ],
     "expReward": 22,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-vampire-lord": 35,
-        "elite-cleave-vampire-lord": 25
+        "basicAttack": 15,
+        "crimson-talon": 40,
+        "drink": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-vampire-lord": 20,
-        "elite-cleave-vampire-lord": 15,
-        "boss-debuff-vampire-lord": 25
+        "basicAttack": 10,
+        "crimson-talon": 25,
+        "drink": 25,
+        "bat-swarm": 15
       }
     },
-    "executeSkillId": "boss-execute-vampire-lord",
     "roles": [
       "elite",
       "boss"
     ],
     "race": "undead",
     "subRace": "vampiric",
-    "minFloor": 50
+    "minFloor": 50,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 40,
+        "weights": {
+          "basicAttack": 8,
+          "crimson-talon": 20,
+          "drink": 75,
+          "bat-swarm": 15
+        }
+      }
+    ],
+    "bossTelegraph": {
+      "skillId": "final-draught",
+      "meterLength": 4
+    }
   },
   {
     "id": "void-amalgamation",
@@ -1236,26 +1372,28 @@
     "baseSpeed": 9,
     "monsterType": "balanced",
     "aiPattern": "aggressive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-void",
-      "elite-cleave-void",
-      "boss-debuff-void"
+      "grasping-remnants",
+      "unravelling-tide",
+      "old-work",
+      "subsume"
     ],
     "expReward": 25,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-void": 35,
-        "elite-cleave-void": 25
+        "basicAttack": 15,
+        "grasping-remnants": 35,
+        "unravelling-tide": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-void": 20,
-        "elite-cleave-void": 15,
-        "boss-debuff-void": 25
+        "basicAttack": 10,
+        "grasping-remnants": 25,
+        "unravelling-tide": 20,
+        "old-work": 5,
+        "subsume": 15
       }
     },
-    "executeSkillId": "boss-execute-void",
     "roles": [
       "elite",
       "boss"
@@ -1265,38 +1403,39 @@
     ],
     "race": "shadow-creature",
     "subRace": "void",
-    "minFloor": 70
+    "minFloor": 70,
+    "targeting": "random"
   },
   {
     "id": "ancient-golem",
     "name": "Ancient Golem",
     "description": "Older than the cut of the stone around it, and standing here when these walls were something else entirely. Nobody has told it they changed. It still guards a doorway that is no longer in the wall.",
-    "baseHp": 105,
-    "baseAttack": 22,
-    "baseDefense": 18,
+    "baseHp": 180,
+    "baseAttack": 28,
+    "baseDefense": 2,
     "baseSpeed": 5,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
+    "attackRange": "melee",
     "skillIds": [
-      "elite-strike-ancient-golem",
-      "elite-cleave-ancient-golem",
-      "boss-debuff-ancient-golem"
+      "stoneshear",
+      "tremor",
+      "sealing-blow",
+      "crumbling-shell"
     ],
     "expReward": 20,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-ancient-golem": 35,
-        "elite-cleave-ancient-golem": 25
+        "basicAttack": 15,
+        "stoneshear": 45,
+        "tremor": 25
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-ancient-golem": 20,
-        "elite-cleave-ancient-golem": 15,
-        "boss-debuff-ancient-golem": 25
+        "basicAttack": 10,
+        "stoneshear": 45,
+        "tremor": 30
       }
     },
-    "executeSkillId": "boss-execute-ancient-golem",
     "roles": [
       "elite",
       "boss"
@@ -1306,7 +1445,33 @@
     "traitIds": [
       "massive"
     ],
-    "minFloor": 90
+    "minFloor": 90,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 5,
+          "stoneshear": 70,
+          "tremor": 15
+        },
+        "onEnterSkillId": "crumbling-shell"
+      }
+    ],
+    "shell": {
+      "hitsToBreak": {
+        "min": 2,
+        "max": 3
+      },
+      "hitDamageCapMaxHpPercent": 9,
+      "breakStatusId": "stunned",
+      "breakDurationTurns": 1,
+      "reformAfterOwnTurns": 6
+    },
+    "bossTelegraph": {
+      "skillId": "sealing-blow",
+      "meterLength": 5
+    }
   },
   {
     "id": "lich",
@@ -1317,65 +1482,125 @@
     "baseDefense": 6,
     "baseSpeed": 14,
     "monsterType": "glass",
-    "aiPattern": "opportunistic",
+    "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
-      "elite-strike-lich",
-      "elite-cleave-lich",
-      "boss-debuff-lich"
+      "withering-touch",
+      "raise-the-dead",
+      "ledger-mark",
+      "name-struck-out",
+      "unhurried"
     ],
     "expReward": 24,
     "actionWeights": {
       "elite": {
-        "basicAttack": 40,
-        "elite-strike-lich": 35,
-        "elite-cleave-lich": 25
+        "basicAttack": 15,
+        "withering-touch": 35,
+        "raise-the-dead": 30
       },
       "boss": {
-        "basicAttack": 40,
-        "elite-strike-lich": 20,
-        "elite-cleave-lich": 15,
-        "boss-debuff-lich": 25
+        "basicAttack": 10,
+        "withering-touch": 80,
+        "raise-the-dead": 12,
+        "ledger-mark": 20
       }
     },
-    "executeSkillId": "boss-execute-lich",
     "roles": [
       "elite",
       "boss"
     ],
     "race": "undead",
     "subRace": "skeletal",
-    "minFloor": 80
+    "minFloor": 80,
+    "phases": [
+      {
+        "tier": "boss",
+        "hpBelowPercent": 50,
+        "weights": {
+          "basicAttack": 8,
+          "withering-touch": 80,
+          "raise-the-dead": 12,
+          "ledger-mark": 20
+        },
+        "onEnterSkillId": "unhurried"
+      }
+    ],
+    "bossTelegraph": {
+      "skillId": "name-struck-out",
+      "meterLength": 5
+    }
   },
   {
     "id": "the-founder",
     "name": "What's Left of Him",
     "description": "More brain than body, hung in the dark on ropes of tissue where the legs should be. Your torchlight will not settle on it; it keeps finding somewhere else to fall. Whoever is holding the torch has stopped correcting for that.",
-    "baseHp": 160,
+    "baseHp": 166,
     "baseAttack": 37,
-    "baseDefense": 11,
+    "baseDefense": 3,
     "baseSpeed": 10,
     "monsterType": "sentinel",
-    "aiPattern": "aggressive",
+    "aiPattern": "dread",
+    "attackRange": "ranged",
     "skillIds": [
-      "elite-strike-the-founder",
-      "elite-cleave-the-founder",
-      "boss-debuff-the-founder"
+      "paid-in-full",
+      "the-same-price",
+      "whats-left-listening",
+      "everything-you-asked-for",
+      "ask-properly",
+      "the-answer",
+      "hung-lower",
+      "the-last-of-it"
     ],
     "expReward": 20,
     "actionWeights": {
       "boss": {
-        "basicAttack": 30,
-        "elite-strike-the-founder": 20,
-        "elite-cleave-the-founder": 15,
-        "boss-debuff-the-founder": 35
+        "basicAttack": 10,
+        "paid-in-full": 30,
+        "whats-left-listening": 30
       }
     },
-    "executeSkillId": "boss-execute-the-founder",
     "roles": [
       "boss"
     ],
     "finalBoss": true,
     "race": "undead",
-    "subRace": "rotting"
+    "subRace": "rotting",
+    "bossTelegraph": {
+      "skillId": "everything-you-asked-for",
+      "meterLength": 4
+    },
+    "bars": [
+      {
+        "hpMultiplier": 0.4
+      },
+      {
+        "hpMultiplier": 0.35,
+        "weights": {
+          "basicAttack": 8,
+          "paid-in-full": 25,
+          "the-same-price": 20,
+          "whats-left-listening": 25
+        },
+        "onEnterSkillId": "hung-lower",
+        "bossTelegraph": {
+          "skillId": "ask-properly",
+          "meterLength": 4
+        }
+      },
+      {
+        "hpMultiplier": 0.25,
+        "weights": {
+          "basicAttack": 8,
+          "paid-in-full": 20,
+          "the-same-price": 15,
+          "whats-left-listening": 40
+        },
+        "onEnterSkillId": "the-last-of-it",
+        "bossTelegraph": {
+          "skillId": "the-answer",
+          "meterLength": 5
+        }
+      }
+    ]
   }
 ]

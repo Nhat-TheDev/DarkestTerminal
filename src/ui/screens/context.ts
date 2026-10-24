@@ -10,6 +10,7 @@ export interface ScreenContext {
   syncUiToGameState(): void;
   pushToast(text: string): void;
   quit(): void;
+  exitRun(next: "newRun" | "menu"): void;
   getPendingFloorAdvance(): boolean;
   setPendingFloorAdvance(value: boolean): void;
   getPendingCampOffer(): boolean;
@@ -39,7 +40,7 @@ export function finishVictorySequence(ctx: ScreenContext): void {
 
 /** The camp-offer flag is left set so it still fires once a pending artifact decision resolves. */
 export function proceedAfterVictory(ctx: ScreenContext): void {
-  if (ctx.game.state.pendingArtifactDecision) {
+  if (ctx.game.state.pendingArtifactDecision || ctx.game.memoryIntroPending) {
     ctx.syncUiToGameState();
     return;
   }

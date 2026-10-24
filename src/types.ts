@@ -13,7 +13,10 @@ export type SkillEffectKind =
   | "removeStatusEffect"
   | "modifyStat"
   | "modifyCombatStat"
-  | "summon";
+  | "summon"
+  | "summonMonster"
+  | "commandSummons"
+  | "throwDice";
 
 export type DamageType = "physical" | "magic" | "fire" | "ice" | "lightning" | "poison" | "bleed" | "holy";
 
@@ -29,8 +32,16 @@ export interface SkillEffect {
   /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
   alsoApplyStatusEffectIds?: Id[];
   chance?: number;
+  /** Skips this effect unless the target carries this status when it resolves. */
+  requiresTargetStatusId?: Id;
   ignoreDefensePercent?: number;
   lifestealPercent?: number;
+  /** For a `damage` effect with `lifestealPercent`: every other living party member also heals this percent of the lifesteal the hit drew (before the caster's own missing-HP cap). */
+  lifestealPartySharePercent?: number;
+  /** For a `damage` effect: `offenseMultiplierPercent` scales the caster's attack plus magic power, not just one of them. */
+  scalesWithAttackAndMagic?: boolean;
+  /** Repeated by each pulse of a channel of this skill, alongside its heal and damage effects. */
+  repeatsOnChannelPulse?: boolean;
   /** Percent of the caster's attack/magicPower used before mitigation; absent = 100. */
   offenseMultiplierPercent?: number;
   /** On a `damage` tick, adds `target.maxHp * maxHpPercent / 100` to `amount`; on a `heal`, floors `amount` at that value. */
@@ -61,6 +72,32 @@ export interface SkillEffect {
   /** The status expires with the summon this skill casts; the `summon` effect must resolve first. */
   linksToCasterSummon?: boolean;
   excludesSummonTargets?: boolean;
+  /** For `summonMonster`: the normal-role archetype spawned into the running combat. */
+  monsterArchetypeId?: Id;
+  /** For `summonMonster`: how many to spawn, before the per-summoner cap. */
+  count?: number;
+  /** For a `damage` effect: adds `percentPerDebuff` to its offense multiplier for each harmful status the target carries when the hit lands (a stackable status counts once). */
+  scalesWithDebuffCount?: { percentPerDebuff: number };
+  /** One die's faces, as percents of the offense multiplier. On a `damage` effect one face is rolled per target; on a `throwDice` effect one face is rolled per die thrown. */
+  damageRollFaces?: number[];
+  /** For `throwDice`: every second die scales off magic power (`damageType: "magic"`) instead of attack. */
+  alternatesWithMagic?: boolean;
+  /** For `applyStatusEffect`: how many stacks one application adds, rolled within the range (a stackable status). */
+  stackCount?: { min: number; max: number };
+  /** For `applyStatusEffect` with `stackCount`: each stack past the status's `maxStacks` strikes another random enemy instead, at most `maxHitsPerTarget` times each. */
+  overflowDamage?: { amount: number; offenseMultiplierPercent: number; maxHitsPerTarget: number };
+  /** For `removeStatusEffect`: takes off this many stacks of `statusEffectId` rather than the whole status. */
+  stacks?: number;
+  /** For `removeStatusEffect`: takes off every harmful damage-over-time status the target carries. */
+  removesHarmfulDots?: boolean;
+  /** For `heal`: adds this percent of the caster's own max HP. */
+  casterMaxHpPercent?: number;
+  /** For `heal`: raises the heal by up to `maxBonusPercent`, growing evenly as the recipient's HP falls from full to `fullBonusBelowHpPercent` of its max. */
+  lowHpHealBonus?: { maxBonusPercent: number; fullBonusBelowHpPercent: number };
+  /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
+  excludesCaster?: boolean;
+  /** For `commandSummons`: the commanded minion skill's damage and healing, both flat and scaled, at this percent. */
+  powerPercent?: number;
 }
 
 export type SummonSourceStat = "maxHp" | "attack" | "defense" | "magicPower";
@@ -107,6 +144,66 @@ export interface SkillRankDefinition {
   effects?: SkillEffect[];
 }
 
+/** Conditions a monster skill's `aiCondition` / `aiRules[].if` / `targetRules[].if` can test; every field present must hold (`monsterAiRules.ts`). */
+export interface MonsterAiPredicate {
+  selfHpBelowPercent?: number;
+  selfHasStatusId?: Id;
+  selfLacksStatusId?: Id;
+  targetHasStatusId?: Id;
+  targetLacksStatusId?: Id;
+  targetHpBelowPercent?: number;
+  targetsBelowHpPercent?: number;
+  atLeast?: number;
+  alliesFewerThan?: number;
+}
+
+/** Multiplies a candidate's weight by `weightMultiplier` while `if` holds. */
+export interface MonsterAiRule {
+  if: MonsterAiPredicate;
+  weightMultiplier: number;
+}
+
+/** From `hpBelowPercent` of max HP down, `weights` replace the tier's action table; `onEnterSkillId` is cast on the turn the phase is entered. */
+export interface MonsterPhase {
+  tier: MonsterTier;
+  hpBelowPercent: number;
+  weights: Record<string, number>;
+  onEnterSkillId?: Id;
+}
+
+/**
+ * One HP bar of a boss that fights in bars: it holds `hpMultiplier` of the boss's scaled max HP, and emptying it starts the next bar
+ * with that bar's own `weights`, entry cast and telegraph. Emptying the last bar kills. A bar without `bossTelegraph` uses the archetype's.
+ */
+export interface MonsterBar {
+  hpMultiplier: number;
+  /** Replaces the boss tier's `actionWeights`; absent means the tier's own. */
+  weights?: Record<string, number>;
+  onEnterSkillId?: Id;
+  bossTelegraph?: BossTelegraph;
+}
+
+export interface BossTelegraph {
+  skillId: Id;
+  meterLength: number;
+}
+
+/** A breakable shell: while intact each direct hit is capped at a share of max HP and counts toward breaking it; breaking stuns the bearer, and it reforms later (`monsterShell.ts`). */
+export interface MonsterShellDefinition {
+  hitsToBreak: { min: number; max: number };
+  hitDamageCapMaxHpPercent: number;
+  breakStatusId: Id;
+  breakDurationTurns: number;
+  reformAfterOwnTurns: number;
+}
+
+/** The runtime state of a monster's shell. */
+export interface MonsterShellState {
+  state: "intact" | "broken";
+  hitsLeft: number;
+  ownTurnsSinceBreak: number;
+}
+
 export interface SkillDefinition {
   id: Id;
   name: string;
@@ -115,7 +212,7 @@ export interface SkillDefinition {
   mpCost: number;
   target: SkillTarget;
   effects?: SkillEffect[];
-  slot: 0 | 1 | 2 | 3 | 4 | 5;
+  slot: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   unlockLevel: number;
   /** Set only on the stand-in skill for a used item: item damage and heals never crit. */
   fromItem?: true;
@@ -128,6 +225,47 @@ export interface SkillDefinition {
   conditionalBonus?: { requiresStatusId: Id; ignoreDefensePercentBonus: number; consumesStatus?: boolean };
   /** Bonus damage while the target's HP is below `hpPercentThreshold` of its maxHp; unrelated to the Boss execute charge. */
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
+  /** While the caster's HP is below `hpPercentThreshold` (of its own maxHp) when the skill resolves, every `damage` effect gains `offenseMultiplierPercentBonus` and heals the caster for `lifestealPercent` of what it deals. */
+  casterHpBelowBonus?: { hpPercentThreshold: number; offenseMultiplierPercentBonus: number; lifestealPercent?: number };
+  /** One roll per cast: on a win every `damage` effect uses `winOffenseMultiplierPercent`, on a loss `loseOffenseMultiplierPercent`, and a loss also puts `loseSelfStatusEffectId` on the caster. A loss is a lost gamble (`PassiveSkillDefinition.gambleStatusEffectId`). */
+  coinFlip?: CoinFlip;
+  /** Dice added to the caster's hand once the skill is cast (`CharacterClass.dice`), up to the hand's limit. */
+  grantsDice?: number;
+  /** While this skill is queued, every other character of the party gets this much speed for this round's turn order. */
+  allyTurnOrderBonus?: number;
+  /** HP the cast costs on top of its MP, as a percent of max HP: `atFullHpPercent` at full HP, falling evenly to `atLowHpPercent` at `lowHpBelowPercent` of max HP and below. It never drops the caster below 1 HP. */
+  hpCost?: { atFullHpPercent: number; atLowHpPercent: number; lowHpBelowPercent: number };
+  /** Lands on enemies with no accuracy roll and cannot be dodged, without being an ultimate. */
+  alwaysHits?: boolean;
+  /** A `singleAlly` skill that cannot be cast on the caster. */
+  targetsOtherAlliesOnly?: boolean;
+  /** Monster skills only: the skill is a candidate only while this holds (`monsterAiRules.ts`). */
+  aiCondition?: MonsterAiPredicate;
+  /** Monster skills only: each matching rule multiplies the skill's weight in the pick. */
+  aiRules?: MonsterAiRule[];
+  /** Monster skills only: each matching rule multiplies a candidate target's weight. */
+  targetRules?: MonsterAiRule[];
+  /** Monster skills only: how this skill reaches its target for the `range` targeting factor, in place of the archetype's own `attackRange`. Absent = the archetype's. */
+  attackRange?: AttackRange;
+  /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
+  telegraph?: boolean;
+  /** Monster skills only: effects resolved on the caster when its boss meter fills the icon before the last. */
+  chargeEffects?: SkillEffect[];
+  /** Monster skills only, on a `singleEnemy` skill: hits this many distinct enemies. */
+  targetCount?: { min: number; max: number };
+  /** Monster skills only: the cooldown the skill starts the fight on, so it cannot open the fight. */
+  initialCooldownTurns?: number;
+}
+
+/**
+ * One roll per cast, at `winChance` times the caster's `coinFlipWinChanceMultiplier` statuses (at most 1).
+ * A win resolves the skill as written; a loss skips every `damage` effect, puts each `loseSelfStatuses`
+ * entry on the caster and, with `resetCooldownOnLose`, leaves the skill ready again.
+ */
+export interface CoinFlip {
+  winChance: number;
+  loseSelfStatuses?: { statusEffectId: Id; durationTurns: number }[];
+  resetCooldownOnLose?: boolean;
 }
 
 export interface PassiveRankDefinition {
@@ -135,7 +273,7 @@ export interface PassiveRankDefinition {
   unlockLevel: number;
   maxHpPercent?: number;
   defensePercent?: number;
-  aggroFlat?: number;
+  interceptWeakestChancePercent?: number; // chance per round to take a hit aimed at the lowest-HP-percent ally
   onHitStatusEffectId?: Id;
   durationTurns?: number;
   bonusPercent?: number;
@@ -152,7 +290,14 @@ export interface PassiveRankDefinition {
   minionMaxHpPercent?: number;
   minionAttackPercent?: number;
   maxActiveMinions?: number;
+  growthSwapWeights?: { low: number; high: number }; // the two growth weights `growthSwapStats` trade between each round
+  reflectPercent?: number;
+  stackBurstPowerPercent?: number; // the free cast's power, as a percent of the skill's own damage
+  deathSpreadChancePercentPerStack?: number; // chance per stack the fallen enemy carried that `deathSpread` lands
 }
+
+/** A stat a class passive can shift the level growth of mid-fight (`PassiveSkillDefinition.growthSwapStats`). */
+export type GrowthSwapStat = "attack" | "magicPower";
 
 export interface PassiveSkillDefinition {
   id: Id;
@@ -166,6 +311,11 @@ export interface PassiveSkillDefinition {
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
   debuffPool?: Id[];
+  ignoresFearEffects?: boolean; // fear still builds, but none of its combat penalties apply
+  stackBurst?: { statusEffectId: Id; atStacks: number; removeStacks: number; skillId: Id }; // a target reaching `atStacks` of the status loses `removeStacks` of them and takes a free cast of `skillId`
+  deathSpread?: { statusEffectId: Id; stacks: number; durationTurns: number }; // when an enemy carrying the status falls, `stacks` of it may pass to another random enemy
+  growthSwapStats?: [GrowthSwapStat, GrowthSwapStat]; // the two stats whose growth weights trade places at random each round
+  growthSwapStatusIds?: Record<GrowthSwapStat, { up: Id; down: Id }>; // the round-long statuses that carry each stat's shift, one per direction
 }
 
 export interface GrowthWeights {
@@ -193,8 +343,11 @@ export interface CharacterClass {
   baseAggro: number;
   baseSpeed: number;
   baseMagicPower: number;
+  attackRange: AttackRange;
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
+  /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */
+  dice?: { startCount: number; maxCount: number; maxPerTarget: number };
 }
 
 export interface Character {
@@ -217,6 +370,8 @@ export interface Character {
   isAlive: boolean;
   usesRemainingThisCombat: Record<Id, number>;
   cooldownsRemaining: Record<Id, number>;
+  /** Dice in hand during a fight, for a class with `CharacterClass.dice`; absent outside combat. */
+  dice?: number;
   equippedArtifactIds: Id[];
   /** Fixed at character select for the whole run; `null`/absent = none. */
   equippedAbilityId?: Id | null;
@@ -250,6 +405,53 @@ export interface StatusEffectDefinition {
   /** The status is removed the instant the bearer lands an attack, and that attack gets this bonus. */
   breakBonus?: { basicAttackGuaranteedCrit?: boolean; skillDamageBonusPercent?: number };
   dodgePercent?: number;
+  /** Shown as a debuff and cleansable even when the status changes no stat, ticks or stuns (a tag such as `marked`). */
+  harmful?: boolean;
+  /** When the bearer takes direct damage, it deals this percentage of that damage back to the attacker. Status ticks are never reflected. */
+  reflectDamagePercent?: number;
+  /**
+   * When a monster's direct hit lands on the bearer, the bearer strikes back; after `maxCounters` counters the status ends.
+   * `"attacker"` answers only the monster whose hit triggered it; absent or `"allEnemies"` answers every targetable enemy.
+   */
+  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
+  /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
+  onMaxStacks?: { statusEffectId: Id; durationTurns: number };
+  /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */
+  basicAttackOverride?: { name: string; amount: number; offenseMultiplierPercent: number; damageType?: DamageType; isMagic?: boolean };
+  /** Reduces every fear gain on the bearer by this percent, combined with its fearResist. */
+  fearResistPercent?: number;
+  /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
+  onActStatus?: { statusEffectId: Id; chance: number; durationTurns: number };
+  /** The bearer can only use its basic attack. A boss with a full telegraph meter cannot release it while silenced. */
+  silences?: boolean;
+  /** On an elite or boss, no application of this status lasts longer than this many turns. */
+  eliteBossMaxTurns?: number;
+  /** The bearer's single-target attacks all go to whoever applied the status, while that one can be targeted. */
+  forcesTargetOnSource?: boolean;
+  /** A monster's single-target damaging attack aimed at the bearer goes to the actor that applied the status, while that actor is alive and not stunned. */
+  interceptsForSource?: boolean;
+  /** When the bearer's own action lands a damaging hit, the actor that applied this status gets `statusEffectId`. */
+  onLandedHitSourceStatus?: { statusEffectId: Id; durationTurns: number };
+  /** Each attack the bearer makes has this chance (0–1) to go to its own side instead: another monster, or itself when it stands alone. */
+  redirectToAlliesChance?: number;
+  /** This share (0–1) of every monster's targeting chance goes to the bearer before the monster's `aiPattern` profile splits the rest. */
+  targetPull?: number;
+  /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
+  debuffsAttackerOnHit?: { statusEffectIds: Id[]; durationTurns: number };
+  /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
+  reviveHpPercent?: number;
+  /** Each direct hit the bearer survives heals it for this percent of the HP the hit took. */
+  healOnHitPercent?: number;
+  /** The bearer is channeling this skill: each of its own turns repeats the skill's heal and damage effects instead of acting, until the status ends or the channel is broken. */
+  channelSkillId?: Id;
+  /** Taken off the bearer when its fight ends, whatever turns it has left (a status that only means something inside a fight). */
+  endsWithCombat?: boolean;
+  /** Multiplies the bearer's `coinFlip` win chance. */
+  coinFlipWinChanceMultiplier?: number;
+  /** Added to a monster bearer's race `weakPercent` for these damage types, the same way a trait's is. */
+  weakPercent?: Partial<Record<DamageType, number>>;
+  /** Taken off the bearer as soon as whoever applied it is no longer channeling. */
+  endsWithChannel?: boolean;
 }
 
 export type ItemTier = "common" | "uncommon" | "rare" | "unique" | "epic" | "legendary";
@@ -414,6 +616,10 @@ export interface ActiveStatusEffect {
   /** Caster's magicPower at application, so `heal` ticks scale off the caster rather than the bearer. */
   sourceMagicPower?: number;
   onHitDurationTurns?: number;
+  /** For a status with `counterAttack`: how many counters it has struck so far. */
+  countersStruck?: number;
+  /** The id of the actor that applied it, kept for any status `statusKeepsSource` (`src/engine/resolver.ts`) accepts: a forced target, an intercept, a landed-hit or channel status, or a damage-over-time tick. */
+  sourceId?: Id;
 }
 
 export interface ShopOffer {
@@ -460,7 +666,11 @@ export interface Floor {
   entryRoomId: Id;
 }
 
-export type MonsterAiPattern = "aggressive" | "defensive" | "opportunistic";
+/** Whether a fighter strikes from close or from afar — the `range` targeting factor matches a monster's attack against its target's. */
+export type AttackRange = "melee" | "ranged";
+
+/** A key of `targeting.profiles` in `data/balance-config.json`. `"defensive"` also turns on the normal-tier low-HP self-skill branch (`runMonsterTurn`). */
+export type MonsterAiPattern = string;
 
 /** Its `monsterGrowthWeights` multipliers sum to 3. */
 export type MonsterType = "balanced" | "tanky" | "armored" | "striker" | "glass" | "bruiser" | "sentinel";
@@ -508,15 +718,25 @@ export interface MonsterArchetype {
   baseSpeed: number;
   monsterType: MonsterType;
   aiPattern: MonsterAiPattern;
+  /** How its basic attack, and any skill without its own `attackRange`, reaches a target. */
+  attackRange: AttackRange;
   /** Exactly one of `["normal"]`, `["normal","elite","boss"]`, `["elite","boss"]`, or `["boss"]` with `finalBoss`; must match `actionWeights`' keys. */
   roles: MonsterTier[];
   /** Never enters any random roll. */
   finalBoss?: boolean;
-  /** A skill is usable at a tier when that tier's `actionWeights` name it; excludes `executeSkillId`. */
+  /** A skill is usable at a tier when that tier's `actionWeights` name it. */
   skillIds: Id[];
   expReward: number;
-  /** Charged finisher outside the weighted roll: telegraphs a turn, always releases, then cools down. */
-  executeSkillId?: Id;
+  /** Elite/boss phases: each replaces its tier's weights once HP falls below its threshold. */
+  phases?: MonsterPhase[];
+  /** `"random"`: targets are picked uniformly, ignoring aggro. */
+  targeting?: "random";
+  /** A breakable shell the monster carries from spawn. */
+  shell?: MonsterShellDefinition;
+  /** Boss only: the telegraph its meter releases once `meterLength` icons have filled. Never in an action-weight tier. */
+  bossTelegraph?: BossTelegraph;
+  /** Boss only: fights in HP bars instead of `phases`; at least two. */
+  bars?: MonsterBar[];
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
@@ -546,9 +766,25 @@ export interface Monster {
   traitIds?: Id[];
   activeStatusEffects: ActiveStatusEffect[];
   expReward: number;
-  executeCooldownTurns?: number;
-  isChargingExecute?: boolean;
-  executeTargetId?: Id;
+  /** Turns left on each skill's cooldown. */
+  skillCooldowns?: Record<Id, number>;
+  /** How many times each skill with `usesPerCombat` has been cast. */
+  skillUses?: Record<Id, number>;
+  /** Indexes into the archetype's `phases` already entered. */
+  enteredPhaseIndexes?: number[];
+  /** Filled icons of a boss's telegraph meter; absent means empty. */
+  telegraphMeter?: number;
+  /** A boss with `bars`: the bar it is on (absent means the first) and the scaled max HP every bar's size is a share of. */
+  barIndex?: number;
+  barBaseHp?: number;
+  /** Set when a bar emptied and the next bar's entry has not happened yet. */
+  barEntryPending?: boolean;
+  /** The monster that summoned this one; it falls when its summoner does. */
+  summonerId?: Id;
+  /** Present on a shell bearer. */
+  shell?: MonsterShellState;
+  /** HP each attacker has taken off this monster this combat, by attacker id, fading every round (`targeting.damageMemoryDecay`). */
+  damageTakenFrom?: Record<Id, number>;
 }
 
 /** Player-side combatant from a skill; gone once `actionsTaken` reaches `maxActions` (a stunned turn doesn't count) or `hp` hits 0. */
@@ -585,6 +821,8 @@ export interface SummonArchetype {
   name: string;
   /** Independent of the owner's speed; its first action, right after the cast, ignores speed. */
   speed: number;
+  /** Whether a monster sees it as a melee or a ranged fighter (the `range` targeting factor). */
+  attackRange: AttackRange;
   /** Same as `MonsterArchetype.actionWeights`, without the tier level. */
   actionWeights?: Record<string, number>;
   signatureSkillIds?: Id[];
@@ -601,7 +839,13 @@ export interface Combatant {
   speed: number;
 }
 
-export type ActionSource = { kind: "skill"; skillId: Id } | { kind: "item"; itemId: Id };
+/** A Command cast (`commandSummons`): which of the caster's minions it orders, and which of that minion's signature skills it casts. */
+export interface CommandOrder {
+  summonId: Id;
+  skillId: Id;
+}
+
+export type ActionSource = { kind: "skill"; skillId: Id; command?: CommandOrder } | { kind: "item"; itemId: Id };
 
 export interface QueuedAction {
   actor: CombatantRef;
@@ -622,6 +866,12 @@ export interface CombatantSnapshot {
   /** Characters only. */
   fear?: number;
   activeStatusEffects?: ActiveStatusEffect[];
+  /** Monsters only: the state of a shell bearer's shell. */
+  shell?: MonsterShellState;
+  /** Monsters only: filled icons of a boss's telegraph meter. */
+  telegraphMeter?: number;
+  /** Monsters only: the bar a boss with `bars` is on. */
+  barIndex?: number;
 }
 
 export interface PartyStateSnapshot {
@@ -699,6 +949,8 @@ export interface CombatState {
   roomId: Id;
   combatants: Combatant[];
   roundNumber: number;
+  /** The round each Watchful bearer last took a hit for an ally; it fires at most once per round. */
+  watchfulRound?: Record<Id, number>;
   phase: "command" | "resolution" | "over";
   queuedActions: QueuedAction[];
   turnQueue: CombatantRef[];
@@ -711,6 +963,8 @@ export interface CombatState {
   departedSummons?: { id: Id; hp: number; maxHp: number }[];
   /** Transient: built while an actor's turn runs (`runInSession`). */
   activeSession?: LogSession;
+  /** Characters whose player chose, this round, to keep channeling rather than break the channel. */
+  heldChannelIds?: Id[];
   outcome?: "victory" | "defeat";
 }
 

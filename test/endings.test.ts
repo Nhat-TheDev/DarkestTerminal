@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test";
+import { advanceBar } from "../src/engine/monsterBars";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef } from "../src/types";
@@ -14,7 +15,7 @@ import {
   FOUNDER_VICTORY_REMOVED_EVENT_IDS,
 } from "../src/data/endings";
 import { migrateGameState } from "../src/engine/migration";
-import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, PROFILE_FILENAME } from "../src/engine/profile";
+import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, profileFilename } from "../src/engine/profile";
 import { EVENTS, rollEvent } from "../src/data/events";
 import { Rng } from "../src/engine/rng";
 
@@ -24,8 +25,10 @@ function toFloor100BossCleared(game: Game) {
   game.state.floor.depth = 100;
 }
 
+const SLOT = "slot1";
+
 function resetProfile() {
-  const path = join(process.env.DARKEST_TERMINAL_SAVE_DIR!, PROFILE_FILENAME);
+  const path = join(process.env.DARKEST_TERMINAL_SAVE_DIR!, profileFilename(SLOT));
   if (existsSync(path)) rmSync(path);
 }
 
@@ -321,7 +324,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
   });
 
   test("defeating the founder removes all 11 Covenant events from the roll pool", () => {
-    const game = new Game(424, ["vanguard"]);
+    const game = new Game(424, ["knight"]);
     toFloor119Continued(game);
     game.advanceToNextFloor();
     game.enterFounderFight();
@@ -332,12 +335,13 @@ describe("Part F.5: Continue → the founder encounter", () => {
 
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const founder = game.ctx.monsters.find((m) => m.id === room.monsterIds[0])!;
+    while (advanceBar(founder));
     founder.hp = 1;
-    const vanguard = game.state.party[0]!;
-    vanguard.speed = founder.speed + 1; // the killing blow must land first
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knight = game.state.party[0]!;
+    knight.speed = founder.speed + 1; // the killing blow must land first
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const founderRef: CombatantRef = { kind: "monster", id: founder.id };
-    expect(game.queue(vanguardRef, "slash", [founderRef])).toBeNull();
+    expect(game.queue(knightRef, "slash", [founderRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
@@ -371,51 +375,51 @@ describe("migration defaults for continuedPastCheckpoint/pendingFounderDialogue"
 describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => {
   test("a fresh game with no retired characters excludes the-one-who-stayed and leaves retiredCharacterClassId null", () => {
     resetProfile();
-    const game = new Game(500);
+    const game = new Game(500, undefined, undefined, undefined, false, SLOT);
     expect(game.state.firedOnceEventIds).toContain("the-one-who-stayed");
     expect(game.state.retiredCharacterClassId).toBeNull();
   });
 
   test("a prior retirement makes a new game eligible, with the class filled in", () => {
     resetProfile();
-    addRetiredCharacter("rogue");
-    const game = new Game(501);
+    addRetiredCharacter(SLOT, "rogue");
+    const game = new Game(501, undefined, undefined, undefined, false, SLOT);
     expect(game.state.firedOnceEventIds).not.toContain("the-one-who-stayed");
     expect(game.state.retiredCharacterClassId).toBe("rogue");
   });
 
   test("already-shown (in a previous run) excludes it again even with retired characters present", () => {
     resetProfile();
-    addRetiredCharacter("mage");
-    markRetiredCharacterEventShown();
-    const game = new Game(502);
+    addRetiredCharacter(SLOT, "mage");
+    markRetiredCharacterEventShown(SLOT);
+    const game = new Game(502, undefined, undefined, undefined, false, SLOT);
     expect(game.state.firedOnceEventIds).toContain("the-one-who-stayed");
     expect(game.state.retiredCharacterClassId).toBeNull();
   });
 
   test("with multiple retired characters, the most recently retired one is used", () => {
     resetProfile();
-    addRetiredCharacter("vanguard");
-    addRetiredCharacter("acolyte");
-    const game = new Game(503);
+    addRetiredCharacter(SLOT, "knight");
+    addRetiredCharacter(SLOT, "acolyte");
+    const game = new Game(503, undefined, undefined, undefined, false, SLOT);
     expect(game.state.retiredCharacterClassId).toBe("acolyte");
   });
 
   test("choosing Stay persists the picked party member's class to the profile", () => {
     resetProfile();
-    const game = new Game(504);
+    const game = new Game(504, undefined, undefined, undefined, false, SLOT);
     toFloor100BossCleared(game);
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
-    const profile = loadProfile();
+    const profile = loadProfile(SLOT);
     expect(profile.retiredCharacters.length).toBe(1);
     expect(game.state.party.map((c) => c.classId)).toContain(profile.retiredCharacters[0]!.classId);
   });
 
   test("pickEventText substitutes {{class}} with the retired class's display name", () => {
     resetProfile();
-    addRetiredCharacter("plague-doctor");
-    const game = new Game(505);
+    addRetiredCharacter(SLOT, "plague-doctor");
+    const game = new Game(505, undefined, undefined, undefined, false, SLOT);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const event = EVENTS.find((e) => e.id === "the-one-who-stayed")!;
     const text = pickEventText(game.state, room, event);
@@ -425,15 +429,15 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
 
   test("resolving the-one-who-stayed marks it shown in the persisted profile, not just this run", () => {
     resetProfile();
-    addRetiredCharacter("viking");
-    const game = new Game(506);
-    expect(loadProfile().shownRetiredCharacterEvent).toBe(false);
+    addRetiredCharacter(SLOT, "viking");
+    const game = new Game(506, undefined, undefined, undefined, false, SLOT);
+    expect(loadProfile(SLOT).shownRetiredCharacterEvent).toBe(false);
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "event";
     room.cleared = false;
     room.rolledEventId = "the-one-who-stayed";
     expect(game.openChest()).toBeNull();
-    expect(loadProfile().shownRetiredCharacterEvent).toBe(true);
+    expect(loadProfile(SLOT).shownRetiredCharacterEvent).toBe(true);
     expect(game.state.firedOnceEventIds).toContain("the-one-who-stayed");
   });
 
@@ -446,7 +450,7 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
   });
 
   test("the raw {{class}} placeholder never reaches the player, even with no class recorded", () => {
-    const game = new Game(508);
+    const game = new Game(508, undefined, undefined, undefined, false, SLOT);
     game.state.retiredCharacterClassId = null;
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const event = EVENTS.find((e) => e.id === "the-one-who-stayed")!;
@@ -455,19 +459,19 @@ describe("Part F.2: the cross-run persistence layer for Ending 1 (Stay)", () => 
 
   test("only a living party member is ever recorded as the one who stayed", () => {
     resetProfile();
-    const game = new Game(509, ["vanguard", "rogue"]);
+    const game = new Game(509, ["knight", "rogue"], undefined, undefined, false, SLOT);
     game.state.combat = null;
-    game.state.party[0]!.isAlive = false; // vanguard dead, rogue alive
+    game.state.party[0]!.isAlive = false; // knight dead, rogue alive
     game.state.floor.depth = 100;
     game.advanceToNextFloor();
     game.pickEndingChoice("stay");
-    expect(loadProfile().retiredCharacters).toEqual([{ classId: "rogue" }]);
+    expect(loadProfile(SLOT).retiredCharacters).toEqual([{ classId: "rogue" }]);
   });
 
   test("resolving it grants no artifact, matching Part E's 'just talk, no transaction' shape", () => {
     resetProfile();
-    addRetiredCharacter("rogue");
-    const game = new Game(507);
+    addRetiredCharacter(SLOT, "rogue");
+    const game = new Game(507, undefined, undefined, undefined, false, SLOT);
     const before = game.state.party[0]!.equippedArtifactIds.length;
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "event";

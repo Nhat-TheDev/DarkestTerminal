@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
@@ -7,10 +7,12 @@ import { recomputeAllPartyStats, MAX_EQUIPPED_ARTIFACTS } from "./party";
 import { CLASSES } from "../data/classes";
 import { ARTIFACTS } from "../data/artifacts";
 import { ABILITIES } from "../data/abilities";
+import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
 import { SAVE_DIR } from "./paths";
 import { DEV_MODE } from "./devMode";
+import { LEGACY_PROFILE_FILENAME, deleteProfile, hasProfile, loadProfile, parseProfile, saveProfile } from "./profile";
 import pkg from "../../package.json";
 
 export const APP_VERSION: string = pkg.version;
@@ -59,6 +61,8 @@ export interface SaveFile {
 export interface SlotEntry {
   id: Id;
   meta: SaveMeta | null;
+  /** From the slot's profile; 0 for a slot that has never held a run. */
+  runCount: number;
 }
 
 function ensureSaveDir(): void {
@@ -110,6 +114,7 @@ export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
   return writeSave(game, id, true);
 }
 
+/** Clears the run only; the slot's profile survives permadeath. */
 export function deleteSlot(id: Id): void {
   const path = savePath(id);
   if (!existsSync(path)) return;
@@ -120,8 +125,64 @@ export function deleteSlot(id: Id): void {
   }
 }
 
+/** The run and the slot's profile both: the slot starts over from nothing. */
+export function clearSlot(id: Id): void {
+  deleteSlot(id);
+  deleteProfile(id);
+}
+
+/**
+ * Copies the legacy `profile.json`, shared by every slot, into each slot that holds a loadable run and has no profile
+ * of its own yet, then renames it aside. A slot that already has a profile is never overwritten, so running this again
+ * after an older build recreated `profile.json` changes nothing.
+ */
+export function migrateLegacyProfile(): void {
+  const legacyPath = join(SAVE_DIR, LEGACY_PROFILE_FILENAME);
+  if (!existsSync(legacyPath)) return;
+  try {
+    const legacy = parseProfile(readFileSync(legacyPath, "utf8"));
+    for (const slot of listSlots()) {
+      if (slot.meta && !hasProfile(slot.id)) saveProfile(slot.id, { ...legacy, runCount: 1 });
+    }
+  } catch {
+    // An unreadable legacy file has nothing to carry over.
+  }
+  try {
+    renameSync(legacyPath, join(SAVE_DIR, "profile.legacy.json"));
+  } catch (err) {
+    console.error(`Failed to rename legacy profile ${legacyPath}:`, err);
+  }
+}
+
 function existsInCatalog<T extends { id: Id }>(catalog: T[], id: Id): boolean {
   return catalog.some((entry) => entry.id === id);
+}
+
+const isCount = (n: unknown): boolean => Number.isInteger(n) && (n as number) >= 0;
+const isRecord = (v: unknown): boolean => typeof v === "object" && v !== null;
+const areCounts = (record: Record<Id, number> | undefined): boolean => record === undefined || (isRecord(record) && Object.values(record).every(isCount));
+
+/** Refuses a hand-edited or truncated guard-room monster state here rather than on some later turn. */
+export function isSaveMonstersValid(monsters: Monster[]): boolean {
+  const ids = new Set(monsters.map((m) => m.id));
+  return monsters.every((m) => {
+    if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
+    if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
+    if (m.telegraphMeter !== undefined && !isCount(m.telegraphMeter)) return false;
+    if (m.barIndex !== undefined || m.barBaseHp !== undefined || m.barEntryPending !== undefined) {
+      const bars = m.tier === "boss" ? MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.bars : undefined;
+      if (!bars || !isCount(m.barBaseHp) || m.barBaseHp! < 1) return false;
+      if (!isCount(m.barIndex ?? 0) || (m.barIndex ?? 0) >= bars.length) return false;
+      if (m.barEntryPending !== undefined && typeof m.barEntryPending !== "boolean") return false;
+    }
+    if (m.shell !== undefined) {
+      // A shell only means anything on a guard-room monster whose archetype declares one.
+      if (!isRecord(m.shell) || m.tier === "normal" || !MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.shell) return false;
+      if (m.shell.state !== "intact" && m.shell.state !== "broken") return false;
+      if (!isCount(m.shell.hitsLeft) || !isCount(m.shell.ownTurnsSinceBreak)) return false;
+    }
+    return m.summonerId === undefined || ids.has(m.summonerId);
+  });
 }
 
 // Inventory item ids aren't checked: migrateGameState prunes unknown ones.
@@ -164,12 +225,16 @@ export function isSaveStateValid(state: GameState): boolean {
 /** A slot that can't be loaded reads as empty; its file stays on disk. */
 export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
+    const runCount = loadProfile(id).runCount;
     try {
       const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
-      const loadable = isSaveVersionAllowed(save.meta.saveVersion) && isDevDumpAllowed(save.meta) && isSaveStateValid(migrateGameState(save.state, save.meta.saveVersion));
-      return { id, meta: loadable ? save.meta : null };
+      if (!isSaveVersionAllowed(save.meta.saveVersion) || !isDevDumpAllowed(save.meta)) return { id, meta: null, runCount };
+      const state = migrateGameState(save.state, save.meta.saveVersion);
+      if (!isSaveStateValid(state) || !isSaveMonstersValid(save.monsters ?? [])) return { id, meta: null, runCount };
+      // Read from the migrated party, not the stored meta, so every VERSION_MIGRATIONS step reaches the slot list too.
+      return { id, meta: { ...save.meta, partyClassIds: state.party.map((c) => c.classId) }, runCount };
     } catch {
-      return { id, meta: null };
+      return { id, meta: null, runCount };
     }
   });
 }
@@ -204,10 +269,13 @@ export function gameFromSave(save: SaveFile, id: Id, seed = Date.now()): Game {
   const state = migrateGameState(save.state, save.meta.saveVersion);
   if (!isSaveStateValid(state)) throw new Error("Save state failed validation");
   const monsters = migrateMonsters(save.monsters);
+  if (!isSaveMonstersValid(monsters)) throw new Error("Save state failed validation");
   const summons = migrateSummons(save.summons ?? []);
   pruneOrphanedSummonRefs(state, summons);
-  const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime });
+  const game = new Game(seed, undefined, { state, monsters, summons, rngState: save.rngState, playTimeSec: save.meta.playTime }, undefined, false, id);
   recomputeAllPartyStats(game.state);
-  game.currentSaveSlot = id;
+  // A run saved before its slot had a profile still counts as the slot's first run.
+  const profile = loadProfile(id);
+  if (profile.runCount === 0) saveProfile(id, { ...profile, runCount: 1 });
   return game;
 }

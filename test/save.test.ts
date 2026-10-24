@@ -10,12 +10,15 @@ import {
   writeDevDumpSave,
   listSlots,
   deleteSlot,
+  clearSlot,
+  migrateLegacyProfile,
   firstFreeSlotId,
   loadSave,
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
 import { Game } from "../src/engine/game";
@@ -26,9 +29,10 @@ import { compareVersions, migrateGameState, migrateMonsters, migrateSummons } fr
 import { expCostForLevel, levelForTotalExp, MAX_LEVEL } from "../src/data/levelGrowth";
 import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
-import type { GameState, Summon } from "../src/types";
+import type { GameState, Monster, Summon } from "../src/types";
+import { advanceBar } from "../src/engine/monsterBars";
 
-const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
+const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
 describe("Save version blocking", () => {
   test("current app version is always allowed", () => {
@@ -132,7 +136,7 @@ function withGame(seed: number, fn: (game: Game) => void): void {
   try {
     fn(game);
   } finally {
-    SLOT_IDS.forEach(deleteSlot);
+    SLOT_IDS.forEach(clearSlot);
   }
 }
 
@@ -191,6 +195,132 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       deleteSlot("slot3");
       expect(listSlots().find((s) => s.id === "slot3")?.meta).toBeNull();
       expect(() => deleteSlot("slot3")).not.toThrow();
+    });
+  });
+
+  test("deleteSlot keeps the slot's profile, so the slot reads as ended on the same run number", () => {
+    withGame(8, (game) => {
+      game.currentSaveSlot = "slot2";
+      beginRun("slot2");
+      saveProfile("slot2", { ...loadProfile("slot2"), unlockedAbilityIds: ["bloodletting"] });
+      saveRun(game);
+      deleteSlot("slot2");
+      const slot = listSlots().find((s) => s.id === "slot2");
+      expect(slot?.meta).toBeNull();
+      expect(slot?.runCount).toBe(1);
+      expect(loadProfile("slot2").unlockedAbilityIds).toEqual(["bloodletting"]);
+    });
+  });
+
+  test("beginRun counts runs per slot, and clearSlot starts the slot over", () => {
+    withGame(9, (game) => {
+      beginRun("slot4");
+      beginRun("slot4");
+      expect(listSlots().find((s) => s.id === "slot4")?.runCount).toBe(2);
+      expect(listSlots().find((s) => s.id === "slot5")?.runCount).toBe(0);
+      game.currentSaveSlot = "slot4";
+      saveRun(game);
+      clearSlot("slot4");
+      expect(listSlots().find((s) => s.id === "slot4")).toEqual({ id: "slot4", meta: null, runCount: 0 });
+      expect(loadProfile("slot4").unlockedAbilityIds).toEqual([]);
+    });
+  });
+
+  test("migrateLegacyProfile copies the shared profile into slots holding a run only, once", () => {
+    withGame(10, (game) => {
+      game.currentSaveSlot = "slot3";
+      saveRun(game);
+      const legacyPath = join(SAVE_DIR, "profile.json");
+      writeFileSync(legacyPath, JSON.stringify({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [{ classId: "rogue" }], shownRetiredCharacterEvent: true }));
+      migrateLegacyProfile();
+      expect(loadProfile("slot3")).toMatchObject({ unlockedAbilityIds: ["bloodletting"], retiredCharacters: [{ classId: "rogue" }], shownRetiredCharacterEvent: true, runCount: 1 });
+      expect(loadProfile("slot1").unlockedAbilityIds).toEqual([]);
+      expect(existsSync(legacyPath)).toBe(false);
+      expect(existsSync(join(SAVE_DIR, "profile.legacy.json"))).toBe(true);
+      saveProfile("slot3", { ...loadProfile("slot3"), unlockedAbilityIds: [] });
+      migrateLegacyProfile();
+      expect(loadProfile("slot3").unlockedAbilityIds).toEqual([]);
+    });
+  });
+
+  describe("legacy profile migration edge cases", () => {
+    const legacyPath = join(SAVE_DIR, "profile.json");
+    const backupPath = join(SAVE_DIR, "profile.legacy.json");
+    const writeLegacy = () => writeFileSync(legacyPath, JSON.stringify({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false }));
+    const cleanUp = () => {
+      rmSync(legacyPath, { recursive: true, force: true });
+      rmSync(backupPath, { recursive: true, force: true });
+    };
+
+    test("a profile.json recreated by an older build never overwrites a slot's own profile", () => {
+      withGame(12, (game) => {
+        try {
+          game.currentSaveSlot = "slot1";
+          saveRun(game);
+          saveProfile("slot1", { ...loadProfile("slot1"), runCount: 4, memoryUnlocked: true, unlockedAbilityIds: ["predators-edge"] });
+          writeLegacy();
+          migrateLegacyProfile();
+          expect(loadProfile("slot1")).toMatchObject({ runCount: 4, memoryUnlocked: true, unlockedAbilityIds: ["predators-edge"] });
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+
+    test("a slot whose run cannot be loaded gets nothing, matching the slot list that shows it as empty", () => {
+      withGame(13, (game) => {
+        try {
+          game.currentSaveSlot = "slot2";
+          saveRun(game);
+          const save = loadSave("slot2");
+          save.meta.saveVersion = "0.0.1-not-a-real-version";
+          writeFileSync(join(SAVE_DIR, "slot2.json"), JSON.stringify(save));
+          writeLegacy();
+          migrateLegacyProfile();
+          expect(loadProfile("slot2").unlockedAbilityIds).toEqual([]);
+          expect(listSlots().find((s) => s.id === "slot2")).toMatchObject({ meta: null, runCount: 0 });
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+
+    test("a rename that fails does not stop the game from starting", () => {
+      withGame(14, (game) => {
+        try {
+          game.currentSaveSlot = "slot1";
+          saveRun(game);
+          writeLegacy();
+          mkdirSync(join(backupPath, "blocker"), { recursive: true });
+          expect(() => migrateLegacyProfile()).not.toThrow();
+          expect(loadProfile("slot1").unlockedAbilityIds).toEqual(["bloodletting"]);
+        } finally {
+          cleanUp();
+        }
+      });
+    });
+  });
+
+  test("a 1.1.x slot whose metadata still names a renamed class lists the new class id", () => {
+    withGame(16, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "1.1.1";
+      save.meta.partyClassIds = ["vanguard", ...save.meta.partyClassIds.slice(1)];
+      save.state.party[0]!.classId = "vanguard";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+      expect(listSlots()[0]!.meta?.partyClassIds[0]).toBe("knight");
+    });
+  });
+
+  test("loading a run saved before its slot had a profile counts it as the slot's first run", () => {
+    withGame(15, (game) => {
+      game.currentSaveSlot = "slot4";
+      saveRun(game);
+      expect(loadProfile("slot4").runCount).toBe(0);
+      gameFromSave(loadSave("slot4"), "slot4");
+      expect(loadProfile("slot4").runCount).toBe(1);
     });
   });
 
@@ -496,6 +626,29 @@ describe("Version migrations", () => {
   }
   const span = (level: number) => expCostForLevel(level + 1) - expCostForLevel(level);
 
+  test("a 1.1.1 save with a Vanguard loads it as a Knight, at the same level and EXP", () => {
+    withGame(25, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "1.1.1";
+      const vanguard = save.state.party.find((c) => c.classId === "knight")!;
+      vanguard.classId = "vanguard";
+      vanguard.name = "Vanguard";
+      save.state.retiredCharacterClassId = "vanguard";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+
+      expect(listSlots()[0]!.meta?.saveVersion).toBe("1.1.1");
+      const state = gameFromSave(loadSave("slot1"), "slot1").state;
+      const knight = state.party.find((c) => c.id === vanguard.id)!;
+      expect(knight.classId).toBe("knight");
+      expect(knight.name).toBe(getClass("knight").name);
+      expect(knight.level).toBe(vanguard.level);
+      expect(state.partyExp).toBe(save.state.partyExp);
+      expect(state.retiredCharacterClassId).toBe("knight");
+    });
+  });
+
   test("compareVersions orders versions field by field, numerically", () => {
     expect(compareVersions("1.1.0", "1.1.1")).toBeLessThan(0);
     expect(compareVersions("1.1.1", "1.2.0")).toBeLessThan(0);
@@ -576,4 +729,150 @@ describe("Version migrations", () => {
       expect(migrateGameState(structuredClone(resaved.state), APP_VERSION).partyExp).toBe(migratedExp);
     });
   });
+});
+
+describe("a save taken mid-fight keeps a guard-room monster's state", () => {
+  function midFight(game: Game) {
+    game.currentSaveSlot = "slot1";
+    const boss = spawnMonster("lich", 1, { tier: "boss" });
+    const add = spawnMonster("skeleton", 1);
+    add.summonerId = boss.id;
+    add.expReward = 0;
+    boss.telegraphMeter = 3;
+    boss.enteredPhaseIndexes = [0];
+    boss.skillCooldowns = { "ledger-mark": 2, "name-struck-out": 3 };
+    boss.skillUses = { "name-struck-out": 1 };
+    game.ctx.monsters.push(boss, add);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    // A second guard whose archetype does declare a shell; startCombat forms it, then it is set mid-break.
+    const golem = spawnMonster("ancient-golem", 1, { tier: "boss" });
+    game.ctx.monsters.push(golem);
+    room.monsterIds = [boss.id, golem.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id, add.id, golem.id], game.ctx, true);
+    golem.shell = { state: "broken", hitsLeft: 0, ownTurnsSinceBreak: 1 };
+    return { boss, add, golem };
+  }
+  const roundTrip = (game: Game) => {
+    saveRun(game);
+    return gameFromSave(loadSave("slot1"), "slot1");
+  };
+
+  test("meter, phase, cooldowns, uses, shell and summoner all come back", () => {
+    withGame(14, (game) => {
+      const { boss, add, golem } = midFight(game);
+      const resumed = roundTrip(game);
+      expect(resumed.ctx.monsters.find((m) => m.id === boss.id)).toEqual(boss);
+      expect(resumed.ctx.monsters.find((m) => m.id === add.id)).toEqual(add);
+      expect(resumed.ctx.monsters.find((m) => m.id === golem.id)).toEqual(golem);
+      expect(resumed.state.combat!.combatants).toEqual(game.state.combat!.combatants);
+    });
+  });
+
+  test("a monster saved mid-charge under the old charging field loads with a full meter", () => {
+    withGame(16, (game) => {
+      const { boss } = midFight(game);
+      boss.telegraphMeter = undefined;
+      saveRun(game);
+      const save = loadSave("slot1");
+      const saved = save.monsters.find((m) => m.id === boss.id) as typeof boss & { charging?: unknown };
+      saved.charging = { skillId: "name-struck-out", targetIds: [] };
+      const loaded = gameFromSave(save, "slot1").ctx.monsters.find((m) => m.id === boss.id)! as typeof boss & { charging?: unknown };
+      expect(loaded.telegraphMeter).toBe(5);
+      expect(loaded.charging).toBeUndefined();
+    });
+  });
+
+  test("the Founder saved in phase 2 reloads in phase 2 with that bar's HP, max HP and meter", () => {
+    withGame(17, (game) => {
+      game.currentSaveSlot = "slot1";
+      const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+      game.ctx.monsters.push(founder);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [founder.id];
+      room.cleared = false;
+      game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+      advanceBar(founder);
+      founder.barEntryPending = false;
+      founder.hp -= 40;
+      founder.telegraphMeter = 2;
+      const loaded = roundTrip(game).ctx.monsters.find((m) => m.id === founder.id)!;
+      expect(loaded).toEqual(founder);
+      expect(loaded.barIndex).toBe(1);
+      expect(loaded.maxHp).toBe(Math.round(founder.barBaseHp! * getArchetype("the-founder").bars![1]!.hpMultiplier));
+      expect(loaded.hp).toBe(loaded.maxHp - 40);
+      expect(loaded.telegraphMeter).toBe(2);
+    });
+  });
+
+  test("a Founder saved before bars existed loads on bar 1 at the same share of HP, and emptying it moves him to bar 2", () => {
+    const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+    const whole = founder.barBaseHp!;
+    for (const key of ["barBaseHp", "barIndex", "barEntryPending"] as const) delete founder[key];
+    founder.maxHp = whole;
+    founder.hp = Math.round(whole / 2);
+    const [loaded] = migrateMonsters([founder]);
+    const bars = getArchetype("the-founder").bars!;
+    expect(loaded!.barBaseHp).toBe(whole);
+    expect(loaded!.barIndex).toBe(0);
+    expect(loaded!.maxHp).toBe(Math.round(whole * bars[0]!.hpMultiplier));
+    expect(loaded!.hp).toBe(Math.round(loaded!.maxHp / 2));
+    expect(advanceBar(loaded!)).toBe(true);
+    expect(loaded!.barIndex).toBe(1);
+    expect(loaded!.hp).toBe(Math.round(whole * bars[1]!.hpMultiplier));
+  });
+
+  for (const [label, corrupt] of [
+    ["a bar index past his last bar", (m: Monster) => { m.barIndex = 3; }],
+    ["a fractional bar index", (m: Monster) => { m.barIndex = 0.5; }],
+    ["a non-boolean entry flag", (m: Monster) => { (m as any).barEntryPending = "yes"; }],
+  ] as const) {
+    test(`a Founder save with ${label} is refused`, () => {
+      withGame(18, (game) => {
+        game.currentSaveSlot = "slot1";
+        const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+        game.ctx.monsters.push(founder);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.monsterIds = [founder.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+        saveRun(game);
+        const save = loadSave("slot1");
+        corrupt(save.monsters.find((m) => m.id === founder.id)!);
+        expect(() => gameFromSave(save, "slot1")).toThrow(/validation/);
+      });
+    });
+  }
+
+  type Saved = ReturnType<typeof spawnMonster>;
+  const shell = { state: "intact" as const, hitsLeft: 3, ownTurnsSinceBreak: 0 };
+  const corruptions: [string, (boss: Saved, add: Saved, golem: Saved) => void][] = [
+    ["a shell in an unknown state", (_b, _a, g) => { (g.shell as any).state = "cracked"; }],
+    ["a shell with a fractional hit count", (_b, _a, g) => { g.shell!.hitsLeft = 1.5; }],
+    ["a shell on a monster whose archetype has none", (m) => { m.shell = { ...shell }; }],
+    ["a shell on a normal-tier monster", (_boss, add) => { add.shell = { ...shell }; }],
+    ["a null shell", (_b, _a, g) => { (g as any).shell = null; }],
+    ["a negative telegraph meter", (m) => { m.telegraphMeter = -1; }],
+    ["a fractional telegraph meter", (m) => { m.telegraphMeter = 1.5; }],
+    ["bar state on a boss whose archetype has no bars", (m) => { m.barIndex = 1; m.barBaseHp = 100; }],
+    ["null cooldowns", (m) => { (m as any).skillCooldowns = null; }],
+    ["a negative cooldown", (m) => { m.skillCooldowns!["ledger-mark"] = -1; }],
+    ["a negative use count", (m) => { m.skillUses!["name-struck-out"] = -1; }],
+    ["a phase index that is not an integer", (m) => { (m.enteredPhaseIndexes as any) = ["first"]; }],
+    ["a summoner that is not in the saved list", (_boss, add) => { add.summonerId = "no-such-monster"; }],
+  ];
+  for (const [label, corrupt] of corruptions) {
+    test(`a save with ${label} is refused, and its slot reads as empty`, () => {
+      withGame(15, (game) => {
+        const { boss, add, golem } = midFight(game);
+        saveRun(game);
+        const save = loadSave("slot1");
+        const saved = (id: string) => save.monsters.find((m) => m.id === id)!;
+        corrupt(saved(boss.id), saved(add.id), saved(golem.id));
+        expect(() => gameFromSave(save, "slot1")).toThrow(/validation/);
+        writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+        expect(listSlots().find((slot) => slot.id === "slot1")!.meta).toBeNull();
+      });
+    });
+  }
 });

@@ -29,7 +29,7 @@
 terminal — no graphics card, no window manager, just you, a keyboard, and a
 dungeon that goes as deep as you dare.
 
-Pick 4 characters from a roster of 9 classes and lead them down an endless,
+Pick 4 characters from a roster of 12 classes and lead them down an endless,
 procedurally generated dungeon. Every floor is freshly built, every branch
 eventually leads back to a guarded boss room, and every fight is turn-based —
 command your whole party, then watch the round play out in speed order. Death
@@ -64,13 +64,13 @@ to reach the menu, then choose **Start** or **Continue** (Continue only
 shows up once you have a save). Start asks for a save slot, then takes you to
 the party select screen.
 
-**Building your party.** Pick 4 different classes from the 9-class roster.
+**Building your party.** Pick 4 different classes from the 12-class roster.
 Browse them with **←/→** — each page shows a class's stats, passive and
 opening skills — and press **Enter** to recruit one; **Esc** takes back the
 last pick. Each class plays differently, so a mix of roles (a tank, some
 damage, some support) will serve you better than four of the same idea.
 
-![Party select — browsing the 9-class roster one class at a time](./docs/images/party-select.svg)
+![Party select — browsing the 12-class roster one class at a time](./docs/images/party-select.svg)
 
 **Picking abilities.** Each recruit gets one ability pick right after you
 choose them, from the persistent pool you've unlocked so far (or skip) —
@@ -105,8 +105,8 @@ before your party doesn't make it back is up to you.
 
 - **A dungeon that keeps going** — floors are generated as you descend, so no
   two runs look the same.
-- **9 classes, a party of 4** — Vanguard, Mage, Rogue, Acolyte, Viking, Plague
-  Doctor, Archer, Ninja, and Summoner. Each plays differently.
+- **12 classes, a party of 4** — Knight, Mage, Rogue, Acolyte, Viking, Plague
+  Doctor, Archer, Ninja, Summoner, Jester, Paladin, and Warlock. Each plays differently.
 - **Turn-based tactical combat** — command your party, then watch the round
   play out.
 - **A real bestiary** — dozens of monsters, plus dedicated Elite/Boss guards

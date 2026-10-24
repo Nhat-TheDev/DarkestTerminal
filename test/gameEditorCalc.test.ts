@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { computeDamage, levelByDepthFloorSeed, simulateLevelByDepth } from "../tools/game-editor/calc";
+import { computeDamage, levelByDepthFloorSeed, previewSkillDamage, simulateLevelByDepth } from "../tools/game-editor/calc";
+import { getEffectiveSkill, getSkill } from "../src/data/classes";
 import { BALANCE } from "../src/data/balanceConfig";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
@@ -63,5 +64,13 @@ describe("game-editor simulateLevelByDepth: one path per floor", () => {
     const rows = simulateLevelByDepth(3, 10);
     expect(rows.map((r) => r.depth)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     for (let i = 1; i < rows.length; i++) expect(rows[i]!.avgPartyExp).toBeGreaterThanOrEqual(rows[i - 1]!.avgPartyExp);
+  });
+});
+
+describe("previewSkillDamage", () => {
+  test("a damage effect that scales with attack and magic power reads both", () => {
+    const skill = getEffectiveSkill(getSkill("cross-slash"), 10);
+    const preview = (magicPower: number) => previewSkillDamage(skill, { attack: 20, magicPower }, { defense: 0 }, 1, true).totalFinalDamage;
+    expect(preview(30)).toBeGreaterThan(preview(0));
   });
 });

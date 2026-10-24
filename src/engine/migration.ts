@@ -3,12 +3,12 @@ import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id,
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng } from "./rng";
 import { getItem } from "../data/items";
-import { getSkill } from "../data/classes";
+import { getClass, getSkill } from "../data/classes";
 import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
 import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
-import { getArchetype } from "../data/monsters";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 
@@ -76,8 +76,29 @@ function migrateToV1_1_1(state: GameState): void {
   for (const snapshot of snapshots) if (snapshot) snapshot.partyExp = rescale(snapshot.partyExp, oldLevel(snapshot.partyExp));
 }
 
+/** Class ids 1.2.0 renamed, with the old display name a character carried: a frozen record, never follows `data/classes.json`. */
+const V1_2_0_CLASS_RENAMES: Record<Id, { id: Id; oldName: string }> = { vanguard: { id: "knight", oldName: "Vanguard" } };
+
+export function renamedClassId(id: Id): Id {
+  return V1_2_0_CLASS_RENAMES[id]?.id ?? id;
+}
+
+/** Saves before 1.2.0, which renamed the Vanguard to the Knight. A character's name is its class name. */
+function migrateToV1_2_0(state: GameState): void {
+  for (const character of state.party) {
+    const rename = V1_2_0_CLASS_RENAMES[character.classId];
+    if (!rename) continue;
+    character.classId = rename.id;
+    if (character.name === rename.oldName) character.name = getClass(rename.id).name;
+  }
+  if (state.retiredCharacterClassId) state.retiredCharacterClassId = renamedClassId(state.retiredCharacterClassId);
+}
+
 /** One step per release that changed what a saved value means, oldest first. */
-const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [{ version: "1.1.1", migrate: migrateToV1_1_1 }];
+const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [
+  { version: "1.1.1", migrate: migrateToV1_1_1 },
+  { version: "1.2.0", migrate: migrateToV1_2_0 },
+];
 
 /**
  * A status whose id left the catalog would throw on its next lookup. Its stat change was applied
@@ -264,6 +285,19 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
 export function migrateMonsters(monsters: Monster[]): Monster[] {
   for (const monster of monsters) {
     dropUnknownStatuses(monster);
+    const saved = monster as Monster & { charging?: unknown };
+    if (saved.charging !== undefined) {
+      monster.telegraphMeter = getBossTelegraph(getArchetype(monster.archetypeId))?.meterLength ?? 0;
+      delete saved.charging;
+    }
+    const bars = monster.tier === "boss" ? getArchetype(monster.archetypeId).bars : undefined;
+    if (bars && monster.barBaseHp === undefined) {
+      const ratio = Math.round(monster.maxHp * bars[0]!.hpMultiplier) / monster.maxHp;
+      monster.barBaseHp = monster.maxHp;
+      monster.barIndex = 0;
+      monster.maxHp = Math.round(monster.barBaseHp * bars[0]!.hpMultiplier);
+      monster.hp = monster.hp > 0 ? Math.max(1, Math.round(monster.hp * ratio)) : 0;
+    }
     if (monster.race !== undefined) continue;
     const archetype = getArchetype(monster.archetypeId);
     monster.race = archetype.race;

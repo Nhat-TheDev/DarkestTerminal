@@ -226,7 +226,7 @@ describe("On-hit statuses read their status and duration from the effect that gr
         let applied: { turnsRemaining: number } | undefined;
         for (let seed = 1; seed <= 500 && !applied; seed++) {
           const { ctx } = makeCtx(seed);
-          const bearer = ctx.party.find((p) => p.classId === "vanguard")!;
+          const bearer = ctx.party.find((p) => p.classId === "knight")!;
           bearer.equippedArtifactIds.push("serpent-ring");
           const target = spawnMonster("goblin", 1);
           fireOnDamageDealt(bearer, target, 10, ctx);
