@@ -228,6 +228,8 @@
   "ui.noMoreMonsters": "No monsters left.",
   "ui.victoryScreen": "VICTORY!\n\nYou defeated the dungeon boss and survived the depths.",
   "ui.defeatScreen": "THE ENTIRE PARTY HAS FALLEN.\n\nThe dungeon swallows up another expedition...",
+  "ui.gameOverNewRunOption": "  [n] New Run",
+  "ui.gameOverMenuOption": "  [Esc] Main Menu",
   "ui.endingCheckpointPrompt": "The floor changes here, though none of you could say how. What comes next is not like any room before it.",
   "ui.endingLeaveOnlyPrompt": "There is no staying here and no going further. Only the way back up is offered.",
   "ui.endingLeaveOnlyOption": "  [1] Turn back. There's nowhere else to go from here.",

@@ -314,7 +314,11 @@ describe("game over", () => {
     expect(app.debugUiState.kind).toBe("gameover");
     expect(listSlots()[0]!.meta).toBeNull();
     expect(game.currentSaveSlot).toBe("slot1");
-    expect(setup.captureCharFrame()).toContain("[n] New Run   [Esc] Main Menu");
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("[n] New Run   [Esc] Main Menu");
+    const lines = frame.split("\n");
+    expect(lines.some((line) => line.includes("[n] New Run") && !line.includes("[Esc]"))).toBe(true);
+    expect(lines.some((line) => line.includes("[Esc] Main Menu") && !line.includes("[n]"))).toBe(true);
   });
 
   test("[n] asks for a new run and [Esc] for the main menu; a stray [1] from the screen before does nothing", async () => {

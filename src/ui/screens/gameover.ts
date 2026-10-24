@@ -15,10 +15,9 @@ const ENDING_SCREENS: Partial<Record<NonNullable<Game["state"]["gameOver"]>, str
 export function renderMain(game: Game): string {
   const key = game.state.gameOver && ENDING_SCREENS[game.state.gameOver];
   const base = t(key ?? "ui.defeatScreen");
-  const results = game.state.abilityDeathResults;
-  if (!results || results.length === 0) return base;
-
-  const lines = [base, "", t("ui.abilityResultsTitle")];
+  const lines = [base];
+  const results = game.state.abilityDeathResults ?? [];
+  if (results.length > 0) lines.push("", t("ui.abilityResultsTitle"));
   for (const result of results) {
     const character = game.state.party.find((c) => c.id === result.characterId);
     const ability = getAbility(result.lostAbilityId);
@@ -28,6 +27,7 @@ export function renderMain(game: Game): string {
         : t("ui.abilityResultLost", { character: character?.name ?? "", ability: ability.name })
     );
   }
+  lines.push("", t("ui.gameOverNewRunOption"), t("ui.gameOverMenuOption"));
   return lines.join("\n");
 }
 
