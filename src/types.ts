@@ -247,7 +247,7 @@ export interface SkillDefinition {
   attackRange?: AttackRange;
   /** Monster skills only: a charge turn that locks its target(s), then releases on the monster's next unstunned turn. */
   telegraph?: boolean;
-  /** Monster skills only: effects resolved on the caster during a telegraph's charge turn. */
+  /** Monster skills only: effects resolved on the caster when its boss meter fills the icon before the last. */
   chargeEffects?: SkillEffect[];
   /** Monster skills only, on a `singleEnemy` skill: hits this many distinct enemies. */
   targetCount?: { min: number; max: number };

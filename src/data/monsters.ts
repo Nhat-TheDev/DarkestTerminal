@@ -308,8 +308,7 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
       (1 + race.statBuff.defensePercent / 100)
   );
   const speed = Math.max(1, archetype.baseSpeed + race.statBuff.speedFlat);
-  // A telegraph can declare an opening delay so it never opens the fight; a normal-tier monster
-  // never carries guard-room state.
+  // A normal-tier monster never carries guard-room state.
   const skillCooldowns =
     tier === "normal"
       ? undefined

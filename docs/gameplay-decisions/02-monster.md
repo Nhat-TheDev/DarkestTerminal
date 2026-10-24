@@ -206,7 +206,7 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
 - **`tactical`** — chooses its target by how it fights. `range` carries most of its weight: a melee one closes on the front line, a ranged one keeps to the archers and casters at the back, and the rest of the pick still answers `aggro`.
 - **`bloodthirsty`** — follows the smell of blood, but is still an animal or a hunger in front of a shield: `aggro` keeps a real share, so a taunt's aggro adds to its pull and can still drag it off a bleeding ally.
 
- Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules, phases and telegraphs on top of the weights — `06-level-system.md` §6.12.
+ Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules and phases on top of the weights, and a boss adds a telegraph that never appears in the weights: a meter of diamond icons under its HP fills one per boss turn and the telegraph is released when it is full — `06-level-system.md` §6.12.
 
 ### Archetype roles — normal / guard / triple / final boss
 

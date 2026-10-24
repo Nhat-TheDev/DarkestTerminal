@@ -1085,7 +1085,7 @@ function buildMonActionsCard(monData, charData, tier) {
   for (const skill of monData.skillKit.skills) {
     if (!weights || weights[skill.id] === undefined) continue;
     rolledSkillCount++;
-    const tags = (skill.target === "allEnemies" ? " (AoE)" : "") + (skill.telegraph ? ` (telegraph, cooldown ${skill.cooldownTurns || 0})` : "");
+    const tags = (skill.target === "allEnemies" ? " (AoE)" : "") + (skill.telegraph ? " (telegraph)" : "");
     row(skill.name + tags, weightTotal > 0 ? (weights[skill.id] / weightTotal) * 100 : null, skill);
   }
 
@@ -1106,8 +1106,10 @@ function buildMonActionsCard(monData, charData, tier) {
   if (rolledSkillCount === 0) {
     card.appendChild(el("p", { class: "hint", text: "No skill carries an action weight at this tier, so it only ever does the basic attack here." }));
   }
-  if (monData.skillKit.skills.some((s) => s.telegraph && weights && weights[s.id] !== undefined)) {
-    card.appendChild(el("p", { class: "hint", text: "A telegraph is rolled like any other skill. When it comes up it spends that turn charging and locks its target, releases on the next turn, and can be picked again once its cooldown, counted from the charge, runs out." }));
+  if (monData.bossTelegraph) {
+    const tg = monData.bossTelegraph;
+    const tgSkill = skillById.get(tg.skillId) || { name: tg.skillId };
+    card.appendChild(el("p", { class: "hint", text: `${tgSkill.name} is not in the weights. A meter of ${tg.meterLength} icons fills one per boss turn, stunned or interrupted turns included, and the boss releases it on the turn the last one fills. A stun or silence on that turn delays the release to the next turn the boss can act; the meter stays full. After the release the meter is empty.` }));
   }
   card.appendChild(el("div", { id: "mon-actions-preview-output" }));
   return card;
@@ -1126,7 +1128,6 @@ async function renderRoundSummary(classId, level, archetypeId, depth, tier) {
     const p = el("p", { class: "hint" });
     p.innerHTML = `Expected damage/round from the monster's weighted roll (excludes Execute): <b>${fmt(data.expectedDamagePerRoundFromRolling, 1)}</b> ≈ character dies to this alone in <b>${Math.ceil(data.character.final.maxHp / Math.max(1, data.expectedDamagePerRoundFromRolling))}</b> rounds if unhealed.`;
     out.appendChild(p);
-    if (data.telegraphNote) out.appendChild(el("p", { class: "hint", text: data.telegraphNote }));
   } catch (err) {
     out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
   }
@@ -2694,8 +2695,8 @@ boot();
 
   // Fields of an elite/boss kit the forms do not render as inputs: kept as they were loaded, and
   // editable here as JSON. A bad value is rejected when the game data next loads (the loader checks them).
-  const AI_MONSTER_KEYS = ["phases", "targeting", "shell"];
-  const AI_SKILL_KEYS = ["aiCondition", "aiRules", "targetRules", "telegraph", "chargeEffects", "targetCount", "initialCooldownTurns", "executeBonus"];
+  const AI_MONSTER_KEYS = ["phases", "targeting", "shell", "bossTelegraph", "bars"];
+  const AI_SKILL_KEYS = ["aiCondition", "aiRules", "targetRules", "telegraph", "chargeEffects", "targetCount", "executeBonus"];
   function aiJsonBox(entry, keys) {
     const picked = {};
     for (const k of keys) if (entry[k] !== undefined) picked[k] = entry[k];
