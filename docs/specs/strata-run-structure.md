@@ -95,28 +95,33 @@ A thin loader in `src/data/strata.ts` validates the shape and exposes typed acce
   removed (see §2.5).
 - `balance-config.json`:
   - `endings`: the checkpoint depth and the Founder depth move to the new scale and stay in data.
-  - `floorGeneration`: the stage-graph fields (`minPathRooms`, `maxPathRooms`,
+  - `floorGeneration`: the stage-graph fields (`minPathRooms`, `maxPathRooms`, `maxBranches`,
     `minBranchStartStage`, `minBranchSpacing`, the standalone-event fields) are replaced by the
     branch and route fields in §1.4; the per-path event and rest bounds become per-route.
   - new `endless` block: `bossFloorInterval`.
 
 ### 1.4 Branching floors
 
-A normal floor is built whole on entry: one entrance, branches that split from it and merge back
-together step by step, and one guard room where every branch ends.
+A normal floor is built whole on entry: one entrance, one guard room, and branches between them
+that split and merge freely.
 
-- The entrance splits into `minBranches`–`maxBranches` branches. Branches then merge pairwise,
-  never splitting again once merging has begun, until a single branch remains before the guard
-  room. There are no dead ends: every room lies on some route from the entrance to the guard room.
-- A route is one way through the floor, entrance to guard room. Branches leaving the same split
-  differ in length, so the shortest and longest routes differ by at least `minRouteLengthGap`
-  rooms. Route lengths stay within `minRouteRooms`–`maxRouteRooms`.
+- A branch can split at any room and merge at any room. A merge can join any two branches, not
+  only two that came from the same split, and a merged branch can split again or merge on with
+  another. Every branch ends in the guard room, and there are no dead ends: every room lies on
+  some route from the entrance to the guard room.
+- Limits from data keep the floor readable: at most `maxParallelBranches` branches side by side,
+  at least `minBranchRooms` rooms between a split and the next split or merge on any branch, and
+  no two branches leaving a split that lead to the same room through the same room types.
+- A route is one way through the floor, entrance to guard room. Route lengths stay within
+  `minRouteRooms`–`maxRouteRooms`, and the shortest and longest routes differ by at least
+  `minRouteLengthGap` rooms.
 - Every route holds at least `minCombatRoomsPerRoute` combat rooms and respects the event and rest
   bounds (`maxEventRoomsPerRoute`, `minRestRoomsPerRoute`, `maxRestRoomsPerRoute`). Every floor
   still has at least `minEventRoomsPerFloor` event rooms.
-- On entering a floor, the map shows the whole layout. At each split, the choice screen shows each
-  branch's length up to the room where it merges and its sequence of room types. The party picks
-  a branch at every split and never goes back.
+- On entering a floor, the map shows the whole layout, merges between branches that are not side
+  by side included. At each split, the choice screen shows each branch's rooms up to its next
+  split or merge, with their types, and the shortest and longest route left to the guard room
+  through it. The party picks a branch at every split and never goes back.
 - A long route means more combat (EXP, coins, drops) and more events, at the cost of more satiety
   drain and fear. A short route reaches the guard room sooner with less of both.
 - The Gatekeeper's blessing on floor 1 counts rooms along the route taken.
@@ -455,10 +460,10 @@ Consequences, accepted:
 ## 8. Testing
 
 - Branching floors: a property test over many seeds covers one entrance and one guard room that
-  every branch ends in, no dead ends, the branch count, no split after merging has begun, a single
-  branch before the guard room, route lengths in range with the shortest and longest at least
-  `minRouteLengthGap` apart, `minCombatRoomsPerRoute`, the event and rest bounds on every route,
-  and `minEventRoomsPerFloor`.
+  every branch ends in, no dead ends, at most `maxParallelBranches` side by side, `minBranchRooms`
+  between splits and merges, no two identical branches out of a split, route lengths in range with
+  the shortest and longest at least `minRouteLengthGap` apart, `minCombatRoomsPerRoute`, the event
+  and rest bounds on every route, and `minEventRoomsPerFloor`.
 - Floor 13: room count in range, no adjacent same-Stratum rooms, every Stratum at least twice, no
   repeated boss, The Founder alone in the last room, no rest or event rooms, and the M1a cap.
 - Strata rules:
@@ -478,8 +483,8 @@ Consequences, accepted:
   `clearSlot` resets them, and two slots never share them.
 - Save: `OLDEST_LOADABLE_SAVE_VERSION` at 2.0.0, a 1.x run rejected cleanly, the slot profile
   intact.
-- UI: key hints for the split choice and point-allocation screens, and `random-play` layout checks
-  at 150×45 plus the per-Stratum and per-route report.
+- UI: key hints for the split choice and point-allocation screens, the floor map drawn legibly at
+  `maxParallelBranches` with merges across branches, and `random-play` layout checks at 150×45 plus the per-Stratum and per-route report.
 - Every plan ends green on `bun test`, `bun run typecheck` and `bun run docs:sync --check`.
 
 ## 9. Docs to update during implementation
@@ -515,8 +520,8 @@ Consequences, accepted:
 ## Appendix: starting values (move into `data/*.json`, then delete)
 
 - 4 Strata × 3 floors.
-- Branching floors: the entrance splits into 2–3 branches; routes run 6–9 rooms, the shortest and
-  longest at least 2 rooms apart.
+- Branching floors: at most 3 branches side by side, at least 1 room between a split and the next
+  split or merge; routes run 6–9 rooms, the shortest and longest at least 2 rooms apart.
 - Floor 13: 9–12 rooms, The Founder's included.
 - Endless: a Boss every 3 floors (16, 19, ...).
 - Level cap 25, about 2 levels per floor on the long routes.
