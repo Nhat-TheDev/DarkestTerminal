@@ -909,6 +909,37 @@ describe("layout", () => {
     }
   });
 
+  async function openBossFight(archetypeId: string, tier: "boss" | "elite", meter?: number) {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const monster = spawnMonster(archetypeId, 1, { tier });
+    if (meter !== undefined) monster.telegraphMeter = meter;
+    game.ctx.monsters.push(monster);
+    room.monsterIds = [monster.id];
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    return setup;
+  }
+
+  test("a boss shows its telegraph meter under its HP, filled icons first", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("skeleton-guard", "boss", 3);
+    const rows = captureCharFrame().split("\n");
+    const hpRow = rows.findIndex((r) => r.includes(t("ui.hpLabel")) && r.includes("/") && r.includes("█"));
+    expect(rows[hpRow + 1]).toContain("◆◆◆◇◇");
+    renderer.destroy();
+  });
+
+  test("elites and meterless bosses show no meter", async () => {
+    for (const [id, tier] of [["skeleton-guard", "elite"], ["orc-chieftain", "boss"]] as const) {
+      const { captureCharFrame, renderer } = await openBossFight(id, tier);
+      const frame = captureCharFrame();
+      expect(frame, `${id} ${tier}`).not.toMatch(/[◆◇]/);
+      renderer.destroy();
+    }
+  });
+
   test("a taller terminal gives its extra rows to the Dungeon panel, not the battlefield", async () => {
     const { captureCharFrame, resize, renderOnce } = await openFight(150, 45);
     const before = panelRows(captureCharFrame(), t("ui.panelMain"))!;

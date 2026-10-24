@@ -12,6 +12,7 @@ import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { saveRun, deleteSlot } from "../engine/save";
 import {
   PALETTE,
@@ -1188,6 +1189,15 @@ export class App implements ScreenContext {
           shell.state === "intact"
             ? colorChunk(shell.hitsLeft === 1 ? t("ui.shellIntactOne") : t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
             : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
+        ]);
+      }
+      const telegraph = m.tier === "boss" ? getBossTelegraph(getArchetype(m.archetypeId)) : undefined;
+      if (telegraph) {
+        const filled = Math.min(hpOverride?.get(m.id)?.telegraphMeter ?? m.telegraphMeter ?? 0, telegraph.meterLength);
+        lines.push([
+          plainChunk("  "),
+          colorChunk(t("ui.telegraphMeterFilled").repeat(filled), PALETTE.fearPanic),
+          colorChunk(t("ui.telegraphMeterEmpty").repeat(telegraph.meterLength - filled), PALETTE.dim),
         ]);
       }
       for (const eff of activeStatusEffects) {
