@@ -40,6 +40,10 @@ const BAND_DPR_TOLERANCE = 0.9;
 /** The final boss sits at least this close to the hardest guard on both measures. */
 const FOUNDER_TOLERANCE = 0.9;
 
+/** The archetype's own telegraph, or one of its bars'. */
+const isTelegraphOf = (archetype: MonsterArchetype, skillId: string): boolean =>
+  archetype.bossTelegraph?.skillId === skillId || (archetype.bars ?? []).some((b) => b.bossTelegraph?.skillId === skillId);
+
 /** Every status an archetype's kit applies, with the skill effect that applies it, on the given side. */
 function kitStatuses(archetype: MonsterArchetype, side: "self" | "enemy"): { effect: SkillEffect; statusId: string }[] {
   const out: { effect: SkillEffect; statusId: string }[] = [];
@@ -151,7 +155,7 @@ describe("elite/boss difficulty curve", () => {
               const perHit = preview.perEffect[i]!.finalDamage * crit;
               return sum + perHit * (e.hitCountRange?.max ?? 1);
             }, 0);
-          if (archetype.bossTelegraph?.skillId !== skillId) expect(worst, `${id} ${skillId} vs ${minHp} max HP`).toBeLessThan(minHp);
+          if (!isTelegraphOf(archetype, skillId)) expect(worst, `${id} ${skillId} vs ${minHp} max HP`).toBeLessThan(minHp);
         }
       }
     }
@@ -165,7 +169,7 @@ describe("elite/boss difficulty curve", () => {
           for (const effect of getMonsterSkill(skillId).effects ?? []) {
             if (effect.kind !== "damage") continue;
             const percent = effect.offenseMultiplierPercent ?? 100;
-            if (archetype.bossTelegraph?.skillId === skillId) {
+            if (isTelegraphOf(archetype, skillId)) {
               expect(percent, `${id} ${skillId} telegraph`).toBeGreaterThanOrEqual(190);
               expect(percent, `${id} ${skillId} telegraph`).toBeLessThanOrEqual(280);
             } else {

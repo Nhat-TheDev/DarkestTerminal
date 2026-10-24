@@ -677,6 +677,7 @@
   "ui.shellIntact": "Shell ({{hits}} hits)",
   "ui.shellIntactOne": "Shell (1 hit)",
   "ui.shellBroken": "Shell broken",
+  "ui.monsterBarPhase": "Phase {{n}}/{{total}}",
   "ui.telegraphMeterFilled": "◆",
   "ui.telegraphMeterEmpty": "◇",
   "ui.statusStacksSuffix": " x{{stacks}}",

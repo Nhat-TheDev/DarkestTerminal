@@ -1,4 +1,4 @@
-import type { Id, MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
+import type { BossTelegraph, Id, MonsterAiPredicate, MonsterAiRule, MonsterArchetype, Monster, MonsterTier, SkillDefinition } from "../types";
 import monstersJson from "../../data/monsters.json";
 import monsterSkillsJson from "../../data/monster-skills.json";
 import {
@@ -26,8 +26,8 @@ export function getArchetype(id: string): MonsterArchetype {
   return found;
 }
 
-export function getBossTelegraph(archetype: MonsterArchetype): { skillId: Id; meterLength: number } | undefined {
-  return archetype.bossTelegraph;
+export function getBossTelegraph(archetype: MonsterArchetype, barIndex = 0): BossTelegraph | undefined {
+  return archetype.bars?.[barIndex]?.bossTelegraph ?? archetype.bossTelegraph;
 }
 
 export const MONSTER_SKILLS = monsterSkillsJson as unknown as SkillDefinition[];
@@ -201,16 +201,36 @@ export function assertMonsterKitConsistent(archetypes: MonsterArchetype[], skill
         throw new Error(`${where}: phase ${i} onEnterSkillId "${phase.onEnterSkillId}" is not in its skillIds`);
       }
     }
-    const bossTelegraph = archetype.bossTelegraph;
-    if (bossTelegraph) {
-      if (!archetype.roles.includes("boss")) throw new Error(`${where}: bossTelegraph needs the role "boss"`);
-      if (!declared.has(bossTelegraph.skillId)) throw new Error(`${where}: bossTelegraph skill "${bossTelegraph.skillId}" is not in its skillIds`);
-      if (!isTelegraph(bossTelegraph.skillId)) throw new Error(`${where}: bossTelegraph skill "${bossTelegraph.skillId}" is not a telegraph skill`);
+    const checkTelegraph = (bossTelegraph: BossTelegraph, label: string) => {
+      if (!declared.has(bossTelegraph.skillId)) throw new Error(`${where}: ${label} skill "${bossTelegraph.skillId}" is not in its skillIds`);
+      if (!isTelegraph(bossTelegraph.skillId)) throw new Error(`${where}: ${label} skill "${bossTelegraph.skillId}" is not a telegraph skill`);
       if (!(Number.isInteger(bossTelegraph.meterLength) && bossTelegraph.meterLength >= 1)) {
-        throw new Error(`${where}: bossTelegraph meterLength must be a positive integer`);
+        throw new Error(`${where}: ${label} meterLength must be a positive integer`);
+      }
+    };
+    if (archetype.bossTelegraph) {
+      if (!archetype.roles.includes("boss")) throw new Error(`${where}: bossTelegraph needs the role "boss"`);
+      checkTelegraph(archetype.bossTelegraph, "bossTelegraph");
+    }
+    if (archetype.bars) {
+      if (!archetype.roles.includes("boss")) throw new Error(`${where}: bars need the role "boss"`);
+      if (archetype.phases) throw new Error(`${where}: bars and phases cannot be combined`);
+      if (archetype.bars.length < 2) throw new Error(`${where}: bars needs at least two bars`);
+      for (const [i, bar] of archetype.bars.entries()) {
+        if (!(bar.hpMultiplier > 0)) throw new Error(`${where}: bar ${i} hpMultiplier must be above 0`);
+        if (i === 0 && bar.onEnterSkillId !== undefined) throw new Error(`${where}: bar 0 is the opening bar and has no onEnterSkillId`);
+        if (bar.onEnterSkillId !== undefined) {
+          if (!declared.has(bar.onEnterSkillId)) throw new Error(`${where}: bar ${i} onEnterSkillId "${bar.onEnterSkillId}" is not in its skillIds`);
+          if (isTelegraph(bar.onEnterSkillId)) throw new Error(`${where}: bar ${i} onEnterSkillId "${bar.onEnterSkillId}" is a telegraph`);
+        }
+        for (const key of Object.keys(bar.weights ?? {})) {
+          if (key !== "basicAttack" && !declared.has(key)) throw new Error(`${where}: bar ${i} weight key "${key}" is not in its skillIds`);
+        }
+        if (bar.bossTelegraph) checkTelegraph(bar.bossTelegraph, `bar ${i} bossTelegraph`);
+        else if (!archetype.bossTelegraph) throw new Error(`${where}: bar ${i} has no telegraph and the archetype declares none`);
       }
     }
-    for (const weights of [...Object.values(archetype.actionWeights ?? {}), ...(archetype.phases ?? []).map((p) => p.weights)]) {
+    for (const weights of [...Object.values(archetype.actionWeights ?? {}), ...(archetype.phases ?? []).map((p) => p.weights), ...(archetype.bars ?? []).flatMap((b) => (b.weights ? [b.weights] : []))]) {
       for (const key of Object.keys(weights)) {
         if (isTelegraph(key)) throw new Error(`${where}: telegraph "${key}" is in an action weight; a boss telegraph is released by its meter`);
       }
@@ -300,13 +320,17 @@ export function spawnMonster(archetypeId: string, floorDepth: number, opts?: { t
             .map((s) => [s.id, s.initialCooldownTurns!])
         );
 
+  const bars = tier === "boss" ? archetype.bars : undefined;
+  const firstBarHp = bars ? Math.round(maxHp * bars[0]!.hpMultiplier) : maxHp;
+
   monsterCounter += 1;
   return {
     id: `${archetypeId}-${monsterCounter}`,
     archetypeId,
     name: tier === "elite" || tier === "boss" ? `${archetype.name}${TIER_NAME_SUFFIX[tier]}` : archetype.name,
-    hp: maxHp,
-    maxHp,
+    hp: firstBarHp,
+    maxHp: firstBarHp,
+    ...(bars ? { barBaseHp: maxHp } : {}),
     attack,
     defense,
     speed,

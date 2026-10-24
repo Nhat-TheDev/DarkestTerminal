@@ -59,9 +59,10 @@ describe("elite/boss kits", () => {
         expect(telegraphs).toEqual([]);
         continue;
       }
-      expect(telegraphs).toEqual([a.bossTelegraph.skillId]);
-      const weightKeys = [...Object.values(a.actionWeights ?? {}), ...(a.phases ?? []).map((p) => p.weights)].flatMap((w) => Object.keys(w));
-      expect(weightKeys).not.toContain(a.bossTelegraph.skillId);
+      const own = [a.bossTelegraph.skillId, ...(a.bars ?? []).flatMap((b) => (b.bossTelegraph ? [b.bossTelegraph.skillId] : []))];
+      expect(telegraphs.sort()).toEqual(own.sort());
+      const weightKeys = [...Object.values(a.actionWeights ?? {}), ...(a.phases ?? []).map((p) => p.weights), ...(a.bars ?? []).flatMap((b) => (b.weights ? [b.weights] : []))].flatMap((w) => Object.keys(w));
+      for (const id of own) expect(weightKeys).not.toContain(id);
     }
     expect(without.sort()).toEqual(["orc-chieftain", "void-amalgamation"]);
   });
@@ -108,6 +109,12 @@ describe("elite/boss kits", () => {
         Object.keys(p.weights).filter((k) => k !== "basicAttack").forEach((k) => keys.add(k));
         if (p.onEnterSkillId) keys.add(p.onEnterSkillId);
       }
+      for (const b of a.bars ?? []) {
+        if (tier !== "boss") break;
+        Object.keys(b.weights ?? {}).filter((k) => k !== "basicAttack").forEach((k) => keys.add(k));
+        if (b.onEnterSkillId) keys.add(b.onEnterSkillId);
+        if (b.bossTelegraph) keys.add(b.bossTelegraph.skillId);
+      }
       if (tier === "boss" && a.bossTelegraph) keys.add(a.bossTelegraph.skillId);
       return keys.size;
     };
@@ -122,7 +129,7 @@ describe("elite/boss kits", () => {
       "void-amalgamation": [2, 4],
       "ancient-golem": [2, 4],
       lich: [2, 5],
-      "the-founder": [null, 6],
+      "the-founder": [null, 8],
     };
     for (const [id, [elite, boss]] of Object.entries(expected)) {
       if (elite !== null) expect(size(id, "elite")).toBe(elite);

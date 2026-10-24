@@ -1504,6 +1504,46 @@
     "telegraph": true
   },
   {
+    "id": "ask-properly",
+    "name": "Ask Properly",
+    "description": "The ropes come in slowly now, picking. A few of you feel one rest across the throat and stay there.",
+    "mpCost": 0,
+    "target": "singleEnemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 60,
+        "ignoreDefensePercent": 50,
+        "offenseMultiplierPercent": 205
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "targetCount": {
+      "min": 2,
+      "max": 3
+    },
+    "telegraph": true
+  },
+  {
+    "id": "the-answer",
+    "name": "The Answer",
+    "description": "The floor answers him. It comes up through the stone, under every one of you.",
+    "mpCost": 0,
+    "target": "allEnemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "amount": 70,
+        "ignoreDefensePercent": 60,
+        "offenseMultiplierPercent": 190
+      }
+    ],
+    "slot": 0,
+    "unlockLevel": 1,
+    "telegraph": true
+  },
+  {
     "id": "hung-lower",
     "name": "Hung Lower",
     "description": "It lets itself down a little further into the light, and what hangs there begins to close.",

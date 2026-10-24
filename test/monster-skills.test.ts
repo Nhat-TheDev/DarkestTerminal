@@ -118,15 +118,19 @@ describe("elite/boss skill kit", () => {
     expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party!");
   });
 
-  test("the-founder carries its own kit and two phases, weighted for boss tier only", () => {
+  test("the-founder carries its own kit and three HP bars, weighted for boss tier only", () => {
     const founder = getArchetype("the-founder");
-    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "hung-lower", "the-last-of-it"]);
+    expect(founder.skillIds).toEqual(["paid-in-full", "the-same-price", "whats-left-listening", "everything-you-asked-for", "ask-properly", "the-answer", "hung-lower", "the-last-of-it"]);
     expect(getMonsterSkill("everything-you-asked-for").telegraph).toBe(true);
     expect(founder.bossTelegraph!.skillId).toBe("everything-you-asked-for");
     expect(getMonsterSkill("paid-in-full").targetCount).toEqual({ min: 2, max: 3 });
     expect(getMonsterSkill("the-same-price").target).toBe("allEnemies");
-    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "paid-in-full", "the-same-price", "whats-left-listening"]);
-    expect(founder.phases!.map((p) => p.onEnterSkillId)).toEqual(["hung-lower", "the-last-of-it"]);
+    expect(Object.keys(founder.actionWeights!.boss!).sort()).toEqual(["basicAttack", "paid-in-full", "whats-left-listening"]);
+    expect(founder.phases).toBeUndefined();
+    expect(founder.bars!.map((b) => b.onEnterSkillId)).toEqual([undefined, "hung-lower", "the-last-of-it"]);
+    expect(founder.bars!.map((b) => b.bossTelegraph?.skillId)).toEqual([undefined, "ask-properly", "the-answer"]);
+    expect(getMonsterSkill("ask-properly").targetCount).toEqual({ min: 2, max: 3 });
+    expect(getMonsterSkill("the-answer").target).toBe("allEnemies");
     // Never spawned at elite tier.
     expect(founder.actionWeights?.elite).toBeUndefined();
   });

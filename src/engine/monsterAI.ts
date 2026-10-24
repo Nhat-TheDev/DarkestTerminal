@@ -48,6 +48,8 @@ export function advanceMonsterCooldowns(actor: Monster): void {
 
 /** The tier's own weights, replaced by the latest phase of that tier the monster has entered. */
 function currentWeights(archetype: MonsterArchetype, actor: Monster): Record<string, number> | undefined {
+  const bar = archetype.bars?.[actor.barIndex ?? 0];
+  if (bar?.weights && actor.tier === "boss") return bar.weights;
   let weights = archetype.actionWeights?.[actor.tier];
   for (const [i, phase] of (archetype.phases ?? []).entries()) {
     if (phase.tier === actor.tier && actor.enteredPhaseIndexes?.includes(i)) weights = phase.weights;
@@ -291,7 +293,7 @@ function useMonsterSkill(skill: SkillDefinition, archetype: MonsterArchetype, ac
  */
 export function fillTelegraphMeter(actor: Monster, combat: CombatState, ctx: EngineContext): void {
   if (actor.tier !== "boss") return;
-  const telegraph = getBossTelegraph(getArchetype(actor.archetypeId));
+  const telegraph = getBossTelegraph(getArchetype(actor.archetypeId), actor.barIndex);
   if (!telegraph || (actor.telegraphMeter ?? 0) >= telegraph.meterLength) return;
   actor.telegraphMeter = (actor.telegraphMeter ?? 0) + 1;
   if (actor.telegraphMeter !== telegraph.meterLength - 1) return;
@@ -344,7 +346,15 @@ function takeMonsterTurn(actor: Monster, combat: CombatState, ctx: EngineContext
   // A silenced monster still crosses into a new phase, but every skill of its own choosing is locked.
   const silenced = actor.activeStatusEffects.some((s) => getStatusEffect(s.statusEffectId).silences);
 
-  const telegraph = actor.tier === "boss" ? getBossTelegraph(archetype) : undefined;
+  if (actor.barEntryPending) {
+    actor.barEntryPending = false;
+    actor.telegraphMeter = 0;
+    combat.log.push({ text: t("combat.monsterPhase", { actor: actor.name }), kind: "info" });
+    const onEnter = archetype.bars![actor.barIndex ?? 0]!.onEnterSkillId;
+    if (onEnter !== undefined) return useMonsterSkill(getMonsterSkill(onEnter), archetype, actor, living, view, combat, ctx);
+  }
+
+  const telegraph = actor.tier === "boss" ? getBossTelegraph(archetype, actor.barIndex) : undefined;
   if (telegraph && !silenced && (actor.telegraphMeter ?? 0) >= telegraph.meterLength) {
     return releaseTelegraph(getMonsterSkill(telegraph.skillId), archetype, actor, living, view, combat, ctx);
   }

@@ -29,7 +29,8 @@ import { compareVersions, migrateGameState, migrateMonsters, migrateSummons } fr
 import { expCostForLevel, levelForTotalExp, MAX_LEVEL } from "../src/data/levelGrowth";
 import { getClass } from "../src/data/classes";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
-import type { GameState, Summon } from "../src/types";
+import type { GameState, Monster, Summon } from "../src/types";
+import { advanceBar } from "../src/engine/monsterBars";
 
 const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
@@ -782,6 +783,67 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     });
   });
 
+  test("the Founder saved in phase 2 reloads in phase 2 with that bar's HP, max HP and meter", () => {
+    withGame(17, (game) => {
+      game.currentSaveSlot = "slot1";
+      const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+      game.ctx.monsters.push(founder);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.monsterIds = [founder.id];
+      room.cleared = false;
+      game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+      advanceBar(founder);
+      founder.barEntryPending = false;
+      founder.hp -= 40;
+      founder.telegraphMeter = 2;
+      const loaded = roundTrip(game).ctx.monsters.find((m) => m.id === founder.id)!;
+      expect(loaded).toEqual(founder);
+      expect(loaded.barIndex).toBe(1);
+      expect(loaded.maxHp).toBe(Math.round(founder.barBaseHp! * getArchetype("the-founder").bars![1]!.hpMultiplier));
+      expect(loaded.hp).toBe(loaded.maxHp - 40);
+      expect(loaded.telegraphMeter).toBe(2);
+    });
+  });
+
+  test("a Founder saved before bars existed loads on bar 1 at the same share of HP, and emptying it moves him to bar 2", () => {
+    const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+    const whole = founder.barBaseHp!;
+    for (const key of ["barBaseHp", "barIndex", "barEntryPending"] as const) delete founder[key];
+    founder.maxHp = whole;
+    founder.hp = Math.round(whole / 2);
+    const [loaded] = migrateMonsters([founder]);
+    const bars = getArchetype("the-founder").bars!;
+    expect(loaded!.barBaseHp).toBe(whole);
+    expect(loaded!.barIndex).toBe(0);
+    expect(loaded!.maxHp).toBe(Math.round(whole * bars[0]!.hpMultiplier));
+    expect(loaded!.hp).toBe(Math.round(loaded!.maxHp / 2));
+    expect(advanceBar(loaded!)).toBe(true);
+    expect(loaded!.barIndex).toBe(1);
+    expect(loaded!.hp).toBe(Math.round(whole * bars[1]!.hpMultiplier));
+  });
+
+  for (const [label, corrupt] of [
+    ["a bar index past his last bar", (m: Monster) => { m.barIndex = 3; }],
+    ["a fractional bar index", (m: Monster) => { m.barIndex = 0.5; }],
+    ["a non-boolean entry flag", (m: Monster) => { (m as any).barEntryPending = "yes"; }],
+  ] as const) {
+    test(`a Founder save with ${label} is refused`, () => {
+      withGame(18, (game) => {
+        game.currentSaveSlot = "slot1";
+        const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+        game.ctx.monsters.push(founder);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.monsterIds = [founder.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+        saveRun(game);
+        const save = loadSave("slot1");
+        corrupt(save.monsters.find((m) => m.id === founder.id)!);
+        expect(() => gameFromSave(save, "slot1")).toThrow(/validation/);
+      });
+    });
+  }
+
   type Saved = ReturnType<typeof spawnMonster>;
   const shell = { state: "intact" as const, hitsLeft: 3, ownTurnsSinceBreak: 0 };
   const corruptions: [string, (boss: Saved, add: Saved, golem: Saved) => void][] = [
@@ -792,6 +854,7 @@ describe("a save taken mid-fight keeps a guard-room monster's state", () => {
     ["a null shell", (_b, _a, g) => { (g as any).shell = null; }],
     ["a negative telegraph meter", (m) => { m.telegraphMeter = -1; }],
     ["a fractional telegraph meter", (m) => { m.telegraphMeter = 1.5; }],
+    ["bar state on a boss whose archetype has no bars", (m) => { m.barIndex = 1; m.barBaseHp = 100; }],
     ["null cooldowns", (m) => { (m as any).skillCooldowns = null; }],
     ["a negative cooldown", (m) => { m.skillCooldowns!["ledger-mark"] = -1; }],
     ["a negative use count", (m) => { m.skillUses!["name-struck-out"] = -1; }],

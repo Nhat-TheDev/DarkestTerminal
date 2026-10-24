@@ -1,11 +1,12 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, isCharacter, noteDamageTaken, resolveSkillEffect } from "./resolver";
+import { type Actor, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
 import { shellAdjustedDamage } from "./monsterShell";
+import { advanceBar } from "./monsterBars";
 import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
@@ -33,6 +34,7 @@ export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, d
   const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);
   noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
+  if (attacker.hp <= 0 && isMonster(attacker)) advanceBar(attacker);
   log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
 }
 

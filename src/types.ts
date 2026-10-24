@@ -169,6 +169,23 @@ export interface MonsterPhase {
   onEnterSkillId?: Id;
 }
 
+/**
+ * One HP bar of a boss that fights in bars: it holds `hpMultiplier` of the boss's scaled max HP, and emptying it starts the next bar
+ * with that bar's own `weights`, entry cast and telegraph. Emptying the last bar kills. A bar without `bossTelegraph` uses the archetype's.
+ */
+export interface MonsterBar {
+  hpMultiplier: number;
+  /** Replaces the boss tier's `actionWeights`; absent means the tier's own. */
+  weights?: Record<string, number>;
+  onEnterSkillId?: Id;
+  bossTelegraph?: BossTelegraph;
+}
+
+export interface BossTelegraph {
+  skillId: Id;
+  meterLength: number;
+}
+
 /** A breakable shell: while intact each direct hit is capped at a share of max HP and counts toward breaking it; breaking stuns the bearer, and it reforms later (`monsterShell.ts`). */
 export interface MonsterShellDefinition {
   hitsToBreak: { min: number; max: number };
@@ -715,7 +732,9 @@ export interface MonsterArchetype {
   /** A breakable shell the monster carries from spawn. */
   shell?: MonsterShellDefinition;
   /** Boss only: the telegraph its meter releases once `meterLength` icons have filled. Never in an action-weight tier. */
-  bossTelegraph?: { skillId: Id; meterLength: number };
+  bossTelegraph?: BossTelegraph;
+  /** Boss only: fights in HP bars instead of `phases`; at least two. */
+  bars?: MonsterBar[];
   powerTier?: "weak" | "medium" | "strong";
   /** Per tier: "basicAttack" or a `skillIds` id mapped to its relative weight; keys are validated on load. */
   actionWeights?: Partial<Record<MonsterTier, Record<string, number>>>;
@@ -753,6 +772,11 @@ export interface Monster {
   enteredPhaseIndexes?: number[];
   /** Filled icons of a boss's telegraph meter; absent means empty. */
   telegraphMeter?: number;
+  /** A boss with `bars`: the bar it is on (absent means the first) and the scaled max HP every bar's size is a share of. */
+  barIndex?: number;
+  barBaseHp?: number;
+  /** Set when a bar emptied and the next bar's entry has not happened yet. */
+  barEntryPending?: boolean;
   /** The monster that summoned this one; it falls when its summoner does. */
   summonerId?: Id;
   /** Present on a shell bearer. */
@@ -844,6 +868,8 @@ export interface CombatantSnapshot {
   shell?: MonsterShellState;
   /** Monsters only: filled icons of a boss's telegraph meter. */
   telegraphMeter?: number;
+  /** Monsters only: the bar a boss with `bars` is on. */
+  barIndex?: number;
 }
 
 export interface PartyStateSnapshot {

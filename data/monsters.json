@@ -1546,6 +1546,8 @@
       "the-same-price",
       "whats-left-listening",
       "everything-you-asked-for",
+      "ask-properly",
+      "the-answer",
       "hung-lower",
       "the-last-of-it"
     ],
@@ -1553,9 +1555,8 @@
     "actionWeights": {
       "boss": {
         "basicAttack": 10,
-        "paid-in-full": 25,
-        "the-same-price": 20,
-        "whats-left-listening": 25
+        "paid-in-full": 30,
+        "whats-left-listening": 30
       }
     },
     "roles": [
@@ -1564,33 +1565,42 @@
     "finalBoss": true,
     "race": "undead",
     "subRace": "rotting",
-    "phases": [
+    "bossTelegraph": {
+      "skillId": "everything-you-asked-for",
+      "meterLength": 4
+    },
+    "bars": [
       {
-        "tier": "boss",
-        "hpBelowPercent": 60,
+        "hpMultiplier": 0.4
+      },
+      {
+        "hpMultiplier": 0.35,
         "weights": {
           "basicAttack": 8,
           "paid-in-full": 25,
           "the-same-price": 20,
           "whats-left-listening": 25
         },
-        "onEnterSkillId": "hung-lower"
+        "onEnterSkillId": "hung-lower",
+        "bossTelegraph": {
+          "skillId": "ask-properly",
+          "meterLength": 4
+        }
       },
       {
-        "tier": "boss",
-        "hpBelowPercent": 25,
+        "hpMultiplier": 0.25,
         "weights": {
           "basicAttack": 8,
           "paid-in-full": 20,
           "the-same-price": 15,
           "whats-left-listening": 40
         },
-        "onEnterSkillId": "the-last-of-it"
+        "onEnterSkillId": "the-last-of-it",
+        "bossTelegraph": {
+          "skillId": "the-answer",
+          "meterLength": 5
+        }
       }
-    ],
-    "bossTelegraph": {
-      "skillId": "everything-you-asked-for",
-      "meterLength": 4
-    }
+    ]
   }
 ]

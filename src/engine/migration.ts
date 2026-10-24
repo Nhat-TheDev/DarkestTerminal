@@ -290,6 +290,14 @@ export function migrateMonsters(monsters: Monster[]): Monster[] {
       monster.telegraphMeter = getBossTelegraph(getArchetype(monster.archetypeId))?.meterLength ?? 0;
       delete saved.charging;
     }
+    const bars = monster.tier === "boss" ? getArchetype(monster.archetypeId).bars : undefined;
+    if (bars && monster.barBaseHp === undefined) {
+      const ratio = Math.round(monster.maxHp * bars[0]!.hpMultiplier) / monster.maxHp;
+      monster.barBaseHp = monster.maxHp;
+      monster.barIndex = 0;
+      monster.maxHp = Math.round(monster.barBaseHp * bars[0]!.hpMultiplier);
+      monster.hp = monster.hp > 0 ? Math.max(1, Math.round(monster.hp * ratio)) : 0;
+    }
     if (monster.race !== undefined) continue;
     const archetype = getArchetype(monster.archetypeId);
     monster.race = archetype.race;

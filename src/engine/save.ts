@@ -169,6 +169,12 @@ export function isSaveMonstersValid(monsters: Monster[]): boolean {
     if (!areCounts(m.skillCooldowns) || !areCounts(m.skillUses)) return false;
     if (m.enteredPhaseIndexes !== undefined && !(Array.isArray(m.enteredPhaseIndexes) && m.enteredPhaseIndexes.every(isCount))) return false;
     if (m.telegraphMeter !== undefined && !isCount(m.telegraphMeter)) return false;
+    if (m.barIndex !== undefined || m.barBaseHp !== undefined || m.barEntryPending !== undefined) {
+      const bars = m.tier === "boss" ? MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.bars : undefined;
+      if (!bars || !isCount(m.barBaseHp) || m.barBaseHp! < 1) return false;
+      if (!isCount(m.barIndex ?? 0) || (m.barIndex ?? 0) >= bars.length) return false;
+      if (m.barEntryPending !== undefined && typeof m.barEntryPending !== "boolean") return false;
+    }
     if (m.shell !== undefined) {
       // A shell only means anything on a guard-room monster whose archetype declares one.
       if (!isRecord(m.shell) || m.tier === "normal" || !MONSTER_ARCHETYPES.find((a) => a.id === m.archetypeId)?.shell) return false;

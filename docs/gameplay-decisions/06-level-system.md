@@ -138,7 +138,7 @@ Design rules the data keeps (the kit data test under `test/` enforces them):
 | Void Amalgamation | No intent: picks targets uniformly (`targeting: "random"`), reaches for several at once, spills across everyone, mends itself, and subsumes one target for a lifesteal hit. No telegraph, no phase. |
 | Ancient Golem | Cannot be broken quickly: a breakable shell (below), heavy single hits, a slowing tremor, and — boss — a telegraphed sealing blow; its second phase empowers it. |
 | Lich | Arranged the room, raises the dead, strikes a name: withering touch (max HP down), raising skeletons gated on its ally count, a ledger mark that tags a target, and a telegraph that is only available while someone is marked and is aimed at them (and removes the mark on hit). Its second phase marks everyone and raises to the cap. |
-| The Founder | Boss only, two phases, fear that climbs: ropes that reach several targets, one that strikes everyone through defense, a gaze that blinds and raises fear, a telegraphed heavy hit; it knits itself together for a few turns in the first phase and, last, lets the ropes go slack and raises fear across the party. |
+| The Founder | Boss only, three phases, each with its own HP bar and its own telegraph, fear that climbs: ropes that reach several targets, one that strikes everyone through defense, a gaze that blinds and raises fear. Phase 1 telegraphs a single heavy hit; phase 2 opens by knitting itself together and telegraphs a hit on two or three of you; phase 3 opens with the ropes going slack, raising fear across the party, and telegraphs a hit on all of you. |
 
 The generated skill table in `02-monster.md` lists every skill, its effects and its owners.
 
@@ -147,7 +147,7 @@ The generated skill table in `02-monster.md` lists every skill, its effects and 
 Each turn runs in this order (`takeMonsterTurn`, `src/engine/monsterAI.ts`). Stun handling stays first, unchanged: a stunned monster loses the turn.
 
 1. **Release.** If a telegraphed skill is charging, release it: on the target(s) it locked (any that died are re-picked by the skill's target rules), or on everyone alive for an area telegraph. The turn ends there.
-2. **Phase entry.** If HP has crossed below the threshold of a phase not yet entered, enter it. If that phase names an `onEnterSkillId`, that skill is cast this turn and the turn ends.
+2. **Phase entry.** If HP has crossed below the threshold of a phase not yet entered, enter it. If that phase names an `onEnterSkillId`, that skill is cast this turn and the turn ends. A boss that fights in `bars` instead (The Founder) enters its next bar *before* step 1: emptying a bar that is not the last refills the next one (its `hpMultiplier` of the boss's scaled max HP), empties the telegraph meter, keeps the boss's statuses, and casts that bar's `onEnterSkillId`; only the last bar's death kills. Each bar has its own `weights` (absent means the tier's) and may override the archetype's `bossTelegraph`; the Monsters panel shows `Phase n/total`.
 3. **Filter.** Build the candidates from the current weights (`"basicAttack"` plus skill ids). Drop a skill that is on cooldown, out of `usesPerCombat`, or whose `aiCondition` fails.
 4. **Score.** Multiply each candidate's weight by every matching `aiRules` entry's `weightMultiplier`.
 5. **Pick** by weighted random over the scored weights; with no candidate left the monster basic-attacks.

@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test";
+import { advanceBar } from "../src/engine/monsterBars";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef } from "../src/types";
@@ -334,6 +335,7 @@ describe("Part F.5: Continue → the founder encounter", () => {
 
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const founder = game.ctx.monsters.find((m) => m.id === room.monsterIds[0])!;
+    while (advanceBar(founder));
     founder.hp = 1;
     const knight = game.state.party[0]!;
     knight.speed = founder.speed + 1; // the killing blow must land first

@@ -308,6 +308,8 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | `the-same-price` | The Same Price | allEnemies | damage 16 + 100% ATK (ignores 100% defense) | What's Left of Him (dread) |
 | `whats-left-listening` | What's Left Listening | singleEnemy | damage 22 + 155% ATK; status blinded (2 turns); fear 8 | What's Left of Him (dread) |
 | `everything-you-asked-for` | Everything You Asked For | singleEnemy | damage 70 + 250% ATK (ignores 40% defense) | What's Left of Him (dread) |
+| `ask-properly` | Ask Properly | singleEnemy | damage 60 + 205% ATK (ignores 50% defense) | What's Left of Him (dread) |
+| `the-answer` | The Answer | allEnemies | damage 70 + 190% ATK (ignores 60% defense) | What's Left of Him (dread) |
 | `hung-lower` | Hung Lower | self | status knitting-ii (6 turns) | What's Left of Him (dread) |
 | `the-last-of-it` | The Last of It | allEnemies | fear 12 | What's Left of Him (dread) |
 | `self-destruct` | Self-Destruct | allEnemies | damage 30 + 200% ATK (ignores 30% defense); damage 99999 + 100% ATK (target self) | Lava Slime (defensive) |
