@@ -28,7 +28,7 @@ One spec, three implementation plans, built in order:
   passives), progression compression.
 - M1b, monsters and atmosphere: monster rework and new monsters, sprites, Stratum entry text,
   omens, room names.
-- M1c, class content: rank 4 for every skill and four passive pairs per class, written around
+- M1c, class content: rank 4 for the five non-ultimate skills and four passive pairs per class, written around
   each class's build directions.
 
 M1a must be playable and balanceable with the existing monster roster assigned to Strata
@@ -293,12 +293,14 @@ Elite/Boss archetypes in all, which floor 13 accounts for (§6.2).
 ### 4.1 Skills
 
 The skill set of all 12 classes stays as it is: a basic attack plus six skills, the ultimate in
-slot 6 (`isUltimate`), and the `[1-7]` combat skill menu. No skill is added. Every skill gains a
-fourth rank (M1c), and the per-rank `unlockLevel` in `classes.json` is replaced by the point gates
-below.
+slot 6 (`isUltimate`), and the `[1-7]` combat skill menu. No skill is added. The five skills other
+than the ultimate gain a fourth rank (M1c); the ultimate stays at three. The per-rank
+`unlockLevel` in `classes.json` is replaced by the point gates below.
 
 Rank 4 is not a bigger rank 3. It changes how the skill plays (a new rider, a different target
-rule, a cost turned into a payoff), so choosing which skills reach it shapes the character.
+rule, a cost turned into a payoff), so choosing which skills reach it shapes the character. A
+class's five rank 4s are close to equal in strength, so no choice is a trap: a rank 4 that adds
+little damage makes up for it in its effect.
 
 ### 4.2 Skill points
 
@@ -309,20 +311,21 @@ Skill points replace automatic rank unlocks entirely. They buy ranks only.
   over to a later level.
 - Points buy:
   - skill ranks 1–3: 6 skills × 3 ranks, where rank 1 unlocks the skill
-  - skill rank 4: on at most `maxRank4Skills` of a character's six skills
+  - skill rank 4: on up to three of the five non-ultimate skills, one more each time a level in
+    `rank4UnlockLevels` is reached
   - class passive ranks: the existing `passiveSkill`, 3 ranks
 - The point budget at the level cap exactly covers that build, so every character finishes the run
-  with every skill at rank 3, the class passive maxed and `maxRank4Skills` skills at rank 4. Builds
+  with every skill at rank 3, the class passive maxed and three skills at rank 4. Builds
   differ in which skills reach rank 4, the order of investment, and the passive pairs (§4.3).
 - Gates are minimum levels stored in `classes.json`, never hardcoded:
   - rank 1 of each skill has a minimum level per slot, with the ultimate's notably later
-  - rank 4 of any skill has a minimum level, on top of rank 3
+  - the 1st, 2nd and 3rd rank 4 each open at their level in `rank4UnlockLevels`, on top of rank 3
   - class passive rank 1 has a minimum level
   - ranks 2 and 3 of anything require only the previous rank
 - A gate opens an option, it does not force a pick.
 - From level 2 to `minPointChoicesUntilLevel`, whatever the character bought before, at least
   `minPointChoices` purchases are open. After that, at least one is always open: the last levels
-  finish the ranks still missing. The gates and the rank-4 limit are set so this holds, and a test
+  finish the ranks still missing. The gates and the rank-4 levels are set so this holds, and a test
   walks every reachable build to check it (§8).
 - Spent points are permanent for the run (no respec), matching the Artifact design.
 
@@ -510,7 +513,7 @@ Consequences, accepted:
     with dead characters counted as 0.
   - S4: fear never below `minFear`; per-tier debuffs; monster fear scaling; `prescient` targeting
     through the `queued` factor.
-- Skill points: every gate, the rank-4 limit, no point carried over, a budget at the cap equal to
+- Skill points: every gate, the rank-4 levels, no rank 4 on the ultimate, no point carried over, a budget at the cap equal to
   the full build, and a walk over every reachable build showing at least `minPointChoices` open
   purchases up to `minPointChoicesUntilLevel` and at least one at every level after.
 - Passive pairs: each pair offered at its level, exactly one of the two taken, the other gone, no
@@ -542,7 +545,7 @@ Consequences, accepted:
 
 ## 10. Risks
 
-1. Content volume. M1b and M1c are mostly writing: 59 monsters, 72 rank-4 skills and 96 passives.
+1. Content volume. M1b and M1c are mostly writing: 59 monsters, 60 rank-4 skills and 96 passives.
 2. Losing spirals. `focused` overriding taunt, scent steps and fear scaling all punish a party that
    is already losing. `random-play` measures each one separately.
 3. Floor 13. Consecutive boss rooms with only items and Camp may be close to unwinnable; it is
@@ -563,10 +566,10 @@ Consequences, accepted:
 - Skill rank-1 gates: slots 1–2 from level 2 (the first point), slot 3 at level 3, slot 4 at level
   5, slot 5 at level 7, the ultimate (slot 6) at level 12.
 - Class passive rank 1 from level 2.
-- Rank 4: from level 10, on at most 3 skills per character. The full build is 18 + 3 + 3 = 24
-  points, the budget at the cap of 25.
+- Rank 4: the 1st from level 12, the 2nd from 18, the 3rd from 24; never on the ultimate. The full
+  build is 18 + 3 + 3 = 24 points, the budget at the cap of 25.
 - Passive pairs at levels 4, 9, 14 and 20.
-- At least 3 open purchases up to level 19, at least 1 from level 20 to the cap.
+- At least 3 open purchases up to level 18, at least 1 from level 19 to the cap.
 - S2 erosion every 2 rounds; S3 `focused` lasts 2 rounds; S3 scent thresholds at 80, 60, 40 and
   20% of party HP; S4 `minFear` 30, below the first fear tier, so it raises the baseline without a
   penalty of its own.
