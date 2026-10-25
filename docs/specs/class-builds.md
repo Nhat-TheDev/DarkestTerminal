@@ -42,47 +42,49 @@ This spec gives each mechanic and its intent, never its numbers. Numbers are set
 
 ## Knight
 
-- **Bulwark**: the hit meant for someone else. Interpose, Watchful and Rally carry the party
-  through.
-- **Reprisal**: every blow is answered. Engage and Heavy Charge turn the hits the Knight takes into
-  damage.
+- **Bulwark**: keeps allies standing. Interpose and Side by Side take and soften the blows meant
+  for them.
+- **Spearhead**: opens the enemy for allies. Heavy Charge and Engage set up hits that land harder.
 
-| Level | Bulwark | Reprisal |
+| Level | Bulwark | Spearhead |
 |---|---|---|
-| 4 | **Shield Wall**: a hit the Knight takes in an ally's place, through Interpose or Watchful, deals less damage. | **Marked Foe**: the first enemy to hit the Knight each round is marked; the Knight's next damaging skill deals more to it. |
-| 9 | **Rearguard**: Watchful's intercept chance rises for an ally below half HP. | **In Kind**: Engage's counter deals more against an attacker that hit an ally this round. |
-| 14 | **Closed Ranks**: while the Knight is above half HP, Rally also grants `fortify` to the party. | **No Retreat**: while taunting, each hit the Knight takes this round raises its attack until the round ends. |
-| 20 | **Last Shield**: once per combat, a hit that would kill an ally the Knight is interposing for lands on the Knight instead. | **Iron Answer**: Heavy Charge deals more for each hit the Knight took since its last turn. |
+| 4 | **Shield Wall**: a hit the Knight takes in an ally's place, through Interpose or Watchful, deals less damage. | **Opening**: an enemy hit by Heavy Charge or Engage takes more from the next ally hit on it. |
+| 9 | **Rearguard**: Watchful's intercept chance rises for an ally below half HP. | **Shoulder to Shoulder**: while Side by Side holds, that ally deals more damage. |
+| 14 | **Closed Ranks**: while the Knight is above half HP, Rally also grants `fortify` to the party. | **War Cry**: Rally also raises the party's damage for the round, more for allies with low fear. |
+| 20 | **Last Shield**: once per combat, a hit that would kill an ally the Knight is interposing for lands on the Knight instead. | **Held in Place**: an enemy taunted by the Knight takes more damage from every ally. |
 
 Rank 4:
 
 - Interpose (Bulwark): covers two allies at once.
-- Rally (Bulwark): rallied allies ignore the next fear they would gain this round.
-- Engage (Reprisal): the taunt lasts one more turn, and each counter applies `enfeebled`.
-- Heavy Charge (Reprisal): goes through its target and strikes a second enemy for less.
-- Side by Side (both): the follow-up also triggers when the ally is hit, not only when it lands a
-  blow.
+- Side by Side (Bulwark): the ally also takes less damage while the shield is lent.
+- Heavy Charge (Spearhead): leaves its target `exposed` (new): the next two ally hits on it deal
+  more.
+- Engage (Spearhead): the taunt lasts one more turn, and each counter leaves the attacker
+  `exposed`.
+- Rally (both): rallied allies ignore the next fear they would gain this round.
 
 ## Mage
 
-- **Pyre**: fire that spreads and keeps burning. Fireball and Fire Pillar across the whole line.
-- **Stormglass**: lightning and ice that lock one target down and break it.
+- **Elementalist**: fire, lightning and ice played off each other. Each element sets up the next.
+- **Black Arts**: spells that leave something behind. Arcane Shred and every bolt pile debuffs on
+  the target.
 
-| Level | Pyre | Stormglass |
+| Level | Elementalist | Black Arts |
 |---|---|---|
-| 4 | **Kindling**: a fire hit on a burning target extends its `burning` by one turn. | **Static**: a lightning hit on a `chilled` target has a higher stun chance. |
-| 9 | **Kindled Air**: fire damage against a burning target ignores part of its defense. | **Brittle**: ice damage against a stunned target ignores part of its defense. |
-| 14 | **Fed Fire**: fire damage rises for each burning enemy in the room. | **Conductor**: Lightning Bolt arcs to a second enemy when its first target is chilled. |
-| 20 | **Ash**: each `burning` tick also applies `shredded`, adding to Arcane Shred. | **Absolute Zero**: Frost Lance on a stunned, chilled target leaves it `frozen` (new): it loses its next turn and takes more from the next hit. |
+| 4 | **Kindling**: a fire hit on a burning target extends its `burning` by one turn. | **Deep Shred**: Arcane Shred's `shredded` lasts one more turn. |
+| 9 | **Conductor**: Lightning Bolt arcs to a second enemy when its first target is `chilled`. | **Hollowing**: a spell that lands on a `shredded` target also applies `weakened`. |
+| 14 | **Elemental Chain**: a hit of a different element than the one already on the target (fire on `chilled`, ice on stunned, lightning on `burning`) deals more. | **Dark Sigil**: the Mage's spell damage rises with each debuff on the target. |
+| 20 | **Absolute Zero**: Frost Lance on a stunned, chilled target leaves it `frozen` (new): it loses its next turn and takes more from the next hit. | **Blight**: the Mage's area spells copy one debuff from the most-debuffed enemy onto every enemy they hit. |
 
 Rank 4:
 
-- Fireball (Pyre): bursts on a burning target and sets one neighbour burning.
-- Fire Pillar (Pyre): the floor stays alight for a round; enemies that act in it take fire damage.
-- Lightning Bolt (Stormglass): forks to a second enemy for less.
-- Lightning Storm (Stormglass): an enemy already stunned takes more damage instead of rolling the
-  stun again.
-- Frost Lance (both): `chilled` also pushes the target later in the turn order.
+- Fireball (Elementalist): bursts on a burning target and sets one neighbour burning.
+- Lightning Storm (Elementalist): an enemy already stunned takes more damage instead of rolling
+  the stun again.
+- Lightning Bolt (Black Arts): also applies `blinded`.
+- Frost Lance (Black Arts): also applies `enfeebled`; a target both chilled and enfeebled moves
+  later in the turn order.
+- Fire Pillar (both): the floor stays alight for a round; enemies that act in it take fire damage.
 
 ## Rogue
 
@@ -106,7 +108,8 @@ Rank 4:
 
 ## Acolyte
 
-- **Mercy**: wounds closed faster than they open. Heal and Mass Heal.
+- **Mercy**: support and healing. Heal, Mass Heal, Prayer and Sanctuary keep the party whole and
+  steady.
 - **Zeal**: the light turned outward. Purify and Sanctuary punish what hurts the party.
 
 | Level | Mercy | Zeal |
@@ -114,7 +117,7 @@ Rank 4:
 | 4 | **Gentle Hands**: Heal heals more on an ally below half HP. | **Witness**: Smite deals more to an enemy that damaged an ally this round. |
 | 9 | **Overflow**: healing past an ally's max HP becomes a short `mercy-ward` (new) that absorbs damage. | **Judgement**: Purify on an enemy also strips one helpful status from it. |
 | 14 | **Calm Voice**: Prayer also lowers a second ally's fear by half as much. | **Kindled Faith**: each heal the Acolyte casts adds a stack; its next holy damage spends them for more. |
-| 20 | **Unfailing**: Mass Heal heals more for each ally below half HP. | **Wrath**: Purify's damage rises with each harmful status the Acolyte has removed this combat. |
+| 20 | **Blessed Ground**: allies inside Sanctuary take less damage. | **Wrath**: Purify's damage rises with each harmful status the Acolyte has removed this combat. |
 
 Rank 4:
 
@@ -148,24 +151,26 @@ Rank 4:
 
 ## Plague Doctor
 
-- **Pestilence**: debuffs piled up until they pay out. Fire Vial and Toxic Fog feed Volatile
-  Flask.
-- **Physician**: the doctor half. Healing Draught and Blinding Vial keep the party standing.
+- **Malady**: debuffs that take the enemy apart. `weakened`, `blinded`, `enfeebled` and
+  `shredded`, applied hard and stacked.
+- **Pestilence**: many fevers at once. Burning, poison, acid and bleeding on the same body.
 
-| Level | Pestilence | Physician |
+| Level | Malady | Pestilence |
 |---|---|---|
-| 4 | **Festering**: `blinded` enemies take more damage from damage over time. | **Bedside Manner**: Healing Draught heals more on an ally carrying a harmful status. |
-| 9 | **Catalyst**: Contagion's proc chance rises with each debuff already on the target. | **Antidote**: the first tick of `mending` also removes poison and bleeding. |
-| 14 | **Mixed Doses**: a target both burning and poisoned takes more from each tick. | **Field Dressing**: when an ally drops below a third of max HP, the Doctor's next Healing Draught costs no MP. |
-| 20 | **Plague Bearer**: when an enemy with three or more debuffs dies, its debuffs pass to the nearest enemy. | **Steady Hands**: Healing Draught also grants `mending` to a second ally. |
+| 4 | **Thin Blood**: `weakened` the Doctor applies lowers damage further. | **Slow Burn**: burning and poison the Doctor applies last one turn longer. |
+| 9 | **Selective**: Contagion draws only stat-reducing debuffs, and they last one more turn. | **Fresh Fever**: Contagion draws a damage-over-time effect the target does not already carry. |
+| 14 | **Compounding**: each stat debuff already on a target makes the next one the Doctor applies stronger. | **Mixed Doses**: a target carrying two or more different damage-over-time effects takes more from each tick. |
+| 20 | **Lingering Malady**: when a debuffed enemy dies, its stat debuffs pass to the nearest enemy. | **Fevered**: every third tick of the Doctor's damage over time on a target adds one it does not carry yet (`acid-burn`, `burning`, `poisoned` or `bleeding`). |
 
 Rank 4:
 
-- Fire Vial (Pestilence): splashes `burning` onto one neighbour.
-- Spreading Toxic Fog (Pestilence): the fog lingers one more round.
-- Healing Draught (Physician): each `mending` tick also lowers fear.
-- Blinding Vial (Physician): `blinded` lasts one more turn and its miss chance rises.
-- Volatile Flask (both): its minimum hit count rises by one.
+- Blinding Vial (Malady): `blinded` lasts one more turn and its miss chance rises.
+- Volatile Flask (Malady): its minimum hit count rises by one, and each hit extends one debuff on
+  the target by a turn.
+- Fire Vial (Pestilence): splashes `burning` onto one neighbour and adds `acid-burn` to the
+  target.
+- Spreading Toxic Fog (Pestilence): the fog lingers one more round and poisons again.
+- Healing Draught (both): also removes one harmful status from the ally.
 
 ## Archer
 
@@ -189,42 +194,46 @@ Rank 4:
 
 ## Ninja
 
-- **Shadow**: never where the blow lands. Smoke Bomb and Shadow Strike's clone.
-- **Hundred Cuts**: bleed stacked until Death Mark. Throwing Knives and Shuriken Storm.
+- **Shadow**: the enemy never sure what it is hitting. Smoke, clones and stealth throw its
+  attacks off.
+- **Reaper**: the kill. Throwing Knives for one target, Shuriken Storm for the group, Death Mark to
+  finish.
 
-| Level | Shadow | Hundred Cuts |
+| Level | Shadow | Reaper |
 |---|---|---|
-| 4 | **Unseen**: the first attack out of `stealthed` deals more damage. | **Deep Cuts**: `bleeding` the Ninja applies lasts one turn longer. |
-| 9 | **Hollow Body**: a shadow clone that is destroyed blinds whoever destroyed it. | **Hemorrhage**: bleed ticks on a `netted` target deal more. |
-| 14 | **Substitute**: once per combat, while a clone stands, a hit aimed at the Ninja lands on the clone instead. | **Open Veins**: Throwing Knives' extra-hit chance rises against a bleeding target. |
-| 20 | **Ghost Step**: entering `stealthed` also removes one harmful status from the Ninja. | **Exsanguinate**: a target at five or more bleed stacks takes more damage from every ally's hits. |
+| 4 | **Misdirection**: an enemy that attacks a shadow clone is `confused` for a turn. | **Unseen Blade**: the first attack out of `stealthed` deals more damage. |
+| 9 | **Hollow Body**: a shadow clone that is destroyed blinds whoever destroyed it. | **Open Veins**: Throwing Knives' extra-hit chance rises against a bleeding target. |
+| 14 | **Substitute**: once per combat, while a clone stands, a hit aimed at the Ninja lands on the clone instead. | **Culling**: Shuriken Storm deals more to enemies below half HP. |
+| 20 | **Haze**: an enemy that attacks an ally under `smoke-cover` may lose track and strike another enemy instead. | **Red Harvest**: when the Ninja kills, the damage past the target's HP passes to the nearest enemy. |
 
 Rank 4:
 
 - Smoke Bomb (Shadow): `smoke-cover` also lowers enemy accuracy against the covered allies.
-- Shadow Strike (Shadow): the clone's hits apply `bleeding`.
-- Throwing Knives (Hundred Cuts): a knife that hits a bleeding target adds an extra stack.
-- Shuriken Storm (Hundred Cuts): one extra hit lands on the enemy with the most bleed stacks.
+- Shadow Strike (Shadow): two clones stand up instead of one.
+- Throwing Knives (Reaper): each knife can strike a different enemy.
+- Shuriken Storm (Reaper): one extra hit lands on the enemy with the lowest HP.
 - Barbed Net (both): a `netted` enemy bleeds each time it acts.
 
 ## Summoner
 
-- **Legion**: many hands. Goblins and Command, the swarm as the weapon.
-- **Totemist**: few, sturdy, bound to the party. Spirit, Golem and Totem keep the line.
+- **Shepherd**: a versatile flock for the party. The spirit heals, the golem holds, the totem
+  strengthens and steadies.
+- **Feral**: the bound things let off the leash. Goblins, Command and the imp hit harder and keep
+  hitting.
 
-| Level | Legion | Totemist |
+| Level | Shepherd | Feral |
 |---|---|---|
-| 4 | **Crowded Pact**: the Summoner's magic power rises for each active minion. | **Deep Roots**: the totem has more HP. |
-| 9 | **Frenzy**: a minion that kills an enemy deals more with its next attack. | **Spirit Ward**: the spirit's heal also removes one harmful status, every other turn. |
-| 14 | **Expendable**: when a minion dies, the Summoner regains MP. | **Bound Stone**: while the golem stands, the Summoner takes less damage. |
-| 20 | **Swarm**: minions deal more to an enemy another minion hit this round. | **Unbroken Totem**: once per combat, a hit that would break the totem leaves it at 1 HP. |
+| 4 | **Deep Roots**: the totem has more HP. | **Blooded Pack**: minions deal more damage to an enemy below half HP. |
+| 9 | **Spirit Ward**: the spirit's heal also removes one harmful status, every other turn. | **Frenzy**: a minion that kills an enemy deals more with its next attack. |
+| 14 | **Stone Watch**: while the golem stands, the ally with the lowest HP takes less damage. | **Bloodlust**: each enemy a minion kills raises every minion's attack for the rest of the combat. |
+| 20 | **Unbroken Totem**: once per combat, a hit that would break the totem leaves it at 1 HP. | **Swarm**: minions deal more to an enemy another minion hit this round. |
 
 Rank 4:
 
-- Summon Goblin (Legion): two goblins answer instead of one.
-- Command (Legion): costs less, and each commanded minion past the first acts with more power.
-- Summon Spirit (Totemist): the spirit heals two allies.
-- Totem Recall (Totemist): the totem also lowers the party's fear each round.
+- Summon Spirit (Shepherd): the spirit heals two allies.
+- Totem Recall (Shepherd): the totem also lowers the party's fear each round.
+- Summon Goblin (Feral): two goblins answer instead of one.
+- Command (Feral): costs less, and each commanded minion past the first acts with more power.
 - Summon Golem (both): the golem's slam applies `stagger`.
 
 ## Jester
@@ -253,41 +262,43 @@ Rank 4:
 ## Paladin
 
 - **Martyr**: takes the wounds and closes them. Lay on Hands and Guardian Angel.
-- **Crusader**: the light as a blade. Cross Slash and Vigil burn what stands against it.
+- **Inquisitor**: damage and control. Cross Slash and Defiance hold an enemy in place and punish
+  it.
 
-| Level | Martyr | Crusader |
+| Level | Martyr | Inquisitor |
 |---|---|---|
 | 4 | **Shared Wound**: Lay on Hands also heals the Paladin for part of the amount. | **Condemnation**: `condemned` enemies take more holy damage. |
-| 9 | **Kneeling Guard**: while kneeling in Vigil, the Paladin takes less damage. | **Zealous Cut**: Cross Slash's second cut deals more against a challenged enemy. |
-| 14 | **Saved**: when Guardian Angel spares an ally, it also heals them. | **Penance**: an enemy that attacks someone else while challenged becomes `condemned`. |
-| 20 | **Second Oath**: Martyr's Oath lasts one more turn if no ally fell during it. | **Holy Fire**: Retribution's returned damage is holy and applies `condemned`. |
+| 9 | **Kneeling Guard**: while kneeling in Vigil, the Paladin takes less damage. | **Shackled**: Cross Slash on a challenged enemy applies `stagger`. |
+| 14 | **Saved**: when Guardian Angel spares an ally, it also heals them. | **Penance**: an enemy that attacks someone else while challenged becomes `condemned` and may be `stunned`. |
+| 20 | **Second Oath**: Martyr's Oath lasts one more turn if no ally fell during it. | **Verdict**: Defiance also `silences` the challenged enemy for a turn, so it can only strike with its basic attack. |
 
 Rank 4:
 
 - Lay on Hands (Martyr): the healed ally also takes less damage until its next turn.
 - Guardian Angel (Martyr): covers two allies.
-- Cross Slash (Crusader): a third cut follows.
-- Vigil (Crusader): its damage rises each turn the Paladin stays kneeling.
-- Defiance (both): the challenge pulls up to two enemies.
+- Cross Slash (Inquisitor): a third cut follows.
+- Defiance (Inquisitor): the challenge pulls up to two enemies.
+- Vigil (both): its damage rises each turn the Paladin stays kneeling.
 
 ## Warlock
 
 - **Rot**: curses stacked until they burst. Hex and Withering Curse feed Ripened Curse.
-- **Blood Mage**: the Warlock's own blood as the price and the reward. Blood Pact and Soul Rend.
+- **Blood Mage**: the Warlock's own blood spent for high damage and for the party. Blood Pact and
+  Soul Rend.
 
 | Level | Rot | Blood Mage |
 |---|---|---|
 | 4 | **Deep Hex**: `hexed` lasts one more turn. | **Blood Price**: when MP is short, the Warlock can pay a skill's cost in HP. |
-| 9 | **Whisper**: Bind Tongue's `silenced` lasts one more turn on a target with three or more hex stacks. | **Sanguine**: lifesteal from Soul Rend past the Warlock's max HP becomes MP. |
-| 14 | **Rotten Harvest**: a Ripened Curse burst also hits a second enemy for half. | **Covenant**: while an ally carries the pact, the Warlock heals a little each time that ally deals damage. |
-| 20 | **Inexorable**: enemies cannot remove `hexed` from themselves. | **Life for Life**: below half HP, the Warlock's curses deal more. |
+| 9 | **Whisper**: Bind Tongue's `silenced` lasts one more turn on a target with three or more hex stacks. | **Transfusion**: Blood Pact also heals its target for part of the HP the Warlock spent this combat. |
+| 14 | **Rotten Harvest**: a Ripened Curse burst also hits a second enemy for half. | **Life for Life**: below half HP, the Warlock's damage rises. |
+| 20 | **Inexorable**: enemies cannot remove `hexed` from themselves. | **Covenant**: an ally carrying the pact deals more damage, and the Warlock heals a little each time that ally lands a hit. |
 
 Rank 4:
 
 - Hex (Rot): applies two stacks.
 - Withering Curse (Rot): `enfeebled` always lands.
 - Blood Pact (Blood Mage): binds two targets.
-- Soul Rend (Blood Mage): the party's share of the drain rises.
+- Soul Rend (Blood Mage): costs HP instead of MP and deals more.
 - Bind Tongue (both): a `silenced` enemy takes more curse damage.
 
 ---
@@ -297,24 +308,31 @@ Rank 4:
 Each of these is a generic effect kind, condition or hook in data, usable by any class, monster,
 item or artifact:
 
-- Conditions on the target: carries a given status, has N or more stacks of it, below an HP
-  share, aiming at someone other than the caster, attacked a given character this round.
+- Conditions on the target: carries a given status, has N or more stacks of it, carries N or more
+  debuffs or damage-over-time effects, carries a status of a different element than the hit,
+  below an HP share, aiming at someone other than the caster, attacked a given character this
+  round.
 - Conditions on the caster: carries a given status, took no damage last round, below an HP share,
   a given summon is up.
 - Once-per-combat triggers: redirect a hit, hold a summon at 1 HP.
 - On-kill triggers: refund the skill's MP, act first next round, buff the killer's next attack.
-- On-death triggers: pass the target's debuffs to the nearest enemy.
+- On-death triggers: pass the target's stat debuffs, or the damage past its HP, to the nearest
+  enemy.
+- Copying a debuff from one enemy onto others.
+- Limiting or steering a random status roll (Contagion) to a pool: stat debuffs only, or a
+  damage-over-time effect the target lacks.
+- A tick counter per target that adds a new effect every N ticks.
 - Damage-over-time ticks that can crit with the applier's crit chance.
 - Extending a status's duration, or refreshing it, when a given hit lands.
 - Extra targets: forking, passing through, splash to a neighbour, a second summon.
 - Lingering zones that act at the start of the next round.
 - Turn-order pushes, later or first.
 - Dice-roll floors raised by one step, and roll history read by later skills.
-- Paying a skill's cost in HP when MP is short.
+- Paying a skill's cost in HP, always or when MP is short.
 - Overheal converted into an absorb status.
 
-New status effects: `frozen`, `mercy-ward`, `seared`, plus the stacking statuses that Kindled
-Faith, Pain Fed and House Edge need.
+New status effects: `frozen`, `mercy-ward`, `seared`, `exposed`, plus the stacking statuses that
+Kindled Faith, Pain Fed, House Edge and Bloodlust need.
 
 ## Review before data
 
