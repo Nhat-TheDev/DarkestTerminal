@@ -154,7 +154,8 @@ The baseline Stratum, where the player learns the game.
 ### 2.2 S2: Erosion (`rule.kind: "erosion"`)
 
 Every `intervalRounds` rounds of a combat, counted from that combat's first round, every living
-party member receives the rule's `statusIds` (`acid-burn` and `corroded`, both existing).
+party member receives the rule's `statusIds` (`acid-burn` and `corroded`, both existing). Summons
+are not party members here or anywhere else in the Strata rules: erosion skips them.
 
 Most S2 monsters carry the `self-destruct` trait (`monster-traits.json`, threshold and blast per
 archetype in data), and have low base stats to compensate:
@@ -178,18 +179,22 @@ is active, every monster attack that picks a target picks the focused character.
   or on a tie, the one with the lowest current HP as a percentage of max HP.
 - `focused` overrides `taunt` and the Paladin's `challenge` pull. If the focused character is
   `stealthed`, monsters use normal targeting for that round and the focus stays where it is.
+- `focused` decides whom an attack is aimed at, not who takes it. Effects that take a hit for an
+  ally, such as the Knight's Interpose and Watchful, still work on an attack aimed at the focused
+  character.
+- Summons are never focused. While the focused character's summons are up, attacks still go to the
+  focused character.
 - When the duration ends or the focused character dies, a new target is chosen at once by the same
   rule.
-
-Scent thresholds: at the start of each round, party HP is summed as a percentage of the party's
-total max HP, with dead characters counting as 0 HP. For each threshold in `scentThresholds` the
-sum is below, every monster holds one step of the rule's `scentStatusId`. Steps are recomputed
-every round, so healing the party takes them away.
+ Scent thresholds: at the start of each round, party HP is summed as a percentage of the party's
+total max HP, with dead characters counting as 0 HP and summons not counted. For each threshold in
+`scentThresholds` the sum is below, every monster holds one step of the rule's `scentStatusId`.
+Steps are recomputed every round, so healing the party takes them away.
 
 ### 2.4 S4: Night Terror (`rule.kind: "night-terror"`)
 
 - `minFear`: no character's fear can drop below this value while in S4. On entering S4, any
-  character below it is raised to it.
+  character below it is raised to it. Summons have no fear and are unaffected.
 - Fear-tier debuff: on top of the existing fear-tier penalties (`04-fear-combat.md`), each fear
   tier above Calm applies its entry of `fearTierStatusIds`, a stat-reduction debuff that grows
   stronger per tier.
@@ -216,7 +221,8 @@ Two further S4 traits are not part of the rule:
   - S2: *"The passage narrows and runs wet. Every surface down here slopes the same way."*
   - S3: *"The roots in the walls are warm. Some of them draw back from your hands."*
   - S4: *"Where the ceiling should be, there are stars — clearer than any you remember from above."*
-- One omen is shown per floor, after the floor's guard room is cleared, so three per Stratum. The
+- One omen is shown per floor, after the floor's guard room is cleared, so three per Stratum. On
+  floor 12 the order is the S4 boss, then the floor's omen, then the ending checkpoint. The
   existing 12 omens fall into four bands; the first and last already fit S1 and S4, and the middle
   two are rewritten for S2 and S3 in M1b. Floor 13 and Endless floors show no omen.
 - Floor 13's rooms use the names of the Stratum each room is drawn from. Endless floors use the
@@ -249,7 +255,8 @@ Stratum boss: 59 archetypes plus The Founder, made of the 42 existing ones rewor
 
 Provisional assignment for M1a: the table's existing archetypes, with `vampire-lord` standing in
 as the S3 boss until M1b adds the real one. That leaves S3 with one Elite (`dark-knight`) and ten
-Elite/Boss archetypes in all, which floor 13 accounts for (§6.2).
+Elite/Boss archetypes in all, which floor 13 accounts for (§6.2). S2 and S3 each have a single
+Elite until M1b, so floors 4–5 and 7–8 meet the same Elite twice.
 
 ### 3.2 What each Stratum's monsters are
 
@@ -317,8 +324,9 @@ Skill points replace automatic rank unlocks entirely. They buy ranks only.
   - skill rank 4: on up to three of the five non-ultimate skills, one more each time a level in
     `rank4UnlockLevels` is reached
   - class passive ranks: the existing `passiveSkill`, 3 ranks
-- The point budget at the level cap exactly covers that build, so every character finishes the run
-  with every skill at rank 3, the class passive maxed and three skills at rank 4. Builds
+- The point budget at the level cap exactly covers that build, so every character at the cap has
+  every skill at rank 3, the class passive maxed and three skills at rank 4. A party that takes
+  short routes ends the run below the cap and short of that build (§5). Builds
   differ in which skills reach rank 4, the order of investment, and the passive pairs (§4.3).
 - Gates are minimum levels stored in `classes.json`, never hardcoded:
   - rank 1 of each skill has a minimum level per slot, with the ultimate's notably later
@@ -407,8 +415,8 @@ This section gives method and targets only; values are tuned with `random-play` 
 ### 6.1 The ending checkpoint
 
 The logic of Part F.1 (`10-event-narrative.md`) is unchanged: Leave (when its triggers fire),
-otherwise Stay, Let Go or Continue. It fires after the S4 boss. Its conditions read the slot's
-totals (§6.5) instead of the run's.
+otherwise Stay, Let Go or Continue. It fires after the S4 boss and floor 12's omen (§2.5). Its
+conditions read the slot's totals (§6.5) instead of the run's.
 
 ### 6.2 Floor 13, the last floor
 
@@ -447,8 +455,10 @@ This staging script is shared by the TUI and Unity builds.
    dungeon's architect and contradict §12.6 and §12.4. The Founder becomes the final form: more
    brain than body, nerve-thick ropes trailing where legs should be. This is the existing
    description, kept because it already combines S3's nerve and flesh with S4's mind.
-4. The fight is against the final form only. The existing kit stays; stats come from floor 13 on
-   the new scale plus any tuning.
+4. The fight is against the final form only, across its existing three HP bars. The
+   transformation happens once, before the fight. Bars 2 and 3 open with Hung Lower and The Last
+   of It as further steps of the same collapse, not as new forms. The existing kit stays; stats
+   come from floor 13 on the new scale plus any tuning.
 
 On the TUI, steps 1–3 are paced text beats plus a sprite swap (human form to final form), on the
 existing founder dialogue screen. The Unity build stages it in full.
@@ -471,7 +481,11 @@ existing founder dialogue screen. The Unity build stages it in full.
 
 The state the checkpoint and the chain events read moves from `GameState` into the slot profile:
 
-- `narrativeCounters` (all five counters), `loreExposureCount` and `eventOutcomes`
+- `narrativeCounters` (all five counters)
+- `loreExposureCount` and `campReflectionChoices`, which move together so a tier already answered
+  is never asked again
+- the outcomes the checkpoint reads: the latest `blood-altar` outcome and the `camp-reflection`
+  outcome
 - the endings the slot has reached, whether The Founder has fallen, and whether Endless is
   unlocked
 
@@ -487,7 +501,9 @@ Consequences, accepted:
   run closes it for the slot.
 - Camp Reflection tiers rise across parties, not within one.
 
-`runStardust`, `firedOnceEventIds` and everything else about a single run stay in `GameState`.
+`runStardust`, `firedOnceEventIds`, every other `eventOutcomes` entry (return visits,
+`crossEventVariants`, `reflectionRequiresOutcome`) and everything else about a single run stay in
+`GameState`, so a new party never meets a return-visit text for a room it has not seen.
 
 ---
 
@@ -511,12 +527,13 @@ Consequences, accepted:
 - Floor 13: room count in range, no adjacent same-Stratum rooms, every Stratum at least twice, no
   repeated boss, The Founder alone in the last room, no rest or event rooms, and the M1a cap.
 - Strata rules:
-  - S2: erosion fires on the configured round interval; self-destruct primes below threshold
-    (damage over time included), detonates on its own next turn, waits out a stun, never detonates
-    if killed first, and pays out as a kill.
+  - S2: erosion fires on the configured round interval and skips summons; self-destruct primes below
+    threshold (damage over time included), detonates on its own next turn, waits out a stun, never
+    detonates if killed first, and pays out as a kill.
   - S3: `focused` target order (bleed stacks, then HP percentage), duration, overrides taunt and
-    challenge, falls back under stealth, retargets on death; scent steps recomputed each round,
-    with dead characters counted as 0.
+    challenge, falls back under stealth, retargets on death, still taken by Interpose and
+    Watchful, never on a summon; scent steps recomputed each round, with dead characters counted
+    as 0 and summons left out.
   - S4: fear never below `minFear`; per-tier debuffs; monster fear scaling; `prescient` targeting
     through the `queued` factor.
 - Skill points: every gate, the rank-4 levels, no rank 4 on the ultimate, no point carried over, a
@@ -527,10 +544,12 @@ Consequences, accepted:
   point spent.
 - Level-up screen: one pass per level gained, closed only once every point is spent and every pair
   answered.
-- Endings and Endless: checkpoint after the S4 boss, The Founder on floor 13, the run ending on
-  his defeat, Endless skipping both, Endless bosses on the configured interval.
-- Slot progress: counters, outcomes and the Endless unlock survive permadeath and every ending,
-  `clearSlot` resets them, and two slots never share them.
+- Endings and Endless: checkpoint after the S4 boss and floor 12's omen, The Founder on floor 13
+  across his three bars, the run ending on his defeat, Endless skipping both, Endless bosses on the
+  configured interval.
+- Slot progress: counters, Camp Reflection state, the checkpoint's outcomes and the Endless unlock
+  survive permadeath and every ending, other outcomes reset with each run, `clearSlot` resets the
+  slot's, and two slots never share them.
 - Save: `OLDEST_LOADABLE_SAVE_VERSION` at 2.0.0, a 1.x run rejected cleanly, the slot profile
   intact.
 - UI: key hints for the split choice and level-up screens, the floor map drawn legibly at
@@ -575,7 +594,7 @@ Consequences, accepted:
 - Skill rank-1 gates: slots 1–2 from level 2 (the first point), slot 3 at level 3, slot 4 at level
   5, slot 5 at level 7, the ultimate (slot 6) at level 12.
 - Class passive rank 1 from level 2.
-- Rank 4: the 1st from level 12, the 2nd from 18, the 3rd from 24; never on the ultimate. The full
+- Rank 4: the 1st from level 12, the 2nd from 17, the 3rd from 22; never on the ultimate. The full
   build is 18 + 3 + 3 = 24 points, the budget at the cap of 25.
 - Passive pairs at levels 4, 9, 14 and 20.
 - At least 3 open purchases up to level 18, at least 1 from level 19 to the cap.
