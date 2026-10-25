@@ -28,7 +28,7 @@ One spec, three implementation plans, built in order:
   passives), progression compression.
 - M1b, monsters and atmosphere: monster rework and new monsters, sprites, Stratum entry text,
   omens, room names.
-- M1c, class content: rank 4 for every skill and ten optional passives per class, written around
+- M1c, class content: rank 4 for every skill and four passive pairs per class, written around
   each class's build directions.
 
 M1a must be playable and balanceable with the existing monster roster assigned to Strata
@@ -302,7 +302,7 @@ rule, a cost turned into a payoff), so choosing which skills reach it shapes the
 
 ### 4.2 Skill points
 
-Skill points replace automatic rank unlocks entirely.
+Skill points replace automatic rank unlocks entirely. They buy ranks only.
 
 - At level 1 there are no points; every character starts with only the basic attack.
 - Every level-up gives 1 point per character, and every point is spent at once: points never carry
@@ -311,41 +311,47 @@ Skill points replace automatic rank unlocks entirely.
   - skill ranks 1–3: 6 skills × 3 ranks, where rank 1 unlocks the skill
   - skill rank 4: on at most `maxRank4Skills` of a character's six skills
   - class passive ranks: the existing `passiveSkill`, 3 ranks
-  - optional passives (M1c): a class-specific pool of `optionalPassivePoolSize`, 120 across the 12
-    classes; a character takes at most `maxOptionalPassives` of them, one point each, no ranks, no
-    duplicates
-- The full build costs slightly more than the run gives. Points are enough for every skill at
-  rank 3 and the class passive maxed, plus a small build layer of rank 4s and optional passives,
-  part of which always stays unbought; a character that leaves some rank 3s unbought can take more
-  of that layer. Builds differ in which skills reach rank 4, which optional passives were taken,
-  and the order of investment.
+- The point budget at the level cap exactly covers that build, so every character finishes the run
+  with every skill at rank 3, the class passive maxed and `maxRank4Skills` skills at rank 4. Builds
+  differ in which skills reach rank 4, the order of investment, and the passive pairs (§4.3).
 - Gates are minimum levels stored in `classes.json`, never hardcoded:
   - rank 1 of each skill has a minimum level per slot, with the ultimate's notably later
   - rank 4 of any skill has a minimum level, on top of rank 3
   - class passive rank 1 has a minimum level
-  - each optional-passive pick, 1st through last, has its own minimum level
   - ranks 2 and 3 of anything require only the previous rank
-- A gate opens an option, it does not force a pick. At a level where both a skill and an optional
-  passive open, the player decides which to buy first.
+- A gate opens an option, it does not force a pick.
 - From level 2 to `minPointChoicesUntilLevel`, whatever the character bought before, at least
   `minPointChoices` purchases are open. After that, at least one is always open: the last levels
-  finish the ranks still missing. The gates, the rank-4 limit and the passive pool are set so this
-  holds, and a test walks every reachable build to check it (§8).
+  finish the ranks still missing. The gates and the rank-4 limit are set so this holds, and a test
+  walks every reachable build to check it (§8).
 - Spent points are permanent for the run (no respec), matching the Artifact design.
-- A point-allocation screen opens after every combat that levels the party up, one character at a
-  time, and does not close until each character has spent the level's point. A combat that grants
-  several levels runs the screen once per level. EXP comes only from combat, so this covers every
-  level-up. Its footer follows the key-hint grammar (`src/ui/keyHints.ts`, enforced by
-  `test/keyHints.test.ts`).
-- Abilities (`11-abilities.md`) are untouched and stay a separate, pre-run system. Optional
-  passives must not duplicate ability effects.
 
-### 4.3 Build directions (design only)
+### 4.3 Passive pairs (M1c)
 
-Each class's optional passives and rank 4s are written around two or three build directions, for
-example a Knight that holds the line against a Knight that answers every hit. A direction is a set
-of optional passives and the skills whose rank 4 pays them off; it needs a clear identity and at
-least as many passives and rank 4s as one character can buy.
+Optional passives come in pairs and cost no points.
+
+- Each class has `passivePairs`: four pairs of two class-specific passives, 96 across the 12
+  classes. Each pair has its own level in data.
+- At a pair's level, the character must take one of its two passives. The other is gone for the
+  run. A character finishes with four optional passives, one from each pair.
+- Taken passives are permanent for the run, like spent points.
+- Optional passives must not duplicate ability effects (`11-abilities.md`). Abilities are
+  untouched and stay a separate, pre-run system.
+
+### 4.4 The level-up screen
+
+A level-up screen opens after every combat that levels the party up, one character at a time, and
+does not close until each character has spent the level's point and, at a pair's level, taken one
+of the pair. A combat that grants several levels runs the screen once per level. EXP comes only
+from combat, so this covers every level-up. Its footer follows the key-hint grammar
+(`src/ui/keyHints.ts`, enforced by `test/keyHints.test.ts`).
+
+### 4.5 Build directions (design only)
+
+Each class's rank 4s and passive pairs are written around two build directions, for example a
+Knight that holds the line against a Knight that answers every hit. Each pair sets the two
+directions against each other, one passive for each, and each direction has skills whose rank 4
+pays it off. A character can follow one direction through all four pairs or mix them.
 
 Directions are a design tool, recorded in `01-class-skill.md`. They are not data and never shown in
 game: the player reads what fits together from the descriptions.
@@ -359,7 +365,7 @@ This section gives method and targets only; values are tuned with `random-play` 
 - Level cap (`maxLevel`) is lowered. A party taking the long routes should reach it at about the S4
   boss, at roughly two levels per floor, with the first level-up right after the first combat. A
   party taking short routes ends below that by design; `random-play` measures how far.
-- Level-keyed data (`level-growth.json` growth tiers and EXP tiers, every gate in §4.2) is rescaled
+- Level-keyed data (`level-growth.json` growth tiers and EXP tiers, every gate in §4.2, the pair levels in §4.3) is rescaled
   to the new cap, keeping relative order. Thresholds that would collapse onto the same level are
   spread apart.
 - Monster scaling: `monsterDepthBuffBracketFloors` becomes one floor per bracket on the new scale,
@@ -504,17 +510,20 @@ Consequences, accepted:
     with dead characters counted as 0.
   - S4: fear never below `minFear`; per-tier debuffs; monster fear scaling; `prescient` targeting
     through the `queued` factor.
-- Skill points: every gate, the rank-4 limit, the optional-passive limit, no duplicate optional
-  passive, no point carried over, one screen per level gained, and a walk over every reachable
-  build showing at least `minPointChoices` open purchases up to `minPointChoicesUntilLevel` and
-  at least one at every level after.
+- Skill points: every gate, the rank-4 limit, no point carried over, a budget at the cap equal to
+  the full build, and a walk over every reachable build showing at least `minPointChoices` open
+  purchases up to `minPointChoicesUntilLevel` and at least one at every level after.
+- Passive pairs: each pair offered at its level, exactly one of the two taken, the other gone, no
+  point spent.
+- Level-up screen: one pass per level gained, closed only once every point is spent and every pair
+  answered.
 - Endings and Endless: checkpoint after the S4 boss, The Founder on floor 13, the run ending on
   his defeat, Endless skipping both, Endless bosses on the configured interval.
 - Slot progress: counters, outcomes and the Endless unlock survive permadeath and every ending,
   `clearSlot` resets them, and two slots never share them.
 - Save: `OLDEST_LOADABLE_SAVE_VERSION` at 2.0.0, a 1.x run rejected cleanly, the slot profile
   intact.
-- UI: key hints for the split choice and point-allocation screens, the floor map drawn legibly at
+- UI: key hints for the split choice and level-up screens, the floor map drawn legibly at
   `maxParallelBranches` lanes, and `random-play` layout checks at 150×45 plus the per-Stratum and per-route report.
 - Every plan ends green on `bun test`, `bun run typecheck` and `bun run docs:sync --check`.
 
@@ -522,9 +531,9 @@ Consequences, accepted:
 
 - `design-doc.md`: run structure, Strata, branching floors.
 - `developer-guide.md`: `strata.json` and its loader, the branching-floor builder, the floor-13 builder,
-  the split choice and point-allocation screens, the new slot-profile fields.
+  the split choice and level-up screens, the new slot-profile fields.
 - `technical-decisions.md` §1: the branching-floor builder in place of the stage graph.
-- `gameplay-decisions/`: 01 (skill points, rank 4, build directions), 02 (roster by Stratum, self-destruct, `prescient`, new
+- `gameplay-decisions/`: 01 (skill points, rank 4, passive pairs, build directions), 02 (roster by Stratum, self-destruct, `prescient`, new
   race), 03 and 04 (S4 fear), 06 (level cap, points), 07 (drops by Stratum), 08 and 10 (event
   gating, ending depths, slot-kept progress, Founder staging), 09 and 11-abilities (Stardust,
   `depthCap`), 12-world-bible (internal body-metaphor section).
@@ -533,7 +542,7 @@ Consequences, accepted:
 
 ## 10. Risks
 
-1. Content volume. M1b and M1c are mostly writing: 59 monsters, 72 rank-4 skills and 120 passives.
+1. Content volume. M1b and M1c are mostly writing: 59 monsters, 72 rank-4 skills and 96 passives.
 2. Losing spirals. `focused` overriding taunt, scent steps and fear scaling all punish a party that
    is already losing. `random-play` measures each one separately.
 3. Floor 13. Consecutive boss rooms with only items and Camp may be close to unwinnable; it is
@@ -554,12 +563,10 @@ Consequences, accepted:
 - Skill rank-1 gates: slots 1–2 from level 2 (the first point), slot 3 at level 3, slot 4 at level
   5, slot 5 at level 7, the ultimate (slot 6) at level 12.
 - Class passive rank 1 from level 2.
-- Rank 4: from level 10, on at most 2 skills per character.
-- Optional passives: a pool of 10 per class, at most 3 per character; picks open at levels 3, 8 and
-  12.
-- At least 3 open purchases up to level 21, at least 1 from level 22 to the cap. With these values
-  the full build is 26 points against 24: every skill at rank 3 and the class passive maxed take
-  21, leaving 3 for the 5-point build layer.
+- Rank 4: from level 10, on at most 3 skills per character. The full build is 18 + 3 + 3 = 24
+  points, the budget at the cap of 25.
+- Passive pairs at levels 4, 9, 14 and 20.
+- At least 3 open purchases up to level 19, at least 1 from level 20 to the cap.
 - S2 erosion every 2 rounds; S3 `focused` lasts 2 rounds; S3 scent thresholds at 80, 60, 40 and
   20% of party HP; S4 `minFear` 30, below the first fear tier, so it raises the baseline without a
   penalty of its own.
