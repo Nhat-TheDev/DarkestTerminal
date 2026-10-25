@@ -14,10 +14,10 @@ this design and does not extend it.
 The body of this spec names data fields, not values. Values already fixed are listed once in the
 appendix; they move into `data/*.json` during implementation and are then deleted from here.
 
-## Prerequisite
+## Base
 
-The per-slot profile (`slotN.profile.json`, `feat/save-slot-runs`) is merged before M1a starts.
-§6.5 adds fields to it.
+This spec builds on 1.2.0, including its per-slot profile (`slotN.profile.json`,
+`src/engine/profile.ts`). §6.5 adds fields to that profile.
 
 ## Delivery
 
@@ -28,8 +28,8 @@ One spec, three implementation plans, built in order:
   passives), progression compression.
 - M1b, monsters and atmosphere: monster rework and new monsters, sprites, Stratum entry text,
   omens, room names.
-- M1c, class content: rank 4 for the five non-ultimate skills and four passive pairs per class, written around
-  each class's build directions.
+- M1c, class content: rank 4 for the five non-ultimate skills and four passive pairs per class,
+  written around each class's build directions.
 
 M1a must be playable and balanceable with the existing monster roster assigned to Strata
 provisionally (§3.1), before any M1b content lands.
@@ -122,9 +122,9 @@ that split and merge freely.
 - Every route holds at least `minCombatRoomsPerRoute` combat rooms and respects the event and rest
   bounds (`maxEventRoomsPerRoute`, `minRestRoomsPerRoute`, `maxRestRoomsPerRoute`). Every floor
   still has at least `minEventRoomsPerFloor` event rooms.
-- On entering a floor, the map shows the whole layout. At each split, the choice screen shows each branch's rooms up to its next
-  split or merge, with their types, and the shortest and longest route left to the guard room
-  through it. The party picks a branch at every split and never goes back.
+- On entering a floor, the map shows the whole layout. At each split, the choice screen shows each
+  branch's rooms up to its next split or merge, with their types, and the shortest and longest route
+  left to the guard room through it. The party picks a branch at every split and never goes back.
 - A long route means more combat (EXP, coins, drops) and more events, at the cost of more satiety
   drain and fear. A short route reaches the guard room sooner with less of both.
 - The Gatekeeper's blessing on floor 1 counts rooms along the route taken.
@@ -203,8 +203,8 @@ Two further S4 traits are not part of the rule:
   for the character who queued a support action this round (heal, guard, a buff on an ally) or the
   highest-MP-cost skill, with its rank scores in `targeting`. No text explains this.
 - Identical rooms: every S4 room uses the same name, and the split choice screen shows an S4
-  branch's length but not its room types. A room's type (combat, event, rest) shows only once the party
-  enters it.
+  branch's length but not its room types. A room's type (combat, event, rest) shows only once the
+  party enters it.
 
 ### 2.5 Showing rules and atmosphere to the player
 
@@ -280,6 +280,9 @@ Elite/Boss archetypes in all, which floor 13 accounts for (§6.2).
 - Kits: S2 adds the self-destruct trait, S3 adds bleed, some S4 monsters get `prescient`. Each new
   Elite and Boss gets its own data-declared kit (cooldowns, conditions, target rules, telegraphs,
   phases), like the existing ten; reworked ones keep theirs, retuned to their Stratum.
+- Telegraph meter: at Boss tier, each new archetype carries a `bossTelegraph` with its own
+  `meterLength`, unless it is built without a telegraph as Orc Chieftain and Void Amalgamation
+  are. No two bosses in the same difficulty band share a meter length (`06-level-system.md`).
 - Race changes where the creature's nature changed. S4 gets a new race (working id `nightmare`)
   with its own resistances and weaknesses, so S4 creatures don't fight like ordinary undead or
   beasts. This is data only.
@@ -368,11 +371,13 @@ This section gives method and targets only; values are tuned with `random-play` 
 - Level cap (`maxLevel`) is lowered. A party taking the long routes should reach it at about the S4
   boss, at roughly two levels per floor, with the first level-up right after the first combat. A
   party taking short routes ends below that by design; `random-play` measures how far.
-- Level-keyed data (`level-growth.json` growth tiers and EXP tiers, every gate in §4.2, the pair levels in §4.3) is rescaled
-  to the new cap, keeping relative order. Thresholds that would collapse onto the same level are
-  spread apart.
+- `level-growth.json`'s growth tiers and EXP tiers are rescaled to the new cap, keeping relative
+  order. Thresholds that would collapse onto the same level are spread apart. The gates in §4.2
+  and the pair levels in §4.3 are set directly on the new cap.
 - Monster scaling: `monsterDepthBuffBracketFloors` becomes one floor per bracket on the new scale,
   plus each Stratum's `tuning` multiplier. Endless continues the shared curve.
+- The Elite/Boss difficulty bands that `test/elite-boss-balance.test.ts` pins are re-fitted to the
+  new depth scale, one band per Stratum.
 - Artifact rarity and shop tiers: `floorsPerStep` becomes one Stratum per step, and each source's
   anchors move to the new scale.
 - Abilities: `abilities.depthCap` moves to the new scale. Elite and Boss kills still unlock
@@ -411,10 +416,10 @@ Floor 13 has its own builder:
 
 - A single line of rooms (count from data, The Founder's room included), with no branches, rest
   rooms or events.
-- Every room before the last is a boss room: one Elite/Boss archetype from one Stratum at Boss
-  tier, plus a number of that Stratum's normal monsters set in data. That Stratum's rule and
-  atmosphere apply inside the room, so the floor moves between ordinary, damp, crawling and
-  crushing from room to room.
+- Every room before the last is a boss room: one Elite/Boss archetype from one Stratum at Boss tier,
+  with its telegraph meter where it has one, plus a number of that Stratum's normal monsters set in
+  data. That Stratum's rule and atmosphere apply inside the room, so the floor moves between
+  ordinary, damp, crawling and crushing from room to room.
 - Stratum order is shuffled with two constraints: no two adjacent rooms from the same Stratum, and
   every Stratum appears at least twice.
 - No boss repeats within the floor. The 16 Elite/Boss archetypes across the four Strata (The
@@ -452,14 +457,15 @@ existing founder dialogue screen. The Unity build stages it in full.
 
 - True ending (The Founder defeated): the run ends on the victory screen; it no longer continues
   past The Founder. The events marked `removedOnFounderVictory` leave the pool for every later run
-  in the slot.
-- Endless mode unlocks for a slot once that slot reaches any ending (Stay, Let Go, Leave or the
-  true ending), recorded in the slot profile. It is chosen when starting a run in that slot.
-  Floors 1–12 play exactly as in a normal run, Strata and their rules included. After floor 12
-  there is no checkpoint and no floor 13: the run continues at floor 14 with branching floors, monster
-  and event pools from all four Strata, and no Stratum rule. Every `endless.bossFloorInterval`
-  floors, counted from floor 13, the guard room holds a Boss drawn from the four Stratum bosses.
-  Death in Endless is ordinary permadeath (abilities lost, Stardust buyback).
+  in the slot: the event roll reads the slot's record that The Founder has fallen (§6.5), not the
+  run's `firedOnceEventIds`.
+- Endless mode unlocks for a slot once that slot reaches any ending (Stay, Let Go, Leave or the true
+  ending), recorded in the slot profile. It is chosen when starting a run in that slot. Floors 1–12
+  play exactly as in a normal run, Strata and their rules included. After floor 12 there is no
+  checkpoint and no floor 13: the run continues at floor 14 with branching floors, monster and event
+  pools from all four Strata, and no Stratum rule. Every `endless.bossFloorInterval` floors, counted
+  from floor 13, the guard room holds a Boss drawn from the four Stratum bosses. Death in Endless is
+  ordinary permadeath (abilities lost, Stardust buyback).
 
 ### 6.5 Ending progress kept per slot
 
@@ -497,11 +503,11 @@ Consequences, accepted:
 ## 8. Testing
 
 - Branching floors: a property test over many seeds covers one entrance and one guard room that
-  every branch ends in, no dead ends, no crossing lanes, merges only between neighbouring lanes,
-  no room that is both a merge and a split, `minBranchRooms` between splits and merges, at most
-  `maxParallelBranches` side by side, no two identical branches out of a split, route lengths in range with
-  the shortest and longest at least `minRouteLengthGap` apart, `minCombatRoomsPerRoute`, the event
-  and rest bounds on every route, and `minEventRoomsPerFloor`.
+  every branch ends in, no dead ends, no crossing lanes, merges only between neighbouring lanes, no
+  room that is both a merge and a split, `minBranchRooms` between splits and merges, at most
+  `maxParallelBranches` side by side, no two identical branches out of a split, route lengths in
+  range with the shortest and longest at least `minRouteLengthGap` apart, `minCombatRoomsPerRoute`,
+  the event and rest bounds on every route, and `minEventRoomsPerFloor`.
 - Floor 13: room count in range, no adjacent same-Stratum rooms, every Stratum at least twice, no
   repeated boss, The Founder alone in the last room, no rest or event rooms, and the M1a cap.
 - Strata rules:
@@ -513,9 +519,10 @@ Consequences, accepted:
     with dead characters counted as 0.
   - S4: fear never below `minFear`; per-tier debuffs; monster fear scaling; `prescient` targeting
     through the `queued` factor.
-- Skill points: every gate, the rank-4 levels, no rank 4 on the ultimate, no point carried over, a budget at the cap equal to
-  the full build, and a walk over every reachable build showing at least `minPointChoices` open
-  purchases up to `minPointChoicesUntilLevel` and at least one at every level after.
+- Skill points: every gate, the rank-4 levels, no rank 4 on the ultimate, no point carried over, a
+  budget at the cap equal to the full build, and a walk over every reachable build showing at least
+  `minPointChoices` open purchases up to `minPointChoicesUntilLevel` and at least one at every level
+  after.
 - Passive pairs: each pair offered at its level, exactly one of the two taken, the other gone, no
   point spent.
 - Level-up screen: one pass per level gained, closed only once every point is spent and every pair
@@ -527,19 +534,20 @@ Consequences, accepted:
 - Save: `OLDEST_LOADABLE_SAVE_VERSION` at 2.0.0, a 1.x run rejected cleanly, the slot profile
   intact.
 - UI: key hints for the split choice and level-up screens, the floor map drawn legibly at
-  `maxParallelBranches` lanes, and `random-play` layout checks at 150×45 plus the per-Stratum and per-route report.
+  `maxParallelBranches` lanes, and `random-play` layout checks at 150×45 plus the per-Stratum and
+  per-route report.
 - Every plan ends green on `bun test`, `bun run typecheck` and `bun run docs:sync --check`.
 
 ## 9. Docs to update during implementation
 
 - `design-doc.md`: run structure, Strata, branching floors.
-- `developer-guide.md`: `strata.json` and its loader, the branching-floor builder, the floor-13 builder,
-  the split choice and level-up screens, the new slot-profile fields.
+- `developer-guide.md`: `strata.json` and its loader, the branching-floor builder, the floor-13
+  builder, the split choice and level-up screens, the new slot-profile fields.
 - `technical-decisions.md` §1: the branching-floor builder in place of the stage graph.
-- `gameplay-decisions/`: 01 (skill points, rank 4, passive pairs, build directions), 02 (roster by Stratum, self-destruct, `prescient`, new
-  race), 03 and 04 (S4 fear), 06 (level cap, points), 07 (drops by Stratum), 08 and 10 (event
-  gating, ending depths, slot-kept progress, Founder staging), 09 and 11-abilities (Stardust,
-  `depthCap`), 12-world-bible (internal body-metaphor section).
+- `gameplay-decisions/`: 01 (skill points, rank 4, passive pairs, build directions), 02 (roster by
+  Stratum, self-destruct, `prescient`, new race), 03 and 04 (S4 fear), 06 (level cap, points), 07
+  (drops by Stratum), 08 and 10 (event gating, ending depths, slot-kept progress, Founder staging),
+  09 and 11-abilities (Stardust, `depthCap`), 12-world-bible (internal body-metaphor section).
 - `README.md` and `CLAUDE.md`: the level range and the floor-generation description.
 - Generated tables via `bun run docs:sync`.
 
@@ -548,9 +556,10 @@ Consequences, accepted:
 1. Content volume. M1b and M1c are mostly writing: 59 monsters, 60 rank-4 skills and 96 passives.
 2. Losing spirals. `focused` overriding taunt, scent steps and fear scaling all punish a party that
    is already losing. `random-play` measures each one separately.
-3. Floor 13. Consecutive boss rooms with only items and Camp may be close to unwinnable; it is
-   balanced on its own.
-4. Short routes. A party that always takes the shortest route may fall too far behind the level curve.
+3. Floor 13. Consecutive boss rooms, most of them with a telegraph meter, and only items and Camp
+   between them may be close to unwinnable; it is balanced on its own.
+4. Short routes. A party that always takes the shortest route may fall too far behind the level
+   curve.
 5. In-progress 1.x runs stop loading on upgrade.
 
 ---
