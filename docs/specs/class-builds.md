@@ -18,8 +18,11 @@ This spec gives each mechanic and its intent, never its numbers. Numbers are set
 - A passive is conditional and specific to its class. It never grants a flat stat, lifesteal,
   damage reflection, dodge, a survive-at-1-HP save, speed, a generic crit bonus or MP regeneration:
   abilities already cover those (`11-abilities.md`), and a passive must not duplicate one.
-- A passive may change a class's own skills, its class passive and its summons, including the
-  ultimate.
+- A passive is one of two kinds. It may change how one of the class's skills works (a new rider,
+  target rule, cost or trigger on that skill, the ultimate and the class passive included, or on
+  the class's summons), or it may stand on its own, tied to no skill (a condition met in combat).
+  Either kind can sit on either side of a pair. The Mage's Conductor is the first kind (it changes
+  Lightning Bolt); the Ninja's Red Harvest is the second.
 - Rank 4 changes how the skill plays. A class's five rank 4s are close to equal in strength; a rank
   4 that adds little damage makes up for it in its effect. The ultimate has no rank 4.
 - Turn-skipping effects below (`frozen`, a longer `silenced`, a forced basic attack) need a rule
