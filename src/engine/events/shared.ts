@@ -1,9 +1,9 @@
-import type { Character, EventDefinition, GameState, Id, Room } from "../../types";
+import type { Character, EventDefinition, EventKind, GameState, Id, Room } from "../../types";
 import type { PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
 import { t } from "../../data/strings";
 import { getRoom } from "../dungeon";
-import { getEvent } from "../../data/events";
+import { escalationThreshold, getEvent } from "../../data/events";
 import { BALANCE } from "../../data/balanceConfig";
 import { LORE_EXPOSURE_EVENT_IDS } from "../../data/loreExposure";
 
@@ -12,6 +12,18 @@ export function payHpPercent(character: Character, percent: number): number | nu
   if (cost >= character.hp) return null;
   character.hp -= cost;
   return cost;
+}
+
+/** Tags the current room's event with how the party resolved it (`GameState.eventOutcomes`). */
+export function recordEventOutcome(state: GameState, outcome: string): void {
+  const eventId = getRoom(state.floor, state.currentRoomId).rolledEventId;
+  if (eventId) state.eventOutcomes[eventId] = outcome;
+}
+
+/** The pending offer state, only while it belongs to an event of `kind`. */
+export function activeEventOfKind(state: GameState, kind: EventKind): NonNullable<GameState["activeEvent"]> | null {
+  const active = state.activeEvent;
+  return active && getEvent(active.eventId).kind === kind ? active : null;
 }
 
 export function closeEvent(state: GameState): void {
@@ -54,36 +66,27 @@ export function maybeTriggerReflection(state: GameState, ctx: EngineContext): vo
   if (ctx.rng.chance(chance)) state.pendingReflection = { eventId: event.id };
 }
 
-function isTier2Escalated(state: GameState, counter: number, threshold2: number): boolean {
-  return counter >= threshold2 && state.floor.depth >= BALANCE.events.chainTier2MinFloorDepth;
-}
-
-function isTier3Escalated(state: GameState, counter: number, threshold3: number): boolean {
-  return counter >= threshold3 && state.floor.depth >= BALANCE.events.chainTier3MinFloorDepth;
+/** How far an event's `escalation` has gone: 0 below its first threshold; tiers 2 and 3 also need their floor depth. Counters never reset, so no room-level flag is needed. */
+export function escalationTier(state: GameState, event: EventDefinition): 0 | 1 | 2 | 3 {
+  if (!event.escalation) return 0;
+  const counter = state.narrativeCounters[event.escalation.counter];
+  const [first, second, third] = event.escalation.thresholds.map(escalationThreshold) as [number, number, number];
+  if (counter >= third && state.floor.depth >= BALANCE.events.chainTier3MinFloorDepth) return 3;
+  if (counter >= second && state.floor.depth >= BALANCE.events.chainTier2MinFloorDepth) return 2;
+  return counter >= first ? 1 : 0;
 }
 
 export function pickReflectionPrompt(state: GameState, room: Room, event: EventDefinition): string | undefined {
   if (!event.reflection) return undefined;
 
-  const escalated3 =
-    room.chainVariant === "forced3" ||
-    (event.id === "sacrificial-circle" && isTier3Escalated(state, state.narrativeCounters.artifactsSacrificed, BALANCE.events.circleRemembersThreshold3)) ||
-    (event.id === "blood-altar" && isTier3Escalated(state, state.narrativeCounters.altarPaymentsCount, BALANCE.events.bloodDebtThreshold3));
+  const tier = escalationTier(state, event);
+  const escalated3 = room.chainVariant === "forced3" || tier >= 3;
   if (escalated3 && event.reflection.escalated3Prompt) return event.reflection.escalated3Prompt;
 
-  const escalated2 =
-    room.chainVariant === "forced2" ||
-    room.chainVariant === "forced3" ||
-    (event.id === "sacrificial-circle" && isTier2Escalated(state, state.narrativeCounters.artifactsSacrificed, BALANCE.events.circleRemembersThreshold2)) ||
-    (event.id === "blood-altar" && isTier2Escalated(state, state.narrativeCounters.altarPaymentsCount, BALANCE.events.bloodDebtThreshold2));
+  const escalated2 = room.chainVariant === "forced2" || room.chainVariant === "forced3" || tier >= 2;
   if (escalated2 && event.reflection.escalated2Prompt) return event.reflection.escalated2Prompt;
 
-  const escalated =
-    room.chainVariant === "forced" ||
-    room.chainVariant === "forced2" ||
-    room.chainVariant === "forced3" ||
-    (event.id === "sacrificial-circle" && state.narrativeCounters.artifactsSacrificed >= BALANCE.events.circleRemembersThreshold) ||
-    (event.id === "blood-altar" && state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold);
+  const escalated = room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3" || tier >= 1;
   return (escalated && event.reflection.escalatedPrompt) || event.reflection.prompt;
 }
 

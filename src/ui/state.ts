@@ -16,6 +16,9 @@ export type ArtifactDetailOrigin = { kind: "owned"; characterId: Id };
 
 export type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id } | { kind: "ability"; id: Id };
 
+/** The two HP-paid event kinds share one screen. */
+export type HpGambleKind = "hpGamble" | "rescueGamble";
+
 export type UiState =
   | { kind: "room" }
   | { kind: "rest" }
@@ -43,17 +46,17 @@ export type UiState =
   | { kind: "fullLog"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
-  | { kind: "eventOpenChest" }
+  | { kind: "eventInstantReward" }
   | { kind: "eventMerchant"; viewingOfferIndex: number | null }
-  | { kind: "eventCursedShrine" }
-  | { kind: "eventTwinAltars" }
-  | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventHpGamblePickPayer"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventArtifactPick"; eventId: "sacrificial-circle" }
-  | { kind: "eventGamblingDen" }
-  | { kind: "eventHermit" }
-  | { kind: "eventHermitPickArtifact" }
-  | { kind: "eventGuardianFight" }
+  | { kind: "eventCursedOffer" }
+  | { kind: "eventPairedOffer" }
+  | { kind: "eventHpGamble"; gamble: HpGambleKind }
+  | { kind: "eventHpGamblePickPayer"; gamble: HpGambleKind }
+  | { kind: "eventArtifactSacrifice" }
+  | { kind: "eventCoinGamble" }
+  | { kind: "eventFortuneExchange" }
+  | { kind: "eventFortuneExchangePickArtifact" }
+  | { kind: "eventCombatReward" }
   | { kind: "eventReflection" }
   | { kind: "campReflection" }
   | { kind: "floorMilestone" }
@@ -113,21 +116,24 @@ export function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
     case "instantReward":
-      return { kind: "eventOpenChest" };
+      return { kind: "eventInstantReward" };
     case "merchant":
       return { kind: "eventMerchant", viewingOfferIndex: null };
-    case "choiceReveal":
-      return eventId === "twin-altars" ? { kind: "eventTwinAltars" } : { kind: "eventCursedShrine" };
-    case "artifactExchange":
-      return eventId === "wandering-hermit" ? { kind: "eventHermit" } : { kind: "eventArtifactPick", eventId: "sacrificial-circle" };
+    case "cursedOffer":
+      return { kind: "eventCursedOffer" };
+    case "pairedOffer":
+      return { kind: "eventPairedOffer" };
+    case "fortuneExchange":
+      return { kind: "eventFortuneExchange" };
+    case "artifactSacrifice":
+      return { kind: "eventArtifactSacrifice" };
     case "hpGamble":
-      return { kind: "eventHpGamble", eventId: "blood-altar" };
     case "rescueGamble":
-      return { kind: "eventHpGamble", eventId: "collapsed-floor" };
+      return { kind: "eventHpGamble", gamble: event.kind };
     case "coinGamble":
-      return { kind: "eventGamblingDen" };
+      return { kind: "eventCoinGamble" };
     case "combatReward":
-      return { kind: "eventGuardianFight" };
+      return { kind: "eventCombatReward" };
     default:
       return { kind: "room" };
   }

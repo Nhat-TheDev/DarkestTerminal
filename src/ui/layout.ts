@@ -1,6 +1,7 @@
 import type { TextChunk } from "@opentui/core";
 import type { Monster } from "../types";
-import { PALETTE, MONSTER_STYLE, BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
+import { BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
+import { getArchetype } from "../data/monsters";
 import { MAX_BOSS_HEIGHT } from "./sprites";
 
 /** The smallest supported terminal width; panels are sized so their content fits at this width. */
@@ -25,16 +26,10 @@ export function centerText(text: string, width: number): string {
   return " ".repeat(left) + text + " ".repeat(pad - left);
 }
 
-/** Fallback for an archetype missing from `MONSTER_STYLE` (`swamp-slime` -> `SLI`); coverage is asserted in `test/sprites.test.ts`. */
-function derivedAbbr(archetypeId: string): string {
-  const lastWord = archetypeId.split("-").pop() ?? archetypeId;
-  return lastWord.slice(0, 3).toUpperCase();
-}
-
 export function monsterStyle(m: Monster): { abbr: string; color: string } {
   if (m.tier === "boss") return { abbr: "BOSS", color: BOSS_COLOR };
   if (m.tier === "elite") return { abbr: "ELITE", color: ELITE_COLOR };
-  return MONSTER_STYLE[m.archetypeId] ?? { abbr: derivedAbbr(m.archetypeId), color: PALETTE.dim };
+  return getArchetype(m.archetypeId).style;
 }
 
 export function truncateText(text: string, maxLen: number): string {

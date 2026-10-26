@@ -1,5 +1,5 @@
 import type { CombatState, Monster } from "../types";
-import { getClass, passiveRankDef } from "../data/classes";
+import { ownPassiveRank } from "../data/classes";
 import { getStatusEffect } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { isCharacter, type Actor } from "./resolver";
@@ -28,15 +28,16 @@ function watchfulGuardian(target: Actor & { hp: number; maxHp: number }, already
   const living = ctx.party.filter((c) => c.isAlive && c.hp > 0);
   const weakest = living.reduce<(typeof living)[number] | null>((low, c) => (!low || c.hp / c.maxHp < low.hp / low.maxHp ? c : low), null);
   if (weakest?.id !== target.id) return null;
-  for (const knight of living) {
-    if (knight.classId !== "knight" || knight.id === target.id) continue;
-    if (hasStunningStatus(knight) || alreadyTargeted.some((a) => a.id === knight.id)) continue;
-    if (combat.watchfulRound?.[knight.id] === combat.roundNumber) continue;
-    const chance = passiveRankDef(getClass("knight").passiveSkill, knight.level)?.interceptWeakestChancePercent;
-    if (!chance || !ctx.rng.chance(chance / 100)) continue;
-    (combat.watchfulRound ??= {})[knight.id] = combat.roundNumber;
-    combat.log.push({ text: t("combat.interpose", { guardian: knight.name, ally: target.name }), kind: "info" });
-    return knight;
+  for (const watcher of living) {
+    if (watcher.id === target.id) continue;
+    const chance = ownPassiveRank(watcher)?.interceptWeakestChancePercent;
+    if (!chance) continue;
+    if (hasStunningStatus(watcher) || alreadyTargeted.some((a) => a.id === watcher.id)) continue;
+    if (combat.watchfulRound?.[watcher.id] === combat.roundNumber) continue;
+    if (!ctx.rng.chance(chance / 100)) continue;
+    (combat.watchfulRound ??= {})[watcher.id] = combat.roundNumber;
+    combat.log.push({ text: t("combat.interpose", { guardian: watcher.name, ally: target.name }), kind: "info" });
+    return watcher;
   }
   return null;
 }

@@ -20,7 +20,7 @@ import type {
   PartyStateSnapshot,
   GrowthSwapStat,
 } from "../types";
-import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, passiveRankDef } from "../data/classes";
+import { getSkill, getEffectiveSkill, effectiveSkillRank, getClass, ownPassiveRank, passiveRankDef } from "../data/classes";
 import { classGrowthBonus } from "../data/levelGrowth";
 import { GROWTH_WEIGHTS } from "../data/growthWeights";
 import { characterBaseStats, activeStatusCombatStatSum } from "./party";
@@ -980,15 +980,15 @@ function harmfulStatusOnCharacter(effect: SkillEffect, target: Actor, isEnemyFac
   return ids.map((id) => getStatusEffect(id)).find((def) => !isHelpfulStatusEffect(def)) ?? null;
 }
 
-export function acolyteDebuffResistPercent(target: Character): number {
-  if (target.classId !== "acolyte") return 0;
-  return passiveRankDef(getClass("acolyte").passiveSkill, target.level)?.debuffResistPercent ?? 0;
+export function passiveDebuffResistPercent(target: Character): number {
+  return ownPassiveRank(target)?.debuffResistPercent ?? 0;
 }
 
 /** Applies or removes the rank's threshold status from the live HP ratio; returns whether it is active. */
-function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
-  if (!isCharacter(source) || source.classId !== "viking") return false;
-  const passive = getClass("viking").passiveSkill;
+function syncPassiveThresholdStatus(source: Actor, log: LogEntry[]): boolean {
+  if (!isCharacter(source)) return false;
+  const passive = getClass(source.classId).passiveSkill;
+  if (!passive.ranks.some((r) => r.thresholdStatusEffectId)) return false;
   const rankDef = passiveRankDef(passive, source.level);
   const belowThreshold = rankDef !== null && source.hp / source.maxHp < (rankDef.hpThresholdPercent ?? 0) / 100;
   const ownStatusIds = passive.ranks.flatMap((r) => (r.thresholdStatusEffectId ? [r.thresholdStatusEffectId] : []));
@@ -1003,9 +1003,8 @@ function syncVikingBloodFury(source: Actor, log: LogEntry[]): boolean {
 }
 
 /** Uses `spawnAdditionalSummon` because the normal summon path replaces a same-archetype summon. */
-function ninjaSecondCloneProc(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
-  if (source.classId !== "ninja") return;
-  const passive = getClass("ninja").passiveSkill;
+function passiveSecondCloneProc(source: Character, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
+  const passive = getClass(source.classId).passiveSkill;
   const chance = (passiveRankDef(passive, source.level)?.secondCloneChancePercent ?? 0) / 100;
   if (chance === 0) return;
   if (!passive.cloneSummonCastId) return;
@@ -1221,16 +1220,16 @@ function resolveOneDamageEffect(
   stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number },
   options: OneHitOptions = {}
 ): number {
-  // An item's effects never crit; the Archer's passive lifts damage only, not a heal.
-  const archerRank = effect.kind === "damage" && isCharacter(source) && source.classId === "archer" ? passiveRankDef(getClass("archer").passiveSkill, source.level) : null;
-  const archerBonus = {
-    critChancePercent: archerRank?.critChancePercent ?? 0,
-    critMultiplierPercent: archerRank?.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent,
+  // An item's effects never crit; a crit passive (the Archer's) lifts damage only, not a heal.
+  const critRank = effect.kind === "damage" && isCharacter(source) ? ownPassiveRank(source) : null;
+  const passiveCrit = {
+    critChancePercent: critRank?.critChancePercent ?? 0,
+    critMultiplierPercent: critRank?.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent,
   };
   const baseCritChance = (effect.kind === "damage" || effect.kind === "heal") && !skill.fromItem ? BALANCE.combat.baseCritChancePercent / 100 : 0;
-  const totalCritChance = skill.fromItem ? 0 : (effect.critChance ?? 0) + archerBonus.critChancePercent / 100 + baseCritChance;
+  const totalCritChance = skill.fromItem ? 0 : (effect.critChance ?? 0) + passiveCrit.critChancePercent / 100 + baseCritChance;
   const isCrit = stealthBreak.guaranteedCrit || (totalCritChance > 0 && ctx.rng.chance(totalCritChance));
-  const effectiveCritMultiplierPercent = Math.max(effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent, archerBonus.critMultiplierPercent);
+  const effectiveCritMultiplierPercent = Math.max(effect.critMultiplierPercent ?? BALANCE.combat.defaultCritMultiplierPercent, passiveCrit.critMultiplierPercent);
   const castByOwnClassSkill = isCharacter(source) && getClass(source.classId).skills.some((s) => s.id === skill.id);
   return resolveSkillEffect(
     { ...effect, critMultiplierPercent: effectiveCritMultiplierPercent },
@@ -1265,8 +1264,7 @@ function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
 }
 
 function maxActiveMinionsFor(owner: Character): number {
-  if (owner.classId !== "summoner") return 1;
-  return passiveRankDef(getClass("summoner").passiveSkill, owner.level)?.maxActiveMinions ?? 1;
+  return ownPassiveRank(owner)?.maxActiveMinions ?? 1;
 }
 
 function ownedSummons(ownerId: Id, ctx: EngineContext): Summon[] {
@@ -1297,8 +1295,7 @@ function dismissSummon(summon: Summon, combat: CombatState, ctx: EngineContext, 
 }
 
 function empowermentBonusFor(owner: Character): { maxHpPercent: number; attackPercent: number } {
-  if (owner.classId !== "summoner") return { maxHpPercent: 0, attackPercent: 0 };
-  const rankDef = passiveRankDef(getClass("summoner").passiveSkill, owner.level);
+  const rankDef = ownPassiveRank(owner);
   return { maxHpPercent: rankDef?.minionMaxHpPercent ?? 0, attackPercent: rankDef?.minionAttackPercent ?? 0 };
 }
 
@@ -1604,7 +1601,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
 
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
-  const vikingBuffActive = !skill.isBuff && syncVikingBloodFury(source, log);
+  const thresholdStatusActive = !skill.isBuff && syncPassiveThresholdStatus(source, log);
   const stealthBreak = {
     guaranteedCrit: skill.slot === 0 && !skill.fromItem ? (breakDef?.breakBonus?.basicAttackGuaranteedCrit ?? false) : false,
     damageBonusPercent: skill.slot !== 0 ? (breakDef?.breakBonus?.skillDamageBonusPercent ?? 0) : 0,
@@ -1718,7 +1715,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
       // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.
       const resistPercent =
-        harmfulStatus && isCharacter(target) ? combinePercents(debuffResistPercent(target), acolyteDebuffResistPercent(target)) : 0;
+        harmfulStatus && isCharacter(target) ? combinePercents(debuffResistPercent(target), passiveDebuffResistPercent(target)) : 0;
       if (resistPercent > 0) {
         const baseChance = effect.chance ?? 1;
         const roll = ctx.rng.next();
@@ -1797,11 +1794,11 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   }
   if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
   if (landedDamageHit && isCharacter(source) && !sourceFell()) applyOnHitAoeDamage(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && vikingBuffActive && !sourceFell()) {
-    const selfDamage = Math.round(source.maxHp * ((getClass("viking").passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
+  if (landedDamageHit && isCharacter(source) && thresholdStatusActive && !sourceFell()) {
+    const selfDamage = Math.round(source.maxHp * ((getClass(source.classId).passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
-  if (landedDamageHit && isCharacter(source) && !sourceFell()) ninjaSecondCloneProc(source, combat, ctx, log);
+  if (landedDamageHit && isCharacter(source) && !sourceFell()) passiveSecondCloneProc(source, combat, ctx, log);
   if (landedDamageHit && isCharacter(source) && !sourceFell()) applyLandedHitFollowUps(source, ctx, log);
   if (coinWon === false && !sourceFell()) {
     log.push({ text: t("combat.coinFlipLost", { actor: sourceName(source), skill: skill.name }), kind: "info" });

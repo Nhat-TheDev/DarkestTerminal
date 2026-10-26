@@ -2,6 +2,7 @@ import type { GameState } from "../types";
 import { campReflectionTier } from "./loreExposure";
 import { BALANCE } from "./balanceConfig";
 import { EVENTS } from "./events";
+import { getArtifact } from "./artifacts";
 
 export type EndingCheckpointMode = "leaveOnly" | "stayOrLetGo" | "full";
 
@@ -9,7 +10,8 @@ export const ENDING_CHECKPOINT_FLOOR_DEPTH = BALANCE.endings.checkpointFloorDept
 
 export function leaveTriggered(state: GameState): boolean {
   const bloodDebtBreaks =
-    state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold3 && state.eventOutcomes["blood-altar"] === "declined";
+    state.narrativeCounters.altarPaymentsCount >= BALANCE.events.bloodDebtThreshold3 &&
+    EVENTS.some((e) => e.kind === "hpGamble" && state.eventOutcomes[e.id] === "declined");
   const ledgerNeverOpens =
     state.narrativeCounters.freeRewardsTakenCount >= BALANCE.events.freeTakenThreshold &&
     state.narrativeCounters.altarPaymentsCount === 0 &&
@@ -23,8 +25,8 @@ export function endingCheckpointMode(state: GameState): EndingCheckpointMode {
   return "stayOrLetGo";
 }
 
-export function hasWaystoneShardEquipped(state: GameState): boolean {
-  return state.party.some((c) => c.equippedArtifactIds.includes("waystone-shard"));
+export function hasLeaveEscapeArtifactEquipped(state: GameState): boolean {
+  return state.party.some((c) => c.equippedArtifactIds.some((id) => getArtifact(id).escapesLeaveAmbush));
 }
 
 export const FOUNDER_FLOOR_DEPTH = BALANCE.endings.founderFloorDepth;

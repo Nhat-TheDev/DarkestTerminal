@@ -3,7 +3,7 @@ import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, COMBAT_
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
-import { getClass, passiveRankDef } from "../data/classes";
+import { getClass, ownPassiveRank, passiveRankDef } from "../data/classes";
 import { adjustFear, formatFear, resistedFearGain } from "./survival";
 import { noteShellHit, shellAdjustedDamage } from "./monsterShell";
 import { advanceBar } from "./monsterBars";
@@ -287,17 +287,14 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const before = target.hp;
       const healPower =
         ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
-      const acolyteBoost =
-        ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
-          ? 1 + (passiveRankDef(getClass("acolyte").passiveSkill, source.level)?.healBoostPercent ?? 0) / 100
-          : 1;
+      const passiveHealBoost = ctx.castByOwnClassSkill && isCharacter(source) ? 1 + (ownPassiveRank(source)?.healBoostPercent ?? 0) / 100 : 1;
       const baseHeal =
         Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100) +
         (source.maxHp * (effect.casterMaxHpPercent ?? 0)) / 100;
       const lowHpBoost = effect.lowHpHealBonus ? 1 + lowHpHealBonusPercent(target, effect.lowHpHealBonus) / 100 : 1;
       const crit = critRolled(ctx);
       const critMultiplier = crit ? critMultiplierOf(effect) : 1;
-      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost * lowHpBoost * critMultiplier));
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * passiveHealBoost * lowHpBoost * critMultiplier));
       const healed = target.hp - before;
       ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
       return healed;
@@ -386,7 +383,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
 
 /** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
 function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
-  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + paladinReflectPercent(bearer);
+  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + passiveReflectPercent(bearer);
   const amount = Math.round((damage * percent) / 100);
   if (amount <= 0 || attacker === bearer) return;
   const hpBefore = attacker.hp;
@@ -418,10 +415,10 @@ function healOnHit(actor: Actor, hpLost: number, ctx: ResolveContext): void {
   if (actor.hp > before) ctx.log.push({ text: t("resolver.heal", { target: nameOf(actor), amount: actor.hp - before }), kind: "heal" });
 }
 
-/** Paladin's passive — a share of every direct hit taken goes back to the attacker, unlocked at level 5/20/35. */
-function paladinReflectPercent(bearer: Actor): number {
-  if (!isCharacter(bearer) || bearer.classId !== "paladin") return 0;
-  return passiveRankDef(getClass("paladin").passiveSkill, bearer.level)?.reflectPercent ?? 0;
+/** A reflect passive (the Paladin's) — a share of every direct hit taken goes back to the attacker, unlocked at level 5/20/35. */
+function passiveReflectPercent(bearer: Actor): number {
+  if (!isCharacter(bearer)) return 0;
+  return ownPassiveRank(bearer)?.reflectPercent ?? 0;
 }
 
 /** Harmful statuses on `actor`, each counted once however many stacks it has. */

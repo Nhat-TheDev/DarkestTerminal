@@ -59,7 +59,7 @@ Same reasoning as Exhausted — it's not a normal status-effect instance, so it 
 
 A choice offered **after winning any combat room** (regular/Elite/Boss, not just entering a dedicated Rest room — a separate room type with its own 3-option flow, see below):
 
-- Costs **1 Exploration Kit** item (`ItemDefinition.combatUsable: false`, `data/items.json` entry `exploration-kit`) — the party starts a run with `party.startingExplorationKits` (4).
+- Costs **1 Exploration Kit** item (the `data/items.json` entry flagged `campKit`, `exploration-kit`; `combatUsable: false`) — the party starts a run with `party.startingExplorationKits` (4).
 - Restores **+30 satiety only** (`survival.campSatietyRestore`) — explicitly **no** HP/MP restore, that's what the Rest room is for.
 - Not offered if the party has 0 Exploration Kits left.
 

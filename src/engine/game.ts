@@ -5,11 +5,11 @@ import { createFloor } from "../data/floor";
 import {
   ENDING_CHECKPOINT_FLOOR_DEPTH,
   endingCheckpointMode,
-  hasWaystoneShardEquipped,
+  hasLeaveEscapeArtifactEquipped,
   FOUNDER_FLOOR_DEPTH,
   FOUNDER_VICTORY_REMOVED_EVENT_IDS,
 } from "../data/endings";
-import { spawnMonster } from "../data/monsters";
+import { FINAL_BOSS_ARCHETYPE, spawnMonster } from "../data/monsters";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
 import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
 import { Rng } from "./rng";
@@ -35,7 +35,7 @@ import {
   clearCombatResources,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
-import { getItem, rollItemDrop } from "../data/items";
+import { CAMP_KIT_ITEM_ID, getItem, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
 import { ABILITIES, rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
@@ -43,7 +43,7 @@ import { totalExpBoostPercent } from "./artifacts";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter, markRetiredCharacterEventShown } from "./profile";
 import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
 import { getStatusEffect } from "../data/statusEffects";
-import { getEvent } from "../data/events";
+import { getEvent, RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { t } from "../data/strings";
 import { FLOOR_MILESTONE_INTERVAL, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { BALANCE } from "../data/balanceConfig";
@@ -108,9 +108,9 @@ export class Game {
       if (character.equippedAbilityId) takenAbilityIds.add(character.equippedAbilityId);
       return character;
     });
-    const inventory: Record<Id, number> = { "exploration-kit": BALANCE.party.startingExplorationKits };
+    const inventory: Record<Id, number> = { [CAMP_KIT_ITEM_ID]: BALANCE.party.startingExplorationKits };
     this.ctx = { party, monsters, summons: [], rng, inventory };
-    // Whether "the-one-who-stayed" can roll this run is encoded only by whether its id starts in firedOnceEventIds.
+    // Whether a retiredCharacterEvent can roll this run is encoded only by whether its id starts in firedOnceEventIds.
     const retiredCharacter = profile.retiredCharacters.at(-1);
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
@@ -135,7 +135,7 @@ export class Game {
       pendingReflection: null,
       eventReflectionStances: {},
       eventOutcomes: {},
-      firedOnceEventIds: retiredCharacterEventEligible ? [] : ["the-one-who-stayed"],
+      firedOnceEventIds: retiredCharacterEventEligible ? [] : [...RETIRED_CHARACTER_EVENT_IDS],
       loreExposureCount: 0,
       pendingCampReflectionTier: null,
       restRunner: null,
@@ -419,7 +419,7 @@ export class Game {
   openChest(): PartyActionError | null {
     const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
     const err = openChest(this.state, this.ctx);
-    if (!err && eventId === "the-one-who-stayed") markRetiredCharacterEventShown(this.currentSaveSlot);
+    if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
     maybeTriggerReflection(this.state, this.ctx);
     return err;
   }
@@ -616,7 +616,7 @@ export class Game {
           this.state.loreExposureCount += 1;
         }
         // Deduped: some of these ids are onceLifetime and may have fired already.
-        if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === "the-founder")) {
+        if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === FINAL_BOSS_ARCHETYPE.id)) {
           for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
             if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);
           }
@@ -675,7 +675,7 @@ export class Game {
     } else if (choice === "letGo") {
       this.state.gameOver = "letGo";
     } else if (choice === "leave") {
-      this.state.gameOver = hasWaystoneShardEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
+      this.state.gameOver = hasLeaveEscapeArtifactEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
     } else {
       // Set first so advanceToNextFloor's checkpoint gate doesn't refire.
       this.state.continuedPastCheckpoint = true;
@@ -689,7 +689,7 @@ export class Game {
     const room = getRoom(this.state.floor, this.state.currentRoomId);
     room.type = "boss";
     room.cleared = false;
-    const founder = spawnMonster("the-founder", this.state.floor.depth, { tier: "boss" });
+    const founder = spawnMonster(FINAL_BOSS_ARCHETYPE.id, this.state.floor.depth, { tier: "boss" });
     this.ctx.monsters.push(founder);
     room.monsterIds = [founder.id];
     this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, true);

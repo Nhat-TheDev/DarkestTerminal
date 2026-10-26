@@ -2,7 +2,7 @@ import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent, type Te
 import type { AbilityDefinition, CharacterClass, Id, SkillDefinition } from "../types";
 import { ABILITIES, formatAbilityEffect, getAbility } from "../data/abilities";
 import { loadProfile } from "../engine/profile";
-import { PALETTE, CLASS_STYLE, chip, colorChunk, boldColorChunk, plainChunk, joinLines, highlightKeyHints } from "./theme";
+import { PALETTE, chip, colorChunk, boldColorChunk, plainChunk, joinLines, highlightKeyHints } from "./theme";
 import { joinHints, withPageHint, digitHint } from "./keyHints";
 import { spriteForClass, renderSpriteInSlot, spriteHeight } from "./sprites";
 import { wrapText } from "./layout";
@@ -47,8 +47,7 @@ function partyLine(picks: PartyPick[], classes: CharacterClass[]): TextChunk[] {
       continue;
     }
     const cls = classes.find((c) => c.id === pick.classId)!;
-    const style = CLASS_STYLE[cls.id];
-    if (style) chunks.push(chip(style.abbr, style.color), plainChunk(" "));
+    chunks.push(chip(cls.style.abbr, cls.style.color), plainChunk(" "));
     const ability = pick.abilityId ? getAbility(pick.abilityId).name : t("partySelect.noAbility");
     chunks.push(colorChunk(t("partySelect.seat", { name: cls.name, ability }), PALETTE.text));
   }

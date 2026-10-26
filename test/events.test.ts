@@ -656,10 +656,13 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     const c = game.state.party[0]!;
 
     c.hp = c.maxHp;
+    forceEventRoom(game, "blood-altar");
     expect(game.bloodAltarPay(c.id)).toBeNull();
     c.hp = c.maxHp;
+    forceEventRoom(game, "collapsed-floor");
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
     c.hp = c.maxHp;
+    forceEventRoom(game, "blood-altar");
     expect(game.bloodAltarPay(c.id)).toBeNull();
     expect(game.state.narrativeCounters.altarPaymentsCount).toBe(3);
 
@@ -1065,26 +1068,31 @@ describe("Part B.1: cross-event continuity (10-event-narrative.md)", () => {
 
   test("bloodAltarPay/bloodAltarLeave write the 'paid'/'declined' outcome tags", () => {
     const game1 = new Game(95);
+    forceEventRoom(game1, "blood-altar");
     game1.bloodAltarPay(game1.state.party[0]!.id);
     expect(game1.state.eventOutcomes["blood-altar"]).toBe("paid");
 
     const game2 = new Game(96);
+    forceEventRoom(game2, "blood-altar");
     game2.bloodAltarLeave();
     expect(game2.state.eventOutcomes["blood-altar"]).toBe("declined");
   });
 
   test("collapsedFloorAttempt writes 'rescued' or 'failed' depending on the roll; collapsedFloorLeave writes 'declined'", () => {
     const game1 = new Game(97);
+    forceEventRoom(game1, "collapsed-floor");
     game1.collapsedFloorAttempt(game1.state.party[0]!.id);
     expect(["rescued", "failed"]).toContain(game1.state.eventOutcomes["collapsed-floor"] as string);
 
     const game2 = new Game(98);
+    forceEventRoom(game2, "collapsed-floor");
     game2.collapsedFloorLeave();
     expect(game2.state.eventOutcomes["collapsed-floor"]).toBe("declined");
   });
 
   test("sacrifice() writes the 'sacrificed' tag immediately, and a later sacrificeLeave() doesn't overwrite it with the generic fallback", () => {
     const game = new Game(99);
+    forceEventRoom(game, "sacrificial-circle");
     const c = game.state.party[0]!;
     c.equippedArtifactIds = ["scholars-insight"];
     expect(game.sacrifice("scholars-insight")).toBeNull();

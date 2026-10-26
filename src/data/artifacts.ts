@@ -1,4 +1,4 @@
-import type { ArtifactDefinition, ArtifactRarity, ArtifactEffect, Id } from "../types";
+import type { ArtifactDefinition, ArtifactRarity, ArtifactEffect, ArtifactRestrictedSource, Id } from "../types";
 import artifactsJson from "../../data/artifacts.json";
 import type { Rng } from "../engine/rng";
 import { t } from "./strings";
@@ -96,14 +96,14 @@ export function rollArtifactRarity(source: ArtifactSource, rng: Rng, depth: numb
 }
 
 /** `allowRestrictedSource` must name the source actually rolling, not just its table: Collapsed Floor rolls the "boss" table without being a Boss kill. */
-export function pickArtifactOfRarity(rarity: ArtifactRarity, rng: Rng, allowRestrictedSource?: "boss" | "blood-altar"): Id {
+export function pickArtifactOfRarity(rarity: ArtifactRarity, rng: Rng, allowRestrictedSource?: ArtifactRestrictedSource): Id {
   const pool = ARTIFACTS.filter(
     (a) => a.rarity === rarity && (!a.restrictedDropSources || (!!allowRestrictedSource && a.restrictedDropSources.includes(allowRestrictedSource)))
   );
   return rng.pick(pool).id;
 }
 
-export function rollArtifact(source: ArtifactSource, rng: Rng, depth: number, allowRestrictedSource?: "boss" | "blood-altar"): Id {
+export function rollArtifact(source: ArtifactSource, rng: Rng, depth: number, allowRestrictedSource?: ArtifactRestrictedSource): Id {
   return pickArtifactOfRarity(rollArtifactRarity(source, rng, depth), rng, allowRestrictedSource);
 }
 

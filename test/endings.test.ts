@@ -9,7 +9,7 @@ import { BALANCE } from "../src/data/balanceConfig";
 import {
   leaveTriggered,
   endingCheckpointMode,
-  hasWaystoneShardEquipped,
+  hasLeaveEscapeArtifactEquipped,
   ENDING_CHECKPOINT_FLOOR_DEPTH,
   FOUNDER_FLOOR_DEPTH,
   FOUNDER_VICTORY_REMOVED_EVENT_IDS,
@@ -86,12 +86,12 @@ describe("leaveTriggered / endingCheckpointMode (10-event-narrative.md §F.1)", 
   });
 });
 
-describe("hasWaystoneShardEquipped", () => {
+describe("hasLeaveEscapeArtifactEquipped", () => {
   test("true only when a party member has it equipped", () => {
     const game = new Game(408);
-    expect(hasWaystoneShardEquipped(game.state)).toBe(false);
+    expect(hasLeaveEscapeArtifactEquipped(game.state)).toBe(false);
     game.state.party[0]!.equippedArtifactIds = ["waystone-shard"];
-    expect(hasWaystoneShardEquipped(game.state)).toBe(true);
+    expect(hasLeaveEscapeArtifactEquipped(game.state)).toBe(true);
   });
 });
 

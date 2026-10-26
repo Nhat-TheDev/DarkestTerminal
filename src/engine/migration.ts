@@ -3,6 +3,7 @@ import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id,
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng } from "./rng";
 import { getItem } from "../data/items";
+import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { getClass, getSkill } from "../data/classes";
 import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
@@ -234,8 +235,8 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (state.blessedRoomId === undefined) state.blessedRoomId = null;
   if (state.retiredCharacterClassId === undefined) state.retiredCharacterClassId = null;
   // Same ineligibility marker the Game constructor sets; without it the event renders a raw {{class}} placeholder.
-  if (!state.retiredCharacterClassId && !state.firedOnceEventIds.includes("the-one-who-stayed")) {
-    state.firedOnceEventIds.push("the-one-who-stayed");
+  if (!state.retiredCharacterClassId) {
+    for (const id of RETIRED_CHARACTER_EVENT_IDS) if (!state.firedOnceEventIds.includes(id)) state.firedOnceEventIds.push(id);
   }
   if (typeof state.runStardust !== "number") state.runStardust = 0;
   if (state.pendingAbilityBuyback === undefined) state.pendingAbilityBuyback = null;

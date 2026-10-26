@@ -39,7 +39,7 @@ EventDefinition {
   id: Id
   name: string
   description: string
-  kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "choiceReveal" | "artifactExchange" | "rescueGamble" | "coinGamble"
+  kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "cursedOffer" | "pairedOffer" | "artifactSacrifice" | "fortuneExchange" | "rescueGamble" | "coinGamble"
   forceEquip?: boolean       // true only for twin-altars, see 07-items-artifacts.md §7.2
   minFloorDepth?: number     // rollEvent() gate — never rolled before this floor (values in the tier table above)
   onceLifetime?: boolean     // rollEvent() excludes it once fired
@@ -74,7 +74,7 @@ EventDefinition {
 }
 ```
 
-`guardian-fight` and `desecrated-altar` both use `kind: "combatReward"` — **they share the same handling mechanics in the engine, differing only in `id`/`name`/`description`**. Likewise, `cursed-shrine`/`twin-altars` share `kind: "choiceReveal"` (reveal information before deciding); `sacrificial-circle`/`wandering-hermit` share `kind: "artifactExchange"` (operating on an artifact the party already owns rather than a plain new roll); `gambling-den` has its own `kind: "coinGamble"` (§8.19 — it never takes an artifact as its cost, and only rarely pays one out as a reward).
+`guardian-fight` and `desecrated-altar` both use `kind: "combatReward"` — **they share the same handling mechanics in the engine, differing only in `id`/`name`/`description`**. The engine dispatches on `kind`, never on an event's `id`, so a new event that reuses a kind is a JSON-only change. `cursed-shrine` uses `kind: "cursedOffer"` (1 offer that may be Cursed, taken or declined) and `twin-altars` `kind: "pairedOffer"` (2 offers, take one); `sacrificial-circle` uses `kind: "artifactSacrifice"` and `wandering-hermit` `kind: "fortuneExchange"`, both operating on an artifact the party already owns rather than a plain new roll; `gambling-den` has its own `kind: "coinGamble"` (§8.19 — it never takes an artifact as its cost, and only rarely pays one out as a reward).
 
 Every Artifact granted by any event in this section — whether revealed up front or rolled blind then revealed — goes through the same **decision flow** described in `07-items-artifacts.md` §7.2: Equip (any character, replacing 1 of their own ordinary artifacts if full) or Discard (unless Cursed/`forceEquip`, which skips straight to a forced Equip). None of the per-event sections below repeat that flow — they only describe what's specific to that room.
 
@@ -189,7 +189,7 @@ Chains 1-3 each also have a **tier-2 escalation** (`12-world-bible.md` §12.13) 
 Reuses the "Leave without fighting" choice from §8.9. **This counter is shared across both event ids** — `guardianFightSkip()` (`src/engine/events/guardianFight.ts`) is the same function for both `guardian-fight` and `desecrated-altar`, so skipping 1 of each counts as 2 toward the same total, not 1 toward 2 separate counters.
 
 - **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail added to the description (e.g. guardian-fight's "the scraping has stopped" becomes "doesn't look away").
-- **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` (per-id — guardian-fight's and desecrated-altar's differ) and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventGuardianFight` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
+- **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` (per-id — guardian-fight's and desecrated-altar's differ) and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventCombatReward` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
 - The counter **resets to 0** after that forced encounter fires, so the whole cycle (quiet buildup → forced fight) can happen again later in a long run rather than exactly once. `guardianGrudgeFiredCount` increments alongside the reset and never resets itself — it's how a later firing can tell it isn't the first.
 - **Tier 2**: once `guardianGrudgeFiredCount >= 1` (this chain has fired before) and floor depth is past `events.chainTier2MinFloorDepth`, the next forced encounter shows `chainForced2Description` instead — deliberately **shared verbatim** between guardian-fight and desecrated-altar, unlike tier 1's per-id text (tier 2 is written to read as losing that specificity, not keeping it). Skip is rejected exactly as at tier 1.
 - **Tier 3**: once `guardianGrudgeFiredCount >= 2` and floor depth is past `events.chainTier3MinFloorDepth`, the next forced encounter shows `chainForced3Description` instead — also shared verbatim, same reasoning as tier 2. Skip stays rejected.
@@ -446,7 +446,7 @@ No combat. On entering the room, the player may:
 
 > "A statue with three eyes. One of them is open. It wasn't the same one a moment ago."
 
-**No combat** (`kind: "choiceReveal"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
+**No combat** (`kind: "cursedOffer"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
 - Step 1: roll, show the result (name + all effects, including the negative one if any).
 - Step 2: the player chooses **Accept** or **Decline** (nothing is lost by declining — unlike `blood-altar`, which requires paying up front).
@@ -460,7 +460,7 @@ No combat. On entering the room, the player may:
 
 > "Two stone pedestals face each other, each carved with a spiral, open at the center. A hairline crack already runs between them."
 
-**No combat** (`kind: "choiceReveal"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
+**No combat** (`kind: "pairedOffer"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
 
 - **2 specific Artifacts are pre-rolled independently** (2 separate rolls on the standard table), with full name/effects/rarity shown for both at once.
 - Choose **exactly 1**, the other disappears forever (no leaving and coming back to change your mind — once chosen, the room clears immediately).
@@ -475,7 +475,7 @@ No combat. On entering the room, the player may:
 
 > "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident."
 
-**No combat** (`kind: "artifactExchange"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
+**No combat** (`kind: "artifactSacrifice"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
 Choose the artifact to sacrifice from anywhere across the party, confirm → it's permanently removed → roll immediately, the result goes through the normal decision flow. There's no limit on the number of sacrifices in a single visit to the room as long as there's still an artifact to sacrifice — each sacrifice/roll counts as its own action and can be repeated until satisfied or out of artifacts (the room stays open between sacrifices; each new roll's decision must be resolved before the next sacrifice can be made).
 
@@ -527,7 +527,7 @@ Implementation: `src/engine/events/gamblingDen.ts`.
 
 > "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. 'Put down what you want rid of. I'll name the price.'"
 
-**No combat** (`kind: "artifactExchange"`), doesn't create a new Artifact from nothing — it's a paid service that interacts with an artifact the party already has. **Exchange fortune is the room's only service** (there's no free "remove curse" service):
+**No combat** (`kind: "fortuneExchange"`), doesn't create a new Artifact from nothing — it's a paid service that interacts with an artifact the party already has. **Exchange fortune is the room's only service** (there's no free "remove curse" service):
 
 - Costs `events.wanderingHermitExchangeCostCoins` (50 coins).
 - Choose **any 1 currently-equipped artifact from anywhere in the party — including a Cursed one**. This is the *only* way to shed a Cursed artifact once it's equipped (`07-items-artifacts.md` §7.2).

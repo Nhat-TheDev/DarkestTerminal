@@ -2725,6 +2725,8 @@ boot();
     entry = entry || {};
     const id = textInput(entry.id);
     const name = textInput(entry.name);
+    const styleAbbr = textInput(entry.style?.abbr);
+    const styleColor = textInput(entry.style?.color ?? "#7a746c");
     const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
     const baseHp = numberInput(entry.baseHp ?? 20);
     const baseAttack = numberInput(entry.baseAttack ?? 5);
@@ -2804,7 +2806,7 @@ boot();
     renderActionWeights();
 
     formEl.replaceChildren(
-      el("div", { class: "row" }, [field("ID", id), field("Name", name)]),
+      el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Chip label (3 letters)", styleAbbr), field("Chip color (#rrggbb)", styleColor)]),
       field("Description", description),
       el("div", { class: "row" }, [field("Base HP", baseHp), field("Base Attack", baseAttack), field("Base Defense", baseDefense), field("Base Speed", baseSpeed), field("EXP reward", expReward), field("Min floor", minFloor)]),
       minFloorHint,
@@ -2824,7 +2826,7 @@ boot();
         // fields it does manage are dropped first and re-added below only when set.
         const out = {
           ...entry,
-          id: id.value.trim(), name: name.value.trim(), description: description.value.trim(),
+          id: id.value.trim(), name: name.value.trim(), style: { abbr: styleAbbr.value.trim().toUpperCase(), color: styleColor.value.trim() }, description: description.value.trim(),
           baseHp: Number(baseHp.value), baseAttack: Number(baseAttack.value), baseDefense: Number(baseDefense.value), baseSpeed: Number(baseSpeed.value),
           monsterType: monsterType.value, aiPattern: aiPattern.value, attackRange: attackRange.value, roles: roles._values(), skillIds: skillIds._values(), expReward: Number(expReward.value),
           race: race.value,
@@ -2859,13 +2861,14 @@ boot();
     const description = el("textarea", { rows: "2", style: "width:100%;" }, [document.createTextNode(entry.description || "")]);
     const rarity = selectInput(["common", "rare", "unique", "epic"], entry.rarity || "common");
     const isCursed = checkboxField("Cursed", entry.isCursed);
-    const restrictedDropSources = checkboxGroup(["boss", "blood-altar"], entry.restrictedDropSources || []);
+    const escapesLeaveAmbush = checkboxField("Escapes the Leave ending's ambush while equipped", entry.escapesLeaveAmbush);
+    const restrictedDropSources = checkboxGroup(["boss", "hpGamble"], entry.restrictedDropSources || []);
     const effectsEditor = effectListEditor("Effects", entry.effects, artifactEffectRow);
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Rarity", rarity)]),
       field("Description", description),
-      el("fieldset", {}, [el("legend", { text: "Flags" }), isCursed]),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), isCursed, escapesLeaveAmbush]),
       el("fieldset", {}, [el("legend", { text: "Restricted drop sources (optional — leave unchecked for a normal roll-table drop)" }), restrictedDropSources]),
       effectsEditor
     );
@@ -2874,6 +2877,7 @@ boot();
       collect() {
         const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), rarity: rarity.value, effects: effectsEditor._collect() };
         if (isCursed._checkbox.checked) out.isCursed = true;
+        if (escapesLeaveAmbush._checkbox.checked) out.escapesLeaveAmbush = true;
         if (restrictedDropSources._values().length) out.restrictedDropSources = restrictedDropSources._values();
         return out;
       },
@@ -2889,13 +2893,14 @@ boot();
     const tier = selectInput(ITEM_TIERS, entry.tier || "common");
     const groupItem = checkboxField("Group trophy (drop weight scaled by groupDropMultiplier)", entry.groupItem);
     const combatUsable = checkboxField("Usable in combat", entry.combatUsable);
+    const campKit = checkboxField("Camp kit (spent by Camp; exactly 1 item)", entry.campKit);
     const archetypeIds = checkboxGroup(monsterArchetypesCatalog.map((m) => m.id).sort(), entry.archetypeIds || []);
     const effectsEditor = effectListEditor("Effects", entry.effects, skillEffectRow);
 
     formEl.replaceChildren(
       el("div", { class: "row" }, [field("ID", id), field("Name", name), field("Target", target), field("Tier", tier)]),
       field("Description", description),
-      el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable, groupItem]),
+      el("fieldset", {}, [el("legend", { text: "Flags" }), combatUsable, groupItem, campKit]),
       el("fieldset", {}, [el("legend", { text: "Trophy: drops only from these monster archetypes (leave unchecked for a general-pool item)" }), archetypeIds]),
       effectsEditor
     );
@@ -2905,6 +2910,7 @@ boot();
         const out = { id: id.value.trim(), name: name.value.trim(), description: description.value.trim(), target: target.value, effects: effectsEditor._collect(), tier: tier.value };
         if (groupItem._checkbox.checked) out.groupItem = true;
         if (combatUsable._checkbox.checked) out.combatUsable = true;
+        if (campKit._checkbox.checked) out.campKit = true;
         if (archetypeIds._values().length) out.archetypeIds = archetypeIds._values();
         return out;
       },

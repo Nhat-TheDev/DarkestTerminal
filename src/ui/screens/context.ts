@@ -1,6 +1,7 @@
 import type { Game } from "../../engine/game";
 import { saveRun } from "../../engine/save";
 import type { UiState } from "../state";
+import { CAMP_KIT_ITEM_ID } from "../../data/items";
 
 export interface ScreenContext {
   game: Game;
@@ -46,7 +47,7 @@ export function proceedAfterVictory(ctx: ScreenContext): void {
   }
   if (ctx.getPendingCampOffer()) {
     ctx.setPendingCampOffer(false);
-    if ((ctx.game.state.inventory["exploration-kit"] ?? 0) > 0) {
+    if ((ctx.game.state.inventory[CAMP_KIT_ITEM_ID] ?? 0) > 0) {
       ctx.setUi({ kind: "campPrompt" });
       return;
     }

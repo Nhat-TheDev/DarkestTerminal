@@ -56,6 +56,9 @@ export function assertMonsterDataConsistent(archetypes: MonsterArchetype[]): voi
     if (!ATTACK_RANGES.includes(archetype.attackRange)) {
       throw new Error(`data/monsters.json: "${archetype.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
     }
+    if (!/^[A-Z]{3}$/.test(archetype.style?.abbr ?? "") || !/^#[0-9a-f]{6}$/i.test(archetype.style?.color ?? "")) {
+      throw new Error(`data/monsters.json: "${archetype.id}" needs a "style" with a 3-letter uppercase "abbr" and a "#rrggbb" "color"`);
+    }
     for (const role of archetype.roles) {
       if (!validTiers.includes(role)) {
         throw new Error(`data/monsters.json: "${archetype.id}" has unknown role "${role}"`);

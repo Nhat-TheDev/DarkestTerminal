@@ -4,7 +4,7 @@ import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { closeEvent, findArtifactOwner } from "./shared";
+import { closeEvent, recordEventOutcome, findArtifactOwner } from "./shared";
 
 const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
 
@@ -20,7 +20,7 @@ export function hermitExchangeFortune(state: GameState, ctx: EngineContext, arti
   const newArtifactId = rollArtifactWithMinRarity(rarity, ctx.rng);
   state.message = t("game.hermitExchanged", { old: getArtifact(artifactId).name, new: getArtifact(newArtifactId).name, cost: HERMIT_EXCHANGE_COST_COINS });
   grantArtifact(state, newArtifactId);
-  state.eventOutcomes["wandering-hermit"] = "traded";
+  recordEventOutcome(state, "traded");
   closeEvent(state);
   return null;
 }

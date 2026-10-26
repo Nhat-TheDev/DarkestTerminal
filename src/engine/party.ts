@@ -110,10 +110,10 @@ export function characterStatBreakdown(character: Character, satiety: number): R
   // `artifactStatBoostSum` folds the equipped Ability's shared effects in with the Artifacts', so the
   // Ability's share is subtracted back out to tell the two apart.
   const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
-  const knightPassive = character.classId === "knight" ? passiveRankDef(cls.passiveSkill, character.level) : null;
+  const passiveRank = passiveRankDef(cls.passiveSkill, character.level);
   const passivePercent: Partial<Record<CharacterStat, number>> = {
-    maxHp: knightPassive?.maxHpPercent ?? 0,
-    defense: knightPassive?.defensePercent ?? 0,
+    maxHp: passiveRank?.maxHpPercent ?? 0,
+    defense: passiveRank?.defensePercent ?? 0,
   };
   const isExhausted = applyExhaustedMultiplier(100, satiety) !== 100;
 

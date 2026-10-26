@@ -700,8 +700,8 @@ boss falls — never all 4 endings competing on 1 menu:
 **1. "The blood debt breaks"**: Chain 3, "Blood Debt" (§8.5), reaching its tier-3 escalation at some
 point this run — `narrativeCounters.altarPaymentsCount >= events.bloodDebtThreshold3` (16 payments,
 the same counter and threshold already tracked for `blood-altar`'s `chainEscalated3Description`) —
-**and** the most recently recorded `blood-altar` outcome (`GameState.eventOutcomes["blood-altar"]`,
-already written per Part B.1's table) reads `"declined"`. Both pieces of state already exist for
+**and** the most recently recorded outcome of an `hpGamble` event (`blood-altar`, read from
+`GameState.eventOutcomes`, already written per Part B.1's table) reads `"declined"`. Both pieces of state already exist for
 other reasons; this condition only reads the 2 of them together.
 
 **2. "The ledger never opens"**: Chain 4, "Taken, Never Given" (`freeRewardsTakenCount`, §8.5),
@@ -898,10 +898,10 @@ they're also statistically very different odds of already holding the way out by
 Not a bug to fix: a party that gave nothing back anywhere earns a harder shot at the good branch than
 a party whose one long exchange simply broke.
 
-**Mechanism**: `ArtifactDefinition.restrictedDropSources?: ("boss" | "blood-altar")[]`
+**Mechanism**: `ArtifactDefinition.restrictedDropSources?: ("boss" | "hpGamble")[]`
 (`src/types.ts`) — when present, an id is filtered out of every roll except the ones named.
 `rollArtifact()`/`pickArtifactOfRarity()` (`src/data/artifacts.ts`) take an opt-in
-`allowRestrictedSource` param; `bloodAltarPay()` passes `"blood-altar"` once the threshold above is
+`allowRestrictedSource` param; `bloodAltarPay()` (the `hpGamble` kind) passes `"hpGamble"` once the threshold above is
 met, `Game.resolve()`'s Boss-kill branch passes `"boss"` only when `monster.tier === "boss"`. Every
 other caller (`openChest.ts` and the rest of Chain 4's events, `sacrifice.ts`, Elite kills, Collapsed
 Floor's own `"boss"`-rarity-table roll) passes nothing and stays excluded automatically. The opt-in

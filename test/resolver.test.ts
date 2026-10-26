@@ -3,7 +3,7 @@ import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tick
 import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
 import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
-import { applySkillEffects, resolveRound, startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
+import { applySkillEffects, resolveRound, startCombat, passiveDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
@@ -580,7 +580,7 @@ describe("Acolyte passive: own-healing-output boost", () => {
   });
 });
 
-describe("Acolyte passive: acolyteDebuffResistPercent", () => {
+describe("Acolyte passive: passiveDebuffResistPercent", () => {
   test("scales with the unlocked passive rank: 0/30/40/50 at rank 0/1/2/3", () => {
     const { ctx } = makeCtx();
     const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
@@ -591,7 +591,7 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
       [35, 50],
     ] as const) {
       acolyte.level = level;
-      expect(acolyteDebuffResistPercent(acolyte)).toBe(expected);
+      expect(passiveDebuffResistPercent(acolyte)).toBe(expected);
     }
   });
 
@@ -599,7 +599,7 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
     const { ctx } = makeCtx();
     const nonAcolyte = ctx.party.find((p) => p.classId !== "acolyte")!;
     nonAcolyte.level = 35;
-    expect(acolyteDebuffResistPercent(nonAcolyte)).toBe(0);
+    expect(passiveDebuffResistPercent(nonAcolyte)).toBe(0);
   });
 });
 

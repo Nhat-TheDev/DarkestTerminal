@@ -43,6 +43,9 @@ for (const cls of CLASSES) {
   if (!ATTACK_RANGES.includes(cls.attackRange)) {
     throw new Error(`data/classes.json: class "${cls.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
   }
+  if (!/^[A-Z]{2}$/.test(cls.style?.abbr ?? "") || !/^#[0-9a-f]{6}$/i.test(cls.style?.color ?? "")) {
+    throw new Error(`data/classes.json: class "${cls.id}" needs a "style" with a 2-letter uppercase "abbr" and a "#rrggbb" "color"`);
+  }
   cls.skills = cls.skills.map(normalizeRankedSkill);
 
   const passiveRanks = cls.passiveSkill.ranks.map((r) => r.rank);
@@ -104,4 +107,9 @@ export function passiveRankDef(passive: PassiveSkillDefinition, level: number): 
   const rank = getUnlockedPassiveRank(passive, level);
   if (rank === 0) return null;
   return passive.ranks.find((r) => r.rank === rank) ?? null;
+}
+
+/** The unlocked rank of the character's own class passive; a mechanic reads its field, so any class declaring the field gets it. */
+export function ownPassiveRank(character: { classId: Id; level: number }): PassiveRankDefinition | null {
+  return passiveRankDef(getClass(character.classId).passiveSkill, character.level);
 }

@@ -2,6 +2,10 @@
   {
     "id": "knight",
     "name": "Knight",
+    "style": {
+      "abbr": "KN",
+      "color": "#5b7fa6"
+    },
     "description": "Takes the blow meant for the weakest, and drives the others on behind its shield.",
     "roleTags": [
       "Guardian",
@@ -406,6 +410,10 @@
   {
     "id": "mage",
     "name": "Mage",
+    "style": {
+      "abbr": "MG",
+      "color": "#7a52a3"
+    },
     "description": "Ends a fight quickly with fire, lightning and ice, and cannot take a hit in return. Keep something solid in front of it.",
     "roleTags": [
       "Nuker",
@@ -878,6 +886,10 @@
   {
     "id": "rogue",
     "name": "Rogue",
+    "style": {
+      "abbr": "RG",
+      "color": "#b5892c"
+    },
     "description": "Moves before almost anyone else, drops one target hard, and is already gone before it can hit back.",
     "roleTags": [
       "Assassin",
@@ -1298,6 +1310,10 @@
   {
     "id": "acolyte",
     "name": "Acolyte",
+    "style": {
+      "abbr": "AC",
+      "color": "#a8901a"
+    },
     "description": "Keeps the party's wounds closed and its nerve steady when the floors turn ugly.",
     "roleTags": [
       "Healer",
@@ -1771,6 +1787,10 @@
   {
     "id": "viking",
     "name": "Viking",
+    "style": {
+      "abbr": "VK",
+      "color": "#8a4a2a"
+    },
     "description": "Trades safety for numbers — puts everything behind every swing and hopes the fight's over before its own HP is.",
     "roleTags": [
       "Bruiser",
@@ -2197,6 +2217,10 @@
   {
     "id": "plague-doctor",
     "name": "Plague Doctor",
+    "style": {
+      "abbr": "PD",
+      "color": "#3a4a3a"
+    },
     "description": "Doesn't need the first hit to win — poison, blindness, and toxic fog do the work over time, and it can patch the team up when nobody else can.",
     "roleTags": [
       "Debuffer",
@@ -2748,6 +2772,10 @@
   {
     "id": "archer",
     "name": "Archer",
+    "style": {
+      "abbr": "AR",
+      "color": "#4a6b3a"
+    },
     "description": "Every shot is built to land hard — high crit odds, an ambush shot that fires the instant something moves on it, and hits that leave the target weaker for whoever swings next.",
     "roleTags": [
       "Marksman",
@@ -3142,6 +3170,10 @@
   {
     "id": "ninja",
     "name": "Ninja",
+    "style": {
+      "abbr": "NJ",
+      "color": "#5a5a5a"
+    },
     "description": "Isn't built to overpower anything — disappear from the fight entirely, let a decoy clone take the hits instead, and let bleeding pile up until a finishing strike closes it out.",
     "roleTags": [
       "Stealth",
@@ -3640,6 +3672,10 @@
   {
     "id": "summoner",
     "name": "Summoner",
+    "style": {
+      "abbr": "SM",
+      "color": "#5a3a8a"
+    },
     "description": "Barely fights with its own hands — it summons something to take the hits, someone to patch the party up, and whatever's left over to hit back, each one shaped in its own image.",
     "roleTags": [
       "Minion Master",
@@ -4114,6 +4150,10 @@
   {
     "id": "jester",
     "name": "Jester",
+    "style": {
+      "abbr": "JS",
+      "color": "#9a3a4a"
+    },
     "description": "Fast on the feet and loose with the odds. Slows and sickens the enemy, then bets everything on the next swing.",
     "roleTags": [
       "Debuffer",
@@ -4618,6 +4658,10 @@
   {
     "id": "paladin",
     "name": "Paladin",
+    "style": {
+      "abbr": "PL",
+      "color": "#b8a46a"
+    },
     "description": "Holds the front and keeps the line alive behind it. Every blow it takes is answered, and every wound it can reach is closed by hand.",
     "roleTags": [
       "Tank",
@@ -5149,6 +5193,10 @@
   {
     "id": "warlock",
     "name": "Warlock",
+    "style": {
+      "abbr": "WL",
+      "color": "#3a5a5a"
+    },
     "description": "Pays for its power in its own blood, and spends it on curses that rot the enemy from the inside and stop its mouth.",
     "roleTags": [
       "Curses",

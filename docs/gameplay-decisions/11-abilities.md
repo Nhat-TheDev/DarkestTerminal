@@ -182,7 +182,7 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
   adds one more source for an Acolyte bearer. Each equipped Artifact, the
   Ability and the passive scale the land chance down on their own, so they
   combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent` and `combinePercents`,
-  `src/engine/artifacts.ts`; `acolyteDebuffResistPercent`,
+  `src/engine/artifacts.ts`; `passiveDebuffResistPercent`,
   `src/engine/combat.ts`) and never reach 100% from sources below 100%.
 - **Scope:** only enemy skills acting on a Character inside combat, at the
   same call site as `alwaysHit`'s per-effect roll (`applySkillEffects`,

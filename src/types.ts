@@ -332,9 +332,16 @@ export interface GrowthWeightsData {
   monsterGrowthWeights: Record<MonsterType, { attack: number; defense: number; maxHp: number }>;
 }
 
+/** A unit's chip label and color in the party and enemy panels. */
+export interface UnitStyle {
+  abbr: string;
+  color: string;
+}
+
 export interface CharacterClass {
   id: Id;
   name: string;
+  style: UnitStyle;
   description: string;
   roleTags: string[];
   baseMaxHp: number;
@@ -469,6 +476,8 @@ export interface ItemDefinition {
   /** A trophy shared by one race's monsters; drop weight scaled by `BALANCE.items.groupDropMultiplier`. */
   groupItem?: boolean;
   combatUsable?: boolean;
+  /** The item Camp spends; exactly one item sets it, and the party starts with `party.startingExplorationKits` of it. */
+  campKit?: boolean;
 }
 
 export type ArtifactRarity = "common" | "rare" | "unique" | "epic";
@@ -502,8 +511,13 @@ export interface ArtifactDefinition {
   effects: ArtifactEffect[];
   isCursed?: boolean;
   /** Excluded from every roll except these sources, opted into via `rollArtifact`'s `allowRestrictedSource` (the "boss" table alone doesn't imply a Boss kill). */
-  restrictedDropSources?: ("boss" | "blood-altar")[];
+  restrictedDropSources?: ArtifactRestrictedSource[];
+  /** While equipped, the Leave ending's ambush never lands. */
+  escapesLeaveAmbush?: boolean;
 }
+
+/** A source that can roll a restricted artifact: a Boss kill, or an `hpGamble` event payment. */
+export type ArtifactRestrictedSource = "boss" | "hpGamble";
 
 /** An `aggro` statBoost, which `ArtifactEffect` reserves for the cursed `curseAggroBoost`. */
 export type AbilityOnlyEffect = { kind: "statBoost"; stat: "aggro"; amount: number; minPercent?: number };
@@ -531,8 +545,14 @@ export type EventKind =
   | "combatReward"
   | "merchant"
   | "hpGamble"
-  | "choiceReveal"
-  | "artifactExchange"
+  /** One pre-rolled offer that may be Cursed, taken or declined. */
+  | "cursedOffer"
+  /** Two pre-rolled offers; the party takes one. */
+  | "pairedOffer"
+  /** An equipped artifact is given up for a roll of at least its rarity, for free. */
+  | "artifactSacrifice"
+  /** An equipped artifact, Cursed included, is traded for a roll of at least its rarity, for coins. */
+  | "fortuneExchange"
   | "rescueGamble"
   | "coinGamble"
   /** Shown at a fixed point (the-gatekeeper), never rolled into a room. */
@@ -562,6 +582,12 @@ export interface EventDefinition {
   onceLifetime?: boolean;
   /** Grants an Artifact at no cost with no decline; every resolution counts toward `freeRewardsTakenCount`. */
   freeTake?: boolean;
+  /** Never counts toward `loreExposureCount`. */
+  noLoreExposure?: boolean;
+  /** Rolls only once a retired character is recorded; `{{class}}` in its description names that character's class. */
+  retiredCharacterEvent?: boolean;
+  /** Its text and reflection escalate as `narrativeCounters[counter]` crosses the `events.*` balance values `thresholds` names (tier 1, 2, 3). */
+  escalation?: { counter: keyof GameState["narrativeCounters"]; thresholds: [string, string, string] };
   /** The reflection shows only when `GameState.eventOutcomes[id]` holds this tag. */
   reflectionRequiresOutcome?: string;
   /** Leaves the roll pool for good once the founder falls. */
@@ -570,7 +596,7 @@ export interface EventDefinition {
   /** `instantReward` only: grant this artifact instead of rolling; ignored with `noArtifactReward`. */
   guaranteedArtifactId?: Id;
   guaranteedItems?: { itemId: Id; count: number }[];
-  /** Replaces "Open the chest" on `eventOpenChest` for a scene that isn't a chest. */
+  /** Replaces "Open the chest" on `eventInstantReward` for a scene that isn't a chest. */
   instantRewardActionLabel?: string;
   /** Replaces `description` from the 2nd encounter on; the object form branches on the last visit's outcome. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
@@ -712,6 +738,7 @@ export interface TraitDefinition {
 export interface MonsterArchetype {
   id: Id;
   name: string;
+  style: UnitStyle;
   description: string;
   baseHp: number;
   baseAttack: number;

@@ -1,6 +1,7 @@
 [
   {
     "id": "open-chest",
+    "noLoreExposure": true,
     "freeTake": true,
     "name": "Open Chest",
     "description": "A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further.",
@@ -107,6 +108,7 @@
   },
   {
     "id": "blood-altar",
+    "escalation": { "counter": "altarPaymentsCount", "thresholds": ["bloodDebtThreshold", "bloodDebtThreshold2", "bloodDebtThreshold3"] },
     "reflectionRequiresOutcome": "paid",
     "removedOnFounderVictory": true,
     "name": "Trade HP for an Artifact",
@@ -159,7 +161,7 @@
       "prompt": "The open eye hasn't blinked once. You'd swear it's still watching, even from here.",
       "options": { "curious": "Three eyes, one open — you find yourself counting the shut ones on your way out.", "wary": "One open eye is already one too many for your taste.", "dismissive": "It's carved stone. You turn your back on it to prove the point." }
     },
-    "kind": "choiceReveal",
+    "kind": "cursedOffer",
     "tier": "rare"
   },
   {
@@ -181,12 +183,13 @@
       "prompt": "The shattered pedestal's dust hasn't settled. You didn't choose it, but it still feels like you broke something.",
       "options": { "curious": "What was on that one, you'll never know now.", "wary": "You don't go back to look at the other pedestal.", "dismissive": "Rigged either way. There was never a real choice." }
     },
-    "kind": "choiceReveal",
+    "kind": "pairedOffer",
     "tier": "rare",
     "forceEquip": true
   },
   {
     "id": "sacrificial-circle",
+    "escalation": { "counter": "artifactsSacrificed", "thresholds": ["circleRemembersThreshold", "circleRemembersThreshold2", "circleRemembersThreshold3"] },
     "reflectionRequiresOutcome": "sacrificed",
     "removedOnFounderVictory": true,
     "name": "Ritual Circle",
@@ -209,7 +212,7 @@
       "escalated3Prompt": "None of you can say, right now, whose idea it was — only that nobody argued.",
       "options": { "curious": "The gap in the pattern keeps drawing your eye.", "wary": "Not a place you'd want to visit more than you have to.", "dismissive": "A fair trade, and a better artifact for it. That's all it needs to be." }
     },
-    "kind": "artifactExchange",
+    "kind": "artifactSacrifice",
     "tier": "rare"
   },
   {
@@ -280,7 +283,7 @@
       "prompt": "His eyes stayed shut for the whole trade. You're not sure he needed them open at all.",
       "options": { "curious": "You look at the mark on his forearm until he turns the arm over.", "wary": "You don't ask about his past. He doesn't ask about yours.", "dismissive": "Strange old man, but he held up his end of it." }
     },
-    "kind": "artifactExchange",
+    "kind": "fortuneExchange",
     "tier": "rare"
   },
   {
@@ -514,6 +517,7 @@
   },
   {
     "id": "the-one-who-stayed",
+    "retiredCharacterEvent": true,
     "name": "The One Who Stayed",
     "description": "A figure crouches at the edge of the torchlight, and for a moment none of you can place why they look familiar — until someone does. {{class}} gear, worn the same way yours is, only longer. Not one of you. One from before, who never came back up. They don't seem surprised to see you. 'You got further than we did,' they say.",
     "instantRewardActionLabel": "  [1] Move on",

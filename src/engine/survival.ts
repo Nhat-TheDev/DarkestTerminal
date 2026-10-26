@@ -2,6 +2,7 @@ import type { Character, GameState, LogEntry } from "../types";
 import { fearResistMultiplier } from "./artifacts";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
+import { CAMP_KIT_ITEM_ID } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
 
 export const SATIETY_DRAIN_COMBAT = BALANCE.survival.satietyDrainCombat;
@@ -145,9 +146,9 @@ export function restChat(character: Character): void {
 }
 
 export function campAction(state: GameState): { reason: string } | null {
-  const kits = state.inventory["exploration-kit"] ?? 0;
+  const kits = state.inventory[CAMP_KIT_ITEM_ID] ?? 0;
   if (kits <= 0) return { reason: t("errors.noExplorationKits") };
-  state.inventory["exploration-kit"] = kits - 1;
+  state.inventory[CAMP_KIT_ITEM_ID] = kits - 1;
   state.satiety = clamp(state.satiety + CAMP_SATIETY_RESTORE, 0, 100);
   state.message = t("game.campUsed");
   return null;

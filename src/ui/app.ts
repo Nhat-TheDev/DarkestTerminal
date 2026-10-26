@@ -16,7 +16,6 @@ import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { saveRun, deleteSlot } from "../engine/save";
 import {
   PALETTE,
-  CLASS_STYLE,
   chip,
   plainChunk,
   colorChunk,
@@ -69,12 +68,12 @@ import * as runnerScreen from "./screens/runner";
 const ROOM_LOG_SIZE = 50;
 const RUN_LOG_SIZE = 500;
 
-/** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
+/** "eventArtifactSacrifice" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
   // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
   if (kind === "memory") return 1;
   if (kind === "pickItemOutOfCombat" || kind === "pickItemInCombat") return ITEM_PAGE_SIZE;
-  return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
+  return kind === "eventArtifactSacrifice" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
 
 const FEAR_TIER_LABEL: Record<number, string> = {
@@ -335,8 +334,8 @@ export class App implements ScreenContext {
       case "pickItemInCombat":
         return combatInventoryEntries(this.game.state.inventory).length;
       case "artifactMenu":
-      case "eventArtifactPick":
-      case "eventHermitPickArtifact":
+      case "eventArtifactSacrifice":
+      case "eventFortuneExchangePickArtifact":
         return ownedArtifactEntries(this.game.state.party).length;
       case "runnerSell":
         return runnerScreen.sellableEntries(this.game).length;
@@ -560,17 +559,17 @@ export class App implements ScreenContext {
       case "saveMenu":
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
-      case "eventOpenChest":
+      case "eventInstantReward":
       case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -961,7 +960,7 @@ export class App implements ScreenContext {
   }
 
   private renderCharacterLines(c: Character, satiety: number): TextChunk[][] {
-    const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+    const style = getClass(c.classId).style;
     if (!c.isAlive) {
       return [[chip(style.abbr, PALETTE.dead), plainChunk(t("ui.fallenSuffix", { name: c.name }))]];
     }
@@ -1085,7 +1084,7 @@ export class App implements ScreenContext {
       const hp = view?.hp ?? c.hp;
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
-      const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+      const style = getClass(c.classId).style;
       const fearChange = this.reveal.fearBeat && focus?.fearChangedIds.includes(c.id) ? (this.focusFearDeltas.get(c.id) ?? 0) : 0;
       const mark = this.markerFor(c.id);
       const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
@@ -1271,17 +1270,17 @@ export class App implements ScreenContext {
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
-      case "eventOpenChest":
+      case "eventInstantReward":
       case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
@@ -1357,17 +1356,17 @@ export class App implements ScreenContext {
         return rewardsScreen.renderFooter(this.ui, this.listPage);
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
-      case "eventOpenChest":
+      case "eventInstantReward":
       case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "campReflection":

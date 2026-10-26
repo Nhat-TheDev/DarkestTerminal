@@ -3,7 +3,7 @@ import { removeArtifactFromCharacter, grantArtifact, type PartyActionError } fro
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { closeEvent, findArtifactOwner } from "./shared";
+import { closeEvent, recordEventOutcome, findArtifactOwner } from "./shared";
 
 export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifactId: Id): PartyActionError | null {
   const owner = findArtifactOwner(state, sacrificeArtifactId);
@@ -16,7 +16,7 @@ export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifac
   grantArtifact(state, newArtifactId);
   state.narrativeCounters.artifactsSacrificed += 1;
   // Written here so sacrificeLeave()'s closeEvent() leaves it in place of the generic "resolved".
-  state.eventOutcomes["sacrificial-circle"] = "sacrificed";
+  recordEventOutcome(state, "sacrificed");
   return null;
 }
 

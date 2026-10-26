@@ -25,17 +25,17 @@ const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoi
 
 export type EventUiState = Extract<
   UiState,
-  | { kind: "eventOpenChest" }
+  | { kind: "eventInstantReward" }
   | { kind: "eventMerchant" }
-  | { kind: "eventCursedShrine" }
-  | { kind: "eventTwinAltars" }
+  | { kind: "eventCursedOffer" }
+  | { kind: "eventPairedOffer" }
   | { kind: "eventHpGamble" }
   | { kind: "eventHpGamblePickPayer" }
-  | { kind: "eventArtifactPick" }
-  | { kind: "eventGamblingDen" }
-  | { kind: "eventHermit" }
-  | { kind: "eventHermitPickArtifact" }
-  | { kind: "eventGuardianFight" }
+  | { kind: "eventArtifactSacrifice" }
+  | { kind: "eventCoinGamble" }
+  | { kind: "eventFortuneExchange" }
+  | { kind: "eventFortuneExchangePickArtifact" }
+  | { kind: "eventCombatReward" }
   | { kind: "eventReflection" }
 >;
 
@@ -51,7 +51,7 @@ function currentEventDescription(state: GameState): string {
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
-    case "eventOpenChest": {
+    case "eventInstantReward": {
       if (digit === 1) {
         const err = ctx.game.openChest();
         if (err) ctx.reportUnusable(err.reason);
@@ -101,7 +101,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventCursedShrine": {
+    case "eventCursedOffer": {
       if (digit === 1 || digit === 2) {
         ctx.game.cursedShrineDecide(digit === 1);
         ctx.logInfo(ctx.game.state.message);
@@ -109,7 +109,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventTwinAltars": {
+    case "eventPairedOffer": {
       if (digit === 1 || digit === 2) {
         const err = ctx.game.twinAltarsChoose((digit - 1) as 0 | 1);
         if (err) ctx.reportUnusable(err.reason);
@@ -119,9 +119,9 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventHpGamble": {
       if (digit === 1) {
-        ctx.setUi({ kind: "eventHpGamblePickPayer", eventId: ui.eventId });
+        ctx.setUi({ kind: "eventHpGamblePickPayer", gamble: ui.gamble });
       } else if (digit === 2) {
-        if (ui.eventId === "blood-altar") ctx.game.bloodAltarLeave();
+        if (ui.gamble === "hpGamble") ctx.game.bloodAltarLeave();
         else ctx.game.collapsedFloorLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -132,13 +132,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       if (digit === null) break;
       const character = ctx.game.state.party[digit - 1];
       if (!character) break;
-      const err = ui.eventId === "blood-altar" ? ctx.game.bloodAltarPay(character.id) : ctx.game.collapsedFloorAttempt(character.id);
+      const err = ui.gamble === "hpGamble" ? ctx.game.bloodAltarPay(character.id) : ctx.game.collapsedFloorAttempt(character.id);
       if (err) ctx.reportUnusable(err.reason);
       else ctx.logInfo(ctx.game.state.message);
       ctx.syncUiToGameState();
       break;
     }
-    case "eventArtifactPick": {
+    case "eventArtifactSacrifice": {
       if (digit === null) break;
       const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage(), SACRIFICE_PAGE_SIZE);
       if (digit <= pageItems.length) {
@@ -153,7 +153,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventGamblingDen": {
+    case "eventCoinGamble": {
       const gamble = ctx.game.state.activeEvent?.gambleState;
       if (!gamble) {
         if (digit === 1) {
@@ -181,13 +181,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventHermit": {
+    case "eventFortuneExchange": {
       if (digit === 1) {
         if (ownedArtifactEntries(ctx.game.state.party).length === 0) {
           ctx.reportUnusable(t("ui.noArtifactToReroll"));
           break;
         }
-        ctx.setUi({ kind: "eventHermitPickArtifact" });
+        ctx.setUi({ kind: "eventFortuneExchangePickArtifact" });
       } else if (digit === 2) {
         ctx.game.hermitLeave();
         ctx.logInfo(ctx.game.state.message);
@@ -195,7 +195,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventHermitPickArtifact": {
+    case "eventFortuneExchangePickArtifact": {
       if (digit === null) break;
       const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage());
       const entry = pageItems[digit - 1];
@@ -206,7 +206,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       ctx.syncUiToGameState();
       break;
     }
-    case "eventGuardianFight": {
+    case "eventCombatReward": {
       if (digit === 1) {
         const err = ctx.game.enterGuardianFight();
         if (err) ctx.reportUnusable(err.reason);
@@ -235,7 +235,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
 export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
-    case "eventOpenChest": {
+    case "eventInstantReward": {
       const room = getRoom(s.floor, s.currentRoomId);
       const event = room.rolledEventId ? getEvent(room.rolledEventId) : undefined;
       return [currentEventDescription(s), "", event?.instantRewardActionLabel ?? t("ui.openChestOption")].join("\n");
@@ -274,7 +274,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return lines.join("\n");
     }
 
-    case "eventCursedShrine": {
+    case "eventCursedOffer": {
       const artifactId = s.activeEvent?.offerArtifactIds[0];
       const a = artifactId ? getArtifact(artifactId) : null;
       const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
@@ -288,7 +288,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       ].join("\n");
     }
 
-    case "eventTwinAltars": {
+    case "eventPairedOffer": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
       const lines = [currentEventDescription(s), "", t("ui.twinAltarsIntro")];
       offers.forEach((id, i) => {
@@ -299,8 +299,8 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     }
 
     case "eventHpGamble": {
-      const percent = ui.eventId === "blood-altar" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
-      const resultLine = ui.eventId === "blood-altar" ? t("ui.bloodAltarResult") : t("ui.collapsedFloorResult", { chance: Math.round(BALANCE.events.collapsedFloorSuccessChance * 100) });
+      const percent = ui.gamble === "hpGamble" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
+      const resultLine = ui.gamble === "hpGamble" ? t("ui.bloodAltarResult") : t("ui.collapsedFloorResult", { chance: Math.round(BALANCE.events.collapsedFloorSuccessChance * 100) });
       return [currentEventDescription(s), "", t("ui.payToTry", { percent }), resultLine, "", t("ui.payOption"), t("ui.leaveOption")].join("\n");
     }
 
@@ -309,7 +309,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return lines.join("\n");
     }
 
-    case "eventArtifactPick": {
+    case "eventArtifactSacrifice": {
       const candidates = ownedArtifactEntries(s.party);
       const { pageItems, page: p, pages } = paginate(candidates, page, SACRIFICE_PAGE_SIZE);
       const lines = [currentEventDescription(s), "", t("ui.chooseSacrifice")];
@@ -323,7 +323,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return lines.join("\n");
     }
 
-    case "eventGamblingDen": {
+    case "eventCoinGamble": {
       const gamble = s.activeEvent?.gambleState;
       if (!gamble) {
         const round1 = GAMBLING_DEN_ROUNDS[0]!;
@@ -345,7 +345,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       ].join("\n");
     }
 
-    case "eventHermit": {
+    case "eventFortuneExchange": {
       const hasAny = ownedArtifactEntries(s.party).length > 0;
       return [
         currentEventDescription(s),
@@ -356,7 +356,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       ].join("\n");
     }
 
-    case "eventHermitPickArtifact": {
+    case "eventFortuneExchangePickArtifact": {
       const { pageItems, page: p, pages } = paginate(ownedArtifactEntries(s.party), page);
       const lines = [t("ui.hermitExchangeIntro", { cost: HERMIT_EXCHANGE_COST_COINS })];
       pageItems.forEach(({ artifactId }, i) => lines.push(`  [${i + 1}] ${getArtifact(artifactId).name} (${getArtifact(artifactId).rarity})`));
@@ -364,7 +364,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return lines.join("\n");
     }
 
-    case "eventGuardianFight": {
+    case "eventCombatReward": {
       const room = getRoom(s.floor, s.currentRoomId);
       const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
       // Skip is hidden past the forced threshold; `guardianFightSkip` also rejects it.
@@ -395,29 +395,29 @@ export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
       const options = (s.activeEvent?.offerArtifactIds.length ?? 0) + 1;
       return digitHint((s.activeEvent?.refreshCount ?? 0) >= MERCHANT_MAX_REFRESHES ? "ui.footerChoose" : "ui.footerMerchant", options);
     }
-    case "eventArtifactPick": {
+    case "eventArtifactSacrifice": {
       const { pageItems } = paginate(ownedArtifactEntries(s.party), page, SACRIFICE_PAGE_SIZE);
       return digitHint("ui.footerChoose", pageItems.length + 1);
     }
-    case "eventHermitPickArtifact": {
+    case "eventFortuneExchangePickArtifact": {
       const { pageItems } = paginate(ownedArtifactEntries(s.party), page);
       return digitHint("ui.footerChooseArtifact", pageItems.length);
     }
-    case "eventGuardianFight": {
+    case "eventCombatReward": {
       const room = getRoom(s.floor, s.currentRoomId);
       const forced = room.chainVariant === "forced" || room.chainVariant === "forced2" || room.chainVariant === "forced3";
       return digitHint("ui.footerChoose", forced ? 1 : 2);
     }
-    case "eventTwinAltars":
+    case "eventPairedOffer":
       return digitHint("ui.footerChoose", s.activeEvent?.offerArtifactIds.length ?? 0);
-    case "eventOpenChest":
+    case "eventInstantReward":
       return digitHint("ui.footerChoose", 1);
     case "eventReflection":
       return digitHint("ui.footerChoose", 3);
-    case "eventCursedShrine":
+    case "eventCursedOffer":
     case "eventHpGamble":
-    case "eventGamblingDen":
-    case "eventHermit":
+    case "eventCoinGamble":
+    case "eventFortuneExchange":
       return digitHint("ui.footerChoose", 2);
   }
 }
