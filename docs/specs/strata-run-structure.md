@@ -370,8 +370,8 @@ pays it off. A character can follow one direction through all four pairs or mix 
 Directions are a design tool, recorded in `01-class-skill.md`. They are not data and never shown in
 game: the player reads what fits together from the descriptions.
 
-Each class's directions, passive pairs and rank 4s are specified in
-[`class-builds.md`](./class-builds.md).
+Each class's directions are set in [`class-builds.md`](./class-builds.md); its passive pairs and
+rank 4s there are a reference draft until approved.
 
 ---
 
