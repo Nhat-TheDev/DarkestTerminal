@@ -560,7 +560,7 @@
   "item.effectCoinFlipWin": "coin flips land {{multiplier}}x as often",
   "item.effectEndsWithCombat": "ends with the fight",
   "item.effectDamageTaken": "takes {{percent}}% more damage from direct hits",
-  "item.effectBuffsAttackerOnHit": "a damaging hit on the bearer from a party member other than whoever applied it has a {{percent}}% chance to give the attacker {{status}} for {{turns}} turns",
+  "item.effectBuffsAttackerOnHit": "a party member's skill that lands a damaging hit on the bearer has a {{percent}}% chance to give them {{status}} for {{turns}} turns, unless they applied it",
   "item.effectDebuffsAttacker": "a monster that hits the bearer suffers {{status}} for {{turns}} turns",
   "item.effectRevive": "if the bearer falls, it rises again at {{percent}}% max HP",
   "item.effectHealOnHit": "heals back {{percent}}% of the HP each surviving hit takes",

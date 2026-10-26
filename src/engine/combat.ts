@@ -60,6 +60,7 @@ import {
   isHelpfulStatusEffect,
   removeStatusStacks,
   noteDamageTaken,
+  damageTakenMultiplier,
 } from "./resolver";
 
 export interface EngineContext {
@@ -504,11 +505,12 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
             );
             continue;
           }
+          const amount = Math.round(effect.amount * damageTakenMultiplier(target));
           const hpBefore = target.hp;
-          target.hp = Math.max(0, target.hp - effect.amount);
+          target.hp = Math.max(0, target.hp - amount);
           noteDamageTaken(target, character.id, hpBefore - target.hp);
           if (target.hp <= 0) advanceBar(target);
-          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
+          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack" });
         }
       }
     },
@@ -1789,7 +1791,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         applyMonsterHitFear(source, target, combat, ctx);
         if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
-        if (isCharacter(source)) applyAttackerBuffsOnHit(source, target, ctx, log);
+        if (isCharacter(source) && !skill.fromItem) applyAttackerBuffsOnHit(source, target, ctx, log);
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {

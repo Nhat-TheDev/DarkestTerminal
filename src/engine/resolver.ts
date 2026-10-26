@@ -120,7 +120,7 @@ function damageMultiplierFor(source: Actor): number {
   return 1 - getFearDamagePenalty(combatFearTier(source));
 }
 
-function damageTakenMultiplier(target: Actor): number {
+export function damageTakenMultiplier(target: Actor): number {
   return 1 + target.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).damageTakenPercent ?? 0), 0) / 100;
 }
 

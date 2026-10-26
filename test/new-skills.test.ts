@@ -7,6 +7,8 @@ import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
 import { getStatusEffect, statusMechanicsParts } from "../src/data/statusEffects";
 import { getSummonSkill } from "../src/data/summons";
+import { getItem } from "../src/data/items";
+import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
 import { makeCtx, spawnInto, sk, withFixture, withoutDamageRolls } from "./helpers";
@@ -123,7 +125,7 @@ describe("Breach (Knight)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     return { ctx, knight, rogue, rat, combat };
   }
-  const has = (c: Character | Monster, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
+  const has = (c: Pick<Character, "activeStatusEffects">, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
 
   test("Breach damages the foe and leaves it Breached", () => {
     const { ctx, knight, rat, combat } = setup();
@@ -197,6 +199,62 @@ describe("Breach (Knight)", () => {
     applyStatusEffectToActor(rogue, "through-the-breach", 2, { log: [] });
     expect(rogue.attack - before.attack).toBeGreaterThan(0);
     expect(rogue.magicPower - before.magicPower).toBe(rogue.attack - before.attack);
+  });
+
+  test("a summon's hit on a Breached foe takes the bonus but never gains Through the Breach", () => {
+    function rockThrowDamage(breached: boolean, roll: number) {
+      const { ctx } = makeCtx(5);
+      const summoner = ctx.party.find((c) => c.classId === "summoner")!;
+      unlock(summoner, 25, "summon-goblin");
+      const rat = tank(spawnInto(ctx, "dungeon-rat"));
+      rat.defense = 0;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const effect = getEffectiveSkill(getSkill("summon-goblin"), summoner.level).effects!.find((e) => e.kind === "summon")!;
+      const goblin = spawnAdditionalSummon(effect, summoner, combat, ctx, [])!;
+      goblin.attack = 1000;
+      ctx.rng.next = () => roll;
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      applySkillEffects(getSummonSkill("rock-throw"), goblin, [rat], combat, ctx, combat.log);
+      return { damage: before - rat.hp, buffed: has(goblin, "through-the-breach") };
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    expect(rockThrowDamage(true, 0.99).damage).toBeCloseTo(rockThrowDamage(false, 0.99).damage * (1 + percent / 100), -1);
+    expect(rockThrowDamage(true, 0).buffed).toBe(false);
+  });
+
+  test("an item's hit on a Breached foe takes the bonus but never gains Through the Breach", () => {
+    const item = getItem("cracker-string");
+    const asSkill = { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0 as const, unlockLevel: 0, fromItem: true as const };
+    function itemDamage(breached: boolean) {
+      const { ctx, rogue, rat, combat } = setup();
+      rat.defense = 0;
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      applySkillEffects(asSkill, rogue, [rat], combat, ctx, combat.log);
+      return { damage: before - rat.hp, buffed: has(rogue, "through-the-breach") };
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    const breached = itemDamage(true);
+    expect(breached.damage).toBe(Math.round(itemDamage(false).damage * (1 + percent / 100)));
+    expect(breached.buffed).toBe(false);
+  });
+
+  test("an artifact's flat autoDamage on a Breached foe takes the bonus", () => {
+    const fixture = { id: "fixture-flat-auto", name: "Fixture", description: "", rarity: "common", effects: [{ kind: "autoDamage", amount: 20 }] } as any;
+    ARTIFACTS.push(fixture);
+    try {
+      const { ctx, knight, rogue, rat, combat } = setup();
+      rogue.equippedArtifactIds.push(fixture.id);
+      rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      resolveRound(combat, ctx);
+      const amount = Math.round(20 * (1 + getStatusEffect("breached").damageTakenPercent! / 100));
+      expect(combat.log.map((l) => l.text)).toContain(`Rogue's artifact deals ${amount} damage to Dungeon Rat.`);
+    } finally {
+      ARTIFACTS.splice(ARTIFACTS.indexOf(fixture), 1);
+    }
   });
 
   test("Breached's mechanics text names the damage bonus and the ally buff", () => {
