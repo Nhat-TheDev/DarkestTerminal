@@ -88,10 +88,12 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-const roguePoisonBonusHook: SkillEffectHooks = {
+// Class passives fire on the fields their class declares in data/classes.json, never on a class id.
+
+const targetStatusBonusHook: SkillEffectHooks = {
   onDamageDealt(source, target, damage, ctx, log) {
-    if (!isCharacter(source) || source.classId !== "rogue") return;
-    const passive = getClass("rogue").passiveSkill;
+    if (!isCharacter(source)) return;
+    const passive = getClass(source.classId).passiveSkill;
     if (!passive.requiresTargetStatusId) return;
     const targetHasRequiredStatus = target.activeStatusEffects.some((s) => statusSatisfiesRequirement(s.statusEffectId, passive.requiresTargetStatusId!));
     if (!targetHasRequiredStatus) return;
@@ -111,25 +113,26 @@ const roguePoisonBonusHook: SkillEffectHooks = {
   },
 };
 
-const mageShredHook: SkillEffectHooks = {
+const passiveOnHitStatusHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, _ctx, log) {
-    if (!isCharacter(source) || source.classId !== "mage") return;
-    const rankDef = passiveRankDef(getClass("mage").passiveSkill, source.level);
+    if (!isCharacter(source)) return;
+    const rankDef = passiveRankDef(getClass(source.classId).passiveSkill, source.level);
     if (!rankDef?.onHitStatusEffectId) return;
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.onHitStatusEffectId, durationTurns: rankDef.durationTurns }, source, target, { log });
   },
 };
 
-const plagueDoctorDebuffProcHook: SkillEffectHooks = {
+const debuffProcHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
-    if (!isCharacter(source) || source.classId !== "plague-doctor") return;
-    const passive = getClass("plague-doctor").passiveSkill;
+    if (!isCharacter(source)) return;
+    const passive = getClass(source.classId).passiveSkill;
+    if (!passive.debuffPool?.length) return;
     const rankDef = passiveRankDef(passive, source.level);
     const chance = (rankDef?.procChancePercent ?? 0) / 100;
     if (chance === 0) return;
-    for (let roll = 0; roll < 2; roll++) {
+    for (let roll = 0; roll < (passive.procRolls ?? 1); roll++) {
       if (!ctx.rng.chance(chance)) continue;
-      const statusId = ctx.rng.pick(passive.debuffPool ?? []);
+      const statusId = ctx.rng.pick(passive.debuffPool);
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: statusId, durationTurns: rankDef?.durationTurns }, source, target, { log });
     }
   },
@@ -142,7 +145,7 @@ export const combatHooks: SkillEffectHooks[] = [
   lifestealHook,
   poisonOnHitHook,
   healOnKillHook,
-  roguePoisonBonusHook,
-  mageShredHook,
-  plagueDoctorDebuffProcHook,
+  targetStatusBonusHook,
+  passiveOnHitStatusHook,
+  debuffProcHook,
 ];

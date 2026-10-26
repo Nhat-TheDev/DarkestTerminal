@@ -50,6 +50,10 @@ for (const cls of CLASSES) {
     throw new Error(`data/classes.json: class "${cls.id}"'s passiveSkill must have exactly ranks 1, 2, and 3 (has ${JSON.stringify(passiveRanks)})`);
   }
   validatePassiveStatusIds(cls.id, cls.passiveSkill);
+  const { procRolls } = cls.passiveSkill;
+  if (procRolls !== undefined && (!Number.isInteger(procRolls) || procRolls < 1)) {
+    throw new Error(`data/classes.json: class "${cls.id}"'s passive "procRolls" must be a positive integer (has ${procRolls})`);
+  }
 }
 
 export function getClass(id: string): CharacterClass {

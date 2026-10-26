@@ -311,6 +311,7 @@ export interface PassiveSkillDefinition {
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
   debuffPool?: Id[];
+  procRolls?: number; // times per hit `procChancePercent` is rolled for a debuff from `debuffPool`; 1 if absent
   ignoresFearEffects?: boolean; // fear still builds, but none of its combat penalties apply
   stackBurst?: { statusEffectId: Id; atStacks: number; removeStacks: number; skillId: Id }; // a target reaching `atStacks` of the status loses `removeStacks` of them and takes a free cast of `skillId`
   deathSpread?: { statusEffectId: Id; stacks: number; durationTurns: number }; // when an enemy carrying the status falls, `stacks` of it may pass to another random enemy

@@ -2741,7 +2741,8 @@
         "blinded",
         "slowed",
         "enfeebled"
-      ]
+      ],
+      "procRolls": 2
     }
   },
   {
