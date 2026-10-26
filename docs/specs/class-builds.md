@@ -7,6 +7,11 @@ Not yet implemented. This spec is transient: once M1c ships, fold the directions
 This spec gives each mechanic and its intent, never its numbers. Numbers are set in
 `data/classes.json` during implementation and tuned with `random-play` and `game-editor`.
 
+**Status.** The shared rules and each class's two directions are agreed. Everything under them, the
+passive pairs, the rank 4s, the new status effects and the list of new mechanics, is a reference
+draft: nothing in it is decided until it is approved class by class, and no data or engine work
+starts from it before then.
+
 ## Shared rules
 
 - Every class has two build directions. Each of its four passive pairs (levels 4, 9, 14 and 20)
@@ -306,9 +311,11 @@ Rank 4:
 
 ---
 
-## New mechanics
+## New mechanics (draft)
 
-Each of these is a generic effect kind, condition or hook in data, usable by any class, monster,
+What the draft passives and rank 4s above would need, for reference only. The list is settled once
+the class content is approved, and anything an approved passive or rank 4 does not use is dropped.
+Each item would be a generic effect kind, condition or hook in data, usable by any class, monster,
 item or artifact:
 
 - Conditions on the target: carries a given status, has N or more stacks of it, carries N or more
@@ -334,7 +341,7 @@ item or artifact:
 - Paying a skill's cost in HP, always or when MP is short.
 - Overheal converted into an absorb status.
 
-New status effects: `frozen`, `mercy-ward`, `seared`, `exposed`, plus the stacking statuses that
+New status effects in the draft: `frozen`, `mercy-ward`, `seared`, `exposed`, plus the stacking statuses that
 Kindled Faith, Pain Fed, House Edge and Bloodlust need.
 
 ## Review before data
