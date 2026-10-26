@@ -27,6 +27,8 @@ export interface SkillEffect {
   amount?: number;
   /** "satiety" is party-wide, so resolving it needs the GameState. */
   stat?: keyof SurvivalStats | "satiety";
+  /** For a `modifyStat` effect: also moves the stat this percent of its current value, in `amount`'s direction. */
+  percentOfCurrent?: number;
   combatStat?: CombatStat;
   statusEffectId?: Id;
   /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
@@ -233,6 +235,8 @@ export interface SkillDefinition {
   grantsDice?: number;
   /** While this skill is queued, every other character of the party gets this much speed for this round's turn order. */
   allyTurnOrderBonus?: number;
+  /** While this skill is queued, the caster gets this much speed for this round's turn order. */
+  turnOrderSpeedBonus?: number;
   /** HP the cast costs on top of its MP, as a percent of max HP: `atFullHpPercent` at full HP, falling evenly to `atLowHpPercent` at `lowHpBelowPercent` of max HP and below. It never drops the caster below 1 HP. */
   hpCost?: { atFullHpPercent: number; atLowHpPercent: number; lowHpBelowPercent: number };
   /** Lands on enemies with no accuracy roll and cannot be dodged, without being an ultimate. */
@@ -446,6 +450,10 @@ export interface StatusEffectDefinition {
   targetPull?: number;
   /** When a monster's direct hit lands on the bearer, the attacker gets each of these statuses. */
   debuffsAttackerOnHit?: { statusEffectIds: Id[]; durationTurns: number };
+  /** Direct damage the bearer takes is raised by this percent. */
+  damageTakenPercent?: number;
+  /** When a character other than the one who applied it lands a damaging hit on the bearer, that character has `chance` (0–1) to get `statusEffectId`. */
+  buffsAttackerOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
   reviveHpPercent?: number;
   /** Each direct hit the bearer survives heals it for this percent of the HP the hit took. */

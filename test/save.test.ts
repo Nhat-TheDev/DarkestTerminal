@@ -636,6 +636,7 @@ describe("Version migrations", () => {
       vanguard.classId = "vanguard";
       vanguard.name = "Vanguard";
       save.state.retiredCharacterClassId = "vanguard";
+      vanguard.cooldownsRemaining = { "side-by-side": 2 };
       writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
 
       expect(listSlots()[0]!.meta?.saveVersion).toBe("1.1.1");
@@ -646,6 +647,7 @@ describe("Version migrations", () => {
       expect(knight.level).toBe(vanguard.level);
       expect(state.partyExp).toBe(save.state.partyExp);
       expect(state.retiredCharacterClassId).toBe("knight");
+      expect(knight.cooldownsRemaining).toEqual({ breach: 2 });
     });
   });
 

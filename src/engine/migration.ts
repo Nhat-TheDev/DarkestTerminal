@@ -84,9 +84,14 @@ export function renamedClassId(id: Id): Id {
   return V1_2_0_CLASS_RENAMES[id]?.id ?? id;
 }
 
-/** Saves before 1.2.0, which renamed the Vanguard to the Knight. A character's name is its class name. */
+/** Saves before 1.2.0, which renamed the Vanguard to the Knight and replaced its Side by Side with Breach. A character's name is its class name. */
 function migrateToV1_2_0(state: GameState): void {
   for (const character of state.party) {
+    const sideBySideCooldown = character.cooldownsRemaining["side-by-side"];
+    if (sideBySideCooldown !== undefined) {
+      character.cooldownsRemaining["breach"] = sideBySideCooldown;
+      delete character.cooldownsRemaining["side-by-side"];
+    }
     const rename = V1_2_0_CLASS_RENAMES[character.classId];
     if (!rename) continue;
     character.classId = rename.id;

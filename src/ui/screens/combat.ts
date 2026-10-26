@@ -86,7 +86,7 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       body = t("ui.skillEffectRestoreMp", { amount: e.amount ?? 0 });
       break;
     case "modifyStat":
-      body = `${signed(e.amount ?? 0)} ${e.stat ? SURVIVAL_STAT_LABEL[e.stat] ?? e.stat : ""}`;
+      body = `${signed(e.amount ?? 0)} ${e.stat ? SURVIVAL_STAT_LABEL[e.stat] ?? e.stat : ""}${e.percentOfCurrent ? `, ${signed(Math.sign(e.amount ?? 0) * e.percentOfCurrent)}% of current` : ""}`;
       break;
     case "modifyCombatStat":
       body = `${signed(e.amount ?? 0)} ${e.combatStat ? COMBAT_STAT_LABEL[e.combatStat] : ""}`;
@@ -172,6 +172,7 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
   if (sk.hpCost) lines.push(t("ui.skillHpCostLine", { full: sk.hpCost.atFullHpPercent, low: sk.hpCost.atLowHpPercent, threshold: sk.hpCost.lowHpBelowPercent }));
   if (sk.targetsOtherAlliesOnly) lines.push(t("ui.skillOthersOnlyLine"));
   if (sk.allyTurnOrderBonus) lines.push(t("ui.skillAllyTurnOrderLine", { speed: sk.allyTurnOrderBonus }));
+  if (sk.turnOrderSpeedBonus) lines.push(t("ui.skillSelfTurnOrderLine", { speed: sk.turnOrderSpeedBonus }));
   if (sk.casterHpBelowBonus) {
     const { hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent } = sk.casterHpBelowBonus;
     lines.push(t(lifestealPercent ? "ui.skillCasterLowHpLifestealLine" : "ui.skillCasterLowHpLine", { threshold: hpPercentThreshold, percent: offenseMultiplierPercentBonus, lifesteal: lifestealPercent ?? 0 }));

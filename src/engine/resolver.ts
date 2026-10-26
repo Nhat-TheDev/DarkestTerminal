@@ -120,6 +120,15 @@ function damageMultiplierFor(source: Actor): number {
   return 1 - getFearDamagePenalty(combatFearTier(source));
 }
 
+function damageTakenMultiplier(target: Actor): number {
+  return 1 + target.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).damageTakenPercent ?? 0), 0) / 100;
+}
+
+function withPercentOfCurrent(effect: SkillEffect, current: number): number {
+  const amount = effect.amount ?? 0;
+  return amount + Math.sign(amount) * current * ((effect.percentOfCurrent ?? 0) / 100);
+}
+
 function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
   if (stat === "aggro") {
     // Monsters have no aggro or magicPower field, so the change is dropped for them.
@@ -241,6 +250,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
               executeFlat +
               mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic, effect)) * offenseMultiplier, effectiveDefense)) *
               damageMultiplierFor(source) *
+              damageTakenMultiplier(target) *
               critMultiplier *
               executeMultiplier *
               bonusMultiplier *
@@ -335,7 +345,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       if (effect.stat === "satiety") {
         if (!ctx.gameState) return 0;
         const before = ctx.gameState.satiety;
-        ctx.gameState.satiety = clamp(before + (effect.amount ?? 0), 0, 100);
+        ctx.gameState.satiety = clamp(before + Math.round(withPercentOfCurrent(effect, before)), 0, 100);
         const delta = ctx.gameState.satiety - before;
         if (delta !== 0) {
           const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
@@ -347,7 +357,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         return 0;
       }
       if (!isCharacter(target)) return 0;
-      const amount = effect.amount ?? 0;
+      const amount = withPercentOfCurrent(effect, target.survival.fear);
       const delta = adjustFear(target, amount > 0 ? resistedFearGain(target, amount) : amount);
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
@@ -478,6 +488,7 @@ function statusKeepsSource(def: StatusEffectDefinition): boolean {
     def.forcesTargetOnSource === true ||
     def.interceptsForSource === true ||
     def.onLandedHitSourceStatus !== undefined ||
+    def.buffsAttackerOnHit !== undefined ||
     def.endsWithChannel === true ||
     def.perTurnEffects.some((e) => e.kind === "damage")
   );

@@ -147,8 +147,8 @@ name, no numbers/stat references) applies to every skill's `description` field, 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `interpose` | Interpose | singleAlly | 3 | 8 / 9 / 10 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
-| 2 | `side-by-side` | Side by Side | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status side-by-side / side-by-side-ii / side-by-side-iii (1 turn); not on the caster | buff |
-| 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12; status rallied / rallied-ii / rallied-iii (1 turn) | buff |
+| 2 | `breach` | Breach | singleEnemy | 3 | 6 / 7 / 8 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
+| 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
 | 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
 | 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
@@ -157,8 +157,8 @@ name, no numbers/stat references) applies to every skill's `description` field, 
 How each skill works:
 
 - `interpose` — `applyStatusEffect "interposed"` (2 / 3 / 4 turns) on one other ally. While it lasts, a monster's single-target damaging attack aimed at that ally goes to the Knight instead, as long as the Knight is alive and not stunned. The hit is rolled against the Knight's defense, and a cast that already targets the Knight never hits it twice. Area attacks, skills without a damage effect, and a confused monster's blows on its own side are not redirected; a boss's telegraph is turned when it is released, since its target is only chosen then (`interceptTarget`, `src/engine/interception.ts`; `StatusEffectDefinition.interceptsForSource`)
-- `side-by-side` — `applyStatusEffect "side-by-side"` (rank variants `-ii`/`-iii`, 1 turn) on one other ally: raises their defense, attack and magic power. If the ally's own action then lands a damaging hit, the Knight gains `following-through` (defense and attack, 1 turn). A miss, a stun, a heal or a buff gives the Knight nothing. Both statuses tick as `special`, so each lasts through its bearer's next own action (`StatusEffectDefinition.onLandedHitSourceStatus`, `applyLandedHitFollowUps` in `src/engine/combat.ts`)
-- `rally` — `modifyStat fear` (instant, whole party) + `applyStatusEffect "rallied"` (temporary attack buff, whole party)
+- `breach` — a `damage` hit on one enemy, then `applyStatusEffect "breached"` (rank variants `-ii`/`-iii`, 1 turn) on it. `turnOrderSpeedBonus` moves the Knight up the turn order in the round it is cast, so the rest of the party usually acts after it. `breached` ticks as `statMod`, so it lasts to the end of that round: every direct hit on the foe deals `damageTakenPercent` more, and each damaging hit from a party member other than the Knight rolls `buffsAttackerOnHit.chance` to give that attacker `through-the-breach` (attack and magic power, 2 turns: the rest of this round and the next)
+- `rally` — `modifyStat fear` (instant, whole party; `percentOfCurrent` also takes that share of each character's current fear) + `applyStatusEffect "rallied"` (temporary attack and magic power buff, same amount for both, whole party)
 - `heavy-charge` — `damage`/enemy — accuracy rolled **separately per enemy** (`04-fear-combat.md` section 4)
 - `engage` — a `damage` hit on one enemy, then `applyStatusEffect "taunt"` + `applyStatusEffect "engaged"` (rank variants `-ii`/`-iii`) on the Knight for 1 turn (per-effect `target: "self"`): while it lasts, each monster hit that lands on the Knight is answered with a strike at that monster alone; the second counter ends it at once (`counterAttack`, section 1.3.13)
 - `sword-judgment` — `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
@@ -806,8 +806,8 @@ The class-specific skills whose `modifyCombatStat` status scales with rank (Knig
 [
   { "id": "guard-ii", "name": "Guard II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
   { "id": "guard-iii", "name": "Guard III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "defense", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rallied-ii", "name": "Rallied II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] },
-  { "id": "rallied-iii", "name": "Rallied III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }] }
+  { "id": "rallied-ii", "name": "Rallied II", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }, { "kind": "modifyCombatStat", "combatStat": "magicPower", "amount": "<same as attack>" }] },
+  { "id": "rallied-iii", "name": "Rallied III", "perTurnEffects": [{ "kind": "modifyCombatStat", "combatStat": "attack", "amount": "<see data/status-effects.json>" }, { "kind": "modifyCombatStat", "combatStat": "magicPower", "amount": "<same as attack>" }] }
 ]
 ```
 
@@ -905,19 +905,19 @@ How each passive works:
 
 The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English id/name, matching `data/status-effects.json`):
 
-<!-- docs:begin statusEffects ids=interposed,side-by-side,following-through,engaged,guard,taunt,challenge,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
+<!-- docs:begin statusEffects ids=interposed,breached,through-the-breach,engaged,guard,taunt,challenge,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
 |---|---|---|
 | `interposed` | Interposed | tickCategory special; interceptsForSource |
-| `side-by-side` | Side by Side | defense +6 (min 10%); attack +12 (min 25%); magicPower +12 (min 25%); tickCategory special; onLandedHitSourceStatus statusEffectId following-through, durationTurns 1 |
-| `following-through` | Following Through | defense +6 (min 10%); attack +12 (min 25%); tickCategory special |
+| `breached` | Breached | tickCategory statMod; harmful; damageTakenPercent 8; buffsAttackerOnHit statusEffectId through-the-breach, chance 0.3, durationTurns 2 |
+| `through-the-breach` | Through the Breach | attack +8 (min 15%); magicPower +8 (min 15%) |
 | `engaged` | Engaged | tickCategory statMod; counterAttack maxCounters 2, amount 10, offenseMultiplierPercent 60, target attacker |
 | `guard` | Guard | defense +6 (min 10%) |
 | `taunt` | Taunt | aggro +40; targetPull 0.2 |
 | `challenge` | Challenge | aggro +60; targetPull 0.4 |
-| `rallied` | Rallied | attack +4 (min 5%) |
+| `rallied` | Rallied | attack +4 (min 5%); magicPower +4 (min 5%) |
 | `poison-coated` | Poison-Coated | onHitStatusEffectId poisoned |
 | `poisoned` | Poisoned | damage 4 or 2.5% max HP per turn |
 | `burning` | Burning | damage 6 or 3% max HP per turn |
@@ -931,8 +931,8 @@ The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English i
 What each is, and where it comes from:
 
 - `interposed` — Buff (redirect, not a stat-buff); used by Interpose (Knight).
-- `side-by-side` — Buff (raises defense, attack and magic power; follow-up on a landed hit); used by Side by Side (Knight). `-ii`/`-iii` are the rank variants.
-- `following-through` — Buff; applied to the Knight when the ally carrying `side-by-side` lands a damaging hit. `-ii`/`-iii` are the rank variants.
+- `breached` — Debuff (more damage taken; may buff the party member who strikes it); used by Breach (Knight). `-ii`/`-iii` are the rank variants.
+- `through-the-breach` — Buff (attack and magic power); given by `breached` to a party member who lands a damaging hit on its bearer. `-ii`/`-iii` are the rank variants.
 - `engaged` — Buff (counter, not a stat-buff); used by Engage (Knight). `-ii`/`-iii` are the rank variants.
 - `guard` — Buff; used by monster skills.
 - `taunt` — Buff (aggro and a `targetPull` share of every monster's pick); used by Engage (Knight).
@@ -1065,9 +1065,9 @@ At trigger time, the burst is applied as an ordinary `damage` effect against eve
 - **Skills with a `chance` on 1 effect** (e.g. Fireball's burn proc) only roll for that specific effect, separate from the skill's overall accuracy roll — the main `damage` effect still always applies if the skill hits; only the secondary (proc) effect is probabilistic.
 - **AoE skills** (`allEnemies`, or the "enemy" half of a two-sided skill): accuracy is rolled **separately for each target**, not once for the whole skill — one enemy dodging doesn't mean the whole group dodges.
 - **Two-sided skills** (Purify, Divine Descent, Total Plague, Vigil): the effect applied depends on whether the target is an ally or an enemy, via each effect's own `appliesToRelation: "ally" | "enemy"` filter, rather than sharing one effect list — see `docs/technical-decisions.md` §4.4.
-- **Cooldown** (`cooldownTurns`): every class-specific skill in slots 3-6 has a cooldown. Slots 1-2 vary by skill: Interpose, Side by Side, Poison Coat, Prayer, Lightning Axe, Overwatch, Smoke Bomb, Shadow Strike, Summon Goblin, Summon Spirit, Defiance and Blood Pact have one; Fireball, Lightning Bolt, Knife Throw, Heal, Frenzied Slash, Fire Vial, Healing Draught, Aimed Shot, Loaded Dice, Jeer, Lay on Hands and Hex don't. 2 formulas:
-  - **Buff skills** (`isBuff: true`, the `buff` flag in each class's table): `cooldownTurns = the longest durationTurns among the skill's own applyStatusEffect effects + 1`. Some buff skills are set by hand instead: Interpose and Side by Side, which keep a fixed cooldown across ranks; Guardian Angel, whose cooldown runs longer than its 1-turn status; Summon Golem, whose cooldown runs longer than its `stone-skin` buff; Totem Recall, whose buff lasts until the totem dies rather than for its `durationTurns`; and Martyr's Oath, an ultimate.
+- **Cooldown** (`cooldownTurns`): every class-specific skill in slots 3-6 has a cooldown. Slots 1-2 vary by skill: Interpose, Breach, Poison Coat, Prayer, Lightning Axe, Overwatch, Smoke Bomb, Shadow Strike, Summon Goblin, Summon Spirit, Defiance and Blood Pact have one; Fireball, Lightning Bolt, Knife Throw, Heal, Frenzied Slash, Fire Vial, Healing Draught, Aimed Shot, Loaded Dice, Jeer, Lay on Hands and Hex don't. 2 formulas:
+  - **Buff skills** (`isBuff: true`, the `buff` flag in each class's table): `cooldownTurns = the longest durationTurns among the skill's own applyStatusEffect effects + 1`. Some buff skills are set by hand instead: Interpose, which keeps a fixed cooldown across ranks; Guardian Angel, whose cooldown runs longer than its 1-turn status; Summon Golem, whose cooldown runs longer than its `stone-skin` buff; Totem Recall, whose buff lasts until the totem dies rather than for its `durationTurns`; and Martyr's Oath, an ultimate.
   - **Other damage/utility skills + ultimates**: assigned by hand based on power level, not a fixed formula — `data/classes.json`.
 - `usesPerCombat` is not used by any character skill — every skill uses `cooldownTurns`, including ultimates. The field still exists on `SkillDefinition`/`ItemDefinition` for Items (`07-items-artifacts.md` §7).
-- **Buff skills always grant a temporary speed bonus** for turn-order purposes in the round they're used (the bonus amount: `src/engine/combat.ts`). This applies only to the skills marked `buff` in the Flags column of each class's table that don't summon (Interpose, Side by Side, Rally, Poison Coat, Sanctuary, Lightning Axe, Overwatch, Smoke Bomb, Battle Ballad, Defiance, Guardian Angel, Blood Pact, Martyr's Oath) — not to the Summoner's summon skills, which carry the `buff` flag (`turnOrderSortKey`, `src/engine/combat.ts`), and not to support skills that don't carry a status (Prayer, Heal, Mass Heal for Acolyte adjust instantly, without going through `applyStatusEffect`). This is a temporary bonus only for ordering turns within the current round — it is not added to the character's base `speed` — technical design in `docs/technical-decisions.md` §4.7.
+- **Buff skills always grant a temporary speed bonus** for turn-order purposes in the round they're used (the bonus amount: `src/engine/combat.ts`). This applies only to the skills marked `buff` in the Flags column of each class's table that don't summon (Interpose, Rally, Poison Coat, Sanctuary, Lightning Axe, Overwatch, Smoke Bomb, Battle Ballad, Defiance, Guardian Angel, Blood Pact, Martyr's Oath) — not to the Summoner's summon skills, which carry the `buff` flag (`turnOrderSortKey`, `src/engine/combat.ts`), and not to support skills that don't carry a status (Prayer, Heal, Mass Heal for Acolyte adjust instantly, without going through `applyStatusEffect`). This is a temporary bonus only for ordering turns within the current round — it is not added to the character's base `speed` — technical design in `docs/technical-decisions.md` §4.7. A skill may also carry its own `turnOrderSpeedBonus`, added for its caster in the round it is cast whether or not it is a buff (Breach).
 - Every class-specific skill (all 12 classes, 72 skills total) carries a 3-rank power curve — see section 1.4 for the mechanism.

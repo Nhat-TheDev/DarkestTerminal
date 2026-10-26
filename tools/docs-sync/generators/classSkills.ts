@@ -33,6 +33,7 @@ function modifiers(skill: SkillDefinition): string[] {
   if (skill.hpCost) out.push(`HP cost ${formatNumber(skill.hpCost.atFullHpPercent)}% max HP at full health, down to ${formatNumber(skill.hpCost.atLowHpPercent)}% below ${formatNumber(skill.hpCost.lowHpBelowPercent)}%`);
   if (skill.targetsOtherAlliesOnly) out.push("not on the caster");
   if (skill.allyTurnOrderBonus) out.push(`the rest of the party +${formatNumber(skill.allyTurnOrderBonus)} speed for turn order this round`);
+  if (skill.turnOrderSpeedBonus) out.push(`+${formatNumber(skill.turnOrderSpeedBonus)} speed for turn order this round`);
   return out;
 }
 

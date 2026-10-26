@@ -60,161 +60,110 @@
     "interceptsForSource": true
   },
   {
-    "id": "side-by-side",
-    "name": "Side by Side",
-    "description": "Raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 6,
-        "minPercent": 10
-      },
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 12,
-        "minPercent": 25
-      },
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "magicPower",
-        "amount": 12,
-        "minPercent": 25
-      }
-    ],
-    "tickCategory": "special",
-    "onLandedHitSourceStatus": {
-      "statusEffectId": "following-through",
-      "durationTurns": 1
+    "id": "breached",
+    "name": "Breached",
+    "description": "Leaves the foe open: it takes more damage from direct hits. Each ally who strikes it may find their footing.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "damageTakenPercent": 8,
+    "buffsAttackerOnHit": {
+      "statusEffectId": "through-the-breach",
+      "chance": 0.3,
+      "durationTurns": 2
     }
   },
   {
-    "id": "side-by-side-ii",
-    "name": "Side by Side",
-    "description": "Raises defense, attack and magic power more. If the bearer lands a hit, the Knight who stood beside them follows through.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 8,
-        "minPercent": 12
-      },
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 16,
-        "minPercent": 35
-      },
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "magicPower",
-        "amount": 16,
-        "minPercent": 35
-      }
-    ],
-    "tickCategory": "special",
-    "onLandedHitSourceStatus": {
-      "statusEffectId": "following-through-ii",
-      "durationTurns": 1
+    "id": "breached-ii",
+    "name": "Breached",
+    "description": "Leaves the foe wider open: it takes more damage from direct hits. Each ally who strikes it may find their footing.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "damageTakenPercent": 12,
+    "buffsAttackerOnHit": {
+      "statusEffectId": "through-the-breach-ii",
+      "chance": 0.4,
+      "durationTurns": 2
     },
-    "rankOf": "side-by-side",
+    "rankOf": "breached",
     "rankLevel": 2
   },
   {
-    "id": "side-by-side-iii",
-    "name": "Side by Side",
-    "description": "Sharply raises defense, attack and magic power. If the bearer lands a hit, the Knight who stood beside them follows through.",
+    "id": "breached-iii",
+    "name": "Breached",
+    "description": "Leaves the foe wide open: it takes far more damage from direct hits. Each ally who strikes it may find their footing.",
+    "perTurnEffects": [],
+    "tickCategory": "statMod",
+    "harmful": true,
+    "damageTakenPercent": 15,
+    "buffsAttackerOnHit": {
+      "statusEffectId": "through-the-breach-iii",
+      "chance": 0.5,
+      "durationTurns": 2
+    },
+    "rankOf": "breached",
+    "rankLevel": 3
+  },
+  {
+    "id": "through-the-breach",
+    "name": "Through the Breach",
+    "description": "Followed the blow in while the guard was down. Raises attack and magic power.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 10,
+        "combatStat": "attack",
+        "amount": 8,
         "minPercent": 15
       },
       {
         "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 20,
-        "minPercent": 45
-      },
-      {
-        "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 20,
-        "minPercent": 45
+        "amount": 8,
+        "minPercent": 15
       }
-    ],
-    "tickCategory": "special",
-    "onLandedHitSourceStatus": {
-      "statusEffectId": "following-through-iii",
-      "durationTurns": 1
-    },
-    "rankOf": "side-by-side",
-    "rankLevel": 3
+    ]
   },
   {
-    "id": "following-through",
-    "name": "Following Through",
-    "description": "The Knight presses the advantage. Raises defense and attack.",
+    "id": "through-the-breach-ii",
+    "name": "Through the Breach",
+    "description": "Followed the blow in while the guard was down. Raises attack and magic power more.",
     "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 6,
-        "minPercent": 10
-      },
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
         "amount": 12,
-        "minPercent": 25
-      }
-    ],
-    "tickCategory": "special"
-  },
-  {
-    "id": "following-through-ii",
-    "name": "Following Through",
-    "description": "The Knight presses the advantage. Raises defense and attack more.",
-    "perTurnEffects": [
+        "minPercent": 20
+      },
       {
         "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 8,
-        "minPercent": 12
-      },
+        "combatStat": "magicPower",
+        "amount": 12,
+        "minPercent": 20
+      }
+    ],
+    "rankOf": "through-the-breach",
+    "rankLevel": 2
+  },
+  {
+    "id": "through-the-breach-iii",
+    "name": "Through the Breach",
+    "description": "Followed the blow in while the guard was down. Sharply raises attack and magic power.",
+    "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
         "amount": 16,
-        "minPercent": 35
-      }
-    ],
-    "tickCategory": "special",
-    "rankOf": "following-through",
-    "rankLevel": 2
-  },
-  {
-    "id": "following-through-iii",
-    "name": "Following Through",
-    "description": "The Knight presses the advantage. Sharply raises defense and attack.",
-    "perTurnEffects": [
-      {
-        "kind": "modifyCombatStat",
-        "combatStat": "defense",
-        "amount": 10,
-        "minPercent": 15
+        "minPercent": 25
       },
       {
         "kind": "modifyCombatStat",
-        "combatStat": "attack",
-        "amount": 20,
-        "minPercent": 45
+        "combatStat": "magicPower",
+        "amount": 16,
+        "minPercent": 25
       }
     ],
-    "tickCategory": "special",
-    "rankOf": "following-through",
+    "rankOf": "through-the-breach",
     "rankLevel": 3
   },
   {
@@ -246,11 +195,17 @@
   {
     "id": "rallied",
     "name": "Rallied",
-    "description": "Mildly raises the whole party's attack for the duration.",
+    "description": "Mildly raises the whole party's attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
+        "amount": 4,
+        "minPercent": 5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
         "amount": 4,
         "minPercent": 5
       }
@@ -259,11 +214,17 @@
   {
     "id": "rallied-ii",
     "name": "Rallied II",
-    "description": "Moderately raises the whole party's attack for the duration.",
+    "description": "Moderately raises the whole party's attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
+        "amount": 6,
+        "minPercent": 7.5
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
         "amount": 6,
         "minPercent": 7.5
       }
@@ -272,11 +233,17 @@
   {
     "id": "rallied-iii",
     "name": "Rallied III",
-    "description": "Sharply raises the whole party's attack for the duration.",
+    "description": "Sharply raises the whole party's attack and magic power for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
+        "amount": 8,
+        "minPercent": 10
+      },
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "magicPower",
         "amount": 8,
         "minPercent": 10
       }

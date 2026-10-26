@@ -397,8 +397,9 @@ function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
   if (!queued) return c.speed + allyBonus;
   const def = actionDefinition(queued.source);
-  if (def.isBuff && !isSummonSkill(def)) return c.speed + allyBonus + BALANCE.combat.buffTurnOrderSpeedBonus;
-  return c.speed + allyBonus;
+  const ownBonus = def.turnOrderSpeedBonus ?? 0;
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + allyBonus + ownBonus + BALANCE.combat.buffTurnOrderSpeedBonus;
+  return c.speed + allyBonus + ownBonus;
 }
 
 function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[] {
@@ -1590,6 +1591,15 @@ function applyLandedHitFollowUps(source: Character, ctx: EngineContext, log: Log
   }
 }
 
+/** Each status on `target` with `buffsAttackerOnHit` rolls its chance to buff `source`, unless `source` applied it. */
+function applyAttackerBuffsOnHit(source: Character, target: Actor, ctx: EngineContext, log: LogEntry[]): void {
+  for (const active of [...target.activeStatusEffects]) {
+    const buff = getStatusEffect(active.statusEffectId).buffsAttackerOnHit;
+    if (!buff || active.sourceId === source.id || !ctx.rng.chance(buff.chance)) continue;
+    applyStatusEffectToActor(source, buff.statusEffectId, buff.durationTurns, { log });
+  }
+}
+
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
   if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
@@ -1779,6 +1789,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         applyMonsterHitFear(source, target, combat, ctx);
         if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
+        if (isCharacter(source)) applyAttackerBuffsOnHit(source, target, ctx, log);
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {
