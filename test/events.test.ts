@@ -1497,7 +1497,7 @@ describe("assertEventDataConsistent", () => {
 
   test("freeTake needs an instantReward that grants an artifact", () => {
     expect(() => assertEventDataConsistent([{ ...base, freeTake: true, noArtifactReward: true }])).toThrow(/sets freeTake/);
-    expect(() => assertEventDataConsistent([{ ...base, kind: "merchant", freeTake: true }])).toThrow(/sets freeTake/);
+    expect(() => assertEventDataConsistent([{ ...base, kind: "artifactShop", freeTake: true }])).toThrow(/sets freeTake/);
   });
 
   test("reflectionRequiresOutcome needs a reflection and an engagement tag", () => {

@@ -69,7 +69,7 @@
       "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
       "options": { "curious": "The hood holds your eye a moment too long.", "wary": "Your eyes stay off the hood the whole time.", "dismissive": "You came for the wares, not the man." }
     },
-    "kind": "merchant",
+    "kind": "artifactShop",
     "tier": "common"
   },
   {

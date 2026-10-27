@@ -47,7 +47,7 @@ export type UiState =
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
   | { kind: "eventInstantReward" }
-  | { kind: "eventMerchant"; viewingOfferIndex: number | null }
+  | { kind: "eventArtifactShop"; viewingOfferIndex: number | null }
   | { kind: "eventCursedOffer" }
   | { kind: "eventPairedOffer" }
   | { kind: "eventHpGamble"; gamble: HpGambleKind }
@@ -117,8 +117,8 @@ export function eventUiState(eventId: Id): UiState {
   switch (event.kind) {
     case "instantReward":
       return { kind: "eventInstantReward" };
-    case "merchant":
-      return { kind: "eventMerchant", viewingOfferIndex: null };
+    case "artifactShop":
+      return { kind: "eventArtifactShop", viewingOfferIndex: null };
     case "cursedOffer":
       return { kind: "eventCursedOffer" };
     case "pairedOffer":

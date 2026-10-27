@@ -26,7 +26,7 @@ const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoi
 export type EventUiState = Extract<
   UiState,
   | { kind: "eventInstantReward" }
-  | { kind: "eventMerchant" }
+  | { kind: "eventArtifactShop" }
   | { kind: "eventCursedOffer" }
   | { kind: "eventPairedOffer" }
   | { kind: "eventHpGamble" }
@@ -59,12 +59,12 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventMerchant": {
+    case "eventArtifactShop": {
       const offers = ctx.game.state.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
         const offerIndex = ui.viewingOfferIndex;
         if (offerIndex >= offers.length) {
-          ctx.setUi({ kind: "eventMerchant", viewingOfferIndex: null });
+          ctx.setUi({ kind: "eventArtifactShop", viewingOfferIndex: null });
           ctx.syncUiToGameState();
           break;
         }
@@ -74,7 +74,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
           else ctx.logInfo(ctx.game.state.message);
           ctx.syncUiToGameState();
         } else if (digit === 2 || key.name === "escape") {
-          ctx.setUi({ kind: "eventMerchant", viewingOfferIndex: null });
+          ctx.setUi({ kind: "eventArtifactShop", viewingOfferIndex: null });
         }
         break;
       }
@@ -93,7 +93,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       if (digit === null) break;
       if (digit <= offers.length) {
-        ctx.setUi({ kind: "eventMerchant", viewingOfferIndex: digit - 1 });
+        ctx.setUi({ kind: "eventArtifactShop", viewingOfferIndex: digit - 1 });
       } else if (digit === offers.length + 1) {
         ctx.game.merchantLeave();
         ctx.logInfo(ctx.game.state.message);
@@ -241,7 +241,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return [currentEventDescription(s), "", event?.instantRewardActionLabel ?? t("ui.openChestOption")].join("\n");
     }
 
-    case "eventMerchant": {
+    case "eventArtifactShop": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
       if (ui.viewingOfferIndex !== null) {
         const artifactId = offers[ui.viewingOfferIndex];
@@ -390,7 +390,7 @@ export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
   switch (ui.kind) {
     case "eventHpGamblePickPayer":
       return digitHint("ui.footerChooseCharacter", s.party.length);
-    case "eventMerchant": {
+    case "eventArtifactShop": {
       if (ui.viewingOfferIndex !== null) return digitHint("ui.detailFooter", 2);
       const options = (s.activeEvent?.offerArtifactIds.length ?? 0) + 1;
       return digitHint((s.activeEvent?.refreshCount ?? 0) >= MERCHANT_MAX_REFRESHES ? "ui.footerChoose" : "ui.footerMerchant", options);

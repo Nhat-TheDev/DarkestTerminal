@@ -190,7 +190,7 @@ export function resolveEventEntry(state: GameState, room: Room, ctx: EngineConte
   }
 
   if (!state.activeEvent) {
-    if (event.kind === "merchant") {
+    if (event.kind === "artifactShop") {
       const offerCount = BALANCE.events.merchantOfferCount;
       state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth)), refreshCount: 0 };
     } else if (event.kind === "cursedOffer") {

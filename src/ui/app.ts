@@ -560,7 +560,7 @@ export class App implements ScreenContext {
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
       case "eventInstantReward":
-      case "eventMerchant":
+      case "eventArtifactShop":
       case "eventCursedOffer":
       case "eventPairedOffer":
       case "eventHpGamble":
@@ -1271,7 +1271,7 @@ export class App implements ScreenContext {
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "eventInstantReward":
-      case "eventMerchant":
+      case "eventArtifactShop":
       case "eventCursedOffer":
       case "eventPairedOffer":
       case "eventHpGamble":
@@ -1357,7 +1357,7 @@ export class App implements ScreenContext {
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
       case "eventInstantReward":
-      case "eventMerchant":
+      case "eventArtifactShop":
       case "eventCursedOffer":
       case "eventPairedOffer":
       case "eventHpGamble":

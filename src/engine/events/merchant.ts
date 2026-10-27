@@ -12,7 +12,7 @@ const MERCHANT_REFRESH_COST_COINS = BALANCE.events.merchantRefreshCostCoins;
 const MERCHANT_MAX_REFRESHES = BALANCE.events.merchantMaxRefreshes;
 
 export function merchantPurchase(state: GameState, offerIndex: number): PartyActionError | null {
-  const active = activeEventOfKind(state, "merchant");
+  const active = activeEventOfKind(state, "artifactShop");
   if (!active) return { reason: t("errors.noActiveTrade") };
   const artifactId = active.offerArtifactIds[offerIndex];
   if (!artifactId) return { reason: t("errors.noSuchOffer") };
@@ -26,7 +26,7 @@ export function merchantPurchase(state: GameState, offerIndex: number): PartyAct
 }
 
 export function merchantRefresh(state: GameState, ctx: EngineContext): PartyActionError | null {
-  const active = activeEventOfKind(state, "merchant");
+  const active = activeEventOfKind(state, "artifactShop");
   if (!active) return { reason: t("errors.noActiveTrade") };
   const refreshCount = active.refreshCount ?? 0;
   if (refreshCount >= MERCHANT_MAX_REFRESHES) return { reason: t("errors.merchantMaxRefreshesReached") };

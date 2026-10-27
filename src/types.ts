@@ -543,7 +543,8 @@ export type EventTier = "common" | "rare";
 export type EventKind =
   | "instantReward"
   | "combatReward"
-  | "merchant"
+  /** Artifacts offered for coins, with paid refreshes. */
+  | "artifactShop"
   | "hpGamble"
   /** One pre-rolled offer that may be Cursed, taken or declined. */
   | "cursedOffer"

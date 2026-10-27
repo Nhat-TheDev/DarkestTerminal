@@ -186,18 +186,18 @@ describe("headless UI smoke test", () => {
     const app = new App(renderer, game);
     await renderOnce();
 
-    expect(app.debugUiState.kind).toBe("eventMerchant");
+    expect(app.debugUiState.kind).toBe("eventArtifactShop");
 
     mockInput.pressKey("1"); // view the first offer's detail
     await renderOnce();
     let ui = app.debugUiState;
-    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    if (ui.kind !== "eventArtifactShop") throw new Error(`expected eventArtifactShop, got ${ui.kind}`);
     expect(ui.viewingOfferIndex).toBe(0);
 
     mockInput.pressKey("2"); // cancel back to the offer list
     await renderOnce();
     ui = app.debugUiState;
-    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    if (ui.kind !== "eventArtifactShop") throw new Error(`expected eventArtifactShop, got ${ui.kind}`);
     expect(ui.viewingOfferIndex).toBeNull();
     expect(game.state.coins).toBe(9999);
     expect(game.state.activeEvent).not.toBeNull();

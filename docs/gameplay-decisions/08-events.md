@@ -39,7 +39,7 @@ EventDefinition {
   id: Id
   name: string
   description: string
-  kind: "instantReward" | "combatReward" | "merchant" | "hpGamble" | "cursedOffer" | "pairedOffer" | "artifactSacrifice" | "fortuneExchange" | "rescueGamble" | "coinGamble"
+  kind: "instantReward" | "combatReward" | "artifactShop" | "hpGamble" | "cursedOffer" | "pairedOffer" | "artifactSacrifice" | "fortuneExchange" | "rescueGamble" | "coinGamble"
   forceEquip?: boolean       // true only for twin-altars, see 07-items-artifacts.md §7.2
   minFloorDepth?: number     // rollEvent() gate — never rolled before this floor (values in the tier table above)
   onceLifetime?: boolean     // rollEvent() excludes it once fired
@@ -361,7 +361,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 > "A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
 
-No combat. On entering the room:
+No combat (`kind: "artifactShop"`). On entering the room:
 
 1. A **fixed 4** offers are pre-rolled (`events.merchantOfferCount`, `data/balance-config.json`; each rolled independently on the standard §7.2 rarity table) — fixed for this visit, unless refreshed (below).
 2. Each offer clearly displays its **name, description, rarity, and coin price** (`events.merchantPriceCoins` per rarity — Common 50 / Rare 70 / Unique 100 / Epic 150, `09-currency.md`).
