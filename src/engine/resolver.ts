@@ -394,8 +394,9 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
 /** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
 function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
   const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + passiveReflectPercent(bearer);
-  const amount = Math.round((damage * percent) / 100);
-  if (amount <= 0 || attacker === bearer) return;
+  if (percent <= 0 || attacker === bearer) return;
+  const amount = Math.round(((damage * percent) / 100) * damageTakenMultiplier(attacker));
+  if (amount <= 0) return;
   const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - amount);
   noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);

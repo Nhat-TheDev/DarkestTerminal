@@ -62,7 +62,7 @@
   {
     "id": "breached",
     "name": "Breached",
-    "description": "Leaves the foe open: it takes more damage from direct hits. Each ally who strikes it may find their footing.",
+    "description": "Leaves the foe open: it takes more damage. Each ally who strikes it may find their footing.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "harmful": true,
@@ -76,7 +76,7 @@
   {
     "id": "breached-ii",
     "name": "Breached",
-    "description": "Leaves the foe wider open: it takes more damage from direct hits. Each ally who strikes it may find their footing.",
+    "description": "Leaves the foe wider open: it takes more damage. Each ally who strikes it may find their footing.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "harmful": true,
@@ -92,7 +92,7 @@
   {
     "id": "breached-iii",
     "name": "Breached",
-    "description": "Leaves the foe wide open: it takes far more damage from direct hits. Each ally who strikes it may find their footing.",
+    "description": "Leaves the foe wide open: it takes far more damage. Each ally who strikes it may find their footing.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "harmful": true,

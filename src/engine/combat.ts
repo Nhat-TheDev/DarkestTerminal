@@ -1610,6 +1610,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
+  const attackerBuffRolledOn = new Set<Actor>();
 
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
@@ -1791,7 +1792,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         applyMonsterHitFear(source, target, combat, ctx);
         if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
-        if (isCharacter(source) && !skill.fromItem) applyAttackerBuffsOnHit(source, target, ctx, log);
+        if (isCharacter(source) && !skill.fromItem && !attackerBuffRolledOn.has(target)) {
+          attackerBuffRolledOn.add(target);
+          applyAttackerBuffsOnHit(source, target, ctx, log);
+        }
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {

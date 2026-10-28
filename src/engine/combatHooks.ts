@@ -1,5 +1,5 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
+import { type Actor, damageTakenMultiplier, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
@@ -29,7 +29,7 @@ export function applyOnHitRider(source: Character, target: Actor, log: LogEntry[
 export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
   const percent = totalReflectDamagePercent(bearer);
   // An intact shell caps what a reflect does to it, but a reflect is not a hit that wears it down.
-  const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100)), false);
+  const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100) * damageTakenMultiplier(attacker)), false);
   if (reflected <= 0) return;
   const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);

@@ -193,6 +193,37 @@ describe("Breach (Knight)", () => {
     expect(has(rogue, "through-the-breach")).toBe(false);
   });
 
+  test("a skill with several damage effects rolls Through the Breach once per cast", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    unlock(rogue, 50, "flurry-assault");
+    const skill = getEffectiveSkill(getSkill("flurry-assault"), rogue.level);
+    expect(skill.effects!.filter((e) => e.kind === "damage").length).toBeGreaterThan(1);
+    rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1, sourceId: knight.id });
+    const buffChance = getStatusEffect("breached").buffsAttackerOnHit!.chance;
+    const chance = ctx.rng.chance.bind(ctx.rng);
+    let rolls = 0;
+    ctx.rng.chance = (p: number) => {
+      if (p === buffChance) rolls++;
+      return chance(p);
+    };
+    applySkillEffects(skill, rogue, [rat], combat, ctx, combat.log);
+    expect(rolls).toBe(1);
+  });
+
+  test("a reflect onto a Breached attacker takes the bonus", () => {
+    function reflected(breached: boolean): number {
+      const { rogue, rat } = setup();
+      rogue.activeStatusEffects.push({ statusEffectId: "riposte", turnsRemaining: 1 });
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      resolveSkillEffect({ kind: "damage", amount: 200, offenseMultiplierPercent: 0 }, rat, rogue, { log: [] });
+      return before - rat.hp;
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    expect(reflected(false)).toBeGreaterThan(0);
+    expect(reflected(true)).toBe(Math.round(reflected(false) * (1 + percent / 100)));
+  });
+
   test("Through the Breach raises attack and magic power by the same amount", () => {
     const { rogue } = setup();
     const before = { attack: rogue.attack, magicPower: rogue.magicPower };
