@@ -31,7 +31,7 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     return joined === undefined ? undefined : label(joined);
   };
 
-  const amountOf = (key: "critMultiplierPercent" | "ignoreDefensePercent" | "lifestealPercent" | "maxHpPercent" | "minPercent", label: (joined: string) => string): string | undefined => {
+  const amountOf = (key: "critMultiplierPercent" | "ignoreDefensePercent" | "lifestealPercent" | "maxHpPercent" | "minPercent" | "percentOfCurrent", label: (joined: string) => string): string | undefined => {
     used.add(key);
     const joined = across((effect) => (effect[key] === undefined ? undefined : formatNumber(effect[key])));
     return joined === undefined ? undefined : label(joined);
@@ -107,6 +107,7 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     field("repeatsOnChannelPulse", (value) => (value ? "repeats on each channel pulse" : "")),
     amountOf("maxHpPercent", (joined) => `${joined}% max HP`),
     amountOf("minPercent", (joined) => `min ${joined}%`),
+    amountOf("percentOfCurrent", (joined) => `${joined}% of current`),
     field("excludesSummonTargets", (value) => (value ? "not on summons" : "")),
     field("linksToCasterSummon", (value) => (value ? "lasts while the summon lives" : "")),
   ];

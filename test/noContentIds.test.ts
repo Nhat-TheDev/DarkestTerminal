@@ -117,7 +117,7 @@ describe("engine and UI code never name a content id", () => {
 
     const offenders: string[] = [];
     for (const path of sourceFiles(SRC_DIR)) {
-      const file = relative(ROOT, path);
+      const file = relative(ROOT, path).replaceAll("\\", "/");
       if (EXEMPT_FILES.has(file)) continue;
       for (const { line, id } of findContentIdRefs(readFileSync(path, "utf8"), ids, mechanics)) offenders.push(`${file}:${line} ${id}`);
     }

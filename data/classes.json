@@ -13,9 +13,9 @@
       "Party Buff",
       "Leader"
     ],
-    "baseMaxHp": 140,
-    "baseMaxMp": 22,
-    "baseAttack": 14,
+    "baseMaxHp": 130,
+    "baseMaxMp": 30,
+    "baseAttack": 12,
     "baseDefense": 11,
     "baseAggro": 20,
     "baseSpeed": 8,
@@ -88,12 +88,14 @@
         ]
       },
       {
-        "id": "side-by-side",
-        "name": "Side by Side",
-        "description": "Takes the ally's flank and lends them the shield. If they land a blow, the Knight is already moving.",
-        "shortDescription": "Buffs an ally; if they land a hit, the Knight gains Following Through.",
-        "target": "singleAlly",
+        "id": "breach",
+        "name": "Breach",
+        "description": "Strikes the guard aside and leaves the foe open. Whoever follows the blow in may find their footing.",
+        "shortDescription": "Hits 1 foe and leaves it open; allies who strike it may gain Through the Breach.",
+        "target": "singleEnemy",
         "slot": 2,
+        "cooldownTurns": 3,
+        "turnOrderSpeedBonus": 15,
         "ranks": [
           {
             "rank": 1,
@@ -101,8 +103,13 @@
             "mpCost": 6,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 6,
+                "offenseMultiplierPercent": 70
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "side-by-side",
+                "statusEffectId": "breached",
                 "durationTurns": 1
               }
             ]
@@ -113,8 +120,13 @@
             "mpCost": 7,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 9,
+                "offenseMultiplierPercent": 80
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "side-by-side-ii",
+                "statusEffectId": "breached-ii",
                 "durationTurns": 1
               }
             ]
@@ -125,22 +137,24 @@
             "mpCost": 8,
             "effects": [
               {
+                "kind": "damage",
+                "amount": 12,
+                "offenseMultiplierPercent": 90
+              },
+              {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "side-by-side-iii",
+                "statusEffectId": "breached-iii",
                 "durationTurns": 1
               }
             ]
           }
-        ],
-        "targetsOtherAlliesOnly": true,
-        "isBuff": true,
-        "cooldownTurns": 3
+        ]
       },
       {
         "id": "rally",
         "name": "Rally",
         "description": "A shout that carries to the back of the line, and the line closes up behind it.",
-        "shortDescription": "Lowers party fear, boosts team attack for 1 turn.",
+        "shortDescription": "Lowers party fear, boosts team attack and magic power for 1 turn.",
         "target": "allAllies",
         "slot": 3,
         "isBuff": true,
@@ -154,7 +168,8 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -8
+                "amount": -8,
+                "percentOfCurrent": 9
               },
               {
                 "kind": "applyStatusEffect",
@@ -171,7 +186,8 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -10
+                "amount": -10,
+                "percentOfCurrent": 10
               },
               {
                 "kind": "applyStatusEffect",
@@ -188,7 +204,8 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -12
+                "amount": -12,
+                "percentOfCurrent": 11
               },
               {
                 "kind": "applyStatusEffect",

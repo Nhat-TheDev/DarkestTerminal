@@ -49,7 +49,7 @@ describe("character creation", () => {
   test("level-1 character has only starting skills unlocked", () => {
     const cls = getClass("knight");
     const c = createCharacter("c1", "Test", cls);
-    expect(c.unlockedSkillIds).toEqual(["slash", "interpose", "side-by-side"]);
+    expect(c.unlockedSkillIds).toEqual(["slash", "interpose", "breach"]);
     expect(c.hp).toBe(cls.baseMaxHp);
     expect(c.survival).toEqual({ fear: 0 });
   });

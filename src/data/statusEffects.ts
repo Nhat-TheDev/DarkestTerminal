@@ -108,6 +108,11 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   if (def.redirectToAlliesChance) parts.push(t("item.effectRedirectToAllies", { percent: Math.round(def.redirectToAlliesChance * 100) }));
   if (def.targetPull) parts.push(t("item.effectTargetPull", { percent: Math.round(def.targetPull * 100) }));
   if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
+  if (def.damageTakenPercent) parts.push(t("item.effectDamageTaken", { percent: def.damageTakenPercent }));
+  if (def.buffsAttackerOnHit) {
+    const b = def.buffsAttackerOnHit;
+    parts.push(t("item.effectBuffsAttackerOnHit", { percent: Math.round(b.chance * 100), status: getStatusEffect(b.statusEffectId).name, turns: b.durationTurns }));
+  }
   if (def.debuffsAttackerOnHit) {
     parts.push(t("item.effectDebuffsAttacker", { status: def.debuffsAttackerOnHit.statusEffectIds.map((id) => getStatusEffect(id).name).join(", "), turns: def.debuffsAttackerOnHit.durationTurns }));
   }

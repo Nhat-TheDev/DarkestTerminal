@@ -60,6 +60,7 @@ import {
   isHelpfulStatusEffect,
   removeStatusStacks,
   noteDamageTaken,
+  damageTakenMultiplier,
 } from "./resolver";
 
 export interface EngineContext {
@@ -397,8 +398,9 @@ function turnOrderSortKey(c: Combatant, combat: CombatState): number {
   const queued = combat.queuedActions.find((qa) => refEquals(qa.actor, c.ref));
   if (!queued) return c.speed + allyBonus;
   const def = actionDefinition(queued.source);
-  if (def.isBuff && !isSummonSkill(def)) return c.speed + allyBonus + BALANCE.combat.buffTurnOrderSpeedBonus;
-  return c.speed + allyBonus;
+  const ownBonus = def.turnOrderSpeedBonus ?? 0;
+  if (def.isBuff && !isSummonSkill(def)) return c.speed + allyBonus + ownBonus + BALANCE.combat.buffTurnOrderSpeedBonus;
+  return c.speed + allyBonus + ownBonus;
 }
 
 function buildTurnQueue(combat: CombatState, ctx: EngineContext): CombatantRef[] {
@@ -503,11 +505,12 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
             );
             continue;
           }
+          const amount = Math.round(effect.amount * damageTakenMultiplier(target));
           const hpBefore = target.hp;
-          target.hp = Math.max(0, target.hp - effect.amount);
+          target.hp = Math.max(0, target.hp - amount);
           noteDamageTaken(target, character.id, hpBefore - target.hp);
           if (target.hp <= 0) advanceBar(target);
-          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount: effect.amount, target: target.name }), kind: "attack" });
+          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack" });
         }
       }
     },
@@ -1590,6 +1593,15 @@ function applyLandedHitFollowUps(source: Character, ctx: EngineContext, log: Log
   }
 }
 
+/** Each status on `target` with `buffsAttackerOnHit` rolls its chance to buff `source`, unless `source` applied it. */
+function applyAttackerBuffsOnHit(source: Character, target: Actor, ctx: EngineContext, log: LogEntry[]): void {
+  for (const active of [...target.activeStatusEffects]) {
+    const buff = getStatusEffect(active.statusEffectId).buffsAttackerOnHit;
+    if (!buff || active.sourceId === source.id || !ctx.rng.chance(buff.chance)) continue;
+    applyStatusEffectToActor(source, buff.statusEffectId, buff.durationTurns, { log });
+  }
+}
+
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
   if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
@@ -1598,6 +1610,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
   let bonusEffectLanded = false;
+  const attackerBuffRolledOn = new Set<Actor>();
 
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
@@ -1779,6 +1792,10 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
         applyMonsterHitFear(source, target, combat, ctx);
         if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
+        if (isCharacter(source) && !skill.fromItem && !attackerBuffRolledOn.has(target)) {
+          attackerBuffRolledOn.add(target);
+          applyAttackerBuffsOnHit(source, target, ctx, log);
+        }
         // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
         if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
         if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {

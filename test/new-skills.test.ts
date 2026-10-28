@@ -7,6 +7,8 @@ import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
 import { getStatusEffect, statusMechanicsParts } from "../src/data/statusEffects";
 import { getSummonSkill } from "../src/data/summons";
+import { getItem } from "../src/data/items";
+import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
 import { makeCtx, spawnInto, sk, withFixture, withoutDamageRolls } from "./helpers";
@@ -100,15 +102,21 @@ describe("Engage (Knight)", () => {
     resolveRound(combat, ctx);
     expect(knight.activeStatusEffects.some((s) => s.statusEffectId.startsWith("engaged"))).toBe(false);
   });
+
+  test("Engaged's text says it answers only the monster that struck", () => {
+    const text = statusMechanicsParts(getStatusEffect("engaged")).join(" ");
+    expect(text).toContain("the monster whose hit lands");
+    expect(text).not.toContain("every enemy");
+  });
 });
 
-describe("Side by Side (Knight)", () => {
+describe("Breach (Knight)", () => {
   withoutDamageRolls();
   function setup() {
     const { ctx } = makeCtx(3);
     const knight = ctx.party.find((c) => c.classId === "knight")!;
     const rogue = ctx.party.find((c) => c.classId === "rogue")!;
-    unlock(knight, 1, "side-by-side");
+    unlock(knight, 1, "breach");
     for (const c of [knight, rogue]) c.maxHp = c.hp = 1e6;
     onlyAlive(ctx.party, knight, rogue);
     const rat = tank(spawnInto(ctx, "dungeon-rat"));
@@ -117,107 +125,197 @@ describe("Side by Side (Knight)", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     return { ctx, knight, rogue, rat, combat };
   }
-  const has = (c: Character, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
+  const has = (c: Pick<Character, "activeStatusEffects">, id: string) => c.activeStatusEffects.some((s) => s.statusEffectId === id);
 
-  test("Side by Side raises the ally's defense, attack and magic power", () => {
-    const { ctx, knight, rogue, combat } = setup();
-    const before = { defense: rogue.defense, attack: rogue.attack, magicPower: rogue.magicPower };
-    applySkillEffects(getEffectiveSkill(getSkill("side-by-side"), 1), knight, [rogue], combat, ctx, combat.log);
-    expect(rogue.defense).toBeGreaterThan(before.defense);
-    expect(rogue.attack).toBeGreaterThan(before.attack);
-    expect(rogue.magicPower).toBeGreaterThan(before.magicPower);
-  });
-
-  test("an ally who lands a hit under Side by Side gives the Knight Following Through", () => {
-    const { ctx, knight, rogue, rat, combat } = setup();
-    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
-    queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
-    resolveRound(combat, ctx);
+  test("Breach damages the foe and leaves it Breached", () => {
+    const { ctx, knight, rat, combat } = setup();
+    applySkillEffects(getEffectiveSkill(getSkill("breach"), 1), knight, [rat], combat, ctx, combat.log);
     expect(rat.hp).toBeLessThan(rat.maxHp);
-    expect(has(knight, "following-through")).toBe(true);
+    expect(has(rat, "breached")).toBe(true);
   });
 
-  test("a miss, a stun, or a non-damaging action gives the Knight nothing", () => {
-    const miss = setup();
-    miss.rogue.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
-    queueAction(miss.combat, ref(miss.knight), "side-by-side", [ref(miss.rogue)], miss.ctx);
-    queueAction(miss.combat, ref(miss.rogue), "stab", [monsterRef(miss.rat)], miss.ctx);
-    resolveRound(miss.combat, miss.ctx);
-    expect(has(miss.knight, "following-through")).toBe(false);
-
-    const stun = setup();
-    stun.rogue.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
-    queueAction(stun.combat, ref(stun.knight), "side-by-side", [ref(stun.rogue)], stun.ctx);
-    queueAction(stun.combat, ref(stun.rogue), "stab", [monsterRef(stun.rat)], stun.ctx);
-    resolveRound(stun.combat, stun.ctx);
-    expect(has(stun.knight, "following-through")).toBe(false);
-
-    const heal = setup();
-    heal.rogue.activeStatusEffects.push({ statusEffectId: "side-by-side", turnsRemaining: 1, sourceId: heal.knight.id });
-    const buff = sk("self-buff", { target: "self", isBuff: true, effects: [{ kind: "applyStatusEffect", statusEffectId: "venom-edge", durationTurns: 1 }] }) as any;
-    applySkillEffects(buff, heal.rogue, [heal.rogue], heal.combat, heal.ctx, heal.combat.log);
-    expect(has(heal.knight, "following-through")).toBe(false);
-  });
-
-  test("Following Through is still on the Knight at its next turn", () => {
-    function roundTwoDamage(withSideBySide: boolean): number {
+  test("Breach moves the Knight up the turn order by its speed bonus", () => {
+    function knightActsFirst(skillId: string): boolean {
       const { ctx, knight, rogue, rat, combat } = setup();
-      knight.speed = 100;
-      rogue.speed = 1;
-      if (withSideBySide) queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+      knight.speed = 10;
+      rogue.speed = 10 + getSkill("breach").turnOrderSpeedBonus! - 1;
+      queueAction(combat, ref(knight), skillId, [monsterRef(rat)], ctx);
       queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
       resolveRound(combat, ctx);
-      expect(has(knight, "following-through")).toBe(withSideBySide);
-      rogue.activeStatusEffects = [];
-      queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
-      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
-      const hpBefore = rat.hp;
-      resolveRound(combat, ctx);
-      expect(has(knight, "following-through")).toBe(false);
-      return hpBefore - rat.hp;
+      const texts = combat.log.map((l) => l.text);
+      return texts.findIndex((t) => t.startsWith("Knight uses")) < texts.findIndex((t) => t.startsWith("Rogue uses"));
     }
-    expect(roundTwoDamage(true)).toBeGreaterThan(roundTwoDamage(false));
+    expect(knightActsFirst("breach")).toBe(true);
+    expect(knightActsFirst("slash")).toBe(false);
   });
 
-  test("Side by Side on an ally who already acted this round lasts into that ally's next action", () => {
+  test("a Breached foe takes damageTakenPercent more from a direct hit", () => {
+    function stabDamage(breached: boolean): number {
+      const { ctx, rogue, rat, combat } = setup();
+      ctx.rng.next = () => 0.99;
+      rogue.attack = 1000;
+      rat.defense = 0;
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      applySkillEffects(getEffectiveSkill(getSkill("stab"), 1), rogue, [rat], combat, ctx, combat.log);
+      return before - rat.hp;
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    expect(stabDamage(true)).toBeCloseTo(stabDamage(false) * (1 + percent / 100), -1);
+  });
+
+  test("an ally who strikes the Breached foe after the Knight can gain Through the Breach for 2 turns", () => {
     const { ctx, knight, rogue, rat, combat } = setup();
-    knight.speed = 1;
-    rogue.speed = 100;
-    queueAction(combat, ref(knight), "side-by-side", [ref(rogue)], ctx);
+    knight.speed = 100;
+    rogue.speed = 1;
+    queueAction(combat, ref(knight), "breach", [monsterRef(rat)], ctx);
     queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
     resolveRound(combat, ctx);
-    expect(has(rogue, "side-by-side")).toBe(true);
-    expect(has(knight, "following-through")).toBe(false);
+    expect(has(rogue, "through-the-breach")).toBe(true);
+    expect(has(knight, "through-the-breach")).toBe(false);
+    expect(has(rat, "breached")).toBe(false);
+    ctx.rng.next = () => 0.99;
     queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
     queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
     resolveRound(combat, ctx);
-    expect(has(rogue, "side-by-side")).toBe(false);
     const texts = combat.log.map((l) => l.text);
-    const gained = texts.indexOf("Knight gains the Following Through effect.");
-    const slashed = texts.indexOf("Knight uses Slash on Dungeon Rat.");
-    const expired = texts.indexOf("Knight's Following Through effect expires.");
-    expect(gained).toBeGreaterThan(-1);
-    expect(slashed).toBeGreaterThan(gained);
-    expect(expired).toBeGreaterThan(slashed);
+    expect(texts.lastIndexOf("Rogue's Through the Breach effect expires.")).toBeGreaterThan(texts.lastIndexOf("Rogue uses Stab on Dungeon Rat."));
+    expect(has(rogue, "through-the-breach")).toBe(false);
   });
 
-  test("Engaged's text says it answers only the monster that struck", () => {
-    const text = statusMechanicsParts(getStatusEffect("engaged")).join(" ");
-    expect(text).toContain("the monster whose hit lands");
-    expect(text).not.toContain("every enemy");
+  test("the Knight's own hit on its Breached foe never buffs it, and a failed roll buffs no one", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1, sourceId: knight.id });
+    applySkillEffects(getEffectiveSkill(getSkill("slash"), 1), knight, [rat], combat, ctx, combat.log);
+    expect(has(knight, "through-the-breach")).toBe(false);
+    ctx.rng.next = () => 0.99;
+    applySkillEffects(getEffectiveSkill(getSkill("stab"), 1), rogue, [rat], combat, ctx, combat.log);
+    expect(has(rogue, "through-the-breach")).toBe(false);
   });
 
-  test("Side by Side's mechanics text names its follow-up status", () => {
-    const text = statusMechanicsParts(getStatusEffect("side-by-side")).join(" ");
-    expect(text).toContain("Following Through");
-    expect(text).toContain("for 1 turn");
-    expect(text).not.toContain("1 turns");
+  test("a skill with several damage effects rolls Through the Breach once per cast", () => {
+    const { ctx, knight, rogue, rat, combat } = setup();
+    unlock(rogue, 50, "flurry-assault");
+    const skill = getEffectiveSkill(getSkill("flurry-assault"), rogue.level);
+    expect(skill.effects!.filter((e) => e.kind === "damage").length).toBeGreaterThan(1);
+    rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1, sourceId: knight.id });
+    const buffChance = getStatusEffect("breached").buffsAttackerOnHit!.chance;
+    const chance = ctx.rng.chance.bind(ctx.rng);
+    let rolls = 0;
+    ctx.rng.chance = (p: number) => {
+      if (p === buffChance) rolls++;
+      return chance(p);
+    };
+    applySkillEffects(skill, rogue, [rat], combat, ctx, combat.log);
+    expect(rolls).toBe(1);
+  });
+
+  test("a reflect onto a Breached attacker takes the bonus", () => {
+    function reflected(breached: boolean): number {
+      const { rogue, rat } = setup();
+      rogue.activeStatusEffects.push({ statusEffectId: "riposte", turnsRemaining: 1 });
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      resolveSkillEffect({ kind: "damage", amount: 200, offenseMultiplierPercent: 0 }, rat, rogue, { log: [] });
+      return before - rat.hp;
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    expect(reflected(false)).toBeGreaterThan(0);
+    expect(reflected(true)).toBe(Math.round(reflected(false) * (1 + percent / 100)));
+  });
+
+  test("Through the Breach raises attack and magic power by the same amount", () => {
+    const { rogue } = setup();
+    const before = { attack: rogue.attack, magicPower: rogue.magicPower };
+    applyStatusEffectToActor(rogue, "through-the-breach", 2, { log: [] });
+    expect(rogue.attack - before.attack).toBeGreaterThan(0);
+    expect(rogue.magicPower - before.magicPower).toBe(rogue.attack - before.attack);
+  });
+
+  test("a summon's hit on a Breached foe takes the bonus but never gains Through the Breach", () => {
+    function rockThrowDamage(breached: boolean, roll: number) {
+      const { ctx } = makeCtx(5);
+      const summoner = ctx.party.find((c) => c.classId === "summoner")!;
+      unlock(summoner, 25, "summon-goblin");
+      const rat = tank(spawnInto(ctx, "dungeon-rat"));
+      rat.defense = 0;
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const effect = getEffectiveSkill(getSkill("summon-goblin"), summoner.level).effects!.find((e) => e.kind === "summon")!;
+      const goblin = spawnAdditionalSummon(effect, summoner, combat, ctx, [])!;
+      goblin.attack = 1000;
+      ctx.rng.next = () => roll;
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      applySkillEffects(getSummonSkill("rock-throw"), goblin, [rat], combat, ctx, combat.log);
+      return { damage: before - rat.hp, buffed: has(goblin, "through-the-breach") };
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    expect(rockThrowDamage(true, 0.99).damage).toBeCloseTo(rockThrowDamage(false, 0.99).damage * (1 + percent / 100), -1);
+    expect(rockThrowDamage(true, 0).buffed).toBe(false);
+  });
+
+  test("an item's hit on a Breached foe takes the bonus but never gains Through the Breach", () => {
+    const item = getItem("cracker-string");
+    const asSkill = { id: item.id, name: item.name, description: item.description, mpCost: 0, target: item.target, effects: item.effects, slot: 0 as const, unlockLevel: 0, fromItem: true as const };
+    function itemDamage(breached: boolean) {
+      const { ctx, rogue, rat, combat } = setup();
+      rat.defense = 0;
+      if (breached) rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      const before = rat.hp;
+      applySkillEffects(asSkill, rogue, [rat], combat, ctx, combat.log);
+      return { damage: before - rat.hp, buffed: has(rogue, "through-the-breach") };
+    }
+    const percent = getStatusEffect("breached").damageTakenPercent!;
+    const breached = itemDamage(true);
+    expect(breached.damage).toBe(Math.round(itemDamage(false).damage * (1 + percent / 100)));
+    expect(breached.buffed).toBe(false);
+  });
+
+  test("an artifact's flat autoDamage on a Breached foe takes the bonus", () => {
+    const fixture = { id: "fixture-flat-auto", name: "Fixture", description: "", rarity: "common", effects: [{ kind: "autoDamage", amount: 20 }] } as any;
+    ARTIFACTS.push(fixture);
+    try {
+      const { ctx, knight, rogue, rat, combat } = setup();
+      rogue.equippedArtifactIds.push(fixture.id);
+      rat.activeStatusEffects.push({ statusEffectId: "breached", turnsRemaining: 1 });
+      queueAction(combat, ref(knight), "slash", [monsterRef(rat)], ctx);
+      queueAction(combat, ref(rogue), "stab", [monsterRef(rat)], ctx);
+      resolveRound(combat, ctx);
+      const amount = Math.round(20 * (1 + getStatusEffect("breached").damageTakenPercent! / 100));
+      expect(combat.log.map((l) => l.text)).toContain(`Rogue's artifact deals ${amount} damage to Dungeon Rat.`);
+    } finally {
+      ARTIFACTS.splice(ARTIFACTS.indexOf(fixture), 1);
+    }
+  });
+
+  test("Breached's mechanics text names the damage bonus and the ally buff", () => {
+    const text = statusMechanicsParts(getStatusEffect("breached")).join(" ");
+    expect(text).toContain("8% more damage");
+    expect(text).toContain("Through the Breach");
     expect(text).not.toContain("{");
   });
+});
 
-  test("Side by Side cannot target the Knight itself", () => {
-    const { ctx, knight, combat } = setup();
-    expect(queueAction(combat, ref(knight), "side-by-side", [ref(knight)], ctx)?.reason).toBe("it cannot be cast on yourself");
+describe("Rally (Knight)", () => {
+  test("Rallied raises attack and magic power by the same amount", () => {
+    const { ctx } = makeCtx(3);
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    const before = { attack: rogue.attack, magicPower: rogue.magicPower };
+    applyStatusEffectToActor(rogue, "rallied-iii", 1, { log: [] });
+    expect(rogue.attack - before.attack).toBeGreaterThan(0);
+    expect(rogue.magicPower - before.magicPower).toBe(rogue.attack - before.attack);
+  });
+
+  test("Rally lowers fear by its flat amount plus a share of the current fear", () => {
+    const { ctx } = makeCtx(3);
+    const knight = ctx.party.find((c) => c.classId === "knight")!;
+    const fearEffect = getEffectiveSkill(getSkill("rally"), 1).effects!.find((e) => e.kind === "modifyStat")!;
+    knight.survival.fear = 50;
+    resolveSkillEffect(fearEffect, knight, knight, { log: [] });
+    expect(knight.survival.fear).toBeCloseTo(50 + fearEffect.amount! - (50 * fearEffect.percentOfCurrent!) / 100, 5);
+    knight.survival.fear = 0;
+    resolveSkillEffect(fearEffect, knight, knight, { log: [] });
+    expect(knight.survival.fear).toBe(0);
   });
 });
 
