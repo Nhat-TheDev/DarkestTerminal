@@ -164,8 +164,8 @@ A factor that scores everyone the same spreads its weight evenly, so a party at 
 |---|---|---|---|
 | 1 | 5 | 6 | 5 |
 | 2 | 3 | 4 | 3 |
-| 3 | 2 | 3 | 2 |
-| 4 and below | 1 | 2 | 1 |
+| 3 | 2 | 2 | 1 |
+| 4 and below | 1 | 1 | 1 |
 <!-- docs:end -->
 
 **Damage memory.** Every monster keeps its own record of who has hurt it (`Monster.damageTakenFrom`): the HP each attacker actually took off, direct hits and reflected damage alike, and every damage-over-time tick credited to whoever applied the status (`ActiveStatusEffect.sourceId`). A summon is credited as itself, not its owner. At the end of every round each amount is multiplied by `targeting.damageMemoryDecay` (0.5), so a monster turns on whoever has hurt it lately rather than whoever opened the fight. A monster summoned mid-combat starts with no record.
@@ -187,9 +187,9 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
 
 | Pattern | aggro | lowHp | damage | range | fear | Archetypes |
 |---|---|---|---|---|---|---|
-| `aggressive` | 0.6 | 0.1 | 0.1 | 0.1 | 0.1 | Slime, Cultist Initiate, Skeleton, Lizard, Spider, Cultist Zealot, Swamp Slime, Fire Elemental, Orc Brute, Cave Bear, Mimic, Giant Spider, Dragon, Orc Chieftain, Void Amalgamation |
-| `defensive` | 0.3 | 0 | 0.6 | 0.1 | 0 | Toxic Toad, Zombie, Goblin Shaman, Lava Slime, Water Elemental, Gargoyle, Skeleton Warrior, Armored Beetle, Lesser Golem, Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem |
-| `opportunistic` | 0 | 0.6 | 0.1 | 0.1 | 0.2 | Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Snake |
+| `aggressive` | 0.65 | 0.15 | 0.1 | 0.1 | 0 | Slime, Cultist Initiate, Skeleton, Lizard, Spider, Cultist Zealot, Swamp Slime, Fire Elemental, Orc Brute, Cave Bear, Mimic, Giant Spider, Dragon, Orc Chieftain, Void Amalgamation |
+| `defensive` | 0.3 | 0 | 0.5 | 0.2 | 0 | Toxic Toad, Zombie, Goblin Shaman, Lava Slime, Water Elemental, Gargoyle, Skeleton Warrior, Armored Beetle, Lesser Golem, Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem |
+| `opportunistic` | 0 | 0.65 | 0 | 0.15 | 0.2 | Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Snake |
 | `dread` | 0.1 | 0.1 | 0 | 0.1 | 0.7 | Ghost, Wraith, Lich, What's Left of Him |
 | `bloodthirsty` | 0.3 | 0.6 | 0 | 0.1 | 0 | Vampire Bat, Dire Wolf, Lesser Vampire, Vampire Lord |
 | `tactical` | 0.2 | 0.1 | 0.1 | 0.6 | 0 | Skeleton Mage, Skeleton Archer |

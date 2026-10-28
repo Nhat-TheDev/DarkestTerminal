@@ -1,10 +1,10 @@
 {
   "classGrowthWeights": {
     "knight": {
-      "attack": 1.4,
-      "defense": 1.4,
+      "attack": 1.2,
+      "defense": 1.2,
       "maxHp": 1.6,
-      "maxMp": 0.6,
+      "maxMp": 1,
       "magicPower": 0
     },
     "mage": {

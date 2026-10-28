@@ -13,9 +13,9 @@
       "Party Buff",
       "Leader"
     ],
-    "baseMaxHp": 140,
-    "baseMaxMp": 22,
-    "baseAttack": 14,
+    "baseMaxHp": 130,
+    "baseMaxMp": 30,
+    "baseAttack": 12,
     "baseDefense": 11,
     "baseAggro": 20,
     "baseSpeed": 8,

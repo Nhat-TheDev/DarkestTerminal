@@ -28,7 +28,7 @@ Current values for every class, generated from `data/classes.json`:
 
 | Class | Max HP | Max MP | Attack | Defense | Magic power | Aggro | Speed |
 |---|---|---|---|---|---|---|---|
-| Knight | 140 | 22 | 14 | 11 | 0 | 20 | 8 |
+| Knight | 130 | 30 | 12 | 11 | 0 | 20 | 8 |
 | Mage | 70 | 60 | 3 | 5 | 16 | 8 | 10 |
 | Rogue | 100 | 40 | 18 | 6 | 0 | 10 | 20 |
 | Acolyte | 90 | 50 | 6 | 8 | 10 | 11 | 9 |
@@ -88,7 +88,7 @@ Balance Points of each class against the roster average, scored with the formula
 
 | Class | Balance points | Against the roster average |
 |---|---|---|
-| Knight | 24.5 | −0.6% |
+| Knight | 24.5 | −0.8% |
 | Mage | 24.7 | +0.1% |
 | Rogue | 24.5 | −0.7% |
 | Acolyte | 24.8 | +0.8% |

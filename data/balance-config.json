@@ -11,25 +11,98 @@
     "defensiveLowHpThresholdFraction": 0.4,
     "buffTurnOrderSpeedBonus": 20,
     "eliteBossDotMultiplier": 0.8,
-    "fearTierThresholds": [40, 70, 100],
-    "fearAccuracyPenaltyByTier": [0, 0.1, 0.2, 0.2],
-    "fearDamagePenaltyByTier": [0, 0, 0.15, 0.15],
+    "fearTierThresholds": [
+      40,
+      70,
+      100
+    ],
+    "fearAccuracyPenaltyByTier": [
+      0,
+      0.1,
+      0.2,
+      0.2
+    ],
+    "fearDamagePenaltyByTier": [
+      0,
+      0,
+      0.15,
+      0.15
+    ],
     "fearLoseControlChance": 0.25,
-    "ultimateMultiplierByFearTier": [1, 0.9, 0.75, 0.6]
+    "ultimateMultiplierByFearTier": [
+      1,
+      0.9,
+      0.75,
+      0.6
+    ]
   },
   "targeting": {
-    "lowHpRankScores": [5, 3, 2, 1],
-    "fearRankScores": [6, 4, 3, 2],
-    "damageRankScores": [5, 3, 2, 1],
+    "lowHpRankScores": [
+      5,
+      3,
+      2,
+      1
+    ],
+    "fearRankScores": [
+      6,
+      4,
+      2,
+      1
+    ],
+    "damageRankScores": [
+      5,
+      3,
+      1,
+      1
+    ],
     "damageMemoryDecay": 0.5,
-    "rangeScores": { "sameRange": 4, "otherRange": 1 },
+    "rangeScores": {
+      "sameRange": 4,
+      "otherRange": 1
+    },
     "profiles": {
-      "aggressive": { "aggro": 0.6, "lowHp": 0.1, "damage": 0.1, "range": 0.1, "fear": 0.1 },
-      "defensive": { "aggro": 0.3, "lowHp": 0, "damage": 0.6, "range": 0.1, "fear": 0 },
-      "opportunistic": { "aggro": 0, "lowHp": 0.6, "damage": 0.1, "range": 0.1, "fear": 0.2 },
-      "dread": { "aggro": 0.1, "lowHp": 0.1, "damage": 0, "range": 0.1, "fear": 0.7 },
-      "bloodthirsty": { "aggro": 0.3, "lowHp": 0.6, "damage": 0, "range": 0.1, "fear": 0 },
-      "tactical": { "aggro": 0.2, "lowHp": 0.1, "damage": 0.1, "range": 0.6, "fear": 0 }
+      "aggressive": {
+        "aggro": 0.65,
+        "lowHp": 0.15,
+        "damage": 0.1,
+        "range": 0.1,
+        "fear": 0
+      },
+      "defensive": {
+        "aggro": 0.3,
+        "lowHp": 0,
+        "damage": 0.5,
+        "range": 0.2,
+        "fear": 0
+      },
+      "opportunistic": {
+        "aggro": 0,
+        "lowHp": 0.65,
+        "damage": 0,
+        "range": 0.15,
+        "fear": 0.2
+      },
+      "dread": {
+        "aggro": 0.1,
+        "lowHp": 0.1,
+        "damage": 0,
+        "range": 0.1,
+        "fear": 0.7
+      },
+      "bloodthirsty": {
+        "aggro": 0.3,
+        "lowHp": 0.6,
+        "damage": 0,
+        "range": 0.1,
+        "fear": 0
+      },
+      "tactical": {
+        "aggro": 0.2,
+        "lowHp": 0.1,
+        "damage": 0.1,
+        "range": 0.6,
+        "fear": 0
+      }
     }
   },
   "survival": {
@@ -154,9 +227,17 @@
     ],
     "wanderingHermitExchangeCostCoins": 50,
     "gamblingDenPotMultiplier": 2,
-    "exchangeRarityWeights": { "common": 50, "rare": 30, "unique": 15, "epic": 5 },
+    "exchangeRarityWeights": {
+      "common": 50,
+      "rare": 30,
+      "unique": 15,
+      "epic": 5
+    },
     "cursedArtifactChance": 0.3,
-    "eventGuardianCount": { "min": 1, "max": 2 }
+    "eventGuardianCount": {
+      "min": 1,
+      "max": 2
+    }
   },
   "endings": {
     "checkpointFloorDepth": 100,
@@ -184,11 +265,26 @@
     "lotSize": 3,
     "buybackDivisor": 5,
     "priceByTier": {
-      "common": { "single": 15, "lot": 40 },
-      "uncommon": { "single": 25, "lot": 65 },
-      "rare": { "single": 50, "lot": 135 },
-      "unique": { "single": 80, "lot": 220 },
-      "epic": { "single": 150, "lot": 420 }
+      "common": {
+        "single": 15,
+        "lot": 40
+      },
+      "uncommon": {
+        "single": 25,
+        "lot": 65
+      },
+      "rare": {
+        "single": 50,
+        "lot": 135
+      },
+      "unique": {
+        "single": 80,
+        "lot": 220
+      },
+      "epic": {
+        "single": 150,
+        "lot": 420
+      }
     }
   },
   "barter": {
@@ -215,8 +311,18 @@
     "tilt": 2,
     "maxStepsFromAnchor": 10,
     "anchorWeights": {
-      "consumable": { "common": 25, "uncommon": 35, "rare": 40 },
-      "trophy": { "common": 10, "uncommon": 20, "rare": 30, "unique": 25, "epic": 15 }
+      "consumable": {
+        "common": 25,
+        "uncommon": 35,
+        "rare": 40
+      },
+      "trophy": {
+        "common": 10,
+        "uncommon": 20,
+        "rare": 30,
+        "unique": 25,
+        "epic": 15
+      }
     }
   },
   "artifacts": {
@@ -298,19 +404,66 @@
     "minRestRoomsPerPath": 1,
     "maxRestRoomsPerPath": 2,
     "roomCompositionTemplates": [
-      ["weak", "medium"],
-      ["weak", "strong"],
-      ["medium", "medium"],
-      ["medium", "strong"],
-      ["strong", "strong"],
-      ["weak", "weak", "medium"],
-      ["weak", "weak", "strong"],
-      ["weak", "medium", "medium"],
-      ["weak", "medium", "strong"],
-      ["weak", "strong", "strong"],
-      ["medium", "medium", "medium"],
-      ["medium", "medium", "strong"],
-      ["medium", "strong", "strong"]
+      [
+        "weak",
+        "medium"
+      ],
+      [
+        "weak",
+        "strong"
+      ],
+      [
+        "medium",
+        "medium"
+      ],
+      [
+        "medium",
+        "strong"
+      ],
+      [
+        "strong",
+        "strong"
+      ],
+      [
+        "weak",
+        "weak",
+        "medium"
+      ],
+      [
+        "weak",
+        "weak",
+        "strong"
+      ],
+      [
+        "weak",
+        "medium",
+        "medium"
+      ],
+      [
+        "weak",
+        "medium",
+        "strong"
+      ],
+      [
+        "weak",
+        "strong",
+        "strong"
+      ],
+      [
+        "medium",
+        "medium",
+        "medium"
+      ],
+      [
+        "medium",
+        "medium",
+        "strong"
+      ],
+      [
+        "medium",
+        "strong",
+        "strong"
+      ]
     ]
   }
 }
