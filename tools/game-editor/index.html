@@ -183,6 +183,20 @@
   .sprite-editor-col-palette { flex: 1 1 260px; min-width: 260px; }
   #gridWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; display: inline-block; }
 
+
+  /* Backdrops editor */
+  .backdrop-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .backdrop-col { flex: 1 1 320px; min-width: 300px; }
+  #bdRooms { width: 100%; }
+  #bdGridWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; display: inline-block; max-width: 100%; overflow: auto; }
+  #bdGrid { display: grid; gap: 1px; background: var(--border); width: max-content; }
+  #bdGrid .cell { width: 14px; height: 28px; }
+  #bdPalette { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .bd-prop-row { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
+  .bd-prop-row input[type="number"] { width: 64px; }
+  #bdPreviewWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; overflow-x: auto; }
+  #bdPreview { display: block; }
+
   /* Data editor (CRUD) specific styles */
   .data-editor-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
   .data-editor-col-list { flex: 0 0 260px; }
@@ -230,6 +244,7 @@
   <button data-panel="other">Other Balance</button>
 
   <button data-panel="sprites">Sprite Editor</button>
+  <button data-panel="backdrops">Backdrops</button>
   <button data-panel="creator">Data Editor</button>
 </nav>
 
@@ -453,7 +468,72 @@
 
   </section>
 
-  
+
+  <!-- ============================== BACKDROPS ============================== -->
+  <section class="panel" id="panel-backdrops">
+    <h2 class="tab-section-title">Backdrops — the wall, floor and props behind the Battlefield</h2>
+    <div class="backdrop-layout">
+      <div class="backdrop-col" style="flex: 0 1 300px;">
+        <fieldset>
+          <legend>Room names</legend>
+          <select id="bdRooms" size="14"></select>
+          <div class="field" style="margin-top: 8px;">
+            <label for="bdRoomScene">Scene for this room name</label>
+            <select id="bdRoomScene"></select>
+          </div>
+          <p class="hint" id="bdEventHint" hidden>This scene belongs to an event; change which scene it uses in data/events.json (<code>backdrop</code>).</p>
+        </fieldset>
+        <fieldset>
+          <legend>Preview units</legend>
+          <div id="bdParty" class="checkbox-grid"></div>
+          <div id="bdMonsters" style="margin-top: 8px;"></div>
+          <div class="checkbox-row" style="margin-top: 8px;"><input type="checkbox" id="bdDimmed" /><label for="bdDimmed">Dimmed (a unit is in focus)</label></div>
+          <div class="checkbox-row"><input type="checkbox" id="bdShadow" /><label for="bdShadow">Unit shadow</label></div>
+        </fieldset>
+      </div>
+
+      <div class="backdrop-col">
+        <fieldset>
+          <legend>Scene</legend>
+          <div class="row">
+            <div class="field"><label for="bdBase">Base</label><select id="bdBase"></select></div>
+            <div class="field"><label for="bdBaseboard">Baseboard</label><input type="color" id="bdBaseboard" /></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="bdRightBase">Right base</label><select id="bdRightBase"></select></div>
+            <div class="field"><label for="bdRightBaseX">from column</label><input type="number" id="bdRightBaseX" step="1" style="width:64px" /></div>
+          </div>
+          <p class="hint">A base is shared by every scene that uses it; props are shared the same way. A right base replaces the base from that content column to the panel's right edge.</p>
+          <label>Props (x = column, y = row)</label>
+          <div id="bdProps"></div>
+          <div class="row"><button id="bdAddProp" class="action">+ Add prop</button></div>
+        </fieldset>
+        <fieldset>
+          <legend>Pixels</legend>
+          <div class="row">
+            <div class="field"><label for="bdTarget">Edit</label><select id="bdTarget"></select></div>
+            <div class="field"><label for="bdW">Width</label><input type="number" id="bdW" min="1" max="40" style="width:64px" /></div>
+            <div class="field"><label for="bdH">Height</label><input type="number" id="bdH" min="1" max="17" style="width:64px" /></div>
+            <button id="bdResize" class="action">Resize</button>
+          </div>
+          <div id="bdGridWrap" style="margin-top: 8px;"><div id="bdGrid"></div></div>
+          <div id="bdPalette"></div>
+          <div class="row"><button id="bdAddColor" class="action">+ Add color</button></div>
+        </fieldset>
+        <div class="row">
+          <button id="bdSaveBackdrops" class="action primary">Save data/backdrops.json</button>
+          <button id="bdSaveRooms" class="action primary">Save data/room-names.json</button>
+          <span id="bdSaveStatus" class="save-status"></span>
+        </div>
+      </div>
+    </div>
+    <fieldset style="margin-top: 14px;">
+      <legend>Battlefield preview (cell 8 x 16, 1:2 like the terminal)</legend>
+      <div id="bdPreviewWrap"><canvas id="bdPreview"></canvas></div>
+      <p id="bdPreviewError" class="save-status error"></p>
+    </fieldset>
+  </section>
+
   <!-- ============================== DATA EDITOR (CRUD) ============================== -->
   <section class="panel" id="panel-creator">
     <h2 class="tab-section-title">Data Editor — create, edit, and delete game data</h2>
@@ -3199,6 +3279,407 @@ boot();
     await loadList();
     showForm(null);
   })();
+})();
+
+
+// ============================== BACKDROPS ==============================
+(() => {
+  const ROOM_TYPES = ["combat", "rest", "boss", "event"];
+  const ERASER = ".";
+  const CELL_W = 8, CELL_H = 16, COLS = 113, ROWS = 20;
+  const MAX_PARTY = 4, MONSTER_SLOTS = 3;
+
+  let backdrops = null;
+  let roomNames = null;
+  let eventScenes = [];         // events that name their own scene: { id, name, backdrop }
+  let selectedRoom = null;      // { type, index } or { event: id }
+  let monstersMeta = [];
+  let classesMeta = [];
+  let monsterPick = Array.from({ length: MONSTER_SLOTS }, () => ({ tier: "normal", id: "" }));
+  let partyPick = new Set();
+  let activeKey = ERASER;
+  let painting = false;
+  let grid = [];
+  let previewTimer = null;
+  let previewSeq = 0;
+
+  const bd = (id) => $("#" + id);
+
+  function currentEntry() {
+    if (!selectedRoom) return null;
+    if (selectedRoom.event) return eventScenes.find((e) => e.id === selectedRoom.event) ?? null;
+    return roomNames[selectedRoom.type][selectedRoom.index];
+  }
+  function currentScene() {
+    const entry = currentEntry();
+    return entry ? backdrops.scenes[entry.backdrop] : null;
+  }
+  function option(value, text, selected) {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = text;
+    if (selected) o.selected = true;
+    return o;
+  }
+  function fillSelect(sel, values, selected) {
+    sel.innerHTML = "";
+    for (const v of values) sel.appendChild(option(v, v, v === selected));
+  }
+
+  function renderRooms() {
+    const sel = bd("bdRooms");
+    sel.innerHTML = "";
+    for (const type of ROOM_TYPES) {
+      const group = document.createElement("optgroup");
+      group.label = type;
+      roomNames[type].forEach((e, i) => group.appendChild(option(`${type}:${i}`, `${e.name}  (${e.backdrop})`, selectedRoom?.type === type && selectedRoom.index === i)));
+      sel.appendChild(group);
+    }
+    if (eventScenes.length > 0) {
+      const group = document.createElement("optgroup");
+      group.label = "outside a room (event)";
+      for (const e of eventScenes) group.appendChild(option(`outside:${e.id}`, `${e.name}  (${e.backdrop})`, selectedRoom?.event === e.id));
+      sel.appendChild(group);
+    }
+  }
+
+  function renderTargetOptions(keep) {
+    const scene = currentScene();
+    const sel = bd("bdTarget");
+    sel.innerHTML = "";
+    for (const k of ["wall", "floor"]) sel.appendChild(option(k, `base ${k}`, k === keep));
+    if (scene.rightBase) for (const k of ["wall", "floor"]) sel.appendChild(option(`right:${k}`, `right base ${k}`, `right:${k}` === keep));
+    for (const p of Object.keys(backdrops.props)) sel.appendChild(option(`prop:${p}`, `prop ${p}`, `prop:${p}` === keep));
+    if (sel.selectedIndex < 0) sel.selectedIndex = 0;
+  }
+
+  function targetGrid() {
+    const scene = currentScene();
+    const v = bd("bdTarget").value;
+    if (v === "wall" || v === "floor") return backdrops.bases[scene.base][v];
+    if (v.startsWith("right:")) return backdrops.bases[scene.rightBase.base][v.slice(6)];
+    return backdrops.props[v.slice(5)];
+  }
+
+  function loadGrid() {
+    const g = targetGrid();
+    grid = g.rows.map((r) => r.split(""));
+    bd("bdW").value = String(grid[0].length);
+    bd("bdH").value = String(grid.length);
+    if (activeKey !== ERASER && !(activeKey in g.palette)) activeKey = Object.keys(g.palette)[0] ?? ERASER;
+    renderPalette();
+    renderGrid();
+  }
+
+  function commitGrid() {
+    targetGrid().rows = grid.map((r) => r.join(""));
+    schedulePreview();
+  }
+
+  function paintCell(cell, key) {
+    cell.style.background = key === ERASER ? "var(--bg)" : (targetGrid().palette[key] ?? "#ff00ff");
+  }
+
+  function renderGrid() {
+    const el = bd("bdGrid");
+    const h = grid.length, w = grid[0].length;
+    el.style.gridTemplateColumns = `repeat(${w}, 14px)`;
+    el.innerHTML = "";
+    for (let r = 0; r < h; r++) {
+      for (let c = 0; c < w; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        paintCell(cell, grid[r][c]);
+        cell.addEventListener("mousedown", (e) => { painting = true; applyPaint(r, c, cell); e.preventDefault(); });
+        cell.addEventListener("mouseenter", () => { if (painting) applyPaint(r, c, cell); });
+        el.appendChild(cell);
+      }
+    }
+  }
+
+  function applyPaint(r, c, cell) {
+    grid[r][c] = activeKey;
+    paintCell(cell, activeKey);
+    commitGrid();
+  }
+  document.addEventListener("mouseup", () => { painting = false; });
+
+  function nextFreeKey(palette) {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    for (const ch of letters) if (!(ch in palette)) return ch;
+    throw new Error("Out of palette characters.");
+  }
+
+  function renderPalette() {
+    const g = targetGrid();
+    const el = bd("bdPalette");
+    el.innerHTML = "";
+    const eraser = document.createElement("div");
+    eraser.className = "swatch eraser" + (activeKey === ERASER ? " active" : "");
+    eraser.innerHTML = `<span class="key">·</span><span class="hex">Erase (empty cell)</span>`;
+    eraser.addEventListener("click", () => { activeKey = ERASER; renderPalette(); });
+    el.appendChild(eraser);
+    for (const key of Object.keys(g.palette)) {
+      const row = document.createElement("div");
+      row.className = "swatch" + (activeKey === key ? " active" : "");
+      const label = document.createElement("span");
+      label.className = "key";
+      label.textContent = key;
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = g.palette[key];
+      const hex = document.createElement("span");
+      hex.className = "hex";
+      hex.textContent = g.palette[key];
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("input", (e) => {
+        g.palette[key] = e.target.value;
+        hex.textContent = e.target.value;
+        renderGrid();
+        schedulePreview();
+      });
+      const del = document.createElement("button");
+      del.textContent = "×";
+      del.title = "Delete this color (cells using it go empty)";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        grid = grid.map((r) => r.map((k) => (k === key ? ERASER : k)));
+        delete g.palette[key];
+        if (activeKey === key) activeKey = ERASER;
+        commitGrid();
+        renderPalette();
+        renderGrid();
+      });
+      row.append(label, input, hex, del);
+      row.addEventListener("click", () => { activeKey = key; renderPalette(); });
+      el.appendChild(row);
+    }
+  }
+
+  function renderScene() {
+    const scene = currentScene();
+    const isEvent = Boolean(selectedRoom.event);
+    fillSelect(bd("bdRoomScene"), Object.keys(backdrops.scenes), currentEntry().backdrop);
+    bd("bdRoomScene").disabled = isEvent;
+    bd("bdEventHint").hidden = !isEvent;
+    fillSelect(bd("bdBase"), Object.keys(backdrops.bases), scene.base);
+    bd("bdBaseboard").value = backdrops.bases[scene.base].baseboard;
+    const right = bd("bdRightBase");
+    right.innerHTML = "";
+    right.appendChild(option("", "(none)", !scene.rightBase));
+    for (const b of Object.keys(backdrops.bases)) right.appendChild(option(b, b, scene.rightBase?.base === b));
+    bd("bdRightBaseX").value = scene.rightBase ? String(scene.rightBase.x) : "";
+    bd("bdRightBaseX").disabled = !scene.rightBase;
+    bd("bdShadow").checked = scene.render?.unitShadow?.enabled ?? backdrops.render.unitShadow.enabled;
+    renderProps();
+    renderTargetOptions(bd("bdTarget").value || "wall");
+    loadGrid();
+  }
+
+  function renderProps() {
+    const scene = currentScene();
+    const el = bd("bdProps");
+    el.innerHTML = "";
+    scene.props.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "bd-prop-row";
+      const sel = document.createElement("select");
+      fillSelect(sel, Object.keys(backdrops.props), p.prop);
+      sel.addEventListener("change", () => { p.prop = sel.value; renderTargetOptions(bd("bdTarget").value); loadGrid(); schedulePreview(); });
+      const num = (key, label) => {
+        const wrap = document.createElement("div");
+        wrap.className = "field";
+        const l = document.createElement("label");
+        l.textContent = label;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "1";
+        input.value = String(p[key]);
+        input.addEventListener("input", () => { if (input.value !== "") { p[key] = Math.round(Number(input.value)); schedulePreview(); } });
+        wrap.append(l, input);
+        return wrap;
+      };
+      const rm = document.createElement("button");
+      rm.className = "action";
+      rm.textContent = "Remove";
+      rm.addEventListener("click", () => { scene.props.splice(i, 1); renderProps(); schedulePreview(); });
+      row.append(sel, num("x", "x"), num("y", "y"), rm);
+      el.appendChild(row);
+    });
+  }
+
+  function renderPreviewControls() {
+    const party = bd("bdParty");
+    party.innerHTML = "";
+    for (const c of classesMeta) {
+      const wrap = document.createElement("div");
+      wrap.className = "checkbox-row";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.id = "bdp-" + c.id;
+      input.checked = partyPick.has(c.id);
+      input.addEventListener("change", () => {
+        if (input.checked) partyPick.add(c.id); else partyPick.delete(c.id);
+        schedulePreview();
+      });
+      const label = document.createElement("label");
+      label.htmlFor = input.id;
+      label.textContent = c.name;
+      wrap.append(input, label);
+      party.appendChild(wrap);
+    }
+    const el = bd("bdMonsters");
+    el.innerHTML = "";
+    monsterPick.forEach((pick) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.marginBottom = "4px";
+      const tier = document.createElement("select");
+      fillSelect(tier, ["normal", "elite", "boss"], pick.tier);
+      const id = document.createElement("select");
+      const fillIds = () => {
+        id.innerHTML = "";
+        id.appendChild(option("", "(none)", pick.id === ""));
+        for (const m of monstersMeta.filter((m) => m.roles.includes(pick.tier))) id.appendChild(option(m.id, m.name, m.id === pick.id));
+        if (!monstersMeta.some((m) => m.id === pick.id && m.roles.includes(pick.tier))) pick.id = "";
+        id.value = pick.id;
+      };
+      fillIds();
+      tier.addEventListener("change", () => { pick.tier = tier.value; fillIds(); schedulePreview(); });
+      id.addEventListener("change", () => { pick.id = id.value; schedulePreview(); });
+      row.append(tier, id);
+      el.appendChild(row);
+    });
+  }
+
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(drawPreview, 120);
+  }
+
+  async function drawPreview() {
+    const seq = ++previewSeq;
+    const errEl = bd("bdPreviewError");
+    const entry = currentEntry();
+    if (!entry) return;
+    try {
+      const cells = await apiPost("/api/backdrop-preview", {
+        file: backdrops,
+        sceneId: entry.backdrop,
+        dimmed: bd("bdDimmed").checked,
+        shadow: bd("bdShadow").checked,
+        party: [...partyPick],
+        monsters: monsterPick.filter((m) => m.id !== "").map((m) => ({ id: m.id, tier: m.tier })),
+      });
+      if (seq !== previewSeq) return;
+      errEl.textContent = "";
+      const canvas = bd("bdPreview");
+      canvas.width = COLS * CELL_W;
+      canvas.height = ROWS * CELL_H;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#171310";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "13px monospace";
+      ctx.textBaseline = "middle";
+      cells.forEach((row, y) => row.forEach((cell, x) => {
+        if (cell.bg) { ctx.fillStyle = cell.bg; ctx.fillRect(x * CELL_W, y * CELL_H, CELL_W, CELL_H); }
+        if (cell.ch !== " " && cell.fg) { ctx.fillStyle = cell.fg; ctx.fillText(cell.ch, x * CELL_W, y * CELL_H + CELL_H / 2); }
+      }));
+    } catch (err) {
+      if (seq === previewSeq) errEl.textContent = "Preview: " + err.message;
+    }
+  }
+
+  function selectRoom(type, index) {
+    selectedRoom = { type, index };
+    renderRooms();
+    renderScene();
+    schedulePreview();
+  }
+
+  async function load() {
+    let events;
+    [backdrops, roomNames, events] = await Promise.all([api("/api/backdrops"), api("/api/room-names"), api("/api/events")]);
+    eventScenes = events.filter((e) => typeof e.backdrop === "string").map((e) => ({ id: e.id, name: e.name, backdrop: e.backdrop }));
+    if (!selectedRoom) selectRoom("combat", 0);
+    else { renderRooms(); renderScene(); schedulePreview(); }
+  }
+
+  bd("bdRooms").addEventListener("change", (e) => {
+    const [type, rest] = e.target.value.split(/:(.*)/);
+    if (type === "outside") {
+      selectedRoom = { event: rest };
+      renderRooms();
+      renderScene();
+      schedulePreview();
+    } else {
+      selectRoom(type, Number(rest));
+    }
+  });
+  bd("bdRightBase").addEventListener("change", (e) => {
+    const scene = currentScene();
+    if (e.target.value === "") delete scene.rightBase;
+    else scene.rightBase = { x: scene.rightBase?.x ?? 60, base: e.target.value };
+    renderScene();
+    schedulePreview();
+  });
+  bd("bdRightBaseX").addEventListener("input", (e) => {
+    const scene = currentScene();
+    if (scene.rightBase && e.target.value !== "") { scene.rightBase.x = Math.round(Number(e.target.value)); schedulePreview(); }
+  });
+  bd("bdRoomScene").addEventListener("change", (e) => {
+    currentEntry().backdrop = e.target.value;
+    renderRooms();
+    renderScene();
+    schedulePreview();
+  });
+  bd("bdBase").addEventListener("change", (e) => {
+    currentScene().base = e.target.value;
+    bd("bdBaseboard").value = backdrops.bases[e.target.value].baseboard;
+    loadGrid();
+    schedulePreview();
+  });
+  bd("bdBaseboard").addEventListener("input", (e) => {
+    backdrops.bases[currentScene().base].baseboard = e.target.value;
+    schedulePreview();
+  });
+  bd("bdAddProp").addEventListener("click", () => {
+    currentScene().props.push({ prop: Object.keys(backdrops.props)[0], x: 0, y: 0 });
+    renderProps();
+    schedulePreview();
+  });
+  bd("bdTarget").addEventListener("change", loadGrid);
+  bd("bdResize").addEventListener("click", () => {
+    const w = Math.max(1, Number(bd("bdW").value) || grid[0].length);
+    const h = Math.max(1, Number(bd("bdH").value) || grid.length);
+    grid = Array.from({ length: h }, (_, r) => Array.from({ length: w }, (_, c) => grid[r]?.[c] ?? ERASER));
+    commitGrid();
+    renderGrid();
+  });
+  bd("bdAddColor").addEventListener("click", () => {
+    const g = targetGrid();
+    const key = nextFreeKey(g.palette);
+    g.palette[key] = "#c9a227";
+    activeKey = key;
+    renderPalette();
+  });
+  bd("bdDimmed").addEventListener("change", schedulePreview);
+  bd("bdShadow").addEventListener("change", schedulePreview);
+
+  const status = bd("bdSaveStatus");
+  wireSaveButton(bd("bdSaveBackdrops"), status, "/api/backdrops", () => backdrops, load);
+  wireSaveButton(bd("bdSaveRooms"), status, "/api/room-names", () => roomNames, load);
+
+  (async function init() {
+    const meta = await api("/api/meta");
+    classesMeta = meta.classes;
+    monstersMeta = meta.monsters;
+    classesMeta.slice(0, MAX_PARTY).forEach((c) => partyPick.add(c.id));
+    const normals = monstersMeta.filter((m) => m.roles.includes("normal"));
+    monsterPick.forEach((p, i) => { p.id = normals[i]?.id ?? ""; });
+    renderPreviewControls();
+    await load();
+  })().catch((err) => { bd("bdPreviewError").textContent = "Load failed: " + err.message; });
 })();
 
 </script>

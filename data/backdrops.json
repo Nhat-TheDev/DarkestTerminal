@@ -1,0 +1,2207 @@
+{
+  "render": {
+    "floorRow": 12,
+    "brightness": 1.3,
+    "jitter": 0.16,
+    "edgeFade": {
+      "cols": 30,
+      "floor": 0.55
+    },
+    "topFade": [
+      0.7,
+      0.85,
+      1,
+      1,
+      1,
+      0.85,
+      0.6,
+      0.47,
+      0.42,
+      0.4,
+      0.39,
+      0.39,
+      0.45,
+      0.56,
+      0.52,
+      0.5,
+      0.5,
+      0.52
+    ],
+    "dimFactor": 0.6,
+    "unitShadow": {
+      "enabled": false,
+      "reachCols": 2,
+      "reachRows": 1,
+      "darkness": 0.45
+    }
+  },
+  "bases": {
+    "dungeon-stone": {
+      "wall": {
+        "rows": [
+          "AAAAAMCCCCCM",
+          "AAAAAMCCCCCM",
+          "CCMAAAAAMCCC",
+          "CCMAAAAAMCCC"
+        ],
+        "palette": {
+          "A": "#2d2925",
+          "C": "#272320",
+          "M": "#191614"
+        }
+      },
+      "floor": {
+        "rows": [
+          "FFFFFFFFFG",
+          "FFFFFFFFFG",
+          "FFFFGFFFFF",
+          "FFFFGFFFFF"
+        ],
+        "palette": {
+          "F": "#211e1b",
+          "G": "#141210"
+        }
+      },
+      "baseboard": "#121010"
+    },
+    "crypt": {
+      "wall": {
+        "rows": [
+          "AAAAAAAAMCCCCCCCCM",
+          "AAAAAAAAMCCCCCCCCM",
+          "AAAAAAAAMCCCCCCCCM",
+          "CCCCMAAAAAAAAMCCCC",
+          "CCCCMAAAAAAAAMCCCC",
+          "CCCCMAAAAAAAAMCCCC"
+        ],
+        "palette": {
+          "A": "#262830",
+          "C": "#21232a",
+          "M": "#15161a"
+        }
+      },
+      "floor": {
+        "rows": [
+          "FFFFFFFFFFFFG",
+          "FFFFFFFFFFFFG",
+          "FFFFFFGFFFFFF",
+          "FFFFFFGFFFFFF"
+        ],
+        "palette": {
+          "F": "#1d1e23",
+          "G": "#121317"
+        }
+      },
+      "baseboard": "#0f1013"
+    },
+    "cave": {
+      "wall": {
+        "rows": [
+          "AAAACCCAAAAACCAAAAAB",
+          "AAACCCCCAAAACCCAAABB",
+          "BAACCCCAAABBBAAAAAAB",
+          "BBAAAAAAABBBBBAACCAA",
+          "ABBAAAAAAABBBAACCCCA",
+          "AABBBAACCAAAAAAACCAA"
+        ],
+        "palette": {
+          "A": "#23211b",
+          "B": "#1c1a15",
+          "C": "#29271f"
+        }
+      },
+      "floor": {
+        "rows": [
+          "FFFFFFFFHFFFFFFFFFFFFHFF",
+          "FFHFFFFFFFFFFFHFFFFFFFFF"
+        ],
+        "palette": {
+          "F": "#1b1914",
+          "H": "#26231c"
+        }
+      },
+      "baseboard": "#14130f"
+    },
+    "hall": {
+      "wall": {
+        "rows": [
+          "AAAAAAAAAAAAAAM",
+          "AAAAAAAAAAAAAAM",
+          "AAAAAAAAAAAAAAM",
+          "MMMMMMMMMMMMMMM"
+        ],
+        "palette": {
+          "A": "#231d1a",
+          "M": "#1a1513"
+        }
+      },
+      "floor": {
+        "rows": [
+          "FFFFFFGGGGGG",
+          "FFFFFFGGGGGG",
+          "GGGGGGFFFFFF",
+          "GGGGGGFFFFFF"
+        ],
+        "palette": {
+          "F": "#221c19",
+          "G": "#1a1513"
+        }
+      },
+      "baseboard": "#110e0c"
+    },
+    "night-hillside": {
+      "wall": {
+        "rows": [
+          "SSSSSSSSS*SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+          "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS*SSSSSSSSSSSSSSS",
+          "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+          "SSSSSSSSSSSSSSSSSSSS*SSSSSSSSSSSSSSSSSSSSSSSSSS",
+          "SSSSSSSSSSSSSSSSSSSSSSSSSSSTTTHHHHHTTTTSSSSSSSS",
+          "SSSSSSSSSSSSSSSSSSSSSSSSSTTHHHHHHHHHHHHTTTTTTTT",
+          "TTTTTTTTTTTTTTTTTTTTTTTTTHHHHHHHHHHHHHHHHHHHHHH",
+          "HHHGHHHHHHHHHHHHHHHHHHHHHHHGHHHHHHHHHHHHHHHHHHH",
+          "HHHHHHHHHHHHHHGHHHHHHHHHHHHHHHHHHHHHHHHHGHHHHHH",
+          "HGHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGHHHHHHHHHHHHH",
+          "HHHHHHHHHHHHHHHHHHHHHHGHHHHHHHHHHHHHHHHHHHHHGHH",
+          "HHHHHHHHHGHHHHHHHHHHHHHHHHHHHHGHHHHHHHHHHHHHHHH"
+        ],
+        "palette": {
+          "S": "#181b24",
+          "T": "#1f2129",
+          "*": "#383a44",
+          "H": "#1a1914",
+          "G": "#202418"
+        }
+      },
+      "floor": {
+        "rows": [
+          "EEEEEEEEgEEEEEEEEEEEgEEE",
+          "EEgEEEEEEEEEEEgEEEEEEEEE"
+        ],
+        "palette": {
+          "E": "#211e17",
+          "g": "#28301e"
+        }
+      },
+      "baseboard": "#17160f"
+    },
+    "mountain-rock": {
+      "wall": {
+        "rows": [
+          "CCBCCCCKCBAAAAAABBBAAAABABBAAKBBBBABBBKCC",
+          "ABBBBAABKBKBKAKABBABBAEEEEBACCCCKCCCABBBB",
+          "AAAEEEEEEABABBAABBBACAkkkkCABBBBBBBKABAAB",
+          "ABBkkkkkkKACCCBCCCAAAAAABBABBABABBBABABAB",
+          "CACAACACCBAAABABABBAAABAABAAABAABABACBCCB",
+          "BAABABBBBBBKBBAABAKBBBAABBACABBBACKAAABAA",
+          "BBAAAABBAKABBAKABBACACACCBAKAAEEEEEEEABAA",
+          "BBABBBBABBBAACBCBBBAAAAAABKBABkkkkkkkBAAB",
+          "CCCCBCCCAABEEEEEBABKBBBBBBBBABAKAABBCCCBC",
+          "BAAABAAAAABkkkkkKABAAABBAABCBCBABABCABKAB",
+          "BBABBAAAKBBAABAAKBCBACBCCCCAABABAABEEEEBB",
+          "AABABAAKBCCCCBABCCBBBAKAAABBBBAAABBkkkkAB"
+        ],
+        "palette": {
+          "A": "#2e2c29",
+          "B": "#282724",
+          "C": "#34322e",
+          "K": "#1b1a17",
+          "E": "#4b4842",
+          "k": "#141311"
+        }
+      },
+      "floor": {
+        "rows": [
+          "EEEEEEEEgEEEEEEEEEEEgEEE",
+          "EEgEEEEEEEEEEEgEEEEEEEEE"
+        ],
+        "palette": {
+          "E": "#211e17",
+          "g": "#28301e"
+        }
+      },
+      "baseboard": "#17160f"
+    }
+  },
+  "props": {
+    "barred-window": {
+      "rows": [
+        "MMMMMMMMM",
+        "MKIKIKIKM",
+        "MKIKIKIKM",
+        "MKIKIKIKM",
+        "MMMMMMMMM"
+      ],
+      "palette": {
+        "M": "#3a3530",
+        "K": "#0b0a09",
+        "I": "#55524e"
+      }
+    },
+    "chain": {
+      "rows": [
+        "C.",
+        "c.",
+        "C.",
+        "c.",
+        "C.",
+        "c.",
+        "C.",
+        "c.",
+        "CC"
+      ],
+      "palette": {
+        "C": "#6a645d",
+        "c": "#48433e"
+      }
+    },
+    "torch": {
+      "rows": [
+        ".f.",
+        "fFf",
+        ".f.",
+        ".h.",
+        "hhh"
+      ],
+      "palette": {
+        "f": "#c4692a",
+        "F": "#e8b04c",
+        "h": "#4a3a2a"
+      },
+      "light": {
+        "radius": 9,
+        "color": "#c4692a",
+        "strength": 0.22
+      }
+    },
+    "bone-niche": {
+      "rows": [
+        "KKKKKKKKKKK",
+        "KsKKKsKKKsK",
+        "KbbbbbbbbbK",
+        "KKKKKKKKKKK"
+      ],
+      "palette": {
+        "K": "#0f1013",
+        "s": "#857f70",
+        "b": "#5f5a4f"
+      }
+    },
+    "skull-pile": {
+      "rows": [
+        "...s.s...",
+        "..sbsbs..",
+        ".bsbbbsb."
+      ],
+      "palette": {
+        "s": "#7d7769",
+        "b": "#55504a"
+      }
+    },
+    "puddle": {
+      "rows": [
+        "..wwwWWWww..",
+        "wwwWWWWWwwww"
+      ],
+      "palette": {
+        "w": "#1e2a2e",
+        "W": "#36494f"
+      }
+    },
+    "stalactites": {
+      "rows": [
+        "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+        ".RRR.RRRRR..RRR.RR.RRRR..RRRR.RRR..RR.RRRRR..RRR.RR.RRRR..RRRR.RRR..RR.RRRRR.RRR..RR.RRRR..RRRR.RRR..RR.RRR.RRRR.",
+        "..R...RR.....R...R..RR....R....R....R..RR......R...R..R....R...R.....R..RR...R....R..R.....R...R....R..R...RR...."
+      ],
+      "palette": {
+        "R": "#13120e"
+      }
+    },
+    "drip": {
+      "rows": [
+        "w",
+        ".",
+        "w",
+        ".",
+        ".",
+        "w"
+      ],
+      "palette": {
+        "w": "#2f4a54"
+      }
+    },
+    "pillar": {
+      "rows": [
+        "PPPPPPPPP",
+        ".PPPPPPP.",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        ".PPPPPPP."
+      ],
+      "palette": {
+        "P": "#463c34",
+        "p": "#342c26"
+      }
+    },
+    "banner": {
+      "rows": [
+        "TTTTTTT",
+        "BBBBBBB",
+        "BbBBBbB",
+        "BBBgBBB",
+        "BBgggBB",
+        "BBBgBBB",
+        "BbBBBbB",
+        "B.BBB.B",
+        "B..B..B"
+      ],
+      "palette": {
+        "T": "#4a3d22",
+        "B": "#2c2033",
+        "b": "#241a2a",
+        "g": "#5a4a28"
+      }
+    },
+    "throne": {
+      "rows": [
+        "....g........g........g....",
+        "...ggg......ggg......ggg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "...ggTTTTTTTTTTTTTTTTTgg...",
+        "gggggTTTTTTTTTTTTTTTTTggggg",
+        "gTTTgTTTTTTTTTTTTTTTTTgTTTg",
+        "gTTTgTTTTTTTTTTTTTTTTTgTTTg",
+        "SSSSSSSSSSSSSSSSSSSSSSSSSSS",
+        "SSSSSSSSSSSSSSSSSSSSSSSSSSS"
+      ],
+      "palette": {
+        "g": "#5a4a28",
+        "T": "#130d11",
+        "S": "#2a2420"
+      }
+    },
+    "altar": {
+      "rows": [
+        "..c.....c..",
+        "..c.....c..",
+        "AAAAAAAAAAA",
+        ".aAAAAAAAa.",
+        ".aAAAAAAAa.",
+        ".aAAAAAAAa.",
+        ".aAAAAAAAa."
+      ],
+      "palette": {
+        "A": "#6e6862",
+        "a": "#4e4944",
+        "c": "#d8c08a"
+      },
+      "light": {
+        "radius": 7,
+        "color": "#d8a85a",
+        "strength": 0.15
+      }
+    },
+    "rubble": {
+      "rows": [
+        "..rR....",
+        ".rRRr.rR",
+        "rRRrrRRr"
+      ],
+      "palette": {
+        "r": "#2a2622",
+        "R": "#353029"
+      }
+    },
+    "portcullis": {
+      "rows": [
+        "SSSSSSSSSSSSSSSSSSSSSSS",
+        "SSmSSSSSmSSSSSmSSSSSmSS",
+        "SSIKIKIKIKIKIKIKIKIKISS",
+        "mSIIIIIIIIIIIIIIIIIIISm",
+        "SSIKIKIKIKIKIKIKIKIKISS",
+        "SSiKiKiKiKiKiKiKiKiKiSS",
+        "mSKKKKKKKKKKKKKKKKKKKSm",
+        "SSKKKKKKKKKKKKKKKKKKKSS",
+        "SSKKKKKKKKKKKKKKKKKKKSS",
+        "mSKKKKKKKKKKKKKKKKKKKSm",
+        "SSKKKKKKKKKKKKKKKKKKKSS",
+        "SSKKKKKKKKKKKKKKKKKKKSS"
+      ],
+      "palette": {
+        "S": "#48413a",
+        "m": "#29241f",
+        "I": "#5a554e",
+        "i": "#433f39",
+        "K": "#0c0b0a"
+      }
+    },
+    "water-streak": {
+      "rows": [
+        "wWwWw",
+        "wWwWw",
+        "WwwWw",
+        ".WwWw",
+        ".Ww.W",
+        ".Ww.W",
+        "..Ww.",
+        "..Ww.",
+        ".Ww..",
+        ".W...",
+        ".w...",
+        ".w..."
+      ],
+      "palette": {
+        "w": "#161b1c",
+        "W": "#5a6e6e"
+      }
+    },
+    "water-streak-short": {
+      "rows": [
+        "wWwW",
+        "WwwW",
+        "Ww.W",
+        ".Ww.",
+        ".Ww.",
+        "..W.",
+        "..w."
+      ],
+      "palette": {
+        "w": "#161b1c",
+        "W": "#5a6e6e"
+      }
+    },
+    "crate-stack": {
+      "rows": [
+        "dddddd.bBBb.",
+        "dWWWWd.hhhh.",
+        "dddddd.bBBb.",
+        "dddddddddddd",
+        "dWWWWddWWWWd",
+        "dddddddddddd"
+      ],
+      "palette": {
+        "d": "#2f2318",
+        "W": "#5a462b",
+        "b": "#35281b",
+        "B": "#5a442b",
+        "h": "#1a1611"
+      }
+    },
+    "storeroom-shelf": {
+      "rows": [
+        ".dddddd..bBBb..ss...dddd..",
+        ".dWWWWd..hhhh.sSss..dWWd..",
+        ".dddddd..bBBb.ssss..dddd..",
+        "PPPPPPPPPPPPPPPPPPPPPPPPPP",
+        ".k......................k."
+      ],
+      "palette": {
+        "d": "#2f2318",
+        "W": "#5a462b",
+        "b": "#35281b",
+        "B": "#5a442b",
+        "h": "#1a1611",
+        "s": "#4e4634",
+        "S": "#5e543f",
+        "P": "#4e3b25",
+        "k": "#251c13"
+      }
+    },
+    "broken-shelf": {
+      "rows": [
+        ".J.............",
+        "jjj..ss........",
+        "jjj.sSss.......",
+        "PPPPPPPPPP.....",
+        ".k.......PP....",
+        "...........P...",
+        "............P..",
+        ".............P."
+      ],
+      "palette": {
+        "P": "#6a5234",
+        "k": "#2e2318",
+        "j": "#6e5640",
+        "J": "#82684e",
+        "s": "#625840",
+        "S": "#746a50"
+      }
+    },
+    "broken-crate": {
+      "rows": [
+        "d...dd..",
+        "dW.d.Wd.",
+        "dddddddP"
+      ],
+      "palette": {
+        "d": "#2f2318",
+        "W": "#5a462b",
+        "P": "#4e3b25"
+      }
+    },
+    "deep-arch": {
+      "rows": [
+        "...........................",
+        ".......rRRRrRRRrRRRr.......",
+        "....RRrRKKKKKKKKKKKRRRr....",
+        "..RRRrKKKKKKKKKKKKKKKrRRR..",
+        ".RRRKKKKKKKKKKKKKKKKKKKRrR.",
+        "RRRKKKKKKKKKKKKKKKKKKKKKRRR",
+        "RRkKKKKKKKKKKKKKKKKKKKKKkRr",
+        "RrkKKKKKKKKKKKKKKKKKKKKKkrR",
+        "rRkKKKKKKKKKKKKKKKKKKKKKkRR",
+        "RRkKKKKKKKKKKKKKKKKKKKKKkRR",
+        "RRkKKKKKKKKKKKKKKKKKKKKKkRr",
+        "RrkKKKKKKKKKKKKKKKKKKKKKkrR"
+      ],
+      "palette": {
+        "R": "#3e3832",
+        "r": "#221e1a",
+        "K": "#060505",
+        "k": "#0d0c0a"
+      }
+    },
+    "archway": {
+      "rows": [
+        ".................",
+        ".....RRrRRRr.....",
+        "..rRRKKKKKKKRRr..",
+        ".rRKKKKKKKKKKKRR.",
+        "rRkKKKKKKKKKKKkRr",
+        "RRkKKKKKKKKKKKkrR",
+        "RRkKKKKKKKKKKKkRR",
+        "RrkKKKKKKKKKKKkRR",
+        "rRkKKKKKKKKKKKkRr",
+        "RRkKKKKKKKKKKKkrR",
+        "RRkKKKKKKKKKKKkRR",
+        "RrkKKKKKKKKKKKkRR"
+      ],
+      "palette": {
+        "R": "#463f37",
+        "r": "#25201c",
+        "K": "#080707",
+        "k": "#100e0c"
+      }
+    },
+    "pointed-niche": {
+      "rows": [
+        "......R......",
+        ".....RkR.....",
+        "....RkKKR....",
+        "...RkKKKKR...",
+        "..RkKKKKKKR..",
+        "..RkKKKKKKR..",
+        "..RkKKKKKKR..",
+        "..RkKKKKKKR..",
+        "..RkKKKKKKR..",
+        "..RkKKKKKKR..",
+        "LLLLLLLLLLLLL",
+        ".lllllllllll."
+      ],
+      "palette": {
+        "R": "#474a55",
+        "K": "#0e0f13",
+        "k": "#16171d",
+        "L": "#4a4d57",
+        "l": "#2a2c33"
+      }
+    },
+    "wall-niche": {
+      "rows": [
+        "..RRR..",
+        ".RKKKR.",
+        "RKKKKKR",
+        "RKKkKKR",
+        "LLLLLLL"
+      ],
+      "palette": {
+        "R": "#3a342e",
+        "K": "#0b0a09",
+        "k": "#4a4034",
+        "L": "#2a2622"
+      }
+    },
+    "broken-pillar": {
+      "rows": [
+        "...P.....",
+        "..PP.....",
+        "..PpP....",
+        "..PpPp...",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        ".PPPPPPP."
+      ],
+      "palette": {
+        "P": "#6a5a4e",
+        "p": "#4a3f37"
+      }
+    },
+    "torn-banner": {
+      "rows": [
+        "TTTTTTT",
+        "BBBBBBB",
+        "BbBBBbB",
+        "BB.BB.B",
+        "B..BB.B",
+        "B...B..",
+        "....B.."
+      ],
+      "palette": {
+        "T": "#5a4a2a",
+        "B": "#3a2a40",
+        "b": "#2c2032"
+      }
+    },
+    "fallen-banner": {
+      "rows": [
+        "....BbBB.....",
+        "TTTBBBBBBbTTT"
+      ],
+      "palette": {
+        "T": "#5a4a2a",
+        "B": "#3a2a40",
+        "b": "#2c2032"
+      }
+    },
+    "doorframe": {
+      "rows": [
+        "LLLLLLLLLLLLLLLLLLL",
+        "LlLLLLLLLLLLLLLLLlL",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JjjKKKKKKKKKKKKKjjJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JjjKKKKKKKKKKKKKjjJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JJjKKKKKKKKKKKKKjJJ",
+        "JJjKKKKKKKKKKKKKjJJ"
+      ],
+      "palette": {
+        "L": "#3d342d",
+        "l": "#2a231e",
+        "J": "#372f29",
+        "j": "#241e1a",
+        "K": "#0a0807"
+      }
+    },
+    "carpet": {
+      "rows": [
+        "......bbCCCCCCCbb......",
+        ".....bbCCCCCCCCCbb.....",
+        "...bbCCCCCCCCCCCCCbb...",
+        "..bbCCCCCCCCCCCCCCCbb..",
+        "bbCCCCCCCCCCCCCCCCCCCbb"
+      ],
+      "palette": {
+        "b": "#463620",
+        "C": "#2c1517"
+      }
+    },
+    "candles": {
+      "rows": [
+        "f...f..",
+        "c.f.c.f",
+        "c.c.c.c"
+      ],
+      "palette": {
+        "f": "#d8c08a",
+        "c": "#6a6256"
+      },
+      "light": {
+        "radius": 6,
+        "color": "#d8a85a",
+        "strength": 0.13
+      }
+    },
+    "altar-stone": {
+      "rows": [
+        "SSSSSSSSSSS",
+        "sSSSSSSSSSs",
+        ".sSSSSSSSs.",
+        ".sssssssss."
+      ],
+      "palette": {
+        "S": "#50515a",
+        "s": "#33343b"
+      }
+    },
+    "floor-circle": {
+      "rows": [
+        ".........cC.cccCccc.Cc.ccCcccc.cc.cCc........",
+        "..ccCc................................c.cc...",
+        "cccC.....................................ccCc",
+        "...cc.c................................cccC..",
+        "........ccc.cc.cCccccC.cc.CccccCc.cc........."
+      ],
+      "palette": {
+        "c": "#62626c",
+        "C": "#74747e"
+      }
+    },
+    "sarcophagus": {
+      "rows": [
+        "..LLLLLLLLLLLLLLLLLL..",
+        ".LlllllllllllllllllL..",
+        "SSSSSSSSSSSSSSSSSSSSSS",
+        "SsSSSsSSSSsSSSSsSSSSsS",
+        "SsSSSsSSSSsSSSSsSSSSsS",
+        "ssssssssssssssssssssss"
+      ],
+      "palette": {
+        "L": "#50525c",
+        "l": "#3c3e47",
+        "S": "#3e4048",
+        "s": "#26282e"
+      }
+    },
+    "weapon-rack": {
+      "rows": [
+        ".t...b...aa.t.",
+        ".s...b...as.s.",
+        ".s...b....s.s.",
+        "RRRRRRRRRRRRRR",
+        ".s..hbh...s.s.",
+        ".s...g....s.s.",
+        ".s...g....s.s.",
+        "RRRRRRRRRRRRRR"
+      ],
+      "palette": {
+        "t": "#6a665e",
+        "b": "#5e5c57",
+        "a": "#57534c",
+        "s": "#3e2f1f",
+        "h": "#5a4a2a",
+        "g": "#2e2318",
+        "R": "#2e2219"
+      }
+    },
+    "urn-shelf": {
+      "rows": [
+        "..u.....u.....u.....u...",
+        ".uUu...uUu...uUu..uUUu..",
+        "PPPPPPPPPPPPPPPPPPPPPPPP",
+        ".p....u.....u.......p...",
+        "...uUUu....uUu..u.......",
+        "....uu.....uUu.uUu......",
+        "PPPPPPPPPPPPPPPPPPPPPPPP"
+      ],
+      "palette": {
+        "U": "#6a5a4c",
+        "u": "#4a3f35",
+        "P": "#4a4c55",
+        "p": "#2a2c33"
+      }
+    },
+    "reliquary-box": {
+      "rows": [
+        ".GGGGG.",
+        "GBBBBBG",
+        "GBBgBBG",
+        "GGGGGGG"
+      ],
+      "palette": {
+        "G": "#55462a",
+        "B": "#231c18",
+        "g": "#76643a"
+      }
+    },
+    "plinth": {
+      "rows": [
+        "SSSSSSSSS",
+        ".sSSSSSs.",
+        ".sSSSSSs.",
+        "SSSSSSSSS"
+      ],
+      "palette": {
+        "S": "#2f3138",
+        "s": "#1d1e24"
+      }
+    },
+    "low-beam": {
+      "rows": [
+        "..HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH..",
+        "..WggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWWggWWWWWWW..",
+        "..wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww..",
+        "...WWw.WW...............................................................................................WW..WWw..",
+        "...WWw...WW...........................................................................................WW....WWw..",
+        "...WWw.....WW.......................................................................................WW......WWw..",
+        "...WWw......................................................................................................WWw..",
+        "...WWw......................................................................................................WWw..",
+        "...WWw......................................................................................................WWw..",
+        "...WWw......................................................................................................WWw.."
+      ],
+      "palette": {
+        "H": "#4a3826",
+        "W": "#382a1c",
+        "g": "#2a2016",
+        "w": "#1f1711"
+      }
+    },
+    "corner-wall": {
+      "rows": [
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "mcccmaaamcccmaaamcccmaaamcccE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "aamaccmcaamaccmcaamaccmcaamaE",
+        "mcccmaaamcccmaaamcccmammmmmmE",
+        "mcccmaaamcccmaaammmmmm.......",
+        "aamaccmcaammmmmmm............",
+        "aamaccmmmmm..................",
+        "mmmmmm......................."
+      ],
+      "palette": {
+        "a": "#1f1c19",
+        "c": "#1a1715",
+        "m": "#0f0d0c",
+        "E": "#3e3732"
+      }
+    },
+    "stairs": {
+      "rows": [
+        ".p.....p.qqq.......................",
+        "TTT....p...........................",
+        "SSSTTT.p...........p...............",
+        "SSSSsSTTT...........p..............",
+        "SSSsSSSSSTTT..........qq...........",
+        "SSsSSSSSSsSSTTT.........qqq........",
+        "SsSSSSSSsSSSSSSTTT.......p.qqq.....",
+        "sSSSSSSsSSSSSSsSSSTTT....p....qqq..",
+        "SSSSSSsSSSSSSsSSSSSSsTTT.p.....p...",
+        "SSSSSsSSSSSSsSSSSSSsSSSSTTT....p...",
+        "SSSSsSSSSSSsSSSSSSsSSSSSSsSTTT.p...",
+        "SSSsSSSSSSsSSSSSSsSSSSSSsSSSSSTTT.."
+      ],
+      "palette": {
+        "T": "#706458",
+        "S": "#16120f",
+        "s": "#110e0c",
+        "p": "#5a4630",
+        "q": "#6a5438"
+      }
+    },
+    "cobweb": {
+      "rows": [
+        "wwwwwwwwwwwv......",
+        "wwwwwwvw....wwwwww",
+        ".wwwwvW.wwwWw.....",
+        ".vvwW.www.v..wwwww",
+        ".w..ww.v.Www......",
+        ".wWv.vv....www....",
+        ".vW...ww.....www.."
+      ],
+      "palette": {
+        "w": "#55524b",
+        "W": "#67635b",
+        "v": "#45423d"
+      }
+    },
+    "cobweb-right": {
+      "rows": [
+        "......vwwwwwwwwwww",
+        "wwwwww....wvwwwwww",
+        ".....wWwww.Wvwwww.",
+        "wwwww..v.www.Wwvv.",
+        "......wwW.v.ww..w.",
+        "....www....vv.vWw.",
+        "..www.....ww...Wv."
+      ],
+      "palette": {
+        "w": "#55524b",
+        "W": "#67635b",
+        "v": "#45423d"
+      }
+    },
+    "dust": {
+      "rows": [
+        "dd.D.dD.DdDDd.Dd...d.D.dDDd.d..d.DDd.dd.dd..d....d.Dd.ddD....d...d..d.D....dd.DddDD.Ddd.Dd....ddd..ddddd.dDdd....",
+        "..D......d.Dddd.DDdd.D..d...d....dd...dD..d.D......d..............DD...........dd......d.....d........ddd..d.....",
+        "dD.......d......d..........D.dD.d.......d........................dd.d.d...d..d..d.....d...d..D..D...D...d.D..d...",
+        ".d...dD..d...d.d......d..ddDd.....d.D.D..d..d..............Ddd..dd.......d.........D...d.D.d.DD...........d..D...",
+        "..d..........Dd.d......D.....d..d..d.........dd....DD........d.d..D.....d.d.d..d.......DD...d...D..d...........Dd",
+        "......d.........D.....D.d..........ddd......ddd.d..........D..d...d.......DD....D......dd........D.....d...dd...."
+      ],
+      "palette": {
+        "d": "#332e29",
+        "D": "#423c35"
+      }
+    },
+    "earth-slope": {
+      "rows": [
+        "EEEEESsFrEFEFEEErFEEESFEEsFrEFEFEFrFFEEEFEEEEee...",
+        "EEEEFEFFrEEFFFEErFEESFFEFEErFFsEsErFFEFEEEe.......",
+        "sEEEEsFErFEEEEEEEFEEEEEFEEsrEsEESEEEEEee..........",
+        "EsSEFEEEEEEEEEEFsEEEEFEEEEErEFEFEEEe..............",
+        "FEEEEEFFEEFEFEEEFEEEEEFEsFFFEFFee.................",
+        "EEFEEEEESEEFsFEFFFEsEEEEEEFEee....................",
+        "EEFEFEEEFEFFFFsEFsEEEEEFsee.......................",
+        "SEESFFEEEEEEEEEEEEEEEEe...........................",
+        "EEFEFEEEEEEEEEEEEEe...............................",
+        "EFFEFFEEEFEFFEee..................................",
+        "EEEEsEFsEEFeee....................................",
+        "EsFEFEFFE.........................................",
+        "FsFEee............................................",
+        "EEEe..............................................",
+        "FSe...............................................",
+        "eee...............................................",
+        "e.................................................",
+        "e................................................."
+      ],
+      "palette": {
+        "E": "#130e09",
+        "F": "#1a130c",
+        "e": "#5e4a2e",
+        "s": "#55524a",
+        "S": "#686359",
+        "r": "#4a3820"
+      }
+    },
+    "roots": {
+      "rows": [
+        "r..r...r..r",
+        "r..r...r..r",
+        "r..r...r..r",
+        "...r...r...",
+        "...r......."
+      ],
+      "palette": {
+        "r": "#4a3820"
+      }
+    },
+    "flooded-floor": {
+      "rows": [
+        ".........SSSSSsSSSSSSsSSSSSSsSSSSSSsSSSSSSsSSSSSSsSSSSSSsSSSSSSs",
+        "........wwwWwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwww",
+        "......wwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwWwwwwwwwwwww",
+        ".....wwwwwwwwwwWwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwW",
+        "...wwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwWwwwwwww",
+        "..wwwwWwwwwwwwwwwwwWwwwwwwwwWwwwwwwwwwwwwWwwwwwwwwwwwwWwwwwwwwww"
+      ],
+      "palette": {
+        "S": "#5c7275",
+        "s": "#3e5255",
+        "w": "#1c2a2d",
+        "W": "#3e575b"
+      }
+    },
+    "crack": {
+      "rows": [
+        "K.....",
+        ".K....",
+        ".K....",
+        "..KK..",
+        "....K.",
+        "...K..",
+        "...K..",
+        "....K.",
+        ".....K"
+      ],
+      "palette": {
+        "K": "#0d0c09"
+      }
+    },
+    "fallen-beam": {
+      "rows": [
+        "HWWw..............",
+        ".HWWw.............",
+        "..HWWw............",
+        "...HWWw...........",
+        "....HWWw..........",
+        ".....HWWw.........",
+        "......HWWw........",
+        ".......HWWw.......",
+        "........HWWw......",
+        ".........HWWw.....",
+        "..........HWWw....",
+        "...........HWWw...",
+        "............HWWw..",
+        ".............HWWw."
+      ],
+      "palette": {
+        "H": "#5a4630",
+        "W": "#45351f",
+        "w": "#2a2016"
+      }
+    },
+    "rubble-heap": {
+      "rows": [
+        "..........rB...........",
+        ".......rR.RBr..........",
+        "......rRRrRRRr..r......",
+        ".....rBBRrrRRRrRR......",
+        "...rRrRRRRrRBBRRRr.....",
+        "..rRRRrRRrRRRrRRRRr..r.",
+        ".rRBBrRRRRrRRRRrRBBrRR.",
+        "rRRRRrRRRrRRBBRrRRRRRRr"
+      ],
+      "palette": {
+        "r": "#4a4136",
+        "R": "#6c604f",
+        "B": "#857762"
+      }
+    },
+    "recess": {
+      "rows": [
+        "..RRRRRRR..",
+        ".RkKKKKKkR.",
+        "RkKKKKKKKkR",
+        "RkKKKKKKKkR",
+        "RkKKKKKKKkR",
+        "RkKKKKKKKkR",
+        "RkKKKKKKKkR",
+        "LLLLLLLLLLL"
+      ],
+      "palette": {
+        "R": "#3a342e",
+        "K": "#0b0a09",
+        "k": "#141210",
+        "L": "#2a2622"
+      }
+    },
+    "crate-tower": {
+      "rows": [
+        "ddddddd",
+        "dWWWWWd",
+        "ddddddd",
+        "ddddddd",
+        "dWWWWWd",
+        "ddddddd",
+        ".bBBBb.",
+        ".hhhhh.",
+        ".bBBBb.",
+        ".bBBBb."
+      ],
+      "palette": {
+        "d": "#2f2318",
+        "W": "#5a462b",
+        "b": "#35281b",
+        "B": "#5a442b",
+        "h": "#1a1611"
+      }
+    },
+    "broken-pillar-low": {
+      "rows": [
+        ".........",
+        ".........",
+        ".........",
+        ".........",
+        ".........",
+        "......P..",
+        "..P..PP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        "..PpPpP..",
+        ".PPPPPPP."
+      ],
+      "palette": {
+        "P": "#6a5a4e",
+        "p": "#4a3f37"
+      }
+    },
+    "capital-fragment": {
+      "rows": [
+        "..PPPP...",
+        ".PpPpPP.P",
+        "PPPPPPPPP"
+      ],
+      "palette": {
+        "P": "#6a5a4e",
+        "p": "#4a3f37"
+      }
+    },
+    "low-ceiling": {
+      "rows": [
+        "kcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccckcccccck",
+        "kCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCkCCCCCCk"
+      ],
+      "palette": {
+        "c": "#1c1712",
+        "C": "#221b15",
+        "k": "#110d0a"
+      }
+    },
+    "seep": {
+      "rows": [
+        "MM.MMMmMM.mmm.Mm..MMmmMmmmmMm.MMMMMm...Mmmmm.m.m..mm.M.mmM.mmm..mmmm.mMmmMmMmmmm..m.mm.Mm.mm.mmmmMmMmM.MM.mm..mmM",
+        ".m....mm.m.M..Mm.mm...M.mmM.mmM.mM.....mmm...m...M.m.......M........M..m....M....m.m..m....MmM.mm....M.m....M.Mm.",
+        "................Mm.m....m..m...m..........m............M............................M....m.m.............M......."
+      ],
+      "palette": {
+        "m": "#141a17",
+        "M": "#3c4a3e"
+      }
+    },
+    "great-door": {
+      "rows": [
+        "LLLLLLLLLLLLLLLLLLLLLLLLL",
+        "lLLlLLLLLlLLLLLlLLLLLlLLl",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "jJJkKKKKKKKKKKKKKKKKKkJJj",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "jJJkKKKKKKKKKKKKKKKKKkJJj",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ",
+        "JJJkKKKKKKKKKKKKKKKKKkJJJ"
+      ],
+      "palette": {
+        "L": "#4a4038",
+        "l": "#2e2722",
+        "J": "#3e352e",
+        "j": "#28221d",
+        "K": "#070605",
+        "k": "#100d0b"
+      }
+    },
+    "vault-arch": {
+      "rows": [
+        "........rRRRrRRRr........",
+        ".....RRrRRKKKKKrRRRr.....",
+        "...RRRKKKKKKKKKKKKKRRR...",
+        ".rRRKKKKKKKKKKKKKKKKKrRR.",
+        "rRRKKKKKKKKKKKKKKKKKKKRRr",
+        "RRkKKKKKKKKKKKKKKKKKKKkrR",
+        "RRkKKKKKKKKKKKKKKKKKKKkRR",
+        "RrkKKKKKKKKKKKKKKKKKKKkRR",
+        "rRkKKKKKKKKKKKKKKKKKKKkRr",
+        "RRkKKKKKKKKKKKKKKKKKKKkrR",
+        "RRkKKKKKKKKKKKKKKKKKKKkRR",
+        "RrkKKKKKKKKKKKKKKKKKKKkRR"
+      ],
+      "palette": {
+        "R": "#43464f",
+        "r": "#26282e",
+        "K": "#060607",
+        "k": "#0e0f12"
+      }
+    },
+    "tide-mark": {
+      "rows": [
+        "nmnmmmmmmmmnmnmmmmmmmmnmnmmmmmmmmnmnmmmmmmmmnmnmmmmmmmmnmnmmmmmm",
+        ".......kkk..........kkk..........kkk..........kkk..........kkk.."
+      ],
+      "palette": {
+        "m": "#545a52",
+        "n": "#3e443e",
+        "k": "#2e332e"
+      }
+    },
+    "wall-ring": {
+      "rows": [
+        ".......c.cccc.ccccccc.cc.......",
+        "...cccc.................cccc...",
+        "cccc.......................ccc.",
+        "c.cc........................ccc",
+        "..c.ccc.................ccccc..",
+        ".......ccc.ccccccc.cccc........"
+      ],
+      "palette": {
+        "c": "#5a5a64"
+      }
+    },
+    "candle-ledge": {
+      "rows": [
+        "f...f..",
+        "c.f.c.f",
+        "c.c.c.c",
+        "LLLLLLL",
+        ".l...l."
+      ],
+      "palette": {
+        "f": "#d8c08a",
+        "c": "#6a6256",
+        "L": "#33353d",
+        "l": "#202127"
+      },
+      "light": {
+        "radius": 6,
+        "color": "#d8a85a",
+        "strength": 0.13
+      }
+    },
+    "dead-tree": {
+      "rows": [
+        "..k...k...",
+        "...k.k..k.",
+        "k...kk.k..",
+        ".k..k.k...",
+        "..kkk.....",
+        "....k.....",
+        "....k.....",
+        "....k.....",
+        "...kkk...."
+      ],
+      "palette": {
+        "k": "#0e0d0b"
+      }
+    },
+    "lantern-glow": {
+      "rows": [
+        "."
+      ],
+      "palette": {},
+      "light": {
+        "radius": 8,
+        "color": "#e0a840",
+        "strength": 0.18
+      }
+    },
+    "mountain-flank": {
+      "rows": [
+        "...................EE",
+        "................EE.eA",
+        "................ekEAA",
+        ".............EE.eKABB",
+        ".............ekEAKBCB",
+        "..........EE.eKkBBBAA",
+        "..........eAEBAAAABAA",
+        "......EE..eAkABAABAAB",
+        "......ekEEBBAAABCKCAA",
+        "...EE.eBkBABKACCBBKBA",
+        "..EkkECAABBAKBAKBAABK",
+        "EEBBAkBBABABBBABBAABA"
+      ],
+      "palette": {
+        "E": "#6b665c",
+        "e": "#45423c",
+        "A": "#2e2c29",
+        "B": "#282724",
+        "C": "#34322e",
+        "K": "#1b1a17",
+        "k": "#141311"
+      }
+    },
+    "rock-spire": {
+      "rows": [
+        "..E..",
+        "..Eb.",
+        ".EbB.",
+        ".EbBb",
+        "EbbBB",
+        "EbBBk",
+        "kkkkk"
+      ],
+      "palette": {
+        "E": "#5e5a51",
+        "b": "#34322e",
+        "B": "#2a2826",
+        "k": "#141311"
+      }
+    },
+    "boulder": {
+      "rows": [
+        "..EEE...",
+        ".EbbbEe.",
+        "EbbBbbBe",
+        "kkkkkkkk"
+      ],
+      "palette": {
+        "E": "#5a564e",
+        "e": "#45423c",
+        "b": "#34322e",
+        "B": "#2a2826",
+        "k": "#121110"
+      }
+    },
+    "scree": {
+      "rows": [
+        ".E....E..E.",
+        "Eb..EbB.EbB"
+      ],
+      "palette": {
+        "E": "#4f4b44",
+        "b": "#34322e",
+        "B": "#2a2826"
+      }
+    },
+    "outcrop": {
+      "rows": [
+        "...EEEE....",
+        ".EEbbbbEE..",
+        "EbbbbKbbbEe",
+        "kkkkkkkkkk."
+      ],
+      "palette": {
+        "E": "#5e5a51",
+        "e": "#45423c",
+        "b": "#36342f",
+        "K": "#1b1a17",
+        "k": "#141311"
+      }
+    }
+  },
+  "scenes": {
+    "dungeon-gate": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "portcullis",
+          "x": 50,
+          "y": 0
+        },
+        {
+          "prop": "torch",
+          "x": 40,
+          "y": 1
+        },
+        {
+          "prop": "torch",
+          "x": 80,
+          "y": 1
+        }
+      ]
+    },
+    "damp-corridor": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "seep",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "water-streak",
+          "x": 6,
+          "y": 0
+        },
+        {
+          "prop": "water-streak",
+          "x": 23,
+          "y": 0
+        },
+        {
+          "prop": "water-streak-short",
+          "x": 41,
+          "y": 0
+        },
+        {
+          "prop": "water-streak",
+          "x": 74,
+          "y": 0
+        },
+        {
+          "prop": "water-streak-short",
+          "x": 92,
+          "y": 0
+        },
+        {
+          "prop": "water-streak",
+          "x": 106,
+          "y": 0
+        },
+        {
+          "prop": "drip",
+          "x": 33,
+          "y": 4
+        },
+        {
+          "prop": "drip",
+          "x": 86,
+          "y": 4
+        },
+        {
+          "prop": "puddle",
+          "x": 56,
+          "y": 15
+        },
+        {
+          "prop": "puddle",
+          "x": 8,
+          "y": 16
+        },
+        {
+          "prop": "puddle",
+          "x": 95,
+          "y": 16
+        }
+      ]
+    },
+    "old-cell": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "chain",
+          "x": 3,
+          "y": 0
+        },
+        {
+          "prop": "barred-window",
+          "x": 18,
+          "y": 1
+        },
+        {
+          "prop": "chain",
+          "x": 44,
+          "y": 0
+        },
+        {
+          "prop": "torch",
+          "x": 60,
+          "y": 1
+        },
+        {
+          "prop": "barred-window",
+          "x": 84,
+          "y": 1
+        },
+        {
+          "prop": "chain",
+          "x": 108,
+          "y": 0
+        },
+        {
+          "prop": "rubble",
+          "x": 52,
+          "y": 15
+        }
+      ]
+    },
+    "ruined-storeroom": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "broken-shelf",
+          "x": 20,
+          "y": 1
+        },
+        {
+          "prop": "storeroom-shelf",
+          "x": 78,
+          "y": 1
+        },
+        {
+          "prop": "crate-tower",
+          "x": 57,
+          "y": 2
+        },
+        {
+          "prop": "broken-crate",
+          "x": 24,
+          "y": 14
+        },
+        {
+          "prop": "broken-crate",
+          "x": 100,
+          "y": 15
+        }
+      ]
+    },
+    "dark-alcove": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "deep-arch",
+          "x": 48,
+          "y": 0
+        }
+      ],
+      "render": {
+        "brightness": 1.1,
+        "edgeFade": {
+          "cols": 48,
+          "floor": 0.25
+        }
+      }
+    },
+    "bone-vault": {
+      "base": "crypt",
+      "props": [
+        {
+          "prop": "bone-niche",
+          "x": 2,
+          "y": 1
+        },
+        {
+          "prop": "bone-niche",
+          "x": 22,
+          "y": 1
+        },
+        {
+          "prop": "bone-niche",
+          "x": 42,
+          "y": 1
+        },
+        {
+          "prop": "bone-niche",
+          "x": 70,
+          "y": 1
+        },
+        {
+          "prop": "bone-niche",
+          "x": 90,
+          "y": 1
+        },
+        {
+          "prop": "bone-niche",
+          "x": 2,
+          "y": 6
+        },
+        {
+          "prop": "bone-niche",
+          "x": 100,
+          "y": 6
+        },
+        {
+          "prop": "skull-pile",
+          "x": 55,
+          "y": 14
+        }
+      ]
+    },
+    "ruined-hall": {
+      "base": "hall",
+      "props": [
+        {
+          "prop": "broken-pillar",
+          "x": 3,
+          "y": 0
+        },
+        {
+          "prop": "broken-pillar-low",
+          "x": 50,
+          "y": 0
+        },
+        {
+          "prop": "broken-pillar",
+          "x": 100,
+          "y": 0
+        },
+        {
+          "prop": "capital-fragment",
+          "x": 38,
+          "y": 14
+        },
+        {
+          "prop": "torn-banner",
+          "x": 24,
+          "y": 1
+        },
+        {
+          "prop": "torn-banner",
+          "x": 82,
+          "y": 1
+        },
+        {
+          "prop": "fallen-banner",
+          "x": 30,
+          "y": 15
+        },
+        {
+          "prop": "rubble",
+          "x": 56,
+          "y": 15
+        },
+        {
+          "prop": "rubble",
+          "x": 104,
+          "y": 15
+        }
+      ]
+    },
+    "collapsed-passage": {
+      "base": "cave",
+      "props": [
+        {
+          "prop": "crack",
+          "x": 14,
+          "y": 0
+        },
+        {
+          "prop": "crack",
+          "x": 86,
+          "y": 0
+        },
+        {
+          "prop": "fallen-beam",
+          "x": 44,
+          "y": 0
+        },
+        {
+          "prop": "rubble-heap",
+          "x": 50,
+          "y": 5
+        },
+        {
+          "prop": "rubble",
+          "x": 96,
+          "y": 15
+        }
+      ]
+    },
+    "old-ritual-chamber": {
+      "base": "crypt",
+      "props": [
+        {
+          "prop": "wall-ring",
+          "x": 46,
+          "y": 0
+        },
+        {
+          "prop": "floor-circle",
+          "x": 39,
+          "y": 13
+        },
+        {
+          "prop": "altar-stone",
+          "x": 56,
+          "y": 8
+        },
+        {
+          "prop": "candles",
+          "x": 58,
+          "y": 5
+        },
+        {
+          "prop": "candle-ledge",
+          "x": 14,
+          "y": 1
+        },
+        {
+          "prop": "candle-ledge",
+          "x": 92,
+          "y": 1
+        }
+      ]
+    },
+    "damp-low-cave": {
+      "base": "cave",
+      "props": [
+        {
+          "prop": "stalactites",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "drip",
+          "x": 30,
+          "y": 3
+        },
+        {
+          "prop": "drip",
+          "x": 79,
+          "y": 3
+        },
+        {
+          "prop": "puddle",
+          "x": 50,
+          "y": 15
+        },
+        {
+          "prop": "puddle",
+          "x": 4,
+          "y": 16
+        },
+        {
+          "prop": "puddle",
+          "x": 98,
+          "y": 16
+        }
+      ]
+    },
+    "shelter": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "low-ceiling",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "low-beam",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "prop": "crate-stack",
+          "x": 1,
+          "y": 6
+        },
+        {
+          "prop": "crate-stack",
+          "x": 99,
+          "y": 6
+        }
+      ]
+    },
+    "safe-resting-corner": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "corner-wall",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "wall-niche",
+          "x": 44,
+          "y": 1
+        }
+      ]
+    },
+    "abandoned-shrine": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "torn-banner",
+          "x": 10,
+          "y": 1
+        },
+        {
+          "prop": "torn-banner",
+          "x": 64,
+          "y": 1
+        },
+        {
+          "prop": "candle-ledge",
+          "x": 98,
+          "y": 0
+        },
+        {
+          "prop": "altar",
+          "x": 96,
+          "y": 5
+        },
+        {
+          "prop": "rubble",
+          "x": 50,
+          "y": 15
+        }
+      ]
+    },
+    "dungeon-lords-hall": {
+      "base": "hall",
+      "props": [
+        {
+          "prop": "great-door",
+          "x": 61,
+          "y": 0
+        },
+        {
+          "prop": "pillar",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "prop": "pillar",
+          "x": 36,
+          "y": 0
+        },
+        {
+          "prop": "pillar",
+          "x": 95,
+          "y": 0
+        },
+        {
+          "prop": "banner",
+          "x": 20,
+          "y": 1
+        },
+        {
+          "prop": "banner",
+          "x": 50,
+          "y": 1
+        },
+        {
+          "prop": "banner",
+          "x": 88,
+          "y": 1
+        },
+        {
+          "prop": "banner",
+          "x": 105,
+          "y": 1
+        },
+        {
+          "prop": "carpet",
+          "x": 62,
+          "y": 13
+        }
+      ]
+    },
+    "throne-of-darkness": {
+      "base": "hall",
+      "props": [
+        {
+          "prop": "pillar",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "prop": "banner",
+          "x": 18,
+          "y": 1
+        },
+        {
+          "prop": "banner",
+          "x": 38,
+          "y": 1
+        },
+        {
+          "prop": "pillar",
+          "x": 51,
+          "y": 0
+        },
+        {
+          "prop": "throne",
+          "x": 60,
+          "y": 0
+        },
+        {
+          "prop": "pillar",
+          "x": 102,
+          "y": 0
+        }
+      ]
+    },
+    "generals-tomb": {
+      "base": "crypt",
+      "props": [
+        {
+          "prop": "banner",
+          "x": 8,
+          "y": 1
+        },
+        {
+          "prop": "weapon-rack",
+          "x": 24,
+          "y": 0
+        },
+        {
+          "prop": "banner",
+          "x": 44,
+          "y": 1
+        },
+        {
+          "prop": "vault-arch",
+          "x": 61,
+          "y": 0
+        },
+        {
+          "prop": "weapon-rack",
+          "x": 86,
+          "y": 0
+        },
+        {
+          "prop": "banner",
+          "x": 104,
+          "y": 0
+        },
+        {
+          "prop": "sarcophagus",
+          "x": 88,
+          "y": 7
+        }
+      ]
+    },
+    "torchlit-nook": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "torch",
+          "x": 6,
+          "y": 2
+        },
+        {
+          "prop": "torch",
+          "x": 22,
+          "y": 1
+        },
+        {
+          "prop": "torch",
+          "x": 40,
+          "y": 2
+        },
+        {
+          "prop": "torch",
+          "x": 59,
+          "y": 1
+        },
+        {
+          "prop": "torch",
+          "x": 104,
+          "y": 2
+        }
+      ],
+      "render": {
+        "brightness": 1.4,
+        "edgeFade": {
+          "floor": 0.7
+        }
+      }
+    },
+    "forgotten-landing": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "stairs",
+          "x": 14,
+          "y": 0
+        }
+      ]
+    },
+    "quiet-alcove": {
+      "base": "crypt",
+      "props": [
+        {
+          "prop": "pointed-niche",
+          "x": 26,
+          "y": 0
+        }
+      ]
+    },
+    "sunken-chamber": {
+      "base": "cave",
+      "props": [
+        {
+          "prop": "tide-mark",
+          "x": 49,
+          "y": 4
+        },
+        {
+          "prop": "flooded-floor",
+          "x": 49,
+          "y": 12
+        }
+      ]
+    },
+    "old-reliquary": {
+      "base": "crypt",
+      "props": [
+        {
+          "prop": "urn-shelf",
+          "x": 4,
+          "y": 0
+        },
+        {
+          "prop": "urn-shelf",
+          "x": 30,
+          "y": 0
+        },
+        {
+          "prop": "plinth",
+          "x": 100,
+          "y": 8
+        },
+        {
+          "prop": "reliquary-box",
+          "x": 101,
+          "y": 4
+        }
+      ]
+    },
+    "dust-choked-vestibule": {
+      "base": "hall",
+      "props": [
+        {
+          "prop": "dust",
+          "x": 0,
+          "y": 12
+        },
+        {
+          "prop": "cobweb",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "cobweb-right",
+          "x": 95,
+          "y": 0
+        }
+      ]
+    },
+    "hollow-antechamber": {
+      "base": "hall",
+      "props": [
+        {
+          "prop": "pillar",
+          "x": 8,
+          "y": 0
+        },
+        {
+          "prop": "doorframe",
+          "x": 18,
+          "y": 0
+        },
+        {
+          "prop": "pillar",
+          "x": 38,
+          "y": 0
+        }
+      ]
+    },
+    "silent-junction": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "archway",
+          "x": 12,
+          "y": 0
+        },
+        {
+          "prop": "archway",
+          "x": 95,
+          "y": 0
+        }
+      ]
+    },
+    "half-buried-passage": {
+      "base": "cave",
+      "props": [
+        {
+          "prop": "earth-slope",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "prop": "roots",
+          "x": 56,
+          "y": 0
+        },
+        {
+          "prop": "rubble",
+          "x": 100,
+          "y": 15
+        }
+      ]
+    },
+    "flickering-recess": {
+      "base": "dungeon-stone",
+      "props": [
+        {
+          "prop": "recess",
+          "x": 53,
+          "y": 0
+        },
+        {
+          "prop": "torch",
+          "x": 57,
+          "y": 2
+        }
+      ]
+    },
+    "cave-mouth": {
+      "base": "night-hillside",
+      "rightBase": {
+        "x": 60,
+        "base": "mountain-rock"
+      },
+      "props": [
+        {
+          "prop": "mountain-flank",
+          "x": 39,
+          "y": 0
+        },
+        {
+          "prop": "outcrop",
+          "x": 64,
+          "y": 0
+        },
+        {
+          "prop": "outcrop",
+          "x": 97,
+          "y": 2
+        },
+        {
+          "prop": "outcrop",
+          "x": 83,
+          "y": 0
+        },
+        {
+          "prop": "boulder",
+          "x": 52,
+          "y": 14
+        },
+        {
+          "prop": "boulder",
+          "x": 103,
+          "y": 14
+        },
+        {
+          "prop": "scree",
+          "x": 58,
+          "y": 16
+        },
+        {
+          "prop": "scree",
+          "x": 95,
+          "y": 16
+        },
+        {
+          "prop": "dead-tree",
+          "x": 5,
+          "y": 0
+        },
+        {
+          "prop": "dead-tree",
+          "x": 28,
+          "y": 1
+        },
+        {
+          "prop": "lantern-glow",
+          "x": 68,
+          "y": 5
+        }
+      ],
+      "render": {
+        "edgeFade": {
+          "floor": 0.8
+        },
+        "topFade": [
+          0.7,
+          0.85,
+          1,
+          1,
+          1,
+          0.9,
+          0.75,
+          0.65,
+          0.6,
+          0.58,
+          0.56,
+          0.56,
+          0.5,
+          0.56,
+          0.52,
+          0.5,
+          0.5,
+          0.52
+        ]
+      }
+    }
+  }
+}

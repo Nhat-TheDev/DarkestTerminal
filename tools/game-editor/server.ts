@@ -4,12 +4,19 @@ import { getCatalog, computeCharacter, computeMonster, computeDamage, computeSki
 import type { MonsterArchetype, MonsterTier, SkillDefinition } from "../../src/types";
 import { MONSTER_ARCHETYPES, MONSTER_SKILLS, assertMonsterDataConsistent, assertMonsterKitConsistent } from "../../src/data/monsters";
 import type { FearTier } from "../../src/engine/resolver";
+import { parseBackdrops, type BackdropsFile } from "../../src/data/backdrops";
+import { parseRoomNames, type RoomNameEntry } from "../../src/data/roomNames";
+import { propBoundsError } from "../../src/ui/backdrop";
+import type { EventDefinition } from "../../src/types";
+import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
 const SPRITES_PATH = path.join(DATA_DIR, "sprites.json");
 const MONSTERS_PATH = path.join(DATA_DIR, "monsters.json");
+const BACKDROPS_PATH = path.join(DATA_DIR, "backdrops.json");
+const ROOM_NAMES_PATH = path.join(DATA_DIR, "room-names.json");
 const PORT = 4592;
 
 function json(data: unknown, status = 200): Response {
@@ -28,6 +35,14 @@ function toFearTier(value: unknown): FearTier {
 async function readJsonFile(name: string): Promise<unknown> {
   const raw = await readFile(path.join(DATA_DIR, name), "utf8");
   return JSON.parse(raw);
+}
+
+async function roomEntriesOnDisk(): Promise<RoomNameEntry[]> {
+  return Object.values(parseRoomNames(await readJsonFile("room-names.json"))).flat();
+}
+
+async function eventsOnDisk(): Promise<EventDefinition[]> {
+  return (await readJsonFile("events.json")) as EventDefinition[];
 }
 
 async function writeJsonFile(name: string, data: unknown): Promise<void> {
@@ -266,6 +281,74 @@ Bun.serve({
       data[category][id] = sprite as SpriteData;
       await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
       return json({ ok: true });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/backdrops") {
+      const data = await readFile(BACKDROPS_PATH, "utf8");
+      return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/room-names") {
+      const data = await readFile(ROOM_NAMES_PATH, "utf8");
+      return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/backdrops") {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const file = parseBackdrops(body, await roomEntriesOnDisk(), await eventsOnDisk());
+        const outOfBounds = propBoundsError(file);
+        if (outOfBounds) return badRequest(outOfBounds);
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
+      await writeFile(BACKDROPS_PATH, JSON.stringify(body, null, 2) + "\n", "utf8");
+      return json({ ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/room-names") {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const entries = Object.values(parseRoomNames(body)).flat();
+        parseBackdrops(await readJsonFile("backdrops.json"), entries, await eventsOnDisk());
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
+      await writeFile(ROOM_NAMES_PATH, JSON.stringify(body, null, 2) + "\n", "utf8");
+      return json({ ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/backdrop-preview") {
+      let body: { file?: unknown; sceneId?: unknown } & Partial<PreviewOptions>;
+      try {
+        body = (await req.json()) as typeof body;
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const file = parseBackdrops(body.file, []) as BackdropsFile;
+        if (typeof body.sceneId !== "string") return badRequest("sceneId must be a string.");
+        return json(
+          previewScene(file, body.sceneId, {
+            dimmed: body.dimmed === true,
+            shadow: typeof body.shadow === "boolean" ? body.shadow : undefined,
+            party: Array.isArray(body.party) ? body.party : [],
+            monsters: Array.isArray(body.monsters) ? body.monsters : [],
+          }),
+        );
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/character") {

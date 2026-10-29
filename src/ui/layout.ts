@@ -11,12 +11,20 @@ export const PARTY_PANEL_WIDTH = 34;
 /** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
 export const SIDE_PANEL_WIDTH = 35;
 
+/** Columns inside the Battlefield's border: what is left of the terminal after the Log column. */
+export function battlefieldInnerWidth(terminalWidth: number): number {
+  return terminalWidth - SIDE_PANEL_WIDTH - 2;
+}
+
 export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
 export const DIVIDER_WIDTH = 3;
 export const EMPTY_ENEMY_WIDTH = 30;
 /** One icon row plus one blank row, so an icon never touches a sprite. */
 export const ICON_BAND_ROWS = 2;
+/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
+    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
+export const BATTLEFIELD_CONTENT_WIDTH = 113;
 export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
 
 export function centerText(text: string, width: number): string {

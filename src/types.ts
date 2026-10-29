@@ -607,6 +607,8 @@ export interface EventDefinition {
   guaranteedItems?: { itemId: Id; count: number }[];
   /** Replaces "Open the chest" on `eventInstantReward` for a scene that isn't a chest. */
   instantRewardActionLabel?: string;
+  /** Scene in `data/backdrops.json` the Battlefield shows while this event stands outside any room (the Gatekeeper). */
+  backdrop?: string;
   /** Replaces `description` from the 2nd encounter on; the object form branches on the last visit's outcome. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
   /** Appended to `returnDescription` by the party's dominant reflection stance; flavor only. */

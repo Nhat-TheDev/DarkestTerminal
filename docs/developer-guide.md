@@ -21,7 +21,7 @@ bun run start   # run the game from source
 bun test        # unit tests for the engine (resolver, combat, aggro, level, floor pattern, ...) +
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
-bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
+bun run game-editor  # dev tool: sprite and backdrop editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
 bun run docs:sync    # rewrite the doc numbers that mirror data/balance-config.json (--check only verifies; bun test runs the check)
 bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/)
 ```
@@ -97,7 +97,8 @@ of the code doesn't need to know the data comes from JSON.
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
-| `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event) | `src/data/floor.ts` |
+| `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event); each name links to the backdrop scene drawn behind its Battlefield | `src/data/roomNames.ts` |
+| `data/backdrops.json` | Battlefield backdrops: the global render settings, the wall/floor `bases`, the `props`, and one `scenes` entry per room name (a base plus placed props) | `src/data/backdrops.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` + `maxLevel` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts...) | `src/data/balanceConfig.ts` |
 | `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
@@ -183,7 +184,8 @@ lives in the "Expedition"/"Monsters" panels below. Sprite data lives in
 `src/ui/sprites.ts`, with its own tests (`test/sprites.test.ts`) that catch
 row/column misalignment or missing palette colors. Sprites are edited
 visually in the browser via `bun run game-editor` (`tools/game-editor/`,
-Sprite Editor tab) rather than by hand-editing the character grid in JSON.
+Sprite Editor tab) rather than by hand-editing the character grid in JSON. The same editor's
+Backdrops tab edits the scenes drawn behind the panel (see "Backdrops" below).
 
 Each unit's role icons sit one blank row above the tallest sprite its tier allows
 (`tierFrameHeight`, `src/ui/battlefieldFocus.ts`: characters and normal monsters share
@@ -328,6 +330,82 @@ The UI palette is `PALETTE` in `src/ui/theme.ts`. A class's or monster's chip
 label and color is its `style` (`{ abbr, color }`) in `data/classes.json` /
 `data/monsters.json`; a new class or monster also needs its sprite in
 `data/sprites.json`.
+
+#### Backdrops
+
+Behind the Battlefield's pixel art sits a painted room scene, drawn in the same one-cell pixels.
+`data/backdrops.json` holds three catalogues and one render block, all read through
+`src/data/backdrops.ts`:
+
+- `bases` — a wall tile, a floor tile (each a character grid with its own palette, tiled across the
+  width) and a `baseboard` colour for the row where wall meets floor. A base is the material of a room.
+- `props` — small pixel-art objects (torches, pillars, an altar...) in the same grid-plus-palette
+  form as a sprite, where `.` is transparent. A prop may carry a `light` (`radius`, `color`,
+  `strength`) that tints the cells around it.
+- `scenes` — one entry per room name: a `base` plus placed `props` (`prop`, `x`, `y`, measured from
+  the left edge of the Battlefield's fixed-size content, so a scene lines up with the units however
+  wide the panel is), and an optional partial `render` that overrides the global one for that scene.
+  An optional `rightBase` (`x`, `base`) swaps in another base from that content column to the
+  panel's right edge, for a scene whose right side is one mass that must reach the edge at any
+  width (the Gatekeeper's mountain); props can't do that, since they end with the content.
+- `render` — the global settings: `floorRow` (where the wall ends), `brightness` and `jitter` (a
+  per-cell brightness noise that keeps flat tiles from looking printed), `edgeFade` (darkens the
+  columns at both sides), `topFade`, `dimFactor` and `unitShadow`.
+
+A room name reaches its scene through `data/room-names.json`: each entry is `{ name, backdrop }`
+and `backdrop` names a scene. The loader rejects a scene that uses an unknown base or prop, a ragged
+or palette-less grid, a bad colour, and a room name pointing at a missing scene. A room name with no
+scene draws the plain panel, so a name can ship before its art does. A new room name needs a scene;
+add both in the same change.
+
+An event that stands outside any room names its own scene in `backdrop` (`data/events.json`). The
+Gatekeeper, met at the cave mouth before the party enters, is the only one: while it is pending, the
+Battlefield shows its scene instead of the first room's. The loader rejects an event pointing at a
+missing scene.
+
+`paintBackdrop` (`src/ui/backdrop.ts`) builds the picture in layers, bottom to top: the base (wall
+rows above `floorRow`, the baseboard on it, floor rows below), then the props, then each prop's light
+as a radial tint, then the shading. `edgeFade` darkens toward the left and right edges and `topFade`
+is a brightness profile with one entry per backdrop row, so it scales every row, not just the top;
+the profile can darken the rows where units stand to keep dark sprites readable against the
+wall and floor. The backdrop fills the Battlefield panel's full inner width
+(`battlefieldInnerWidth`), not only the fixed-size content, and is repainted when the terminal
+resizes. The painted grid is cached in `App.backdropFor` per room name, width, content offset and dim
+state, so an ordinary render does not repaint it.
+
+`composeBattlefield` puts the units on top. Only the pixel cells of a sprite keep their own colour;
+every other cell of the backdrop rows (including the icon band above the tallest sprite) takes the
+backdrop colour as its background, so icons, markers and the gaps between units read over the scene.
+The backdrop covers the icon band, the shared sprite frame and one row below it; the label and
+status rows under each unit keep the panel colour so text stays on a flat ground. A unit shadow is
+available through the `render.unitShadow` switch (`enabled`, `reachCols`, `reachRows`, `darkness`): when on,
+backdrop cells within reach of a sprite are darkened. It is off by default and a scene can turn it on
+through its own `render.unitShadow`.
+
+The backdrop dims (`dimFactor`) whenever a unit is greyed during a narrated round, so the scene
+steps back with the units that are not acting; `renderBattlefield` reports that as `dimmed`.
+
+Art direction for a scene:
+
+- The scene's identity (the prop that says "shrine", "sunken chamber", "ritual chamber") goes in
+  the upper rows, above where regular units stand, so it reads at a glance and no sprite covers it.
+- A boss scene puts its identity behind and beside the boss, not in the middle of the enemy side:
+  a boss sprite covers almost the full height of its side, so a prop placed there is hidden or
+  merges with it.
+- Rest and event rooms draw a sprite on the enemy side too (the campfire, the treasure chest, the
+  event's figure), so props near it stay low or off to the side and do not merge with it.
+- No bright blue or red in a scene. The party is marked in blue and the monsters in red, and a
+  backdrop that uses them blurs who is who.
+- New pixel art (bases, props) is checked rendered at 1:2, the aspect a terminal cell has, never as a
+  square-pixel preview; the Backdrops tab of the game editor renders it that way.
+
+The Backdrops tab of `bun run game-editor` (`tools/game-editor/`, `backdropPreview.ts`) edits the
+room-name-to-scene links, the scenes (including an event's own scene, listed under the room names,
+and a scene's `rightBase`), bases and props (pixels and palette). It previews a scene with a sample
+party and monsters through the same `paintBackdrop` and `composeBattlefield` the game uses, with
+switches for the dimmed state and the unit shadow; the shadow switch starts at the scene's own
+setting. Saving checks the file with the game's loader, including every event's scene, and rejects a
+prop placed outside the backdrop (`propBoundsError`, `src/ui/backdrop.ts`).
 
 ### Key hints — where they live and how they're written
 
@@ -579,7 +657,7 @@ src/
   ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → partySelect/saveSelect → App)
 tools/
-  game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
+  game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
   random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/

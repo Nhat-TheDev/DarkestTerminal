@@ -531,6 +531,7 @@
     "name": "The Gatekeeper",
     "description": "An old man leans on a staff at the mouth of the cave, a lantern hung from its tip. The rock beside the opening is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. {{toll}} coins, by custom. Keep them if you like. The way in doesn't close.'",
     "kind": "scripted",
-    "tier": "common"
+    "tier": "common",
+    "backdrop": "cave-mouth"
   }
 ]
