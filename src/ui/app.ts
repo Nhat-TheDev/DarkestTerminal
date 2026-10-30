@@ -36,7 +36,10 @@ import {
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { sceneById, type UnitShadow } from "../data/backdrops";
+import { backdropIdForRoomName } from "../data/roomNames";
+import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
@@ -86,9 +89,6 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
-    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
-const BATTLEFIELD_CONTENT_WIDTH = 113;
 /** Columns a Log line can use: the panel minus its border and the scrollbar. */
 const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
@@ -120,6 +120,8 @@ export class App implements ScreenContext {
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
   private narratedCombat: CombatState | null = null;
+  private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
+  private composedBattlefield: { backdropKey: string; content: TextChunk[][] } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
@@ -198,7 +200,6 @@ export class App implements ScreenContext {
       id: "battlefield-box",
       ...panel,
       flexGrow: 1,
-      alignItems: "center",
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
@@ -822,8 +823,16 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
-    this.battlefield.content = joinLines(battlefieldRows.map((row) => [...row, plainChunk(" ".repeat(Math.max(0, BATTLEFIELD_CONTENT_WIDTH - row.reduce((n, c) => n + c.text.length, 0))))]));
+    const { rows: battlefieldRows, dimmed } = this.renderBattlefield(shownCombat, hpOverride, focus);
+    const battlefieldWidth = battlefieldInnerWidth(this.renderer.width);
+    const contentLeft = Math.max(0, Math.floor((battlefieldWidth - BATTLEFIELD_CONTENT_WIDTH) / 2));
+    const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
+    const { key: backdropKey, backdrop, shadow } = this.backdropFor(sceneId, battlefieldWidth, contentLeft, dimmed);
+    const composed = this.composedBattlefield;
+    if (composed?.backdropKey !== backdropKey || !sameContent(composed.content, battlefieldRows)) {
+      this.composedBattlefield = { backdropKey, content: battlefieldRows };
+      this.battlefield.content = joinLines(composeBattlefield(battlefieldRows, backdrop, battlefieldWidth, contentLeft, shadow));
+    }
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -1075,8 +1084,18 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
+  private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {
+    const key = `${sceneId}|${width}|${contentLeft}|${dimmed}`;
+    if (this.backdropCache?.key !== key) {
+      const scene = sceneById(sceneId);
+      this.backdropCache = { key, backdrop: scene && paintBackdrop(scene, width, contentLeft, dimmed), shadow: scene?.render.unitShadow ?? null };
+    }
+    return this.backdropCache;
+  }
+
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): { rows: TextChunk[][]; dimmed: boolean } {
     const s = this.game.state;
+    let dimmed = false;
     const impact = focus !== null && !this.reveal.holding;
 
     const partyUnits = s.party.map((c) => {
@@ -1088,6 +1107,7 @@ export class App implements ScreenContext {
       const fearChange = this.reveal.fearBeat && focus?.fearChangedIds.includes(c.id) ? (this.focusFearDeltas.get(c.id) ?? 0) : 0;
       const mark = this.markerFor(c.id);
       const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
+      dimmed ||= lens.dim;
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       // Read from the replayed snapshot so a clone spawned later in the round isn't shown early.
@@ -1116,6 +1136,7 @@ export class App implements ScreenContext {
           const style = monsterStyle(m);
           const mark = this.markerFor(m.id);
           const lens = unitFocus(m.id, "monster", focus, mark?.amount, impact, undefined, 0, mark?.crit);
+          dimmed ||= lens.dim;
           const frameHeight = tierFrameHeight(m.tier);
           if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
@@ -1142,7 +1163,7 @@ export class App implements ScreenContext {
       );
     }
 
-    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
+    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP), dimmed };
   }
 
   /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */

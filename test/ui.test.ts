@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { KeyEvent } from "@opentui/core";
+import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
@@ -12,6 +12,8 @@ import { getActorByRef, startCombat } from "../src/engine/combat";
 import { spawnMonster, getArchetype, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { resolveSkillEffect } from "../src/engine/resolver";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
+import { getEvent } from "../src/data/events";
+import { GATEKEEPER_EVENT_ID } from "../src/engine/events/gatekeeper";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { showSlotSelect } from "../src/ui/saveSelect";
@@ -27,6 +29,7 @@ import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
+import { PALETTE } from "../src/ui/theme";
 import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
@@ -981,6 +984,118 @@ describe("layout", () => {
     await renderOnce();
     expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
+  });
+
+  const PANEL_BG = RGBA.fromHex(PALETTE.panelBg);
+  const sameRgba = (a: RGBA, b: RGBA) => a.r === b.r && a.g === b.g && a.b === b.b;
+
+  /** The background of terminal cell (x, y), read from the rendered spans. */
+  function bgAt(frame: CapturedFrame, x: number, y: number): RGBA {
+    let col = 0;
+    for (const span of frame.lines[y]!.spans) {
+      if (x < col + span.width) return span.bg;
+      col += span.width;
+    }
+    throw new Error(`no cell at ${x},${y}`);
+  }
+
+  /** Left border column and first content row of the Battlefield panel. */
+  function battlefieldOrigin(frame: string): { left: number; top: number } {
+    const rows = frame.split("\n");
+    const top = rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`));
+    return { left: rows[top]!.indexOf(`─${t("ui.panelBattlefield")}`) - 1, top: top + 1 };
+  }
+
+  test("the battlefield is painted to the panel's full width in a fight", async () => {
+    for (const width of [150, 200]) {
+      const { captureCharFrame, captureSpans, renderer } = await openFight(width, 45);
+      const { left, top } = battlefieldOrigin(captureCharFrame());
+      const spans = captureSpans();
+      const innerWidth = width - 35 - 2;
+      for (const x of [left + 1, left + innerWidth]) expect(sameRgba(bgAt(spans, x, top), PANEL_BG), `${width} col ${x}`).toBe(false);
+      renderer.destroy();
+    }
+  });
+
+  test("a resize repaints the backdrop at the new width and keeps the units centred", async () => {
+    const { captureCharFrame, captureSpans, resize, renderOnce, renderer } = await openFight(150, 45);
+    const labelColumn = () => {
+      const rows = captureCharFrame().split("\n");
+      const { left, top } = battlefieldOrigin(rows.join("\n"));
+      const row = rows.slice(top, top + UNIT_BLOCK_HEIGHT).find((r) => /\bKN\b/.test(r.slice(left)))!;
+      return row.slice(left).search(/\bKN\b/);
+    };
+    const before = labelColumn();
+    resize(200, 45);
+    await renderOnce();
+    const { left, top } = battlefieldOrigin(captureCharFrame());
+    expect(sameRgba(bgAt(captureSpans(), left + 200 - 35 - 2, top), PANEL_BG)).toBe(false);
+    expect(labelColumn()).toBe(before + (200 - 150) / 2);
+    renderer.destroy();
+  });
+
+  test("label and HP rows keep the panel colour", async () => {
+    const { captureCharFrame, captureSpans, renderer } = await openFight(150, 45);
+    const { left, top } = battlefieldOrigin(captureCharFrame());
+    const spans = captureSpans();
+    for (const row of [UNIT_BLOCK_HEIGHT - 2, UNIT_BLOCK_HEIGHT - 1]) {
+      for (const x of [left + 1, left + 40, left + 113]) expect(sameRgba(bgAt(spans, x, top + row), PANEL_BG), `row ${row} col ${x}`).toBe(true);
+    }
+    renderer.destroy();
+  });
+
+  test("the backdrop dims while a round is narrated and not while choosing actions", async () => {
+    const fight = await openFight(150, 45);
+    const { left, top } = battlefieldOrigin(fight.captureCharFrame());
+    const wall = () => bgAt(fight.captureSpans(), left + 1, top);
+    const before = wall();
+    let guard = 0;
+    while (!fight.app.debugRevealActive && guard++ < 30) {
+      fight.mockInput.pressKey(fight.app.debugUiState.kind === "skillDetail" ? "RETURN" : "1");
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugRevealActive).toBe(true);
+    let dimmed = false;
+    for (guard = 0; fight.app.debugRevealActive && guard++ < 400; ) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+      if (fight.app.debugLastRender.focusId !== null && !sameRgba(wall(), before)) dimmed = true;
+    }
+    expect(dimmed).toBe(true);
+    await fight.renderOnce();
+    expect(fight.app.debugRevealActive).toBe(false);
+    expect(sameRgba(wall(), before)).toBe(true);
+    fight.renderer.destroy();
+  });
+
+  test("a room whose name has no scene draws the plain panel", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    getRoom(game.state.floor, game.state.currentRoomId).name = "No Such Room";
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    const { left, top } = battlefieldOrigin(setup.captureCharFrame());
+    const spans = setup.captureSpans();
+    for (const x of [left + 1, left + 113]) expect(sameRgba(bgAt(spans, x, top), PANEL_BG)).toBe(true);
+    setup.renderer.destroy();
+  });
+
+  test("a pending Gatekeeper shows its own backdrop, not the first room's", async () => {
+    const topLeftBg = async (pending: boolean) => {
+      const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+      game.state.pendingGatekeeper = pending;
+      const setup = await createTestRenderer({ width: 150, height: 45 });
+      new App(setup.renderer, game, { autoReveal: false });
+      await setup.renderOnce();
+      const { left, top } = battlefieldOrigin(setup.captureCharFrame());
+      const bg = bgAt(setup.captureSpans(), left + 1, top);
+      setup.renderer.destroy();
+      return bg;
+    };
+    expect(getEvent(GATEKEEPER_EVENT_ID).backdrop).toBeDefined();
+    const gatekeeper = await topLeftBg(true);
+    expect(sameRgba(gatekeeper, PANEL_BG)).toBe(false);
+    expect(sameRgba(gatekeeper, await topLeftBg(false))).toBe(false);
   });
 });
 
