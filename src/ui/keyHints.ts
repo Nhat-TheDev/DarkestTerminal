@@ -39,18 +39,8 @@ const NO_JOURNAL_KINDS: readonly UiState["kind"][] = [
   "journalDeduction",
   "journalPickup",
   "journalLastPage",
-  "pickAction",
-  "pickSkill",
-  "skillDetail",
-  "pickCommandMinion",
-  "pickCommandSkill",
-  "pickItemInCombat",
-  "pickTarget",
-  "roundResolved",
-  "combatOver",
 ];
 
-/** Never in combat: the journal is read between rooms. */
 export function canOpenJournal(kind: UiState["kind"]): boolean {
   return !NO_JOURNAL_KINDS.includes(kind);
 }

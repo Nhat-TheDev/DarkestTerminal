@@ -602,3 +602,30 @@ describe("journal review fixes", () => {
     expect(kinds).toEqual(["write", "write"]);
   });
 });
+
+describe("journal viewer in combat", () => {
+  test("[j] opens mid-fight and Esc returns to the same combat screen", async () => {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 150, height: 45 });
+    const game = slotGame(4, null);
+    grantFragments({ kind: "omen", omenId: "chalk-higher" }, game.journal, game.state, 1);
+    game.state.pendingJournal = null;
+    game.state.journalQueue = [];
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const monster = spawnMonster("skeleton-guard", 1);
+    game.ctx.monsters.push(monster);
+    room.monsterIds = [monster.id];
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, false);
+    const app = new App(renderer, game);
+    await renderOnce();
+    const fighting = app.debugUiState.kind;
+    expect(fighting).toBe("pickAction");
+    mockInput.pressKey("j");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("journal");
+    mockInput.pressEscape();
+    await Bun.sleep(50);
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe(fighting);
+    renderer.destroy();
+  });
+});

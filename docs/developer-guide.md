@@ -471,7 +471,7 @@ including where they are suppressed — `[q]` is off on `gameover`/`journalLastP
 `[b]` only opens party info from a fixed list of screen kinds, `[m]` exists only once the
 slot has unlocked Memory and read its intro and is off on `fullLog`/`gameover`/`abilityBuyback`/
 `gatekeeper`/`memoryIntro`/`memory` (`canOpenMemory`, `src/ui/keyHints.ts`), `[j]` exists once the slot's journal
-holds a fragment and is off on those same screens, on its own two and on every combat screen (`canOpenJournal`). The footer's global group must be
+holds a fragment and is off on those same screens and on its own (`canOpenJournal`); it opens mid-combat too. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
 otherwise the two drift apart and the hint outlives the binding. On the log screen itself
 only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
