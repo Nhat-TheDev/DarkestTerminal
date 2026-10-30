@@ -364,6 +364,36 @@ reason it was, the setting has quietly drifted.
 - Depth = proximity to Sleeper's dreaming core. A floor-depth-gated reveal should read as "getting
   closer," not as "unlocking a new area."
 
+### Writing voice — line by line
+
+The rules above say what the text may reveal; these say how a line of it reads. They apply to every
+event description, reflection, Camp Reflection prompt and option, and outcome line.
+
+- **Length.** An event description runs to about 30 words at most, a reflection prompt about 20,
+  each option about 15. A repeat-visit or escalation variant adds one sentence at most.
+- **One observable detail per scene**, and never a second sentence explaining the first.
+- **Never name the player's feelings.** Describe what is seen, heard or touched, and let the player
+  supply the reaction.
+- **Show drift (§12.5) through physical evidence of repetition** — scars in the same place, worn
+  spots on the floor, a pack full of bundles tied the same way — never through "anymore", "this
+  time" or "before you decided". Evidence leaves the choosing with the party, which is what keeps
+  "agency stays real" (above) true on the page.
+- **Options are gestures, not opinions.** A reflection or Camp Reflection option says what the hand
+  does next (pockets a chip, wraps the cut, passes the bread). The three options stay three
+  distinct readings of the same moment.
+- **End on an object or an action.** At most one ending built on a negation per event, and no
+  closers that start with "Nobody…".
+- **No aphorism or summary endings, no "not X, Y" construction**, and no runs of clipped fragments.
+- **A repeat visit changes one detail instead of adding a feeling.** No two events share a text,
+  including their escalated variants.
+- **Mechanics live on the button.** Costs and odds belong to the option label; outcome lines report
+  what happened, plainly, without exclamation marks.
+- **Some outcomes can be nothing.** A room that gives no reward and explains nothing is a valid
+  room.
+
+Sources these draw on: Failbetter's writing guidelines, Darkest Dungeon's curios, the events in Slay
+the Spire and FTL, and Shattered Pixel Dungeon's strings.
+
 ## 12.12 Where each event sits in the Balance
 
 Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§12.4).
@@ -404,10 +434,11 @@ consistently, not just where it's convenient.
 ## 12.13 Chain escalation tiers and reflection stances, resolved
 
 **Deeper chain escalation tiers** — a tier-2 escalation (past a chain's first threshold,
-§8.5) should read as a further step down §12.5's drift, from dependence toward unawareness: not
-just "the exchange no longer asks," but the encounter's *specificity* starting to erode, sounding
-less like something happening to this party in this place and more like a transaction being
-processed. Concrete draft lines per chain, and the reasoning behind each, are tracked in
+§8.5) should read as a further step down §12.5's drift, from dependence toward unawareness, shown
+through what the repetition has left behind rather than through anyone saying it: a palm that's
+more scar than skin, places on the floor worn to the shape of the party's knees, a threat that
+reaches further toward the door each time. Each tier stays specific to its own event and changes
+one detail, per the writing-voice rules in §12.11. Concrete draft lines per chain, and the reasoning behind each, are tracked in
 `10-event-narrative.md` rather than here — that's where implementation-facing drafts already
 live; this section only needs to state the direction, not the wording. Exact thresholds are a
 balance decision, not a lore one.

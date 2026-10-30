@@ -1482,9 +1482,10 @@ describe("Chain 4: 'Taken, Never Given' (08-events.md §8.5)", () => {
     expect(pickEventText(game2.state, getRoom(game2.state.floor, game2.state.currentRoomId), event)).not.toBe(event.chainEscalatedDescription);
   });
 
-  test("the escalated text is shared verbatim across all 7 ids", () => {
-    const texts = new Set(FREE_TAKE_IDS.map((id) => EVENTS.find((e) => e.id === id)!.chainEscalatedDescription));
-    expect(texts.size).toBe(1);
+  test("each of the 7 ids has its own escalated text", () => {
+    const texts = FREE_TAKE_IDS.map((id) => EVENTS.find((e) => e.id === id)!.chainEscalatedDescription);
+    expect(texts.every((t) => typeof t === "string" && t.length > 0)).toBe(true);
+    expect(new Set(texts).size).toBe(FREE_TAKE_IDS.length);
   });
 });
 
