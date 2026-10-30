@@ -250,7 +250,8 @@
     "driftFloorsPerMissedRun": 1,
     "driftMinDepth": 1,
     "maxMergeScreensPerFind": 4,
-    "maxEndingEchoes": 2
+    "maxEndingEchoes": 2,
+    "badFaceFearCost": 2
   },
   "items": {
     "itemDropChance": 0.9,

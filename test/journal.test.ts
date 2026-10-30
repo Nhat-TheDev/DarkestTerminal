@@ -11,10 +11,11 @@ import { BALANCE } from "../src/data/balanceConfig";
 import { JOURNAL_PAGES, validateJournal, type JournalData } from "../src/data/journal";
 import { maybeTriggerReflection } from "../src/engine/events/shared";
 import { migrateGameState } from "../src/engine/migration";
-import { availableDirections, deductionOptions, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
+import { availableDirections, deductionOptions, faceOf, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
 import { getJournalLine } from "../src/data/journal";
 import { journalPages } from "../src/ui/screens/journal";
 import journalJson from "../data/journal.json";
+import type { Character } from "../src/types";
 
 const SLOT = "slot1";
 
@@ -103,7 +104,7 @@ describe("journal scene at room clear", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
     expect(game.state.pendingReflection).toBeNull();
-    expect(game.state.pendingJournal).toEqual({ lineId: "what-the-marks-count", fragmentId: "tally-wall" });
+    expect(game.state.pendingJournal).toMatchObject({ lineId: "what-the-marks-count", fragmentId: "tally-wall" });
     expect(game.state.journalQueue.map((q) => q.lineId)).toEqual(["the-last-mark"]);
     expect(loadProfile(SLOT).journal.fragments.map((f) => f.id)).toEqual(["tally-wall"]);
   });
@@ -134,7 +135,7 @@ describe("journal scene at room clear", () => {
     resolveInstant(game, "old-count");
     choose(game, "They counted days, toward a day they meant to leave.");
     resolveInstant(game, "old-count");
-    expect(game.state.pendingJournal).toEqual({ lineId: "what-the-marks-count", fragmentId: "tally-row" });
+    expect(game.state.pendingJournal).toMatchObject({ lineId: "what-the-marks-count", fragmentId: "tally-row" });
     const labels = deductionOptions("what-the-marks-count", game.journal, game.state).map((o) => o.kind);
     expect(labels[0]).toBe("keep");
     expect(labels.at(-1)).toBe("strikeLeaveBlank");
@@ -508,5 +509,96 @@ describe("journal UI, part two", () => {
     await renderOnce();
     expect(app.debugUiState.kind).toBe("gameover");
     renderer.destroy();
+  });
+});
+
+describe("journal personalities", () => {
+  test("lines for an unknown personality, or missing a side, are rejected", () => {
+    const d1 = data();
+    d1.pages[0]!.lines[0]!.directions[0]!.personalities = { nobody: { good: "a", bad: "b" } };
+    expect(() => validateJournal(d1)).toThrow(/unknown personality/);
+    const d2 = data();
+    d2.pages[0]!.lines[0]!.directions[0]!.personalities = { gentle: { good: "a", bad: "" } };
+    expect(() => validateJournal(d2)).toThrow(/both a "good" and a "bad"/);
+  });
+
+  test("each personality's bad side shows under its own condition", () => {
+    const game = slotGame(1, null);
+    const [knight, mage, rogue, acolyte] = game.state.party as [Character, Character, Character, Character];
+    expect(faceOf(rogue, game.state)).toBe("good");
+    rogue.survival.fear = 60;
+    expect(faceOf(rogue, game.state)).toBe("bad");
+    game.state.satiety = 10;
+    expect(faceOf(knight, game.state)).toBe("bad");
+    expect(faceOf(mage, game.state)).toBe("good");
+    acolyte.hp = 1;
+    expect(faceOf(mage, game.state)).toBe("bad");
+  });
+
+  test("the Paladin's bad side answers a teammate's fear, never his own", () => {
+    const game = new Game(1, ["paladin", "knight", "mage", "rogue"], undefined, undefined, false, null);
+    const [paladin, knight] = game.state.party as [Character, Character];
+    paladin.survival.fear = 90;
+    expect(faceOf(paladin, game.state)).toBe("good");
+    knight.survival.fear = 60;
+    expect(faceOf(paladin, game.state)).toBe("bad");
+  });
+
+  test("a scene fixes its speakers and faces when it opens, and a bad-side line costs the others fear", () => {
+    const game = slotGame();
+    const rogue = game.state.party[2]!;
+    rogue.survival.fear = 60;
+    const before = game.state.party.map((c) => c.survival.fear);
+    resolveInstant(game, "old-count");
+    const voices = game.state.pendingJournal!.voices!;
+    const rogueVoice = voices.find((v) => v.characterId === rogue.id);
+    expect(rogueVoice?.face).toBe("bad");
+    game.state.party.forEach((c, i) => {
+      if (c.id === rogue.id) expect(c.survival.fear).toBe(before[i]!);
+      else expect(c.survival.fear).toBeGreaterThan(before[i]!);
+    });
+    rogue.survival.fear = 0;
+    expect(game.state.pendingJournal!.voices!.find((v) => v.characterId === rogue.id)?.face).toBe("bad");
+  });
+
+  test("a reading no living member's personality has a line for is a margin note with the default line", () => {
+    const game = new Game(1, ["viking", "warlock", "jester", "paladin"], undefined, undefined, false, SLOT);
+    game.state.combat = null;
+    resolveInstant(game, "old-count");
+    const voices = game.state.pendingJournal!.voices!;
+    const days = voices.find((v) => v.directionId === "counted-days");
+    expect(days?.classId).toBeNull();
+  });
+});
+
+describe("journal review fixes", () => {
+  test("a line no fragment names shows no floor, even with a dropped journal lying elsewhere", () => {
+    const game = slotGame();
+    resolveInstant(game, "old-count");
+    choose(game, "They counted sleeps. There are no days down here.");
+    game.journal.lines["whether-they-came-back"] = { directionId: "never-came-back", struck: [] };
+    const dropped = { depth: 3, hands: [{ run: 1, classIds: ["knight"], lines: { "the-last-mark": { directionId: "something-made-them-stop", struck: [] } } }] };
+    const text = journalPages(game.journal, dropped, game.runNumber).flat().join("\n");
+    expect(text).toContain("Whether they came back up\n");
+    expect(text).not.toContain("Whether they came back up — floor");
+  });
+
+  test("a split line offers only readings that still follow, and leaving it unwritten clears the split", () => {
+    const game = slotGame();
+    resolveInstant(game, "old-count");
+    choose(game, "They counted days, toward a day they meant to leave.");
+    game.journal.lines["the-last-mark"] = { split: ["lost-interest", "stopped-on-their-own"], struck: [] };
+    const options = deductionOptions("the-last-mark", game.journal, game.state).map((o) => ("direction" in o ? o.direction.id : o.kind));
+    expect(options).toEqual(["stopped-on-their-own", "leaveBlank"]);
+    game.state.pendingJournal = { lineId: "the-last-mark", fragmentId: "tally-wall" };
+    expect(game.resolveJournalDeduction(1)).toBeNull();
+    expect(game.journal.lines["the-last-mark"]?.split).toBeUndefined();
+  });
+
+  test("both readings of a split line still following force the choice", () => {
+    const game = slotGame();
+    game.journal.lines["the-last-mark"] = { split: ["something-made-them-stop", "stopped-on-their-own"], struck: [] };
+    const kinds = deductionOptions("the-last-mark", game.journal, game.state).map((o) => o.kind);
+    expect(kinds).toEqual(["write", "write"]);
   });
 });

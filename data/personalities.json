@@ -1,0 +1,153 @@
+[
+  {
+    "id": "humble",
+    "lens": "Their own mistakes; blames themselves first.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "satietyBelow",
+          "value": 30
+        }
+      ]
+    }
+  },
+  {
+    "id": "dry-wit",
+    "lens": "What is absurd about it.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "allyFearAtLeast",
+          "value": 60
+        }
+      ]
+    }
+  },
+  {
+    "id": "blunt",
+    "lens": "Where someone failed.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "partyMemberDied"
+        }
+      ]
+    }
+  },
+  {
+    "id": "gentle",
+    "lens": "The dead as people.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "allyHpBelow",
+          "fraction": 0.25
+        }
+      ]
+    }
+  },
+  {
+    "id": "seeks-meaning",
+    "lens": "Patterns and signs.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "wearsCursedArtifact"
+        }
+      ]
+    }
+  },
+  {
+    "id": "loyal",
+    "lens": "The group; says we.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "highestFear"
+        }
+      ]
+    }
+  },
+  {
+    "id": "patient",
+    "lens": "Counts and measures.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "ownFearAtLeast",
+          "value": 60
+        }
+      ]
+    }
+  },
+  {
+    "id": "bold",
+    "lens": "What to do next.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "lowestFearAndFullHp"
+        }
+      ]
+    }
+  },
+  {
+    "id": "inquisitive",
+    "lens": "How it was done.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "depthAtLeast",
+          "value": 30
+        }
+      ]
+    }
+  },
+  {
+    "id": "craft-pride",
+    "lens": "Workmanship; compares with their own.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "mostArtifacts"
+        }
+      ]
+    }
+  },
+  {
+    "id": "cautious",
+    "lens": "The exits.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "ownHpBelow",
+          "fraction": 0.5
+        }
+      ]
+    }
+  },
+  {
+    "id": "practical",
+    "lens": "What it is worth and what it costs.",
+    "badWhen": {
+      "match": "any",
+      "when": [
+        {
+          "kind": "coinsAtLeast",
+          "value": 200
+        }
+      ]
+    }
+  }
+]

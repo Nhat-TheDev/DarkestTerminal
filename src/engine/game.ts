@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, CommandOrder, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
+import type { CombatantRef, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -78,6 +78,8 @@ export class Game {
   public journalNoticePending = false;
   /** The slot's run count when this run began; journal entries and echoes are stamped with it. */
   readonly runNumber: number;
+  /** The slot's dropped journal, kept in step with the profile so screens don't read the file to show it. */
+  private dropped: DroppedJournal | null;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -96,6 +98,7 @@ export class Game {
     this.memoryUnlocked = profile.memoryUnlocked;
     this.memoryIntroShown = profile.memoryIntroShown;
     this.journal = profile.journal;
+    this.dropped = profile.droppedJournal;
     this.runNumber = profile.runCount;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
@@ -223,6 +226,7 @@ export class Game {
     const profile = loadProfile(this.currentSaveSlot);
     const lying = this.state.journalPickupReached ? profile.droppedJournal : driftDropped(profile.droppedJournal);
     profile.droppedJournal = tearOut(this.journal, lying, this.state.party, this.runNumber, this.state.floor.depth);
+    this.dropped = profile.droppedJournal;
     profile.journal = this.journal;
     saveProfile(this.currentSaveSlot, profile);
   }
@@ -240,8 +244,8 @@ export class Game {
   }
 
   /** The torn-out readings still lying somewhere in the dungeon, for the viewer. */
-  droppedJournal() {
-    return loadProfile(this.currentSaveSlot).droppedJournal;
+  droppedJournal(): DroppedJournal | null {
+    return this.dropped;
   }
 
   takeJournalNotice(): boolean {
@@ -307,7 +311,7 @@ export class Game {
   /** On arrival at the dropped journal's floor: opens the merge, which holds the entry ambush until it is done. */
   private startJournalPickup(): boolean {
     if (this.state.journalPickupReached || this.state.pendingFounderDialogue) return false;
-    const dropped = loadProfile(this.currentSaveSlot).droppedJournal;
+    const dropped = this.dropped;
     if (!dropped || dropped.depth !== this.state.floor.depth) return false;
     this.state.journalPickupReached = true;
     const merged = mergedHands(dropped);
@@ -335,6 +339,7 @@ export class Game {
     this.state.pendingJournalPickup = null;
     const profile = loadProfile(this.currentSaveSlot);
     profile.droppedJournal = null;
+    this.dropped = null;
     profile.journal = this.journal;
     saveProfile(this.currentSaveSlot, profile);
     this.checkEntryRoomAmbush();

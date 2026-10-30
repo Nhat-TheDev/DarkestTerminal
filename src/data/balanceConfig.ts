@@ -161,6 +161,8 @@ interface BalanceConfig {
     deepLineMinDepth: number;
     /** Floor depth the deep journal echoes start at. */
     deepEchoMinDepth: number;
+    /** Fear each other living party member takes when someone speaks a journal line in their bad side. */
+    badFaceFearCost: number;
     /** Floors a dropped journal moves up for each run that dies without reaching it. */
     driftFloorsPerMissedRun: number;
     /** The shallowest floor a dropped journal drifts to. */

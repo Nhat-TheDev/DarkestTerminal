@@ -356,8 +356,8 @@ export interface CharacterClass {
   baseSpeed: number;
   baseMagicPower: number;
   attackRange: AttackRange;
-  /** The temperament this class speaks in when the party argues over a journal line. */
-  journalVoice: JournalVoice;
+  /** Its hidden personality (`data/personalities.json`): what it notices, and when its bad side shows in the journal. */
+  personalityId: Id;
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
   /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */
@@ -575,7 +575,40 @@ export interface EventOutcomeCondition {
   outcome: string;
 }
 
-export type JournalVoice = "plain" | "grim" | "faithful" | "clinical";
+export type PersonalityCondition =
+  | { kind: "ownFearAtLeast"; value: number }
+  | { kind: "allyFearAtLeast"; value: number }
+  | { kind: "ownHpBelow"; fraction: number }
+  | { kind: "allyHpBelow"; fraction: number }
+  | { kind: "partyMemberDied" }
+  | { kind: "lowestFearAndFullHp" }
+  | { kind: "highestFear" }
+  | { kind: "coinsAtLeast"; value: number }
+  | { kind: "satietyBelow"; value: number }
+  | { kind: "depthAtLeast"; value: number }
+  | { kind: "mostArtifacts" }
+  | { kind: "wearsCursedArtifact" };
+
+/** A virtue and the same virtue pushed too far; the bad side speaks while `badWhen` holds for that character. */
+export interface Personality {
+  id: Id;
+  /** What this person always notices; a writing note, never shown. */
+  lens: string;
+  badWhen: { match: "all" | "any"; when: PersonalityCondition[] };
+}
+
+export type JournalFace = "good" | "bad";
+
+/** One line per side, keyed by personality id. */
+export type PersonalityLines = Record<Id, { good: string; bad: string }>;
+
+/** Who says a journal line and in which face; `classId: null` is an unvoiced margin note with the default line. */
+export interface JournalVoiceAssignment {
+  directionId: Id | null;
+  characterId: Id | null;
+  classId: Id | null;
+  face: JournalFace | null;
+}
 
 /** An event outcome this run, a fragment the slot's journal holds, or a reading a journal line currently holds. */
 export type JournalCondition = EventOutcomeCondition | { fragmentId: Id } | { lineId: Id; directionId: Id };
@@ -589,8 +622,9 @@ export interface JournalDirection {
   id: Id;
   /** Written into the journal when chosen, and the option text. */
   label: string;
-  voice: JournalVoice;
+  /** The line when no living party member's personality has one here. */
   speech: string;
+  personalities?: PersonalityLines;
   requires?: JournalRequires;
 }
 
@@ -619,7 +653,7 @@ export interface JournalFragment {
   lineIds: Id[];
   sources: JournalFragmentSource[];
   /** Spoken when this fragment reopens a line that already holds a reading. */
-  remark?: { voice: JournalVoice; text: string };
+  remark?: { text: string; personalities?: PersonalityLines };
 }
 
 export interface JournalEcho {
@@ -1162,7 +1196,7 @@ export interface GameState {
   /** In order; keeps an omen from repeating and lets one held back to its `maxFloor` show there. */
   shownFloorMilestoneIds: Id[];
   /** The journal line being argued over; the fragment that opened it, if any. Replaces that room's event reflection. */
-  pendingJournal: { lineId: Id; fragmentId: Id | null } | null;
+  pendingJournal: { lineId: Id; fragmentId: Id | null; voices?: JournalVoiceAssignment[] } | null;
   /** Lines that became choosable while another was on screen; drained one per room clear or floor clear. */
   journalQueue: { lineId: Id; fragmentId: Id | null }[];
   /** Fragments seen this run, whether or not the slot already held them. */

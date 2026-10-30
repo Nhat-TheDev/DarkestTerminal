@@ -1,9 +1,9 @@
-import type { GameState, Id, JournalCondition, JournalEcho, JournalFragment, JournalLine, JournalPage, JournalRequires, JournalVoice } from "../types";
+import type { GameState, Id, JournalCondition, JournalEcho, JournalFragment, JournalLine, JournalPage, JournalRequires, PersonalityLines } from "../types";
 import journalJson from "../../data/journal.json";
 import { EVENTS } from "./events";
 import { FLOOR_MILESTONE_OMENS } from "./floorMilestones";
 import { BALANCE } from "./balanceConfig";
-import { CLASSES } from "./classes";
+import { PERSONALITIES } from "./personalities";
 
 export interface JournalData {
   pages: JournalPage[];
@@ -18,10 +18,16 @@ function isJournalDepthKey(key: string | undefined): boolean {
 }
 
 const FILE = "data/journal.json";
-export const JOURNAL_VOICES: readonly JournalVoice[] = ["plain", "grim", "faithful", "clinical"];
 
 function conditionsOf(requires: JournalRequires | undefined): JournalCondition[] {
   return requires?.when ?? [];
+}
+
+function checkPersonalityLines(owner: string, lines: PersonalityLines | undefined): void {
+  for (const [id, sides] of Object.entries(lines ?? {})) {
+    if (!PERSONALITIES.some((p) => p.id === id)) throw new Error(`${FILE}: ${owner} has lines for an unknown personality "${id}"`);
+    if (!sides?.good || !sides?.bad) throw new Error(`${FILE}: ${owner} needs both a "good" and a "bad" line for "${id}"`);
+  }
 }
 
 /** Throws on the first shape or reference error, naming the record. */
@@ -48,7 +54,7 @@ export function validateJournal(data: JournalData): void {
       for (const direction of line.directions) {
         claim(direction.id, "direction");
         if (!direction.label || !direction.speech) throw new Error(`${FILE}: direction "${direction.id}" needs a label and a speech`);
-        if (!JOURNAL_VOICES.includes(direction.voice)) throw new Error(`${FILE}: direction "${direction.id}" has an unknown voice "${direction.voice}"`);
+        checkPersonalityLines(`direction "${direction.id}"`, direction.personalities);
       }
     }
   }
@@ -69,7 +75,8 @@ export function validateJournal(data: JournalData): void {
         throw new Error(`${FILE}: fragment "${fragment.id}" names an unknown omen "${source.omenId}"`);
       }
     }
-    if (fragment.remark && !JOURNAL_VOICES.includes(fragment.remark.voice)) throw new Error(`${FILE}: fragment "${fragment.id}" has a remark in an unknown voice`);
+    if (fragment.remark && !fragment.remark.text) throw new Error(`${FILE}: fragment "${fragment.id}" has a remark with no text`);
+    checkPersonalityLines(`fragment "${fragment.id}"'s remark`, fragment.remark?.personalities);
   }
   const directionLine = new Map<Id, Id>();
   for (const line of lines.values()) for (const d of line.directions) directionLine.set(d.id, line.id);
@@ -127,9 +134,6 @@ export function validateJournal(data: JournalData): void {
   for (const page of data.pages) {
     if (page.lines.every((l) => shapeOf(l) === "oneSided")) throw new Error(`${FILE}: page "${page.id}" needs a line with no echo, or with an echo on every reading`);
   }
-  for (const cls of CLASSES) {
-    if (!JOURNAL_VOICES.includes(cls.journalVoice)) throw new Error(`data/classes.json: class "${cls.id}" needs a "journalVoice" of ${JOURNAL_VOICES.join(", ")}`);
-  }
 }
 
 const DATA = journalJson as unknown as JournalData;
@@ -162,6 +166,3 @@ export function journalPageOf(lineId: Id): JournalPage | undefined {
   return JOURNAL_PAGES.find((p) => p.lines.some((l) => l.id === lineId));
 }
 
-export function isKnownJournalId(id: Id): boolean {
-  return getJournalFragment(id) !== undefined || getJournalLine(id) !== undefined || JOURNAL_LINES.some((l) => l.directions.some((d) => d.id === id));
-}

@@ -19,25 +19,55 @@
             {
               "id": "counted-days",
               "label": "They counted days, toward a day they meant to leave.",
-              "voice": "faithful",
-              "speech": "Rows like that are a calendar. Somebody had a day picked out."
+              "speech": "Rows like that are a calendar. Somebody had a day picked out.",
+              "personalities": {
+                "gentle": {
+                  "good": "Rows like that are a calendar. Someone had a day they were waiting for.",
+                  "bad": "Neat rows, kept to the end. A calendar with a day circled somewhere, and someone that careful would have reached it."
+                },
+                "loyal": {
+                  "good": "We'd count days too, if we were left behind to wait for our own.",
+                  "bad": "Rows kept for the ones who went on ahead. Any of us would count days for the others. It's days."
+                }
+              }
             },
             {
               "id": "counted-sleeps",
               "label": "They counted sleeps. There are no days down here.",
-              "voice": "clinical",
-              "speech": "There's no sun down here to count days by. Sleeps are the only thing that comes round."
+              "speech": "There's no sun down here to count days by. Sleeps are the only thing that comes round.",
+              "personalities": {
+                "patient": {
+                  "good": "No sun to count by down here. You count what comes round. Sleeps.",
+                  "bad": "Short marks, all one length. Could be sleeps, could be meals. A full row counted twice would settle it."
+                },
+                "inquisitive": {
+                  "good": "Short marks, all one length. That's someone waking up and doing it before anything else.",
+                  "bad": "One stroke each waking, hundreds of them. I'd want to know how thin they'd got by the last row."
+                },
+                "practical": {
+                  "good": "Sleeps. It's how you ration when you can't see the sky. One mark, one portion.",
+                  "bad": "One mark a sleep, one portion a sleep. That much rationing means a store, somewhere near this wall."
+                }
+              }
             },
             {
               "id": "hands-kept-busy",
               "label": "The count kept their hands busy. It wasn't for anything.",
-              "voice": "grim",
-              "speech": "Look how neat they are. That's somebody giving their hands something to do."
+              "speech": "Look how neat they are. That's somebody giving their hands something to do.",
+              "personalities": {
+                "blunt": {
+                  "good": "Look how neat they are. That's somebody giving their hands something to do so they wouldn't think.",
+                  "bad": "Hundreds of neat marks and not one step toward the stair. Busy hands, idle legs, and that's what killed them."
+                },
+                "dry-wit": {
+                  "good": "Hundreds of them and not one crooked. You'd go mad doing that. Then again, they probably did.",
+                  "bad": "Hundreds of perfect rows. Someone had all the time in the world and spent it on a wall. Admirable, truly."
+                }
+              }
             },
             {
               "id": "walls-shift",
               "label": "The marks can't be trusted. The walls here shift.",
-              "voice": "plain",
               "speech": "Our chalk's a hand higher than we put it. I wouldn't read much off these walls.",
               "requires": {
                 "match": "all",
@@ -46,6 +76,16 @@
                     "fragmentId": "chalk-higher"
                   }
                 ]
+              },
+              "personalities": {
+                "cautious": {
+                  "good": "Our chalk's a hand higher than we put it. I wouldn't trust anything written on these walls.",
+                  "bad": "Our chalk moved. These could have moved. For all we know this is our own count and we don't remember it."
+                },
+                "seeks-meaning": {
+                  "good": "The walls here don't hold still. Whatever was counted, the wall's been changing the sum.",
+                  "bad": "Our chalk climbed, and so did theirs. Twice is a pattern. The wall wants these read wrong."
+                }
               }
             }
           ]
@@ -65,19 +105,44 @@
             {
               "id": "stopped-on-their-own",
               "label": "They stopped on their own and left.",
-              "voice": "plain",
-              "speech": "The last mark doesn't skid. Whoever cut it lifted the blade off the stone."
+              "speech": "The last mark doesn't skid. Whoever cut it lifted the blade off the stone.",
+              "personalities": {
+                "patient": {
+                  "good": "The last mark doesn't skid. Whoever cut it lifted the blade off the stone.",
+                  "bad": "The end of the groove looks clean in this light. Torchlight lies, though. Hold it closer."
+                },
+                "bold": {
+                  "good": "Clean lift at the end. They put the blade down and went on, under their own power.",
+                  "bad": "Clean lift, so they walked off alone with one blade. If they could manage that, we can do it faster."
+                },
+                "inquisitive": {
+                  "good": "No scrape at the end of the groove. The blade came away on purpose.",
+                  "bad": "A clean lift. They set the blade down and walked off to wherever they died. I'd like to find the place."
+                }
+              }
             },
             {
               "id": "something-made-them-stop",
               "label": "Something made them stop.",
-              "voice": "grim",
-              "speech": "You lift it the same way when you hear something behind you."
+              "speech": "You lift it the same way when you hear something behind you.",
+              "personalities": {
+                "cautious": {
+                  "good": "You lift the blade like that when you hear something behind you. I've done it.",
+                  "bad": "Half a stroke, with the room open behind them the whole time. Something came through that door. Who's watching ours?"
+                },
+                "blunt": {
+                  "good": "Half a mark is somebody interrupted. They sat with their back to the room, and that was their mistake.",
+                  "bad": "A half stroke, back to the door. Too busy counting to look behind them. A child would have known better."
+                },
+                "dry-wit": {
+                  "good": "Hundreds of marks, then half of one. Either they heard something or they got bored. I don't like either.",
+                  "bad": "Something interrupted them halfway through a stroke. Rude of it. I'd rather not meet anything with manners like that."
+                }
+              }
             },
             {
               "id": "lost-interest",
               "label": "They lost interest in the count.",
-              "voice": "clinical",
               "speech": "If it was only to keep their hands busy, they found something else to do with them.",
               "requires": {
                 "match": "all",
@@ -87,6 +152,16 @@
                     "directionId": "hands-kept-busy"
                   }
                 ]
+              },
+              "personalities": {
+                "blunt": {
+                  "good": "If the counting was only to keep their hands busy, they found something else to do with them.",
+                  "bad": "Hundreds of marks, then half of one. They couldn't even finish the one thing they'd been doing."
+                },
+                "practical": {
+                  "good": "A count that isn't for anything is easy to drop. Something more useful came along.",
+                  "bad": "A count that bought them nothing. The moment something worth having turned up, they dropped it. So would I."
+                }
               }
             }
           ]
@@ -109,7 +184,6 @@
             {
               "id": "the-counters-prints",
               "label": "The counter made them, walking down from the wall.",
-              "voice": "faithful",
               "speech": "They got up from that wall and walked somewhere. It could have been here.",
               "requires": {
                 "match": "all",
@@ -119,13 +193,36 @@
                     "directionId": "stopped-on-their-own"
                   }
                 ]
+              },
+              "personalities": {
+                "loyal": {
+                  "good": "They got up from that wall and went after their own people. These are their steps.",
+                  "bad": "They'd have gone after their own people, same as any of us would. These are their steps, and I'll hear nothing else."
+                },
+                "gentle": {
+                  "good": "They got up from that wall and walked somewhere. It could have been here.",
+                  "bad": "Prints that go in and stop. They came this far looking for the others, and the others were here. That's how I'll read it."
+                }
               }
             },
             {
               "id": "someone-elses-prints",
               "label": "Someone else made them.",
-              "voice": "grim",
-              "speech": "Or anyone else. Plenty came down here and didn't walk back out."
+              "speech": "Or anyone else. Plenty came down here and didn't walk back out.",
+              "personalities": {
+                "blunt": {
+                  "good": "Prints stop in half the rooms down here. Don't hang a story on these.",
+                  "bad": "Prints in, none out, same as half the rooms on this floor. Another fool who didn't check behind them."
+                },
+                "cautious": {
+                  "good": "Could be anyone's. I'd rather not find out whose by following them.",
+                  "bad": "Prints in, none out. Whoever made them could still be standing somewhere we haven't looked. Backs to the wall."
+                },
+                "practical": {
+                  "good": "Prints going in and none out turn up on every floor. I'd not spend a candle tying these to that wall.",
+                  "bad": "Prints in, none out, so whatever they carried is still in here. Check the corners before we go."
+                }
+              }
             }
           ]
         },
@@ -144,7 +241,6 @@
             {
               "id": "kept-for-whoever-came-back",
               "label": "The extra portion was kept for whoever came back.",
-              "voice": "faithful",
               "speech": "One portion wrapped twice, apart from the rest. You keep that for someone walking back in.",
               "requires": {
                 "match": "all",
@@ -154,19 +250,47 @@
                     "directionId": "stopped-on-their-own"
                   }
                 ]
+              },
+              "personalities": {
+                "loyal": {
+                  "good": "One portion wrapped twice, apart from the rest. You keep that for whoever of yours walks back in.",
+                  "bad": "One portion set apart for whoever came back. You don't leave your own without that. It was for theirs, whatever anyone says."
+                },
+                "humble": {
+                  "good": "One set apart. They thought someone would come back hungry. I'd have forgotten to.",
+                  "bad": "Still wrapped. Whoever it was for never came for it. I'd not have made it this far myself."
+                }
               }
             },
             {
               "id": "for-someone-gone",
               "label": "The extra portion was for someone already gone.",
-              "voice": "grim",
-              "speech": "Or for someone who wasn't coming back. Wrapped twice so it would keep a long time."
+              "speech": "Or for someone who wasn't coming back. Wrapped twice so it would keep a long time.",
+              "personalities": {
+                "gentle": {
+                  "good": "Or for someone who wasn't coming back. Wrapped twice so it would keep a long time.",
+                  "bad": "Wrapped twice, the way you lay something by a grave. You only take that much care for someone who'll be glad of it."
+                },
+                "seeks-meaning": {
+                  "good": "Wrapped twice and set apart. That's an offering more than a ration.",
+                  "bad": "Set apart for the dead, and we've broken the wrapping. That will be counted against us somewhere."
+                }
+              }
             },
             {
               "id": "bundle-not-theirs",
               "label": "Nothing ties the bundle to the wall.",
-              "voice": "clinical",
-              "speech": "A bundle and a wall a floor apart. Nothing in either one points at the other."
+              "speech": "A bundle and a wall a floor apart. Nothing in either one points at the other.",
+              "personalities": {
+                "practical": {
+                  "good": "A bundle and a wall a floor apart. Nothing in either one points at the other.",
+                  "bad": "A floor between the bundle and the wall, and no name on either. Whoever it was for, it's ours now. Divide it up."
+                },
+                "patient": {
+                  "good": "Different floor, maybe a different year. I'd need more than a knot to tie them together.",
+                  "bad": "A knot, a wall, and a floor between them. Not enough to tie them together, not enough to pull them apart. Leave it open."
+                }
+              }
             }
           ]
         },
@@ -187,14 +311,32 @@
             {
               "id": "never-came-back",
               "label": "They never came back up.",
-              "voice": "grim",
-              "speech": "Everyone we've passed down here was going one way."
+              "speech": "Everyone we've passed down here was going one way.",
+              "personalities": {
+                "blunt": {
+                  "good": "Everyone we've passed down here was going one way.",
+                  "bad": "The rows end where they end, and no one has added a mark since. They're bones somewhere below us."
+                },
+                "humble": {
+                  "good": "I don't think they did. I don't think I would have.",
+                  "bad": "Hundreds of sleeps, and they still went down alone. I'd have done worse. They're not coming back up."
+                }
+              }
             },
             {
               "id": "another-wall",
               "label": "They found another wall and kept counting.",
-              "voice": "faithful",
-              "speech": "They kept that count for hundreds of sleeps. Wherever they stopped next, they'd have started another wall."
+              "speech": "They kept that count for hundreds of sleeps. Wherever they stopped next, they'd have started another wall.",
+              "personalities": {
+                "gentle": {
+                  "good": "They kept that count for hundreds of sleeps. Wherever they stopped next, they'd have started another wall.",
+                  "bad": "A hand that steady doesn't stop. They found the others below and started a new wall for all of them."
+                },
+                "bold": {
+                  "good": "They went down on their own feet and kept going. There'll be another wall below. Let's find it.",
+                  "bad": "Another wall further down, and they reached it alone with one blade. We'll get there faster if we stop resting."
+                }
+              }
             }
           ]
         },
@@ -216,14 +358,32 @@
             {
               "id": "the-counter-cut-it",
               "label": "The counter cut it.",
-              "voice": "faithful",
-              "speech": "Same habit of putting things on a wall. It fits the one who kept the count."
+              "speech": "Same habit of putting things on a wall. It fits the one who kept the count.",
+              "personalities": {
+                "seeks-meaning": {
+                  "good": "Same habit of putting things on a wall. It fits the one who kept the count.",
+                  "bad": "The same habit of writing on walls, and the warning sits right where we'd pass. It was left for us."
+                },
+                "humble": {
+                  "good": "Maybe the counter, further down and more frightened. I'd carve badly too, by then.",
+                  "bad": "Their hand, shaking by then. Mine would be worse. I can't tell one cut from another, so call it theirs."
+                }
+              }
             },
             {
               "id": "a-different-hand",
               "label": "A different hand cut it.",
-              "voice": "clinical",
-              "speech": "The count was cut slow and even. This was hacked in fast. Not the same hand on the blade."
+              "speech": "The count was cut slow and even. This was hacked in fast. Not the same hand on the blade.",
+              "personalities": {
+                "craft-pride": {
+                  "good": "The count was cut slow and even. This was hacked in fast. Not the same hand on the blade.",
+                  "bad": "Look at that work. Whoever kept the count would never cut something this ugly."
+                },
+                "inquisitive": {
+                  "good": "These strokes are deep and uneven. The count's are shallow and all alike. Two people.",
+                  "bad": "Deep, uneven strokes cut in a hurry. Someone had minutes left. I'd want to know how many."
+                }
+              }
             }
           ]
         }
@@ -251,19 +411,36 @@
             {
               "id": "two-kinds-of-cutter",
               "label": "Two kinds of people cut it, and they don't agree.",
-              "voice": "faithful",
-              "speech": "The closed ones are cut tight, the open ones wide. Somebody meant each of them."
+              "speech": "The closed ones are cut tight, the open ones wide. Somebody meant each of them.",
+              "personalities": {
+                "inquisitive": {
+                  "good": "The closed ones are cut tight, the open ones wide. Somebody meant each of them, and not the same somebody.",
+                  "bad": "Two kinds of cutter, and the closed ones always sit by a body. I'd want to see how the dead were set there."
+                },
+                "seeks-meaning": {
+                  "good": "Closed and open. Two readings of one mark, and the people cutting them never agreed.",
+                  "bad": "Closed on one wall, open on the next, all the way down. They're arguing about us, and we'll have to take a side."
+                }
+              }
             },
             {
               "id": "one-careless-cutter",
               "label": "One cutter, careless which way it turns.",
-              "voice": "clinical",
-              "speech": "Same depth of groove on both. One tool made them. Which way it turns could be how the stone sat."
+              "speech": "Same depth of groove on both. One tool made them. Which way it turns could be how the stone sat.",
+              "personalities": {
+                "craft-pride": {
+                  "good": "Same depth of groove on both. One tool made them. Which way it turns could be how the stone sat.",
+                  "bad": "Sloppy work, both kinds. One hack with a chisel and no plan."
+                },
+                "dry-wit": {
+                  "good": "Or one person who never could remember which way they'd done it last time.",
+                  "bad": "Same groove depth on both. One cutter with a terrible memory. Lovely work otherwise."
+                }
+              }
             },
             {
               "id": "one-mark-two-sides",
               "label": "It's one mark, seen from different sides.",
-              "voice": "plain",
               "speech": "The merchant's goods carry it whichever way the cloth lies. Turn one over and it opens.",
               "requires": {
                 "match": "all",
@@ -272,6 +449,16 @@
                     "fragmentId": "merchant-spiral"
                   }
                 ]
+              },
+              "personalities": {
+                "practical": {
+                  "good": "The merchant's goods carry it whichever way the cloth lies. Turn one over and it opens.",
+                  "bad": "The merchant sells it both ways round. So it means whatever pays."
+                },
+                "patient": {
+                  "good": "Three of the merchant's pieces closed, two open, every one the same burn. Depends how the cloth was folded.",
+                  "bad": "Open or closed depending on the fold, and I've only looked at one cloth. Three more before we write it."
+                }
               }
             }
           ]
@@ -292,14 +479,32 @@
             {
               "id": "closed-keep-shut",
               "label": "Closed. It means keep this shut.",
-              "voice": "grim",
-              "speech": "Every closed one we've passed had something behind it with claws."
+              "speech": "Every closed one we've passed had something behind it with claws.",
+              "personalities": {
+                "cautious": {
+                  "good": "Every closed one we've passed had something behind it with claws.",
+                  "bad": "Closed means keep out. Every one we passed had claws behind it, and I'd wager the open ones do too."
+                },
+                "blunt": {
+                  "good": "The closed ones had guards. Whoever cut them wanted people kept out. People like us.",
+                  "bad": "Every closed one had a guard behind it, and every guard is dead now. Whoever cut the mark should have cut it deeper."
+                }
+              }
             },
             {
               "id": "open-come-in",
               "label": "Open. It means come in.",
-              "voice": "faithful",
-              "speech": "The open ones have cups set in them. You don't set a cup for someone you want out."
+              "speech": "The open ones have cups set in them. You don't set a cup for someone you want out.",
+              "personalities": {
+                "gentle": {
+                  "good": "The open ones have cups set in them. You don't set a cup for someone you want out.",
+                  "bad": "Cups set in the open ones, like places at a table. Someone was expecting company, and they'd have been glad of us."
+                },
+                "bold": {
+                  "good": "The open ones had cups and altars. Somebody wanted visitors, and kept a place for them.",
+                  "bad": "Cups in the open ones, so somebody wanted visitors. We'll take the invitation all the way to the bottom."
+                }
+              }
             }
           ]
         }
@@ -337,8 +542,17 @@
         }
       ],
       "remark": {
-        "voice": "clinical",
-        "text": "Every mark's the same length. Counting days, you'd cut a longer one every seventh."
+        "text": "Every mark's the same length. Counting days, you'd cut a longer one every seventh.",
+        "personalities": {
+          "patient": {
+            "good": "Every mark's the same length. Counting days, you'd cut a longer one every seventh.",
+            "bad": "Every mark the same length, in this row at least. Count another row before anyone changes the page."
+          },
+          "inquisitive": {
+            "good": "No week marks anywhere. Someone keeping days would have cut every seventh one longer without thinking.",
+            "bad": "Same length, every one, for hundreds of sleeps. By the end they weren't counting anything. Just cutting."
+          }
+        }
       }
     },
     {

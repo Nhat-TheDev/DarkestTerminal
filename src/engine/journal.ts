@@ -1,7 +1,10 @@
-import type { Character, DroppedJournal, EventDefinition, GameState, Id, JournalCondition, JournalDirection, JournalEcho, JournalFragmentSource, JournalLine, JournalLineState, JournalMergeStep, JournalRequires, JournalVoice, Room, SlotJournal } from "../types";
+import type { Character, DroppedJournal, EventDefinition, GameState, Id, JournalCondition, JournalDirection, JournalEcho, JournalFace, JournalFragmentSource, JournalLine, JournalLineState, JournalMergeStep, JournalRequires, JournalVoiceAssignment, PersonalityCondition, PersonalityLines, Room, SlotJournal } from "../types";
 import { BALANCE } from "../data/balanceConfig";
 import { getClass } from "../data/classes";
-import { JOURNAL_ECHOES, JOURNAL_FRAGMENTS, JOURNAL_LINES, JOURNAL_PAGES, getJournalLine, isMirroredLine } from "../data/journal";
+import { JOURNAL_ECHOES, JOURNAL_FRAGMENTS, JOURNAL_LINES, JOURNAL_PAGES, getJournalFragment, getJournalLine, isMirroredLine } from "../data/journal";
+import { getPersonality } from "../data/personalities";
+import { getArtifact } from "../data/artifacts";
+import { adjustFear, resistedFearGain } from "./survival";
 import { pickEventText } from "./dungeon";
 
 /** Pure journal rules. Never import `./game`, `./save` or `./profile` here; the caller loads and saves the slot journal. */
@@ -63,22 +66,93 @@ export function deductionOptions(lineId: Id, journal: SlotJournal, state: GameSt
   const line = getJournalLine(lineId);
   if (!line) return [];
   const split = journal.lines[lineId]?.split;
-  if (split) return line.directions.filter((d) => split.includes(d.id)).map((direction) => ({ kind: "write" as const, direction }));
+  if (split) {
+    const still = availableDirections(line, journal, state).filter((d) => split.includes(d.id));
+    // Both readings still following: the choice is forced. Otherwise the one left, or neither, may be left unwritten.
+    return [...still.map((direction) => ({ kind: "write" as const, direction })), ...(still.length === 2 ? [] : [{ kind: "leaveBlank" as const }])];
+  }
   const current = journal.lines[lineId]?.directionId;
   const others = availableDirections(line, journal, state).filter((d) => d.id !== current);
   if (!current) return [...others.map((direction) => ({ kind: "write" as const, direction })), { kind: "leaveBlank" }];
   return [{ kind: "keep" }, ...others.map((direction) => ({ kind: "strikeAndWrite" as const, direction })), { kind: "strikeLeaveBlank" }];
 }
 
-/** Each voice goes to the first living member, in party order, whose class speaks it and hasn't spoken yet; `null` is an unvoiced margin note. */
-export function assignSpeakers(voices: JournalVoice[], party: Character[]): (Id | null)[] {
+function personalityIdOf(c: Character): Id {
+  return getClass(c.classId).personalityId;
+}
+
+function conditionHolds(c: PersonalityCondition, who: Character, state: GameState): boolean {
+  const others = state.party.filter((x) => x.isAlive && x.id !== who.id);
+  switch (c.kind) {
+    case "ownFearAtLeast":
+      return who.survival.fear >= c.value;
+    case "allyFearAtLeast":
+      return others.some((x) => x.survival.fear >= c.value);
+    case "ownHpBelow":
+      return who.hp < who.maxHp * c.fraction;
+    case "allyHpBelow":
+      return others.some((x) => x.hp < x.maxHp * c.fraction);
+    case "partyMemberDied":
+      return state.party.some((x) => !x.isAlive);
+    case "lowestFearAndFullHp":
+      return who.hp >= who.maxHp && others.every((x) => x.survival.fear > who.survival.fear);
+    case "highestFear":
+      return who.survival.fear > 0 && others.every((x) => x.survival.fear < who.survival.fear);
+    case "coinsAtLeast":
+      return state.coins >= c.value;
+    case "satietyBelow":
+      return state.satiety < c.value;
+    case "depthAtLeast":
+      return state.floor.depth >= c.value;
+    case "mostArtifacts":
+      return who.equippedArtifactIds.length > 0 && others.every((x) => x.equippedArtifactIds.length < who.equippedArtifactIds.length);
+    case "wearsCursedArtifact":
+      return who.equippedArtifactIds.some((id) => getArtifact(id).isCursed === true);
+  }
+}
+
+/** The bad side shows while the character's personality's `badWhen` holds for them right now. */
+export function faceOf(who: Character, state: GameState): JournalFace {
+  const { badWhen } = getPersonality(personalityIdOf(who));
+  const holds = (c: PersonalityCondition) => conditionHolds(c, who, state);
+  return (badWhen.match === "all" ? badWhen.when.every(holds) : badWhen.when.some(holds)) ? "bad" : "good";
+}
+
+/**
+ * Who says each line of a scene: the remark first (a reopened line), then each reading on offer. Each goes to the first living member,
+ * in party order, whose personality has a line there and who hasn't spoken yet; with no such member it is an unvoiced margin note.
+ */
+export function assignVoices(lineId: Id, fragmentId: Id | null, journal: SlotJournal, state: GameState): JournalVoiceAssignment[] {
+  const remark = journal.lines[lineId]?.directionId && fragmentId ? getJournalFragment(fragmentId)?.remark : undefined;
+  const slots: { directionId: Id | null; lines: PersonalityLines | undefined }[] = [
+    ...(remark ? [{ directionId: null, lines: remark.personalities }] : []),
+    ...deductionOptions(lineId, journal, state).flatMap((o) => ("direction" in o ? [{ directionId: o.direction.id, lines: o.direction.personalities }] : [])),
+  ];
   const used = new Set<Id>();
-  return voices.map((voice) => {
-    const speaker = party.find((c) => c.isAlive && !used.has(c.id) && getClass(c.classId).journalVoice === voice);
-    if (!speaker) return null;
+  return slots.map(({ directionId, lines }) => {
+    const speaker = state.party.find((c) => c.isAlive && !used.has(c.id) && lines?.[personalityIdOf(c)] !== undefined);
+    if (!speaker) return { directionId, characterId: null, classId: null, face: null };
     used.add(speaker.id);
-    return speaker.classId;
+    return { directionId, characterId: speaker.id, classId: speaker.classId, face: faceOf(speaker, state) };
   });
+}
+
+/** The words of an assigned line: the speaker's personality line in its face, or the default for a margin note. */
+export function voicedText(voice: JournalVoiceAssignment, lines: PersonalityLines | undefined, fallback: string): string {
+  if (!voice.classId || !voice.face) return fallback;
+  return lines?.[getClass(voice.classId).personalityId]?.[voice.face] ?? fallback;
+}
+
+/** Opens a scene: who speaks and in which face is fixed now, and each bad-side line costs every other living member a little fear. */
+function openScene(state: GameState, journal: SlotJournal, item: { lineId: Id; fragmentId: Id | null }): void {
+  const voices = assignVoices(item.lineId, item.fragmentId, journal, state);
+  state.pendingJournal = { ...item, voices };
+  for (const voice of voices) {
+    if (voice.face !== "bad") continue;
+    for (const other of state.party) {
+      if (other.isAlive && other.id !== voice.characterId) adjustFear(other, resistedFearGain(other, BALANCE.journal.badFaceFearCost));
+    }
+  }
 }
 
 /** True when the event shows its own description or a variant of it, not a chain text that replaces it. */
@@ -104,9 +178,9 @@ function sourceMatches(source: JournalFragmentSource, trigger: JournalTrigger, s
   return source.repeatInRun ? (state.journalEventVisits[source.eventId] ?? 0) >= 2 : true;
 }
 
-function enqueue(state: GameState, lineId: Id, fragmentId: Id | null): void {
+function enqueue(state: GameState, journal: SlotJournal, lineId: Id, fragmentId: Id | null): void {
   if (state.pendingJournal?.lineId === lineId || state.journalQueue.some((q) => q.lineId === lineId)) return;
-  if (!state.pendingJournal) state.pendingJournal = { lineId, fragmentId };
+  if (!state.pendingJournal) openScene(state, journal, { lineId, fragmentId });
   else state.journalQueue.push({ lineId, fragmentId });
 }
 
@@ -122,7 +196,7 @@ export function grantFragments(trigger: JournalTrigger, journal: SlotJournal, st
     if (!holdsFragment(journal, fragment.id)) journal.fragments.push({ id: fragment.id, run, depth: state.floor.depth });
     for (const lineId of fragment.lineIds) {
       state.journalLeftBlank = state.journalLeftBlank.filter((id) => id !== lineId);
-      if (isChoosable(lineId, journal, state)) enqueue(state, lineId, fragment.id);
+      if (isChoosable(lineId, journal, state)) enqueue(state, journal, lineId, fragment.id);
     }
   }
   return granted.map((f) => f.id);
@@ -141,9 +215,9 @@ function latestFragmentFor(lineId: Id, journal: SlotJournal): Id | null {
 export function drainAtFloorClear(journal: SlotJournal, state: GameState): void {
   for (const line of JOURNAL_LINES) {
     if (journal.lines[line.id]?.directionId || state.journalLeftBlank.includes(line.id)) continue;
-    if (isChoosable(line.id, journal, state)) enqueue(state, line.id, latestFragmentFor(line.id, journal));
+    if (isChoosable(line.id, journal, state)) enqueue(state, journal, line.id, latestFragmentFor(line.id, journal));
   }
-  if (!state.pendingJournal && state.journalQueue.length > 0) state.pendingJournal = state.journalQueue.shift()!;
+  if (!state.pendingJournal && state.journalQueue.length > 0) openScene(state, journal, state.journalQueue.shift()!);
 }
 
 /** Strikes any written reading whose own gate no longer holds, until nothing changes. */
@@ -170,7 +244,7 @@ export function resolveDeduction(optionIndex: number, journal: SlotJournal, stat
   const option = options[optionIndex];
   if (!option) return false;
   const entry: JournalLineState = journal.lines[pending.lineId] ?? { struck: [] };
-  const writer = (direction: JournalDirection) => assignSpeakers([direction.voice], state.party)[0] ?? undefined;
+  const writer = (direction: { id: Id }) => pending.voices?.find((v) => v.directionId === direction.id)?.classId ?? undefined;
   switch (option.kind) {
     case "write":
       Object.assign(entry, { directionId: option.direction.id, writerClassId: writer(option.direction), run });
@@ -186,6 +260,7 @@ export function resolveDeduction(optionIndex: number, journal: SlotJournal, stat
       state.journalLeftBlank.push(pending.lineId);
       break;
     case "leaveBlank":
+      delete entry.split;
       state.journalLeftBlank.push(pending.lineId);
       break;
     case "keep":

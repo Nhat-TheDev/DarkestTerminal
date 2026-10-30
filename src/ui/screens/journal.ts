@@ -1,20 +1,20 @@
 import type { Game } from "../../engine/game";
 import type { KeyEvent } from "@opentui/core";
-import type { DroppedJournal, Id, JournalLineState, JournalMergeStep, SlotJournal } from "../../types";
+import type { DroppedJournal, Id, JournalLineState, JournalMergeStep, JournalVoiceAssignment, PersonalityLines, SlotJournal } from "../../types";
 import { t } from "../../data/strings";
 import { getClass } from "../../data/classes";
 import { JOURNAL_FRAGMENTS, JOURNAL_PAGES, getJournalEcho, getJournalFragment, getJournalLine, journalPageOf } from "../../data/journal";
-import { assignSpeakers, deductionOptions, type JournalOption } from "../../engine/journal";
+import { assignVoices, deductionOptions, voicedText, type JournalOption } from "../../engine/journal";
 import { digitHint } from "../keyHints";
-import { MIN_TERMINAL_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, wrapText } from "../layout";
+import { wrapText } from "../layout";
+import { MEMORY_LIST_ROWS, MEMORY_LIST_WIDTH } from "./memory";
 import type { UiState } from "../state";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 
 export type JournalUiState = Extract<UiState, { kind: "journal" }>;
 
-/** The Dungeon panel's inner size at the minimum terminal size, less the title and the blank line under it. */
-const JOURNAL_ROWS = 11;
-const JOURNAL_WIDTH = MIN_TERMINAL_WIDTH - PARTY_PANEL_WIDTH - SIDE_PANEL_WIDTH - 2;
+const JOURNAL_ROWS = MEMORY_LIST_ROWS;
+const JOURNAL_WIDTH = MEMORY_LIST_WIDTH;
 const INDENT = "  ";
 
 const OPTION_INDENT = "      ";
@@ -24,12 +24,13 @@ function speechLine(classId: Id | null, text: string): string {
 }
 
 /** A reading is offered as the line its speaker says; choosing it writes the reading's label into the journal. */
-function optionText(option: JournalOption, speaker: Id | null): string {
+function optionText(option: JournalOption, voice: JournalVoiceAssignment | undefined): string {
+  const said = (lines: PersonalityLines | undefined, fallback: string) => speechLine(voice?.classId ?? null, voice ? voicedText(voice, lines, fallback) : fallback);
   switch (option.kind) {
     case "write":
-      return speechLine(speaker, option.direction.speech);
+      return said(option.direction.personalities, option.direction.speech);
     case "strikeAndWrite":
-      return t("ui.journalStrikeAndWrite", { speech: speechLine(speaker, option.direction.speech) });
+      return t("ui.journalStrikeAndWrite", { speech: said(option.direction.personalities, option.direction.speech) });
     case "leaveBlank":
       return t("ui.journalLeaveUnwritten");
     case "keep":
@@ -40,7 +41,7 @@ function optionText(option: JournalOption, speaker: Id | null): string {
 }
 
 function optionRows(index: number, text: string): string[] {
-  const [first = "", ...rest] = wrapText(text, JOURNAL_WIDTH - OPTION_INDENT.length);
+  const [first = "", ...rest] = wrapText(text, JOURNAL_WIDTH - OPTION_INDENT.length - 1);
   return [`${INDENT}[${index}] ${first}`, ...rest.map((l) => OPTION_INDENT + l)];
 }
 
@@ -62,15 +63,15 @@ export function renderDeduction(game: Game): string {
   const current = game.journal.lines[line.id]?.directionId;
   const options = deductionOptions(line.id, game.journal, game.state);
   const remark = current && fragment?.remark ? fragment.remark : undefined;
-  const voices = [...(remark ? [remark.voice] : []), ...options.flatMap((o) => ("direction" in o ? [o.direction.voice] : []))];
-  const speakers = assignSpeakers(voices, game.state.party);
+  // A pending scene without stored voices is voiced here, without the fear cost.
+  const voices = pending.voices ?? assignVoices(line.id, pending.fragmentId, game.journal, game.state);
+  const remarkVoice = voices.find((v) => v.directionId === null);
   const out = [t("ui.journalTitle", { page: (page?.title ?? "").toUpperCase(), subject: line.subject })];
   if (fragment) out.push(t("ui.journalCopied", { text: fragment.text }));
   if (current) out.push(t("ui.journalCurrent", { label: line.directions.find((d) => d.id === current)?.label ?? "" }));
-  if (remark) out.push(speechLine(speakers[0] ?? null, remark.text));
+  if (remark) out.push(speechLine(remarkVoice?.classId ?? null, remarkVoice ? voicedText(remarkVoice, remark.personalities, remark.text) : remark.text));
   out.push("");
-  let next = remark ? 1 : 0;
-  options.forEach((o, i) => out.push(...optionRows(i + 1, optionText(o, "direction" in o ? (speakers[next++] ?? null) : null))));
+  options.forEach((o, i) => out.push(...optionRows(i + 1, optionText(o, "direction" in o ? voices.find((v) => v.directionId === o.direction.id) : undefined))));
   return out.join("\n");
 }
 
@@ -121,7 +122,7 @@ export function journalPages(journal: SlotJournal, dropped: DroppedJournal | nul
       const entry = journal.lines[line.id];
       const tornOut = !entry && dropped?.hands.some((h) => h.lines[line.id]);
       if (seen.length === 0 && !entry && !tornOut) continue;
-      const depth = seen.length > 0 ? Math.min(...seen.map((f) => f.depth)) : dropped?.depth;
+      const depth = seen.length > 0 ? Math.min(...seen.map((f) => f.depth)) : undefined;
       rows.push(depth !== undefined ? t("ui.journalLineHeading", { subject: line.subject, depth }) : line.subject);
       if (entry) rows.push(...entryRows(entry, line.id, journal, run));
       else if (tornOut) rows.push(INDENT + t("ui.journalTornOut", { depth: dropped!.depth }));

@@ -394,6 +394,11 @@ event description, reflection, Camp Reflection prompt and option, and outcome li
 Sources these draw on: Failbetter's writing guidelines, Darkest Dungeon's curios, the events in Slay
 the Spire and FTL, and Shattered Pixel Dungeon's strings.
 
+**Party voices in the journal.** Each class has a hidden personality (`data/personalities.json`), a virtue
+and the same virtue pushed too far. The party never names it; a reader learns it from what that person keeps
+noticing. A bad-side line still reads the clue, and is no likelier to be wrong than a good-side one: a flaw is
+never the game's signal that a reading is false.
+
 ## 12.12 Where each event sits in the Balance
 
 Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§12.4).
