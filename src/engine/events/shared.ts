@@ -52,8 +52,11 @@ export function closeEvent(state: GameState): void {
   }
 }
 
-/** Safe to call after any event action: until the room is cleared it no-ops and draws no rng. */
-export function maybeTriggerReflection(state: GameState, ctx: EngineContext): void {
+/**
+ * Safe to call after any event action: until the room is cleared it no-ops and draws no rng.
+ * `discard` (a journal scene took the reflection's place) still draws the roll, so the run's rng stream doesn't depend on the journal.
+ */
+export function maybeTriggerReflection(state: GameState, ctx: EngineContext, discard = false): void {
   if (state.pendingReflection) return;
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.cleared || !room.rolledEventId) return;
@@ -63,7 +66,7 @@ export function maybeTriggerReflection(state: GameState, ctx: EngineContext): vo
   if (event.reflectionRequiresOutcome && state.eventOutcomes[event.id] !== event.reflectionRequiresOutcome) return;
   const alreadySeen = event.id in state.eventReflectionStances;
   const chance = alreadySeen ? BALANCE.events.reflectionRepeatChance : 1;
-  if (ctx.rng.chance(chance)) state.pendingReflection = { eventId: event.id };
+  if (ctx.rng.chance(chance) && !discard) state.pendingReflection = { eventId: event.id };
 }
 
 /** How far an event's `escalation` has gone: 0 below its first threshold; tiers 2 and 3 also need their floor depth. Counters never reset, so no room-level flag is needed. */

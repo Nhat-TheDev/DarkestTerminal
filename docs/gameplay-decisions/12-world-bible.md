@@ -465,3 +465,30 @@ trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dun
 party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
 `EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
 Part B.3 for the full mechanical writeup.
+
+## 12.14 The Counter
+
+The one hidden truth the journal (`data/journal.json`, page "The Count") is written against. Nothing
+here reaches the player; the journal's readings are the party's, and only some of them are true.
+
+- One ordinary person from an expedition long before the party. No mark, no contact with whoever
+  cuts the spirals (§8.2's ordinary people). Sits in Thread 4 of `10-event-narrative.md`.
+- Their companions went deeper. They stayed at a dry spot to hold the supplies and counted
+  **sleeps**, one stroke each, rationing against the count (`old-count`).
+- They packed a bundle for the return with one portion set apart, for whoever came back first
+  (`waiting-supplies`). Who that turned out to be is open.
+- The last stroke stops because **they stood up and went down after them**, on their own feet. Why
+  is open. That nothing took them is settled, which keeps §12.11's "agency stays real".
+- The footprints that stop in an empty room (`doubled-back`) are **not theirs**.
+- The unfinished warning (`half-a-warning`) is **not their hand**: the count was cut slow and even,
+  the warning fast.
+- Whether they found anyone, or ever came back up, stays open under §12.9.
+
+**The wrong links are the bridges `10-event-narrative.md` A.3 keeps apart.** The world never
+connects Thread 4 to Threads 2, 3 or 5; the journal lets the party draw exactly those links (the
+counter cut the warning, the footprints are the counter's), and this section says they are wrong.
+The world still never crosses them; only the party's belief does.
+
+A journal line on one of §12.9's questions has no true reading at all. Any confirmation such a line
+ever gets has to agree with whichever reading the party wrote.
+

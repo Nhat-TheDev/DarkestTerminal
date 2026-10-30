@@ -154,6 +154,22 @@ interface BalanceConfig {
     checkpointFloorDepth: number;
     founderFloorDepth: number;
   };
+  journal: {
+    /** Fragments one room clear can copy into the journal. */
+    maxFragmentsPerRoom: number;
+    /** Floor depth a line with a `minDepth` gate is first offered at. */
+    deepLineMinDepth: number;
+    /** Floor depth the deep journal echoes start at. */
+    deepEchoMinDepth: number;
+    /** Floors a dropped journal moves up for each run that dies without reaching it. */
+    driftFloorsPerMissedRun: number;
+    /** The shallowest floor a dropped journal drifts to. */
+    driftMinDepth: number;
+    /** Merge screens one found journal shows; the rest merge silently. */
+    maxMergeScreensPerFind: number;
+    /** Echoes one ending shows on its Last page. */
+    maxEndingEchoes: number;
+  };
   items: {
     itemDropChance: number;
     /** Share of a trophy monster's drops that come from its trophies. */

@@ -1,0 +1,574 @@
+{
+  "pages": [
+    {
+      "id": "the-count",
+      "title": "The Count",
+      "lines": [
+        {
+          "id": "what-the-marks-count",
+          "subject": "What the marks count",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "tally-wall"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "counted-days",
+              "label": "They counted days, toward a day they meant to leave.",
+              "voice": "faithful",
+              "speech": "Rows like that are a calendar. Somebody had a day picked out."
+            },
+            {
+              "id": "counted-sleeps",
+              "label": "They counted sleeps. There are no days down here.",
+              "voice": "clinical",
+              "speech": "There's no sun down here to count days by. Sleeps are the only thing that comes round."
+            },
+            {
+              "id": "hands-kept-busy",
+              "label": "The count kept their hands busy. It wasn't for anything.",
+              "voice": "grim",
+              "speech": "Look how neat they are. That's somebody giving their hands something to do."
+            },
+            {
+              "id": "walls-shift",
+              "label": "The marks can't be trusted. The walls here shift.",
+              "voice": "plain",
+              "speech": "Our chalk's a hand higher than we put it. I wouldn't read much off these walls.",
+              "requires": {
+                "match": "all",
+                "when": [
+                  {
+                    "fragmentId": "chalk-higher"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "the-last-mark",
+          "subject": "The last mark",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "tally-wall"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "stopped-on-their-own",
+              "label": "They stopped on their own and left.",
+              "voice": "plain",
+              "speech": "The last mark doesn't skid. Whoever cut it lifted the blade off the stone."
+            },
+            {
+              "id": "something-made-them-stop",
+              "label": "Something made them stop.",
+              "voice": "grim",
+              "speech": "You lift it the same way when you hear something behind you."
+            },
+            {
+              "id": "lost-interest",
+              "label": "They lost interest in the count.",
+              "voice": "clinical",
+              "speech": "If it was only to keep their hands busy, they found something else to do with them.",
+              "requires": {
+                "match": "all",
+                "when": [
+                  {
+                    "lineId": "what-the-marks-count",
+                    "directionId": "hands-kept-busy"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "the-prints",
+          "subject": "The prints in the empty room",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "tally-wall"
+              },
+              {
+                "fragmentId": "prints-stop"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "the-counters-prints",
+              "label": "The counter made them, walking down from the wall.",
+              "voice": "faithful",
+              "speech": "They got up from that wall and walked somewhere. It could have been here.",
+              "requires": {
+                "match": "all",
+                "when": [
+                  {
+                    "lineId": "the-last-mark",
+                    "directionId": "stopped-on-their-own"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "someone-elses-prints",
+              "label": "Someone else made them.",
+              "voice": "grim",
+              "speech": "Or anyone else. Plenty came down here and didn't walk back out."
+            }
+          ]
+        },
+        {
+          "id": "the-bundle",
+          "subject": "The bundle",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "bundle"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "kept-for-whoever-came-back",
+              "label": "The extra portion was kept for whoever came back.",
+              "voice": "faithful",
+              "speech": "One portion wrapped twice, apart from the rest. You keep that for someone walking back in.",
+              "requires": {
+                "match": "all",
+                "when": [
+                  {
+                    "lineId": "the-last-mark",
+                    "directionId": "stopped-on-their-own"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "for-someone-gone",
+              "label": "The extra portion was for someone already gone.",
+              "voice": "grim",
+              "speech": "Or for someone who wasn't coming back. Wrapped twice so it would keep a long time."
+            },
+            {
+              "id": "bundle-not-theirs",
+              "label": "Nothing ties the bundle to the wall.",
+              "voice": "clinical",
+              "speech": "A bundle and a wall a floor apart. Nothing in either one points at the other."
+            }
+          ]
+        },
+        {
+          "id": "whether-they-came-back",
+          "subject": "Whether they came back up",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "lineId": "the-last-mark",
+                "directionId": "stopped-on-their-own"
+              }
+            ]
+          },
+          "minDepth": "deepLineMinDepth",
+          "directions": [
+            {
+              "id": "never-came-back",
+              "label": "They never came back up.",
+              "voice": "grim",
+              "speech": "Everyone we've passed down here was going one way."
+            },
+            {
+              "id": "another-wall",
+              "label": "They found another wall and kept counting.",
+              "voice": "faithful",
+              "speech": "They kept that count for hundreds of sleeps. Wherever they stopped next, they'd have started another wall."
+            }
+          ]
+        },
+        {
+          "id": "the-unfinished-warning",
+          "subject": "The unfinished warning",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "tally-wall"
+              },
+              {
+                "fragmentId": "fast-carving"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "the-counter-cut-it",
+              "label": "The counter cut it.",
+              "voice": "faithful",
+              "speech": "Same habit of putting things on a wall. It fits the one who kept the count."
+            },
+            {
+              "id": "a-different-hand",
+              "label": "A different hand cut it.",
+              "voice": "clinical",
+              "speech": "The count was cut slow and even. This was hacked in fast. Not the same hand on the blade."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-mark",
+      "title": "The Mark",
+      "lines": [
+        {
+          "id": "which-way-it-turns",
+          "subject": "Which way the spiral turns",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "fragmentId": "closed-spiral"
+              },
+              {
+                "fragmentId": "open-spiral"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "two-kinds-of-cutter",
+              "label": "Two kinds of people cut it, and they don't agree.",
+              "voice": "faithful",
+              "speech": "The closed ones are cut tight, the open ones wide. Somebody meant each of them."
+            },
+            {
+              "id": "one-careless-cutter",
+              "label": "One cutter, careless which way it turns.",
+              "voice": "clinical",
+              "speech": "Same depth of groove on both. One tool made them. Which way it turns could be how the stone sat."
+            },
+            {
+              "id": "one-mark-two-sides",
+              "label": "It's one mark, seen from different sides.",
+              "voice": "plain",
+              "speech": "The merchant's goods carry it whichever way the cloth lies. Turn one over and it opens.",
+              "requires": {
+                "match": "all",
+                "when": [
+                  {
+                    "fragmentId": "merchant-spiral"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "which-way-is-meant",
+          "subject": "Which way is meant",
+          "requires": {
+            "match": "all",
+            "when": [
+              {
+                "lineId": "which-way-it-turns",
+                "directionId": "two-kinds-of-cutter"
+              }
+            ]
+          },
+          "directions": [
+            {
+              "id": "closed-keep-shut",
+              "label": "Closed. It means keep this shut.",
+              "voice": "grim",
+              "speech": "Every closed one we've passed had something behind it with claws."
+            },
+            {
+              "id": "open-come-in",
+              "label": "Open. It means come in.",
+              "voice": "faithful",
+              "speech": "The open ones have cups set in them. You don't set a cup for someone you want out."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fragments": [
+    {
+      "id": "tally-wall",
+      "text": "Tally marks scratched into the wall, hundreds, one hand, neat rows. The last mark stops halfway.",
+      "lineIds": [
+        "what-the-marks-count",
+        "the-last-mark"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "old-count",
+          "requiresBaseText": true
+        }
+      ]
+    },
+    {
+      "id": "tally-row",
+      "text": "Every mark in a row is the same length. No longer mark anywhere to close off a week.",
+      "lineIds": [
+        "what-the-marks-count"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "old-count",
+          "repeatInRun": true,
+          "requiresBaseText": true
+        }
+      ],
+      "remark": {
+        "voice": "clinical",
+        "text": "Every mark's the same length. Counting days, you'd cut a longer one every seventh."
+      }
+    },
+    {
+      "id": "prints-stop",
+      "text": "Footprints lead into an empty room. None lead out.",
+      "lineIds": [
+        "the-prints"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "doubled-back",
+          "requiresBaseText": true
+        }
+      ]
+    },
+    {
+      "id": "bundle",
+      "text": "A bundle tied at the foot of a wall. The rations inside are wrapped in portions. One is set apart, wrapped twice.",
+      "lineIds": [
+        "the-bundle"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "waiting-supplies",
+          "requiresBaseText": true
+        }
+      ]
+    },
+    {
+      "id": "chalk-higher",
+      "text": "Chalk marks left on the way down sit a hand's width higher than they were made.",
+      "lineIds": [
+        "what-the-marks-count"
+      ],
+      "sources": [
+        {
+          "kind": "omen",
+          "omenId": "chalk-higher"
+        }
+      ]
+    },
+    {
+      "id": "fast-carving",
+      "text": "A warning cut into the wall in a hurry and left unfinished. The strokes are deep and uneven.",
+      "lineIds": [
+        "the-unfinished-warning"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "half-a-warning",
+          "requiresBaseText": true
+        }
+      ]
+    },
+    {
+      "id": "closed-spiral",
+      "text": "A spiral scratched beside a guarded hoard, coiled tight and closed like a knot.",
+      "lineIds": [
+        "which-way-it-turns"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "guardian-fight"
+        },
+        {
+          "kind": "eventResolved",
+          "eventId": "desecrated-altar"
+        }
+      ]
+    },
+    {
+      "id": "open-spiral",
+      "text": "A spiral carved into an altar, unwound and open at its center.",
+      "lineIds": [
+        "which-way-it-turns"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "blood-altar"
+        },
+        {
+          "kind": "eventResolved",
+          "eventId": "twin-altars"
+        },
+        {
+          "kind": "eventResolved",
+          "eventId": "sacrificial-circle"
+        }
+      ]
+    },
+    {
+      "id": "merchant-spiral",
+      "text": "The same spiral burned into every piece of the merchant's goods, turned whichever way the cloth was laid.",
+      "lineIds": [
+        "which-way-it-turns"
+      ],
+      "sources": [
+        {
+          "kind": "eventResolved",
+          "eventId": "merchant"
+        }
+      ]
+    }
+  ],
+  "echoes": [
+    {
+      "id": "heel-scuffs",
+      "on": {
+        "kind": "eventVisit",
+        "eventId": "old-count",
+        "minDepth": "deepEchoMinDepth"
+      },
+      "echoes": [
+        {
+          "lineId": "the-last-mark",
+          "directionId": "stopped-on-their-own"
+        }
+      ],
+      "text": "Below the last mark, two heel scuffs in the grit, both pointing toward the way down."
+    },
+    {
+      "id": "rows-unchanged",
+      "on": {
+        "kind": "eventVisit",
+        "eventId": "old-count",
+        "minDepth": "deepLineMinDepth"
+      },
+      "echoes": [
+        {
+          "lineId": "whether-they-came-back",
+          "directionId": "never-came-back"
+        }
+      ],
+      "text": "The rows end where they ended on the wall above. Nothing has been added."
+    },
+    {
+      "id": "one-newer-mark",
+      "on": {
+        "kind": "eventVisit",
+        "eventId": "old-count",
+        "minDepth": "deepLineMinDepth"
+      },
+      "echoes": [
+        {
+          "lineId": "whether-they-came-back",
+          "directionId": "another-wall"
+        }
+      ],
+      "text": "Lower down, apart from the rows, one mark that looks newer than the rest."
+    },
+    {
+      "id": "marks-in-the-wax",
+      "on": {
+        "kind": "eventVisit",
+        "eventId": "waiting-supplies"
+      },
+      "echoes": [
+        {
+          "lineId": "what-the-marks-count",
+          "directionId": "counted-sleeps"
+        }
+      ],
+      "text": "Under the knot, a row of short marks pressed into the wax, all the same length."
+    },
+    {
+      "id": "two-tools",
+      "on": {
+        "kind": "eventVisit",
+        "eventId": "broken-seal"
+      },
+      "echoes": [
+        {
+          "lineId": "which-way-it-turns",
+          "directionId": "two-kinds-of-cutter"
+        }
+      ],
+      "text": "The half of the spiral left on the lock was stamped. The scratches across it were cut by hand, later."
+    },
+    {
+      "id": "count-at-the-stair",
+      "on": {
+        "kind": "ending",
+        "endings": [
+          "stay"
+        ]
+      },
+      "echoes": [
+        {
+          "lineId": "what-the-marks-count",
+          "directionId": "counted-sleeps"
+        }
+      ],
+      "text": "By the stair, someone has started a row of short marks, one each time they wake."
+    },
+    {
+      "id": "last-mark-closed",
+      "on": {
+        "kind": "ending",
+        "endings": [
+          "letGo"
+        ]
+      },
+      "echoes": [
+        {
+          "lineId": "which-way-is-meant",
+          "directionId": "closed-keep-shut"
+        }
+      ],
+      "text": "The last mark cut here is closed, the way yours always were."
+    },
+    {
+      "id": "last-mark-open",
+      "on": {
+        "kind": "ending",
+        "endings": [
+          "letGo"
+        ]
+      },
+      "echoes": [
+        {
+          "lineId": "which-way-is-meant",
+          "directionId": "open-come-in"
+        }
+      ],
+      "text": "The last mark cut here is open, the way yours always were."
+    }
+  ]
+}

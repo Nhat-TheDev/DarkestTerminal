@@ -356,6 +356,8 @@ export interface CharacterClass {
   baseSpeed: number;
   baseMagicPower: number;
   attackRange: AttackRange;
+  /** The temperament this class speaks in when the party argues over a journal line. */
+  journalVoice: JournalVoice;
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
   /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */
@@ -573,6 +575,92 @@ export interface EventOutcomeCondition {
   outcome: string;
 }
 
+export type JournalVoice = "plain" | "grim" | "faithful" | "clinical";
+
+/** An event outcome this run, a fragment the slot's journal holds, or a reading a journal line currently holds. */
+export type JournalCondition = EventOutcomeCondition | { fragmentId: Id } | { lineId: Id; directionId: Id };
+
+export interface JournalRequires {
+  when: JournalCondition[];
+  match: "all" | "any";
+}
+
+export interface JournalDirection {
+  id: Id;
+  /** Written into the journal when chosen, and the option text. */
+  label: string;
+  voice: JournalVoice;
+  speech: string;
+  requires?: JournalRequires;
+}
+
+export interface JournalLine {
+  id: Id;
+  subject: string;
+  requires?: JournalRequires;
+  /** A `journal` balance key: the floor depth the line is first offered at. Never strikes a reading. */
+  minDepth?: string;
+  directions: JournalDirection[];
+}
+
+export interface JournalPage {
+  id: Id;
+  title: string;
+  lines: JournalLine[];
+}
+
+export type JournalFragmentSource =
+  | { kind: "eventResolved"; eventId: Id; outcome?: string; repeatInRun?: boolean; requiresBaseText?: boolean }
+  | { kind: "omen"; omenId: Id };
+
+export interface JournalFragment {
+  id: Id;
+  text: string;
+  lineIds: Id[];
+  sources: JournalFragmentSource[];
+  /** Spoken when this fragment reopens a line that already holds a reading. */
+  remark?: { voice: JournalVoice; text: string };
+}
+
+export interface JournalEcho {
+  id: Id;
+  /** An event visit (with an optional `journal` balance-key depth gate), or one of the endings. */
+  on: { kind: "eventVisit"; eventId: Id; minDepth?: string } | { kind: "ending"; endings: NonNullable<GameState["gameOver"]>[] };
+  /** Shown only while the journal holds one of these readings. */
+  echoes: { lineId: Id; directionId: Id }[];
+  text: string;
+}
+
+/** One line of the slot's journal. */
+export interface JournalLineState {
+  directionId?: Id;
+  /** Two readings kept side by side after a merge; neither counts for any condition until one is chosen. */
+  split?: [Id, Id];
+  struck: Id[];
+  writerClassId?: Id;
+  run?: number;
+}
+
+/** The slot's journal: survives permadeath; a wiped party's readings move to `DroppedJournal`. */
+export interface SlotJournal {
+  fragments: { id: Id; run: number; depth: number }[];
+  lines: Record<Id, JournalLineState>;
+  /** Echoes the slot has seen, shown under the reading they agree with. */
+  echoes: { id: Id; run: number; depth: number }[];
+}
+
+/** One screen of a dropped-journal merge. */
+export type JournalMergeStep =
+  | { kind: "intro" }
+  | { kind: "copyPage"; pageId: Id; lineIds: Id[] }
+  | { kind: "conflict"; lineId: Id }
+  | { kind: "cannotTake"; lineId: Id };
+
+export interface DroppedJournal {
+  depth: number;
+  hands: { run: number; classIds: Id[]; lines: Record<Id, JournalLineState> }[];
+}
+
 /** First match wins, so a more specific condition must come before a general one on the same event. */
 export interface CrossEventVariant {
   when: EventOutcomeCondition[];
@@ -689,6 +777,8 @@ export interface Room {
   id: Id;
   name: string;
   type: RoomType;
+  /** The journal echo this event visit shows under its text, picked on entry. */
+  journalEchoId?: Id | null;
   connectedRoomIds: Id[];
   monsterIds: Id[];
   cleared: boolean;
@@ -1071,6 +1161,26 @@ export interface GameState {
   pendingFloorMilestoneOmenId?: Id | null;
   /** In order; keeps an omen from repeating and lets one held back to its `maxFloor` show there. */
   shownFloorMilestoneIds: Id[];
+  /** The journal line being argued over; the fragment that opened it, if any. Replaces that room's event reflection. */
+  pendingJournal: { lineId: Id; fragmentId: Id | null } | null;
+  /** Lines that became choosable while another was on screen; drained one per room clear or floor clear. */
+  journalQueue: { lineId: Id; fragmentId: Id | null }[];
+  /** Fragments seen this run, whether or not the slot already held them. */
+  journalFragmentsSeen: Id[];
+  /** Resolutions per event id this run, for `repeatInRun` fragment sources. */
+  journalEventVisits: Record<Id, number>;
+  /** Lines left unwritten this run; offered again only when a fragment for them arrives. */
+  journalLeftBlank: Id[];
+  /** The event room whose clear already granted its fragments, so later actions in it don't grant again. */
+  journalHandledRoomId: Id | null;
+  /** The dropped journal being read on arrival at its floor; `merged` is the readings it brought, newest hand winning per line. */
+  pendingJournalPickup: { steps: JournalMergeStep[]; step: number; merged: Record<Id, JournalLineState>; classIds: Id[] } | null;
+  /** This run arrived at the dropped journal's floor, so dying later doesn't drift it. */
+  journalPickupReached: boolean;
+  /** Echo ids shown this run; each shows once per run. */
+  journalEchoesFired: Id[];
+  /** The echoes the ending showed, for the Last page. */
+  journalEndingEchoIds: Id[];
   campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
   /** Set once an event's defining choice resolves; most get the generic "resolved" from `closeEvent()`. */
   eventOutcomes: Partial<Record<Id, string>>;

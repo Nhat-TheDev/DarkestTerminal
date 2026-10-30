@@ -243,6 +243,15 @@
     "checkpointFloorDepth": 100,
     "founderFloorDepth": 120
   },
+  "journal": {
+    "maxFragmentsPerRoom": 2,
+    "deepLineMinDepth": 30,
+    "deepEchoMinDepth": 40,
+    "driftFloorsPerMissedRun": 1,
+    "driftMinDepth": 1,
+    "maxMergeScreensPerFind": 4,
+    "maxEndingEchoes": 2
+  },
   "items": {
     "itemDropChance": 0.9,
     "trophyDropShare": 0.4,

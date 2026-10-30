@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, CommandOrder, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity } from "../types";
+import type { CombatantRef, CommandOrder, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -61,6 +61,7 @@ import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 import { maybeTriggerReflection } from "./events/shared";
+import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, grantFragments, mergedHands, recordEcho, resolveDeduction, showsBaseText, tearOut, type JournalTrigger } from "./journal";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
@@ -71,6 +72,12 @@ export class Game {
   public currentSaveSlot: Id | null = null;
   public memoryUnlocked = false;
   public memoryIntroShown = false;
+  /** The slot's journal, kept here and written back to the profile on every change; a run with no slot keeps it only in memory. */
+  public journal: SlotJournal;
+  /** Set when a room copies a fragment without opening a scene; the UI logs it once. */
+  public journalNoticePending = false;
+  /** The slot's run count when this run began; journal entries and echoes are stamped with it. */
+  readonly runNumber: number;
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -88,6 +95,8 @@ export class Game {
     const profile = loadProfile(saveSlot);
     this.memoryUnlocked = profile.memoryUnlocked;
     this.memoryIntroShown = profile.memoryIntroShown;
+    this.journal = profile.journal;
+    this.runNumber = profile.runCount;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
     if (restore) {
@@ -155,6 +164,16 @@ export class Game {
       runStardust: 0,
       pendingAbilityBuyback: null,
       abilityDeathResults: null,
+      pendingJournal: null,
+      journalQueue: [],
+      journalFragmentsSeen: [],
+      journalEventVisits: {},
+      journalLeftBlank: [],
+      journalHandledRoomId: null,
+      pendingJournalPickup: null,
+      journalPickupReached: false,
+      journalEchoesFired: [],
+      journalEndingEchoIds: [],
     };
     // Abilities were equipped after `createCharacter` filled hp/mp from base stats. Rebuild before the
     // entry ambush reads `speed`, and refill because recompute only clamps hp down to maxHp.
@@ -163,7 +182,72 @@ export class Game {
       character.hp = character.maxHp;
       character.mp = character.maxMp;
     }
-    if (!withGatekeeper) this.checkEntryRoomAmbush();
+    if (!withGatekeeper && !this.startJournalPickup()) this.checkEntryRoomAmbush();
+  }
+
+  /** Read before an event action: whether the room is showing its own text, which some journal fragments need. */
+  private eventBaseTextShown(): boolean {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    return room.rolledEventId ? showsBaseText(this.state, room, getEvent(room.rolledEventId)) : false;
+  }
+
+  /** Once an event room is cleared: grant its journal fragments, then the reflection, which a journal scene replaces. */
+  private afterEventAction(baseTextShown: boolean): void {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    let journalScene = false;
+    if (room.cleared && room.rolledEventId && this.state.journalHandledRoomId !== room.id) {
+      this.state.journalHandledRoomId = room.id;
+      const before = this.state.pendingJournal;
+      this.grantJournal({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown });
+      journalScene = before === null && this.state.pendingJournal !== null;
+    }
+    maybeTriggerReflection(this.state, this.ctx, journalScene);
+  }
+
+  private grantJournal(trigger: JournalTrigger): void {
+    const pendingBefore = this.state.pendingJournal;
+    const fragmentsBefore = this.journal.fragments.length;
+    const seen = grantFragments(trigger, this.journal, this.state, this.runNumber);
+    if (seen.length > 0 && this.state.pendingJournal === pendingBefore) this.journalNoticePending = true;
+    if (this.journal.fragments.length !== fragmentsBefore) this.saveJournal();
+  }
+
+  private saveJournal(): void {
+    if (!this.currentSaveSlot) return;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.journal = this.journal;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
+  private tearOutJournal(): void {
+    const profile = loadProfile(this.currentSaveSlot);
+    const lying = this.state.journalPickupReached ? profile.droppedJournal : driftDropped(profile.droppedJournal);
+    profile.droppedJournal = tearOut(this.journal, lying, this.state.party, this.runNumber, this.state.floor.depth);
+    profile.journal = this.journal;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
+  /** Writes the chosen option of the open journal scene. */
+  resolveJournalDeduction(optionIndex: number): PartyActionError | null {
+    if (!resolveDeduction(optionIndex, this.journal, this.state, this.runNumber)) return { reason: t("errors.noJournalScene") };
+    this.saveJournal();
+    return null;
+  }
+
+  /** The viewer is offered once the slot holds at least one fragment. */
+  hasJournalEntries(): boolean {
+    return this.journal.fragments.length > 0;
+  }
+
+  /** The torn-out readings still lying somewhere in the dungeon, for the viewer. */
+  droppedJournal() {
+    return loadProfile(this.currentSaveSlot).droppedJournal;
+  }
+
+  takeJournalNotice(): boolean {
+    const pending = this.journalNoticePending;
+    this.journalNoticePending = false;
+    return pending;
   }
 
   playTimeSec(): number {
@@ -191,6 +275,7 @@ export class Game {
     const entry = getRoom(this.state.floor, this.state.currentRoomId);
     countBlessedRoom(this.state, entry);
     this.state.message = t("game.enteredRoom", { room: entry.name });
+    if (this.startJournalPickup()) return;
     this.checkEntryRoomAmbush();
   }
 
@@ -204,7 +289,56 @@ export class Game {
       return;
     }
     moveToRoom(this.state, targetRoomId, this.ctx);
+    this.pickEventEcho();
     this.postMoveCheck();
+  }
+
+  /** Picked once per event visit, on entry, so re-renders keep the same echo. */
+  private pickEventEcho(): void {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    if (room.type !== "event" || room.cleared || !room.rolledEventId || room.journalEchoId !== undefined) return;
+    const echo = eventEcho(room.rolledEventId, this.journal, this.state);
+    room.journalEchoId = echo?.id ?? null;
+    if (!echo) return;
+    recordEcho(echo, this.journal, this.state, this.runNumber);
+    this.saveJournal();
+  }
+
+  /** On arrival at the dropped journal's floor: opens the merge, which holds the entry ambush until it is done. */
+  private startJournalPickup(): boolean {
+    if (this.state.journalPickupReached || this.state.pendingFounderDialogue) return false;
+    const dropped = loadProfile(this.currentSaveSlot).droppedJournal;
+    if (!dropped || dropped.depth !== this.state.floor.depth) return false;
+    this.state.journalPickupReached = true;
+    const merged = mergedHands(dropped);
+    const hands = [...dropped.hands].sort((a, b) => a.run - b.run);
+    const steps = buildMergeSteps(merged, this.journal, this.state);
+    this.state.pendingJournalPickup = { steps, step: 0, merged, classIds: [hands[0]!.classIds[0]!, hands.at(-1)!.classIds.at(-1)!] };
+    this.saveJournal();
+    return true;
+  }
+
+  /** Answers the current merge screen; the last one empties the dropped journal and runs the entry ambush check it held back. */
+  resolveJournalPickup(choice: number): PartyActionError | null {
+    const pickup = this.state.pendingJournalPickup;
+    const step = pickup?.steps[pickup.step];
+    if (!pickup || !step) return { reason: t("errors.noJournalScene") };
+    const choices = step.kind === "copyPage" ? 2 : step.kind === "conflict" ? 3 : 1;
+    if (!Number.isInteger(choice) || choice < 0 || choice >= choices) return { reason: t("errors.noJournalScene") };
+    applyMergeChoice(step, choice, pickup.merged, this.journal, this.state);
+    pickup.step += 1;
+    if (pickup.step < pickup.steps.length) {
+      this.saveJournal();
+      return null;
+    }
+    finishMerge(pickup.merged, this.journal, this.state);
+    this.state.pendingJournalPickup = null;
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.droppedJournal = null;
+    profile.journal = this.journal;
+    saveProfile(this.currentSaveSlot, profile);
+    this.checkEntryRoomAmbush();
+    return null;
   }
 
   private postMoveCheck(): void {
@@ -226,6 +360,7 @@ export class Game {
     this.endCombat();
     this.state.gameOver = "defeat";
     this.runAbilityDeathFlow();
+    this.tearOutJournal();
   }
 
   /** With nothing lost, `abilityDeathResults` is `[]` rather than null so the results screen renders at once. */
@@ -417,16 +552,18 @@ export class Game {
   }
 
   openChest(): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
     const err = openChest(this.state, this.ctx);
     if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = merchantPurchase(this.state, offerIndex);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
@@ -435,30 +572,35 @@ export class Game {
   }
 
   merchantLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     merchantLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = bloodAltarPay(this.state, this.ctx, characterId);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   bloodAltarLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     bloodAltarLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = cursedShrineDecide(this.state, accept);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = twinAltarsChoose(this.state, offerIndex);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
@@ -467,53 +609,62 @@ export class Game {
   }
 
   sacrificeLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     sacrificeLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   gamblingDenEnter(): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = gamblingDenEnter(this.state, this.ctx);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   gamblingDenContinue(): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = gamblingDenContinue(this.state, this.ctx);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   gamblingDenStop(): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = gamblingDenStop(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   gamblingDenLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     gamblingDenLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   hermitExchangeFortune(artifactId: Id): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = hermitExchangeFortune(this.state, this.ctx, artifactId);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   hermitLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     hermitLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = collapsedFloorAttempt(this.state, this.ctx, characterId);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
   collapsedFloorLeave(): void {
+    const baseTextShown = this.eventBaseTextShown();
     collapsedFloorLeave(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
   }
 
   enterGuardianFight(): PartyActionError | null {
@@ -521,8 +672,9 @@ export class Game {
   }
 
   skipGuardianFight(): PartyActionError | null {
+    const baseTextShown = this.eventBaseTextShown();
     const err = guardianFightSkip(this.state);
-    maybeTriggerReflection(this.state, this.ctx);
+    this.afterEventAction(baseTextShown);
     return err;
   }
 
@@ -629,7 +781,7 @@ export class Game {
         tagLogRange(this.state.combat, rewardBlockStart, snapshotCombatants(this.state.combat, this.ctx));
         tagPartySnapshotRange(this.state.combat, rewardBlockStart, { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety });
         // A combat event's win path never calls closeEvent(), so this is its only reflection trigger.
-        maybeTriggerReflection(this.state, this.ctx);
+        this.afterEventAction(getRoom(this.state.floor, this.state.currentRoomId).chainVariant === undefined);
       } else if (this.state.combat.outcome === "defeat") {
         this.triggerDefeat();
       }
@@ -646,6 +798,7 @@ export class Game {
     const nextDepth = this.state.floor.depth + 1;
     this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
     this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
+    this.state.journalHandledRoomId = null;
     const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;
@@ -656,6 +809,7 @@ export class Game {
       this.state.pendingFounderDialogue = true;
       return;
     }
+    if (this.startJournalPickup()) return;
     this.checkEntryRoomAmbush();
   }
 
@@ -676,6 +830,12 @@ export class Game {
       this.state.gameOver = "letGo";
     } else if (choice === "leave") {
       this.state.gameOver = hasLeaveEscapeArtifactEquipped(this.state) ? "leaveEscaped" : "leaveAmbushed";
+    }
+    if (this.state.gameOver) {
+      const echoes = endingEchoes(this.state.gameOver, this.journal);
+      for (const echo of echoes) recordEcho(echo, this.journal, this.state, this.runNumber);
+      this.state.journalEndingEchoIds = echoes.map((e) => e.id);
+      this.saveJournal();
     } else {
       // Set first so advanceToNextFloor's checkpoint gate doesn't refire.
       this.state.continuedPastCheckpoint = true;
@@ -703,6 +863,11 @@ export class Game {
       const omen = pickFloorMilestoneOmen(this.state.floor.depth, this.state.shownFloorMilestoneIds, this.ctx.rng);
       this.state.shownFloorMilestoneIds.push(omen.id);
       this.state.pendingFloorMilestoneOmenId = omen.id;
+      this.grantJournal({ kind: "omen", omenId: omen.id });
+    }
+    if (wasBossRoomVictory) {
+      drainAtFloorClear(this.journal, this.state);
+      this.saveJournal();
     }
     this.endCombat();
     return wasBossRoomVictory;

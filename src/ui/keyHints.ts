@@ -24,8 +24,8 @@ const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "roomReward",
   "campPrompt",
 ];
-const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "saveMenu", "fullLog", "gatekeeper"];
-const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "abilityBuyback", "fullLog", "gatekeeper"];
+const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "journalLastPage", "abilityBuyback", "saveMenu", "fullLog", "gatekeeper"];
+const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "journalLastPage", "abilityBuyback", "fullLog", "gatekeeper"];
 const NO_LOG_KINDS: readonly UiState["kind"][] = ["fullLog"];
 const NO_MEMORY_KINDS: readonly UiState["kind"][] = ["fullLog", "gameover", "abilityBuyback", "gatekeeper", "memoryIntro", "memory"];
 
@@ -33,14 +33,37 @@ export function canOpenMemory(kind: UiState["kind"]): boolean {
   return !NO_MEMORY_KINDS.includes(kind);
 }
 
+const NO_JOURNAL_KINDS: readonly UiState["kind"][] = [
+  ...NO_MEMORY_KINDS,
+  "journal",
+  "journalDeduction",
+  "journalPickup",
+  "journalLastPage",
+  "pickAction",
+  "pickSkill",
+  "skillDetail",
+  "pickCommandMinion",
+  "pickCommandSkill",
+  "pickItemInCombat",
+  "pickTarget",
+  "roundResolved",
+  "combatOver",
+];
+
+/** Never in combat: the journal is read between rooms. */
+export function canOpenJournal(kind: UiState["kind"]): boolean {
+  return !NO_JOURNAL_KINDS.includes(kind);
+}
+
 export function joinHints(...parts: (string | null | false | undefined)[]): string {
   return parts.filter((p): p is string => typeof p === "string" && p.length > 0).join(HINT_GAP);
 }
 
-export function globalHints(kind: UiState["kind"], allowPartyInfo: boolean = true, allowMemory: boolean = false): string {
+export function globalHints(kind: UiState["kind"], allowPartyInfo: boolean = true, allowMemory: boolean = false, allowJournal: boolean = false): string {
   return joinHints(
     allowPartyInfo && PARTY_INFO_KINDS.includes(kind) ? t("ui.hintParty") : null,
     allowMemory && canOpenMemory(kind) ? t("ui.hintMemory") : null,
+    allowJournal && canOpenJournal(kind) ? t("ui.hintJournal") : null,
     NO_LOG_KINDS.includes(kind) ? null : t("ui.hintLog"),
     NO_SAVE_KINDS.includes(kind) ? null : t("ui.hintSave"),
     NO_QUICKSAVE_KINDS.includes(kind) ? null : t("ui.hintQuicksave"),
@@ -69,8 +92,15 @@ export function digitHint(key: string, count: number, fallbackKey: string = "ui.
   return range === null ? t(fallbackKey) : t(key, { keys: range });
 }
 
-export function composeFooter(contextual: string, kind: UiState["kind"], paginated: boolean, allowPartyInfo: boolean = true, allowMemory: boolean = false): string {
+export function composeFooter(
+  contextual: string,
+  kind: UiState["kind"],
+  paginated: boolean,
+  allowPartyInfo: boolean = true,
+  allowMemory: boolean = false,
+  allowJournal: boolean = false
+): string {
   const left = withPageHint(contextual, paginated);
-  const right = globalHints(kind, allowPartyInfo, allowMemory);
+  const right = globalHints(kind, allowPartyInfo, allowMemory, allowJournal);
   return left.length > 0 ? left + GROUP_SEP + right : right;
 }

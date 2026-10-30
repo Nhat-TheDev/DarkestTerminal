@@ -995,6 +995,14 @@ same check it applies to spent `onceLifetime` events. Staying in the pool, unaff
 (the Stranger, explicitly not Covenant, §12.8), `the-wanderer` (Part E), and Ending 1's
 retired-character event (§F.2).
 
+### F.5a The journal's Last page
+
+Stay, Let Go and both Leave endings can show journal echoes (`data/journal.json` `echoes` with `on.kind: "ending"`): a detail
+that agrees with a reading the party's journal holds, never a verdict. The ending text stays as it is; when it showed any echo, the
+game-over screen offers `[Enter] Last page`, which lists each echo under the reading it agrees with. Defeat shows none. A journal
+line on one of `12-world-bible.md` §12.9's questions gets an echo on every reading or on none, so whatever the Last page shows there
+agrees with whichever reading was written.
+
 ### F.6 Normal endings — permadeath, with a little texture
 
 Everything above is the rare branch. The overwhelming majority of runs end in ordinary permadeath —
