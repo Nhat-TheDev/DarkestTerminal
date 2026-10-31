@@ -3,7 +3,7 @@ import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { saveRun, loadSave, gameFromSave, listSlots, clearSlot } from "../src/engine/save";
+import { saveRun, loadSave, gameFromSave, listSlots, continuableSlots, clearSlot } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import { ABILITIES } from "../src/data/abilities";
 import { loadProfile, saveProfile } from "../src/engine/profile";
@@ -341,6 +341,26 @@ describe("game over", () => {
     await tick();
     await tick();
     expect(second.exits).toEqual(["menu"]);
+  });
+
+  test("a slot whose run ended before the next party was picked still shows in Continue", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    clearSlot("slot5");
+    saveProfile("slot5", { ...loadProfile("slot5"), runCount: 2 });
+    const index = continuableSlots().findIndex((slot) => slot.id === "slot5");
+
+    const menu = showMainMenu(renderer);
+    await renderOnce();
+    mockInput.pressKey("x");
+    await renderOnce();
+    mockInput.pressKey("2");
+    expect(await menu).toBe("continue");
+
+    const slot = showSlotSelect(renderer, "continue");
+    await renderOnce();
+    expect(captureCharFrame()).toContain(t("saveSelect.endedLine", { i: index + 1, slot: 5, run: 2 }).trim());
+    mockInput.pressKey(String(index + 1));
+    expect(await slot).toEqual({ id: "slot5", overwrite: false, hasRun: false });
   });
 });
 

@@ -55,7 +55,7 @@ async function main() {
     } else {
       const slot = await showSlotSelect(renderer, "continue");
       if (!slot) continue;
-      game = gameFromSave(loadSave(slot.id), slot.id);
+      game = slot.hasRun ? gameFromSave(loadSave(slot.id), slot.id) : await startRun(renderer, slot.id);
     }
     // A finished run's slot stays with the player: "New Run" starts the next one in it.
     while ((await playRun(renderer, game)) === "newRun") {

@@ -9,6 +9,7 @@ import {
   saveRun,
   writeDevDumpSave,
   listSlots,
+  continuableSlots,
   deleteSlot,
   clearSlot,
   migrateLegacyProfile,
@@ -17,7 +18,7 @@ import {
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
@@ -185,6 +186,29 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
         saveRun(game);
       }
       expect(firstFreeSlotId()).toBeNull();
+    });
+  });
+
+  test("continuableSlots keeps a run and an ended slot, not a save that can't be loaded", () => {
+    withGame(6, (game) => {
+      SLOT_IDS.forEach(clearSlot);
+      const newer = join(SAVE_DIR, "slot3.json");
+      const corrupt = join(SAVE_DIR, "slot4.json");
+      for (const id of ["slot1", "slot3"]) {
+        game.currentSaveSlot = id;
+        saveRun(game);
+      }
+      const save = loadSave("slot3");
+      save.meta.saveVersion = "9.9.9";
+      const newerContents = JSON.stringify(save);
+      writeFileSync(newer, newerContents);
+      writeFileSync(corrupt, "{");
+      for (const id of ["slot2", "slot3", "slot4"]) saveProfile(id, { ...loadProfile(id), runCount: 2 });
+
+      expect(continuableSlots().map((slot) => slot.id)).toEqual(["slot1", "slot2"]);
+      expect(readFileSync(newer, "utf8")).toBe(newerContents);
+      expect(readFileSync(corrupt, "utf8")).toBe("{");
+      SLOT_IDS.forEach(clearSlot);
     });
   });
 

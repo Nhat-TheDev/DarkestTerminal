@@ -3,7 +3,7 @@ import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
 import { digitHint } from "./keyHints";
 import { t } from "../data/strings";
 import { getClass } from "../data/classes";
-import { listSlots, type SlotEntry } from "../engine/save";
+import { continuableSlots, listSlots, type SlotEntry } from "../engine/save";
 import type { Id } from "../types";
 
 export type SlotSelectMode = "new" | "continue";
@@ -22,6 +22,8 @@ function slotNumber(id: Id): number {
 export interface SlotChoice {
   id: Id;
   overwrite: boolean;
+  /** False for a slot whose run ended: it continues at party select for the slot's next run. */
+  hasRun: boolean;
 }
 
 export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<SlotChoice | null> {
@@ -43,7 +45,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     const footer = new TextRenderable(renderer, { id: "saveselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
     root.add(footer);
 
-    const slots: SlotEntry[] = listSlots().filter((slot) => mode === "new" || slot.meta !== null);
+    const slots: SlotEntry[] = mode === "new" ? listSlots() : continuableSlots();
     let pendingOverwrite: SlotEntry | null = null;
 
     function draw(): void {
@@ -79,7 +81,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
 
     const onKey = (key: KeyEvent) => {
       if (pendingOverwrite) {
-        if (key.name === "1") finish({ id: pendingOverwrite.id, overwrite: true });
+        if (key.name === "1") finish({ id: pendingOverwrite.id, overwrite: true, hasRun: true });
         else if (key.name === "escape") {
           pendingOverwrite = null;
           draw();
@@ -97,7 +99,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
         draw();
         return;
       }
-      finish({ id: slot.id, overwrite: false });
+      finish({ id: slot.id, overwrite: false, hasRun: slot.meta !== null });
     };
     renderer.keyInput.on("keypress", onKey);
   });

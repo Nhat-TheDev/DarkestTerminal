@@ -239,6 +239,11 @@ export function listSlots(): SlotEntry[] {
   });
 }
 
+/** The slots Continue offers. A slot whose save can't be loaded isn't one that ended: a new run there would overwrite the file. */
+export function continuableSlots(): SlotEntry[] {
+  return listSlots().filter((slot) => slot.meta !== null || (slot.runCount > 0 && !existsSync(savePath(slot.id))));
+}
+
 export function firstFreeSlotId(): Id | null {
   return listSlots().find((slot) => slot.meta === null)?.id ?? null;
 }
