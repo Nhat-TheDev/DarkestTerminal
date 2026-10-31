@@ -1,13 +1,22 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { getCatalog, computeCharacter, computeMonster, computeDamage, computeSkillPreview, computeMatchup, simulateLevelByDepth } from "./calc";
-import type { MonsterTier } from "../../src/types";
+import type { MonsterArchetype, MonsterTier, SkillDefinition } from "../../src/types";
+import { MONSTER_ARCHETYPES, MONSTER_SKILLS, assertMonsterDataConsistent, assertMonsterKitConsistent } from "../../src/data/monsters";
 import type { FearTier } from "../../src/engine/resolver";
+import { parseBackdrops, type BackdropsFile } from "../../src/data/backdrops";
+import { parseRoomNames, type RoomNameEntry } from "../../src/data/roomNames";
+import { propBoundsError } from "../../src/ui/backdrop";
+import type { EventDefinition } from "../../src/types";
+import { previewScene, type PreviewOptions } from "./backdropPreview";
+import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
 const SPRITES_PATH = path.join(DATA_DIR, "sprites.json");
 const MONSTERS_PATH = path.join(DATA_DIR, "monsters.json");
+const BACKDROPS_PATH = path.join(DATA_DIR, "backdrops.json");
+const ROOM_NAMES_PATH = path.join(DATA_DIR, "room-names.json");
 const PORT = 4592;
 
 function json(data: unknown, status = 200): Response {
@@ -28,6 +37,14 @@ async function readJsonFile(name: string): Promise<unknown> {
   return JSON.parse(raw);
 }
 
+async function roomEntriesOnDisk(): Promise<RoomNameEntry[]> {
+  return Object.values(parseRoomNames(await readJsonFile("room-names.json"))).flat();
+}
+
+async function eventsOnDisk(): Promise<EventDefinition[]> {
+  return (await readJsonFile("events.json")) as EventDefinition[];
+}
+
 async function writeJsonFile(name: string, data: unknown): Promise<void> {
   await writeFile(path.join(DATA_DIR, name), JSON.stringify(data, null, 2) + "\n", "utf8");
 }
@@ -44,7 +61,7 @@ function applyNumericPatch(target: Record<string, unknown>, patch: Record<string
 const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const;
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
 const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed", "expReward"] as const;
-const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "executeCooldownTurns", "defensiveLowHpSkillChance"] as const;
+const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "defensiveLowHpSkillChance"] as const;
 const BALANCE_SURVIVAL_FIELDS = [
   "initialFear", "initialSatiety", "satietyDrainCombat", "satietyDrainEvent", "exhaustedThreshold",
   "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",
@@ -167,6 +184,35 @@ const ENTITY_FILES: Record<EntityType, string> = {
   "monster-skill": "monster-skills.json",
 };
 
+/**
+ * The same checks the game runs when data/monsters.json and data/monster-skills.json load, run on the
+ * catalog as it would be after this write — so the editor refuses an edit that would stop the game
+ * (and this server, which imports the same loaders) from starting. A status edit is checked for the
+ * one thing that would break them: removing or renaming an id a monster skill or shell still names.
+ */
+function monsterCatalogError(entityType: EntityType, entries: { id: string }[]): string | null {
+  try {
+    if (entityType === "monster" || entityType === "monster-skill") {
+      const archetypes = entityType === "monster" ? (entries as unknown as MonsterArchetype[]) : MONSTER_ARCHETYPES;
+      const skills = entityType === "monster-skill" ? (entries as unknown as SkillDefinition[]) : MONSTER_SKILLS;
+      assertMonsterDataConsistent(archetypes);
+      assertMonsterKitConsistent(archetypes, skills);
+    }
+    if (entityType === "status") {
+      const ids = new Set(entries.map((e) => e.id));
+      const named = [
+        ...MONSTER_SKILLS.flatMap((s) => [...(s.effects ?? []), ...(s.chargeEffects ?? [])].flatMap((e) => [e.statusEffectId, ...(e.alsoApplyStatusEffectIds ?? [])])),
+        ...MONSTER_ARCHETYPES.flatMap((a) => (a.shell ? [a.shell.breakStatusId] : [])),
+      ].filter((id): id is string => id !== undefined);
+      const missing = named.find((id) => !ids.has(id));
+      if (missing) return `Status "${missing}" is still used by a monster skill or shell.`;
+    }
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  return null;
+}
+
 function validateEntry(entry: unknown): string | null {
   if (typeof entry !== "object" || entry === null) return "Entry must be an object.";
   const { id, name, description } = entry as Record<string, unknown>;
@@ -235,6 +281,74 @@ Bun.serve({
       data[category][id] = sprite as SpriteData;
       await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
       return json({ ok: true });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/backdrops") {
+      const data = await readFile(BACKDROPS_PATH, "utf8");
+      return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/room-names") {
+      const data = await readFile(ROOM_NAMES_PATH, "utf8");
+      return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/backdrops") {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const file = parseBackdrops(body, await roomEntriesOnDisk(), await eventsOnDisk());
+        const outOfBounds = propBoundsError(file);
+        if (outOfBounds) return badRequest(outOfBounds);
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
+      await writeFile(BACKDROPS_PATH, JSON.stringify(body, null, 2) + "\n", "utf8");
+      return json({ ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/room-names") {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const entries = Object.values(parseRoomNames(body)).flat();
+        parseBackdrops(await readJsonFile("backdrops.json"), entries, await eventsOnDisk());
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
+      await writeFile(ROOM_NAMES_PATH, JSON.stringify(body, null, 2) + "\n", "utf8");
+      return json({ ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/backdrop-preview") {
+      let body: { file?: unknown; sceneId?: unknown } & Partial<PreviewOptions>;
+      try {
+        body = (await req.json()) as typeof body;
+      } catch {
+        return badRequest("Body is not valid JSON.");
+      }
+      try {
+        const file = parseBackdrops(body.file, []) as BackdropsFile;
+        if (typeof body.sceneId !== "string") return badRequest("sceneId must be a string.");
+        return json(
+          previewScene(file, body.sceneId, {
+            dimmed: body.dimmed === true,
+            shadow: typeof body.shadow === "boolean" ? body.shadow : undefined,
+            party: Array.isArray(body.party) ? body.party : [],
+            monsters: Array.isArray(body.monsters) ? body.monsters : [],
+          }),
+        );
+      } catch (e) {
+        return badRequest((e as Error).message);
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/character") {
@@ -366,7 +480,7 @@ Bun.serve({
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/balance") {
-      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown };
+      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       const balance = (await readJsonFile("balance-config.json")) as Record<string, unknown>;
       const flatSections: [string, readonly string[]][] = [
@@ -393,6 +507,22 @@ Bun.serve({
           const err = applyTierRangePatch(currency.coinDropByTier as Record<string, unknown>, currencyPatch.coinDropByTier as Record<string, unknown>, COIN_DROP_TIERS);
           if (err) return badRequest(err);
         }
+      }
+      if (body.targeting !== undefined) {
+        if (typeof body.targeting !== "object" || body.targeting === null) return badRequest("targeting must be an object.");
+        const targeting = body.targeting as TargetingConfig;
+        const err = targetingConfigError(targeting);
+        if (err) return badRequest(err);
+        const orphan = MONSTER_ARCHETYPES.find((m) => !(m.aiPattern in targeting.profiles));
+        if (orphan) return badRequest(`${orphan.id} uses aiPattern "${orphan.aiPattern}", which this config drops.`);
+        balance.targeting = {
+          lowHpRankScores: targeting.lowHpRankScores,
+          fearRankScores: targeting.fearRankScores,
+          damageRankScores: targeting.damageRankScores,
+          damageMemoryDecay: targeting.damageMemoryDecay,
+          rangeScores: targeting.rangeScores,
+          profiles: targeting.profiles,
+        };
       }
       await writeJsonFile("balance-config.json", balance);
       return json({ ok: true });
@@ -462,6 +592,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
         if (pairingError) return badRequest(pairingError);
         entries.push(entry);
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         // Must run before writing monsters.json: that write makes `bun --watch` restart this process,
         // cutting off any await after it. sprites.json isn't imported, so writing it doesn't restart.
         if (entityType === "monster") await ensureMonsterSprites(entry as { id: string; roles?: MonsterTier[] });
@@ -482,6 +614,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
         if (pairingError) return badRequest(pairingError);
         entries[index] = entry;
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         await writeJsonFile(file, entries);
         return json({ ok: true });
       }
@@ -493,6 +627,8 @@ Bun.serve({
         const pairingError = entityType === "item" ? trophyPairingError(entries[index], undefined) : null;
         if (pairingError) return badRequest(pairingError);
         entries.splice(index, 1);
+        const catalogError = monsterCatalogError(entityType, entries);
+        if (catalogError) return badRequest(catalogError);
         await writeJsonFile(file, entries);
         return json({ ok: true });
       }

@@ -39,34 +39,36 @@ describe("status effect turn-countdown timing, per category", () => {
 
   test("Stat-mod: a 1-turn buff is already gone by the end of its own casting round", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
 
-    queueAction(combat, self, "shield-guard", [self], ctx);
+    knight.level = 10;
+    knight.unlockedSkillIds.push("rally");
+    knight.mp = knight.maxMp;
+    queueAction(combat, self, "rally", [self], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(false);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "taunt")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "rallied")).toBe(false);
   });
 
   test("Stat-mod: a 2-turn debuff decrements every round-end with no free round", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2 });
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
     queueAction(combat, self, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.find((s) => s.statusEffectId === "weakened")?.turnsRemaining).toBe(1);
+    expect(knight.activeStatusEffects.find((s) => s.statusEffectId === "weakened")?.turnsRemaining).toBe(1);
 
     queueAction(combat, self, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
   });
 
   test("Special, self-cast (Poison Coat): the casting round doesn't count; ticks at the caster's own next turn", () => {
@@ -129,18 +131,18 @@ describe("status effect turn-countdown timing, per category", () => {
 
   test("Special, cross-target (Stunned): a target who hasn't acted yet this round ticks within that same round", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const ratRef: CombatantRef = { kind: "monster", id: rat.id };
 
-    // Simulates a faster attacker's stun landing before this round's turn order reaches Vanguard.
-    vanguard.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
-    queueAction(combat, vanguardRef, "slash", [ratRef], ctx);
+    // Simulates a faster attacker's stun landing before this round's turn order reaches Knight.
+    knight.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 1 });
+    queueAction(combat, knightRef, "slash", [ratRef], ctx);
     resolveRound(combat, ctx);
 
     expect(combat.log.some((l) => l.text.includes("stunned"))).toBe(true);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "stunned")).toBe(false);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "stunned")).toBe(false);
   });
 });

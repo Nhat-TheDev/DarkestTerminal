@@ -195,6 +195,50 @@ describe("Plague Doctor passive: double-roll debuff proc", () => {
       expect(landed).toBeGreaterThan(0);
     });
   });
+  test("each hit rolls the proc as many times as the passive's procRolls", () => {
+    const passive = getClass("plague-doctor").passiveSkill;
+    const rank3 = passive.ranks.find((r) => r.rank === 3)!;
+    withOverride(rank3, "procChancePercent", 100, () =>
+      withOverride(passive, "debuffPool", ["burning", "poisoned"], () =>
+        withOverride(passive, "procRolls", 1, () => {
+          for (let seed = 1; seed <= 50; seed++) {
+            const { ctx } = makeCtx(seed);
+            const doctor = ctx.party.find((p) => p.classId === "plague-doctor")!;
+            doctor.level = 35;
+            const target = spawnMonster("goblin", 1);
+            fireOnDamageDealt(doctor, target, 10, ctx);
+            expect(target.activeStatusEffects.length).toBe(1);
+          }
+        })
+      )
+    );
+  });
+});
+
+describe("Class passive hooks fire on the declared fields, not the class id", () => {
+  test("a Knight given the Rogue's passive deals its bonus on a poisoned target", () => {
+    withOverride(getClass("knight"), "passiveSkill", getClass("rogue").passiveSkill, () => {
+      const { ctx } = makeCtx();
+      const knight = ctx.party.find((p) => p.classId === "knight")!;
+      knight.level = 35;
+      const target = spawnMonster("goblin", 1);
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, knight, target, { log: [] });
+      const before = target.hp;
+      fireOnDamageDealt(knight, target, 10, ctx);
+      expect(before - target.hp).toBe(23);
+    });
+  });
+
+  test("a Knight given the Mage's passive shreds on hit", () => {
+    withOverride(getClass("knight"), "passiveSkill", getClass("mage").passiveSkill, () => {
+      const { ctx } = makeCtx();
+      const knight = ctx.party.find((p) => p.classId === "knight")!;
+      knight.level = 35;
+      const target = spawnMonster("goblin", 1);
+      fireOnDamageDealt(knight, target, 10, ctx);
+      expect(target.activeStatusEffects.some((s) => s.statusEffectId === "shredded-iii")).toBe(true);
+    });
+  });
 });
 
 describe("On-hit statuses read their status and duration from the effect that grants them", () => {
@@ -226,7 +270,7 @@ describe("On-hit statuses read their status and duration from the effect that gr
         let applied: { turnsRemaining: number } | undefined;
         for (let seed = 1; seed <= 500 && !applied; seed++) {
           const { ctx } = makeCtx(seed);
-          const bearer = ctx.party.find((p) => p.classId === "vanguard")!;
+          const bearer = ctx.party.find((p) => p.classId === "knight")!;
           bearer.equippedArtifactIds.push("serpent-ring");
           const target = spawnMonster("goblin", 1);
           fireOnDamageDealt(bearer, target, 10, ctx);

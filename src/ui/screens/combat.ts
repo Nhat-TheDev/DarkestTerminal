@@ -1,16 +1,17 @@
 import { StyledText, type TextChunk, type KeyEvent } from "@opentui/core";
 import type { Character, CombatantRef, CombatStat, SkillDefinition, SkillEffect, SkillTarget, ItemDefinition } from "../../types";
 import type { Game } from "../../engine/game";
-import { getActorByRef, checkSkillUsable, checkItemUsable } from "../../engine/combat";
+import { getActorByRef, checkSkillUsable, checkItemUsable, channelStatus, commandableSummons, commandedSkill, isCommandSkill } from "../../engine/combat";
+import { getSkill } from "../../data/classes";
 import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
-import { signed } from "../../data/items";
+import { describeItemEffects, signed } from "../../data/items";
 import { BALANCE } from "../../data/balanceConfig";
 import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
-import { inventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
-import { paginate } from "../pagination";
+import { combatInventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
+import { paginate, ITEM_PAGE_SIZE } from "../pagination";
 import { proceedAfterVictory, type ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
 import { targetChoiceLines } from "../targetPicker";
@@ -57,12 +58,19 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
 export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
   const targetSuffix = targetSuffixFor(e, sk);
   if (e.kind === "damage") {
-    const statLabel = sk.isMagic ? "Magic Power" : "Attack";
+    const statLabel = e.scalesWithAttackAndMagic ? "(Attack + Magic Power)" : sk.isMagic ? "Magic Power" : "Attack";
     const percent = e.offenseMultiplierPercent ?? 100;
     const base = e.amount ?? 0;
+    if (e.scalesWithAttackAndMagic && base !== 0) return t("ui.skillEffectDamageHybrid", { percent, statAmount: base, targetSuffix });
     return base === 0
       ? t("ui.skillEffectDamageScalingOnly", { percent, statLabel, targetSuffix })
       : t("ui.skillEffectDamageScaling", { percent, statLabel, statAmount: base, targetSuffix });
+  }
+  if (e.kind === "heal" && e.casterMaxHpPercent) {
+    const parts = [String(e.amount ?? 0)];
+    parts.push(t("ui.healCasterMaxHpPart", { percent: e.casterMaxHpPercent }));
+    const head = t("ui.skillEffectHealParts", { parts: parts.join(" + "), targetSuffix });
+    return e.lowHpHealBonus ? `${head}\n${t("ui.skillLowHpHealLine", { percent: e.lowHpHealBonus.maxBonusPercent, threshold: e.lowHpHealBonus.fullBonusBelowHpPercent })}` : head;
   }
   if (e.kind === "heal" && sk.isMagic) {
     return t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
@@ -78,7 +86,7 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
       body = t("ui.skillEffectRestoreMp", { amount: e.amount ?? 0 });
       break;
     case "modifyStat":
-      body = `${signed(e.amount ?? 0)} ${e.stat ? SURVIVAL_STAT_LABEL[e.stat] ?? e.stat : ""}`;
+      body = `${signed(e.amount ?? 0)} ${e.stat ? SURVIVAL_STAT_LABEL[e.stat] ?? e.stat : ""}${e.percentOfCurrent ? `, ${signed(Math.sign(e.amount ?? 0) * e.percentOfCurrent)}% of current` : ""}`;
       break;
     case "modifyCombatStat":
       body = `${signed(e.amount ?? 0)} ${e.combatStat ? COMBAT_STAT_LABEL[e.combatStat] : ""}`;
@@ -86,14 +94,25 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     case "applyStatusEffect": {
       if (!e.statusEffectId) return null;
       const def = getStatusEffect(e.statusEffectId);
-      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
+      const stacks = e.stackCount ? ` ${t("ui.skillStackCount", { range: e.stackCount.min === e.stackCount.max ? String(e.stackCount.min) : `${e.stackCount.min}-${e.stackCount.max}` })}` : "";
+      const applied = `${t("ui.skillEffectApplyStatus", { status: statusDisplayName(def) })}${stacks}${statusTurnsSuffix(e.durationTurns ?? 1)}`;
       const bullet = t("ui.skillEffectBullet", { chance, body: applied, targetSuffix });
       const parts = statusMechanicsParts(def, { amount: e.amount, minPercent: e.minPercent });
-      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics }))].join("\n");
+      const overflow = e.overflowDamage
+        ? [t("ui.skillOverflowLine", { amount: e.overflowDamage.amount, percent: e.overflowDamage.offenseMultiplierPercent, statLabel: sk.isMagic ? "Magic Power" : "Attack", max: e.overflowDamage.maxHitsPerTarget })]
+        : [];
+      return [bullet, ...parts.map((mechanics) => t("ui.skillEffectStatusDetail", { mechanics })), ...overflow].join("\n");
     }
     case "removeStatusEffect":
-      body = t("ui.skillEffectRemoveStatus");
+      body =
+        e.stacks !== undefined && e.statusEffectId
+          ? t("ui.skillEffectRemoveStacks", { count: e.stacks, status: statusDisplayName(getStatusEffect(e.statusEffectId)) })
+          : t("ui.skillEffectRemoveStatus");
       break;
+    case "commandSummons":
+      return t("ui.skillEffectCommandSummons", { percent: e.powerPercent ?? 100 });
+    case "throwDice":
+      return t("ui.skillEffectThrowDice", { amount: e.amount ?? 0, percent: e.offenseMultiplierPercent ?? 100, statLabel: sk.isMagic ? "Magic Power" : "Attack" });
     default:
       body = null;
   }
@@ -129,6 +148,35 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
       .map((e) => Math.min(100, Math.round((e.critChance ?? 0) * 100 + BALANCE.combat.baseCritChancePercent)))
   );
   for (const percent of critPercents) lines.push(t("ui.skillCritChanceLine", { percent }));
+  for (const e of sk.effects ?? []) {
+    if (e.kind !== "damage") continue;
+    if (e.damageRollFaces?.length) lines.push(t("ui.skillDamageRollLine", { faces: e.damageRollFaces.map((f) => `${f}%`).join(" / ") }));
+    if (e.hitCountRange) lines.push(t("ui.skillHitCountLine", { min: e.hitCountRange.min, max: e.hitCountRange.max }));
+    if (e.scalesWithDebuffCount) lines.push(t("ui.skillDebuffScalingLine", { percent: e.scalesWithDebuffCount.percentPerDebuff }));
+    if (e.ignoreDefensePercent) lines.push(t("ui.skillIgnoreDefenseLine", { percent: e.ignoreDefensePercent }));
+    if (e.lifestealPercent) lines.push(t("ui.skillLifestealLine", { percent: e.lifestealPercent }));
+    if (e.lifestealPercent && e.lifestealPartySharePercent) lines.push(t("ui.skillLifestealShareLine", { percent: e.lifestealPartySharePercent }));
+  }
+  for (const e of sk.effects ?? []) {
+    if (e.kind === "throwDice" && e.damageRollFaces?.length) lines.push(t("ui.skillDiceFacesLine", { faces: e.damageRollFaces.map((f) => `${f}%`).join(" / ") }));
+  }
+  if (sk.coinFlip) {
+    const { winChance, loseSelfStatuses, resetCooldownOnLose } = sk.coinFlip;
+    lines.push(t("ui.skillCoinFlipLine", { chance: Math.round(winChance * 100) }));
+    const statuses = (loseSelfStatuses ?? []).map((s) => statusDisplayName(getStatusEffect(s.statusEffectId))).join(", ");
+    if (statuses) lines.push(t("ui.skillCoinFlipLoseLine", { statuses }));
+    if (resetCooldownOnLose) lines.push(t("ui.skillCoinFlipResetLine"));
+  }
+  if (sk.grantsDice) lines.push(t("ui.skillGrantsDiceLine", { count: sk.grantsDice }));
+  if (sk.alwaysHits) lines.push(t("ui.skillAlwaysHitsLine"));
+  if (sk.hpCost) lines.push(t("ui.skillHpCostLine", { full: sk.hpCost.atFullHpPercent, low: sk.hpCost.atLowHpPercent, threshold: sk.hpCost.lowHpBelowPercent }));
+  if (sk.targetsOtherAlliesOnly) lines.push(t("ui.skillOthersOnlyLine"));
+  if (sk.allyTurnOrderBonus) lines.push(t("ui.skillAllyTurnOrderLine", { speed: sk.allyTurnOrderBonus }));
+  if (sk.turnOrderSpeedBonus) lines.push(t("ui.skillSelfTurnOrderLine", { speed: sk.turnOrderSpeedBonus }));
+  if (sk.casterHpBelowBonus) {
+    const { hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent } = sk.casterHpBelowBonus;
+    lines.push(t(lifestealPercent ? "ui.skillCasterLowHpLifestealLine" : "ui.skillCasterLowHpLine", { threshold: hpPercentThreshold, percent: offenseMultiplierPercentBonus, lifesteal: lifestealPercent ?? 0 }));
+  }
   return lines;
 }
 
@@ -137,6 +185,8 @@ export type CombatUiState = Extract<
   | { kind: "pickAction" }
   | { kind: "pickSkill" }
   | { kind: "skillDetail" }
+  | { kind: "pickCommandMinion" }
+  | { kind: "pickCommandSkill" }
   | { kind: "pickItemInCombat" }
   | { kind: "pickTarget" }
   | { kind: "roundResolved" }
@@ -145,10 +195,22 @@ export type CombatUiState = Extract<
 
 function skillMeta(actor: Character, sk: SkillDefinition): { dmgAmount: number | null; usesLeft: number | null } {
   const dmgEffect = sk.effects?.find((e) => e.kind === "damage");
-  const offensiveStat = sk.isMagic ? actor.magicPower : actor.attack;
+  const offensiveStat = dmgEffect?.scalesWithAttackAndMagic ? actor.attack + actor.magicPower : sk.isMagic ? actor.magicPower : actor.attack;
   const dmgAmount = dmgEffect ? Math.max(1, Math.round((dmgEffect.amount ?? 0) + offensiveStat * ((dmgEffect.offenseMultiplierPercent ?? 100) / 100))) : null;
   const usesLeft = sk.usesPerCombat !== undefined ? actor.usesRemainingThisCombat[sk.id] ?? sk.usesPerCombat : null;
   return { dmgAmount, usesLeft };
+}
+
+/** The minions the acting character can Command right now. */
+function commandMinions(game: Game, actorRef: CombatantRef) {
+  return game.state.combat ? commandableSummons(getActorByRef(actorRef, game.ctx) as Character, game.state.combat, game.ctx) : [];
+}
+
+/** The minion's signature skills, each as the caster would cast it through `command`. */
+function commandSkillChoices(game: Game, ui: Extract<UiState, { kind: "pickCommandSkill" }>) {
+  const summon = commandMinions(game, ui.actorRef).find((s) => s.id === ui.summonId);
+  if (!summon) return [];
+  return (getSummonArchetype(summon.archetypeId).signatureSkillIds ?? []).map((id) => ({ id, skill: commandedSkill(ui.skill, summon, id), base: getSummonSkill(id) }));
 }
 
 export function trySelectSkill(ctx: ScreenContext, actorRef: CombatantRef, skill: SkillDefinition): void {
@@ -158,8 +220,21 @@ export function trySelectSkill(ctx: ScreenContext, actorRef: CombatantRef, skill
     ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: unusable.reason }));
     return;
   }
+  if (isCommandSkill(skill)) {
+    if (commandMinions(ctx.game, actorRef).length === 0) {
+      ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: t("errors.commandNeedsMinion") }));
+      return;
+    }
+    ctx.setUi({ kind: "pickCommandMinion", actorRef, skill });
+    return;
+  }
   if (skill.target === "singleEnemy" || skill.target === "singleAlly") {
-    const candidates = skill.target === "singleEnemy" ? ctx.game.livingEnemyRefs() : ctx.game.livingAllyRefs();
+    const allies = ctx.game.livingAllyRefs().filter((r) => !(skill.targetsOtherAlliesOnly && r.kind === actorRef.kind && r.id === actorRef.id));
+    const candidates = skill.target === "singleEnemy" ? ctx.game.livingEnemyRefs() : allies;
+    if (candidates.length === 0) {
+      ctx.reportUnusable(t("ui.skillUnusableNamed", { skill: skill.name, reason: t("errors.cannotTargetSelf") }));
+      return;
+    }
     ctx.setUi({ kind: "pickTarget", actorRef, source: { kind: "skill", skill }, candidates });
     return;
   }
@@ -195,10 +270,21 @@ export function trySelectItem(ctx: ScreenContext, actorRef: CombatantRef, item: 
 export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, digit: number | null): void {
   switch (ui.kind) {
     case "pickAction": {
+      const channeling = channelStatus(getActorByRef(ui.actorRef, ctx.game.ctx));
+      if (channeling) {
+        if (digit === 1) {
+          ctx.game.holdChannel(ui.actorRef);
+          ctx.syncUiToGameState();
+        } else if (digit === 2) {
+          ctx.game.breakChannel(ui.actorRef);
+          ctx.setUi({ kind: "pickAction", actorRef: ui.actorRef });
+        }
+        break;
+      }
       if (digit === 1) {
         ctx.setUi({ kind: "pickSkill", actorRef: ui.actorRef });
       } else if (digit === 2) {
-        if (inventoryEntries(ctx.game.state.inventory).length === 0) {
+        if (combatInventoryEntries(ctx.game.state.inventory).length === 0) {
           ctx.reportUnusable(t("ui.noItemsToUse"));
           break;
         }
@@ -223,9 +309,31 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
       if (key.name === "return") trySelectSkill(ctx, ui.actorRef, ui.skill);
       break;
     }
+    case "pickCommandMinion": {
+      if (digit === null) break;
+      const summon = commandMinions(ctx.game, ui.actorRef)[digit - 1];
+      if (summon) ctx.setUi({ kind: "pickCommandSkill", actorRef: ui.actorRef, skill: ui.skill, summonId: summon.id });
+      break;
+    }
+    case "pickCommandSkill": {
+      if (digit === null) break;
+      const choice = commandSkillChoices(ctx.game, ui)[digit - 1];
+      if (!choice) break;
+      const order = { summonId: ui.summonId, skillId: choice.id };
+      const target = choice.skill.target;
+      if (target === "singleEnemy" || target === "singleAlly") {
+        const candidates = target === "singleEnemy" ? ctx.game.livingEnemyRefs() : ctx.game.livingAllyRefs();
+        ctx.setUi({ kind: "pickTarget", actorRef: ui.actorRef, source: { kind: "command", skill: choice.skill, commandSkillId: ui.skill.id, order }, candidates });
+        break;
+      }
+      const err = ctx.game.queueCommand(ui.actorRef, ui.skill.id, order, ctx.game.autoTargets(target, ui.actorRef) ?? [ui.actorRef]);
+      if (err) ctx.reportUnusable(err.reason);
+      ctx.syncUiToGameState();
+      break;
+    }
     case "pickItemInCombat": {
       if (digit === null) break;
-      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
+      const { pageItems } = paginate(combatInventoryEntries(ctx.game.state.inventory), ctx.getListPage(), ITEM_PAGE_SIZE);
       const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "itemDetail", item: entry.item, origin: { kind: "combat", actorRef: ui.actorRef } });
@@ -238,7 +346,9 @@ export function handleKey(ctx: ScreenContext, ui: CombatUiState, key: KeyEvent, 
       const err =
         ui.source.kind === "skill"
           ? ctx.game.queue(ui.actorRef, ui.source.skill.id, [target])
-          : ctx.game.queueItem(ui.actorRef, ui.source.item.id, [target]);
+          : ui.source.kind === "command"
+            ? ctx.game.queueCommand(ui.actorRef, ui.source.commandSkillId, ui.source.order, [target])
+            : ctx.game.queueItem(ui.actorRef, ui.source.item.id, [target]);
       if (err) ctx.reportUnusable(err.reason);
       ctx.syncUiToGameState();
       break;
@@ -278,7 +388,16 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
 
     case "pickAction": {
       const actor = getActorByRef(ui.actorRef, game.ctx) as Character;
-      const hasItems = inventoryEntries(s.inventory).length > 0;
+      const channeling = channelStatus(actor);
+      if (channeling) {
+        const skill = getSkill(getStatusEffect(channeling.statusEffectId).channelSkillId!);
+        return [
+          t("ui.channelingTurn", { actor: actor.name, skill: skill.name, turns: channeling.turnsRemaining }),
+          t("ui.channelHoldOption", { skill: skill.name }),
+          t("ui.channelBreakOption", { skill: skill.name }),
+        ].join("\n");
+      }
+      const hasItems = combatInventoryEntries(s.inventory).length > 0;
       const lines = [
         t("ui.turnOfChooseAction", { actor: actor.name }),
         t("ui.fightOption"),
@@ -317,22 +436,44 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
       return lines.join("\n");
     }
 
+    case "pickCommandMinion": {
+      const lines = [t("ui.chooseCommandMinion")];
+      commandMinions(game, ui.actorRef).forEach((summon, i) => lines.push(t("ui.commandMinionLine", { i: i + 1, name: summon.name, left: summon.maxActions - summon.actionsTaken })));
+      return lines.join("\n");
+    }
+
+    case "pickCommandSkill": {
+      const summon = game.ctx.summons.find((x) => x.id === ui.summonId);
+      const lines = [t("ui.chooseCommandSkill", { summon: summon?.name ?? "" })];
+      commandSkillChoices(game, ui).forEach(({ skill, base }, i) => {
+        lines.push(t("ui.commandSkillLine", { i: i + 1, name: base.name, desc: base.description }));
+        for (const effect of skill.effects ?? []) {
+          const line = skillEffectLine(effect, skill);
+          if (line) lines.push(line);
+        }
+      });
+      return lines.join("\n");
+    }
+
     case "pickItemInCombat": {
-      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
+      const { pageItems, page: p, pages } = paginate(combatInventoryEntries(s.inventory), page, ITEM_PAGE_SIZE);
       const lines = [t("ui.chooseItemToUse")];
       pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: `${itemIcon(item)} ${item.name}`, qty }));
+        lines.push(t("ui.inventoryEffectLine", { effect: describeItemEffects(item) }));
       });
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
     }
 
     case "pickTarget": {
-      const sourceName = ui.source.kind === "skill" ? ui.source.skill.name : ui.source.item.name;
-      const sourceTarget = ui.source.kind === "skill" ? ui.source.skill.target : ui.source.item.target;
-      const effects = ui.source.kind === "skill" ? ui.source.skill.effects ?? [] : ui.source.item.effects;
+      const sourceName = ui.source.kind === "item" ? ui.source.item.name : ui.source.skill.name;
+      const sourceTarget = ui.source.kind === "item" ? ui.source.item.target : ui.source.skill.target;
+      const effects = ui.source.kind === "item" ? ui.source.item.effects : ui.source.skill.effects ?? [];
       const candidates = ui.candidates.map((ref) => ({ ref, actor: getActorByRef(ref, game.ctx) }));
-      return joinLines([[plainChunk(t("ui.chooseTargetFor", { source: sourceName }))], ...targetChoiceLines(candidates, effects, sourceTarget === "singleAllyOrEnemy")]);
+      // Every enemy can be untargetable at once (an airborne Dragon): say so rather than show an empty list.
+      const unreachable: TextChunk[][] = candidates.length === 0 ? [[colorChunk(t("ui.noTargetReachable"), PALETTE.dim)]] : [];
+      return joinLines([[plainChunk(t("ui.chooseTargetFor", { source: sourceName }))], ...targetChoiceLines(candidates, effects, sourceTarget === "singleAllyOrEnemy"), ...unreachable]);
     }
   }
 }
@@ -348,8 +489,12 @@ export function renderFooter(ui: CombatUiState, game: Game, page = 0): string {
     }
     case "skillDetail":
       return t("ui.footerSkillDetail");
+    case "pickCommandMinion":
+      return digitHint("ui.footerChooseMinionEsc", commandMinions(game, ui.actorRef).length);
+    case "pickCommandSkill":
+      return digitHint("ui.footerChooseSkillEsc", commandSkillChoices(game, ui).length);
     case "pickItemInCombat": {
-      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
+      const { pageItems } = paginate(combatInventoryEntries(game.state.inventory), page, ITEM_PAGE_SIZE);
       return digitHint("ui.footerChooseItemEsc", pageItems.length);
     }
     case "pickTarget":

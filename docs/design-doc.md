@@ -39,7 +39,7 @@ with the description of existing gameplay.
 - Each class has a shared **basic attack** (free, same structure across all classes, deals pure weapon damage) + several class-specific skills, defined in `data/classes.json`, unlocked gradually as the character levels up (`unlockLevel` field)
 - Class stats: **attack, defense, HP, mana, aggro** (chance of being targeted by monsters), **speed** (priority to act first) — values in `data/classes.json`
 - Some class-specific skills also have a **per-turn cooldown** (`cooldownTurns` field)
-- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (all 9 classes)
+- Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (all 12 classes)
 
 ### 1.6 Item & Artifact
 - **Consumable items**: restore HP/MP/fear/satiety, usable in or out of combat unless flagged `combatUsable: false` (e.g. the Camp-only Exploration Kit), dropped randomly by monsters
@@ -47,7 +47,7 @@ with the description of existing gameplay.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 
 ### 1.7 Abilities (meta-progression)
-- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs** in a `profile.json` save. Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's party select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
+- A persistent talent system separate from Artifacts: 1 Ability per character (vs. up to 3 Artifacts, no 2 characters sharing the same id), chosen before the run starts from a pool that **persists across runs in the same save slot** (each slot keeps its own profile). Both Elite and Boss kills can unlock a new ability instantly and for free; Boss kills additionally grant a Stardust currency (every 5 floors). On party wipe every non-common equipped ability is lost **for sure** — the player can spend that run's Stardust to reclaim exactly what was lost (no swapping for something else). The next run's party select simply sees whatever the pool looks like afterward — more choices over time as reclaims and new finds accumulate, fewer if a loss goes unreclaimed.
 - Full spec (mechanics, rarity/drop tables, full ability catalog, Stardust-buyback death flow): **[`gameplay-decisions/11-abilities.md`](./gameplay-decisions/11-abilities.md)** §11
 
 ### 1.8 Event room
@@ -93,7 +93,7 @@ Main type groups:
 ## 5. Detailed decisions (split into separate files)
 
 ### Gameplay / content — [`gameplay-decisions/`](./gameplay-decisions/00-index.md)
-- The class roster + stat table + skill list for each of the 9 classes, plus the 3-rank skill power-scaling system — `data/classes.json`
+- The class roster + stat table + skill list for each of the 12 classes, plus the 3-rank skill power-scaling system — `data/classes.json`
 - Monster: scaling formula by floor depth + `aggro`-based targeting + AI patterns + regular-monster skill kits — `data/monsters.json`
 - Fear/Satiety thresholds and fear tiers, and their effect back on combat — `data/balance-config.json`, `src/engine/resolver.ts`
 - Level system (tiered, non-linear growth) for attack/defense/maxHp/maxMp; character level (shared across the party, gained via EXP) is separate from dungeon floor level (`Floor.depth`, uncapped) — `data/level-growth.json`

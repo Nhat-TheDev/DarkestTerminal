@@ -1,13 +1,19 @@
 import { describe, test, expect } from "bun:test";
+import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
-import { App } from "../src/ui/app";
+import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
+import { saveRun, loadSave, gameFromSave, listSlots, continuableSlots, clearSlot } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
+import { ABILITIES } from "../src/data/abilities";
+import { loadProfile, saveProfile } from "../src/engine/profile";
 import type { Character, SkillDefinition, SkillEffect } from "../src/types";
-import { startCombat } from "../src/engine/combat";
-import { spawnMonster } from "../src/data/monsters";
+import { getActorByRef, startCombat } from "../src/engine/combat";
+import { spawnMonster, getArchetype, MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { resolveSkillEffect } from "../src/engine/resolver";
 import { getRoom, enterRoom } from "../src/engine/dungeon";
+import { getEvent } from "../src/data/events";
+import { GATEKEEPER_EVENT_ID } from "../src/engine/events/gatekeeper";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { showSlotSelect } from "../src/ui/saveSelect";
@@ -17,10 +23,13 @@ import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from 
 import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
+import * as inventoryScreen from "../src/ui/screens/inventory";
+import { TROPHY_ICON } from "../src/ui/state";
 import { getStatusEffect } from "../src/data/statusEffects";
-import { ITEMS } from "../src/data/items";
+import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
+import { PALETTE } from "../src/ui/theme";
 import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
@@ -39,7 +48,7 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     let guard = 0;
-    while (app.debugUiState.kind !== "artifactDecision" && guard < 40) {
+    while (app.debugUiState.kind !== "artifactDecision" && guard < 80) {
       guard++;
       if (app.debugUiState.kind === "roomReward" || app.debugUiState.kind === "skillDetail") mockInput.pressKey("RETURN");
       else mockInput.pressKey("1");
@@ -54,6 +63,9 @@ describe("headless UI smoke test", () => {
     await renderOnce();
 
     expect(game.state.pendingArtifactDecision).toBeNull();
+    expect(app.debugUiState.kind).toBe("memoryIntro");
+    mockInput.pressKey("RETURN");
+    await renderOnce();
     expect(app.debugUiState.kind).toBe("campPrompt"); // after the decision, before the floor advances
     expect(game.state.floor.depth).toBe(1);
 
@@ -66,8 +78,8 @@ describe("headless UI smoke test", () => {
   // The camp offer and the floor advance are held by the App, not the save, so a run reloaded
   // between the boss kill and the advance must pick the sequence back up from the cleared boss room.
   async function bossKilledThenReloadedAt(stopAt: "artifactDecision" | "campPrompt") {
-    let game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
-    game.currentSaveSlot = "slot1";
+    saveProfile("slot1", { ...loadProfile("slot1"), memoryUnlocked: true, memoryIntroShown: true });
+    let game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     room.type = "boss";
     const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
@@ -107,6 +119,7 @@ describe("headless UI smoke test", () => {
     setup.mockInput.pressKey("RETURN"); // skip Camp
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
+    clearSlot("slot1");
   }, 20000);
 
   test("a run reloaded on the post-boss Camp offer is offered Camp again and then advances", async () => {
@@ -117,7 +130,50 @@ describe("headless UI smoke test", () => {
     setup.mockInput.pressKey("RETURN"); // skip Camp
     await setup.renderOnce();
     expect(game.state.floor.depth).toBe(2);
+    clearSlot("slot1");
   }, 20000);
+
+  test("the monster panel shows a shell bearer's shell: hits left while intact, broken after the break", async () => {
+    // A real archetype (the panel needs its sprite) given a shell for the length of the test.
+    const spider = MONSTER_ARCHETYPES.find((a) => a.id === "giant-spider")!;
+    spider.shell = { hitsToBreak: { min: 3, max: 3 }, hitDamageCapMaxHpPercent: 5, breakStatusId: "stunned", breakDurationTurns: 1, reformAfterOwnTurns: 2 };
+    try {
+      const frameWith = async (hits: number) => {
+        const { renderer, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
+        const game = new Game(7);
+        const room = getRoom(game.state.floor, game.state.currentRoomId);
+        room.type = "boss";
+        const boss = spawnMonster("giant-spider", 1, { tier: "boss" });
+        game.ctx.monsters.push(boss);
+        room.monsterIds = [boss.id];
+        room.cleared = false;
+        game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+        for (let i = 0; i < hits; i++) resolveSkillEffect({ kind: "damage", amount: 1 }, game.state.party[0]!, boss, { log: [] });
+        new App(renderer, game);
+        await renderOnce();
+        return captureCharFrame();
+      };
+      expect(await frameWith(0)).toContain("Shell (3 hits)");
+      expect(await frameWith(1)).toContain("Shell (2 hits)");
+      expect(await frameWith(2)).toContain("Shell (1 hit)");
+      const broken = await frameWith(3);
+      expect(broken).toContain("Shell broken");
+      expect(broken).not.toContain("Shell (");
+    } finally {
+      delete spider.shell;
+    }
+  }, 20000);
+
+  test("a target prompt with nothing in reach says so instead of showing an empty list", () => {
+    const game = new Game(7);
+    const actor = game.state.party[0]!;
+    const skill = getSkill(actor.unlockedSkillIds.map(getSkill).find((s) => s.target === "singleEnemy")!.id);
+    const out = renderCombat(game, { kind: "pickTarget", actorRef: { kind: "character", id: actor.id }, source: { kind: "skill", skill }, candidates: [] }) as unknown as {
+      chunks: { text: string }[];
+    };
+    const text = out.chunks.map((c) => c.text).join("");
+    expect(text).toContain(t("ui.noTargetReachable"));
+  });
 
   test("merchant offer detail: cancel returns to list, buy purchases and closes", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
@@ -133,18 +189,18 @@ describe("headless UI smoke test", () => {
     const app = new App(renderer, game);
     await renderOnce();
 
-    expect(app.debugUiState.kind).toBe("eventMerchant");
+    expect(app.debugUiState.kind).toBe("eventArtifactShop");
 
     mockInput.pressKey("1"); // view the first offer's detail
     await renderOnce();
     let ui = app.debugUiState;
-    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    if (ui.kind !== "eventArtifactShop") throw new Error(`expected eventArtifactShop, got ${ui.kind}`);
     expect(ui.viewingOfferIndex).toBe(0);
 
     mockInput.pressKey("2"); // cancel back to the offer list
     await renderOnce();
     ui = app.debugUiState;
-    if (ui.kind !== "eventMerchant") throw new Error(`expected eventMerchant, got ${ui.kind}`);
+    if (ui.kind !== "eventArtifactShop") throw new Error(`expected eventArtifactShop, got ${ui.kind}`);
     expect(ui.viewingOfferIndex).toBeNull();
     expect(game.state.coins).toBe(9999);
     expect(game.state.activeEvent).not.toBeNull();
@@ -243,6 +299,71 @@ describe("key handler lifecycle", () => {
   });
 });
 
+describe("game over", () => {
+  async function defeatedRunInSlot() {
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
+    saveRun(game);
+    game.state.combat = null;
+    game.state.gameOver = "defeat";
+    game.state.abilityDeathResults = [];
+    const exits: RunExit[] = [];
+    const app = new App(setup.renderer, game, { onExit: (next) => exits.push(next) });
+    await setup.renderOnce();
+    return { setup, game, app, exits };
+  }
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+  test("defeat clears the run but keeps the slot for the next run", async () => {
+    const { game, app, setup } = await defeatedRunInSlot();
+    expect(app.debugUiState.kind).toBe("gameover");
+    expect(listSlots()[0]!.meta).toBeNull();
+    expect(game.currentSaveSlot).toBe("slot1");
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("[n] New Run   [Esc] Main Menu");
+    const lines = frame.split("\n");
+    expect(lines.some((line) => line.includes("[n] New Run") && !line.includes("[Esc]"))).toBe(true);
+    expect(lines.some((line) => line.includes("[Esc] Main Menu") && !line.includes("[n]"))).toBe(true);
+  });
+
+  test("[n] asks for a new run and [Esc] for the main menu; a stray [1] from the screen before does nothing", async () => {
+    const first = await defeatedRunInSlot();
+    first.setup.mockInput.pressKey("1");
+    await tick();
+    expect(first.exits).toEqual([]);
+    expect(first.app.debugUiState.kind).toBe("gameover");
+    first.setup.mockInput.pressKey("n");
+    await tick();
+    expect(first.exits).toEqual(["newRun"]);
+
+    const second = await defeatedRunInSlot();
+    second.setup.mockInput.pressEscape();
+    await tick();
+    await tick();
+    expect(second.exits).toEqual(["menu"]);
+  });
+
+  test("a slot whose run ended before the next party was picked still shows in Continue", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    clearSlot("slot5");
+    saveProfile("slot5", { ...loadProfile("slot5"), runCount: 2 });
+    const index = continuableSlots().findIndex((slot) => slot.id === "slot5");
+
+    const menu = showMainMenu(renderer);
+    await renderOnce();
+    mockInput.pressKey("x");
+    await renderOnce();
+    mockInput.pressKey("2");
+    expect(await menu).toBe("continue");
+
+    const slot = showSlotSelect(renderer, "continue");
+    await renderOnce();
+    expect(captureCharFrame()).toContain(t("saveSelect.endedLine", { i: index + 1, slot: 5, run: 2 }).trim());
+    mockInput.pressKey(String(index + 1));
+    expect(await slot).toEqual({ id: "slot5", overwrite: false, hasRun: false });
+  });
+});
+
 describe("character info screen", () => {
   test("shows which digit switches to which party member, and switches on that digit", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 47 });
@@ -256,7 +377,7 @@ describe("character info screen", () => {
 
     const opened = captureCharFrame();
     expect(opened).toContain("[2] Mage");
-    expect(opened).toContain("Vanguard (Level 1 Vanguard)");
+    expect(opened).toContain("Knight (Level 1 Knight)");
     expect(opened).toContain("[1-4] Character");
 
     mockInput.pressKey("3");
@@ -286,6 +407,38 @@ describe("list paging", () => {
     mockInput.pressArrow("left");
     await renderOnce();
     expect(firstItemLine()).toBe(page1);
+  });
+});
+
+describe("item lists", () => {
+  test("each item shows its effect summary on a second line", () => {
+    const game = new Game(1);
+    game.state.inventory = { "small-health-potion": 2 };
+    const potion = getItem("small-health-potion");
+    const lines = inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" }).split("\n");
+    const row = lines.findIndex((l) => l.includes("[1] ") && l.includes(potion.name));
+    expect(lines[row + 1]).toBe(t("ui.inventoryEffectLine", { effect: describeItemEffects(potion) }));
+  });
+
+  test("an item flagged combatUsable: false is listed out of combat but not in combat", () => {
+    const game = new Game(1);
+    const kit = getItem("exploration-kit");
+    expect(kit.combatUsable).toBe(false);
+    game.state.inventory = { [kit.id]: 1, "small-health-potion": 1 };
+    expect(inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" })).toContain(kit.name);
+    const actorRef = { kind: "character", id: game.state.party[0]!.id } as const;
+    const inCombat = renderCombat(game, { kind: "pickItemInCombat", actorRef }) as string;
+    expect(inCombat).not.toContain(kit.name);
+    expect(inCombat).toContain(getItem("small-health-potion").name);
+  });
+
+  test("a trophy is marked with its own icon", () => {
+    const game = new Game(1);
+    const trophy = ITEMS.find((i) => i.archetypeIds?.length)!;
+    game.state.inventory = { [trophy.id]: 1, "small-health-potion": 1 };
+    const list = inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" });
+    expect(list).toContain(`${TROPHY_ICON} ${trophy.name}`);
+    expect(list).toContain(`✚ ${getItem("small-health-potion").name}`);
   });
 });
 
@@ -646,7 +799,7 @@ describe("a panel scrolled with the mouse wheel", () => {
   /** A Rest room with a Runner in it, entered from a fresh run. */
   function gameInRunnerRoom(): Game {
     for (let seed = 1; seed < 300; seed++) {
-      const game = new Game(seed, ["vanguard", "mage", "rogue", "acolyte"]);
+      const game = new Game(seed, ["knight", "mage", "rogue", "acolyte"]);
       game.state.combat = null;
       const rest = game.state.floor.rooms.find((r) => r.type === "rest")!;
       game.state.currentRoomId = rest.id;
@@ -716,7 +869,7 @@ describe("layout", () => {
 
   /** Seed 7 opens on an entry-room ambush of normal monsters; `boss` swaps it for a lone boss. */
   async function openFight(width: number, height: number, boss = false) {
-    const game = new Game(7, ["vanguard", "mage", "rogue", "acolyte"]);
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
     if (boss) {
       const room = getRoom(game.state.floor, game.state.currentRoomId);
       const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
@@ -741,13 +894,13 @@ describe("layout", () => {
     expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
     expect(panelRows(frame, t("ui.panelMain"))).toBeGreaterThanOrEqual(10);
     expect(rows[44]).toContain("[Ctrl+C] Quit");
-    for (const abbr of ["VG", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
+    for (const abbr of ["KN", "MG", "RG", "AC"]) expect(frame).toMatch(new RegExp(`│[^│]*\\b${abbr}\\b`));
     for (const c of game.state.party) expect(frame).toContain(`${c.hp}/${c.maxHp}`);
   });
 
   test("the Log keeps its width on a wide terminal, and a long entry wraps under its icon", async () => {
     const { captureCharFrame, renderOnce, app } = await openFight(200, 45);
-    app.pushToast("Vanguard uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
+    app.pushToast("Knight uses Slash on Goblin for 23 damage, and the goblin staggers back into the corner.");
     app.tickReveal(); // the first tick renders, which queues the toast
     for (let i = 0; i < 500 && app.debugRevealActive; i++) app.tickReveal();
     await renderOnce();
@@ -756,7 +909,7 @@ describe("layout", () => {
     const left = rows[top]!.indexOf(`─${t("ui.panelLog")}`) - 1;
     expect(rows[top]!.indexOf("┐", left) - left + 1).toBe(35);
     const panel = rows.slice(top + 1, top + 1 + UNIT_BLOCK_HEIGHT).map((r) => r.slice(left + 1, left + 34));
-    const first = panel.findIndex((line) => line.includes("Vanguard uses"));
+    const first = panel.findIndex((line) => line.includes("Knight uses"));
     expect(first).toBeGreaterThanOrEqual(0);
     expect(panel[first + 1]).toMatch(/^ {2}\S/);
   });
@@ -779,6 +932,71 @@ describe("layout", () => {
     }
   });
 
+  async function openBossFight(archetypeId: string, tier: "boss" | "elite", meter?: number) {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const monster = spawnMonster(archetypeId, 1, { tier });
+    if (meter !== undefined) monster.telegraphMeter = meter;
+    game.ctx.monsters.push(monster);
+    room.monsterIds = [monster.id];
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    return setup;
+  }
+
+  test("a boss shows its telegraph meter under its HP, filled icons first", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("skeleton-guard", "boss", 3);
+    const rows = captureCharFrame().split("\n");
+    const hpRow = rows.findIndex((r) => r.includes(t("ui.hpLabel")) && r.includes("/") && r.includes("█"));
+    expect(rows[hpRow + 1]).toContain("◆◆◆◇◇");
+    renderer.destroy();
+  });
+
+  test("the Founder shows his phase next to his name and the bar's HP and meter of that phase", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("the-founder", "boss", 2);
+    const frame = captureCharFrame();
+    expect(frame).toContain("Phase 1/3");
+    expect(frame).toContain("◆◆◇◇");
+    renderer.destroy();
+  });
+
+  test("a boss without bars shows no phase", async () => {
+    const { captureCharFrame, renderer } = await openBossFight("skeleton-guard", "boss");
+    expect(captureCharFrame()).not.toContain("Phase ");
+    renderer.destroy();
+  });
+
+  test("the Founder on his second bar reads Phase 2/3 with that bar's HP", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const founder = spawnMonster("the-founder", 1, { tier: "boss" });
+    founder.barIndex = 1;
+    founder.maxHp = founder.hp = Math.round(founder.barBaseHp! * getArchetype("the-founder").bars![1]!.hpMultiplier);
+    founder.telegraphMeter = 1;
+    game.ctx.monsters.push(founder);
+    room.monsterIds = [founder.id];
+    game.state.combat = startCombat(room.id, [founder.id], game.ctx, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    const frame = setup.captureCharFrame();
+    expect(frame).toContain("Phase 2/3");
+    expect(frame).toContain(`${founder.hp}/${founder.maxHp}`);
+    expect(frame).toContain("◆◇◇◇");
+    setup.renderer.destroy();
+  });
+
+  test("elites and meterless bosses show no meter", async () => {
+    for (const [id, tier] of [["skeleton-guard", "elite"], ["orc-chieftain", "boss"]] as const) {
+      const { captureCharFrame, renderer } = await openBossFight(id, tier);
+      const frame = captureCharFrame();
+      expect(frame, `${id} ${tier}`).not.toMatch(/[◆◇]/);
+      renderer.destroy();
+    }
+  });
+
   test("a taller terminal gives its extra rows to the Dungeon panel, not the battlefield", async () => {
     const { captureCharFrame, resize, renderOnce } = await openFight(150, 45);
     const before = panelRows(captureCharFrame(), t("ui.panelMain"))!;
@@ -786,5 +1004,216 @@ describe("layout", () => {
     await renderOnce();
     expect(panelRows(captureCharFrame(), t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(panelRows(captureCharFrame(), t("ui.panelMain"))).toBe(before + 25);
+  });
+
+  const PANEL_BG = RGBA.fromHex(PALETTE.panelBg);
+  const sameRgba = (a: RGBA, b: RGBA) => a.r === b.r && a.g === b.g && a.b === b.b;
+
+  /** The background of terminal cell (x, y), read from the rendered spans. */
+  function bgAt(frame: CapturedFrame, x: number, y: number): RGBA {
+    let col = 0;
+    for (const span of frame.lines[y]!.spans) {
+      if (x < col + span.width) return span.bg;
+      col += span.width;
+    }
+    throw new Error(`no cell at ${x},${y}`);
+  }
+
+  /** Left border column and first content row of the Battlefield panel. */
+  function battlefieldOrigin(frame: string): { left: number; top: number } {
+    const rows = frame.split("\n");
+    const top = rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`));
+    return { left: rows[top]!.indexOf(`─${t("ui.panelBattlefield")}`) - 1, top: top + 1 };
+  }
+
+  test("the battlefield is painted to the panel's full width in a fight", async () => {
+    for (const width of [150, 200]) {
+      const { captureCharFrame, captureSpans, renderer } = await openFight(width, 45);
+      const { left, top } = battlefieldOrigin(captureCharFrame());
+      const spans = captureSpans();
+      const innerWidth = width - 35 - 2;
+      for (const x of [left + 1, left + innerWidth]) expect(sameRgba(bgAt(spans, x, top), PANEL_BG), `${width} col ${x}`).toBe(false);
+      renderer.destroy();
+    }
+  });
+
+  test("a resize repaints the backdrop at the new width and keeps the units centred", async () => {
+    const { captureCharFrame, captureSpans, resize, renderOnce, renderer } = await openFight(150, 45);
+    const labelColumn = () => {
+      const rows = captureCharFrame().split("\n");
+      const { left, top } = battlefieldOrigin(rows.join("\n"));
+      const row = rows.slice(top, top + UNIT_BLOCK_HEIGHT).find((r) => /\bKN\b/.test(r.slice(left)))!;
+      return row.slice(left).search(/\bKN\b/);
+    };
+    const before = labelColumn();
+    resize(200, 45);
+    await renderOnce();
+    const { left, top } = battlefieldOrigin(captureCharFrame());
+    expect(sameRgba(bgAt(captureSpans(), left + 200 - 35 - 2, top), PANEL_BG)).toBe(false);
+    expect(labelColumn()).toBe(before + (200 - 150) / 2);
+    renderer.destroy();
+  });
+
+  test("label and HP rows keep the panel colour", async () => {
+    const { captureCharFrame, captureSpans, renderer } = await openFight(150, 45);
+    const { left, top } = battlefieldOrigin(captureCharFrame());
+    const spans = captureSpans();
+    for (const row of [UNIT_BLOCK_HEIGHT - 2, UNIT_BLOCK_HEIGHT - 1]) {
+      for (const x of [left + 1, left + 40, left + 113]) expect(sameRgba(bgAt(spans, x, top + row), PANEL_BG), `row ${row} col ${x}`).toBe(true);
+    }
+    renderer.destroy();
+  });
+
+  test("the backdrop dims while a round is narrated and not while choosing actions", async () => {
+    const fight = await openFight(150, 45);
+    const { left, top } = battlefieldOrigin(fight.captureCharFrame());
+    const wall = () => bgAt(fight.captureSpans(), left + 1, top);
+    const before = wall();
+    let guard = 0;
+    while (!fight.app.debugRevealActive && guard++ < 30) {
+      fight.mockInput.pressKey(fight.app.debugUiState.kind === "skillDetail" ? "RETURN" : "1");
+      await fight.renderOnce();
+    }
+    expect(fight.app.debugRevealActive).toBe(true);
+    let dimmed = false;
+    for (guard = 0; fight.app.debugRevealActive && guard++ < 400; ) {
+      fight.app.tickReveal();
+      await fight.renderOnce();
+      if (fight.app.debugLastRender.focusId !== null && !sameRgba(wall(), before)) dimmed = true;
+    }
+    expect(dimmed).toBe(true);
+    await fight.renderOnce();
+    expect(fight.app.debugRevealActive).toBe(false);
+    expect(sameRgba(wall(), before)).toBe(true);
+    fight.renderer.destroy();
+  });
+
+  test("a room whose name has no scene draws the plain panel", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    getRoom(game.state.floor, game.state.currentRoomId).name = "No Such Room";
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    const { left, top } = battlefieldOrigin(setup.captureCharFrame());
+    const spans = setup.captureSpans();
+    for (const x of [left + 1, left + 113]) expect(sameRgba(bgAt(spans, x, top), PANEL_BG)).toBe(true);
+    setup.renderer.destroy();
+  });
+
+  test("a pending Gatekeeper shows its own backdrop, not the first room's", async () => {
+    const topLeftBg = async (pending: boolean) => {
+      const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+      game.state.pendingGatekeeper = pending;
+      const setup = await createTestRenderer({ width: 150, height: 45 });
+      new App(setup.renderer, game, { autoReveal: false });
+      await setup.renderOnce();
+      const { left, top } = battlefieldOrigin(setup.captureCharFrame());
+      const bg = bgAt(setup.captureSpans(), left + 1, top);
+      setup.renderer.destroy();
+      return bg;
+    };
+    expect(getEvent(GATEKEEPER_EVENT_ID).backdrop).toBeDefined();
+    const gatekeeper = await topLeftBg(true);
+    expect(sameRgba(gatekeeper, PANEL_BG)).toBe(false);
+    expect(sameRgba(gatekeeper, await topLeftBg(false))).toBe(false);
+  });
+});
+
+describe("memory screen", () => {
+  const SLOT = "slot1";
+
+  async function bossWinInSlot(memoryUnlocked: boolean) {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 100, height: 40 });
+    const profile = loadProfile(SLOT);
+    profile.unlockedAbilityIds = ["bloodletting"];
+    profile.memoryUnlocked = memoryUnlocked;
+    saveProfile(SLOT, profile);
+    const game = new Game(7, undefined, undefined, undefined, false, SLOT);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "boss";
+    const boss = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    boss.hp = 1;
+    game.ctx.monsters.push(boss);
+    room.monsterIds = [boss.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [boss.id], game.ctx, true);
+    const app = new App(renderer, game);
+    await renderOnce();
+    return { game, renderer, app, mockInput, renderOnce, captureCharFrame };
+  }
+
+  test("the first boss win shows the intro, then [m] opens the slot's held abilities and Esc returns", async () => {
+    try {
+      const { renderer, app, mockInput, renderOnce, captureCharFrame } = await bossWinInSlot(false);
+      let guard = 0;
+      while (app.debugUiState.kind !== "memoryIntro" && guard < 80) {
+        guard++;
+        const kind = app.debugUiState.kind;
+        // Unlocked by now, but not offered until the intro has introduced it.
+        if (kind === "roomReward") expect(captureCharFrame()).not.toContain("[m] Memory");
+        mockInput.pressKey(kind === "roomReward" || kind === "skillDetail" ? "RETURN" : "1");
+        await renderOnce();
+      }
+      expect(app.debugUiState.kind).toBe("memoryIntro");
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memoryIntro");
+
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      expect(app.debugUiState.kind).not.toBe("memoryIntro");
+      const before = app.debugUiState.kind;
+
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memory");
+      expect(captureCharFrame()).toContain("Bloodletting");
+
+      // A lone Esc from the mock input waits on the parser's escape-sequence timeout; emitting the event directly keeps the test off the clock.
+      renderer.keyInput.emit("keypress", new KeyEvent({ name: "escape", ctrl: false, meta: false, shift: false, option: false, sequence: "\x1b", number: false, raw: "\x1b", eventType: "press", source: "raw" }));
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe(before);
+    } finally {
+      clearSlot(SLOT);
+    }
+  }, 20000);
+
+  test("every Memory page fits the Dungeon panel at the minimum 150x45 terminal", async () => {
+    try {
+      const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 45 });
+      const held = ABILITIES.filter((a) => a.rarity !== "common");
+      saveProfile(SLOT, { ...loadProfile(SLOT), unlockedAbilityIds: held.map((a) => a.id), memoryUnlocked: true, memoryIntroShown: true });
+      const game = new Game(7, undefined, undefined, undefined, false, SLOT);
+      game.state.combat = null;
+      const app = new App(renderer, game);
+      await renderOnce();
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("memory");
+      const seen = new Set<string>();
+      let previous = "";
+      for (let guard = 0; guard < 20 && captureCharFrame() !== previous; guard++) {
+        previous = captureCharFrame();
+        for (const ability of held) if (previous.includes(`${ability.name} (${ability.rarity})`)) seen.add(ability.id);
+        mockInput.pressArrow("right");
+        await renderOnce();
+      }
+      expect([...seen].sort()).toEqual(held.map((a) => a.id).sort());
+    } finally {
+      clearSlot(SLOT);
+    }
+  }, 20000);
+
+  test("a slot that has not unlocked Memory advertises nothing and ignores [m]", async () => {
+    try {
+      const { game, app, mockInput, renderOnce, captureCharFrame } = await bossWinInSlot(false);
+      expect(game.memoryUnlocked).toBe(false);
+      mockInput.pressKey("m");
+      await renderOnce();
+      expect(app.debugUiState.kind).not.toBe("memory");
+      expect(captureCharFrame()).not.toContain("[m] Memory");
+    } finally {
+      clearSlot(SLOT);
+    }
   });
 });

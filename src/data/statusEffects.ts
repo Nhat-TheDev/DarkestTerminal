@@ -75,7 +75,9 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
     parts.push(t("item.effectVulnerable", { percent: Math.round((def.vulnerableTo.multiplier - 1) * 100), status: getStatusEffect(def.vulnerableTo.statusEffectId).name }));
   }
   if (def.stuns) parts.push(t("item.effectStuns"));
-  if (def.untargetable) parts.push(t("item.effectUntargetable"));
+  // Only a status with a `breakBonus` ends when its bearer attacks (Stealthed); any other lasts its duration (Airborne).
+  if (def.untargetable) parts.push(t(def.breakBonus ? "item.effectUntargetable" : "item.effectUntargetableTimed"));
+  if (def.reflectDamagePercent) parts.push(t("item.effectReflect", { percent: def.reflectDamagePercent }));
   if (def.dodgePercent) parts.push(t("artifact.effectDodgeChance", { chance: def.dodgePercent }));
   if (def.breakBonus?.basicAttackGuaranteedCrit) parts.push(t("item.effectBreakBonusCrit"));
   if (def.breakBonus?.skillDamageBonusPercent) parts.push(t("item.effectBreakBonusSkillPercent", { percent: def.breakBonus.skillDamageBonusPercent }));
@@ -84,6 +86,40 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
     parts.push(chance === undefined ? t("item.effectOverwatch") : t("item.effectOverwatchChance", { percent: Math.round(chance * 100) }));
   }
   if (def.overwatchShot) parts.push(t("item.effectOverwatchShot", { amount: def.overwatchShot.amount, percent: def.overwatchShot.offenseMultiplierPercent }));
+  if (def.counterAttack) {
+    parts.push(t(def.counterAttack.target === "attacker" ? "item.effectCounterAttackAttacker" : "item.effectCounterAttack", { amount: def.counterAttack.amount, percent: def.counterAttack.offenseMultiplierPercent, max: def.counterAttack.maxCounters }));
+  }
+  if (def.onMaxStacks) parts.push(t("item.effectOnMaxStacks", { max: def.maxStacks ?? 1, status: getStatusEffect(def.onMaxStacks.statusEffectId).name, turns: def.onMaxStacks.durationTurns }));
+  if (def.basicAttackOverride) {
+    const o = def.basicAttackOverride;
+    parts.push(t("item.effectBasicAttackOverride", { name: o.name, amount: o.amount, percent: o.offenseMultiplierPercent, stat: o.isMagic ? "magic power" : "attack" }));
+  }
+  if (def.fearResistPercent) parts.push(t("item.effectFearResist", { percent: def.fearResistPercent }));
+  for (const [type, percent] of Object.entries(def.weakPercent ?? {})) if (percent) parts.push(t("item.effectWeakTo", { percent, type }));
+  if (def.endsWithChannel) parts.push(t("item.effectEndsWithChannel"));
+  if (def.onActStatus) {
+    parts.push(t("item.effectOnActStatus", { percent: Math.round(def.onActStatus.chance * 100), status: getStatusEffect(def.onActStatus.statusEffectId).name, turns: def.onActStatus.durationTurns }));
+  }
+  if (def.silences) parts.push(t("item.effectSilences"));
+  if (def.eliteBossMaxTurns !== undefined) parts.push(t("item.effectEliteBossMaxTurns", { turns: def.eliteBossMaxTurns }));
+  if (def.forcesTargetOnSource) parts.push(t("item.effectForcesTarget"));
+  if (def.interceptsForSource) parts.push(t("item.effectIntercepts"));
+  if (def.onLandedHitSourceStatus) parts.push(t(def.onLandedHitSourceStatus.durationTurns === 1 ? "item.effectLandedHitSourceStatusOne" : "item.effectLandedHitSourceStatus", { status: getStatusEffect(def.onLandedHitSourceStatus.statusEffectId).name, turns: def.onLandedHitSourceStatus.durationTurns }));
+  if (def.redirectToAlliesChance) parts.push(t("item.effectRedirectToAllies", { percent: Math.round(def.redirectToAlliesChance * 100) }));
+  if (def.targetPull) parts.push(t("item.effectTargetPull", { percent: Math.round(def.targetPull * 100) }));
+  if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
+  if (def.damageTakenPercent) parts.push(t("item.effectDamageTaken", { percent: def.damageTakenPercent }));
+  if (def.buffsAttackerOnHit) {
+    const b = def.buffsAttackerOnHit;
+    parts.push(t("item.effectBuffsAttackerOnHit", { percent: Math.round(b.chance * 100), status: getStatusEffect(b.statusEffectId).name, turns: b.durationTurns }));
+  }
+  if (def.debuffsAttackerOnHit) {
+    parts.push(t("item.effectDebuffsAttacker", { status: def.debuffsAttackerOnHit.statusEffectIds.map((id) => getStatusEffect(id).name).join(", "), turns: def.debuffsAttackerOnHit.durationTurns }));
+  }
+  if (def.reviveHpPercent) parts.push(t("item.effectRevive", { percent: def.reviveHpPercent }));
+  if (def.healOnHitPercent) parts.push(t("item.effectHealOnHit", { percent: def.healOnHitPercent }));
+  if (def.channelSkillId) parts.push(t("item.effectChannel"));
+  if (def.endsWithCombat) parts.push(t("item.effectEndsWithCombat"));
   if (def.stackable && (def.maxStacks ?? 1) > 1) parts.push(t("item.effectStacks", { max: def.maxStacks! }));
   if (def.stackable && def.perStackBonusPercent) parts.push(t("item.effectStackBonus", { percent: def.perStackBonusPercent }));
   return parts;

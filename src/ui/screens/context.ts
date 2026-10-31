@@ -1,6 +1,7 @@
 import type { Game } from "../../engine/game";
 import { saveRun } from "../../engine/save";
 import type { UiState } from "../state";
+import { CAMP_KIT_ITEM_ID } from "../../data/items";
 
 export interface ScreenContext {
   game: Game;
@@ -10,6 +11,7 @@ export interface ScreenContext {
   syncUiToGameState(): void;
   pushToast(text: string): void;
   quit(): void;
+  exitRun(next: "newRun" | "menu"): void;
   getPendingFloorAdvance(): boolean;
   setPendingFloorAdvance(value: boolean): void;
   getPendingCampOffer(): boolean;
@@ -39,13 +41,13 @@ export function finishVictorySequence(ctx: ScreenContext): void {
 
 /** The camp-offer flag is left set so it still fires once a pending artifact decision resolves. */
 export function proceedAfterVictory(ctx: ScreenContext): void {
-  if (ctx.game.state.pendingArtifactDecision) {
+  if (ctx.game.state.pendingArtifactDecision || ctx.game.state.pendingJournal || ctx.game.memoryIntroPending) {
     ctx.syncUiToGameState();
     return;
   }
   if (ctx.getPendingCampOffer()) {
     ctx.setPendingCampOffer(false);
-    if ((ctx.game.state.inventory["exploration-kit"] ?? 0) > 0) {
+    if ((ctx.game.state.inventory[CAMP_KIT_ITEM_ID] ?? 0) > 0) {
       ctx.setUi({ kind: "campPrompt" });
       return;
     }

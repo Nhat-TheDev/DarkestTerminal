@@ -1,28 +1,114 @@
 {
   "combat": [
-    "Dungeon Gate",
-    "Damp Corridor",
-    "Old Cell",
-    "Ruined Storeroom",
-    "Dark Alcove",
-    "Bone Vault",
-    "Ruined Hall",
-    "Collapsed Passage",
-    "Old Ritual Chamber",
-    "Damp Low Cave"
+    {
+      "name": "Dungeon Gate",
+      "backdrop": "dungeon-gate"
+    },
+    {
+      "name": "Damp Corridor",
+      "backdrop": "damp-corridor"
+    },
+    {
+      "name": "Old Cell",
+      "backdrop": "old-cell"
+    },
+    {
+      "name": "Ruined Storeroom",
+      "backdrop": "ruined-storeroom"
+    },
+    {
+      "name": "Dark Alcove",
+      "backdrop": "dark-alcove"
+    },
+    {
+      "name": "Bone Vault",
+      "backdrop": "bone-vault"
+    },
+    {
+      "name": "Ruined Hall",
+      "backdrop": "ruined-hall"
+    },
+    {
+      "name": "Collapsed Passage",
+      "backdrop": "collapsed-passage"
+    },
+    {
+      "name": "Old Ritual Chamber",
+      "backdrop": "old-ritual-chamber"
+    },
+    {
+      "name": "Damp Low Cave",
+      "backdrop": "damp-low-cave"
+    }
   ],
-  "rest": ["Shelter", "Safe Resting Corner", "Abandoned Shrine"],
-  "boss": ["Dungeon Lord's Hall", "Throne of Darkness", "General's Tomb"],
+  "rest": [
+    {
+      "name": "Shelter",
+      "backdrop": "shelter"
+    },
+    {
+      "name": "Safe Resting Corner",
+      "backdrop": "safe-resting-corner"
+    },
+    {
+      "name": "Abandoned Shrine",
+      "backdrop": "abandoned-shrine"
+    }
+  ],
+  "boss": [
+    {
+      "name": "Dungeon Lord's Hall",
+      "backdrop": "dungeon-lords-hall"
+    },
+    {
+      "name": "Throne of Darkness",
+      "backdrop": "throne-of-darkness"
+    },
+    {
+      "name": "General's Tomb",
+      "backdrop": "generals-tomb"
+    }
+  ],
   "event": [
-    "Torchlit Nook",
-    "Forgotten Landing",
-    "Quiet Alcove",
-    "Sunken Chamber",
-    "Old Reliquary",
-    "Dust-Choked Vestibule",
-    "Hollow Antechamber",
-    "Silent Junction",
-    "Half-Buried Passage",
-    "Flickering Recess"
+    {
+      "name": "Torchlit Nook",
+      "backdrop": "torchlit-nook"
+    },
+    {
+      "name": "Forgotten Landing",
+      "backdrop": "forgotten-landing"
+    },
+    {
+      "name": "Quiet Alcove",
+      "backdrop": "quiet-alcove"
+    },
+    {
+      "name": "Sunken Chamber",
+      "backdrop": "sunken-chamber"
+    },
+    {
+      "name": "Old Reliquary",
+      "backdrop": "old-reliquary"
+    },
+    {
+      "name": "Dust-Choked Vestibule",
+      "backdrop": "dust-choked-vestibule"
+    },
+    {
+      "name": "Hollow Antechamber",
+      "backdrop": "hollow-antechamber"
+    },
+    {
+      "name": "Silent Junction",
+      "backdrop": "silent-junction"
+    },
+    {
+      "name": "Half-Buried Passage",
+      "backdrop": "half-buried-passage"
+    },
+    {
+      "name": "Flickering Recess",
+      "backdrop": "flickering-recess"
+    }
   ]
 }

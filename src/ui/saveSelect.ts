@@ -3,7 +3,7 @@ import { PALETTE, colorChunk, joinLines, highlightKeyHints } from "./theme";
 import { digitHint } from "./keyHints";
 import { t } from "../data/strings";
 import { getClass } from "../data/classes";
-import { listSlots, type SlotEntry } from "../engine/save";
+import { continuableSlots, listSlots, type SlotEntry } from "../engine/save";
 import type { Id } from "../types";
 
 export type SlotSelectMode = "new" | "continue";
@@ -18,7 +18,15 @@ function slotNumber(id: Id): number {
   return Number(id.replace("slot", ""));
 }
 
-export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<Id | null> {
+/** `overwrite` is set only when the player confirmed replacing a slot that holds a run. */
+export interface SlotChoice {
+  id: Id;
+  overwrite: boolean;
+  /** False for a slot whose run ended: it continues at party select for the slot's next run. */
+  hasRun: boolean;
+}
+
+export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Promise<SlotChoice | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "saveselect-root",
@@ -37,7 +45,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     const footer = new TextRenderable(renderer, { id: "saveselect-footer", content: "", position: "absolute", left: 2, bottom: 1 });
     root.add(footer);
 
-    const slots: SlotEntry[] = listSlots().filter((slot) => mode === "new" || slot.meta !== null);
+    const slots: SlotEntry[] = mode === "new" ? listSlots() : continuableSlots();
     let pendingOverwrite: SlotEntry | null = null;
 
     function draw(): void {
@@ -45,11 +53,12 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       slots.forEach((slot, i) => {
         const n = slotNumber(slot.id);
         if (!slot.meta) {
-          lines.push([colorChunk(t("saveSelect.emptyLine", { i: i + 1, slot: n }), PALETTE.dim)]);
+          const line = slot.runCount > 0 ? t("saveSelect.endedLine", { i: i + 1, slot: n, run: slot.runCount }) : t("saveSelect.emptyLine", { i: i + 1, slot: n });
+          lines.push([colorChunk(line, PALETTE.dim)]);
           return;
         }
         const { floorDepth, playTime, partyClassIds, timestamp } = slot.meta;
-        lines.push([colorChunk(t("saveSelect.entryLine", { i: i + 1, slot: n, depth: floorDepth, playTime: formatPlayTime(playTime) }), PALETTE.text)]);
+        lines.push([colorChunk(t("saveSelect.entryLine", { i: i + 1, slot: n, run: Math.max(1, slot.runCount), depth: floorDepth, playTime: formatPlayTime(playTime) }), PALETTE.text)]);
         lines.push([
           colorChunk(t("saveSelect.entryDetail", { classes: partyClassIds.map((id) => getClass(id).name).join(", "), time: new Date(timestamp).toLocaleString() }), PALETTE.dim),
         ]);
@@ -62,16 +71,17 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
     }
     draw();
 
-    const finish = (result: Id | null) => {
+    const finish = (result: SlotChoice | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
+      root.destroyRecursively();
       // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
       setTimeout(() => resolve(result), 0);
     };
 
     const onKey = (key: KeyEvent) => {
       if (pendingOverwrite) {
-        if (key.name === "1") finish(pendingOverwrite.id);
+        if (key.name === "1") finish({ id: pendingOverwrite.id, overwrite: true, hasRun: true });
         else if (key.name === "escape") {
           pendingOverwrite = null;
           draw();
@@ -89,7 +99,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
         draw();
         return;
       }
-      finish(slot.id);
+      finish({ id: slot.id, overwrite: false, hasRun: slot.meta !== null });
     };
     renderer.keyInput.on("keypress", onKey);
   });

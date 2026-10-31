@@ -7,6 +7,10 @@ import { t } from "./strings";
 
 export const ITEMS = itemsJson as unknown as ItemDefinition[];
 
+const campKits = ITEMS.filter((i) => i.campKit);
+if (campKits.length !== 1) throw new Error(`data/items.json: exactly 1 item must set campKit (found ${campKits.length})`);
+export const CAMP_KIT_ITEM_ID: Id = campKits[0]!.id;
+
 export function getItem(id: Id): ItemDefinition {
   const found = ITEMS.find((i) => i.id === id);
   if (!found) throw new Error(`Unknown item: ${id}`);

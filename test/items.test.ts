@@ -92,13 +92,13 @@ describe("items", () => {
 
   test("queueItemAction deducts inventory at queue time and applies the item's effect on resolve", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    vanguard.hp = vanguard.maxHp - 30;
+    const knight = ctx.party[0]!;
+    knight.hp = knight.maxHp - 30;
     ctx.inventory["small-health-potion"] = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     const err = queueItemAction(combat, self, "small-health-potion", [self], ctx);
     expect(err).toBeNull();
     expect(ctx.inventory["small-health-potion"]).toBe(0);
@@ -113,12 +113,12 @@ describe("items", () => {
 
   test("using a trophy in combat spends it and logs that it has no effect", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
+    const knight = ctx.party[0]!;
     ctx.inventory["rat-tail"] = 1;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const self: CombatantRef = { kind: "character", id: vanguard.id };
+    const self: CombatantRef = { kind: "character", id: knight.id };
     expect(queueItemAction(combat, self, "rat-tail", [self], ctx)).toBeNull();
     expect(ctx.inventory["rat-tail"]).toBe(0);
     resolveRound(combat, ctx);
@@ -135,8 +135,8 @@ describe("items", () => {
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    expect(checkItemUsable(vanguard, "small-health-potion", ctx.inventory)).not.toBeNull();
+    const knight = ctx.party[0]!;
+    expect(checkItemUsable(knight, "small-health-potion", ctx.inventory)).not.toBeNull();
   });
 
   test("Regeneration heals 10 HP/turn and refreshes (doesn't stack a 2nd instance) when reapplied while active", () => {
@@ -304,8 +304,8 @@ describe("consumable catalog data", () => {
       resolveRound(combat, ctx);
       return before - rat.hp;
     };
-    expect(hpLost("mage")).toBe(hpLost("vanguard"));
-    expect(hpLost("vanguard")).toBeGreaterThan(0);
+    expect(hpLost("mage")).toBe(hpLost("knight"));
+    expect(hpLost("knight")).toBeGreaterThan(0);
   });
 
   test("Antidote removes Poisoned only", () => {
@@ -361,8 +361,9 @@ describe("consumable catalog data", () => {
 describe("status effect mechanics text", () => {
   // What formatStatusEffectMechanics reads, and the fields that are only bookkeeping. A status that
   // gains a field in neither list fails the first test until someone decides which it is.
-  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "dodgePercent", "triggersOverwatch", "interruptChance", "overwatchShot", "stackable", "maxStacks", "perStackBonusPercent"];
-  const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "tickCategory"];
+  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "dodgePercent", "triggersOverwatch", "interruptChance", "overwatchShot", "stackable", "maxStacks", "perStackBonusPercent", "reflectDamagePercent", "counterAttack", "fearResistPercent", "onActStatus", "silences", "eliteBossMaxTurns", "forcesTargetOnSource", "interceptsForSource", "onLandedHitSourceStatus", "redirectToAlliesChance", "targetPull", "coinFlipWinChanceMultiplier", "endsWithCombat", "debuffsAttackerOnHit", "damageTakenPercent", "buffsAttackerOnHit", "reviveHpPercent", "healOnHitPercent", "channelSkillId", "basicAttackOverride", "onMaxStacks", "weakPercent", "endsWithChannel"];
+  // `harmful` only decides whether the status reads as a debuff and is cleansable; it carries no number or rule of its own.
+  const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "tickCategory", "harmful"];
   const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent", "offenseMultiplierPercent"];
   const PER_TURN_BOOKKEEPING = ["damageType"];
   const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
@@ -384,7 +385,8 @@ describe("status effect mechanics text", () => {
       const text = formatStatusEffectMechanics(def);
       // Not preceded by a digit, so "5 " cannot be satisfied by "15 ".
       const has = (needle: string) => expect(text, `${def.id}: ${needle}`).toMatch(new RegExp(`(?<!\\d)${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-      expect(text, def.id).not.toBe("no per-turn effect");
+      // A pure tag (Marked) is read by other mechanics and has no effect of its own to show.
+      if (!(def.harmful && def.perTurnEffects.length === 0)) expect(text, def.id).not.toBe("no per-turn effect");
       for (const e of def.perTurnEffects) {
         if (e.kind === "modifyCombatStat" && e.minPercent) has(`${Math.abs(e.minPercent)}%`);
         if ((e.kind === "damage" || e.kind === "heal") && e.maxHpPercent) has(`${e.maxHpPercent}% of max HP`);
@@ -398,6 +400,7 @@ describe("status effect mechanics text", () => {
       if (def.vulnerableTo) has(`${Math.round((def.vulnerableTo.multiplier - 1) * 100)}% more damage`);
       if (def.stuns) has("skips the turn");
       if (def.untargetable) has("untargetable");
+      if (def.reflectDamagePercent) has(`${def.reflectDamagePercent}% of direct damage`);
       if (def.triggersOverwatch) has("next monster");
       if (def.interruptChance !== undefined) has(`${Math.round(def.interruptChance * 100)}% chance to cancel`);
       if (def.overwatchShot) has(`${def.overwatchShot.amount} damage plus ${def.overwatchShot.offenseMultiplierPercent}%`);
@@ -435,8 +438,8 @@ describe("items never crit", () => {
     ITEMS.push(bomb);
     try {
       const { ctx } = makeCtx();
-      const vanguard = ctx.party[0]!;
-      vanguard.hp = vanguard.maxHp - 30;
+      const knight = ctx.party[0]!;
+      knight.hp = knight.maxHp - 30;
       ctx.inventory["small-health-potion"] = 1;
       ctx.inventory[bomb.id] = 1;
       const rat = spawnInto(ctx, "dungeon-rat");
@@ -444,7 +447,7 @@ describe("items never crit", () => {
       rat.defense = 0;
       rat.hp = rat.maxHp = 500;
       const combat = startCombat("r1", [rat.id], ctx, false);
-      const self: CombatantRef = { kind: "character", id: vanguard.id };
+      const self: CombatantRef = { kind: "character", id: knight.id };
       const target: CombatantRef = { kind: "monster", id: rat.id };
       expect(queueItemAction(combat, self, "small-health-potion", [self], ctx)).toBeNull();
       expect(queueItemAction(combat, { kind: "character", id: ctx.party[1]!.id }, bomb.id, [target], ctx)).toBeNull();

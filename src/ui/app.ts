@@ -4,6 +4,7 @@ import { Game } from "../engine/game";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
+import { getClass, getSkill, getEffectiveSkill } from "../data/classes";
 import { getEvent } from "../data/events";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
@@ -11,10 +12,10 @@ import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
 import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { saveRun, deleteSlot } from "../engine/save";
 import {
   PALETTE,
-  CLASS_STYLE,
   chip,
   plainChunk,
   colorChunk,
@@ -35,13 +36,16 @@ import {
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { sceneById, type UnitShadow } from "../data/backdrops";
+import { backdropIdForRoomName } from "../data/roomNames";
+import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
-import { type UiState, inventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
-import { PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { composeFooter } from "./keyHints";
+import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
+import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
+import { canOpenJournal, canOpenMemory, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -53,6 +57,8 @@ import * as rewardsScreen from "./screens/rewards";
 import * as campScreen from "./screens/camp";
 import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
+import * as memoryScreen from "./screens/memory";
+import * as journalScreen from "./screens/journal";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
@@ -66,9 +72,12 @@ import * as runnerScreen from "./screens/runner";
 const ROOM_LOG_SIZE = 50;
 const RUN_LOG_SIZE = 500;
 
-/** "eventArtifactPick" reserves digit 9 on every page for the trailing "Leave" option. */
+/** "eventArtifactSacrifice" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
-  return kind === "eventArtifactPick" ? PAGE_SIZE - 1 : PAGE_SIZE;
+  // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
+  if (kind === "memory" || kind === "journal") return 1;
+  if (kind === "pickItemOutOfCombat" || kind === "pickItemInCombat") return ITEM_PAGE_SIZE;
+  return kind === "eventArtifactSacrifice" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
 
 const FEAR_TIER_LABEL: Record<number, string> = {
@@ -81,16 +90,13 @@ const FEAR_TIER_LABEL: Record<number, string> = {
 const STAT_BAR_WIDTH = 14;
 const EXP_BAR_WIDTH = 24;
 
-/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
-    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
-const BATTLEFIELD_CONTENT_WIDTH = 113;
-/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
-const SIDE_PANEL_WIDTH = 35;
 /** Columns a Log line can use: the panel minus its border and the scrollbar. */
 const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
+
+export type RunExit = "newRun" | "menu";
 
 export class App implements ScreenContext {
   game: Game;
@@ -115,6 +121,8 @@ export class App implements ScreenContext {
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
   private narratedCombat: CombatState | null = null;
+  private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
+  private composedBattlefield: { backdropKey: string; content: TextChunk[][] } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
@@ -137,9 +145,21 @@ export class App implements ScreenContext {
   private pendingCampOffer = false;
   private listPage = 0;
   private progress: TextRenderable;
+  private onExit: ((next: RunExit) => void) | undefined;
+  private exited = false;
+  private readonly onKeypress = (key: KeyEvent) => this.handleKey(key);
+  // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
+  private readonly onResize = () => {
+    try {
+      this.render();
+    } catch (error) {
+      console.error("[App] Error redrawing after a resize:", error);
+    }
+  };
 
-  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean } = {}) {
+  constructor(private renderer: CliRenderer, game?: Game, options: { autoReveal?: boolean; onExit?: (next: RunExit) => void } = {}) {
     this.autoReveal = options.autoReveal ?? true;
+    this.onExit = options.onExit;
     this.game = game ?? new Game();
 
     const panel = {
@@ -181,7 +201,6 @@ export class App implements ScreenContext {
       id: "battlefield-box",
       ...panel,
       flexGrow: 1,
-      alignItems: "center",
       title: t("ui.panelBattlefield"),
     });
     this.battlefield = new TextRenderable(renderer, { id: "battlefield", content: "", fg: PALETTE.text, bg: PALETTE.panelBg });
@@ -191,7 +210,7 @@ export class App implements ScreenContext {
     const body = new BoxRenderable(renderer, { id: "body", flexDirection: "row", flexGrow: 1, backgroundColor: PALETTE.bg });
     this.root.add(body);
 
-    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: 34, title: t("ui.panelParty") });
+    const partyBox = new BoxRenderable(renderer, { id: "party-box", ...panel, width: PARTY_PANEL_WIDTH, title: t("ui.panelParty") });
     this.party = new TextRenderable(renderer, { id: "party", content: "", fg: PALETTE.text });
     partyBox.add(this.party);
     body.add(partyBox);
@@ -243,15 +262,8 @@ export class App implements ScreenContext {
     footerBox.add(this.footer);
     this.root.add(footerBox);
 
-    renderer.keyInput.on("keypress", (key: KeyEvent) => this.handleKey(key));
-    // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
-    renderer.on("resize", () => {
-      try {
-        this.render();
-      } catch (error) {
-        console.error("[App] Error redrawing after a resize:", error);
-      }
-    });
+    renderer.keyInput.on("keypress", this.onKeypress);
+    renderer.on("resize", this.onResize);
     this.syncUiToGameState();
     this.render();
   }
@@ -320,16 +332,20 @@ export class App implements ScreenContext {
   private listCountFor(ui: UiState): number | null {
     switch (ui.kind) {
       case "pickItemOutOfCombat":
-      case "pickItemInCombat":
         return inventoryEntries(this.game.state.inventory).length;
+      case "pickItemInCombat":
+        return combatInventoryEntries(this.game.state.inventory).length;
       case "artifactMenu":
-      case "eventArtifactPick":
-      case "eventHermitPickArtifact":
+      case "eventArtifactSacrifice":
+      case "eventFortuneExchangePickArtifact":
         return ownedArtifactEntries(this.game.state.party).length;
       case "runnerSell":
         return runnerScreen.sellableEntries(this.game).length;
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
+      case "memory":
+      case "journal":
+        return ui.pages.length;
       default:
         return null;
     }
@@ -340,6 +356,7 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    if (this.game.takeJournalNotice()) this.logInfo(t("ui.journalNoted"));
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
       return;
@@ -353,11 +370,14 @@ export class App implements ScreenContext {
       this.ui = { kind: "founderDialogue" };
       return;
     }
+    if (this.game.state.pendingJournalPickup) {
+      this.ui = { kind: "journalPickup" };
+      return;
+    }
     if (this.game.state.gameOver) {
       // Cleared once, on the first transition into either post-death screen: this re-runs throughout the buyback.
       if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
         deleteSlot(this.game.currentSaveSlot);
-        this.game.currentSaveSlot = null;
         this.pushToast(t("ui.saveDeletedMsg"));
       }
       if (this.game.state.pendingAbilityBuyback) {
@@ -385,6 +405,14 @@ export class App implements ScreenContext {
       }
       if (this.game.state.pendingFloorMilestoneOmenId) {
         this.ui = { kind: "floorMilestone" };
+        return;
+      }
+      if (this.game.state.pendingJournal) {
+        this.ui = { kind: "journalDeduction" };
+        return;
+      }
+      if (this.game.memoryIntroPending) {
+        this.ui = { kind: "memoryIntro" };
         return;
       }
       if (restOpen) {
@@ -420,7 +448,7 @@ export class App implements ScreenContext {
     }
     const next = this.game
       .livingCharactersNeedingAction()
-      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind));
+      .find((ref) => !combat.queuedActions.some((qa) => qa.actor.id === ref.id && qa.actor.kind === ref.kind) && !combat.heldChannelIds?.includes(ref.id));
     this.ui = next ? { kind: "pickAction", actorRef: next } : { kind: "roundResolved" };
     if (!next && this.game.readyToResolve()) {
       this.game.resolve();
@@ -442,12 +470,12 @@ export class App implements ScreenContext {
       }
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "journalLastPage" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "journalLastPage" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
       saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
@@ -463,6 +491,18 @@ export class App implements ScreenContext {
       this.flushPendingReveal();
       return;
     }
+    if (key.name === "m" && this.memoryAvailable() && canOpenMemory(this.ui.kind)) {
+      this.ui = { kind: "memory", previous: this.ui, previousPage: this.listPage, pages: memoryScreen.memoryPages(this.game.memoryAbilityIds()) };
+      this.listPage = 0;
+      this.render();
+      return;
+    }
+    if (key.name === "j" && this.game.hasJournalEntries() && canOpenJournal(this.ui.kind)) {
+      this.ui = { kind: "journal", previous: this.ui, previousPage: this.listPage, pages: journalScreen.journalPages(this.game.journal, this.game.droppedJournal(), this.game.runNumber) };
+      this.listPage = 0;
+      this.render();
+      return;
+    }
     if (key.name === "left" || key.name === "right") {
       const count = this.listCountFor(this.ui);
       if (count !== null) {
@@ -474,7 +514,7 @@ export class App implements ScreenContext {
         return;
       }
     }
-    // The log panel claims left/right, up/down, h/j/k/l, pageup/pagedown and home/end, so any of those a screen needs must be handled above this.
+    // The log panel claims left/right, up/down, h/k, pageup/pagedown and home/end, so any of those a screen needs must be handled above this. `j` and `l` are taken above.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
       return;
@@ -485,7 +525,7 @@ export class App implements ScreenContext {
     }
     if (
       key.name === "b" &&
-      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
@@ -507,6 +547,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":
@@ -535,17 +577,17 @@ export class App implements ScreenContext {
       case "saveMenu":
         saveScreen.handleKey(this, this.ui, key, digit);
         break;
-      case "eventOpenChest":
-      case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventInstantReward":
+      case "eventArtifactShop":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -554,6 +596,20 @@ export class App implements ScreenContext {
         break;
       case "floorMilestone":
         floorMilestoneScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "memoryIntro":
+        memoryScreen.handleIntroKey(this, key);
+        break;
+      case "memory":
+      case "journal":
+        break;
+      case "journalDeduction":
+        journalScreen.handleDeductionKey(this, digit);
+        break;
+      case "journalPickup":
+        journalScreen.handlePickupKey(this, key, digit);
+        break;
+      case "journalLastPage":
         break;
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
@@ -571,6 +627,7 @@ export class App implements ScreenContext {
         abilityBuybackScreen.handleKey(this, this.ui, key, digit);
         break;
       case "gameover":
+        gameoverScreen.handleKey(this, key);
         break;
     }
     this.render();
@@ -585,9 +642,20 @@ export class App implements ScreenContext {
       case "skillDetail":
         this.ui = { kind: "pickSkill", actorRef: this.ui.actorRef };
         return true;
-      case "pickTarget":
-        this.ui = this.ui.source.kind === "skill" ? { kind: "pickSkill", actorRef: this.ui.actorRef } : { kind: "pickItemInCombat", actorRef: this.ui.actorRef };
+      case "pickCommandMinion":
+        this.ui = { kind: "skillDetail", actorRef: this.ui.actorRef, skill: this.ui.skill };
         return true;
+      case "pickCommandSkill":
+        this.ui = { kind: "pickCommandMinion", actorRef: this.ui.actorRef, skill: this.ui.skill };
+        return true;
+      case "pickTarget": {
+        const { actorRef, source } = this.ui;
+        if (source.kind === "command") {
+          const skill = getEffectiveSkill(getSkill(source.commandSkillId), (getActorByRef(actorRef, this.game.ctx) as Character).level);
+          this.ui = { kind: "pickCommandSkill", actorRef, skill, summonId: source.order.summonId };
+        } else this.ui = source.kind === "skill" ? { kind: "pickSkill", actorRef } : { kind: "pickItemInCombat", actorRef };
+        return true;
+      }
       case "pickItemOutOfCombat":
         this.ui = { kind: "room" };
         return true;
@@ -613,6 +681,14 @@ export class App implements ScreenContext {
       case "saveMenu":
         this.ui = this.ui.previous;
         return true;
+      case "memory":
+      case "journal":
+        this.listPage = this.ui.previousPage;
+        this.ui = this.ui.previous;
+        return true;
+      case "journalLastPage":
+        this.ui = { kind: "gameover" };
+        return true;
       case "roomReward":
         if (this.ui.viewing) {
           this.ui = { kind: "roomReward", entries: this.ui.entries, viewing: null };
@@ -622,6 +698,23 @@ export class App implements ScreenContext {
       default:
         return false;
     }
+  }
+
+  /** Unlocked, and the intro that introduces it has been read. */
+  private memoryAvailable(): boolean {
+    return this.game.memoryUnlocked && this.game.memoryIntroShown;
+  }
+
+  /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
+  exitRun(next: RunExit): void {
+    if (this.revealTimer !== null) clearTimeout(this.revealTimer);
+    this.exited = true;
+    this.renderer.keyInput.off("keypress", this.onKeypress);
+    this.renderer.off("resize", this.onResize);
+    this.renderer.root.remove(this.root);
+    this.root.destroyRecursively();
+    // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
+    setTimeout(() => this.onExit?.(next), 0);
   }
 
   quit(): void {
@@ -658,6 +751,7 @@ export class App implements ScreenContext {
   }
 
   private render(): void {
+    if (this.exited) return;
     const s = this.game.state;
     const room = getRoom(s.floor, s.currentRoomId);
     this.syncRoomLog();
@@ -759,8 +853,16 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const battlefieldRows = this.renderBattlefield(shownCombat, hpOverride, focus);
-    this.battlefield.content = joinLines(battlefieldRows.map((row) => [...row, plainChunk(" ".repeat(Math.max(0, BATTLEFIELD_CONTENT_WIDTH - row.reduce((n, c) => n + c.text.length, 0))))]));
+    const { rows: battlefieldRows, dimmed } = this.renderBattlefield(shownCombat, hpOverride, focus);
+    const battlefieldWidth = battlefieldInnerWidth(this.renderer.width);
+    const contentLeft = Math.max(0, Math.floor((battlefieldWidth - BATTLEFIELD_CONTENT_WIDTH) / 2));
+    const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
+    const { key: backdropKey, backdrop, shadow } = this.backdropFor(sceneId, battlefieldWidth, contentLeft, dimmed);
+    const composed = this.composedBattlefield;
+    if (composed?.backdropKey !== backdropKey || !sameContent(composed.content, battlefieldRows)) {
+      this.composedBattlefield = { backdropKey, content: battlefieldRows };
+      this.battlefield.content = joinLines(composeBattlefield(battlefieldRows, backdrop, battlefieldWidth, contentLeft, shadow));
+    }
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -777,7 +879,7 @@ export class App implements ScreenContext {
       );
     });
     this.party.content = joinLines(partyLines);
-    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride));
+    this.monsters.content = joinLines(this.renderMonsterLines(shownCombat, hpOverride, focus));
     this.keepScrollInRange(this.party);
     this.keepScrollInRange(this.monsters);
     if (revealing) {
@@ -786,7 +888,7 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated()))]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries()))]);
     }
     this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
@@ -897,7 +999,7 @@ export class App implements ScreenContext {
   }
 
   private renderCharacterLines(c: Character, satiety: number): TextChunk[][] {
-    const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+    const style = getClass(c.classId).style;
     if (!c.isAlive) {
       return [[chip(style.abbr, PALETTE.dead), plainChunk(t("ui.fallenSuffix", { name: c.name }))]];
     }
@@ -926,6 +1028,8 @@ export class App implements ScreenContext {
     if (tier >= 2) {
       fearLine.push(plainChunk(" "), colorChunk(`(${FEAR_TIER_LABEL[tier]})`, fearColorFor(tier)));
     }
+    const hand = getClass(c.classId).dice;
+    if (hand && c.dice !== undefined) fearLine.push(plainChunk("   "), colorChunk(t("ui.diceStat", { count: c.dice, max: hand.maxCount }), PALETTE.title));
 
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
@@ -1010,8 +1114,18 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
+  private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {
+    const key = `${sceneId}|${width}|${contentLeft}|${dimmed}`;
+    if (this.backdropCache?.key !== key) {
+      const scene = sceneById(sceneId);
+      this.backdropCache = { key, backdrop: scene && paintBackdrop(scene, width, contentLeft, dimmed), shadow: scene?.render.unitShadow ?? null };
+    }
+    return this.backdropCache;
+  }
+
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): { rows: TextChunk[][]; dimmed: boolean } {
     const s = this.game.state;
+    let dimmed = false;
     const impact = focus !== null && !this.reveal.holding;
 
     const partyUnits = s.party.map((c) => {
@@ -1019,10 +1133,11 @@ export class App implements ScreenContext {
       const hp = view?.hp ?? c.hp;
       const maxHp = c.maxHp;
       const isAlive = view?.isAlive ?? c.isAlive;
-      const style = CLASS_STYLE[c.classId] ?? { abbr: "??", color: PALETTE.dim };
+      const style = getClass(c.classId).style;
       const fearChange = this.reveal.fearBeat && focus?.fearChangedIds.includes(c.id) ? (this.focusFearDeltas.get(c.id) ?? 0) : 0;
       const mark = this.markerFor(c.id);
       const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
+      dimmed ||= lens.dim;
       const frameHeight = tierFrameHeight("party");
       if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       // Read from the replayed snapshot so a clone spawned later in the round isn't shown early.
@@ -1041,17 +1156,17 @@ export class App implements ScreenContext {
     if (s.pendingGatekeeper) {
       enemyBlock = this.buildEventBlock(GATEKEEPER_EVENT_ID);
     } else if (combat) {
-      const monsterCombatants = combat.combatants.filter((c) => c.ref.kind === "monster");
-      if (monsterCombatants.length === 0) {
+      const shownMonsters = this.shownMonsters(combat, hpOverride, focus);
+      if (shownMonsters.length === 0) {
         enemyBlock = this.buildEmptyEnemyBlock(t("ui.cleared"));
       } else {
-        const enemyUnits = monsterCombatants.map((combatant) => {
-          const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+        const enemyUnits = shownMonsters.map((m) => {
           const view = hpOverride?.get(m.id);
           const hp = view?.hp ?? m.hp;
           const style = monsterStyle(m);
           const mark = this.markerFor(m.id);
           const lens = unitFocus(m.id, "monster", focus, mark?.amount, impact, undefined, 0, mark?.crit);
+          dimmed ||= lens.dim;
           const frameHeight = tierFrameHeight(m.tier);
           if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
@@ -1078,10 +1193,19 @@ export class App implements ScreenContext {
       );
     }
 
-    return mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP);
+    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP), dimmed };
   }
 
-  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null): TextChunk[][] {
+  /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */
+  private shownMonsters(combat: CombatState, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): Monster[] {
+    const inFocus = (id: Id) => focus !== null && Object.values(focus).some((ids) => Array.isArray(ids) && ids.includes(id));
+    return combat.combatants
+      .filter((c) => c.ref.kind === "monster")
+      .map((c) => getActorByRef(c.ref, this.game.ctx) as Monster)
+      .filter((m) => m.summonerId === undefined || (hpOverride?.get(m.id)?.hp ?? m.hp) > 0 || inFocus(m.id));
+  }
+
+  private renderMonsterLines(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): TextChunk[][] {
     const s = this.game.state;
     if (!combat) {
       const room = getRoom(s.floor, s.currentRoomId);
@@ -1091,25 +1215,45 @@ export class App implements ScreenContext {
       return [[colorChunk(room.cleared ? t("ui.roomSafe") : t("ui.notEncounteredDot"), PALETTE.dim)]];
     }
     const lines: TextChunk[][] = [];
-    for (const combatant of combat.combatants) {
-      if (combatant.ref.kind !== "monster") continue;
-      const m = getActorByRef(combatant.ref, this.game.ctx) as Monster;
+    for (const m of this.shownMonsters(combat, hpOverride, focus)) {
       const hp = hpOverride?.get(m.id)?.hp ?? m.hp;
       const style = monsterStyle(m);
       if (hp <= 0) {
         lines.push([chip(style.abbr, PALETTE.dead), plainChunk(t("ui.monsterDefeatedSuffix", { name: m.name }))]);
         continue;
       }
+      const maxHp = hpOverride?.get(m.id)?.maxHp ?? m.maxHp;
+      const bars = m.tier === "boss" ? getArchetype(m.archetypeId).bars : undefined;
+      const barIndex = hpOverride?.get(m.id)?.barIndex ?? m.barIndex ?? 0;
       lines.push([chip(style.abbr, style.color), plainChunk(` ${m.name}`)]);
+      if (bars) lines.push([plainChunk("  "), colorChunk(t("ui.monsterBarPhase", { n: barIndex + 1, total: bars.length }), PALETTE.dim)]);
       lines.push([
         plainChunk("  "),
-        colorChunk(t("ui.hpLabel"), hpColorFor(hp, m.maxHp)),
+        colorChunk(t("ui.hpLabel"), hpColorFor(hp, maxHp)),
         plainChunk(" "),
-        ...progressBar(hp, m.maxHp, STAT_BAR_WIDTH, hpColorFor(hp, m.maxHp)),
+        ...progressBar(hp, maxHp, STAT_BAR_WIDTH, hpColorFor(hp, maxHp)),
         plainChunk(" "),
-        colorChunk(t("ui.statValueSuffix", { cur: hp, max: m.maxHp }), hpColorFor(hp, m.maxHp)),
+        colorChunk(t("ui.statValueSuffix", { cur: hp, max: maxHp }), hpColorFor(hp, maxHp)),
       ]);
       const activeStatusEffects = hpOverride?.get(m.id)?.activeStatusEffects ?? m.activeStatusEffects;
+      const shell = hpOverride?.get(m.id)?.shell ?? m.shell;
+      if (shell) {
+        lines.push([
+          plainChunk("  "),
+          shell.state === "intact"
+            ? colorChunk(shell.hitsLeft === 1 ? t("ui.shellIntactOne") : t("ui.shellIntact", { hits: shell.hitsLeft }), PALETTE.mp)
+            : colorChunk(t("ui.shellBroken"), PALETTE.fearPanic),
+        ]);
+      }
+      const telegraph = m.tier === "boss" ? getBossTelegraph(getArchetype(m.archetypeId), barIndex) : undefined;
+      if (telegraph) {
+        const filled = Math.min(hpOverride?.get(m.id)?.telegraphMeter ?? m.telegraphMeter ?? 0, telegraph.meterLength);
+        lines.push([
+          plainChunk("  "),
+          colorChunk(t("ui.telegraphMeterFilled").repeat(filled), PALETTE.fearPanic),
+          colorChunk(t("ui.telegraphMeterEmpty").repeat(telegraph.meterLength - filled), PALETTE.dim),
+        ]);
+      }
       for (const eff of activeStatusEffects) {
         const def = getStatusEffect(eff.statusEffectId);
         const color = isHelpfulStatusEffect(def) ? PALETTE.mp : PALETTE.fearPanic;
@@ -1171,21 +1315,23 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
         return combatScreen.renderMain(this.game, this.ui, this.listPage);
 
-      case "eventOpenChest":
-      case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventInstantReward":
+      case "eventArtifactShop":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
@@ -1194,6 +1340,20 @@ export class App implements ScreenContext {
 
       case "floorMilestone":
         return floorMilestoneScreen.renderMain(this.game, this.ui);
+
+      case "memoryIntro":
+        return memoryScreen.renderIntro();
+
+      case "memory":
+        return memoryScreen.renderMain(this.ui, this.listPage);
+      case "journal":
+        return journalScreen.renderMain(this.ui, this.listPage);
+      case "journalDeduction":
+        return journalScreen.renderDeduction(this.game);
+      case "journalPickup":
+        return journalScreen.renderPickup(this.game);
+      case "journalLastPage":
+        return journalScreen.renderLastPage(this.game);
 
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
@@ -1232,6 +1392,8 @@ export class App implements ScreenContext {
       case "pickAction":
       case "pickSkill":
       case "skillDetail":
+      case "pickCommandMinion":
+      case "pickCommandSkill":
       case "pickItemInCombat":
       case "pickTarget":
       case "roundResolved":
@@ -1253,23 +1415,35 @@ export class App implements ScreenContext {
         return rewardsScreen.renderFooter(this.ui, this.listPage);
       case "campPrompt":
         return campScreen.renderFooter(this.ui);
-      case "eventOpenChest":
-      case "eventMerchant":
-      case "eventCursedShrine":
-      case "eventTwinAltars":
+      case "eventInstantReward":
+      case "eventArtifactShop":
+      case "eventCursedOffer":
+      case "eventPairedOffer":
       case "eventHpGamble":
       case "eventHpGamblePickPayer":
-      case "eventArtifactPick":
-      case "eventGamblingDen":
-      case "eventHermit":
-      case "eventHermitPickArtifact":
-      case "eventGuardianFight":
+      case "eventArtifactSacrifice":
+      case "eventCoinGamble":
+      case "eventFortuneExchange":
+      case "eventFortuneExchangePickArtifact":
+      case "eventCombatReward":
       case "eventReflection":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "campReflection":
         return campReflectionScreen.renderFooter(this.ui);
       case "floorMilestone":
         return floorMilestoneScreen.renderFooter(this.ui);
+      case "memoryIntro":
+        return memoryScreen.renderIntroFooter();
+      case "memory":
+        return memoryScreen.renderFooter();
+      case "journal":
+        return journalScreen.renderFooter();
+      case "journalDeduction":
+        return journalScreen.renderDeductionFooter(this.game);
+      case "journalPickup":
+        return journalScreen.renderPickupFooter(this.game);
+      case "journalLastPage":
+        return journalScreen.renderLastPageFooter();
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":
@@ -1281,7 +1455,7 @@ export class App implements ScreenContext {
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter();
       case "gameover":
-        return gameoverScreen.renderFooter();
+        return gameoverScreen.renderFooter(this.game);
       case "fullLog":
         return t("ui.footerBackOnly");
     }

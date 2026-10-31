@@ -8,7 +8,7 @@ There are 2 survival stats, tracked at different scopes:
 
 | Stat | Scope | Range |
 |---|---|---|
-| `fear` | Per character (`Character.survival.fear`) | 0.0–100.0, one decimal place |
+| `fear` | Per character (`Character.survival.fear`) | 0.0–100.0, one decimal place | <!-- docs:intent -->
 | `satiety` | Party-wide (`GameState.satiety`) | 0–100 |
 
 Both are clamped to their range via `clamp(...)` wherever they're modified (`src/engine/survival.ts`, `src/engine/resolver.ts`).
@@ -59,7 +59,7 @@ Same reasoning as Exhausted — it's not a normal status-effect instance, so it 
 
 A choice offered **after winning any combat room** (regular/Elite/Boss, not just entering a dedicated Rest room — a separate room type with its own 3-option flow, see below):
 
-- Costs **1 Exploration Kit** item (`ItemDefinition.combatUsable: false`, `data/items.json` entry `exploration-kit`) — the party starts a run with `party.startingExplorationKits` (4).
+- Costs **1 Exploration Kit** item (the `data/items.json` entry flagged `campKit`, `exploration-kit`; `combatUsable: false`) — the party starts a run with `party.startingExplorationKits` (4).
 - Restores **+30 satiety only** (`survival.campSatietyRestore`) — explicitly **no** HP/MP restore, that's what the Rest room is for.
 - Not offered if the party has 0 Exploration Kits left.
 
@@ -223,55 +223,50 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 
 **Tier 1 — Use**
 
-> "Someone's checking their supplies again before sleep, same as every night. Tonight it takes
-> slightly less time than it used to. It's just faster now, knowing which pouch to reach for
-> first."
+> "Someone checks their supplies before sleep, same as every night. Their hand goes to the right
+> pouch first."
 
-- "It's not worth thinking about. Whatever gets it done fastest is fine."
-- "Someone should be keeping count. Just in case it starts to matter later."
-- "Somewhere back there, reaching for it stopped feeling like deciding to."
+- "You pack yours the same way and go to sleep."
+- "You count what's left in the pouch and write the number down."
+- "You watch their hand find the pouch in the dark."
 
 **Tier 2 — Optimization**
 
-> "The whole day's route got picked around which rooms were worth the detour — not for the
-> treasure, for the trade. Three floors ago it would have seemed a strange way to spend a day. Whoever suggested it
-> first, none of you can quite say."
+> "Someone has marked tonight's map with which rooms paid off and which didn't."
 
-- "It's efficient. That's all that needs to be true about it."
-- "Getting good at something like this isn't the same as it being safe."
-- "You almost admire how naturally it's become part of the plan."
+- "You mark tomorrow's route the same way."
+- "You add a mark for the room that nearly killed you."
+- "You trace tomorrow's route with a finger. It's the shortest way past every room worth the detour."
 
 **Tier 3 — Dependence**
 
-> "Nobody argued about it this time. Whoever was closest just did it, the way you'd catch a
-> falling cup without thinking, and the rest of you kept eating like nothing happened. Someone almost said something, and didn't."
+> "Whoever was closest paid today. At camp, the rest of you kept eating."
 
-- "Someone should have said something. Nobody wanted to be the first."
-- "There wasn't anything to say. It's just what the party does now."
-- "You keep waiting for it to feel like a choice again. It hasn't, in a while."
+- "You put your bowl down and look at the one who paid."
+- "You pass them the bread."
+- "You look at your own hands, turning them over once."
 
 **Tier 4 — Unawareness**
 
-> "Nobody mentions it anymore, at camp or anywhere else. It isn't that it stopped mattering — it
-> stopped being a separate thing from everything else you do to get through a day. Someone asks
-> what's for dinner. Someone else answers with their mouth full. The rest of it just happened
-> somewhere in between, the way breathing happens."
+> "Someone asks what's for dinner. Someone else answers with their mouth full. The knife by the
+> fire still has today's blood on it."
 
-- "Nobody outside would follow it anyway."
-- "Explaining it wouldn't change anything now."
-- "Nobody's asked in a long time. Nobody will."
+- "You wipe the knife on your sleeve and hold out your bowl."
+- "You start to tell them about today, then ask for the salt."
+- "You look at the knife until someone asks if you're going to eat."
 
-**Craft notes**: none of the 4 tiers reuse the game's established *ritual-object* imagery (wound,
-stone, circle, spiral) — deliberately, since Camp Reflection is the party looking at itself, not at
-any altar, and needed its own sensory palette (supplies, a route, a dropped cup, a meal). Hands do
-appear (tier 3's "catch a falling cup without thinking"), on purpose: the drift being described is
-specifically a body acting ahead of a decision, which is exactly what §12.5's stage 3 is. "Nobody" is used exactly twice as a prompt-opener (tier 3, tier 4) plus once as a
-deliberate doubled echo in tier 4's last option — an escalating motif specific to this content,
-never reused from tier 1-2's different framing or from any existing event text. The 3 options per
-tier are bespoke self-narratives, not a `curious`/`wary`/`dismissive` relabeling — a plausible
-self-narrative at tier 1 ("just efficient") isn't plausible at tier 4 (nothing there is still
-efficient-vs-unsafe framed), so reusing 1 fixed label set across all 4 tiers would have forced a
-fit the content no longer supports.
+**Craft notes**: Camp Reflection is the party looking at itself, not at any altar, so its prompts
+stay at the fire — supplies, a route, a meal — and each one is 1–3 sentences with a single
+observable detail: a hand finding the right pouch, a route bent around the altars, the rest of the
+party eating while one of them has paid, a bloodied knife beside the dinner talk. The altar itself
+is only ever named at second hand, and the drift (§12.5) is carried by what the party's hands do
+out of habit, never by a line telling the player how it feels. Tier 4 ends on the knife: the cost
+has become one more object by the fire. The 3 options per tier are gestures — what the hand does
+next — not opinions, and they are bespoke per tier rather than a `curious`/`wary`/`dismissive`
+relabeling. Each set gives three distinct readings of the same moment (fall in with it, take
+note of it, look at it squarely), but what those gestures can be changes as the habit deepens — by
+tier 4 even the attempt to say something turns into asking for the salt — so one fixed label set
+would have forced a fit the content no longer supports.
 
 **Downstream effect on 1 other event**: does not touch `eventOutcomes` as part of its own tracking
 — but the moment tier 4 resolves, 1 line writes a synthetic tag into the *existing* `eventOutcomes`
@@ -283,9 +278,8 @@ entry keyed on `{"eventId": "camp-reflection", "outcome": "unaware"}` — of the
 he's the 1 who learned this exact drift the hard way (`12-world-bible.md` §12.8), so he's the most
 plausible to notice it in someone else before they notice it in themselves:
 
-> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. He doesn't
-> look up right away this time. When he finally does, it isn't your face he's checking first — it's
-> your hands, like he's counting something you've stopped counting yourself."
+> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. He looks
+> at your hands before your face, and keeps looking at them while you talk."
 
 `pickEventText()`'s priority order makes
 `returnDescription` win over `crossEventVariants` on any visit after the party's 1st meeting with a
@@ -296,14 +290,13 @@ the same way `stanceEcho` is — covering every visit after the first, while the
 `crossEventVariants` entry above still covers the rarer case of reaching Unawareness before ever
 having met the hermit:
 
-> "This time, he doesn't check your face at all — only your hands, until he shuts his eyes for the trade."
+> "He shuts his eyes for the trade before you've set anything down."
 
 **Compliance check against `12-world-bible.md`**: no mechanic here implies the dream is tracking
 the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
 outside this mechanism except the 1 synthetic bridge tag above. Agency stays real at every tier
-(§12.5) — tier 3's "whoever was closest just did it" and tier 4's "the rest of it just happened
-somewhere in between" both describe the party's own hands acting, never the dream choosing for
-them. Resolves nothing on §12.9's open list — entirely about the party's own psychology, never
+(§12.5) — tier 3's "whoever was closest paid" and tier 4's knife by the fire both show the
+party's own hands acting, never the dream choosing for them. Resolves nothing on §12.9's open list — entirely about the party's own psychology, never
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names
 "Sleeper," "Covenant," or "the Balance."
 

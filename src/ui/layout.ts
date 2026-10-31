@@ -1,7 +1,20 @@
 import type { TextChunk } from "@opentui/core";
 import type { Monster } from "../types";
-import { PALETTE, MONSTER_STYLE, BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
+import { BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
+import { getArchetype } from "../data/monsters";
 import { MAX_BOSS_HEIGHT } from "./sprites";
+
+/** The smallest supported terminal width; panels are sized so their content fits at this width. */
+export const MIN_TERMINAL_WIDTH = 150;
+/** Width of the Expedition Party panel, border included. */
+export const PARTY_PANEL_WIDTH = 34;
+/** Width of the Log and the Monsters panel below it, border included, so their edges line up. */
+export const SIDE_PANEL_WIDTH = 35;
+
+/** Columns inside the Battlefield's border: what is left of the terminal after the Log column. */
+export function battlefieldInnerWidth(terminalWidth: number): number {
+  return terminalWidth - SIDE_PANEL_WIDTH - 2;
+}
 
 export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
@@ -9,6 +22,9 @@ export const DIVIDER_WIDTH = 3;
 export const EMPTY_ENEMY_WIDTH = 30;
 /** One icon row plus one blank row, so an icon never touches a sprite. */
 export const ICON_BAND_ROWS = 2;
+/** Width of the Battlefield's content: the party, the divider and a side of three monsters, the most a room
+    holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
+export const BATTLEFIELD_CONTENT_WIDTH = 113;
 export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
 
 export function centerText(text: string, width: number): string {
@@ -18,16 +34,10 @@ export function centerText(text: string, width: number): string {
   return " ".repeat(left) + text + " ".repeat(pad - left);
 }
 
-/** Fallback for an archetype missing from `MONSTER_STYLE` (`swamp-slime` -> `SLI`); coverage is asserted in `test/sprites.test.ts`. */
-function derivedAbbr(archetypeId: string): string {
-  const lastWord = archetypeId.split("-").pop() ?? archetypeId;
-  return lastWord.slice(0, 3).toUpperCase();
-}
-
 export function monsterStyle(m: Monster): { abbr: string; color: string } {
   if (m.tier === "boss") return { abbr: "BOSS", color: BOSS_COLOR };
   if (m.tier === "elite") return { abbr: "ELITE", color: ELITE_COLOR };
-  return MONSTER_STYLE[m.archetypeId] ?? { abbr: derivedAbbr(m.archetypeId), color: PALETTE.dim };
+  return getArchetype(m.archetypeId).style;
 }
 
 export function truncateText(text: string, maxLen: number): string {

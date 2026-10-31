@@ -3,7 +3,7 @@ import { PALETTE, boldColorChunk, colorChunk, joinLines, highlightKeyHints } fro
 import { joinHints } from "./keyHints";
 import { renderBigTextStacked } from "./bigText";
 import { t } from "../data/strings";
-import { listSlots, APP_VERSION } from "../engine/save";
+import { continuableSlots, APP_VERSION } from "../engine/save";
 
 export type MainMenuChoice = "new" | "continue";
 
@@ -74,7 +74,7 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
     });
     root.add(hint);
 
-    const hasSaves = listSlots().some((slot) => slot.meta !== null);
+    const hasSaves = continuableSlots().length > 0;
 
     // Pre-game screens have no App footer, so they anchor their own in the same spot.
     const footer = new TextRenderable(renderer, {
@@ -121,11 +121,13 @@ export function showMainMenu(renderer: CliRenderer): Promise<MainMenuChoice> {
           renderer.keyInput.off("keypress", onChoiceKey);
           renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
+          root.destroyRecursively();
           resolve("new");
         } else if (key.name === "2" && hasSaves) {
           renderer.keyInput.off("keypress", onChoiceKey);
           renderer.off(CliRenderEvents.RESIZE, onResize);
           renderer.root.remove(root);
+          root.destroyRecursively();
           resolve("continue");
         }
       };

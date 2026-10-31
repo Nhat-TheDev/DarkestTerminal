@@ -344,40 +344,42 @@ describe("rollAbility", () => {
   });
 });
 
+const SLOT = "slot1";
+
 describe("AbilityProfile persistence", () => {
   test("round-trips unlock/lock across save/load; commons are always unlocked regardless", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    let profile = loadProfile();
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    let profile = loadProfile(SLOT);
     expect(profile.unlockedAbilityIds).toEqual([]);
     expect(isAbilityUnlocked(profile, "iron-skin")).toBe(true);
     expect(isAbilityUnlocked(profile, "bloodletting")).toBe(false);
 
     unlockAbility(profile, "bloodletting");
-    saveProfile(profile);
-    profile = loadProfile();
+    saveProfile(SLOT, profile);
+    profile = loadProfile(SLOT);
     expect(profile.unlockedAbilityIds).toEqual(["bloodletting"]);
     expect(isAbilityUnlocked(profile, "bloodletting")).toBe(true);
 
     lockAbility(profile, "bloodletting");
-    saveProfile(profile);
-    profile = loadProfile();
+    saveProfile(SLOT, profile);
+    profile = loadProfile(SLOT);
     expect(profile.unlockedAbilityIds).toEqual([]);
   });
 
   test("unlockAbility is a no-op for an id already present", () => {
-    const profile: Profile = { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false };
+    const profile: Profile = { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null };
     unlockAbility(profile, "bloodletting");
     expect(profile.unlockedAbilityIds).toEqual(["bloodletting"]);
   });
 
   test("lockAbility is a no-op for an id not present", () => {
-    const profile: Profile = { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false };
+    const profile: Profile = { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null };
     lockAbility(profile, "bloodletting");
     expect(profile.unlockedAbilityIds).toEqual([]);
   });
 });
 
-const PARTY = ["vanguard", "mage", "rogue", "acolyte"];
+const PARTY = ["knight", "mage", "rogue", "acolyte"];
 
 function wipeParty(game: Game): void {
   for (const c of game.state.party) {
@@ -390,8 +392,8 @@ function wipeParty(game: Game): void {
 
 describe("Game: ability death flow", () => {
   test("a common equipped ability is never at risk — no buyback needed", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    const game = new Game(1, PARTY, undefined, ["battle-instinct", null, null, null]);
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    const game = new Game(1, PARTY, undefined, ["battle-instinct", null, null, null], false, SLOT);
     wipeParty(game);
     expect(game.state.gameOver).toBe("defeat");
     expect(game.state.pendingAbilityBuyback).toBeNull();
@@ -399,12 +401,12 @@ describe("Game: ability death flow", () => {
   });
 
   test("a non-common equipped ability is struck from the profile immediately, then reclaimable with enough Stardust", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    const game = new Game(2, PARTY, undefined, ["bloodletting", null, null, null]);
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    const game = new Game(2, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     game.state.runStardust = 10;
     wipeParty(game);
 
-    expect(loadProfile().unlockedAbilityIds).not.toContain("bloodletting");
+    expect(loadProfile(SLOT).unlockedAbilityIds).not.toContain("bloodletting");
     expect(game.state.pendingAbilityBuyback?.entries).toHaveLength(1);
     expect(game.state.pendingAbilityBuyback?.entries[0]).toEqual({ characterId: "p1", lostAbilityId: "bloodletting", rarity: "rare" });
 
@@ -412,26 +414,26 @@ describe("Game: ability death flow", () => {
     const err = game.resolveAbilityBuyback("reclaim");
     expect(err).toBeNull();
     expect(game.state.runStardust).toBe(10 - cost);
-    expect(loadProfile().unlockedAbilityIds).toContain("bloodletting");
+    expect(loadProfile(SLOT).unlockedAbilityIds).toContain("bloodletting");
     expect(game.state.pendingAbilityBuyback).toBeNull();
     expect(game.state.abilityDeathResults).toEqual([{ characterId: "p1", lostAbilityId: "bloodletting", outcome: "reclaimed" }]);
   });
 
   test("skipping a buyback entry leaves it lost", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    const game = new Game(3, PARTY, undefined, ["bloodletting", null, null, null]);
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    const game = new Game(3, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     wipeParty(game);
 
     const err = game.resolveAbilityBuyback("skip");
     expect(err).toBeNull();
-    expect(loadProfile().unlockedAbilityIds).not.toContain("bloodletting");
+    expect(loadProfile(SLOT).unlockedAbilityIds).not.toContain("bloodletting");
     expect(game.state.abilityDeathResults).toEqual([{ characterId: "p1", lostAbilityId: "bloodletting", outcome: "lost" }]);
     expect(game.state.pendingAbilityBuyback).toBeNull();
   });
 
   test("reclaim fails outright with insufficient Stardust, and nothing is consumed", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    const game = new Game(4, PARTY, undefined, ["bloodletting", null, null, null]);
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    const game = new Game(4, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     game.state.runStardust = 0;
     wipeParty(game);
 
@@ -439,12 +441,12 @@ describe("Game: ability death flow", () => {
     expect(err).not.toBeNull();
     expect(game.state.runStardust).toBe(0);
     expect(game.state.pendingAbilityBuyback?.entries).toHaveLength(1);
-    expect(loadProfile().unlockedAbilityIds).not.toContain("bloodletting");
+    expect(loadProfile(SLOT).unlockedAbilityIds).not.toContain("bloodletting");
   });
 
   test("multiple lost abilities resolve one at a time, in order", () => {
-    saveProfile({ version: 1, unlockedAbilityIds: ["bloodletting", "predators-edge"], retiredCharacters: [], shownRetiredCharacterEvent: false });
-    const game = new Game(5, PARTY, undefined, ["bloodletting", "predators-edge", null, null]);
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting", "predators-edge"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null });
+    const game = new Game(5, PARTY, undefined, ["bloodletting", "predators-edge", null, null], false, SLOT);
     game.state.runStardust = 100;
     wipeParty(game);
 
@@ -490,17 +492,17 @@ describe("Abilities: run entry", () => {
     const classIds = CLASSES.map((c) => c.id);
     // Each boost resolves against the level-1 pre-equipment base (satiety 100: no Exhausted multiplier).
     const game = new Game(11, classIds, undefined, ["thornhide", "battle-instinct"]);
-    const [vanguard, mage] = game.state.party;
-    const vanguardMaxHp = statsForLevel(getClass(vanguard!.classId), vanguard!.level).maxHp;
+    const [knight, mage] = game.state.party;
+    const knightMaxHp = statsForLevel(getClass(knight!.classId), knight!.level).maxHp;
     const mageAttack = statsForLevel(getClass(mage!.classId), mage!.level).attack;
 
-    expect(vanguard!.maxHp).toBe(vanguardMaxHp + expectedAbilityStatBoost("thornhide", "maxHp", vanguardMaxHp));
-    expect(vanguard!.hp).toBe(vanguard!.maxHp);
+    expect(knight!.maxHp).toBe(knightMaxHp + expectedAbilityStatBoost("thornhide", "maxHp", knightMaxHp));
+    expect(knight!.hp).toBe(knight!.maxHp);
     expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 
     // `recomputeCharacterStats` only clamps hp down, so the bonus must survive it.
-    recomputeCharacterStats(vanguard!, game.state.satiety);
-    expect(vanguard!.hp).toBe(vanguard!.maxHp);
+    recomputeCharacterStats(knight!, game.state.satiety);
+    expect(knight!.hp).toBe(knight!.maxHp);
   });
 
   test("two characters cannot enter a run carrying the same Ability", () => {

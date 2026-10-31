@@ -1,5 +1,26 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity, ItemTier } from "../types";
+import type { ArtifactRarity, AttackRange, ItemTier } from "../types";
+
+/** The factors a monster weighs when it picks a target — `docs/gameplay-decisions/02-monster.md`, "Targeting". */
+export const TARGETING_FACTORS = ["aggro", "lowHp", "damage", "range", "fear"] as const;
+export type TargetingFactor = (typeof TARGETING_FACTORS)[number];
+
+export const ATTACK_RANGES: readonly AttackRange[] = ["melee", "ranged"];
+
+export interface TargetingConfig {
+  /** Score by HP-share rank, lowest HP share first; every rank past the end takes the last score. */
+  lowHpRankScores: number[];
+  /** Score by fear rank, highest fear first; every rank past the end takes the last score. */
+  fearRankScores: number[];
+  /** Score by rank of HP taken off the monster, most first; anyone who has dealt none takes the last score. */
+  damageRankScores: number[];
+  /** What each remembered amount of damage is multiplied by at the end of every round, 0 to 1. */
+  damageMemoryDecay: number;
+  /** The `range` score of a target whose `attackRange` matches the attack's, and of one whose does not. */
+  rangeScores: { sameRange: number; otherRange: number };
+  /** One weight per factor for each `aiPattern`; every profile's weights sum to 1. */
+  profiles: Record<string, Record<TargetingFactor, number>>;
+}
 
 interface BalanceConfig {
   combat: {
@@ -7,8 +28,9 @@ interface BalanceConfig {
     statusLastsFightFromTurns: number;
     defenseMitigationX: number;
     defenseMitigationY: number;
-    executeCooldownTurns: number;
     defensiveLowHpSkillChance: number;
+    /** The most living monsters one summoner can have summoned at once. */
+    maxSummonedMonsters: number;
     /** Used when an effect sets no `critMultiplierPercent`. */
     defaultCritMultiplierPercent: number;
     /** Added to every direct hit's and heal's own `critChance`; 0 disables. */
@@ -28,6 +50,7 @@ interface BalanceConfig {
     fearLoseControlChance: number;
     ultimateMultiplierByFearTier: [number, number, number, number];
   };
+  targeting: TargetingConfig;
   survival: {
     initialSatiety: number;
     initialFear: number;
@@ -131,6 +154,24 @@ interface BalanceConfig {
     checkpointFloorDepth: number;
     founderFloorDepth: number;
   };
+  journal: {
+    /** Fragments one room clear can copy into the journal. */
+    maxFragmentsPerRoom: number;
+    /** Floor depth a line with a `minDepth` gate is first offered at. */
+    deepLineMinDepth: number;
+    /** Floor depth the deep journal echoes start at. */
+    deepEchoMinDepth: number;
+    /** Fear each other living party member takes when someone speaks a journal line in their bad side. */
+    badFaceFearCost: number;
+    /** Floors a dropped journal moves up for each run that dies without reaching it. */
+    driftFloorsPerMissedRun: number;
+    /** The shallowest floor a dropped journal drifts to. */
+    driftMinDepth: number;
+    /** Merge screens one found journal shows; the rest merge silently. */
+    maxMergeScreensPerFind: number;
+    /** Echoes one ending shows on its Last page. */
+    maxEndingEchoes: number;
+  };
   items: {
     itemDropChance: number;
     /** Share of a trophy monster's drops that come from its trophies. */
@@ -212,3 +253,35 @@ for (const [key, length] of Object.entries(FEAR_TIER_ARRAYS)) {
 if (BALANCE.combat.fearTierThresholds.some((v, i, all) => i > 0 && v <= all[i - 1]!)) {
   throw new Error("balance-config combat.fearTierThresholds must be strictly ascending");
 }
+
+/** Why `config` is not a usable `targeting` section, or `null` when it is. Shared with the game editor's save path. */
+export function targetingConfigError(config: TargetingConfig): string | null {
+  for (const key of ["lowHpRankScores", "fearRankScores", "damageRankScores"] as const) {
+    const scores = config[key];
+    if (!Array.isArray(scores) || scores.length === 0 || !scores.every((v) => typeof v === "number" && v > 0)) {
+      return `targeting.${key} must be a non-empty list of numbers above 0`;
+    }
+  }
+  if (!(typeof config.damageMemoryDecay === "number" && config.damageMemoryDecay >= 0 && config.damageMemoryDecay <= 1)) {
+    return "targeting.damageMemoryDecay must be a number from 0 to 1";
+  }
+  for (const key of ["sameRange", "otherRange"] as const) {
+    const score = config.rangeScores?.[key];
+    if (!(typeof score === "number" && score > 0)) return `targeting.rangeScores.${key} must be a number above 0`;
+  }
+  const profiles = Object.entries(config.profiles ?? {});
+  if (profiles.length === 0) return "targeting.profiles must define at least 1 aiPattern";
+  for (const [pattern, weights] of profiles) {
+    const keys = Object.keys(weights ?? {});
+    if (keys.length !== TARGETING_FACTORS.length || !TARGETING_FACTORS.every((f) => keys.includes(f))) {
+      return `targeting.profiles.${pattern} must set exactly ${TARGETING_FACTORS.join(", ")}`;
+    }
+    if (!TARGETING_FACTORS.every((f) => typeof weights[f] === "number" && weights[f] >= 0)) return `targeting.profiles.${pattern}: every weight must be a number >= 0`;
+    const sum = TARGETING_FACTORS.reduce((total, f) => total + weights[f], 0);
+    if (Math.abs(sum - 1) > 1e-9) return `targeting.profiles.${pattern}: weights must sum to 1 (got ${sum})`;
+  }
+  return null;
+}
+
+const targetingError = targetingConfigError(BALANCE.targeting);
+if (targetingError) throw new Error(`balance-config ${targetingError}`);

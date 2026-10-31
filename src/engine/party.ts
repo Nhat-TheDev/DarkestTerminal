@@ -101,7 +101,7 @@ export interface StatBreakdown {
   total: number;
 }
 
-/** Exhausted scales the base of every stat but maxHp/maxMp. Vanguard's passive multiplies maxHp/defense after
+/** Exhausted scales the base of every stat but maxHp/maxMp. Knight's passive multiplies maxHp/defense after
  *  equipment; status deltas come last and flat, the way the resolver applies and undoes them. */
 export function characterStatBreakdown(character: Character, satiety: number): Record<CharacterStat, StatBreakdown> {
   const cls = getClass(character.classId);
@@ -110,10 +110,10 @@ export function characterStatBreakdown(character: Character, satiety: number): R
   // `artifactStatBoostSum` folds the equipped Ability's shared effects in with the Artifacts', so the
   // Ability's share is subtracted back out to tell the two apart.
   const boost = artifactStatBoostSum(character, { ...base, speed: cls.baseSpeed });
-  const vanguardPassive = character.classId === "vanguard" ? passiveRankDef(cls.passiveSkill, character.level) : null;
+  const passiveRank = passiveRankDef(cls.passiveSkill, character.level);
   const passivePercent: Partial<Record<CharacterStat, number>> = {
-    maxHp: vanguardPassive?.maxHpPercent ?? 0,
-    defense: vanguardPassive?.defensePercent ?? 0,
+    maxHp: passiveRank?.maxHpPercent ?? 0,
+    defense: passiveRank?.defensePercent ?? 0,
   };
   const isExhausted = applyExhaustedMultiplier(100, satiety) !== 100;
 
@@ -124,7 +124,7 @@ export function characterStatBreakdown(character: Character, satiety: number): R
     const artifact = stat === "aggro" ? curseAggroBoostSum(character) : boost[stat] - ability;
     const beforePassive = statBase + artifact + ability;
     const percent = passivePercent[stat] ?? 0;
-    const passive = (percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0) + (stat === "aggro" ? (vanguardPassive?.aggroFlat ?? 0) : 0);
+    const passive = percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0;
     const status = stat === "maxMp" ? 0 : activeStatusCombatStatSum(character, stat);
     return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, status, total: beforePassive + passive + status };
   };

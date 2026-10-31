@@ -5,8 +5,9 @@ import { resolveSkillEffect } from "../resolver";
 import { BALANCE } from "../../data/balanceConfig";
 import { getStatusEffect } from "../../data/statusEffects";
 import { t } from "../../data/strings";
+import { SCRIPTED_EVENT_ID } from "../../data/events";
 
-export const GATEKEEPER_EVENT_ID = "the-gatekeeper";
+export const GATEKEEPER_EVENT_ID = SCRIPTED_EVENT_ID;
 
 // The blessing's text is built from these effects as "+N% stat", so each must be a pure percent stat raise.
 for (const effect of getStatusEffect(BALANCE.gatekeeper.blessingStatusId).perTurnEffects) {

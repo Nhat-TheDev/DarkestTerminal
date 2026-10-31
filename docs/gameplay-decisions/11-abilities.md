@@ -18,13 +18,14 @@ What an Ability is, vs. an Item, vs. an Artifact:
 | Nature | Consumable | Permanent relic for 1 run | **Permanent talent, persists *across* runs** |
 | Slots | Inventory count | Up to 3 per character | **Exactly 1 per character, no more** |
 | When chosen | On pickup, used freely | On pickup, immediate equip/discard | **Before the run starts**, at character select |
-| Where it "lives" | `GameState.inventory` | `Character.equippedArtifactIds` | **A persistent profile file, outside any single run's save** |
-| Lost when | Used up | Party wipe (with the run) | **Guaranteed on party wipe** if non-common — every non-common equipped ability is struck from the persistent profile the moment the run ends, no roll involved (recoverable only by spending that run's Stardust, §11.1 "Death flow") |
+| Where it "lives" | `GameState.inventory` | `Character.equippedArtifactIds` | **The save slot's profile file, outside any single run's save** |
+| Lost when | Used up | Party wipe (with the run) | **Guaranteed on party wipe** if non-common — every non-common equipped ability is struck from the slot's profile the moment the run ends, no roll involved (recoverable only by spending that run's Stardust, §11.1 "Death flow") |
 | Rarity | None | Common/Rare/Unique/Epic | **Common/Rare/Unique/Epic** (reuses `ArtifactRarity`) |
 
-Ability state outlives a single run. A run's save (`SaveFile`,
-`src/engine/save.ts`) is destroyed on permadeath (`deleteSlot`); the
-persistent profile deliberately is not.
+Ability state outlives a single run but belongs to one save slot. A run's
+save (`SaveFile`, `src/engine/save.ts`) is destroyed on permadeath
+(`deleteSlot`); the slot's profile deliberately is not, and the next run
+started in that slot picks it up.
 
 ---
 
@@ -181,7 +182,7 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
   adds one more source for an Acolyte bearer. Each equipped Artifact, the
   Ability and the passive scale the land chance down on their own, so they
   combine as `1 − Π(1 − pᵢ)` (`debuffResistPercent` and `combinePercents`,
-  `src/engine/artifacts.ts`; `acolyteDebuffResistPercent`,
+  `src/engine/artifacts.ts`; `passiveDebuffResistPercent`,
   `src/engine/combat.ts`) and never reach 100% from sources below 100%.
 - **Scope:** only enemy skills acting on a Character inside combat, at the
   same call site as `alwaysHit`'s per-effect roll (`applySkillEffects`,
@@ -191,10 +192,10 @@ skill applies to the bearer. A 60% status against `debuffResist 30` lands
   derived from an expected-value model the way `dodgeChance`/`lifesteal` were —
   there is no same-kind Artifact to anchor to.
 
-### The persistent profile
+### The slot profile
 
-A file beside the per-run saves in the same directory
-(`resolveSaveDir()`, `src/engine/save.ts`) — **`profile.json`**:
+One file per save slot, beside that slot's run file in the same directory
+(`SAVE_DIR`, `src/engine/paths.ts`) — **`slotN.profile.json`**:
 
 ```
 AbilityProfile {
@@ -203,19 +204,28 @@ AbilityProfile {
 }
 ```
 
-Note: `profile.json` (`Profile`, `src/engine/profile.ts`) also stores
+Note: the slot profile (`Profile`, `src/engine/profile.ts`) also stores
 `retiredCharacters` and `shownRetiredCharacterEvent`, used by the Ending
-system's cross-run narrative state — not part of Abilities, not shown
-above.
+system's cross-run narrative state, `memoryUnlocked` and `memoryIntroShown` (see "Memory" below), and `runCount`, the number of runs
+started in the slot (the slot list shows it as "Run N") — not part of
+Abilities, not shown above.
 
 - Every `common`-rarity ability in the catalog is **always** selectable —
   it never needs to appear in `unlockedAbilityIds`.
 - A `rare`/`unique`/`epic` ability is only selectable at character select
   once its id is in `unlockedAbilityIds`.
 - This file is **never** touched by `deleteSlot` — it's the one
-  piece of state a permadeath wipe must not destroy.
-- A fresh install has no `profile.json` → treated as `{ version: 1,
-  unlockedAbilityIds: [] }` (only commons available).
+  piece of state a permadeath wipe must not destroy. Only `clearSlot`
+  removes it, when New Game overwrites a slot that still holds a run: the
+  slot then starts over from nothing.
+- A slot that has never held a run has no profile file → treated as
+  `{ version: 1, unlockedAbilityIds: [] }` (only commons available).
+- A legacy `profile.json`, shared by every slot, is copied at startup by
+  `migrateLegacyProfile()` (`src/engine/save.ts`) into each slot that holds
+  a loadable run and has no profile of its own yet, then renamed to
+  `profile.legacy.json`. A slot that already has a profile is never
+  overwritten, so a `profile.json` recreated by an older build changes
+  nothing. A run loaded into a slot without a profile counts as run 1.
 
 ### Character-select flow
 
@@ -259,7 +269,7 @@ of the Artifact drop on the same kill.
   name/rarity/effect/description exactly like an Artifact entry — not a
   combat-log line the way a passive Item pickup is. A permanent catalog
   unlock earns the same popup weight as an Artifact, since it changes the
-  persistent profile the same way an Artifact changes the run; only the
+  slot profile the same way an Artifact changes the run; only the
   Boss's Stardust grant stays a log line (next bullet), matching how coin
   gains are logged rather than revealed. There is no per-run ability pool
   at all — an ability found mid-run either becomes real immediately, or
@@ -323,11 +333,28 @@ Boss kills stay the better free-unlock roll *and* the only Stardust
 source, which is what makes reaching Bosses worth the detour on top of
 whatever Elites a floor happens to offer.
 
+### Memory
+
+The slot's first kill of a boss-tier monster (the guard of the first boss floor; the guards
+of the floors before it are elites) unlocks Memory, a read-only list of the non-common
+abilities the slot holds. It is unlocked where the boss kill grants Stardust
+(`Game.unlockMemory`), and the flag is `memoryUnlocked` in the slot profile, so it belongs
+to the slot and survives permadeath; `clearSlot` resets it.
+
+A one-time intro screen follows (`Game.memoryIntroPending`, shown by
+`App.syncUiToGameState` after the floor milestone check; `proceedAfterVictory` routes
+through it ahead of the Camp offer). Reading it sets `memoryIntroShown` in the profile, so
+quitting before it is read only postpones it. From then on `[m]` opens Memory from any dungeon screen except the Log, game over, ability
+buyback and the Gatekeeper, and `[Esc]` returns to where it was opened. The list follows
+the profile's `unlockedAbilityIds` in catalog order; commons are never listed.
+
 ### Death flow (party wipe)
 
 Runs from `Game.triggerDefeat()` (`src/engine/game.ts`), the one place
 `gameOver` becomes `"defeat"` — reached from `postMoveCheck()` and from a
-lost combat — before `App.syncUiToGameState()` triggers `deleteSlot`. A run
+lost combat — before `App.syncUiToGameState()` triggers `deleteSlot`. The
+run keeps its `currentSaveSlot` through the buyback, so every write below
+lands in that slot's profile. A run
 that ends at the floor-100 Ending checkpoint (Stay, Let Go or Leave, which set
 `gameOver` to `stay`, `letGo`, `leaveEscaped` or `leaveAmbushed`) does not run
 it, so no equipped ability is lost there:
@@ -359,13 +386,13 @@ it, so no equipped ability is lost there:
      contention to sequence or resolve.
    - Spending stops once `runStardust` can no longer afford anything left
      to reclaim.
-4. **Persist** — write the updated `AbilityProfile` to `profile.json`
+4. **Persist** — write the updated `AbilityProfile` to the slot's profile
    *before or independently of* `deleteSlot`, so the per-run wipe
    never touches it. Any `runStardust` left unspent is discarded with the
    rest of the run's state — it does not carry over to the next run (a
    fresh run always starts at `runStardust = 0`).
 5. **Results screen** — shown after the buyback (or immediately, if the
-   lost set was empty): 1 line per lost-set entry, e.g. "Vanguard's
+   lost set was empty): 1 line per lost-set entry, e.g. "Knight's
    *Bloodletting* was lost — reclaimed for 2 Stardust" / "Rogue's
    *Phantom Reflexes* was lost for good."
 6. **Next run starts with more (or the same) choices, never fewer than
@@ -389,11 +416,11 @@ shallow, lower-investment runs.
 
 ### Edge cases & clarifications
 
-- **Exactly one `profile.json`, shared globally.** `resolveSaveDir()`
-  (`src/engine/save.ts`) resolves to a single directory per install/OS
-  user — every save slot file already lives there
-  side by side. `profile.json` is one more file in that same directory,
-  **not** per save-slot and **not** per-run. A character's
+- **One profile per save slot, not per run and not shared.** Each of the
+  5 slots keeps its own unlocks; an ability earned in slot 1 never shows
+  up at slot 2's character select. The game over screen's `[1] New run`
+  starts the next run in the same slot, so its pool carries straight
+  over. A character's
   `equippedAbilityId` is locked in once, at that run's creation
   (§11.1 "Character-select flow"), and is never retroactively changed by
   `unlockedAbilityIds` gaining or losing entries from a *different* run
@@ -408,7 +435,7 @@ shallow, lower-investment runs.
   — every equipped non-common ability in the party is evaluated the same
   way.
 - **Save-scumming has higher stakes here than for Artifacts**: an Ability
-  reroll can permanently inflate the persistent profile, not just the
+  reroll can permanently inflate the slot's profile, not just the
   current run. Not solved — see §11.3.
 - **No-duplicate enforcement only ever needs to check the party's current
   4 `equippedAbilityId`s**, at character select only — the Stardust
@@ -574,7 +601,7 @@ used for `magicPower`**: that method gives an absurd result.
 `speedRate = 12` (`01-class-skill.md` §"Base stats balancing formula") —
 matching Rare's other abilities' ballpark (~2.7-4.0 balance points each)
 would mean `speed +32` to `+48`. `speed` only spans a narrow range across
-all 9 classes at level 1 (`baseSpeed`, `data/classes.json`; Vanguard slowest,
+all 12 classes at level 1 (`baseSpeed`, `data/classes.json`; Paladin slowest,
 Rogue fastest) — a `+32` would make the
 *slowest* class in the game faster than the *fastest* one, by a wide
 margin. The reason the formula breaks down here: `attack`/`defense`/
