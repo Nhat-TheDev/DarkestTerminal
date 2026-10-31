@@ -14,6 +14,7 @@ import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
 import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { saveRun, deleteSlot } from "../engine/save";
+import { recordRunEnd } from "../engine/profile";
 import {
   PALETTE,
   chip,
@@ -377,6 +378,7 @@ export class App implements ScreenContext {
     if (this.game.state.gameOver) {
       // Cleared once, on the first transition into either post-death screen: this re-runs throughout the buyback.
       if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.game.state.gameOver !== "victory" && this.game.currentSaveSlot) {
+        recordRunEnd(this.game.currentSaveSlot, this.game.playTimeSec());
         deleteSlot(this.game.currentSaveSlot);
         this.pushToast(t("ui.saveDeletedMsg"));
       }

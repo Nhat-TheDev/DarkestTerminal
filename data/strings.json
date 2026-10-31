@@ -517,6 +517,8 @@
   "saveSelect.entryDetail": "      {{classes}} — {{time}}",
   "saveSelect.emptyLine": "  [{{i}}] Slot {{slot}} — Empty",
   "saveSelect.endedLine": "  [{{i}}] Slot {{slot}} — Run {{run}} — Ended",
+  "saveSelect.endedLineTime": "  [{{i}}] Slot {{slot}} — Run {{run}} — Ended — {{playTime}}",
+  "saveSelect.endedDetail": "      {{time}}",
   "saveSelect.overwriteWarning": "Slot {{slot}} holds a run. Overwriting it destroys that run and everything the slot has unlocked, for good.",
   "saveSelect.hint": "[{{keys}}] Choose   [Esc] Back",
   "saveSelect.confirmHint": "[1] Overwrite   [Esc] Cancel",

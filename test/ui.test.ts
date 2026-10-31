@@ -3,7 +3,7 @@ import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { saveRun, loadSave, gameFromSave, listSlots, continuableSlots, clearSlot } from "../src/engine/save";
+import { saveRun, loadSave, gameFromSave, listSlots, continuableSlots, clearSlot, SLOT_IDS } from "../src/engine/save";
 import { getSkill } from "../src/data/classes";
 import { ABILITIES } from "../src/data/abilities";
 import { loadProfile, saveProfile } from "../src/engine/profile";
@@ -361,6 +361,37 @@ describe("game over", () => {
     expect(captureCharFrame()).toContain(t("saveSelect.endedLine", { i: index + 1, slot: 5, run: 2 }).trim());
     mockInput.pressKey(String(index + 1));
     expect(await slot).toEqual({ id: "slot5", overwrite: false, hasRun: false });
+  });
+
+  test("a wipe records the run's play time and end for the slot list", async () => {
+    const before = Date.now();
+    const { game } = await defeatedRunInSlot();
+    const lastRun = loadProfile("slot1").lastRun!;
+    expect(lastRun.playTime).toBe(game.playTimeSec());
+    expect(lastRun.endedAt).toBeGreaterThanOrEqual(before);
+  });
+
+  test("an ended slot reads as bright as a run, with its play time and end", async () => {
+    const { renderer, renderOnce, captureCharFrame, captureSpans } = await createTestRenderer({ width: 130, height: 45 });
+    SLOT_IDS.forEach(clearSlot);
+    const endedAt = Date.UTC(2026, 9, 31, 12);
+    saveProfile("slot2", { ...loadProfile("slot2"), runCount: 3, lastRun: { playTime: 3720, endedAt } });
+    saveProfile("slot4", { ...loadProfile("slot4"), runCount: 1 });
+
+    void showSlotSelect(renderer, "continue");
+    await renderOnce();
+    const frame = captureCharFrame();
+    const timed = t("saveSelect.endedLineTime", { i: 1, slot: 2, run: 3, playTime: "1h 2m" }).trim();
+    const plain = t("saveSelect.endedLine", { i: 2, slot: 4, run: 1 }).trim();
+    expect(frame).toContain(timed);
+    expect(frame).toContain(new Date(endedAt).toLocaleString());
+    expect(frame).toContain(plain);
+
+    const textColor = RGBA.fromHex(PALETTE.text);
+    const spanWith = (text: string) => captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes(text))!;
+    expect(spanWith(timed).fg).toEqual(textColor);
+    expect(spanWith(plain).fg).toEqual(textColor);
+    SLOT_IDS.forEach(clearSlot);
   });
 });
 

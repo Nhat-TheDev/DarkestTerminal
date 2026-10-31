@@ -17,6 +17,11 @@ export interface RetiredCharacter {
   classId: Id;
 }
 
+export interface LastRun {
+  playTime: number;
+  endedAt: number;
+}
+
 export interface Profile extends AbilityProfile {
   retiredCharacters: RetiredCharacter[];
   /** Across all runs in the slot, unlike `GameState.firedOnceEventIds`. */
@@ -30,6 +35,8 @@ export interface Profile extends AbilityProfile {
   journal: SlotJournal;
   /** The readings a wiped party tore out, lying at its death depth. */
   droppedJournal: DroppedJournal | null;
+  /** Written as a wipe deletes the save, which held the run's play time. */
+  lastRun: LastRun | null;
 }
 
 export function profileFilename(slotId: Id): string {
@@ -41,7 +48,7 @@ function profilePath(slotId: Id): string {
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null };
 }
 
 function isKnownAbility(id: Id): boolean {
@@ -84,6 +91,11 @@ function parseDroppedJournal(raw: Partial<DroppedJournal> | null | undefined): D
   return hands.length > 0 ? { depth: raw.depth!, hands } : null;
 }
 
+function parseLastRun(raw: Partial<LastRun> | null | undefined): LastRun | null {
+  if (!raw || !Number.isInteger(raw.playTime) || !Number.isInteger(raw.endedAt)) return null;
+  return { playTime: raw.playTime!, endedAt: raw.endedAt! };
+}
+
 /** Unknown ids are pruned. */
 export function parseProfile(text: string): Profile {
   const raw = JSON.parse(text) as Partial<Profile>;
@@ -97,6 +109,7 @@ export function parseProfile(text: string): Profile {
     memoryIntroShown: raw.memoryIntroShown === true,
     journal: parseJournal(raw.journal),
     droppedJournal: parseDroppedJournal(raw.droppedJournal),
+    lastRun: parseLastRun(raw.lastRun),
   };
 }
 
@@ -135,6 +148,10 @@ export function beginRun(slotId: Id): void {
   const profile = loadProfile(slotId);
   profile.runCount += 1;
   saveProfile(slotId, profile);
+}
+
+export function recordRunEnd(slotId: Id, playTime: number): void {
+  saveProfile(slotId, { ...loadProfile(slotId), lastRun: { playTime, endedAt: Date.now() } });
 }
 
 export function addRetiredCharacter(slotId: Id | null, classId: Id): void {

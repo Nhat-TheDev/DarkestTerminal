@@ -4,6 +4,7 @@ import { digitHint } from "./keyHints";
 import { t } from "../data/strings";
 import { getClass } from "../data/classes";
 import { continuableSlots, listSlots, type SlotEntry } from "../engine/save";
+import { loadProfile } from "../engine/profile";
 import type { Id } from "../types";
 
 export type SlotSelectMode = "new" | "continue";
@@ -53,8 +54,18 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       slots.forEach((slot, i) => {
         const n = slotNumber(slot.id);
         if (!slot.meta) {
-          const line = slot.runCount > 0 ? t("saveSelect.endedLine", { i: i + 1, slot: n, run: slot.runCount }) : t("saveSelect.emptyLine", { i: i + 1, slot: n });
-          lines.push([colorChunk(line, PALETTE.dim)]);
+          if (slot.runCount === 0) {
+            lines.push([colorChunk(t("saveSelect.emptyLine", { i: i + 1, slot: n }), PALETTE.dim)]);
+            return;
+          }
+          const ended = { i: i + 1, slot: n, run: slot.runCount };
+          const lastRun = loadProfile(slot.id).lastRun;
+          if (!lastRun) {
+            lines.push([colorChunk(t("saveSelect.endedLine", ended), PALETTE.text)]);
+            return;
+          }
+          lines.push([colorChunk(t("saveSelect.endedLineTime", { ...ended, playTime: formatPlayTime(lastRun.playTime) }), PALETTE.text)]);
+          lines.push([colorChunk(t("saveSelect.endedDetail", { time: new Date(lastRun.endedAt).toLocaleString() }), PALETTE.dim)]);
           return;
         }
         const { floorDepth, playTime, partyClassIds, timestamp } = slot.meta;
