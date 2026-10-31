@@ -205,6 +205,7 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       writeFileSync(corrupt, "{");
       for (const id of ["slot2", "slot3", "slot4"]) saveProfile(id, { ...loadProfile(id), runCount: 2 });
 
+      expect(listSlots().map((slot) => slot.unreadable)).toEqual([false, false, true, true, false]);
       expect(continuableSlots().map((slot) => slot.id)).toEqual(["slot1", "slot2"]);
       expect(readFileSync(newer, "utf8")).toBe(newerContents);
       expect(readFileSync(corrupt, "utf8")).toBe("{");
@@ -245,7 +246,7 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       game.currentSaveSlot = "slot4";
       saveRun(game);
       clearSlot("slot4");
-      expect(listSlots().find((s) => s.id === "slot4")).toEqual({ id: "slot4", meta: null, runCount: 0 });
+      expect(listSlots().find((s) => s.id === "slot4")).toEqual({ id: "slot4", meta: null, runCount: 0, unreadable: false });
       expect(loadProfile("slot4").unlockedAbilityIds).toEqual([]);
     });
   });

@@ -1,4 +1,6 @@
 import { describe, test, expect } from "bun:test";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
@@ -30,6 +32,7 @@ import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
 import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 import { PALETTE } from "../src/ui/theme";
+import { SAVE_DIR } from "../src/engine/paths";
 import { panelContentRows } from "../tools/random-play/checks";
 
 describe("headless UI smoke test", () => {
@@ -391,6 +394,34 @@ describe("game over", () => {
     const spanWith = (text: string) => captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes(text))!;
     expect(spanWith(timed).fg).toEqual(textColor);
     expect(spanWith(plain).fg).toEqual(textColor);
+    SLOT_IDS.forEach(clearSlot);
+  });
+
+  test("New Game names a save it can't load and asks before overwriting it", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    SLOT_IDS.forEach(clearSlot);
+    const path = join(SAVE_DIR, "slot3.json");
+    saveProfile("slot3", { ...loadProfile("slot3"), runCount: 2, lastRun: { playTime: 3720, endedAt: Date.UTC(2026, 9, 31, 12) } });
+    writeFileSync(path, "{");
+
+    const slot = showSlotSelect(renderer, "new");
+    await renderOnce();
+    expect(captureCharFrame()).toContain(t("saveSelect.unreadableLine", { i: 3, slot: 3 }).trim());
+    expect(captureCharFrame()).not.toContain("1h 2m");
+
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(captureCharFrame()).toContain(t("saveSelect.confirmHint"));
+    mockInput.pressEscape();
+    await tick();
+    await renderOnce();
+    expect(captureCharFrame()).not.toContain(t("saveSelect.confirmHint"));
+    expect(readFileSync(path, "utf8")).toBe("{");
+
+    mockInput.pressKey("3");
+    await renderOnce();
+    mockInput.pressKey("1");
+    expect(await slot).toEqual({ id: "slot3", overwrite: true, hasRun: true });
     SLOT_IDS.forEach(clearSlot);
   });
 });

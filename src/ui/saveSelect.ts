@@ -54,6 +54,10 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       slots.forEach((slot, i) => {
         const n = slotNumber(slot.id);
         if (!slot.meta) {
+          if (slot.unreadable) {
+            lines.push([colorChunk(t("saveSelect.unreadableLine", { i: i + 1, slot: n }), PALETTE.text)]);
+            return;
+          }
           if (slot.runCount === 0) {
             lines.push([colorChunk(t("saveSelect.emptyLine", { i: i + 1, slot: n }), PALETTE.dim)]);
             return;
@@ -105,7 +109,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       }
       const slot = /^[1-9]$/.test(key.name) ? slots[Number(key.name) - 1] : undefined;
       if (!slot) return;
-      if (mode === "new" && slot.meta) {
+      if (mode === "new" && (slot.meta || slot.unreadable)) {
         pendingOverwrite = slot;
         draw();
         return;

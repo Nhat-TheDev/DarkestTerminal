@@ -63,6 +63,8 @@ export interface SlotEntry {
   meta: SaveMeta | null;
   /** From the slot's profile; 0 for a slot that has never held a run. */
   runCount: number;
+  /** A save file is there but can't be loaded, so `meta` is null without the slot being free. */
+  unreadable: boolean;
 }
 
 function ensureSaveDir(): void {
@@ -222,26 +224,27 @@ export function isSaveStateValid(state: GameState): boolean {
   return true;
 }
 
-/** A slot that can't be loaded reads as empty; its file stays on disk. */
+/** A slot that can't be loaded has no `meta`; its file stays on disk. */
 export function listSlots(): SlotEntry[] {
   return SLOT_IDS.map((id) => {
     const runCount = loadProfile(id).runCount;
+    const unloaded = { id, meta: null, runCount, unreadable: existsSync(savePath(id)) };
     try {
       const save = JSON.parse(readFileSync(savePath(id), "utf8")) as SaveFile;
-      if (!isSaveVersionAllowed(save.meta.saveVersion) || !isDevDumpAllowed(save.meta)) return { id, meta: null, runCount };
+      if (!isSaveVersionAllowed(save.meta.saveVersion) || !isDevDumpAllowed(save.meta)) return unloaded;
       const state = migrateGameState(save.state, save.meta.saveVersion);
-      if (!isSaveStateValid(state) || !isSaveMonstersValid(save.monsters ?? [])) return { id, meta: null, runCount };
+      if (!isSaveStateValid(state) || !isSaveMonstersValid(save.monsters ?? [])) return unloaded;
       // Read from the migrated party, not the stored meta, so every VERSION_MIGRATIONS step reaches the slot list too.
-      return { id, meta: { ...save.meta, partyClassIds: state.party.map((c) => c.classId) }, runCount };
+      return { id, meta: { ...save.meta, partyClassIds: state.party.map((c) => c.classId) }, runCount, unreadable: false };
     } catch {
-      return { id, meta: null, runCount };
+      return unloaded;
     }
   });
 }
 
 /** The slots Continue offers. A slot whose save can't be loaded isn't one that ended: a new run there would overwrite the file. */
 export function continuableSlots(): SlotEntry[] {
-  return listSlots().filter((slot) => slot.meta !== null || (slot.runCount > 0 && !existsSync(savePath(slot.id))));
+  return listSlots().filter((slot) => slot.meta !== null || (slot.runCount > 0 && !slot.unreadable));
 }
 
 export function firstFreeSlotId(): Id | null {
