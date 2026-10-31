@@ -41,7 +41,7 @@ export function finishVictorySequence(ctx: ScreenContext): void {
 
 /** The camp-offer flag is left set so it still fires once a pending artifact decision resolves. */
 export function proceedAfterVictory(ctx: ScreenContext): void {
-  if (ctx.game.state.pendingArtifactDecision || ctx.game.memoryIntroPending) {
+  if (ctx.game.state.pendingArtifactDecision || ctx.game.state.pendingJournal || ctx.game.memoryIntroPending) {
     ctx.syncUiToGameState();
     return;
   }

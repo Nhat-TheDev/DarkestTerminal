@@ -16,6 +16,8 @@ export function renderMain(game: Game): string {
   const key = game.state.gameOver && ENDING_SCREENS[game.state.gameOver];
   const base = t(key ?? "ui.defeatScreen");
   const lines = [base];
+  const dropped = game.state.gameOver === "defeat" ? game.droppedJournal() : null;
+  if (dropped?.hands.some((h) => h.run === game.runNumber)) lines.push("", t("ui.journalStaysOnFloor", { depth: dropped.depth }));
   const results = game.state.abilityDeathResults ?? [];
   if (results.length > 0) lines.push("", t("ui.abilityResultsTitle"));
   for (const result of results) {
@@ -31,11 +33,12 @@ export function renderMain(game: Game): string {
   return lines.join("\n");
 }
 
-export function renderFooter(): string {
-  return t("ui.footerGameOver");
+export function renderFooter(game: Game): string {
+  return t(game.state.journalEndingEchoIds.length > 0 ? "ui.footerGameOverLastPage" : "ui.footerGameOver");
 }
 
 export function handleKey(ctx: ScreenContext, key: KeyEvent): void {
-  if (key.name === "n") ctx.exitRun("newRun");
+  if (key.name === "return" && ctx.game.state.journalEndingEchoIds.length > 0) ctx.setUi({ kind: "journalLastPage" });
+  else if (key.name === "n") ctx.exitRun("newRun");
   else if (key.name === "escape") ctx.exitRun("menu");
 }

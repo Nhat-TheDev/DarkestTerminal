@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Id, AbilityProfile } from "../types";
+import type { Id, AbilityProfile, DroppedJournal, JournalLineState, SlotJournal } from "../types";
 import { ABILITIES } from "../data/abilities";
+import { JOURNAL_LINES, getJournalEcho, getJournalFragment } from "../data/journal";
 import { SAVE_DIR } from "./paths";
 import { renamedClassId } from "./migration";
 
@@ -26,6 +27,9 @@ export interface Profile extends AbilityProfile {
   memoryUnlocked: boolean;
   /** The one-time Memory intro has been read; `[m]` is offered only after it. */
   memoryIntroShown: boolean;
+  journal: SlotJournal;
+  /** The readings a wiped party tore out, lying at its death depth. */
+  droppedJournal: DroppedJournal | null;
 }
 
 export function profileFilename(slotId: Id): string {
@@ -37,11 +41,47 @@ function profilePath(slotId: Id): string {
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null };
 }
 
 function isKnownAbility(id: Id): boolean {
   return ABILITIES.some((a) => a.id === id);
+}
+
+function parseJournalLines(raw: unknown): Record<Id, JournalLineState> {
+  const lines: Record<Id, JournalLineState> = {};
+  if (!raw || typeof raw !== "object") return lines;
+  for (const [lineId, value] of Object.entries(raw as Record<Id, Partial<JournalLineState>>)) {
+    const line = JOURNAL_LINES.find((l) => l.id === lineId);
+    if (!line || !value) continue;
+    const known = (id: unknown): id is Id => line.directions.some((d) => d.id === id);
+    const entry: JournalLineState = { struck: Array.isArray(value.struck) ? value.struck.filter(known) : [] };
+    if (known(value.directionId)) entry.directionId = value.directionId;
+    if (Array.isArray(value.split) && value.split.length === 2 && value.split.every(known)) entry.split = [value.split[0]!, value.split[1]!];
+    if (typeof value.writerClassId === "string") entry.writerClassId = renamedClassId(value.writerClassId);
+    if (Number.isInteger(value.run)) entry.run = value.run;
+    if (entry.directionId || entry.split || entry.struck.length > 0) lines[lineId] = entry;
+  }
+  return lines;
+}
+
+function parseJournal(raw: Partial<SlotJournal> | undefined): SlotJournal {
+  const fragments = Array.isArray(raw?.fragments)
+    ? raw.fragments.filter((f) => f && getJournalFragment(f.id) && Number.isInteger(f.run) && Number.isInteger(f.depth)).map((f) => ({ id: f.id, run: f.run, depth: f.depth }))
+    : [];
+  const echoes = Array.isArray(raw?.echoes)
+    ? raw.echoes.filter((e) => e && getJournalEcho(e.id) && Number.isInteger(e.run) && Number.isInteger(e.depth)).map((e) => ({ id: e.id, run: e.run, depth: e.depth }))
+    : [];
+  return { fragments, lines: parseJournalLines(raw?.lines), echoes };
+}
+
+function parseDroppedJournal(raw: Partial<DroppedJournal> | null | undefined): DroppedJournal | null {
+  if (!raw || !Number.isInteger(raw.depth) || !Array.isArray(raw.hands)) return null;
+  const hands = raw.hands
+    .filter((h) => h && Number.isInteger(h.run) && Array.isArray(h.classIds))
+    .map((h) => ({ run: h.run, classIds: h.classIds.map(renamedClassId), lines: parseJournalLines(h.lines) }))
+    .filter((h) => Object.keys(h.lines).length > 0);
+  return hands.length > 0 ? { depth: raw.depth!, hands } : null;
 }
 
 /** Unknown ids are pruned. */
@@ -55,6 +95,8 @@ export function parseProfile(text: string): Profile {
     runCount: Number.isInteger(raw.runCount) && (raw.runCount as number) > 0 ? (raw.runCount as number) : 0,
     memoryUnlocked: raw.memoryUnlocked === true,
     memoryIntroShown: raw.memoryIntroShown === true,
+    journal: parseJournal(raw.journal),
+    droppedJournal: parseDroppedJournal(raw.droppedJournal),
   };
 }
 

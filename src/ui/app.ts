@@ -45,7 +45,7 @@ import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHe
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { canOpenMemory, composeFooter } from "./keyHints";
+import { canOpenJournal, canOpenMemory, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -58,6 +58,7 @@ import * as campScreen from "./screens/camp";
 import * as campReflectionScreen from "./screens/campReflection";
 import * as floorMilestoneScreen from "./screens/floorMilestone";
 import * as memoryScreen from "./screens/memory";
+import * as journalScreen from "./screens/journal";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
@@ -74,7 +75,7 @@ const RUN_LOG_SIZE = 500;
 /** "eventArtifactSacrifice" reserves digit 9 on every page for the trailing "Leave" option. */
 function pageSizeFor(kind: UiState["kind"]): number {
   // Memory pages are built by row budget when the screen opens, so each list "entry" is a whole page.
-  if (kind === "memory") return 1;
+  if (kind === "memory" || kind === "journal") return 1;
   if (kind === "pickItemOutOfCombat" || kind === "pickItemInCombat") return ITEM_PAGE_SIZE;
   return kind === "eventArtifactSacrifice" ? PAGE_SIZE - 1 : PAGE_SIZE;
 }
@@ -343,6 +344,7 @@ export class App implements ScreenContext {
       case "roomReward":
         return ui.viewing ? null : ui.entries.length;
       case "memory":
+      case "journal":
         return ui.pages.length;
       default:
         return null;
@@ -354,6 +356,7 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    if (this.game.takeJournalNotice()) this.logInfo(t("ui.journalNoted"));
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
       return;
@@ -365,6 +368,10 @@ export class App implements ScreenContext {
     }
     if (this.game.state.pendingFounderDialogue) {
       this.ui = { kind: "founderDialogue" };
+      return;
+    }
+    if (this.game.state.pendingJournalPickup) {
+      this.ui = { kind: "journalPickup" };
       return;
     }
     if (this.game.state.gameOver) {
@@ -398,6 +405,10 @@ export class App implements ScreenContext {
       }
       if (this.game.state.pendingFloorMilestoneOmenId) {
         this.ui = { kind: "floorMilestone" };
+        return;
+      }
+      if (this.game.state.pendingJournal) {
+        this.ui = { kind: "journalDeduction" };
         return;
       }
       if (this.game.memoryIntroPending) {
@@ -459,12 +470,12 @@ export class App implements ScreenContext {
       }
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "journalLastPage" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "saveMenu" && this.ui.kind !== "gatekeeper" && key.name === "q") {
       this.ui = { kind: "saveMenu", previous: this.ui };
       this.render();
       return;
     }
-    if (this.ui.kind !== "gameover" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
+    if (this.ui.kind !== "gameover" && this.ui.kind !== "journalLastPage" && this.ui.kind !== "abilityBuyback" && this.ui.kind !== "gatekeeper" && key.name === "s") {
       saveRun(this.game);
       this.pushToast(t("ui.quickSavedMsg"));
       this.render();
@@ -486,6 +497,12 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
+    if (key.name === "j" && this.game.hasJournalEntries() && canOpenJournal(this.ui.kind)) {
+      this.ui = { kind: "journal", previous: this.ui, previousPage: this.listPage, pages: journalScreen.journalPages(this.game.journal, this.game.droppedJournal(), this.game.runNumber) };
+      this.listPage = 0;
+      this.render();
+      return;
+    }
     if (key.name === "left" || key.name === "right") {
       const count = this.listCountFor(this.ui);
       if (count !== null) {
@@ -497,7 +514,7 @@ export class App implements ScreenContext {
         return;
       }
     }
-    // The log panel claims left/right, up/down, h/j/k/l, pageup/pagedown and home/end, so any of those a screen needs must be handled above this.
+    // The log panel claims left/right, up/down, h/k, pageup/pagedown and home/end, so any of those a screen needs must be handled above this. `j` and `l` are taken above.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
       return;
@@ -584,6 +601,15 @@ export class App implements ScreenContext {
         memoryScreen.handleIntroKey(this, key);
         break;
       case "memory":
+      case "journal":
+        break;
+      case "journalDeduction":
+        journalScreen.handleDeductionKey(this, digit);
+        break;
+      case "journalPickup":
+        journalScreen.handlePickupKey(this, key, digit);
+        break;
+      case "journalLastPage":
         break;
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
@@ -656,8 +682,12 @@ export class App implements ScreenContext {
         this.ui = this.ui.previous;
         return true;
       case "memory":
+      case "journal":
         this.listPage = this.ui.previousPage;
         this.ui = this.ui.previous;
+        return true;
+      case "journalLastPage":
+        this.ui = { kind: "gameover" };
         return true;
       case "roomReward":
         if (this.ui.viewing) {
@@ -858,7 +888,7 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable()))]);
+      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries()))]);
     }
     this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
@@ -1316,6 +1346,14 @@ export class App implements ScreenContext {
 
       case "memory":
         return memoryScreen.renderMain(this.ui, this.listPage);
+      case "journal":
+        return journalScreen.renderMain(this.ui, this.listPage);
+      case "journalDeduction":
+        return journalScreen.renderDeduction(this.game);
+      case "journalPickup":
+        return journalScreen.renderPickup(this.game);
+      case "journalLastPage":
+        return journalScreen.renderLastPage(this.game);
 
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
@@ -1398,6 +1436,14 @@ export class App implements ScreenContext {
         return memoryScreen.renderIntroFooter();
       case "memory":
         return memoryScreen.renderFooter();
+      case "journal":
+        return journalScreen.renderFooter();
+      case "journalDeduction":
+        return journalScreen.renderDeductionFooter(this.game);
+      case "journalPickup":
+        return journalScreen.renderPickupFooter(this.game);
+      case "journalLastPage":
+        return journalScreen.renderLastPageFooter();
       case "characterInfo":
         return characterInfoScreen.renderFooter(this.ui, this.game);
       case "endingCheckpoint":
@@ -1409,7 +1455,7 @@ export class App implements ScreenContext {
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter();
       case "gameover":
-        return gameoverScreen.renderFooter();
+        return gameoverScreen.renderFooter(this.game);
       case "fullLog":
         return t("ui.footerBackOnly");
     }

@@ -62,6 +62,10 @@ export type UiState =
   | { kind: "floorMilestone" }
   | { kind: "memoryIntro" }
   | { kind: "memory"; previous: UiState; previousPage: number; pages: string[][] }
+  | { kind: "journalDeduction" }
+  | { kind: "journal"; previous: UiState; previousPage: number; pages: string[][] }
+  | { kind: "journalPickup" }
+  | { kind: "journalLastPage" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
   | { kind: "gatekeeper" }

@@ -21,6 +21,7 @@
     "baseSpeed": 8,
     "baseMagicPower": 0,
     "attackRange": "melee",
+    "personalityId": "humble",
     "skills": [
       {
         "id": "slash",
@@ -446,6 +447,7 @@
     "baseSpeed": 10,
     "baseMagicPower": 16,
     "attackRange": "ranged",
+    "personalityId": "gentle",
     "skills": [
       {
         "id": "arcane-bolt",
@@ -922,6 +924,7 @@
     "baseSpeed": 20,
     "baseMagicPower": 0,
     "attackRange": "melee",
+    "personalityId": "patient",
     "skills": [
       {
         "id": "stab",
@@ -1346,6 +1349,7 @@
     "baseSpeed": 9,
     "baseMagicPower": 10,
     "attackRange": "ranged",
+    "personalityId": "blunt",
     "skills": [
       {
         "id": "smite",
@@ -1823,6 +1827,7 @@
     "baseSpeed": 11,
     "baseMagicPower": 8,
     "attackRange": "melee",
+    "personalityId": "craft-pride",
     "skills": [
       {
         "id": "axe-slash",
@@ -2253,6 +2258,7 @@
     "baseSpeed": 11,
     "baseMagicPower": 13,
     "attackRange": "ranged",
+    "personalityId": "seeks-meaning",
     "skills": [
       {
         "id": "vial-toss",
@@ -2808,6 +2814,7 @@
     "baseSpeed": 13,
     "baseMagicPower": 0,
     "attackRange": "ranged",
+    "personalityId": "bold",
     "skills": [
       {
         "id": "quick-shot",
@@ -3206,6 +3213,7 @@
     "baseSpeed": 16,
     "baseMagicPower": 0,
     "attackRange": "melee",
+    "personalityId": "inquisitive",
     "skills": [
       {
         "id": "kunai-strike",
@@ -3708,6 +3716,7 @@
     "baseSpeed": 10,
     "baseMagicPower": 12,
     "attackRange": "ranged",
+    "personalityId": "loyal",
     "skills": [
       {
         "id": "hollow-pulse",
@@ -4186,6 +4195,7 @@
     "baseSpeed": 18,
     "baseMagicPower": 10,
     "attackRange": "ranged",
+    "personalityId": "practical",
     "dice": {
       "startCount": 3,
       "maxCount": 12,
@@ -4694,6 +4704,7 @@
     "baseSpeed": 5,
     "baseMagicPower": 8,
     "attackRange": "melee",
+    "personalityId": "dry-wit",
     "skills": [
       {
         "id": "mace-strike",
@@ -5229,6 +5240,7 @@
     "baseSpeed": 10,
     "baseMagicPower": 15,
     "attackRange": "ranged",
+    "personalityId": "cautious",
     "skills": [
       {
         "id": "eldritch-bolt",

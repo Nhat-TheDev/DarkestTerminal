@@ -11,6 +11,7 @@ import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
 import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
+import { getJournalEcho, getJournalFragment, getJournalLine } from "../data/journal";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 
 export function isVersion(version: string): boolean {
@@ -226,6 +227,17 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   }
   delete state.pendingFloorMilestoneMessage;
   if (!state.campReflectionChoices) state.campReflectionChoices = {};
+  if (state.pendingJournal === undefined || (state.pendingJournal && !getJournalLine(state.pendingJournal.lineId))) state.pendingJournal = null;
+  if (state.pendingJournal?.fragmentId && !getJournalFragment(state.pendingJournal.fragmentId)) state.pendingJournal.fragmentId = null;
+  state.journalQueue = Array.isArray(state.journalQueue) ? state.journalQueue.filter((q) => getJournalLine(q.lineId)) : [];
+  state.journalFragmentsSeen = Array.isArray(state.journalFragmentsSeen) ? state.journalFragmentsSeen.filter((id) => getJournalFragment(id)) : [];
+  if (!state.journalEventVisits) state.journalEventVisits = {};
+  state.journalLeftBlank = Array.isArray(state.journalLeftBlank) ? state.journalLeftBlank.filter((id) => getJournalLine(id)) : [];
+  if (state.journalHandledRoomId === undefined) state.journalHandledRoomId = null;
+  if (state.pendingJournalPickup === undefined) state.pendingJournalPickup = null;
+  if (typeof state.journalPickupReached !== "boolean") state.journalPickupReached = false;
+  state.journalEchoesFired = Array.isArray(state.journalEchoesFired) ? state.journalEchoesFired.filter((id) => getJournalEcho(id)) : [];
+  state.journalEndingEchoIds = Array.isArray(state.journalEndingEchoIds) ? state.journalEndingEchoIds.filter((id) => getJournalEcho(id)) : [];
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;
   if (typeof state.pendingFounderDialogue !== "boolean") state.pendingFounderDialogue = false;

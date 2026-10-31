@@ -5,6 +5,7 @@ import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCEN
 import { getArtifact } from "../../data/artifacts";
 import { getEvent } from "../../data/events";
 import { getRoom, pickEventText } from "../../engine/dungeon";
+import { getJournalEcho } from "../../data/journal";
 import { pickReflectionPrompt } from "../../engine/events/shared";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
@@ -46,7 +47,9 @@ function partyHpPickerLines(party: Character[]): string[] {
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.rolledEventId) return "";
-  return pickEventText(state, room, getEvent(room.rolledEventId));
+  const text = pickEventText(state, room, getEvent(room.rolledEventId));
+  const echo = room.journalEchoId ? getJournalEcho(room.journalEchoId) : undefined;
+  return echo ? `${text}\n\n${echo.text}` : text;
 }
 
 export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, digit: number | null): void {
