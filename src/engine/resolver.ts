@@ -302,9 +302,10 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100) +
         (source.maxHp * (effect.casterMaxHpPercent ?? 0)) / 100;
       const lowHpBoost = effect.lowHpHealBonus ? 1 + lowHpHealBonusPercent(target, effect.lowHpHealBonus) / 100 : 1;
+      const highFearBoost = effect.highFearHealBonus ? 1 + highFearHealBonusPercent(target, effect.highFearHealBonus) / 100 : 1;
       const crit = critRolled(ctx);
       const critMultiplier = crit ? critMultiplierOf(effect) : 1;
-      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * passiveHealBoost * lowHpBoost * critMultiplier));
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * passiveHealBoost * lowHpBoost * highFearBoost * critMultiplier));
       const healed = target.hp - before;
       ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
       return healed;
@@ -442,6 +443,13 @@ export function lowHpHealBonusPercent(target: Actor, bonus: { maxBonusPercent: n
   const hpPercent = (target.hp / target.maxHp) * 100;
   const span = 100 - bonus.fullBonusBelowHpPercent;
   const progress = span <= 0 ? 1 : clamp((100 - hpPercent) / span, 0, 1);
+  return bonus.maxBonusPercent * progress;
+}
+
+/** `highFearHealBonus`'s share for this recipient: 0 at no fear, rising evenly to `maxBonusPercent` at `fullBonusAtFear`. Only characters carry fear. */
+export function highFearHealBonusPercent(target: Actor, bonus: { maxBonusPercent: number; fullBonusAtFear: number }): number {
+  if (!isCharacter(target)) return 0;
+  const progress = bonus.fullBonusAtFear <= 0 ? 1 : clamp(target.survival.fear / bonus.fullBonusAtFear, 0, 1);
   return bonus.maxBonusPercent * progress;
 }
 

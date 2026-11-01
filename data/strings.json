@@ -629,6 +629,7 @@
   "ui.skillEffectHealParts": "  • Heals: {{parts}} HP {{targetSuffix}}",
   "ui.healCasterMaxHpPart": "{{percent}}% of your max HP",
   "ui.skillLowHpHealLine": "  • Up to +{{percent}}% healing the lower their HP, in full below {{threshold}}%",
+  "ui.skillHighFearHealLine": "  • Up to +{{percent}}% healing the greater their fear, in full at {{threshold}}",
   "ui.skillEffectHeal": "Heals {{amount}} HP",
   "ui.skillEffectRestoreMp": "Restores {{amount}} MP",
   "ui.skillEffectApplyStatus": "Applies {{status}}",

@@ -1103,26 +1103,31 @@ describe("Rogue skill ranks + poison exclusivity", () => {
 describe("Acolyte skill ranks incl. appliesToRelation", () => {
   test("Heal ranks resolve heal 16/22/30 at lv1/7/15", () => {
     const skill = getSkill("heal");
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16, offenseMultiplierPercent: 90 }]);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "heal", amount: 22, offenseMultiplierPercent: 100 }]);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "heal", amount: 30, offenseMultiplierPercent: 110 }]);
+    const consoled = { kind: "applyStatusEffect" as const, statusEffectId: "consoled", durationTurns: 2, excludesSummonTargets: true };
+    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16, offenseMultiplierPercent: 90, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
+    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "heal", amount: 22, offenseMultiplierPercent: 100, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
+    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "heal", amount: 30, offenseMultiplierPercent: 110, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
   });
 
   test("Divine Descent ranks resolve ally (heal+fear) / enemy (dmg) effects at lv35/70/100", () => {
     const skill = getSkill("divine-descent");
+    const consoled = { kind: "applyStatusEffect" as const, statusEffectId: "consoled", durationTurns: 2, appliesToRelation: "ally" as const, excludesSummonTargets: true };
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
-      { kind: "heal", amount: 25, offenseMultiplierPercent: 70, appliesToRelation: "ally" },
+      { kind: "heal", amount: 25, offenseMultiplierPercent: 70, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -15, appliesToRelation: "ally" },
+      consoled,
       { kind: "damage", amount: 20, offenseMultiplierPercent: 80, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([
-      { kind: "heal", amount: 30, offenseMultiplierPercent: 75, appliesToRelation: "ally" },
+      { kind: "heal", amount: 30, offenseMultiplierPercent: 75, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -20, appliesToRelation: "ally" },
+      consoled,
       { kind: "damage", amount: 25, offenseMultiplierPercent: 85, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([
-      { kind: "heal", amount: 40, offenseMultiplierPercent: 80, appliesToRelation: "ally" },
+      { kind: "heal", amount: 40, offenseMultiplierPercent: 80, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -25, appliesToRelation: "ally" },
+      consoled,
       { kind: "damage", amount: 30, offenseMultiplierPercent: 90, appliesToRelation: "enemy", damageType: "holy" },
     ]);
   });

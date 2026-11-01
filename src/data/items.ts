@@ -13,6 +13,7 @@ export const CAMP_KIT_ITEM_ID: Id = campKits[0]!.id;
 
 for (const id of Object.keys(BALANCE.party.startingItems)) {
   if (!ITEMS.some((i) => i.id === id)) throw new Error(`data/balance-config.json: party.startingItems names unknown item "${id}"`);
+  if (id === CAMP_KIT_ITEM_ID) throw new Error(`data/balance-config.json: party.startingItems must not list "${id}", set party.startingExplorationKits instead`);
 }
 
 export function getItem(id: Id): ItemDefinition {

@@ -75,7 +75,7 @@ const V1_1_0_EXP_TIERS = [
 /** Cumulative EXP by level on a curve. */
 function expCosts(tiers: { maxLevel: number; expCost: number }[]): number[] {
   const costs = [0, 0];
-  for (let level = 2; level <= MAX_LEVEL; level++) costs[level] = costs[level - 1]! + tiers.find((t) => level <= t.maxLevel)!.expCost;
+  for (let level = 2; level <= MAX_LEVEL; level++) costs[level] = costs[level - 1]! + (tiers.find((t) => level <= t.maxLevel) ?? tiers.at(-1)!).expCost;
   return costs;
 }
 

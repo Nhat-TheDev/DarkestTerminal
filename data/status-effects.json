@@ -1410,6 +1410,14 @@
     "fearResistPercent": 70
   },
   {
+    "id": "consoled",
+    "name": "Consoled",
+    "description": "Some of the fear that would land finds nothing to hold.",
+    "perTurnEffects": [],
+    "fearResistPercent": 20,
+    "endsWithCombat": true
+  },
+  {
     "id": "netted",
     "name": "Netted",
     "description": "Every move pulls the barbs deeper; acting may open a fresh bleed.",

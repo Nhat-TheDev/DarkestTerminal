@@ -101,6 +101,7 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     field("stacks", (value) => `${formatNumber(value)} stack`),
     field("casterMaxHpPercent", (value) => `+${formatNumber(value)}% of the caster's max HP`),
     field("lowHpHealBonus", ({ maxBonusPercent, fullBonusBelowHpPercent }) => `up to +${formatNumber(maxBonusPercent)}% as the target's HP falls to ${formatNumber(fullBonusBelowHpPercent)}%`),
+    field("highFearHealBonus", ({ maxBonusPercent, fullBonusAtFear }) => `up to +${formatNumber(maxBonusPercent)}% as the target's fear rises to ${formatNumber(fullBonusAtFear)}`),
     amountOf("ignoreDefensePercent", (joined) => `ignores ${joined}% defense`),
     amountOf("lifestealPercent", (joined) => `${joined}% lifesteal`),
     field("lifestealPartySharePercent", (value) => `the rest of the party heals ${formatNumber(value)}% of the lifesteal`),
