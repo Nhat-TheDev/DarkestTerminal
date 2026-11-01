@@ -300,6 +300,31 @@ describe("key handler lifecycle", () => {
     await settle();
     expect(captureCharFrame()).toContain(t("mainMenu.tagline"));
   });
+
+  test("New Game asks before overwriting a slot whose run ended", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    clearSlot("slot3");
+    saveProfile("slot3", { ...loadProfile("slot3"), runCount: 2 });
+    const warning = t("saveSelect.overwriteWarningEnded", { slot: 3 });
+
+    const slot = showSlotSelect(renderer, "new");
+    await renderOnce();
+    mockInput.pressKey("3");
+    await renderOnce();
+    expect(captureCharFrame()).toContain(warning);
+
+    mockInput.pressEscape();
+    // A lone Esc reaches the handler only once the parser stops waiting for an escape sequence.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await renderOnce();
+    expect(captureCharFrame()).not.toContain(warning);
+
+    mockInput.pressKey("3");
+    await renderOnce();
+    mockInput.pressKey("1");
+    expect(await slot).toMatchObject({ id: "slot3", overwrite: true });
+    clearSlot("slot3");
+  });
 });
 
 describe("game over", () => {

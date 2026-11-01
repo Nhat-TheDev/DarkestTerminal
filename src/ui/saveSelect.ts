@@ -79,7 +79,8 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
         ]);
       });
       if (pendingOverwrite) {
-        lines.push([], [colorChunk(t("saveSelect.overwriteWarning", { slot: slotNumber(pendingOverwrite.id) }), PALETTE.title)]);
+        const warning = pendingOverwrite.meta || pendingOverwrite.unreadable ? "saveSelect.overwriteWarning" : "saveSelect.overwriteWarningEnded";
+        lines.push([], [colorChunk(t(warning, { slot: slotNumber(pendingOverwrite.id) }), PALETTE.title)]);
       }
       body.content = joinLines(lines);
       footer.content = joinLines([highlightKeyHints(pendingOverwrite ? t("saveSelect.confirmHint") : digitHint("saveSelect.hint", slots.length))]);
@@ -109,7 +110,7 @@ export function showSlotSelect(renderer: CliRenderer, mode: SlotSelectMode): Pro
       }
       const slot = /^[1-9]$/.test(key.name) ? slots[Number(key.name) - 1] : undefined;
       if (!slot) return;
-      if (mode === "new" && (slot.meta || slot.unreadable)) {
+      if (mode === "new" && (slot.meta || slot.unreadable || slot.runCount > 0)) {
         pendingOverwrite = slot;
         draw();
         return;

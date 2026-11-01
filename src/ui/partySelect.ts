@@ -180,9 +180,10 @@ function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], pa
  * repeat until the party is full. A picked class leaves the browse list, so the party is always 4
  * different classes; an Ability is never offered twice either (an invariant the death flow relies on,
  * `11-abilities.md` §11.1). `Esc` steps back: out of the Ability list to the class it was for, or
- * from browsing to undo the last finished pick.
+ * from browsing to undo the last finished pick. With nobody picked it leaves the screen and resolves
+ * null; `exitHint` is the string key of the footer hint naming where that leads.
  */
-export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[], slotId: Id | null): Promise<PartyPick[]> {
+export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[], slotId: Id | null, exitHint = "partySelect.abilityBackHint"): Promise<PartyPick[] | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "partyselect-root",
@@ -217,7 +218,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
         ...classDetail(cls, heights),
       ];
       body.content = joinLines(lines);
-      footer.content = joinLines([highlightKeyHints(joinHints(t("partySelect.browseHint"), picks.length > 0 ? t("partySelect.undoHint") : null))]);
+      footer.content = joinLines([highlightKeyHints(joinHints(t("partySelect.browseHint"), t(picks.length > 0 ? "partySelect.undoHint" : exitHint)))]);
     };
 
     const renderAbility = (classId: Id, page: number) => {
@@ -239,11 +240,12 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     const render = () => (step.kind === "browse" ? renderBrowse(step.index) : renderAbility(step.classId, step.page));
     render();
 
-    const finish = () => {
+    const finish = (result: PartyPick[] | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
       root.destroyRecursively();
-      resolve(picks);
+      // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
+      setTimeout(() => resolve(result), 0);
     };
 
     const onKey = (key: KeyEvent) => {
@@ -253,7 +255,8 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
           step = { kind: "browse", index: (step.index + (key.name === "right" ? 1 : -1) + pool.length) % pool.length };
         } else if (key.name === "return") {
           step = { kind: "ability", classId: pool[step.index]!.id, page: 0 };
-        } else if (key.name === "escape" && picks.length > 0) {
+        } else if (key.name === "escape") {
+          if (picks.length === 0) return finish(null);
           const undone = picks.pop()!;
           step = { kind: "browse", index: available().findIndex((c) => c.id === undone.classId) };
         } else return;
@@ -285,7 +288,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
       const pickedClassId = step.classId;
       const pickedIndex = classes.findIndex((c) => c.id === pickedClassId);
       picks.push({ classId: pickedClassId, abilityId });
-      if (picks.length >= PARTY_SIZE) return finish();
+      if (picks.length >= PARTY_SIZE) return finish(picks);
       // Land on the class that followed the one just picked, so browsing carries on where it left off.
       const pool = available();
       const next = pool.findIndex((c) => classes.indexOf(c) > pickedIndex);

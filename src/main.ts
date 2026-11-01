@@ -3,7 +3,7 @@ import { createCliRenderer, type CliRenderer } from "@opentui/core";
 import { App, type RunExit } from "./ui/app";
 import { showMainMenu } from "./ui/mainMenu";
 import { showPartySelect } from "./ui/partySelect";
-import { showSlotSelect } from "./ui/saveSelect";
+import { showSlotSelect, type SlotSelectMode } from "./ui/saveSelect";
 import { PALETTE } from "./ui/theme";
 import { Game } from "./engine/game";
 import { CLASSES } from "./data/classes";
@@ -11,9 +11,10 @@ import { loadSave, gameFromSave, saveRun, clearSlot, migrateLegacyProfile } from
 import { beginRun } from "./engine/profile";
 import type { Id } from "./types";
 
-/** `overwrite` wipes the slot only once the party is picked, so quitting during party select keeps the old run. */
-async function startRun(renderer: CliRenderer, slotId: Id, overwrite = false): Promise<Game> {
-  const picks = await showPartySelect(renderer, CLASSES, overwrite ? null : slotId);
+/** `overwrite` wipes the slot only once the party is picked, so leaving party select keeps the old run. Null means the player left it. */
+async function startRun(renderer: CliRenderer, slotId: Id, overwrite = false, exitHint?: string): Promise<Game | null> {
+  const picks = await showPartySelect(renderer, CLASSES, overwrite ? null : slotId, exitHint);
+  if (!picks) return null;
   if (overwrite) clearSlot(slotId);
   beginRun(slotId);
   const game = new Game(
@@ -27,6 +28,17 @@ async function startRun(renderer: CliRenderer, slotId: Id, overwrite = false): P
   // Claim the slot now, so a death before the first save doesn't leave the previous run's file in it.
   saveRun(game);
   return game;
+}
+
+/** Leaving party select lands back on the slot list; null means the player left that too. */
+async function chooseRun(renderer: CliRenderer, mode: SlotSelectMode): Promise<Game | null> {
+  for (;;) {
+    const slot = await showSlotSelect(renderer, mode);
+    if (!slot) return null;
+    if (mode === "continue" && slot.hasRun) return gameFromSave(loadSave(slot.id), slot.id);
+    const game = await startRun(renderer, slot.id, slot.overwrite);
+    if (game) return game;
+  }
 }
 
 function playRun(renderer: CliRenderer, game: Game): Promise<RunExit> {
@@ -46,20 +58,10 @@ async function main() {
   migrateLegacyProfile();
 
   for (;;) {
-    const choice = await showMainMenu(renderer);
-    let game: Game;
-    if (choice === "new") {
-      const slot = await showSlotSelect(renderer, "new");
-      if (!slot) continue;
-      game = await startRun(renderer, slot.id, slot.overwrite);
-    } else {
-      const slot = await showSlotSelect(renderer, "continue");
-      if (!slot) continue;
-      game = slot.hasRun ? gameFromSave(loadSave(slot.id), slot.id) : await startRun(renderer, slot.id);
-    }
+    let game = await chooseRun(renderer, await showMainMenu(renderer));
     // A finished run's slot stays with the player: "New Run" starts the next one in it.
-    while ((await playRun(renderer, game)) === "newRun") {
-      game = await startRun(renderer, game.currentSaveSlot!);
+    while (game && (await playRun(renderer, game)) === "newRun") {
+      game = await startRun(renderer, game.currentSaveSlot!, false, "partySelect.mainMenuHint");
     }
   }
 }
