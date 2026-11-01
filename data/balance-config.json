@@ -142,6 +142,10 @@
     "size": 4,
     "maxEquippedArtifacts": 3,
     "startingExplorationKits": 4,
+    "startingItems": {
+      "small-health-potion": 4,
+      "small-mana-potion": 4
+    },
     "startingCoins": 50
   },
   "gatekeeper": {

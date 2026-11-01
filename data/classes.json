@@ -53,7 +53,7 @@
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 8,
+            "mpCost": 6,
             "effects": [
               {
                 "kind": "applyStatusEffect",
@@ -65,7 +65,7 @@
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 9,
+            "mpCost": 7,
             "effects": [
               {
                 "kind": "applyStatusEffect",
@@ -77,7 +77,7 @@
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 10,
+            "mpCost": 8,
             "effects": [
               {
                 "kind": "applyStatusEffect",
@@ -101,7 +101,7 @@
           {
             "rank": 1,
             "unlockLevel": 1,
-            "mpCost": 6,
+            "mpCost": 5,
             "effects": [
               {
                 "kind": "damage",
@@ -118,7 +118,7 @@
           {
             "rank": 2,
             "unlockLevel": 7,
-            "mpCost": 7,
+            "mpCost": 6,
             "effects": [
               {
                 "kind": "damage",
@@ -135,7 +135,7 @@
           {
             "rank": 3,
             "unlockLevel": 15,
-            "mpCost": 8,
+            "mpCost": 7,
             "effects": [
               {
                 "kind": "damage",
@@ -164,7 +164,7 @@
           {
             "rank": 1,
             "unlockLevel": 10,
-            "mpCost": 12,
+            "mpCost": 9,
             "effects": [
               {
                 "kind": "modifyStat",
@@ -182,7 +182,7 @@
           {
             "rank": 2,
             "unlockLevel": 25,
-            "mpCost": 13,
+            "mpCost": 10,
             "effects": [
               {
                 "kind": "modifyStat",
@@ -200,7 +200,7 @@
           {
             "rank": 3,
             "unlockLevel": 45,
-            "mpCost": 14,
+            "mpCost": 11,
             "effects": [
               {
                 "kind": "modifyStat",
@@ -229,7 +229,7 @@
           {
             "rank": 1,
             "unlockLevel": 15,
-            "mpCost": 14,
+            "mpCost": 12,
             "effects": [
               {
                 "kind": "damage",
@@ -241,7 +241,7 @@
           {
             "rank": 2,
             "unlockLevel": 40,
-            "mpCost": 15,
+            "mpCost": 13,
             "effects": [
               {
                 "kind": "damage",
@@ -253,7 +253,7 @@
           {
             "rank": 3,
             "unlockLevel": 65,
-            "mpCost": 16,
+            "mpCost": 14,
             "effects": [
               {
                 "kind": "damage",
@@ -276,7 +276,7 @@
           {
             "rank": 1,
             "unlockLevel": 25,
-            "mpCost": 12,
+            "mpCost": 10,
             "effects": [
               {
                 "kind": "damage",
@@ -300,7 +300,7 @@
           {
             "rank": 2,
             "unlockLevel": 50,
-            "mpCost": 13,
+            "mpCost": 11,
             "effects": [
               {
                 "kind": "damage",
@@ -324,7 +324,7 @@
           {
             "rank": 3,
             "unlockLevel": 75,
-            "mpCost": 14,
+            "mpCost": 12,
             "effects": [
               {
                 "kind": "damage",
@@ -1387,7 +1387,7 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -15
+                "amount": -14
               },
               {
                 "kind": "applyStatusEffect",
@@ -1404,7 +1404,7 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -19
+                "amount": -20
               },
               {
                 "kind": "applyStatusEffect",
@@ -1421,7 +1421,7 @@
               {
                 "kind": "modifyStat",
                 "stat": "fear",
-                "amount": -24
+                "amount": -26
               },
               {
                 "kind": "applyStatusEffect",
@@ -1436,7 +1436,7 @@
         "id": "heal",
         "name": "Heal",
         "description": "A hand laid on the wound until it closes.",
-        "shortDescription": "Restores HP to 1 ally.",
+        "shortDescription": "Restores HP to 1 ally, more the greater their fear, and steadies them.",
         "target": "singleAlly",
         "slot": 2,
         "isMagic": true,
@@ -1449,7 +1449,17 @@
               {
                 "kind": "heal",
                 "amount": 16,
-                "offenseMultiplierPercent": 90
+                "offenseMultiplierPercent": 90,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -1461,7 +1471,17 @@
               {
                 "kind": "heal",
                 "amount": 22,
-                "offenseMultiplierPercent": 100
+                "offenseMultiplierPercent": 100,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               }
             ]
           },
@@ -1473,7 +1493,17 @@
               {
                 "kind": "heal",
                 "amount": 30,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 110,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               }
             ]
           }
@@ -1549,7 +1579,7 @@
         "id": "mass-heal",
         "name": "Mass Heal",
         "description": "A blessing spoken over the whole party; wounds close and breathing slows.",
-        "shortDescription": "Heals the whole party and clears every damage over time.",
+        "shortDescription": "Heals the whole party, more the greater each ally's fear, steadies them, and clears every damage over time.",
         "target": "allAllies",
         "slot": 4,
         "cooldownTurns": 2,
@@ -1563,7 +1593,17 @@
               {
                 "kind": "heal",
                 "amount": 20,
-                "offenseMultiplierPercent": 60
+                "offenseMultiplierPercent": 60,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               },
               {
                 "kind": "removeStatusEffect",
@@ -1579,7 +1619,17 @@
               {
                 "kind": "heal",
                 "amount": 25,
-                "offenseMultiplierPercent": 70
+                "offenseMultiplierPercent": 70,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               },
               {
                 "kind": "removeStatusEffect",
@@ -1595,7 +1645,17 @@
               {
                 "kind": "heal",
                 "amount": 35,
-                "offenseMultiplierPercent": 85
+                "offenseMultiplierPercent": 85,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                }
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "excludesSummonTargets": true
               },
               {
                 "kind": "removeStatusEffect",
@@ -1691,7 +1751,7 @@
         "id": "divine-descent",
         "name": "Divine Descent",
         "description": "Light comes down through a ceiling that was never open, and wounds on one side of the room close while the other side goes white.",
-        "shortDescription": "Holy light: heals allies, smites foes.",
+        "shortDescription": "Holy light: heals allies, more the greater their fear, and steadies them; smites foes.",
         "target": "allAlliesAndEnemies",
         "slot": 6,
         "isUltimate": true,
@@ -1707,6 +1767,10 @@
                 "kind": "heal",
                 "amount": 25,
                 "offenseMultiplierPercent": 70,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                },
                 "appliesToRelation": "ally"
               },
               {
@@ -1714,6 +1778,13 @@
                 "stat": "fear",
                 "amount": -15,
                 "appliesToRelation": "ally"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
               },
               {
                 "kind": "damage",
@@ -1733,6 +1804,10 @@
                 "kind": "heal",
                 "amount": 30,
                 "offenseMultiplierPercent": 75,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                },
                 "appliesToRelation": "ally"
               },
               {
@@ -1740,6 +1815,13 @@
                 "stat": "fear",
                 "amount": -20,
                 "appliesToRelation": "ally"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
               },
               {
                 "kind": "damage",
@@ -1759,6 +1841,10 @@
                 "kind": "heal",
                 "amount": 40,
                 "offenseMultiplierPercent": 80,
+                "highFearHealBonus": {
+                  "maxBonusPercent": 40,
+                  "fullBonusAtFear": 70
+                },
                 "appliesToRelation": "ally"
               },
               {
@@ -1766,6 +1852,13 @@
                 "stat": "fear",
                 "amount": -25,
                 "appliesToRelation": "ally"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "consoled",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
               },
               {
                 "kind": "damage",

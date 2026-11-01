@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, queueCommand, commandedSkill, commandableSummons, spawnAdditionalSummon, resolveRound, applySkillEffects, applyOnActStatuses, clearCombatResources, allLivingCharactersHaveQueuedActions, breakChannel } from "../src/engine/combat";
 import { runMonsterTurn } from "../src/engine/monsterAI";
-import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulStatusCount, removeStatusStacks } from "../src/engine/resolver";
+import { resolveSkillEffect, applyStatusEffectToActor, tickDotEffects, harmfulStatusCount, removeStatusStacks, highFearHealBonusPercent } from "../src/engine/resolver";
 import { resistedFearGain } from "../src/engine/survival";
 import { getClass, getSkill, getEffectiveSkill, SKILLS_PER_CLASS } from "../src/data/classes";
 import { characterStatBreakdown, recomputeCharacterStats } from "../src/engine/party";
@@ -341,6 +341,67 @@ describe("Venom Brand (Rogue)", () => {
   });
 });
 
+describe("Acolyte heals and fear", () => {
+  function setup() {
+    const { ctx } = makeCtx();
+    const acolyte = ctx.party.find((c) => c.classId === "acolyte")!;
+    const ally = ctx.party.find((c) => c.id !== acolyte.id)!;
+    ally.maxHp = 100000;
+    ally.hp = 1;
+    const rat = tank(spawnInto(ctx, "dungeon-rat"));
+    return { ctx, acolyte, ally, combat: startCombat("r1", [rat.id], ctx, false) };
+  }
+  const healAt = (fear: number) => {
+    const { ctx, acolyte, ally, combat } = setup();
+    ally.survival.fear = fear;
+    applySkillEffects(getEffectiveSkill(getSkill("heal"), 1), acolyte, [ally], combat, ctx, combat.log);
+    return ally.hp - 1;
+  };
+
+  test("a heal grows evenly with the recipient's fear, up to its cap", () => {
+    const { maxBonusPercent, fullBonusAtFear } = getEffectiveSkill(getSkill("heal"), 1).effects!.find((e) => e.kind === "heal")!.highFearHealBonus!;
+    const base = healAt(0);
+    expect(healAt(fullBonusAtFear / 2)).toBe(Math.round(base * (1 + maxBonusPercent / 200)));
+    expect(healAt(fullBonusAtFear)).toBe(Math.round(base * (1 + maxBonusPercent / 100)));
+    expect(healAt(100)).toBe(healAt(fullBonusAtFear));
+  });
+
+  test("a fear threshold of 0 gives the full bonus, even at no fear", () => {
+    const { ally } = setup();
+    ally.survival.fear = 0;
+    expect(highFearHealBonusPercent(ally, { maxBonusPercent: 40, fullBonusAtFear: 0 })).toBe(40);
+  });
+
+  test("Heal, Mass Heal and Divine Descent leave the fear bonus and Consoled on every rank", () => {
+    for (const id of ["heal", "mass-heal", "divine-descent"]) {
+      for (const rank of getSkill(id).ranks!) {
+        expect(rank.effects!.find((e) => e.kind === "heal")!.highFearHealBonus).toBeDefined();
+        expect(rank.effects!.some((e) => e.statusEffectId === "consoled")).toBe(true);
+      }
+    }
+  });
+
+  test("being healed leaves Consoled, which cuts fear gains and refreshes instead of stacking", () => {
+    const { ctx, acolyte, ally, combat } = setup();
+    const before = resistedFearGain(ally, 10);
+    const heal = getEffectiveSkill(getSkill("heal"), 1);
+    applySkillEffects(heal, acolyte, [ally], combat, ctx, combat.log);
+    applySkillEffects(heal, acolyte, [ally], combat, ctx, combat.log);
+    expect(ally.activeStatusEffects.filter((s) => s.statusEffectId === "consoled")).toHaveLength(1);
+    expect(resistedFearGain(ally, 10)).toBeCloseTo(before * (1 - getStatusEffect("consoled").fearResistPercent! / 100), 5);
+    clearCombatResources(ctx);
+    expect(ally.activeStatusEffects.some((s) => s.statusEffectId === "consoled")).toBe(false);
+  });
+
+  test("a summon among the targets gets no Consoled", () => {
+    const { ctx, acolyte, combat } = setup();
+    const summon = spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, acolyte, combat, ctx, [])!;
+    applySkillEffects(getEffectiveSkill(getSkill("mass-heal"), 15), acolyte, [...ctx.party, summon], combat, ctx, combat.log);
+    expect(ctx.party.every((c) => c.activeStatusEffects.some((s) => s.statusEffectId === "consoled"))).toBe(true);
+    expect(summon.activeStatusEffects.some((s) => s.statusEffectId === "consoled")).toBe(false);
+  });
+});
+
 describe("Sanctuary (Acolyte)", () => {
   test("Steadfast cuts fear gains by its fearResistPercent", () => {
     const { ctx } = makeCtx();
@@ -407,7 +468,7 @@ describe("Acolyte tweaks", () => {
     const rat = tank(spawnInto(ctx, "dungeon-rat"));
     const combat = startCombat("r1", [rat.id], ctx, false);
     applySkillEffects(getEffectiveSkill(getSkill("mass-heal"), 15), acolyte, ctx.party, combat, ctx, combat.log);
-    expect(ally.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["mending"]);
+    expect(ally.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["mending", "consoled"]);
   });
 
   test("after Sanctuary the Acolyte's basic attack is a holy Cleansing Smite for 2 turns", () => {

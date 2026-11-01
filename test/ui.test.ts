@@ -527,7 +527,7 @@ describe("skillEffectLine: damage/heal scaling description shows the effect's re
   test("a heal effect with a non-100% offenseMultiplierPercent shows its own percent", () => {
     const skill = getSkill("heal");
     const effect = skill.effects![0]!; // amount:16, offenseMultiplierPercent:90 (rank 1)
-    expect(skillEffectLine(effect, skill)).toBe("  • Heals: 90% Base Magic Power + 16 HP to an ally");
+    expect(skillEffectLine(effect, skill)).toBe("  • Heals: 90% Base Magic Power + 16 HP to an ally\n  • Up to +40% healing the greater their fear, in full at 70");
   });
 });
 

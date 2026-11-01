@@ -89,6 +89,8 @@ interface BalanceConfig {
     size: number;
     maxEquippedArtifacts: number;
     startingExplorationKits: number;
+    /** Item id to count, added to every new run's inventory. */
+    startingItems: Record<string, number>;
     startingCoins: number;
   };
   /** `blessingRooms` counts floor-1 rooms; `blessingDurationTurns` is per fight. */

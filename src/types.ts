@@ -96,6 +96,8 @@ export interface SkillEffect {
   casterMaxHpPercent?: number;
   /** For `heal`: raises the heal by up to `maxBonusPercent`, growing evenly as the recipient's HP falls from full to `fullBonusBelowHpPercent` of its max. */
   lowHpHealBonus?: { maxBonusPercent: number; fullBonusBelowHpPercent: number };
+  /** For `heal`: raises the heal by up to `maxBonusPercent`, growing evenly as the recipient's fear rises from 0 to `fullBonusAtFear`. */
+  highFearHealBonus?: { maxBonusPercent: number; fullBonusAtFear: number };
   /** Leaves the caster out of this effect when the skill's own target includes it (Battle Ballad's "the rest of the party"). */
   excludesCaster?: boolean;
   /** For `commandSummons`: the commanded minion skill's damage and healing, both flat and scaled, at this percent. */

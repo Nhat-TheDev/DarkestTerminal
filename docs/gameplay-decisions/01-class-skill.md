@@ -146,11 +146,11 @@ name, no numbers/stat references) applies to every skill's `description` field, 
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `interpose` | Interpose | singleAlly | 3 | 8 / 9 / 10 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
-| 2 | `breach` | Breach | singleEnemy | 3 | 6 / 7 / 8 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
-| 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
-| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
+| 1 | `interpose` | Interpose | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
+| 2 | `breach` | Breach | singleEnemy | 3 | 5 / 6 / 7 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
+| 3 | `rally` | Rally | allAllies | 2 | 9 / 10 / 11 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
+| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
+| 5 | `engage` | Engage | singleEnemy | 4 | 10 / 11 / 12 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 
@@ -230,22 +230,22 @@ How each skill works:
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -15 / -19 / -24; status fortify (2 turns) | — |
-| 2 | `heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG | magic |
+| 1 | `prayer` | Prayer | singleAlly | 2 | 4 / 5 / 6 | 1 / 7 / 15 | fear -14 / -20 / -26; status fortify (2 turns) | — |
+| 2 | `heal` | Heal | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 16 / 22 / 30 + 90 / 100 / 110% MAG (up to +40% as the target's fear rises to 70); status consoled (2 turns, not on summons) | magic |
 | 3 | `purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
-| 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 15 / 40 / 65 | heal 20 / 25 / 35 + 60 / 70 / 85% MAG; remove every harmful damage-over-time status | magic |
+| 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 15 / 40 / 65 | heal 20 / 25 / 35 + 60 / 70 / 85% MAG (up to +40% as the target's fear rises to 70); status consoled (2 turns, not on summons); remove every harmful damage-over-time status | magic |
 | 5 | `sanctuary` | Sanctuary | allAllies | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status sanctified / sanctified-ii / sanctified-iii (3 turns); status steadfast (2 turns); status cleansing-light / cleansing-light-ii / cleansing-light-iii (2 turns, target self) | buff · magic |
-| 6 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies); fear -15 / -20 / -25 (on allies); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
+| 6 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies, up to +40% as the target's fear rises to 70); fear -15 / -20 / -25 (on allies); status consoled (2 turns, on allies, not on summons); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
 
 - `prayer` — `modifyStat fear` + `applyStatusEffect "fortify"` (2 turns) on the same ally. Its cooldown lets one ally keep `fortify` up continuously when Prayer is recast every time it comes off cooldown
-- `heal` — `heal`
+- `heal` — `heal`, raised by `highFearHealBonus` the greater the recipient's fear (nothing at 0, the full bonus at its threshold and above), then `consoled`: a small `fearResistPercent` status that ends with the fight, refreshed rather than stacked and skipped on summons, which carry no fear. The status lands even on an ally at full HP
 - `purify` — targeting an ally → `removeStatusEffect` (strips 1 debuff); targeting an enemy → `damage`
-- `mass-heal` — `heal` + `removeStatusEffect` with `removesHarmfulDots`: every damage-over-time status on each ally goes
+- `mass-heal` — `heal` with `highFearHealBonus` and `consoled` like Heal, + `removeStatusEffect` with `removesHarmfulDots`: every damage-over-time status on each ally goes
 - `sanctuary` — every ally gets `sanctified` (a heal over time off the Acolyte's magic power, rank variants `-ii`/`-iii`) and `steadfast` (a `fearResistPercent` status, section 1.3.13); the Acolyte also gets `cleansing-light` (rank variants `-ii`/`-iii`) for 2 turns, which turns its basic attack into Cleansing Smite, a holy strike off magic power (`basicAttackOverride`, section 1.3.13)
-- `divine-descent` — allies → `heal` + `modifyStat fear`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
+- `divine-descent` — allies → `heal` with `highFearHealBonus` + `modifyStat fear` + `consoled`; enemies → `damage` — **always hits**, its effectiveness scales down with fear via a dedicated ultimate formula (`04-fear-combat.md` section 4)
 
 *Sanctuary is the only Acolyte skill with the buff flag. Prayer's `fortify` is a stat modifier like any other, but Prayer itself resolves in plain speed order (Acolyte is slow), so on the round it's cast a faster monster can act before the ally is fortified.*
 
@@ -755,7 +755,7 @@ Every class has a fifth class skill in slot 5, between its slot-4 skill and its 
 The mechanics these skills needed, all read from `data/*.json` (`src/types.ts`; the Jester's, Paladin's and Warlock's are in their own sections):
 
 - **`StatusEffectDefinition.counterAttack`** `{ maxCounters, amount, offenseMultiplierPercent, target? }` (Engage's `engaged`/`-ii`/`-iii`). When a monster's direct hit lands on the bearer — a basic attack or a skill — the bearer strikes back, no accuracy roll: `target: "attacker"` hits only the monster that landed the blow (spending no counter if it is dead or untargetable), absent or `"allEnemies"` hits every targetable enemy. The count lives on the active status (`ActiveStatusEffect.countersStruck`); the counter that reaches `maxCounters` ends the status on the spot. The counter is the bearer's own session in the log. Engine hook: `triggerCounterAttack`, `src/engine/combat.ts`, called from `applySkillEffects` and the monster basic attack (`src/engine/monsterAI.ts`).
-- **`StatusEffectDefinition.fearResistPercent`** (Sanctuary's `steadfast`). Every fear gain on the bearer is cut by it, combined multiplicatively with its `fearResist` from Artifacts and Ability. Engine hook: `resistedFearGain`, `src/engine/survival.ts`.
+- **`StatusEffectDefinition.fearResistPercent`** (Sanctuary's `steadfast`, the Acolyte heals' `consoled`). Every fear gain on the bearer is cut by it, combined multiplicatively with its `fearResist` from Artifacts and Ability. Engine hook: `resistedFearGain`, `src/engine/survival.ts`.
 - **`SkillDefinition.casterHpBelowBonus`** `{ hpPercentThreshold, offenseMultiplierPercentBonus, lifestealPercent? }` (Desperate Cleave). Checked once when the skill resolves: below the threshold, every `damage` effect gains the offense bonus and the lifesteal. Engine hook: `applySkillEffects`.
 - **`SkillEffect.scalesWithDebuffCount`** `{ percentPerDebuff }` (Volatile Flask). Each harmful status on the target when the hit lands adds to the offense multiplier, a stackable status counting once (`harmfulStatusCount`). With `hitCountRange`, every strike re-counts. Engine hook: the `"damage"` case of `resolveSkillEffect`, `src/engine/resolver.ts`.
 - **`StatusEffectDefinition.onActStatus`** `{ statusEffectId, chance, durationTurns }` (Barbed Net's `netted`). Each time the bearer acts — not when stunned or interrupted — it rolls to put the status on itself. Engine hook: `applyOnActStatuses`, `src/engine/combat.ts`, at the top of a monster's, character's or summon's turn.

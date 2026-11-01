@@ -44,19 +44,19 @@
   "expTiers": [
     {
       "maxLevel": 5,
-      "expCost": 200
+      "expCost": 170
     },
     {
       "maxLevel": 10,
-      "expCost": 215
+      "expCost": 185
     },
     {
       "maxLevel": 15,
-      "expCost": 230
+      "expCost": 205
     },
     {
       "maxLevel": 20,
-      "expCost": 240
+      "expCost": 225
     },
     {
       "maxLevel": 25,
@@ -125,13 +125,13 @@
   ],
   "eliteMultiplier": {
     "maxHp": 2.0,
-    "attack": 1.5,
+    "attack": 1.65,
     "defense": 1.2,
     "exp": 3
   },
   "bossMultiplier": {
     "maxHp": 2.9,
-    "attack": 1.8,
+    "attack": 1.9,
     "defense": 1.3,
     "exp": 6
   },

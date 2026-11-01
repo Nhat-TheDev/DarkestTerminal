@@ -73,7 +73,8 @@ export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | n
     return e.lowHpHealBonus ? `${head}\n${t("ui.skillLowHpHealLine", { percent: e.lowHpHealBonus.maxBonusPercent, threshold: e.lowHpHealBonus.fullBonusBelowHpPercent })}` : head;
   }
   if (e.kind === "heal" && sk.isMagic) {
-    return t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
+    const head = t("ui.skillEffectHealScaling", { percent: e.offenseMultiplierPercent ?? 100, amount: e.amount ?? 0, targetSuffix });
+    return e.highFearHealBonus ? `${head}\n${t("ui.skillHighFearHealLine", { percent: e.highFearHealBonus.maxBonusPercent, threshold: e.highFearHealBonus.fullBonusAtFear })}` : head;
   }
   if (e.kind === "summon") return e.summonCastId ? summonEffectLine(e.summonCastId) : null;
   const chance = `${Math.round((e.chance ?? 1) * 100)}%`;

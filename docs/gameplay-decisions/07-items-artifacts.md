@@ -60,6 +60,8 @@ A dropped item is added directly to `GameState.inventory[itemId] += 1`. A room w
 
 Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
 
+Every new run also starts with the items listed in `party.startingItems` (`data/balance-config.json`), on top of its Exploration Kits. `src/engine/game.ts` adds them to the inventory as they are, so changing the list needs no code.
+
 By kind:
 
 - **Healing and mana potions** in 3 tiers each (the amounts are in `data/items.json`), plus `field-tonic` (heals the whole party) and `calming-draught` (fear).

@@ -650,6 +650,8 @@ describe("Version migrations", () => {
     return save;
   }
   const span = (level: number) => expCostForLevel(level + 1) - expCostForLevel(level);
+  /** 70 of 115 into level 3 on 1.1.0, rescaled to 1.1.1's 200, then to the current cost. */
+  const v110IntoLevel3 = Math.floor((Math.floor((70 * 200) / 115) * span(3)) / 200);
 
   test("a 1.1.1 save with a Vanguard loads it as a Knight, at the same level and EXP", () => {
     withGame(25, (game) => {
@@ -686,8 +688,8 @@ describe("Version migrations", () => {
     expect(() => compareVersions("1.1.0", UNVERSIONED)).toThrow();
   });
 
-  /** A party of `level` holding `partyExp`, as a 1.1.0 save would carry them. */
-  const v110State = (level: number, partyExp: number): GameState => {
+  /** A party of `level` holding `partyExp`, as an older save would carry them. */
+  const stateAt = (level: number, partyExp: number): GameState => {
     const state = structuredClone(new Game(24, PARTY).state);
     for (const c of state.party) c.level = level;
     state.partyExp = partyExp;
@@ -697,16 +699,29 @@ describe("Version migrations", () => {
   const v110CostFrom30 = (level: number) => 4960 + expCostForLevel(level) - expCostForLevel(30);
 
   test("EXP that does not fit the party's level on 1.1.0's curve is held inside that level", () => {
-    const ahead = migrateGameState(v110State(3, 500), "1.1.0").partyExp;
+    const ahead = migrateGameState(stateAt(3, 500), "1.1.0").partyExp;
     expect(levelForTotalExp(ahead)).toBe(3);
     expect(ahead).toBe(expCostForLevel(4) - 1);
-    expect(migrateGameState(v110State(3, 100), "1.1.0").partyExp).toBe(expCostForLevel(3));
+    expect(migrateGameState(stateAt(3, 100), "1.1.0").partyExp).toBe(expCostForLevel(3));
   });
 
   test("from level 30 on, where a level costs what it did, the EXP into the level is unchanged", () => {
-    expect(migrateGameState(v110State(30, v110CostFrom30(30) + 100), "1.1.0").partyExp).toBe(expCostForLevel(30) + 100);
-    expect(migrateGameState(v110State(45, v110CostFrom30(45) + 37), "1.1.0").partyExp).toBe(expCostForLevel(45) + 37);
-    expect(migrateGameState(v110State(MAX_LEVEL, v110CostFrom30(MAX_LEVEL) + 50), "1.1.0").partyExp).toBe(expCostForLevel(MAX_LEVEL) + 50);
+    expect(migrateGameState(stateAt(30, v110CostFrom30(30) + 100), "1.1.0").partyExp).toBe(expCostForLevel(30) + 100);
+    expect(migrateGameState(stateAt(45, v110CostFrom30(45) + 37), "1.1.0").partyExp).toBe(expCostForLevel(45) + 37);
+    expect(migrateGameState(stateAt(MAX_LEVEL, v110CostFrom30(MAX_LEVEL) + 50), "1.1.0").partyExp).toBe(expCostForLevel(MAX_LEVEL) + 50);
+  });
+
+  test("the newest curve in migration.ts matches data/level-growth.json at every level", () => {
+    for (let level = 1; level <= MAX_LEVEL; level++) {
+      expect(migrateGameState(stateAt(level, 0), "1.1.1").partyExp, `level ${level}`).toBe(expCostForLevel(level));
+    }
+  });
+
+  test("a 1.1.1 save keeps its level and its share of the way to the next level on 1.2.0's curve", () => {
+    const v111CostAt8 = 800 + 3 * 215;
+    const migrated = migrateGameState(stateAt(8, v111CostAt8 + 107), "1.1.1").partyExp;
+    expect(levelForTotalExp(migrated)).toBe(8);
+    expect(migrated).toBe(expCostForLevel(8) + Math.floor((107 * span(8)) / 215));
   });
 
   test("a 1.1.0 save loads with its level, its floor and its share of the way to the next level", () => {
@@ -716,7 +731,7 @@ describe("Version migrations", () => {
       const state = gameFromSave(loadSave("slot1"), "slot1").state;
       expect(state.party.every((c) => c.level === 3)).toBe(true);
       expect(levelForTotalExp(state.partyExp)).toBe(3);
-      expect(state.partyExp - expCostForLevel(3)).toBe(Math.floor((70 * span(3)) / 115));
+      expect(state.partyExp - expCostForLevel(3)).toBe(v110IntoLevel3);
       expect(state.floor.depth).toBe(save.state.floor.depth);
       expect(state.currentRoomId).toBe(save.state.currentRoomId);
       expect(state.roomPath).toEqual(save.state.roomPath);
@@ -738,7 +753,7 @@ describe("Version migrations", () => {
 
       const migrated = migrateGameState(state, "1.1.0").combat!;
       expect(migrated.roundStartPartySnapshot!.partyExp).toBe(Math.floor((100 * span(1)) / 115));
-      expect(migrated.log.at(-1)!.partySnapshot!.partyExp).toBe(expCostForLevel(3) + Math.floor((70 * span(3)) / 115));
+      expect(migrated.log.at(-1)!.partySnapshot!.partyExp).toBe(expCostForLevel(3) + v110IntoLevel3);
     });
   });
 
