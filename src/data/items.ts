@@ -11,6 +11,10 @@ const campKits = ITEMS.filter((i) => i.campKit);
 if (campKits.length !== 1) throw new Error(`data/items.json: exactly 1 item must set campKit (found ${campKits.length})`);
 export const CAMP_KIT_ITEM_ID: Id = campKits[0]!.id;
 
+for (const id of Object.keys(BALANCE.party.startingItems)) {
+  if (!ITEMS.some((i) => i.id === id)) throw new Error(`data/balance-config.json: party.startingItems names unknown item "${id}"`);
+}
+
 export function getItem(id: Id): ItemDefinition {
   const found = ITEMS.find((i) => i.id === id);
   if (!found) throw new Error(`Unknown item: ${id}`);

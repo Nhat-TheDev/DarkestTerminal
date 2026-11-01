@@ -711,6 +711,12 @@ describe("Version migrations", () => {
     expect(migrateGameState(v110State(MAX_LEVEL, v110CostFrom30(MAX_LEVEL) + 50), "1.1.0").partyExp).toBe(expCostForLevel(MAX_LEVEL) + 50);
   });
 
+  test("the newest curve in migration.ts matches data/level-growth.json at every level", () => {
+    for (let level = 1; level <= MAX_LEVEL; level++) {
+      expect(migrateGameState(v110State(level, 0), "1.1.1").partyExp, `level ${level}`).toBe(expCostForLevel(level));
+    }
+  });
+
   test("a 1.1.1 save keeps its level and its share of the way to the next level on 1.2.0's curve", () => {
     const v111CostAt8 = 800 + 3 * 215;
     const state = structuredClone(new Game(24, PARTY).state);

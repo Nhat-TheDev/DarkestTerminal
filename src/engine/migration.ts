@@ -12,7 +12,7 @@ import { BALANCE } from "../data/balanceConfig";
 import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
 import { getJournalEcho, getJournalFragment, getJournalLine } from "../data/journal";
-import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
+import { MAX_LEVEL } from "../data/levelGrowth";
 
 export function isVersion(version: string): boolean {
   return /^\d+\.\d+\.\d+$/.test(version);
@@ -30,7 +30,38 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** 1.1.0's per-level EXP cost for the levels 1.1.1 changed: a frozen record, never follows `data/level-growth.json`. */
+/** The EXP curve each release shipped: frozen records, never follow `data/level-growth.json`. */
+const V1_2_0_EXP_TIERS = [
+  { maxLevel: 5, expCost: 170 },
+  { maxLevel: 10, expCost: 185 },
+  { maxLevel: 15, expCost: 205 },
+  { maxLevel: 20, expCost: 225 },
+  { maxLevel: 25, expCost: 250 },
+  { maxLevel: 30, expCost: 260 },
+  { maxLevel: 35, expCost: 285 },
+  { maxLevel: 40, expCost: 330 },
+  { maxLevel: 45, expCost: 375 },
+  { maxLevel: 50, expCost: 430 },
+  { maxLevel: 55, expCost: 490 },
+  { maxLevel: 60, expCost: 555 },
+  { maxLevel: 65, expCost: 640 },
+  { maxLevel: 70, expCost: 730 },
+  { maxLevel: 75, expCost: 825 },
+  { maxLevel: 80, expCost: 945 },
+  { maxLevel: 85, expCost: 1080 },
+  { maxLevel: 90, expCost: 1230 },
+  { maxLevel: 95, expCost: 1410 },
+  { maxLevel: 100, expCost: 1605 },
+];
+
+const V1_1_1_EXP_TIERS = [
+  { maxLevel: 5, expCost: 200 },
+  { maxLevel: 10, expCost: 215 },
+  { maxLevel: 15, expCost: 230 },
+  { maxLevel: 20, expCost: 240 },
+  ...V1_2_0_EXP_TIERS.slice(4),
+];
+
 const V1_1_0_EXP_TIERS = [
   { maxLevel: 5, expCost: 115 },
   { maxLevel: 10, expCost: 135 },
@@ -38,23 +69,13 @@ const V1_1_0_EXP_TIERS = [
   { maxLevel: 20, expCost: 165 },
   { maxLevel: 25, expCost: 195 },
   { maxLevel: 30, expCost: 255 },
+  ...V1_2_0_EXP_TIERS.slice(6),
 ];
 
-/** 1.1.1's per-level EXP cost for the levels 1.2.0 changed: a frozen record, never follows `data/level-growth.json`. */
-const V1_1_1_EXP_TIERS = [
-  { maxLevel: 5, expCost: 200 },
-  { maxLevel: 10, expCost: 215 },
-  { maxLevel: 15, expCost: 230 },
-  { maxLevel: 20, expCost: 240 },
-];
-
-/** Cumulative EXP by level on a curve; levels past the tiers cost what they cost now. */
+/** Cumulative EXP by level on a curve. */
 function expCosts(tiers: { maxLevel: number; expCost: number }[]): number[] {
   const costs = [0, 0];
-  for (let level = 2; level <= MAX_LEVEL; level++) {
-    const tier = tiers.find((t) => level <= t.maxLevel);
-    costs[level] = costs[level - 1]! + (tier ? tier.expCost : expCostForLevel(level) - expCostForLevel(level - 1));
-  }
+  for (let level = 2; level <= MAX_LEVEL; level++) costs[level] = costs[level - 1]! + tiers.find((t) => level <= t.maxLevel)!.expCost;
   return costs;
 }
 
@@ -96,7 +117,7 @@ export function renamedClassId(id: Id): Id {
 
 /** Saves before 1.2.0, which lowered the cost of levels 2-20 and renamed the Vanguard to the Knight. A character's name is its class name. */
 function migrateToV1_2_0(state: GameState): void {
-  rescalePartyExp(state, expCosts(V1_1_1_EXP_TIERS), expCosts([]));
+  rescalePartyExp(state, expCosts(V1_1_1_EXP_TIERS), expCosts(V1_2_0_EXP_TIERS));
   for (const character of state.party) {
     const rename = V1_2_0_CLASS_RENAMES[character.classId];
     if (!rename) continue;
