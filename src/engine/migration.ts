@@ -40,25 +40,29 @@ const V1_1_0_EXP_TIERS = [
   { maxLevel: 30, expCost: 255 },
 ];
 
-let v1_1_0Costs: number[] | undefined;
+/** 1.1.1's per-level EXP cost for the levels 1.2.0 changed: a frozen record, never follows `data/level-growth.json`. */
+const V1_1_1_EXP_TIERS = [
+  { maxLevel: 5, expCost: 200 },
+  { maxLevel: 10, expCost: 215 },
+  { maxLevel: 15, expCost: 230 },
+  { maxLevel: 20, expCost: 240 },
+];
 
-/** Cumulative EXP by level on 1.1.0's curve; levels past the tiers cost what they cost now. */
-function v1_1_0ExpCosts(): number[] {
-  if (v1_1_0Costs) return v1_1_0Costs;
+/** Cumulative EXP by level on a curve; levels past the tiers cost what they cost now. */
+function expCosts(tiers: { maxLevel: number; expCost: number }[]): number[] {
   const costs = [0, 0];
   for (let level = 2; level <= MAX_LEVEL; level++) {
-    const tier = V1_1_0_EXP_TIERS.find((t) => level <= t.maxLevel);
+    const tier = tiers.find((t) => level <= t.maxLevel);
     costs[level] = costs[level - 1]! + (tier ? tier.expCost : expCostForLevel(level) - expCostForLevel(level - 1));
   }
-  return (v1_1_0Costs = costs);
+  return costs;
 }
 
 /**
- * Saves before 1.1.1, which raised the cost of levels 2-30. Progress into the level keeps its share
- * of that level's cost, clamped inside it. Each snapshot rescales at its own level, since one can predate a level-up.
+ * Moves a save onto a new EXP curve. Progress into the level keeps its share of that level's cost,
+ * clamped inside it. Each snapshot rescales at its own level, since one can predate a level-up.
  */
-function migrateToV1_1_1(state: GameState): void {
-  const oldCosts = v1_1_0ExpCosts();
+function rescalePartyExp(state: GameState, oldCosts: number[], newCosts: number[]): void {
   const oldLevel = (exp: number) => {
     let level = 1;
     while (level < MAX_LEVEL && exp >= oldCosts[level + 1]!) level++;
@@ -66,16 +70,21 @@ function migrateToV1_1_1(state: GameState): void {
   };
   const rescale = (exp: number, level: number) => {
     const into = exp - oldCosts[level]!;
-    if (level >= MAX_LEVEL) return expCostForLevel(level) + Math.max(0, into);
+    if (level >= MAX_LEVEL) return newCosts[level]! + Math.max(0, into);
     const oldSpan = oldCosts[level + 1]! - oldCosts[level]!;
-    const span = expCostForLevel(level + 1) - expCostForLevel(level);
-    return expCostForLevel(level) + Math.min(span - 1, Math.max(0, Math.floor((into * span) / oldSpan)));
+    const span = newCosts[level + 1]! - newCosts[level]!;
+    return newCosts[level]! + Math.min(span - 1, Math.max(0, Math.floor((into * span) / oldSpan)));
   };
   state.partyExp = rescale(state.partyExp, state.party[0]?.level ?? oldLevel(state.partyExp));
   const combat = state.combat;
   if (!combat) return;
   const snapshots = new Set([combat.roundStartPartySnapshot, ...combat.log.map((entry) => entry.partySnapshot)]);
   for (const snapshot of snapshots) if (snapshot) snapshot.partyExp = rescale(snapshot.partyExp, oldLevel(snapshot.partyExp));
+}
+
+/** Saves before 1.1.1, which raised the cost of levels 2-30. */
+function migrateToV1_1_1(state: GameState): void {
+  rescalePartyExp(state, expCosts(V1_1_0_EXP_TIERS), expCosts(V1_1_1_EXP_TIERS));
 }
 
 /** Class ids 1.2.0 renamed, with the old display name a character carried: a frozen record, never follows `data/classes.json`. */
@@ -85,8 +94,9 @@ export function renamedClassId(id: Id): Id {
   return V1_2_0_CLASS_RENAMES[id]?.id ?? id;
 }
 
-/** Saves before 1.2.0, which renamed the Vanguard to the Knight. A character's name is its class name. */
+/** Saves before 1.2.0, which lowered the cost of levels 2-20 and renamed the Vanguard to the Knight. A character's name is its class name. */
 function migrateToV1_2_0(state: GameState): void {
+  rescalePartyExp(state, expCosts(V1_1_1_EXP_TIERS), expCosts([]));
   for (const character of state.party) {
     const rename = V1_2_0_CLASS_RENAMES[character.classId];
     if (!rename) continue;

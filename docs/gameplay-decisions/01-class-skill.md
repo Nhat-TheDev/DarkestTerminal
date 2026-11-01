@@ -146,11 +146,11 @@ name, no numbers/stat references) applies to every skill's `description` field, 
 
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `interpose` | Interpose | singleAlly | 3 | 8 / 9 / 10 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
-| 2 | `breach` | Breach | singleEnemy | 3 | 6 / 7 / 8 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
-| 3 | `rally` | Rally | allAllies | 2 | 12 / 13 / 14 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
-| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
-| 5 | `engage` | Engage | singleEnemy | 4 | 12 / 13 / 14 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
+| 1 | `interpose` | Interpose | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
+| 2 | `breach` | Breach | singleEnemy | 3 | 5 / 6 / 7 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
+| 3 | `rally` | Rally | allAllies | 2 | 9 / 10 / 11 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
+| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
+| 5 | `engage` | Engage | singleEnemy | 4 | 10 / 11 / 12 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
 | 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
 <!-- docs:end -->
 

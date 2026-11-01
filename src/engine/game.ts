@@ -120,7 +120,7 @@ export class Game {
       if (character.equippedAbilityId) takenAbilityIds.add(character.equippedAbilityId);
       return character;
     });
-    const inventory: Record<Id, number> = { [CAMP_KIT_ITEM_ID]: BALANCE.party.startingExplorationKits };
+    const inventory: Record<Id, number> = { [CAMP_KIT_ITEM_ID]: BALANCE.party.startingExplorationKits, ...BALANCE.party.startingItems };
     this.ctx = { party, monsters, summons: [], rng, inventory };
     // Whether a retiredCharacterEvent can roll this run is encoded only by whether its id starts in firedOnceEventIds.
     const retiredCharacter = profile.retiredCharacters.at(-1);

@@ -720,7 +720,7 @@ describe("onHitAoeDamage, conditionalBonus, lifestealPercent, accuracyPenaltyPer
 describe("Knight skill ranks", () => {
   test("Interpose ranks lengthen the interposed status at lv7/lv15", () => {
     const skill = getSkill("interpose");
-    for (const [level, mp, turns] of [[1, 8, 2], [7, 9, 3], [15, 10, 4]] as const) {
+    for (const [level, mp, turns] of [[1, 6, 2], [7, 7, 3], [15, 8, 4]] as const) {
       expect(getEffectiveSkill(skill, level).mpCost).toBe(mp);
       expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "interposed", durationTurns: turns }]);
     }

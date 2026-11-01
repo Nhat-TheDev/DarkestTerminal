@@ -6,6 +6,7 @@ import { rollCoinDrop } from "../src/data/currency";
 import { migrateGameState } from "../src/engine/migration";
 import { startCombat } from "../src/engine/combat";
 import { BALANCE } from "../src/data/balanceConfig";
+import { getItem } from "../src/data/items";
 import { makeCtx } from "./helpers";
 
 describe("Camp", () => {
@@ -30,6 +31,16 @@ describe("Camp", () => {
   test("party starts with BALANCE.party.startingExplorationKits", () => {
     const game = new Game(3);
     expect(game.state.inventory["exploration-kit"]).toBe(BALANCE.party.startingExplorationKits);
+  });
+
+  test("party starts with every item in BALANCE.party.startingItems", () => {
+    const game = new Game(3);
+    const entries = Object.entries(BALANCE.party.startingItems);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const [id, count] of entries) {
+      expect(getItem(id).id).toBe(id);
+      expect(game.state.inventory[id]).toBe(count);
+    }
   });
 });
 
