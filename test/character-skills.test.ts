@@ -1150,13 +1150,13 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
   });
 
   describe("Purify's Absolved", () => {
-    const statusSkill = (statusEffectId: string): SkillDefinition => ({
+    const statusSkill = (statusEffectId: string, effectTarget?: SkillDefinition["target"]): SkillDefinition => ({
       id: "test-status",
       name: "Test Status",
       description: "",
       mpCost: 0,
       target: "singleEnemy",
-      effects: [{ kind: "applyStatusEffect", statusEffectId, durationTurns: 2 }],
+      effects: [{ kind: "applyStatusEffect", statusEffectId, durationTurns: 2, target: effectTarget }],
       slot: 0,
       unlockLevel: 1,
     });
@@ -1169,11 +1169,11 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
       const combat = startCombat("r1", [rat.id], ctx, false);
       const purify = (level: number, target: Actor) => applySkillEffects(getEffectiveSkill(getSkill("purify"), level), acolyte, [target], combat, ctx, combat.log);
       /** The share of `statusEffectId` applications from the rat that land on `bearer` while it holds `absolvedId`. */
-      const landRate = (bearer: Character, absolvedId: string, statusEffectId: string, trials: number) => {
+      const landRate = (bearer: Character, absolvedId: string, statusEffectId: string, trials: number, effectTarget?: SkillDefinition["target"]) => {
         let landed = 0;
         for (let i = 0; i < trials; i++) {
           bearer.activeStatusEffects = [{ statusEffectId: absolvedId, turnsRemaining: 2 }];
-          applySkillEffects(statusSkill(statusEffectId), rat, [bearer], combat, ctx, []);
+          applySkillEffects(statusSkill(statusEffectId, effectTarget), rat, [bearer], combat, ctx, []);
           if (bearer.activeStatusEffects.some((s) => s.statusEffectId === statusEffectId)) landed++;
         }
         return landed / trials;
@@ -1203,6 +1203,13 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
       expect(rate).toBeGreaterThan(0.6 - 0.04);
       expect(rate).toBeLessThan(0.6 + 0.04);
       expect(landRate(ally, "absolved", "regeneration", 500)).toBe(1);
+    });
+
+    test("a debuff with a target of its own, like Sealing Blow's stun, is resisted the same way", () => {
+      const { ally, landRate } = setup();
+      const rate = landRate(ally, "absolved", "poisoned", 4000, "allEnemies");
+      expect(rate).toBeGreaterThan(0.6 - 0.04);
+      expect(rate).toBeLessThan(0.6 + 0.04);
     });
 
     test("it combines with Devotion as independent chances", () => {

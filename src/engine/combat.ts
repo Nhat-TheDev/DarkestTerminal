@@ -991,6 +991,23 @@ function statusDebuffResistPercent(target: Character): number {
   return target.activeStatusEffects.reduce((total, s) => combinePercents(total, getStatusEffect(s.statusEffectId).debuffResistPercent ?? 0), 0);
 }
 
+/**
+ * `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both the roll
+ * and the "threw it off" log, and none is spent at 0% so seeded streams stay put. Null means nothing resists it.
+ */
+function rollDebuffResist(effect: SkillEffect, target: Actor, isEnemyFacing: boolean, ctx: EngineContext, log: LogEntry[]): "landed" | "failed" | "resisted" | null {
+  const harmfulStatus = harmfulStatusOnCharacter(effect, target, isEnemyFacing);
+  if (!harmfulStatus || !isCharacter(target)) return null;
+  const resistPercent = combinePercents(combinePercents(debuffResistPercent(target), passiveDebuffResistPercent(target)), statusDebuffResistPercent(target));
+  if (resistPercent <= 0) return null;
+  const baseChance = effect.chance ?? 1;
+  const roll = ctx.rng.next();
+  if (roll < baseChance * (1 - resistPercent / 100)) return "landed";
+  if (roll >= baseChance) return "failed";
+  log.push({ text: t("combat.debuffResisted", { target: target.name, status: statusDisplayName(harmfulStatus) }), kind: "info" });
+  return "resisted";
+}
+
 /** Applies or removes the rank's threshold status from the live HP ratio; returns whether it is active. */
 function syncPassiveThresholdStatus(source: Actor, log: LogEntry[]): boolean {
   if (!isCharacter(source)) return false;
@@ -1672,7 +1689,8 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
           noteMiss(combat, resolved);
           continue;
         }
-        if (effect.chance !== undefined && !ctx.rng.chance(effect.chance)) continue;
+        const resistRoll = rollDebuffResist(effect, resolved, overrideEnemyFacing, ctx, log);
+        if (resistRoll === null ? effect.chance !== undefined && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
         resolveOneDamageEffect(
           effect,
           skill,
@@ -1728,24 +1746,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       }
       // A target felled by an earlier effect of this cast takes nothing more from it, statuses included.
       if (!isActorAlive(target)) continue;
-      const harmfulStatus = harmfulStatusOnCharacter(effect, target, isEnemyFacing);
-      // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
-      // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.
-      const resistPercent =
-        harmfulStatus && isCharacter(target)
-          ? combinePercents(combinePercents(debuffResistPercent(target), passiveDebuffResistPercent(target)), statusDebuffResistPercent(target))
-          : 0;
-      if (resistPercent > 0) {
-        const baseChance = effect.chance ?? 1;
-        const roll = ctx.rng.next();
-        if (roll >= baseChance * (1 - resistPercent / 100)) {
-          if (roll < baseChance) {
-            log.push({ text: t("combat.debuffResisted", { target: target.name, status: statusDisplayName(harmfulStatus!) }), kind: "info" });
-            resisted = true;
-          }
-          continue;
-        }
-      } else if (effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance)) continue;
+      const resistRoll = rollDebuffResist(effect, target, isEnemyFacing, ctx, log);
+      if (resistRoll === "resisted") resisted = true;
+      if (resistRoll === null ? effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
       landed = true;
       let rolledEffect = effect;
       if (effect.kind === "damage") {
