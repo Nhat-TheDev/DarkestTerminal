@@ -3,9 +3,10 @@ import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank,
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
 import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
-import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTargets, livingMonsterRefs, livingCharacterRefs } from "../src/engine/combat";
+import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTargets, livingMonsterRefs, livingCharacterRefs, applySkillEffects, clearCombatResources, spawnAdditionalSummon } from "../src/engine/combat";
 import { mitigatedOffense, getFearTier, rollHits, getFearAccuracyPenalty, isHelpfulStatusEffect, resolveSkillEffect } from "../src/engine/resolver";
 import type { CombatantRef, LogEntry, SkillDefinition, Character } from "../src/types";
+import type { Actor } from "../src/engine/resolver";
 import { makeCtx, spawnInto, pickAnyAction, withoutDamageRolls } from "./helpers";
 import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from "../src/data/summons";
 
@@ -178,9 +179,10 @@ describe("new skill mechanics", () => {
 
     expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "burning")).toBe(false);
     expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "guard")).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "absolved")).toBe(true);
   });
 
-  test("Purify does nothing when the ally has a buff but no debuff, instead of stripping the buff", () => {
+  test("Purify keeps an ally's buffs when it has no debuff to strip", () => {
     const { ctx } = makeCtx();
     const acolyte = createCharacter("cp-test3", "Acolyte Test", getClass("acolyte"), 10);
     ctx.party.push(acolyte);
@@ -1134,14 +1136,101 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
 
   test("Purify ranks resolve the enemy-side damage only, ally side always removeStatusEffect", () => {
     const skill = getSkill("purify");
+    const absolved = (statusEffectId: string) => ({ kind: "applyStatusEffect" as const, statusEffectId, durationTurns: 2, appliesToRelation: "ally" as const, excludesSummonTargets: true });
     expect(getEffectiveSkill(skill, 10).effects).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
+      absolved("absolved"),
       { kind: "damage", amount: 15, offenseMultiplierPercent: 100, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 45).effects).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
+      absolved("absolved-iii"),
       { kind: "damage", amount: 27, offenseMultiplierPercent: 120, appliesToRelation: "enemy", damageType: "holy" },
     ]);
+  });
+
+  describe("Purify's Absolved", () => {
+    const statusSkill = (statusEffectId: string, effectTarget?: SkillDefinition["target"]): SkillDefinition => ({
+      id: "test-status",
+      name: "Test Status",
+      description: "",
+      mpCost: 0,
+      target: "singleEnemy",
+      effects: [{ kind: "applyStatusEffect", statusEffectId, durationTurns: 2, target: effectTarget }],
+      slot: 0,
+      unlockLevel: 1,
+    });
+
+    function setup() {
+      const { ctx } = makeCtx();
+      const acolyte = ctx.party.find((c) => c.classId === "acolyte")!;
+      const ally = ctx.party.find((c) => c.classId === "knight")!;
+      const rat = spawnInto(ctx, "dungeon-rat");
+      const combat = startCombat("r1", [rat.id], ctx, false);
+      const purify = (level: number, target: Actor) => applySkillEffects(getEffectiveSkill(getSkill("purify"), level), acolyte, [target], combat, ctx, combat.log);
+      /** The share of `statusEffectId` applications from the rat that land on `bearer` while it holds `absolvedId`. */
+      const landRate = (bearer: Character, absolvedId: string, statusEffectId: string, trials: number, effectTarget?: SkillDefinition["target"]) => {
+        let landed = 0;
+        for (let i = 0; i < trials; i++) {
+          bearer.activeStatusEffects = [{ statusEffectId: absolvedId, turnsRemaining: 2 }];
+          applySkillEffects(statusSkill(statusEffectId, effectTarget), rat, [bearer], combat, ctx, []);
+          if (bearer.activeStatusEffects.some((s) => s.statusEffectId === statusEffectId)) landed++;
+        }
+        return landed / trials;
+      };
+      return { ctx, acolyte, ally, rat, combat, purify, landRate };
+    }
+
+    test("each rank leaves its own resist for 2 turns on an ally with no debuff to strip", () => {
+      for (const [level, id, percent] of [[10, "absolved", 40], [25, "absolved-ii", 50], [45, "absolved-iii", 65]] as const) {
+        const { ally, purify } = setup();
+        purify(level, ally);
+        expect(ally.activeStatusEffects.find((s) => s.statusEffectId === id)?.turnsRemaining).toBe(2);
+        expect(getStatusEffect(id).debuffResistPercent).toBe(percent);
+      }
+    });
+
+    test("recasting refreshes it instead of stacking", () => {
+      const { ally, purify } = setup();
+      purify(10, ally);
+      purify(10, ally);
+      expect(ally.activeStatusEffects.filter((s) => s.statusEffectId === "absolved")).toHaveLength(1);
+    });
+
+    test("a debuff lands (1 - percent) of the time on the bearer, and a helpful status always does", () => {
+      const { ally, landRate } = setup();
+      const rate = landRate(ally, "absolved", "poisoned", 4000);
+      expect(rate).toBeGreaterThan(0.6 - 0.04);
+      expect(rate).toBeLessThan(0.6 + 0.04);
+      expect(landRate(ally, "absolved", "regeneration", 500)).toBe(1);
+    });
+
+    test("a debuff with a target of its own, like Sealing Blow's stun, is resisted the same way", () => {
+      const { ally, landRate } = setup();
+      const rate = landRate(ally, "absolved", "poisoned", 4000, "allEnemies");
+      expect(rate).toBeGreaterThan(0.6 - 0.04);
+      expect(rate).toBeLessThan(0.6 + 0.04);
+    });
+
+    test("it combines with Devotion as independent chances", () => {
+      const { acolyte, landRate } = setup();
+      acolyte.level = 35;
+      const rate = landRate(acolyte, "absolved-iii", "poisoned", 6000);
+      expect(rate).toBeGreaterThan(0.175 - 0.03);
+      expect(rate).toBeLessThan(0.175 + 0.03);
+    });
+
+    test("an enemy or a summon gets none of it, and it ends with the fight", () => {
+      const { ctx, acolyte, ally, rat, combat, purify } = setup();
+      const summon = spawnAdditionalSummon({ kind: "summon", summonCastId: "shadow-clone" }, acolyte, combat, ctx, [])!;
+      purify(10, rat);
+      purify(10, summon);
+      expect(rat.activeStatusEffects.some((s) => s.statusEffectId === "absolved")).toBe(false);
+      expect(summon.activeStatusEffects.some((s) => s.statusEffectId === "absolved")).toBe(false);
+      purify(10, ally);
+      clearCombatResources(ctx);
+      expect(ally.activeStatusEffects.some((s) => s.statusEffectId === "absolved")).toBe(false);
+    });
   });
 });
 

@@ -559,7 +559,7 @@ describe("skillEffectLine: damage/heal scaling description shows the effect's re
 describe("skillEffectLine: per-effect target overrides (replaces the old effectsByRelation)", () => {
   test("appliesToRelation on a singleAllyOrEnemy skill (Purify) shows the singular ally/enemy suffix per effect", () => {
     const skill = getSkill("purify");
-    const [removeStatus, damage] = skill.effects!;
+    const [removeStatus, , damage] = skill.effects!;
     expect(removeStatus!.appliesToRelation).toBe("ally");
     expect(skillEffectLine(removeStatus!, skill)).toBe("  • 100%: Removes 1 debuff to an ally");
     expect(damage!.appliesToRelation).toBe("enemy");

@@ -161,7 +161,9 @@ Skeleton Guard, bosses tinted red). HP changes color by threshold
 
 The smallest supported terminal is 150×45. At that size every screen must still show its whole <!-- docs:intent -->
 footer and at least one row of the main (Dungeon) panel; the party list may scroll.
-`bun run random-play` checks this on every screen it reaches.
+`bun run random-play` checks this on every screen it reaches. Every row of the combat skill menu fits
+one line at that size, so a skill's `shortDescription` is limited by what its name and MP cost leave;
+`test/skillShortDescription.test.ts` fails on one that doesn't fit, naming its limit.
 
 From top to bottom the screen is the header, the Path panel, a row holding the Battlefield and the
 Log beside it, the Party | Dungeon | Monsters row, and the key hints on the last line. The

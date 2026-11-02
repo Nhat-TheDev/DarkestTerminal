@@ -95,6 +95,7 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
     parts.push(t("item.effectBasicAttackOverride", { name: o.name, amount: o.amount, percent: o.offenseMultiplierPercent, stat: o.isMagic ? "magic power" : "attack" }));
   }
   if (def.fearResistPercent) parts.push(t("item.effectFearResist", { percent: def.fearResistPercent }));
+  if (def.debuffResistPercent) parts.push(t("item.effectDebuffResist", { percent: def.debuffResistPercent }));
   for (const [type, percent] of Object.entries(def.weakPercent ?? {})) if (percent) parts.push(t("item.effectWeakTo", { percent, type }));
   if (def.endsWithChannel) parts.push(t("item.effectEndsWithChannel"));
   if (def.onActStatus) {
