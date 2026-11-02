@@ -52,14 +52,24 @@ function lineOpen(line: JournalLine, journal: SlotJournal, state: GameState): bo
   return true;
 }
 
-/** A blank line needs two readings to choose between; a written one needs one reading other than its own. */
+/** The available readings this run hasn't offered yet. */
+function freshDirections(line: JournalLine, journal: SlotJournal, state: GameState): JournalDirection[] {
+  const offered = state.journalOffered[line.id] ?? [];
+  return availableDirections(line, journal, state).filter((d) => !offered.includes(d.id));
+}
+
+/**
+ * A blank line needs two readings to choose between, or one new one once this run has offered it before; a written one needs one
+ * new reading other than its own.
+ */
 export function isChoosable(lineId: Id, journal: SlotJournal, state: GameState): boolean {
   const line = getJournalLine(lineId);
   if (!line || !lineOpen(line, journal, state)) return false;
   if (journal.lines[lineId]?.split) return true;
   const current = journal.lines[lineId]?.directionId;
-  const available = availableDirections(line, journal, state);
-  return current ? available.some((d) => d.id !== current) : available.length >= 2;
+  const fresh = freshDirections(line, journal, state);
+  if (current) return fresh.some((d) => d.id !== current);
+  return fresh.length >= (state.journalOffered[lineId] ? 1 : 2);
 }
 
 export function deductionOptions(lineId: Id, journal: SlotJournal, state: GameState): JournalOption[] {
@@ -72,7 +82,7 @@ export function deductionOptions(lineId: Id, journal: SlotJournal, state: GameSt
     return [...still.map((direction) => ({ kind: "write" as const, direction })), ...(still.length === 2 ? [] : [{ kind: "leaveBlank" as const }])];
   }
   const current = journal.lines[lineId]?.directionId;
-  const others = availableDirections(line, journal, state).filter((d) => d.id !== current);
+  const others = freshDirections(line, journal, state).filter((d) => d.id !== current);
   if (!current) return [...others.map((direction) => ({ kind: "write" as const, direction })), { kind: "leaveBlank" }];
   return [{ kind: "keep" }, ...others.map((direction) => ({ kind: "strikeAndWrite" as const, direction })), { kind: "strikeLeaveBlank" }];
 }
@@ -144,7 +154,7 @@ export function voicedText(voice: JournalVoiceAssignment, lines: PersonalityLine
 }
 
 /** Opens a scene: who speaks and in which face is fixed now, and each bad-side line costs every other living member a little fear. */
-function openScene(state: GameState, journal: SlotJournal, item: { lineId: Id; fragmentId: Id | null }): void {
+function openScene(state: GameState, journal: SlotJournal, item: { lineId: Id; fragmentId: Id | null; showFragment?: boolean }): void {
   const voices = assignVoices(item.lineId, item.fragmentId, journal, state);
   state.pendingJournal = { ...item, voices };
   for (const voice of voices) {
@@ -178,28 +188,67 @@ function sourceMatches(source: JournalFragmentSource, trigger: JournalTrigger, s
   return source.repeatInRun ? (state.journalEventVisits[source.eventId] ?? 0) >= 2 : true;
 }
 
-function enqueue(state: GameState, journal: SlotJournal, lineId: Id, fragmentId: Id | null): void {
-  if (state.pendingJournal?.lineId === lineId || state.journalQueue.some((q) => q.lineId === lineId)) return;
-  if (!state.pendingJournal) openScene(state, journal, { lineId, fragmentId });
-  else state.journalQueue.push({ lineId, fragmentId });
+/** Queues the line's scene; `false` when it is already on screen or queued. */
+function enqueue(state: GameState, journal: SlotJournal, lineId: Id, fragmentId: Id | null, showFragment = false): boolean {
+  if (state.pendingJournal?.lineId === lineId || state.journalQueue.some((q) => q.lineId === lineId)) return false;
+  const item = { lineId, fragmentId, ...(showFragment ? { showFragment } : {}) };
+  if (!state.pendingJournal) openScene(state, journal, item);
+  else state.journalQueue.push(item);
+  return true;
 }
 
-/** Copies the fragments the trigger grants (in authoring order, no RNG) and queues the lines they open or reopen. Returns the ids seen. */
-export function grantFragments(trigger: JournalTrigger, journal: SlotJournal, state: GameState, run: number): Id[] {
+/** Whoever would argue the fragment's readings notices it: the first living member, in party order, with a line on one of them. */
+function noticer(fragmentIds: Id[], state: GameState): Id | null {
+  const directions = fragmentIds.flatMap((id) => getJournalFragment(id)?.lineIds ?? []).flatMap((lineId) => getJournalLine(lineId)?.directions ?? []);
+  const living = state.party.filter((c) => c.isAlive);
+  const speaker = living.find((c) => directions.some((d) => d.personalities?.[personalityIdOf(c)] !== undefined)) ?? living[0];
+  return speaker?.id ?? null;
+}
+
+/** Finds the fragments the trigger turns up (in authoring order, no RNG), each once per run, and holds them for the party to look at. */
+export function grantFragments(trigger: JournalTrigger, state: GameState): Id[] {
   if (trigger.kind === "eventResolved") state.journalEventVisits[trigger.eventId] = (state.journalEventVisits[trigger.eventId] ?? 0) + 1;
-  const granted = JOURNAL_FRAGMENTS.filter((f) => !state.journalFragmentsSeen.includes(f.id) && f.sources.some((s) => sourceMatches(s, trigger, state))).slice(
-    0,
-    BALANCE.journal.maxFragmentsPerRoom
-  );
-  for (const fragment of granted) {
-    state.journalFragmentsSeen.push(fragment.id);
-    if (!holdsFragment(journal, fragment.id)) journal.fragments.push({ id: fragment.id, run, depth: state.floor.depth });
+  const granted = JOURNAL_FRAGMENTS.filter((f) => !state.journalFragmentsSeen.includes(f.id) && f.sources.some((s) => sourceMatches(s, trigger, state)))
+    .slice(0, BALANCE.journal.maxFragmentsPerRoom)
+    .map((f) => f.id);
+  if (granted.length === 0) return [];
+  state.journalFragmentsSeen.push(...granted);
+  const fragmentIds = [...(state.pendingJournalFind?.fragmentIds ?? []), ...granted];
+  state.pendingJournalFind = { fragmentIds, characterId: state.pendingJournalFind?.characterId ?? noticer(fragmentIds, state) };
+  return granted;
+}
+
+/**
+ * Looking copies the found fragments and queues the lines they open or reopen; each fragment's text shows with the first scene it
+ * opens. Returns the fragments that opened no scene.
+ */
+export function lookAtFind(journal: SlotJournal, state: GameState, run: number): Id[] {
+  const unshown: Id[] = [];
+  for (const id of state.pendingJournalFind?.fragmentIds ?? []) {
+    const fragment = getJournalFragment(id);
+    if (!fragment) continue;
+    if (!holdsFragment(journal, id)) journal.fragments.push({ id, run, depth: state.floor.depth });
+    let shown = false;
     for (const lineId of fragment.lineIds) {
-      state.journalLeftBlank = state.journalLeftBlank.filter((id) => id !== lineId);
-      if (isChoosable(lineId, journal, state)) enqueue(state, journal, lineId, fragment.id);
+      state.journalLeftBlank = state.journalLeftBlank.filter((l) => l !== lineId);
+      if (isChoosable(lineId, journal, state) && enqueue(state, journal, lineId, id, !shown)) shown = true;
     }
+    if (!shown) unshown.push(id);
   }
-  return granted.map((f) => f.id);
+  state.pendingJournalFind = null;
+  return unshown;
+}
+
+/** Whether looking at the pending find would open a scene, which is what replaces the room's event reflection. */
+export function findOpensScene(journal: SlotJournal, state: GameState): boolean {
+  const ids = state.pendingJournalFind?.fragmentIds ?? [];
+  const held: SlotJournal = { ...journal, fragments: [...journal.fragments, ...ids.map((id) => ({ id, run: 0, depth: 0 }))] };
+  return ids.some((id) => getJournalFragment(id)?.lineIds.some((lineId) => isChoosable(lineId, held, state)));
+}
+
+/** Moving on leaves the find out of the journal; it was already counted as seen this run. */
+export function passFind(state: GameState): void {
+  state.pendingJournalFind = null;
 }
 
 /** The most recently copied fragment that names the line, shown with a scene the floor clear opened. */
@@ -243,6 +292,8 @@ export function resolveDeduction(optionIndex: number, journal: SlotJournal, stat
   const options = deductionOptions(pending.lineId, journal, state);
   const option = options[optionIndex];
   if (!option) return false;
+  const offered = options.flatMap((o) => ("direction" in o ? [o.direction.id] : []));
+  state.journalOffered[pending.lineId] = [...new Set([...(state.journalOffered[pending.lineId] ?? []), ...offered])];
   const entry: JournalLineState = journal.lines[pending.lineId] ?? { struck: [] };
   const writer = (direction: { id: Id }) => pending.voices?.find((v) => v.directionId === direction.id)?.classId ?? undefined;
   switch (option.kind) {

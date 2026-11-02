@@ -409,7 +409,7 @@ export class App implements ScreenContext {
         this.ui = { kind: "floorMilestone" };
         return;
       }
-      if (this.game.state.pendingJournal) {
+      if (this.game.state.pendingJournalFind || this.game.state.pendingJournal) {
         this.ui = { kind: "journalDeduction" };
         return;
       }
@@ -500,7 +500,7 @@ export class App implements ScreenContext {
       return;
     }
     if (key.name === "j" && this.game.hasJournalEntries() && canOpenJournal(this.ui.kind)) {
-      this.ui = { kind: "journal", previous: this.ui, previousPage: this.listPage, pages: journalScreen.journalPages(this.game.journal, this.game.droppedJournal(), this.game.runNumber) };
+      this.ui = { kind: "journal", previous: this.ui, previousPage: this.listPage, pages: journalScreen.journalPages(this.game.journal, this.game.runNumber) };
       this.listPage = 0;
       this.render();
       return;

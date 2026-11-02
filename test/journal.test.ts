@@ -13,7 +13,7 @@ import { maybeTriggerReflection } from "../src/engine/events/shared";
 import { migrateGameState } from "../src/engine/migration";
 import { availableDirections, deductionOptions, faceOf, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
 import { getJournalLine } from "../src/data/journal";
-import { journalPages } from "../src/ui/screens/journal";
+import { journalPages, renderDeduction } from "../src/ui/screens/journal";
 import journalJson from "../data/journal.json";
 import type { Character } from "../src/types";
 
@@ -41,6 +41,13 @@ function resolveInstant(game: Game, eventId: string): void {
   forceEventRoom(game, eventId);
   game.state.journalHandledRoomId = null;
   expect(game.openChest()).toBeNull();
+  if (game.state.pendingJournalFind) game.resolveJournalFind(true);
+}
+
+/** Finds what the trigger turns up and looks at it. */
+function grantAndLook(game: Game, trigger: Parameters<typeof grantFragments>[0]): void {
+  grantFragments(trigger, game.state);
+  game.resolveJournalFind(true);
 }
 
 function choose(game: Game, directionLabel: string): void {
@@ -134,11 +141,10 @@ describe("journal scene at room clear", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
     choose(game, "They counted days, toward a day they meant to leave.");
-    resolveInstant(game, "old-count");
-    expect(game.state.pendingJournal).toMatchObject({ lineId: "what-the-marks-count", fragmentId: "tally-row" });
-    const labels = deductionOptions("what-the-marks-count", game.journal, game.state).map((o) => o.kind);
-    expect(labels[0]).toBe("keep");
-    expect(labels.at(-1)).toBe("strikeLeaveBlank");
+    forceEventRoom(game, "old-count");
+    game.state.journalHandledRoomId = null;
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingJournalFind?.fragmentIds).toEqual(["tally-row"]);
   });
 
   test("a line queued behind another scene opens at the floor clear", () => {
@@ -164,8 +170,61 @@ describe("journal scene at room clear", () => {
 
   test("an omen grants its fragment", () => {
     const game = slotGame();
-    grantFragments({ kind: "omen", omenId: "chalk-higher" }, game.journal, game.state, 1);
+    grantAndLook(game, { kind: "omen", omenId: "chalk-higher" });
     expect(game.journal.fragments.map((f) => f.id)).toEqual(["chalk-higher"]);
+  });
+});
+
+describe("journal find", () => {
+  test("a room clear holds its fragment for the party to look at, voiced by a member who would argue it", () => {
+    const game = slotGame();
+    forceEventRoom(game, "old-count");
+    game.state.journalHandledRoomId = null;
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingReflection).toBeNull();
+    expect(game.state.pendingJournal).toBeNull();
+    expect(game.journal.fragments).toEqual([]);
+    const who = game.state.party.find((c) => c.id === game.state.pendingJournalFind?.characterId);
+    expect(who).toBeDefined();
+  });
+
+  test("moving on writes nothing, and the fragment isn't found again this run", () => {
+    const game = slotGame();
+    forceEventRoom(game, "old-count");
+    game.state.journalHandledRoomId = null;
+    expect(game.openChest()).toBeNull();
+    expect(game.resolveJournalFind(false)).toEqual([]);
+    expect(game.state.pendingJournalFind).toBeNull();
+    expect(game.state.pendingJournal).toBeNull();
+    expect(game.journal.fragments).toEqual([]);
+    expect(grantFragments({ kind: "eventResolved", eventId: "old-count", outcome: undefined, baseTextShown: true }, game.state)).not.toContain("tally-wall");
+  });
+
+  test("the fragment's text shows with its first scene only, under the subject and no page title", () => {
+    const game = slotGame();
+    resolveInstant(game, "old-count");
+    expect(game.state.pendingJournal).toMatchObject({ lineId: "what-the-marks-count", showFragment: true });
+    expect(game.state.journalQueue).toEqual([{ lineId: "the-last-mark", fragmentId: "tally-wall" }]);
+    const first = renderDeduction(game);
+    expect(first.split("\n")[0]).toBe("What the marks count");
+    expect(first).toContain("Tally marks scratched into the wall");
+    expect(first).not.toContain("THE COUNT");
+    choose(game, "They counted sleeps. There are no days down here.");
+    game.state.pendingJournal = { ...game.state.journalQueue.shift()!, voices: [] };
+    expect(renderDeduction(game)).not.toContain("Tally marks scratched into the wall");
+  });
+
+  test("a reading offered once isn't offered again this run, but a new run offers it again", () => {
+    const game = slotGame();
+    resolveInstant(game, "old-count");
+    game.resolveJournalDeduction(deductionOptions("what-the-marks-count", game.journal, game.state).findIndex((o) => o.kind === "leaveBlank"));
+    expect(game.journal.lines["what-the-marks-count"]?.directionId).toBeUndefined();
+    game.state.journalLeftBlank = [];
+    expect(isChoosable("what-the-marks-count", game.journal, game.state)).toBe(false);
+    game.journal.fragments.push({ id: "chalk-higher", run: game.runNumber, depth: 1 });
+    expect(deductionOptions("what-the-marks-count", game.journal, game.state).map((o) => ("direction" in o ? o.direction.id : o.kind))).toEqual(["walls-shift", "leaveBlank"]);
+    const next = slotGame(2);
+    expect(isChoosable("what-the-marks-count", next.journal, next.state)).toBe(true);
   });
 });
 
@@ -174,7 +233,7 @@ describe("journal readings", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
     choose(game, "They counted days, toward a day they meant to leave.");
-    grantFragments({ kind: "eventResolved", eventId: "doubled-back", outcome: "resolved", baseTextShown: true }, game.journal, game.state, 1);
+    grantAndLook(game, { kind: "eventResolved", eventId: "doubled-back", outcome: "resolved", baseTextShown: true });
     expect(isChoosable("the-prints", game.journal, game.state)).toBe(false);
     game.state.pendingJournal = { lineId: "the-last-mark", fragmentId: "tally-wall" };
     choose(game, "They stopped on their own and left.");
@@ -283,15 +342,24 @@ describe("journal across runs", () => {
 });
 
 describe("journal viewer", () => {
-  test("shows only pages the slot holds a fragment for, with the reading and the copied fragment", () => {
+  test("shows only written lines, each with the fragment that names it", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
     choose(game, "They counted sleeps. There are no days down here.");
-    const pages = journalPages(game.journal, null, game.runNumber);
+    const pages = journalPages(game.journal, game.runNumber);
     expect(pages.every((p) => p[0] === JOURNAL_PAGES[0]!.title.toUpperCase())).toBe(true);
     const text = pages.flat().join("\n");
     expect(text).toContain("They counted sleeps. There are no days down here.");
     expect(text).toContain("Tally marks scratched into the wall");
+    expect(text).not.toContain("The last mark —");
+  });
+
+  test("a page with nothing written isn't shown, and the viewer stays closed", () => {
+    const game = slotGame();
+    resolveInstant(game, "old-count");
+    expect(game.journal.fragments.map((f) => f.id)).toEqual(["tally-wall"]);
+    expect(journalPages(game.journal, game.runNumber)).toEqual([]);
+    expect(game.hasJournalEntries()).toBe(false);
   });
 });
 
@@ -309,7 +377,10 @@ describe("journal UI", () => {
       await renderOnce();
     }
     expect(app.debugUiState.kind).toBe("journalDeduction");
-    mockInput.pressKey("2");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("journalDeduction");
+    mockInput.pressKey("1");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("room");
     mockInput.pressKey("j");
@@ -578,7 +649,7 @@ describe("journal review fixes", () => {
     choose(game, "They counted sleeps. There are no days down here.");
     game.journal.lines["whether-they-came-back"] = { directionId: "never-came-back", struck: [] };
     const dropped = { depth: 3, hands: [{ run: 1, classIds: ["knight"], lines: { "the-last-mark": { directionId: "something-made-them-stop", struck: [] } } }] };
-    const text = journalPages(game.journal, dropped, game.runNumber).flat().join("\n");
+    const text = journalPages(game.journal, game.runNumber).flat().join("\n");
     expect(text).toContain("Whether they came back up\n");
     expect(text).not.toContain("Whether they came back up — floor");
   });
@@ -607,9 +678,7 @@ describe("journal viewer in combat", () => {
   test("[j] opens mid-fight and Esc returns to the same combat screen", async () => {
     const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 150, height: 45 });
     const game = slotGame(4, null);
-    grantFragments({ kind: "omen", omenId: "chalk-higher" }, game.journal, game.state, 1);
-    game.state.pendingJournal = null;
-    game.state.journalQueue = [];
+    game.journal.lines["what-the-marks-count"] = { directionId: "counted-days", struck: [] };
     const room = getRoom(game.state.floor, game.state.currentRoomId);
     const monster = spawnMonster("skeleton-guard", 1);
     game.ctx.monsters.push(monster);
