@@ -54,6 +54,10 @@ function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
   return TARGET_SUFFIX[sk.target] ?? "";
 }
 
+export function skillMenuHead(option: number, sk: SkillDefinition, usesSuffix = ""): string {
+  return `  [${option}] ${sk.name} (MP ${sk.mpCost}${usesSuffix})`;
+}
+
 /** Damage reads as its formula (offenseMultiplierPercent of Attack, absent meaning 100, plus flat `amount`), not a trigger chance; other kinds lead with their trigger chance. */
 export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
   const targetSuffix = targetSuffixFor(e, sk);
@@ -414,7 +418,7 @@ export function renderMain(game: Game, ui: CombatUiState, page = 0): string | St
         const unusable = checkSkillUsable(actor, sk);
         const { usesLeft } = skillMeta(actor, sk);
         const usesSuffix = usesLeft !== null ? t("ui.usesLeftSuffix", { count: usesLeft }) : "";
-        const head = `  [${i + 1}] ${sk.name} (MP ${sk.mpCost}${usesSuffix})`;
+        const head = skillMenuHead(i + 1, sk, usesSuffix);
         if (unusable) {
           lines.push([colorChunk(`${head} — ${unusable.reason}`, PALETTE.disabled)]);
         } else {
