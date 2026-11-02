@@ -436,6 +436,8 @@ export interface StatusEffectDefinition {
   basicAttackOverride?: { name: string; amount: number; offenseMultiplierPercent: number; damageType?: DamageType; isMagic?: boolean };
   /** Reduces every fear gain on the bearer by this percent, combined with its fearResist. */
   fearResistPercent?: number;
+  /** Lowers the land chance of a harmful status an enemy skill applies to the bearer, combined with its `debuffResist`. An effect with its own `target` is not covered. */
+  debuffResistPercent?: number;
   /** Each time the bearer acts (not when it loses the turn), rolls `chance` to apply `statusEffectId` to itself for `durationTurns`. */
   onActStatus?: { statusEffectId: Id; chance: number; durationTurns: number };
   /** The bearer can only use its basic attack. A boss with a full telegraph meter cannot release it while silenced. */

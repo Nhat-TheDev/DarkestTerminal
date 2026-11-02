@@ -552,6 +552,7 @@
   "item.effectBasicAttackOverride": "basic attack becomes {{name}} ({{amount}} + {{percent}}% {{stat}})",
   "item.effectOnMaxStacks": "at {{max}} stacks turns into {{status}} for {{turns}} turn",
   "item.effectFearResist": "resists {{percent}}% of fear gained",
+  "item.effectDebuffResist": "resists {{percent}}% of debuffs",
   "item.effectWeakTo": "takes {{percent}}% more {{type}} damage",
   "item.effectEndsWithChannel": "ends when its caster stops channeling",
   "item.effectOnActStatus": "{{percent}}% chance on acting to suffer {{status}} for {{turns}} turns",

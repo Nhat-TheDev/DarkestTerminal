@@ -1513,7 +1513,7 @@
         "id": "purify",
         "name": "Purify",
         "description": "Holy light that lifts the rot from a friend and burns through an enemy.",
-        "shortDescription": "Cures an ally's debuff, or smites an enemy.",
+        "shortDescription": "Cures an ally's debuff and hardens them against the next, or smites an enemy.",
         "target": "singleAllyOrEnemy",
         "slot": 3,
         "cooldownTurns": 1,
@@ -1527,6 +1527,13 @@
               {
                 "kind": "removeStatusEffect",
                 "appliesToRelation": "ally"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "absolved",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
               },
               {
                 "kind": "damage",
@@ -1547,6 +1554,13 @@
                 "appliesToRelation": "ally"
               },
               {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "absolved-ii",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
+              },
+              {
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 110,
@@ -1563,6 +1577,13 @@
               {
                 "kind": "removeStatusEffect",
                 "appliesToRelation": "ally"
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "absolved-iii",
+                "durationTurns": 2,
+                "appliesToRelation": "ally",
+                "excludesSummonTargets": true
               },
               {
                 "kind": "damage",

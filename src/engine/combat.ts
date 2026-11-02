@@ -987,6 +987,10 @@ export function passiveDebuffResistPercent(target: Character): number {
   return ownPassiveRank(target)?.debuffResistPercent ?? 0;
 }
 
+function statusDebuffResistPercent(target: Character): number {
+  return target.activeStatusEffects.reduce((total, s) => combinePercents(total, getStatusEffect(s.statusEffectId).debuffResistPercent ?? 0), 0);
+}
+
 /** Applies or removes the rank's threshold status from the live HP ratio; returns whether it is active. */
 function syncPassiveThresholdStatus(source: Actor, log: LogEntry[]): boolean {
   if (!isCharacter(source)) return false;
@@ -1728,7 +1732,9 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
       // `debuffResist` scales the effect's land chance down (an absent `chance` counts as 1). One draw serves both
       // the roll and the "threw it off" log, and none is spent at 0% so seeded streams stay put.
       const resistPercent =
-        harmfulStatus && isCharacter(target) ? combinePercents(debuffResistPercent(target), passiveDebuffResistPercent(target)) : 0;
+        harmfulStatus && isCharacter(target)
+          ? combinePercents(combinePercents(debuffResistPercent(target), passiveDebuffResistPercent(target)), statusDebuffResistPercent(target))
+          : 0;
       if (resistPercent > 0) {
         const baseChance = effect.chance ?? 1;
         const roll = ctx.rng.next();

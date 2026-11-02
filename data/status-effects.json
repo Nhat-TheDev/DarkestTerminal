@@ -1418,6 +1418,34 @@
     "endsWithCombat": true
   },
   {
+    "id": "absolved",
+    "name": "Absolved",
+    "description": "Curses find less to take hold of.",
+    "perTurnEffects": [],
+    "debuffResistPercent": 40,
+    "endsWithCombat": true
+  },
+  {
+    "id": "absolved-ii",
+    "name": "Absolved",
+    "description": "Curses find less to take hold of.",
+    "perTurnEffects": [],
+    "debuffResistPercent": 50,
+    "endsWithCombat": true,
+    "rankOf": "absolved",
+    "rankLevel": 2
+  },
+  {
+    "id": "absolved-iii",
+    "name": "Absolved",
+    "description": "Curses find less to take hold of.",
+    "perTurnEffects": [],
+    "debuffResistPercent": 65,
+    "endsWithCombat": true,
+    "rankOf": "absolved",
+    "rankLevel": 3
+  },
+  {
     "id": "netted",
     "name": "Netted",
     "description": "Every move pulls the barbs deeper; acting may open a fresh bleed.",
