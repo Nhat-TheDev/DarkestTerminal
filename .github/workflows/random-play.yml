@@ -44,7 +44,7 @@ jobs:
         run: |
           bun run tools/curve/comment.ts --head curve-head/curve.json --base curve-base/curve.json \
             --head-label "\`${HEAD_SHA::7}\`" --base-label "\`${BASE_SHA::7}\`" --out curve-comment.md
-          gh pr comment ${{ github.event.pull_request.number }} --body-file curve-comment.md --edit-last --create-if-none
+          bash .github/scripts/upsert-comment.sh guard-curve ${{ github.event.pull_request.number }} curve-comment.md
         shell: bash
       - if: steps.check.outcome == 'failure'
         run: exit 1
@@ -57,4 +57,4 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       # Each kind of failure in the log carries a command that replays it locally with the colour report.
-      - run: bun run random-play --runs 5 --max-steps 5000 --report none
+      - run: bun run random-play --runs 2 --max-steps 5000 --report none

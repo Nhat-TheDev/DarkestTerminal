@@ -28,6 +28,7 @@ import {
 import { toFrameCapture, type FrameCapture, type ReportFinding, type GalleryEntry } from "./report";
 import { levelAt, type GuardTier } from "./curve";
 import { TeamPolicy, type Team } from "./team";
+import { screenKeyOf, screenLabel } from "./evidence";
 
 export interface Size {
   width: number;
@@ -63,12 +64,34 @@ const MAX_REVEAL_TICKS = 1000;
 const ESCAPE_DELIVERY_MS = 40;
 
 export const FLOOR_CLEARED = "floor cleared";
+export const ROOM_LEFT = "room left";
+
+/** Evidence runs play at one size, so each screen is captured the same way every time. */
+export const EVIDENCE_SIZE: Size = { width: 180, height: 70 };
+/** A floor may lack the room a scenario asks for; this many floors further down are tried in turn. */
+const SCENARIO_FLOOR_TRIES = 20;
+
+/**
+ * A fixed start for an evidence run. It also turns off the random save round trips, resizes and
+ * hidden-key probes, so the same code captures the same screens.
+ */
+export interface Scenario {
+  name: string;
+  depth: number;
+  level: number;
+  roomArg: string;
+  forceEventId?: Id;
+  fresh?: boolean;
+  /** Ends the run once the party leaves the room it started in. */
+  stopOnLeavingRoom?: boolean;
+}
 
 export interface RunOptions {
   gameSeed: number;
   botSeed: number;
   maxSteps: number;
   team: Team;
+  scenario?: Scenario;
 }
 
 export interface GuardResult {
@@ -166,22 +189,35 @@ function stateSignature(game: Game): string {
 }
 
 export async function playRun(options: RunOptions): Promise<RunResult> {
-  const { gameSeed, botSeed, maxSteps, team } = options;
+  const { gameSeed, botSeed, maxSteps, team, scenario } = options;
   const rng = new Rng(botSeed);
   rmSync(SAVE_DIR, { recursive: true, force: true });
   mkdirSync(SAVE_DIR, { recursive: true });
 
   const classIds: Id[] = team.members.map((m) => m.classId);
   const abilityIds: (Id | null)[] = shuffled(rng, ABILITIES.map((a) => a.id)).slice(0, ABILITY_SLOTS).map((id) => (rng.next() < 0.5 ? id : null));
-  const fresh = rng.next() < FRESH_RUN_CHANCE;
-  const floorDepth = fresh ? 1 : pick(rng, GUARD_FLOORS);
-  const level = Math.round(levelAt(floorDepth));
-  let size = pick(rng, PLAY_SIZES);
-  const start = fresh ? "fresh run" : `floor ${floorDepth}, level ${level}`;
+  const fresh = scenario ? !!scenario.fresh : rng.next() < FRESH_RUN_CHANCE;
+  let floorDepth = scenario ? scenario.depth : fresh ? 1 : pick(rng, GUARD_FLOORS);
+  const level = scenario ? scenario.level : Math.round(levelAt(floorDepth));
+  let size = scenario ? EVIDENCE_SIZE : pick(rng, PLAY_SIZES);
 
-  let game = new Game(gameSeed, classIds, undefined, abilityIds, fresh);
-  if (!fresh) applyDump(game, { level, floorDepth, roomArg: "entry" });
+  const startGame = (depth: number) => {
+    const g = new Game(gameSeed, classIds, undefined, abilityIds, fresh);
+    if (!fresh) applyDump(g, { level, floorDepth: depth, roomArg: scenario?.roomArg ?? "entry", forceEventId: scenario?.forceEventId });
+    return g;
+  };
+  let game: Game | null = null;
+  for (let tries = 0; !game; tries++) {
+    try {
+      game = startGame(floorDepth + tries);
+      floorDepth += tries;
+    } catch (error) {
+      if (!scenario || tries >= SCENARIO_FLOOR_TRIES) throw error;
+    }
+  }
   game.currentSaveSlot = SAVE_SLOT;
+  const start = scenario ? `${scenario.name}, floor ${floorDepth}, level ${level}` : fresh ? "fresh run" : `floor ${floorDepth}, level ${level}`;
+  const startRoomId = game.state.currentRoomId;
 
   const policy = new TeamPolicy(team);
   const stats: RunStats = { team: team.name, startDepth: floorDepth, rooms: 0, guards: [], samples: [], itemsUsed: 0, starvedTurns: 0 };
@@ -240,14 +276,22 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         outcome = FLOOR_CLEARED;
         break;
       }
+      if (scenario?.stopOnLeavingRoom && game.state.currentRoomId !== startRoomId) {
+        outcome = ROOM_LEFT;
+        break;
+      }
       const kind = app.debugUiState.kind;
       const frameBefore = setup.captureCharFrame();
       const footer = parseFooter(footerText(frameBefore));
 
-      const galleryKey = `${kind}@${sizeLabel(size)}`;
-      const shot = gallery.get(galleryKey);
-      if (shot) shot.count++;
-      else gallery.set(galleryKey, { uiKind: kind, size: sizeLabel(size), count: 1, frame: capture() });
+      const screen = screenKeyOf(app.debugUiState, game);
+      const label = screenLabel(screen);
+      const addShot = (at: Size, frame: () => FrameCapture) => {
+        const shot = gallery.get(`${label}@${sizeLabel(at)}`);
+        if (shot) shot.count++;
+        else gallery.set(`${label}@${sizeLabel(at)}`, { uiKind: kind, event: screen.event, screenCase: screen.screenCase, size: sizeLabel(at), count: 1, frame: frame() });
+      };
+      addShot(size, capture);
 
       const frameFindings = [...findTextLeaks(frameBefore), ...findLongDecimals(frameBefore), ...findFooterIssues(footer)];
       const layout = findLayoutIssues(frameBefore, layoutRequirement(kind, false));
@@ -257,13 +301,15 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       record(failures, [...frameFindings, ...layout.failures, ...stateFindings], evidence, size, kind);
       record(warnings, layout.warnings, evidence, size, kind);
 
-      if (!probedAtMinSize.has(kind)) {
-        probedAtMinSize.add(kind);
+      if (!probedAtMinSize.has(label)) {
+        probedAtMinSize.add(label);
         setup.resize(MIN_SIZE.width, MIN_SIZE.height);
         await setup.renderOnce();
         const small = setup.captureCharFrame();
+        const smallShot = capture();
+        addShot(MIN_SIZE, () => smallShot);
         const smallFindings = [...findFooterIssues(parseFooter(footerText(small))), ...findLayoutIssues(small, layoutRequirement(kind, true)).failures];
-        record(failures, smallFindings, smallFindings.length > 0 ? capture() : null, MIN_SIZE, kind);
+        record(failures, smallFindings, smallFindings.length > 0 ? smallShot : null, MIN_SIZE, kind);
         setup.resize(size.width, size.height);
         await setup.renderOnce();
       }
@@ -274,7 +320,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       }
 
       const saveAllowed = game.state.gameOver === null && kind !== "abilityBuyback" && kind !== "gameover";
-      if (saveAllowed && rng.next() < (game.state.combat ? SAVE_ROUND_TRIP_CHANCE.combat : SAVE_ROUND_TRIP_CHANCE.other)) {
+      if (saveAllowed && !scenario && rng.next() < (game.state.combat ? SAVE_ROUND_TRIP_CHANCE.combat : SAVE_ROUND_TRIP_CHANCE.other)) {
         recent.push(`[${kind}] save + reload${game.state.combat ? " (mid-combat)" : ""}`);
         saveRun(game);
         game = gameFromSave(loadSave(SAVE_SLOT), SAVE_SLOT, gameSeed);
@@ -286,7 +332,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         continue;
       }
 
-      if (rng.next() < RESIZE_CHANCE) {
+      if (!scenario && rng.next() < RESIZE_CHANCE) {
         size = pick(rng, PLAY_SIZES);
         recent.push(`[${kind}] resize to ${sizeLabel(size)}`);
         setup.resize(size.width, size.height);
@@ -296,7 +342,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
 
       const maxDigit = Math.max(0, ...footer.digits);
       let key: string;
-      if (maxDigit > 0 && maxDigit < 9 && rng.next() < HIDDEN_KEY_PROBE_CHANCE) {
+      if (!scenario && maxDigit > 0 && maxDigit < 9 && rng.next() < HIDDEN_KEY_PROBE_CHANCE) {
         key = String(maxDigit + 1);
       } else {
         // The cautious choice can loop on a screen (re-picking the shown tab); once nothing has moved for a while, break out instead.

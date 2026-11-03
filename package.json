@@ -57,6 +57,7 @@
     "darkest-terminal-win32-x64": "1.2.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@types/bun": "^1.3.14",
     "typescript": "^7.0.2"
   }

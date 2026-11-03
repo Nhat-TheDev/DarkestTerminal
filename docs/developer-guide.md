@@ -23,7 +23,7 @@ bun test        # unit tests for the engine (resolver, combat, aggro, level, flo
 bun run typecheck
 bun run game-editor  # dev tool: sprite and backdrop editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
 bun run docs:sync    # rewrite the doc numbers that mirror data/balance-config.json (--check only verifies; bun test runs the check)
-bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/)
+bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/); --evidence captures every screen as PNG
 ```
 
 <!-- docs:intent-begin -->
@@ -67,12 +67,32 @@ reloads (more often mid-combat) and occasionally resizes. It reports:
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
 steps and a colour capture of the screen; `--game-seed X --bot-seed Y --team NAME` replays one run exactly.
-`report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
+`report.html` also holds a gallery of every screen reached, rarest first: one capture per screen kind,
+event room and case (a fight's tier from its strongest monster, a fight's outcome, a reward or an empty
+one) at the size it was reached at, and again at 150×45. The tool exits non-zero
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
 and the exit code are the whole result. `report.html` also tabulates how each team played and the
 guards it met, for a look only: balance is measured by `bun run curve`, below. Every pull request
 runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
+
+`bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
+find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
+event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room), an elite
+and a boss guard room, and a defeat. Teams take turns between scenarios, and a scenario plays at
+180×70 with no save round trips, resizes or hidden-key probes, so the same code captures the same
+screens. It still reports failures as above. Into `--out` it writes `screens/*.png` (each screen at
+180×70 and 150×45, drawn from the captured cells by `@resvg/resvg-js`, block glyphs as rectangles),
+`manifest.json` (each screen's key, size, file and a hash of its cells, plus the failure count) and
+a gallery `README.md` (`tools/random-play/evidence.ts`). On a pull request,
+`.github/workflows/evidence.yml` runs it on the branch and, when the base has it too, on the base;
+publishes the branch's screens as a single orphan commit on `evidence/pr-<number>`, replaced on every
+push and deleted when the pull request closes; and keeps one comment on the pull request: the screen
+count, the room events with no screen, the screens new, gone or changed against the base (the first
+30 changed ones as images, linked by the evidence commit so an edit never shows a cached image), and
+a link to the gallery. A change that sends the bot down another path also changes the screens after
+it. The curve comment and this one each start with a marker that
+`.github/scripts/upsert-comment.sh` finds to edit them in place.
 
 `bun run curve` (`--only ID,ID --tier elite|boss --teams NAME,NAME --level min|avg|max --precision P
 --max-fights N --baseline FILE --out DIR`) measures elite and boss fights on the engine itself, with
@@ -729,11 +749,11 @@ tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
   curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, baseline comparison), run.ts (CLI, --check and --update-baseline), comment.ts (the pull request comment), baseline.json (the committed curve --check compares against)
-  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), report.ts (report.html), run.ts (CLI)
+  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), evidence.ts (screen keys, PNGs, manifest and the evidence comment), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
-  randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
+  randomPlay.test.ts   # the random-play tool's checks, report rendering and screen evidence, plus one short bot run
   curveBench.test.ts   # the guard bench's statistics, cases, stopping rule and baseline comparison, the curve check's rules, and the pull request comment
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting

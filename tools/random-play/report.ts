@@ -42,6 +42,10 @@ export interface ReportFinding {
 
 export interface GalleryEntry {
   uiKind: string;
+  /** The event room the screen shows, if any. */
+  event: string | null;
+  /** The case it is drawn in: a combat tier, a fight's outcome, a reward or an empty one. */
+  screenCase: string | null;
   size: string;
   count: number;
   frame: FrameCapture;
@@ -245,7 +249,7 @@ ${warningGroups.map((g) => findingCard(g, "warn")).join("\n") || '<p class="none
 ${gallery
   .map(
     (g) => `<section class="shot" data-kind="${escapeHtml(g.uiKind)}" data-size="${escapeHtml(g.size)}">
-  <h3>${escapeHtml(g.uiKind)} @ ${escapeHtml(g.size)} <span class="count">seen ${g.count}×</span></h3>
+  <h3>${escapeHtml([g.uiKind, g.event, g.screenCase].filter(Boolean).join(" · "))} @ ${escapeHtml(g.size)} <span class="count">seen ${g.count}×</span></h3>
   ${spansToHtml(g.frame)}
 </section>`
   )

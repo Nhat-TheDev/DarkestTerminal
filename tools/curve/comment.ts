@@ -13,6 +13,8 @@ export interface CurveRun {
 }
 
 const HARDEST_SHOWN = 5;
+/** The comment's first line, so CI finds and edits this comment rather than another bot comment. */
+export const CURVE_MARKER = "<!-- guard-curve -->";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const pctPrecise = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -96,6 +98,7 @@ function teamsSection(head: CurveRun, base: CurveRun | null, teams: Team[]): str
 export function curveComment(head: CurveRun, base: CurveRun | null, findings: string[], teams: Team[] = TEAMS): string {
   const fights = head.rows.reduce((total, r) => total + r.fights, 0);
   const out = [
+    CURVE_MARKER,
     "## Guard curve",
     "",
     `**Check: ${findings.length === 0 ? "passed" : `${findings.length} failure${findings.length === 1 ? "" : "s"}`}** · ${head.rows.length} guards · ${fights} fights · this PR ${head.label}${base ? ` vs base ${base.label}` : ""}`,

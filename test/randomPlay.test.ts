@@ -18,7 +18,23 @@ import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
 import type { Character, Room } from "../src/types";
 import { Rng } from "../src/engine/rng";
 import { CLASSES, getEffectiveSkill, getSkill } from "../src/data/classes";
-import { mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { applyDump } from "../tools/dev-save-dump/applyDump";
+import {
+  compareManifests,
+  evidenceComment,
+  frameToPng,
+  frameToSvg,
+  screenKeyOf,
+  writeEvidence,
+  EVIDENCE_MARKER,
+  MAX_INLINE_IMAGES,
+  ROOM_EVENT_IDS,
+  type Manifest,
+  type ManifestEntry,
+} from "../tools/random-play/evidence";
+import type { FrameCapture } from "../tools/random-play/report";
+import type { UiState } from "../src/ui/state";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -115,7 +131,8 @@ describe("random-play bot", () => {
     const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 40, team: TEAMS[0]! });
     expect(result.steps).toBe(40);
     expect(result.gallery.length).toBeGreaterThan(3);
-    expect(result.gallery.every((g) => g.size.endsWith("x70"))).toBe(true);
+    expect(result.gallery.every((g) => g.size.endsWith("x70") || g.size === "150x45")).toBe(true);
+    expect(result.gallery.some((g) => g.size === "150x45")).toBe(true);
     expect(result.failures).toEqual([]);
   });
 
@@ -406,5 +423,86 @@ describe("random-play CLI", () => {
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("--team must be one of");
     expect(stdout).not.toContain("run 1/");
+  });
+});
+
+describe("random-play evidence", () => {
+  const ui = (kind: string, extra: object = {}) => ({ kind, ...extra }) as unknown as UiState;
+  const span = (text: string, fg: [number, number, number, number] = [200, 200, 200, 255]) => ({ text, fg, bg: [10, 10, 10, 255] as [number, number, number, number], attributes: 0 });
+  const frame: FrameCapture = { cols: 6, rows: 2, lines: [[span("a<&b"), span("▀█")], [span("      ")]] };
+
+  test("a screen is keyed by its kind, the event room it shows and the case it is drawn in", () => {
+    const eventGame = new Game(3, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    let depth = 12;
+    for (; ; depth++) {
+      try {
+        applyDump(eventGame, { level: 14, floorDepth: depth, roomArg: "event", forceEventId: ROOM_EVENT_IDS[0]! });
+        break;
+      } catch {}
+    }
+    expect(screenKeyOf(ui("room"), eventGame)).toEqual({ kind: "room", event: ROOM_EVENT_IDS[0]!, screenCase: null });
+    expect(screenKeyOf(ui("roomReward", { entries: [] }), eventGame).screenCase).toBe("empty");
+
+    for (const [floor, tier] of [[11, "elite"], [15, "boss"]] as const) {
+      const guardGame = new Game(3, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+      applyDump(guardGame, { level: 14, floorDepth: floor, roomArg: "boss" });
+      expect(screenKeyOf(ui("pickAction"), guardGame)).toEqual({ kind: "pickAction", event: null, screenCase: tier });
+      guardGame.state.combat!.outcome = "defeat";
+      expect(screenKeyOf(ui("combatOver"), guardGame).screenCase).toBe("defeat");
+    }
+  });
+
+  test("a frame becomes an SVG of its cells, with block glyphs as rectangles and markup escaped", () => {
+    const svg = frameToSvg(frame);
+    expect(svg).toContain('width="48" height="32"');
+    expect(svg).toContain("a&lt;&amp;b");
+    expect(svg).toContain('<rect x="32" y="0" width="8" height="8"');
+    expect(svg).toContain('<rect x="40" y="0" width="8" height="16"');
+    expect(svg).not.toContain("▀");
+  });
+
+  test("a frame renders to a PNG", () => {
+    expect([...frameToPng(frame).subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  });
+
+  test("writing evidence leaves a PNG per screen and size, a manifest and a gallery", () => {
+    const dir = mkdtempSync(join(tmpdir(), "random-play-evidence-"));
+    const manifest = writeEvidence(dir, [{ uiKind: "room", event: "merchant", screenCase: null, size: "180x70", count: 1, frame }], 2);
+    expect(manifest.failures).toBe(2);
+    expect(manifest.screens.map((s) => s.file)).toEqual(["screens/room--merchant@180x70.png"]);
+    expect(existsSync(join(dir, "screens", "room--merchant@180x70.png"))).toBe(true);
+    expect(readFileSync(join(dir, "README.md"), "utf8")).toContain("![room · merchant @ 180x70](screens/room--merchant@180x70.png)");
+  });
+
+  const entry = (label: string, hash: string, size = "180x70"): ManifestEntry => ({ kind: label, event: null, screenCase: null, label, size, file: `screens/${label}@${size}.png`, hash });
+  const manifest = (...screens: ManifestEntry[]): Manifest => ({ failures: 0, screens });
+
+  test("two manifests compare by screen and size into new, gone and changed", () => {
+    const changes = compareManifests(manifest(entry("a", "1"), entry("b", "2"), entry("c", "3")), manifest(entry("a", "1"), entry("b", "9"), entry("d", "4")));
+    expect(changes.added.map((s) => s.label)).toEqual(["c"]);
+    expect(changes.removed.map((s) => s.label)).toEqual(["d"]);
+    expect(changes.changed.map((s) => s.label)).toEqual(["b"]);
+  });
+
+  test("the comment starts with its marker, shows changed screens inline up to the cap and links the rest", () => {
+    const changed = Array.from({ length: MAX_INLINE_IMAGES + 2 }, (_, i) => `s${i}`);
+    const text = evidenceComment({
+      head: manifest(...changed.map((l) => entry(l, "new"))),
+      base: manifest(...changed.map((l) => entry(l, "old"))),
+      baseLabel: "`base`",
+      imageBase: "https://img",
+      galleryUrl: "https://gallery",
+    });
+    expect(text.startsWith(EVIDENCE_MARKER)).toBe(true);
+    expect(text).toContain(`0 new · 0 gone · ${changed.length} changed`);
+    expect(text.match(/!\[/g)).toHaveLength(MAX_INLINE_IMAGES);
+    expect(text).toContain("2 more: [s30 @ 180x70](https://img/screens/s30@180x70.png)");
+    expect(text).toContain("[full gallery](https://gallery)");
+  });
+
+  test("without a base, the comment says so and names the room events that got no screen", () => {
+    const text = evidenceComment({ head: manifest(entry("room", "1")), base: null, baseLabel: "", imageBase: "", galleryUrl: "" });
+    expect(text).toContain("nothing to compare against");
+    expect(text).toContain(`Room events with no screen: ${ROOM_EVENT_IDS.join(", ")}.`);
   });
 });
