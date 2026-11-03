@@ -1465,14 +1465,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 6,
-        "minPercent": 7.5
+        "amount": 8,
+        "minPercent": 9
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 6,
-        "minPercent": 7.5
+        "amount": 8,
+        "minPercent": 9
       }
     ]
   },
@@ -1484,14 +1484,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 8,
-        "minPercent": 10
+        "amount": 12,
+        "minPercent": 12
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 8,
-        "minPercent": 10
+        "amount": 12,
+        "minPercent": 12
       }
     ],
     "rankOf": "ballad",
@@ -1505,14 +1505,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 10,
-        "minPercent": 12.5
+        "amount": 15,
+        "minPercent": 15
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 10,
-        "minPercent": 12.5
+        "amount": 15,
+        "minPercent": 15
       }
     ],
     "rankOf": "ballad",

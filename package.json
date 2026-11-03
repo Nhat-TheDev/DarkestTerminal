@@ -45,6 +45,7 @@
     "game-editor": "bun --watch tools/game-editor/server.ts",
     "dump-save": "bun run tools/dev-save-dump/server.ts",
     "random-play": "bun run tools/random-play/run.ts",
+    "curve": "bun run tools/curve/run.ts",
     "docs:sync": "bun run tools/docs-sync/index.ts"
   },
   "dependencies": {
@@ -56,6 +57,7 @@
     "darkest-terminal-win32-x64": "1.2.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@types/bun": "^1.3.14",
     "typescript": "^7.0.2"
   }

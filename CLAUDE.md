@@ -23,6 +23,7 @@ bun run game-editor         # dev tool: sprites, stat/balance rebalancing, damag
 bun run dump-save           # dev tool: web UI to generate a save at any level/floor/room/event (dev-mode only)
 bun run docs:sync           # rewrite the doc tables and numbers that mirror data/*.json (--check only verifies, --coverage lists unprotected numbers; `bun test` runs the check)
 bun run random-play         # dev tool: a bot plays seeded runs through the headless UI and writes report.html (crashes, invariants, footer keys, layout at 150x45, screen gallery)
+bun run curve               # dev tool: elite/boss fights on the engine, win rate per guard and team (--check gates on the curve rules; CI keeps each base branch's curve as the guard-curve artifact and compares pull requests with it)
 
 bun run build            # compile a standalone release binary (--define __DEV__=false)
 ```

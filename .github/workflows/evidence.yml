@@ -1,0 +1,84 @@
+name: Screen Evidence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    # A fork's token cannot push the evidence branch or comment.
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: evidence/pr-${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      # Fixed scenarios and seeds, so the same code captures the same screens.
+      - id: evidence
+        continue-on-error: true
+        run: bun run random-play --evidence --report none --out evidence-head
+      - name: Capture the base branch
+        continue-on-error: true
+        run: |
+          if grep -q -- "--evidence" base/tools/random-play/run.ts 2>/dev/null; then
+            cd base && bun install --frozen-lockfile && bun run random-play --evidence --report none --out ../evidence-base
+          fi
+      # One orphan commit per push on evidence/pr-N, replaced each time, so the repository history never holds the images.
+      - name: Publish the screens
+        id: publish
+        if: always() && hashFiles('evidence-head/manifest.json') != ''
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TOKEN: ${{ github.token }}
+        run: |
+          cd evidence-head
+          git init -q -b "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screen evidence for ${HEAD_SHA::7}"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        shell: bash
+      # Images are linked by the evidence commit, not the branch, so an edited comment never shows a cached older image.
+      - name: Comment the evidence on the pull request
+        if: always() && steps.publish.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHA: ${{ steps.publish.outputs.sha }}
+        run: |
+          bun run tools/random-play/evidence.ts --head evidence-head --base evidence-base --base-label "\`${BASE_SHA::7}\`" \
+            --image-base "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SHA}" \
+            --gallery "https://github.com/${GITHUB_REPOSITORY}/blob/${SHA}/README.md" --out evidence-comment.md
+          bash .github/scripts/upsert-comment.sh random-play-evidence ${{ github.event.pull_request.number }} evidence-comment.md
+        shell: bash
+      - if: steps.evidence.outcome == 'failure'
+        run: exit 1
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/evidence/pr-${{ github.event.pull_request.number }}" || true
