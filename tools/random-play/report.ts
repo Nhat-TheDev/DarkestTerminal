@@ -49,6 +49,9 @@ export interface GalleryEntry {
   size: string;
   count: number;
   frame: FrameCapture;
+  /** The main panel's text and the footer, without the panels around them: what tells two screens apart. */
+  content: string;
+  roomCleared: boolean;
 }
 
 export interface TeamRow {

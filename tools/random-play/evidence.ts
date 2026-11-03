@@ -7,6 +7,7 @@ import { Resvg } from "@resvg/resvg-js";
 import { TextAttributes } from "@opentui/core";
 import { getRoom } from "../../src/engine/dungeon";
 import { EVENTS } from "../../src/data/events";
+import { t } from "../../src/data/strings";
 import type { Game } from "../../src/engine/game";
 import type { Id, MonsterTier } from "../../src/types";
 import type { UiState } from "../../src/ui/state";
@@ -116,9 +117,39 @@ export interface Manifest {
 
 const entryKey = (e: ManifestEntry) => `${e.label}@${e.size}`;
 
-/** Writes `screens/*.png`, `manifest.json` and a gallery `README.md` into `dir`. */
-export function writeEvidence(dir: string, gallery: GalleryEntry[], failures: number): Manifest {
+const galleryLabel = (g: GalleryEntry) => screenLabel({ kind: g.uiKind, event: g.event, screenCase: g.screenCase });
+/** Lower is plainer: outside an event room first, then a normal fight or no case at all. */
+const plainness = (g: GalleryEntry) => (g.event === null ? 0 : 2) + (g.screenCase === null || g.screenCase === "normal" ? 0 : 1);
+const textLines = (g: GalleryEntry) => g.content.split("\n").filter((line) => /[^\s│─┌┐└┘]/.test(line)).length;
+
+/**
+ * One screen per distinct content: screens of a kind whose main panel and footer read the same at every
+ * size keep only their plainest one. The run log is kept once, from a cleared room, with the most lines.
+ */
+export function pickEvidence(gallery: GalleryEntry[]): GalleryEntry[] {
+  const byLabel = new Map<string, GalleryEntry[]>();
+  for (const g of gallery) byLabel.set(galleryLabel(g), [...(byLabel.get(galleryLabel(g)) ?? []), g]);
+  const groups = new Map<string, GalleryEntry[][]>();
+  for (const shots of byLabel.values()) {
+    const first = shots[0]!;
+    if (first.uiKind === "fullLog" && !shots.every((s) => s.roomCleared && !s.content.includes(t("ui.fullLogEmpty")))) continue;
+    const signature = first.uiKind === "fullLog" ? "fullLog" : JSON.stringify([first.uiKind, ...shots.map((s) => [s.size, s.content]).sort()]);
+    groups.set(signature, [...(groups.get(signature) ?? []), shots]);
+  }
+  const lines = (shots: GalleryEntry[]) => shots.reduce((sum, s) => sum + textLines(s), 0);
+  const kept = new Set(
+    [...groups.values()].map(
+      (labels) =>
+        labels.sort((a, b) => lines(b) - lines(a) || plainness(a[0]!) - plainness(b[0]!) || galleryLabel(a[0]!).localeCompare(galleryLabel(b[0]!)))[0]!
+    )
+  );
+  return gallery.filter((g) => kept.has(byLabel.get(galleryLabel(g))!));
+}
+
+/** Writes `screens/*.png`, `manifest.json` and a gallery `README.md` into `dir`, one per screen `pickEvidence` keeps. */
+export function writeEvidence(dir: string, all: GalleryEntry[], failures: number): Manifest {
   mkdirSync(join(dir, "screens"), { recursive: true });
+  const gallery = pickEvidence(all);
   const screens = gallery
     .map((g): ManifestEntry => {
       const key = { kind: g.uiKind, event: g.event, screenCase: g.screenCase };
