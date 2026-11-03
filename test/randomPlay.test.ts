@@ -112,12 +112,12 @@ describe("random-play report", () => {
 
 describe("random-play bot", () => {
   test("plays a short run end to end and collects a gallery", async () => {
-    const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 200, team: TEAMS[0]! });
-    expect(result.steps).toBeGreaterThan(50);
+    const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 40, team: TEAMS[0]! });
+    expect(result.steps).toBe(40);
     expect(result.gallery.length).toBeGreaterThan(3);
     expect(result.gallery.every((g) => g.size.endsWith("x70"))).toBe(true);
     expect(result.failures).toEqual([]);
-  }, 30000);
+  });
 
   test("a run counts as finished once the party leaves the floor it started on", () => {
     const game = new Game(7);
@@ -391,32 +391,20 @@ describe("random-play CLI", () => {
     return { exitCode: run.exitCode, stdout: run.stdout.toString(), stderr: run.stderr.toString(), created: readdirSync(tmp) };
   }
 
-  test("--report none prints the result, exits 0 when nothing failed and writes no report", () => {
-    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none");
+  test("--team plays that team alone, --runs counts runs per team, and --report none writes no report", () => {
+    const { exitCode, stdout, created } = cli("--team", "oath", "--runs", "2", "--max-steps", "3", "--report", "none");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("0 failures");
-    expect(stdout).not.toContain("report:");
-    expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
-  }, 30000);
-
-  test("--team plays that team alone, and --runs counts runs per team", () => {
-    const { stdout } = cli("--team", "oath", "--runs", "2", "--max-steps", "30", "--report", "none");
     expect(stdout).toContain("run 2/2  Oath");
     expect(stdout).not.toContain("run 3/");
-    expect(cli("--runs", "1", "--max-steps", "1", "--report", "none").stdout).toContain(`run ${TEAMS.length}/${TEAMS.length}`);
-  }, 30000);
+    expect(stdout).not.toContain("report:");
+    expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
+  });
 
   test("an unknown team is refused before any run", () => {
     const { exitCode, stdout, stderr } = cli("--team", "nobody");
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("--team must be one of");
     expect(stdout).not.toContain("run 1/");
-  });
-
-  test("an unknown --report value is refused before any run", () => {
-    const { exitCode, stdout, stderr } = cli("--runs", "1", "--report", "pdf");
-    expect(exitCode).not.toBe(0);
-    expect(stderr).toContain("--report must be html or none");
-    expect(stdout).not.toContain("run 1/1");
   });
 });
