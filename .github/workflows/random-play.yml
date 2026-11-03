@@ -20,4 +20,4 @@ jobs:
       - run: bun install --frozen-lockfile
       # Fixed seeds, so a red run means the code changed, not the dice. Each kind of failure in the
       # log carries a command that replays it locally with the colour report.
-      - run: bun run random-play --runs 10 --max-steps 2000 --report none
+      - run: bun run random-play --runs 5 --max-steps 5000 --report none

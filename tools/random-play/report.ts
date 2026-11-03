@@ -1,4 +1,6 @@
 import { TextAttributes, type CapturedFrame } from "@opentui/core";
+import type { RunStats } from "./bot";
+import { MIN_GUARD_FIGHTS, type GuardTally, type GuardTier, type Row, type SurvivalTally } from "./curve";
 
 type Rgba = [number, number, number, number];
 
@@ -45,6 +47,67 @@ export interface GalleryEntry {
   frame: FrameCapture;
 }
 
+export interface TeamRow {
+  team: string;
+  runs: number;
+  rooms: number;
+  fear: number;
+  satiety: number;
+  wins: number;
+  fights: number;
+  itemsUsed: number;
+  starvedTurns: number;
+}
+
+export interface FloorRow {
+  depth: number;
+  tier: GuardTier;
+  wins: number;
+  fights: number;
+}
+
+export interface RunSummary {
+  guards: GuardTally;
+  survival: SurvivalTally;
+  teams: TeamRow[];
+  floors: FloorRow[];
+}
+
+export function summarizeRuns(runs: RunStats[]): RunSummary {
+  const summary: RunSummary = { guards: { elite: { fights: 0, wins: 0 }, boss: { fights: 0, wins: 0 } }, survival: { samples: 0, fear: 0, satiety: 0 }, teams: [], floors: [] };
+  const teams = new Map<string, TeamRow & { samples: number }>();
+  const floors = new Map<number, FloorRow>();
+  for (const run of runs) {
+    const team = teams.get(run.team) ?? { team: run.team, runs: 0, rooms: 0, fear: 0, satiety: 0, wins: 0, fights: 0, itemsUsed: 0, starvedTurns: 0, samples: 0 };
+    teams.set(run.team, team);
+    team.runs++;
+    team.rooms += run.rooms;
+    team.itemsUsed += run.itemsUsed;
+    team.starvedTurns += run.starvedTurns;
+    team.samples += run.samples.length;
+    for (const { fear, satiety } of run.samples) {
+      team.fear += fear;
+      team.satiety += satiety;
+      summary.survival.samples++;
+      summary.survival.fear += fear;
+      summary.survival.satiety += satiety;
+    }
+    for (const { depth, tier, won } of run.guards) {
+      const floor = floors.get(depth) ?? { depth, tier, wins: 0, fights: 0 };
+      floors.set(depth, floor);
+      for (const row of [floor, team, summary.guards[tier]]) {
+        row.fights++;
+        if (won) row.wins++;
+      }
+    }
+  }
+  summary.teams = [...teams.values()]
+    .map(({ samples, ...row }) => ({ ...row, fear: row.fear / Math.max(1, samples), satiety: row.satiety / Math.max(1, samples) }))
+    .sort((a, b) => a.team.localeCompare(b.team));
+  summary.floors = [...floors.values()].sort((a, b) => a.depth - b.depth);
+  return summary;
+}
+
 export interface ReportInput {
   generatedAt: string;
   runs: number;
@@ -54,6 +117,12 @@ export interface ReportInput {
   failures: ReportFinding[];
   warnings: ReportFinding[];
   gallery: GalleryEntry[];
+  /** Empty when the curve was skipped. */
+  curve: Row[];
+  summary: RunSummary;
+  /** The guard win rate this command had to beat. */
+  requiredWinRate: number;
+  survivalOnTarget: boolean;
 }
 
 const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -108,6 +177,24 @@ function findingCard(group: FindingGroup, tone: "fail" | "warn"): string {
 </details>`;
 }
 
+function table(headers: string[], rows: (string | number)[][]): string {
+  if (rows.length === 0) return '<p class="none">None.</p>';
+  const cells = (tag: string, row: (string | number)[]) => `<tr>${row.map((c) => `<${tag}>${escapeHtml(String(c))}</${tag}>`).join("")}</tr>`;
+  return `<table>${cells("th", headers)}${rows.map((r) => cells("td", r)).join("")}</table>`;
+}
+
+const rate = (wins: number, fights: number) => (fights === 0 ? "-" : `${wins}/${fights} (${Math.round((wins / fights) * 100)}%)`);
+
+export function guardLine(input: Pick<ReportInput, "summary" | "requiredWinRate" | "survivalOnTarget">): string {
+  const { guards, survival } = input.summary;
+  const tiers = (Object.keys(guards) as GuardTier[]).map((tier) => {
+    const { wins, fights } = guards[tier];
+    return `${tier} ${rate(wins, fights)}${fights < MIN_GUARD_FIGHTS ? " not enough fights" : ""}`;
+  });
+  const samples = Math.max(1, survival.samples);
+  return `guards: ${tiers.join(", ")}, must beat ${input.requiredWinRate * 100}%; average highest fear ${(survival.fear / samples).toFixed(1)}, satiety ${(survival.satiety / samples).toFixed(1)}, ${input.survivalOnTarget ? "on target" : "off target"}`;
+}
+
 export function renderReport(input: ReportInput): string {
   const failureGroups = groupFindings(input.failures);
   const warningGroups = groupFindings(input.warnings);
@@ -135,11 +222,28 @@ export function renderReport(input: ReportInput): string {
   .filters { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
   .shot { margin:16px 0; } .shot h3 { font-size:14px; margin:0 0 4px; font-family:monospace; }
   .none { color:var(--dim); }
+  table { border-collapse:collapse; } th, td { border:1px solid var(--line); padding:3px 8px; text-align:right; } th:first-child, td:first-child { text-align:left; }
 </style>
 </head>
 <body>
 <h1>Random-play report</h1>
 <p class="meta">${escapeHtml(input.generatedAt)} · ${input.runs} runs · ${input.steps} steps · ${input.durationSec.toFixed(0)} s · ${outcomes}</p>
+
+<h2>Teams</h2>
+<p class="meta">${escapeHtml(guardLine(input))}</p>
+${table(
+  ["Team", "Runs", "Rooms", "Avg highest fear", "Avg satiety", "Guards won", "Items used", "Low-MP basic attacks"],
+  input.summary.teams.map((t) => [t.team, t.runs, t.rooms, t.fear.toFixed(1), t.satiety.toFixed(1), rate(t.wins, t.fights), t.itemsUsed, t.starvedTurns])
+)}
+
+<h2>Guard floors</h2>
+${table(["Floor", "Tier", "Won"], input.summary.floors.map((f) => [f.depth, f.tier, rate(f.wins, f.fights)]))}
+
+<h2>Elite/boss curve</h2>
+${table(
+  ["Archetype", "Tier", "Depth", "Level", "Damage share %", "Rounds", "Win rate"],
+  input.curve.map((r) => [r.id, r.tier, r.depth, r.level.toFixed(1), r.dpr.toFixed(1), r.rounds.toFixed(1), r.winRate.toFixed(2)])
+)}
 
 <h2>Failures (${failureGroups.length} kinds, ${input.failures.length} total)</h2>
 ${failureGroups.map((g) => findingCard(g, "fail")).join("\n") || '<p class="none">None.</p>'}

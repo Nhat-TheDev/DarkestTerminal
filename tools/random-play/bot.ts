@@ -2,14 +2,13 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../../src/ui/app";
 import { Game } from "../../src/engine/game";
 import { Rng } from "../../src/engine/rng";
-import { getActorByRef } from "../../src/engine/combat";
+import { getRoom } from "../../src/engine/dungeon";
 import { saveRun, loadSave, gameFromSave } from "../../src/engine/save";
 import { SAVE_DIR } from "../../src/engine/paths";
-import { CLASSES, getSkill } from "../../src/data/classes";
 import { ABILITIES } from "../../src/data/abilities";
-import { MAX_LEVEL } from "../../src/data/levelGrowth";
+import { BOSS_FLOOR_INTERVAL } from "../../src/data/levelGrowth";
 import { t } from "../../src/data/strings";
-import type { Character, Id } from "../../src/types";
+import type { Id } from "../../src/types";
 import { applyDump } from "../dev-save-dump/applyDump";
 import { rmSync, mkdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -27,6 +26,8 @@ import {
   type LayoutRequirement,
 } from "./checks";
 import { toFrameCapture, type FrameCapture, type ReportFinding, type GalleryEntry } from "./report";
+import { levelAt, type GuardTier } from "./curve";
+import { TeamPolicy, type Team } from "./team";
 
 export interface Size {
   width: number;
@@ -42,15 +43,16 @@ export const PLAY_SIZES: Size[] = [
 /** The smallest supported terminal; each new screen is also checked once at this size. */
 export const MIN_SIZE: Size = { width: 150, height: 45 };
 
-const START_DEPTHS = [1, 1, 1, 5, 15, 40, 80, 99];
-/** Party level relative to floor depth, spread so runs reach both deep content and defeat. */
-const LEVEL_OFFSETS = [-3, 0, 0, 10, 25];
-const PARTY_SIZE = 4;
+/** The first elite and first boss of each ten floors, below the ending checkpoint. */
+export const GUARD_FLOORS = Array.from({ length: 10 }, (_, i) => [i * 10 + 1, i * 10 + 5]).flat();
+/** Fresh runs keep the opening scenes in play; the rest start on a guard floor at that floor's average level. */
+const FRESH_RUN_CHANCE = 0.25;
+const ABILITY_SLOTS = 4;
 const SAVE_SLOT = "slot1";
 const RECENT_STEPS = 50;
 const SOFT_LOCK_STEPS = 300;
 const LOOP_BREAK_STEPS = 30;
-const SENSIBLE_CHANCE = 0.7;
+const SENSIBLE_CHANCE = 0.95;
 /** While looping: chance to back out of a screen that offers Esc, and how much likelier a digit or Enter is than any other footer key. */
 const LOOP_ESCAPE_CHANCE = 0.5;
 const LOOP_PROGRESS_WEIGHT = 8;
@@ -60,13 +62,34 @@ const RESIZE_CHANCE = 0.05;
 const MAX_REVEAL_TICKS = 1000;
 const ESCAPE_DELIVERY_MS = 40;
 
+export const FLOOR_CLEARED = "floor cleared";
+
 export interface RunOptions {
   gameSeed: number;
   botSeed: number;
   maxSteps: number;
+  team: Team;
+}
+
+export interface GuardResult {
+  depth: number;
+  tier: GuardTier;
+  won: boolean;
+}
+
+export interface RunStats {
+  team: string;
+  startDepth: number;
+  rooms: number;
+  guards: GuardResult[];
+  /** Each room entered: the party's highest fear, and satiety. */
+  samples: { fear: number; satiety: number }[];
+  itemsUsed: number;
+  starvedTurns: number;
 }
 
 export interface RunResult {
+  stats: RunStats;
   failures: ReportFinding[];
   warnings: ReportFinding[];
   gallery: GalleryEntry[];
@@ -98,20 +121,26 @@ function layoutRequirement(uiKind: string, atMinSize: boolean): LayoutRequiremen
   return { panelTitles: panels.map((key) => t(key)), mainPanelTitle: main, minMainRows: 1 };
 }
 
-function sensibleKey(app: App, footer: FooterInfo): string | null {
-  const ui = app.debugUiState;
-  const game = app.debugGame;
-  const offer = (key: string) => (footer.keys.includes(key) ? key : null);
-  if (ui.kind === "room") {
-    const idx = game.connectedRoomChoices().findIndex((r) => !r.cleared);
-    return offer(String((idx >= 0 ? idx : 0) + 1));
+export const hasLeftFloor = (game: Game, startDepth: number) => game.state.floor.depth !== startDepth;
+
+/** Called once per step: notes each new room and the end of each guard fight. */
+function watchRun(game: Game, stats: RunStats, watch: { room: string; guard: number | null }): void {
+  const s = game.state;
+  const depth = s.floor.depth;
+  const room = getRoom(s.floor, s.currentRoomId);
+  const roomKey = `${depth}/${room.id}`;
+  if (roomKey !== watch.room) {
+    watch.room = roomKey;
+    stats.rooms++;
+    stats.samples.push({ fear: Math.max(...s.party.filter((c) => c.isAlive).map((c) => c.survival.fear), 0), satiety: s.satiety });
   }
-  if (ui.kind === "pickSkill") {
-    const actor = getActorByRef(ui.actorRef, game.ctx) as Character;
-    const idx = actor.unlockedSkillIds.map(getSkill).findIndex((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost);
-    if (idx >= 0 && offer(String(idx + 1))) return String(idx + 1);
-  }
-  return offer("1") ?? offer("RETURN");
+  if (watch.guard === null && s.combat && !s.combat.outcome && room.type === "boss") watch.guard = depth;
+  if (watch.guard === null) return;
+  const lost = s.combat?.outcome === "defeat" || s.gameOver !== null;
+  const won = s.combat?.outcome === "victory" || depth !== watch.guard;
+  if (!lost && !won) return;
+  stats.guards.push({ depth: watch.guard, tier: watch.guard % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite", won: !lost });
+  watch.guard = null;
 }
 
 /** A looping bot is usually stuck in a submenu, so it backs out and favours keys that move the run forward. */
@@ -137,21 +166,26 @@ function stateSignature(game: Game): string {
 }
 
 export async function playRun(options: RunOptions): Promise<RunResult> {
-  const { gameSeed, botSeed, maxSteps } = options;
+  const { gameSeed, botSeed, maxSteps, team } = options;
   const rng = new Rng(botSeed);
   rmSync(SAVE_DIR, { recursive: true, force: true });
   mkdirSync(SAVE_DIR, { recursive: true });
 
-  const classIds: Id[] = shuffled(rng, CLASSES.map((c) => c.id)).slice(0, PARTY_SIZE);
-  const abilityIds: (Id | null)[] = shuffled(rng, ABILITIES.map((a) => a.id)).slice(0, PARTY_SIZE).map((id) => (rng.next() < 0.5 ? id : null));
-  const floorDepth = pick(rng, START_DEPTHS);
-  const levelOffset = pick(rng, LEVEL_OFFSETS);
+  const classIds: Id[] = team.members.map((m) => m.classId);
+  const abilityIds: (Id | null)[] = shuffled(rng, ABILITIES.map((a) => a.id)).slice(0, ABILITY_SLOTS).map((id) => (rng.next() < 0.5 ? id : null));
+  const fresh = rng.next() < FRESH_RUN_CHANCE;
+  const floorDepth = fresh ? 1 : pick(rng, GUARD_FLOORS);
+  const level = Math.round(levelAt(floorDepth));
   let size = pick(rng, PLAY_SIZES);
-  const start = floorDepth === 1 && levelOffset === 0 ? "fresh run" : `floor ${floorDepth}, level ${Math.max(1, Math.min(MAX_LEVEL, floorDepth + levelOffset))}`;
+  const start = fresh ? "fresh run" : `floor ${floorDepth}, level ${level}`;
 
-  let game = new Game(gameSeed, classIds, undefined, abilityIds, start === "fresh run");
-  if (start !== "fresh run") applyDump(game, { level: floorDepth + levelOffset, floorDepth, roomArg: "entry" });
+  let game = new Game(gameSeed, classIds, undefined, abilityIds, fresh);
+  if (!fresh) applyDump(game, { level, floorDepth, roomArg: "entry" });
   game.currentSaveSlot = SAVE_SLOT;
+
+  const policy = new TeamPolicy(team);
+  const stats: RunStats = { team: team.name, startDepth: floorDepth, rooms: 0, guards: [], samples: [], itemsUsed: 0, starvedTurns: 0 };
+  const watch = { room: "", guard: null as number | null };
 
   let setup = await createTestRenderer(size);
   let app = new App(setup.renderer, game, { autoReveal: false });
@@ -170,7 +204,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   const gallery = new Map<string, GalleryEntry>();
   const probedAtMinSize = new Set<string>();
   const recent: string[] = [];
-  const reproduce = `bun run random-play --game-seed ${gameSeed} --bot-seed ${botSeed} --max-steps ${maxSteps}`;
+  const reproduce = `bun run random-play --game-seed ${gameSeed} --bot-seed ${botSeed} --max-steps ${maxSteps} --team ${team.name}`;
 
   const record = (into: ReportFinding[], findings: Finding[], frame: FrameCapture | null, at: Size, uiKind: string, stack?: string) => {
     for (const f of findings) {
@@ -201,6 +235,11 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   let step = 0;
   for (; step < maxSteps; step++) {
     try {
+      watchRun(game, stats, watch);
+      if (hasLeftFloor(game, floorDepth)) {
+        outcome = FLOOR_CLEARED;
+        break;
+      }
       const kind = app.debugUiState.kind;
       const frameBefore = setup.captureCharFrame();
       const footer = parseFooter(footerText(frameBefore));
@@ -264,7 +303,8 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         if (step - lastProgressStep >= LOOP_BREAK_STEPS) {
           key = loopBreakKey(rng, footer);
         } else {
-          const sensible = rng.next() < SENSIBLE_CHANCE ? sensibleKey(app, footer) : null;
+          const wanted = rng.next() < SENSIBLE_CHANCE ? (policy.chooseKey(app, footer) ?? footer.keys.find((k) => k === "1" || k === "RETURN") ?? null) : null;
+          const sensible = wanted !== null && footer.keys.includes(wanted) ? wanted : null;
           key = sensible ?? (footer.keys.length > 0 ? pick(rng, footer.keys) : pick(rng, ["RETURN", "ESCAPE", "1"]));
         }
       }
@@ -332,5 +372,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
 
   console.error = originalConsoleError;
   setup.renderer.destroy();
-  return { failures, warnings, gallery: [...gallery.values()], steps: step, outcome };
+  stats.itemsUsed = policy.itemsUsed;
+  stats.starvedTurns = policy.starvedTurns;
+  return { stats, failures, warnings, gallery: [...gallery.values()], steps: step, outcome };
 }

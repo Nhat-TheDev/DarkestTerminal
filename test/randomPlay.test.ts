@@ -10,9 +10,15 @@ import {
   findFooterIssues,
   findLayoutIssues,
 } from "../tools/random-play/checks";
-import { spansToHtml } from "../tools/random-play/report";
-import { playRun, loopBreakKey } from "../tools/random-play/bot";
+import { spansToHtml, summarizeRuns } from "../tools/random-play/report";
+import { playRun, loopBreakKey, hasLeftFloor, GUARD_FLOORS, type RunStats } from "../tools/random-play/bot";
+import { BANDS, checkGuardWinRate, findCurveIssues, survivalOnTarget, type GuardTally, type Row } from "../tools/random-play/curve";
+import { TEAMS, FEAR_ACT_AT, chooseRest, chooseRoom, planTurn, type TurnPlan } from "../tools/random-play/team";
+import { getRoom } from "../src/engine/dungeon";
+import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
+import type { Character, Room } from "../src/types";
 import { Rng } from "../src/engine/rng";
+import { CLASSES, getEffectiveSkill, getSkill } from "../src/data/classes";
 import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -107,12 +113,19 @@ describe("random-play report", () => {
 
 describe("random-play bot", () => {
   test("plays a short run end to end and collects a gallery", async () => {
-    const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 200 });
+    const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 200, team: TEAMS[0]! });
     expect(result.steps).toBeGreaterThan(50);
     expect(result.gallery.length).toBeGreaterThan(3);
     expect(result.gallery.every((g) => g.size.endsWith("x70"))).toBe(true);
     expect(result.failures).toEqual([]);
   }, 30000);
+
+  test("a run counts as finished once the party leaves the floor it started on", () => {
+    const game = new Game(7);
+    expect(hasLeftFloor(game, 1)).toBe(false);
+    game.advanceToNextFloor();
+    expect(hasLeftFloor(game, 1)).toBe(true);
+  });
 
   test("a looping bot backs out of submenus and favours progress keys, but never leaves the footer", () => {
     const rng = new Rng(1);
@@ -136,6 +149,164 @@ describe("random-play bot", () => {
   });
 });
 
+describe("random-play curve", () => {
+  const row = (id: string, tier: "elite" | "boss", dpr: number, rounds: number, winRate = 1): Row => ({ id, tier, depth: 1, level: 1, dpr, rounds, winRate });
+  const inBand = () => BANDS.flatMap((band) => band.ids.flatMap((id) => Object.keys(band.dpr).map((tier) => {
+    const t = tier as "elite" | "boss";
+    const range = (r: Record<string, readonly number[]>) => (r[t]![0]! + r[t]![1]!) / 2;
+    return row(id, t, range(band.dpr), range(band.rounds));
+  })));
+  const details = (rows: Row[]) => findCurveIssues(rows, []).map((f) => f.detail);
+
+  test("a monster outside its band, or one losing too many fights, is reported", () => {
+    const rows = inBand();
+    rows[0]!.dpr = 99;
+    rows[1]!.winRate = 0.5;
+    expect(details(rows).some((d) => d.includes(`${rows[0]!.id} ${rows[0]!.tier} damage share`))).toBe(true);
+    expect(details(rows).some((d) => d.includes("simulated fights"))).toBe(true);
+  });
+
+  test("a boss that does not outlast its elite at the same depth is reported", () => {
+    const rows = inBand();
+    const boss = rows.find((r) => r.tier === "boss")!;
+    expect(findCurveIssues(rows, [{ ...boss, tier: "elite", rounds: boss.rounds + 1 }]).map((f) => f.detail)).toContain(`${boss.id} boss rounds not above its elite at the same depth`);
+  });
+});
+
+describe("random-play guard gate", () => {
+  const tally = (wins: number, fights: number): GuardTally => ({ elite: { wins, fights }, boss: { wins: 0, fights: 0 } });
+
+  test("on target the rate must beat 25%, off target 20%", () => {
+    expect(checkGuardWinRate(tally(1, 4), true)).toEqual([]); // too few fights to judge
+    expect(checkGuardWinRate(tally(2, 8), true).map((f) => f.type)).toEqual(["guardWinRate"]);
+    expect(checkGuardWinRate(tally(3, 8), true)).toEqual([]);
+    expect(checkGuardWinRate(tally(2, 8), false)).toEqual([]);
+    expect(checkGuardWinRate(tally(1, 5), false).map((f) => f.type)).toEqual(["guardWinRate"]);
+  });
+
+  test("the fear and satiety targets are read from the averages", () => {
+    expect(survivalOnTarget({ samples: 2, fear: 98, satiety: 102 })).toBe(true);
+    expect(survivalOnTarget({ samples: 2, fear: 100, satiety: 102 })).toBe(false);
+    expect(survivalOnTarget({ samples: 2, fear: 98, satiety: 100 })).toBe(false);
+    expect(survivalOnTarget({ samples: 0, fear: 0, satiety: 0 })).toBe(false);
+  });
+
+  test("runs add up by team, tier and floor", () => {
+    const run = (team: string, won: boolean): RunStats => ({ team, startDepth: 1, rooms: 3, guards: [{ depth: 5, tier: "boss", won }], samples: [{ fear: 10, satiety: 80 }], itemsUsed: 1, starvedTurns: 2 });
+    const summary = summarizeRuns([run("A", true), run("A", false), run("B", true)]);
+    expect(summary.guards.boss).toEqual({ fights: 3, wins: 2 });
+    expect(summary.floors).toEqual([{ depth: 5, tier: "boss", wins: 2, fights: 3 }]);
+    expect(summary.teams.find((t) => t.team === "A")).toMatchObject({ runs: 2, rooms: 6, fights: 2, wins: 1, fear: 10, satiety: 80 });
+  });
+});
+
+describe("random-play teams", () => {
+  test("every team is four different classes, and together they field all of them", () => {
+    for (const team of TEAMS) {
+      expect(team.members).toHaveLength(4);
+      expect(new Set(team.members.map((m) => m.classId)).size).toBe(4);
+    }
+    expect(new Set(TEAMS.flatMap((t) => t.members.map((m) => m.classId)))).toEqual(new Set(CLASSES.map((c) => c.id)));
+  });
+
+  test("the start floors end in 1 or 5 and hold both elite and boss floors", () => {
+    expect(GUARD_FLOORS.slice(0, 6)).toEqual([1, 5, 11, 15, 21, 25]);
+    expect(GUARD_FLOORS.at(-1)).toBe(95);
+    expect(GUARD_FLOORS.filter((d) => d % BOSS_FLOOR_INTERVAL === 0)).toHaveLength(10);
+  });
+
+  /** Seed 7 opens on an entry-room ambush. */
+  function fightWith(classIds: string[]) {
+    const game = new Game(7, classIds, undefined, [null, null, null, null], false);
+    expect(game.state.combat).not.toBeNull();
+    const actor = game.state.party[0]!;
+    actor.mp = actor.maxMp;
+    actor.unlockedSkillIds = CLASSES.find((c) => c.id === actor.classId)!.skills.map((s) => s.id);
+    game.state.inventory = {};
+    return { game, actor };
+  }
+  const inGuardRoom = (game: Game) => {
+    getRoom(game.state.floor, game.state.currentRoomId).type = "boss";
+  };
+  const skillOf = (plan: TurnPlan) => (plan.kind === "skill" ? plan.skill.id : plan.item.id);
+
+  test("a healer heals the most wounded ally first", () => {
+    const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
+    const hurt = game.state.party[2]!;
+    hurt.hp = 1;
+    const plan = planTurn(game, actor, "healer");
+    expect(plan.kind).toBe("skill");
+    expect(plan.target?.id).toBe(hurt.id);
+  });
+
+  test("a frightened ally gets fear relief ahead of an attack", () => {
+    const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
+    const scared = game.state.party[1]!;
+    scared.survival.fear = FEAR_ACT_AT;
+    const plan = planTurn(game, actor, "healer");
+    expect(skillOf(plan)).toBe("prayer");
+    expect(plan.target?.id).toBe(scared.id);
+  });
+
+  test("low on mana in a normal room, a striker throws an item before it spends MP, and falls back on the free attack", () => {
+    const { game, actor } = fightWith(["mage", "knight", "acolyte", "rogue"]);
+    actor.mp = Math.floor(actor.maxMp * 0.2);
+    game.state.inventory = { "cracker-string": 1 };
+    expect(skillOf(planTurn(game, actor, "striker"))).toBe("cracker-string");
+    game.state.inventory = {};
+    const basic = planTurn(game, actor, "striker");
+    expect(basic.kind === "skill" && basic.skill.mpCost).toBe(0);
+    expect(basic.kind === "skill" && basic.starved).toBe(true);
+  });
+
+  test("a mana potion waits for the guard", () => {
+    const { game, actor } = fightWith(["mage", "knight", "acolyte", "rogue"]);
+    actor.mp = Math.floor(actor.maxMp * 0.2);
+    game.state.inventory = { "small-mana-potion": 1 };
+    expect(planTurn(game, actor, "striker").kind).toBe("skill");
+    inGuardRoom(game);
+    expect(skillOf(planTurn(game, actor, "striker"))).toBe("small-mana-potion");
+  });
+
+  test("a hurt character low on mana drinks a health potion before anything else", () => {
+    const { game, actor } = fightWith(["mage", "knight", "acolyte", "rogue"]);
+    actor.mp = 0;
+    actor.hp = 1;
+    game.state.inventory = { "small-health-potion": 1, "cracker-string": 1 };
+    expect(skillOf(planTurn(game, actor, "striker"))).toBe("small-health-potion");
+  });
+
+  test("a healer keeps enough MP for its cheapest heal", () => {
+    const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
+    const healCost = getEffectiveSkill(getSkill("heal"), actor.level).mpCost;
+    actor.mp = healCost;
+    inGuardRoom(game);
+    const plan = planTurn(game, actor, "healer");
+    expect(plan.kind === "skill" && plan.skill.mpCost).toBe(0);
+  });
+
+  test("a healer short of its heal's MP does not spend it on fear relief", () => {
+    const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
+    game.state.party[1]!.survival.fear = FEAR_ACT_AT;
+    actor.mp = getEffectiveSkill(getSkill("heal"), actor.level).mpCost;
+    expect(skillOf(planTurn(game, actor, "healer"))).not.toBe("prayer");
+  });
+
+  test("a tired party heads for the rest room and eats when hungry, talks when frightened", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const rooms = [{ type: "combat", cleared: false }, { type: "rest", cleared: false }] as Room[];
+    game.connectedRoomChoices = () => rooms;
+    expect(chooseRoom(game)).toBe(1);
+    game.state.satiety = 50;
+    expect(chooseRoom(game)).toBe(2);
+    expect(chooseRest(game)).toBe("1");
+    game.state.satiety = 90;
+    (game.state.party[0] as Character).survival.fear = FEAR_ACT_AT;
+    expect(chooseRoom(game)).toBe(2);
+    expect(chooseRest(game)).toBe("2");
+  });
+});
+
 describe("random-play CLI", () => {
   function cli(...args: string[]) {
     const tmp = mkdtempSync(join(tmpdir(), "random-play-cli-"));
@@ -144,12 +315,32 @@ describe("random-play CLI", () => {
   }
 
   test("--report none prints the result, exits 0 when nothing failed and writes no report", () => {
-    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none");
+    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none", "--curve", "off");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("0 failures");
     expect(stdout).not.toContain("report:");
     expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
   }, 30000);
+
+  test("--team plays that team alone, and --runs counts runs per team", () => {
+    const { stdout } = cli("--team", "oath", "--runs", "2", "--max-steps", "30", "--report", "none", "--curve", "off");
+    expect(stdout).toContain("run 2/2  Oath");
+    expect(stdout).not.toContain("run 3/");
+    expect(cli("--runs", "1", "--max-steps", "1", "--report", "none", "--curve", "off").stdout).toContain(`run ${TEAMS.length}/${TEAMS.length}`);
+  }, 30000);
+
+  test("an unknown team is refused before any run", () => {
+    const { exitCode, stdout, stderr } = cli("--team", "nobody");
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("--team must be one of");
+    expect(stdout).not.toContain("run 1/");
+  });
+
+  test("an unknown --curve value is refused before any run", () => {
+    const { exitCode, stderr } = cli("--runs", "1", "--curve", "maybe");
+    expect(exitCode).not.toBe(0);
+    expect(stderr).toContain("--curve must be on or off");
+  });
 
   test("an unknown --report value is refused before any run", () => {
     const { exitCode, stdout, stderr } = cli("--runs", "1", "--report", "pdf");

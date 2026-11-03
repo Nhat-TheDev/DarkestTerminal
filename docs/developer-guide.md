@@ -27,30 +27,48 @@ bun run random-play  # dev tool: a bot plays seeded runs through the headless UI
 ```
 
 <!-- docs:intent-begin -->
-`bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR --report html|none`)
+`bun run random-play` (`--runs N --team NAME --seed-start S --max-steps M --out DIR --report html|none --curve on|off`)
 drives the real `App` with simulated keypresses, the way `test/ui.test.ts` does, but for many
-seeds, a random 4-class party, a random start depth and party level (via `applyDump`), and a mix
-of cautious and random keys taken from the footer on screen. Once the run has not changed for a
-while it stops picking cautiously, backs out of any screen that offers Esc and favours digits and
+seeds. It plays `--runs` runs (5 by default) for each team in `tools/random-play/team.ts`, or for
+the one `--team` names; `--max-steps` defaults to 5000. A run ends once its party leaves the floor
+it started on, so it covers one guard and the screens after it, or on defeat. A quarter of the runs
+start fresh; the rest start, via `applyDump`, on a guard floor ending in 1 or 5 below the ending
+checkpoint, at that floor's average level. Nearly every key comes from the team's policy, the rest
+from the footer at random, so stray menus still get opened.
+
+The policy works from what each member's role and skills allow. It heals, relieves fear from the point where
+combat penalties start, then attacks, and holds the costliest skills and ultimates for the
+guard unless the party is in danger. Below 35% MP a character conserves: outside a guard fight it
+spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
+or the free basic attack, in that order. Mana potions wait for the guard, and a healer always keeps
+the MP for its cheapest heal. It takes a rest room when anyone is hurt, frightened, low on MP or
+satiety is at 50 or below, eats when hungry, talks when frightened, and camps on a kit when hungry.
+
+Once the run has not changed for a while it stops following the policy, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
 at a height of 70 rows and widths 150/180/220, so the whole party and every panel is visible; each
 new screen is also redrawn once at the minimum supported size, 150×45. Along the way it saves and
 reloads (more often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
-- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
+- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, two characters carrying one Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
 - **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 150×45;
-- **softLock** — 300 keypresses without the run changing, even while trying to back out and move on.
+- **softLock** — 300 keypresses without the run changing, even while trying to back out and move on;
+- **curve** — the elite/boss difficulty curve in `tools/random-play/curve.ts` left its bands, fell out of order or lost too many simulated fights;
+- **guardWinRate** — the bot beat too few guards. Elites and bosses are judged apart, across the whole command, once a tier has 5 finished fights. The bar is above 25% when the average of the party's highest fear on entering a room is under 50 and average satiety is over 50, and above 20% otherwise. Missing those two targets is not a failure in itself.
 
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
-steps and a colour capture of the screen; `--game-seed X --bot-seed Y` replays one run exactly.
+steps and a colour capture of the screen; `--game-seed X --bot-seed Y --team NAME` replays one run exactly.
 `report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
-and the exit code are the whole result. Every pull request runs 10 fixed seeds this way
+and the exit code are the whole result. `report.html` also tabulates each team, each guard floor and
+the curve. A replay with `--game-seed` skips the curve and the guard check, and `--curve off` skips
+the curve alone. A fight cut off by `--max-steps` is not counted, which favours the win rate on deep
+floors, where fights are long. Every pull request runs 5 fixed seeds per team this way
 (`.github/workflows/random-play.yml`).
 <!-- docs:intent-end -->
 
@@ -674,7 +692,7 @@ src/
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
-  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
+  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (elite/boss curve, guard win rate), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
