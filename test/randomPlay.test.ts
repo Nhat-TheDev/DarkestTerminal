@@ -25,6 +25,7 @@ import {
   evidenceComment,
   frameToPng,
   frameToSvg,
+  pickEvidence,
   screenKeyOf,
   writeEvidence,
   EVIDENCE_MARKER,
@@ -33,7 +34,7 @@ import {
   type Manifest,
   type ManifestEntry,
 } from "../tools/random-play/evidence";
-import type { FrameCapture } from "../tools/random-play/report";
+import type { FrameCapture, GalleryEntry } from "../tools/random-play/report";
 import type { UiState } from "../src/ui/state";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -465,9 +466,57 @@ describe("random-play evidence", () => {
     expect([...frameToPng(frame).subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 
+  const shot = (uiKind: string, event: string | null, screenCase: string | null, content: string, extra: Partial<GalleryEntry> = {}): GalleryEntry => ({
+    uiKind,
+    event,
+    screenCase,
+    size: "180x70",
+    count: 1,
+    frame,
+    content,
+    roomCleared: true,
+    ...extra,
+  });
+  const picked = (gallery: GalleryEntry[]) => pickEvidence(gallery).map((g) => [g.uiKind, g.event, g.screenCase, g.size].filter(Boolean).join(" "));
+
+  test("screens of a kind that read the same keep only the plainest one, at every size", () => {
+    const cleared = "The room has been cleared!";
+    expect(
+      picked([
+        shot("combatOver", "guardian-fight", "victory", cleared),
+        shot("combatOver", "guardian-fight", "victory", cleared, { size: "150x45" }),
+        shot("combatOver", null, "victory", cleared),
+        shot("combatOver", null, "victory", cleared, { size: "150x45" }),
+        shot("pickAction", null, "boss", "Fight"),
+        shot("pickAction", null, "normal", "Fight"),
+        shot("artifactDecision", null, null, "Knotted Red Thread"),
+        shot("artifactDecision", "open-chest", null, "Cracked Scrying Glass"),
+        shot("saveMenu", null, null, cleared),
+      ])
+    ).toEqual([
+      "combatOver victory 180x70",
+      "combatOver victory 150x45",
+      "pickAction normal 180x70",
+      "artifactDecision 180x70",
+      "artifactDecision open-chest 180x70",
+      "saveMenu 180x70",
+    ]);
+  });
+
+  test("the run log is kept once, from a cleared room, with the most lines", () => {
+    expect(
+      picked([
+        shot("fullLog", "vigil-candle", null, "Nothing has happened yet."),
+        shot("fullLog", "merchant", null, "· Quicksaved.\n· Left empty-handed."),
+        shot("fullLog", null, "elite", "· Battle begins.\n· Paladin uses Defiance.\n· Mage casts Hollow Pulse.", { roomCleared: false }),
+        shot("fullLog", null, null, "· Battle begins.\n· Skeleton Guard is defeated.\n· The party earns 13 coins."),
+      ])
+    ).toEqual(["fullLog 180x70"]);
+  });
+
   test("writing evidence leaves a PNG per screen and size, a manifest and a gallery", () => {
     const dir = mkdtempSync(join(tmpdir(), "random-play-evidence-"));
-    const manifest = writeEvidence(dir, [{ uiKind: "room", event: "merchant", screenCase: null, size: "180x70", count: 1, frame }], 2);
+    const manifest = writeEvidence(dir, [shot("room", "merchant", null, "Paths:")], 2);
     expect(manifest.failures).toBe(2);
     expect(manifest.screens.map((s) => s.file)).toEqual(["screens/room--merchant@180x70.png"]);
     expect(existsSync(join(dir, "screens", "room--merchant@180x70.png"))).toBe(true);

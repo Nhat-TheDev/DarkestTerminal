@@ -252,6 +252,15 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
     }
   };
   const capture = () => toFrameCapture(setup.captureSpans());
+  const screenContent = () => {
+    const rows = setup.captureCharFrame().split("\n");
+    const cut = (id: string) => {
+      const box = setup.renderer.root.findDescendantById(id)!;
+      return rows.slice(box.y, box.y + box.height).map((row) => Array.from(row).slice(box.x, box.x + box.width).join("").trimEnd());
+    };
+    const fullLog = setup.renderer.root.findDescendantById("full-log-box")!.visible;
+    return [...cut(fullLog ? "full-log-box" : "main-box"), ...cut("footer-box")].join("\n");
+  };
 
   // OpenTUI's KeyHandler catches anything a keypress handler throws and only logs it, so the
   // game carries on with a half-drawn screen; route those logs into findings instead.
@@ -287,10 +296,11 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
 
       const screen = screenKeyOf(app.debugUiState, game);
       const label = screenLabel(screen);
+      const roomCleared = getRoom(game.state.floor, game.state.currentRoomId).cleared;
       const addShot = (at: Size, frame: () => FrameCapture) => {
         const shot = gallery.get(`${label}@${sizeLabel(at)}`);
         if (shot) shot.count++;
-        else gallery.set(`${label}@${sizeLabel(at)}`, { uiKind: kind, event: screen.event, screenCase: screen.screenCase, size: sizeLabel(at), count: 1, frame: frame() });
+        else gallery.set(`${label}@${sizeLabel(at)}`, { uiKind: kind, event: screen.event, screenCase: screen.screenCase, size: sizeLabel(at), count: 1, frame: frame(), content: screenContent(), roomCleared });
       };
       addShot(size, capture);
 
