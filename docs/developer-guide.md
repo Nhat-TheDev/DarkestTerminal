@@ -27,7 +27,7 @@ bun run random-play  # dev tool: a bot plays seeded runs through the headless UI
 ```
 
 <!-- docs:intent-begin -->
-`bun run random-play` (`--runs N --team NAME --seed-start S --max-steps M --out DIR --report html|none --curve on|off`)
+`bun run random-play` (`--runs N --team NAME --seed-start S --max-steps M --out DIR --report html|none`)
 drives the real `App` with simulated keypresses, the way `test/ui.test.ts` does, but for many
 seeds. It plays `--runs` runs (5 by default) for each team in `tools/random-play/team.ts`, or for
 the one `--team` names; `--max-steps` defaults to 5000. A run ends once its party leaves the floor
@@ -36,7 +36,14 @@ start fresh; the rest start, via `applyDump`, on a guard floor ending in 1 or 5 
 checkpoint, at that floor's average level. Nearly every key comes from the team's policy, the rest
 from the footer at random, so stray menus still get opened.
 
-The policy works from what each member's role and skills allow. It heals, relieves fear from the point where
+The policy works from what each member's roles and skills allow. A member holds one or more roles: a
+healer heals from 70% HP rather than 50% and keeps the MP for its cheapest heal, a tank opens with
+support skills, a striker attacks. A healer counts calling up a minion that has a healing skill as a
+heal while that minion is not on the field. An attack or magic buff for allies goes on the hardest
+hitter, at most once every 3 rounds per caster, and waits for an opening: the guard's defense held
+down by at least 10% by debuffs, or else 6 rounds without a buff. A buff that only raises attack or
+magic must add more than the caster's own attack would, or half of it inside an opening. A skill that
+gives an ally MP goes first to the hardest hitter below 35% MP, opening or not. It heals, relieves fear from the point where
 combat penalties start, then attacks, and holds the costliest skills and ultimates for the
 guard unless the party is in danger. Below 35% MP a character conserves: outside a guard fight it
 spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
@@ -55,9 +62,7 @@ reloads (more often mid-combat) and occasionally resizes. It reports:
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
 - **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 150×45;
-- **softLock** — 300 keypresses without the run changing, even while trying to back out and move on;
-- **curve** — the elite/boss difficulty curve in `tools/random-play/curve.ts` left its bands, fell out of order or lost too many simulated fights;
-- **guardWinRate** — the bot beat too few guards. Elites and bosses are judged apart, across the whole command, once a tier has 5 finished fights. The bar is above 25% when the average of the party's highest fear on entering a room is under 50 and average satiety is over 50, and above 20% otherwise. Missing those two targets is not a failure in itself.
+- **softLock** — 300 keypresses without the run changing, even while trying to back out and move on.
 
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
@@ -65,11 +70,42 @@ steps and a colour capture of the screen; `--game-seed X --bot-seed Y --team NAM
 `report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
-and the exit code are the whole result. `report.html` also tabulates each team, each guard floor and
-the curve. A replay with `--game-seed` skips the curve and the guard check, and `--curve off` skips
-the curve alone. A fight cut off by `--max-steps` is not counted, which favours the win rate on deep
-floors, where fights are long. Every pull request runs 5 fixed seeds per team this way
-(`.github/workflows/random-play.yml`).
+and the exit code are the whole result. `report.html` also tabulates how each team played and the
+guards it met, for a look only: balance is measured by `bun run curve`, below. Every pull request
+runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
+
+`bun run curve` (`--only ID,ID --tier elite|boss --teams NAME,NAME --level min|avg|max --precision P
+--max-fights N --baseline FILE --out DIR`) measures elite and boss fights on the engine itself, with
+no UI. Each guard archetype is fought on every random-play start floor it can appear on, on its first
+elite and boss floors, and the final boss on its own floor. The party starts at full HP with the
+starting items and no artifacts, at that floor's average level from `simulateLevelByDepth`
+(`--level min|max` takes the floor's lowest or highest instead), and every member plays the
+random-play team policy. Fights come in batches of 20 per team until the 95% Wilson interval of the
+win rate is within `--precision` (0.05) on each side, or `--max-fights` (1000) is reached; a fight
+still going after 300 rounds counts as lost and is counted apart. Each guard reports its win rate
+with that interval and per team, the 10th, 50th and 90th percentile rounds of the fights won, the
+share of party HP lost, deaths, the share of MP spent and items used, on the console and in
+`curve.json` and `report.html`. Seeds are fixed, so the same data gives the same numbers;
+`--baseline` takes an earlier `curve.json` and lists every guard whose win rate moved more than 5
+points, which separates the effect of a data change from noise. The numbers describe that policy,
+not a skilled player: it never uses Command and always holds a channel, and floor attrition and
+artifacts are not modelled yet.
+
+`bun run curve --check` runs every guard with the default options and exits non-zero when a rule in
+`findCurveIssues` (`tools/curve/bench.ts`) fails: a guard whose whole win-rate interval sits below
+`MIN_GUARD_WIN_RATE`, a final boss won more than `FOUNDER_WIN_RATE_SLACK` more often than the hardest
+guard, a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on the
+floors just before it, or a guard whose win rate moved more than 5 points from the committed
+`tools/curve/baseline.json` (a guard added or removed counts too). Every pull request runs it. A change
+that moves the curve on purpose runs `bun run curve --update-baseline` and commits the rewritten
+baseline with it, one guard per line, so the diff shows which guards moved. On a pull request the `curve` job of
+`.github/workflows/random-play.yml` also measures the base branch with its own code and posts one
+comment on the pull request, edited on every push (`tools/curve/comment.ts`): the check result, a
+Teams table (win rate, HP lost, deaths and median rounds over every guard, base against branch, and
+each team's hardest guard) with each team's members and roles below it, every guard whose win rate moved more than 5
+points with its HP lost and median rounds, the hardest guards, and every guard in a collapsed table.
+A base without `bun run curve` gets the comment without the comparison. The base runs its own team
+policy and bench, so a change to either shows in the comparison as well as a balance change.
 <!-- docs:intent-end -->
 
 ## ✅ Implementation overview
@@ -692,11 +728,13 @@ src/
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
-  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (elite/boss curve, guard win rate), bot.ts (one run), report.ts (report.html), run.ts (CLI)
+  curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, baseline comparison), run.ts (CLI, --check and --update-baseline), comment.ts (the pull request comment), baseline.json (the committed curve --check compares against)
+  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
   randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
+  curveBench.test.ts   # the guard bench's statistics, cases, stopping rule and baseline comparison, the curve check's rules, and the pull request comment
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting
   resolver.test.ts     # the shared SkillEffect resolver + status-effect cleanup when a room is cleared

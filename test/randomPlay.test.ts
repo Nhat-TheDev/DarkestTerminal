@@ -12,8 +12,7 @@ import {
 } from "../tools/random-play/checks";
 import { spansToHtml, summarizeRuns } from "../tools/random-play/report";
 import { playRun, loopBreakKey, hasLeftFloor, GUARD_FLOORS, type RunStats } from "../tools/random-play/bot";
-import { BANDS, checkGuardWinRate, findCurveIssues, survivalOnTarget, type GuardTally, type Row } from "../tools/random-play/curve";
-import { TEAMS, FEAR_ACT_AT, chooseRest, chooseRoom, planTurn, type TurnPlan } from "../tools/random-play/team";
+import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseRest, chooseRoom, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
 import { getRoom } from "../src/engine/dungeon";
 import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
 import type { Character, Room } from "../src/types";
@@ -149,48 +148,7 @@ describe("random-play bot", () => {
   });
 });
 
-describe("random-play curve", () => {
-  const row = (id: string, tier: "elite" | "boss", dpr: number, rounds: number, winRate = 1): Row => ({ id, tier, depth: 1, level: 1, dpr, rounds, winRate });
-  const inBand = () => BANDS.flatMap((band) => band.ids.flatMap((id) => Object.keys(band.dpr).map((tier) => {
-    const t = tier as "elite" | "boss";
-    const range = (r: Record<string, readonly number[]>) => (r[t]![0]! + r[t]![1]!) / 2;
-    return row(id, t, range(band.dpr), range(band.rounds));
-  })));
-  const details = (rows: Row[]) => findCurveIssues(rows, []).map((f) => f.detail);
-
-  test("a monster outside its band, or one losing too many fights, is reported", () => {
-    const rows = inBand();
-    rows[0]!.dpr = 99;
-    rows[1]!.winRate = 0.5;
-    expect(details(rows).some((d) => d.includes(`${rows[0]!.id} ${rows[0]!.tier} damage share`))).toBe(true);
-    expect(details(rows).some((d) => d.includes("simulated fights"))).toBe(true);
-  });
-
-  test("a boss that does not outlast its elite at the same depth is reported", () => {
-    const rows = inBand();
-    const boss = rows.find((r) => r.tier === "boss")!;
-    expect(findCurveIssues(rows, [{ ...boss, tier: "elite", rounds: boss.rounds + 1 }]).map((f) => f.detail)).toContain(`${boss.id} boss rounds not above its elite at the same depth`);
-  });
-});
-
-describe("random-play guard gate", () => {
-  const tally = (wins: number, fights: number): GuardTally => ({ elite: { wins, fights }, boss: { wins: 0, fights: 0 } });
-
-  test("on target the rate must beat 25%, off target 20%", () => {
-    expect(checkGuardWinRate(tally(1, 4), true)).toEqual([]); // too few fights to judge
-    expect(checkGuardWinRate(tally(2, 8), true).map((f) => f.type)).toEqual(["guardWinRate"]);
-    expect(checkGuardWinRate(tally(3, 8), true)).toEqual([]);
-    expect(checkGuardWinRate(tally(2, 8), false)).toEqual([]);
-    expect(checkGuardWinRate(tally(1, 5), false).map((f) => f.type)).toEqual(["guardWinRate"]);
-  });
-
-  test("the fear and satiety targets are read from the averages", () => {
-    expect(survivalOnTarget({ samples: 2, fear: 98, satiety: 102 })).toBe(true);
-    expect(survivalOnTarget({ samples: 2, fear: 100, satiety: 102 })).toBe(false);
-    expect(survivalOnTarget({ samples: 2, fear: 98, satiety: 100 })).toBe(false);
-    expect(survivalOnTarget({ samples: 0, fear: 0, satiety: 0 })).toBe(false);
-  });
-
+describe("random-play summary", () => {
   test("runs add up by team, tier and floor", () => {
     const run = (team: string, won: boolean): RunStats => ({ team, startDepth: 1, rooms: 3, guards: [{ depth: 5, tier: "boss", won }], samples: [{ fear: 10, satiety: 80 }], itemsUsed: 1, starvedTurns: 2 });
     const summary = summarizeRuns([run("A", true), run("A", false), run("B", true)]);
@@ -234,7 +192,7 @@ describe("random-play teams", () => {
     const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
     const hurt = game.state.party[2]!;
     hurt.hp = 1;
-    const plan = planTurn(game, actor, "healer");
+    const plan = planTurn(game, actor, ["healer"]);
     expect(plan.kind).toBe("skill");
     expect(plan.target?.id).toBe(hurt.id);
   });
@@ -243,7 +201,7 @@ describe("random-play teams", () => {
     const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
     const scared = game.state.party[1]!;
     scared.survival.fear = FEAR_ACT_AT;
-    const plan = planTurn(game, actor, "healer");
+    const plan = planTurn(game, actor, ["healer"]);
     expect(skillOf(plan)).toBe("prayer");
     expect(plan.target?.id).toBe(scared.id);
   });
@@ -252,9 +210,9 @@ describe("random-play teams", () => {
     const { game, actor } = fightWith(["mage", "knight", "acolyte", "rogue"]);
     actor.mp = Math.floor(actor.maxMp * 0.2);
     game.state.inventory = { "cracker-string": 1 };
-    expect(skillOf(planTurn(game, actor, "striker"))).toBe("cracker-string");
+    expect(skillOf(planTurn(game, actor, ["striker"]))).toBe("cracker-string");
     game.state.inventory = {};
-    const basic = planTurn(game, actor, "striker");
+    const basic = planTurn(game, actor, ["striker"]);
     expect(basic.kind === "skill" && basic.skill.mpCost).toBe(0);
     expect(basic.kind === "skill" && basic.starved).toBe(true);
   });
@@ -263,9 +221,9 @@ describe("random-play teams", () => {
     const { game, actor } = fightWith(["mage", "knight", "acolyte", "rogue"]);
     actor.mp = Math.floor(actor.maxMp * 0.2);
     game.state.inventory = { "small-mana-potion": 1 };
-    expect(planTurn(game, actor, "striker").kind).toBe("skill");
+    expect(planTurn(game, actor, ["striker"]).kind).toBe("skill");
     inGuardRoom(game);
-    expect(skillOf(planTurn(game, actor, "striker"))).toBe("small-mana-potion");
+    expect(skillOf(planTurn(game, actor, ["striker"]))).toBe("small-mana-potion");
   });
 
   test("a hurt character low on mana drinks a health potion before anything else", () => {
@@ -273,7 +231,7 @@ describe("random-play teams", () => {
     actor.mp = 0;
     actor.hp = 1;
     game.state.inventory = { "small-health-potion": 1, "cracker-string": 1 };
-    expect(skillOf(planTurn(game, actor, "striker"))).toBe("small-health-potion");
+    expect(skillOf(planTurn(game, actor, ["striker"]))).toBe("small-health-potion");
   });
 
   test("a healer keeps enough MP for its cheapest heal", () => {
@@ -281,7 +239,7 @@ describe("random-play teams", () => {
     const healCost = getEffectiveSkill(getSkill("heal"), actor.level).mpCost;
     actor.mp = healCost;
     inGuardRoom(game);
-    const plan = planTurn(game, actor, "healer");
+    const plan = planTurn(game, actor, ["healer"]);
     expect(plan.kind === "skill" && plan.skill.mpCost).toBe(0);
   });
 
@@ -289,7 +247,126 @@ describe("random-play teams", () => {
     const { game, actor } = fightWith(["acolyte", "knight", "mage", "rogue"]);
     game.state.party[1]!.survival.fear = FEAR_ACT_AT;
     actor.mp = getEffectiveSkill(getSkill("heal"), actor.level).mpCost;
-    expect(skillOf(planTurn(game, actor, "healer"))).not.toBe("prayer");
+    expect(skillOf(planTurn(game, actor, ["healer"]))).not.toBe("prayer");
+  });
+
+  test("a healer that summons calls up its healing minion for a wounded ally, once", () => {
+    const { game, actor } = fightWith(["summoner", "knight", "mage", "rogue"]);
+    game.state.party[1]!.hp = 1;
+    const plan = planTurn(game, actor, ["striker", "healer"]);
+    expect(skillOf(plan)).toBe("summon-spirit");
+    expect(game.queue({ kind: "character", id: actor.id }, "summon-spirit", [{ kind: "character", id: actor.id }])).toBeNull();
+    game.resolve();
+    game.state.party[1]!.hp = 1;
+    expect(skillOf(planTurn(game, actor, ["striker", "healer"]))).not.toBe("summon-spirit");
+    expect(skillOf(planTurn(game, actor, ["striker"]))).not.toBe("summon-spirit");
+  });
+
+  test("a tank that also heals heals the wounded first and opens with support otherwise", () => {
+    const { game, actor } = fightWith(["paladin", "knight", "mage", "rogue"]);
+    game.state.party[2]!.hp = Math.floor(game.state.party[2]!.maxHp * 0.6);
+    expect(skillOf(planTurn(game, actor, ["tank", "healer"]))).toBe("lay-on-hands");
+    expect(skillOf(planTurn(game, actor, ["tank"]))).not.toBe("lay-on-hands");
+  });
+
+  test("a coin-flip skill is scored at its odds, and at full value once the caster's odds are certain", () => {
+    const { actor } = fightWith(["jester", "knight", "mage", "rogue"]);
+    actor.level = 75;
+    const skill = getEffectiveSkill(getSkill("double-or-nothing"), actor.level);
+    const sure = skillPower({ ...skill, coinFlip: undefined }, actor, 1);
+    expect(skillPower(skill, actor, 1)).toBeCloseTo(sure * skill.coinFlip!.winChance);
+    actor.activeStatusEffects.push({ statusEffectId: "rigged", remainingTurns: 1 } as never);
+    expect(skillPower(skill, actor, 1)).toBeCloseTo(sure * Math.min(1, skill.coinFlip!.winChance * 2));
+  });
+
+  test("an attack/magic buff for the allies is cast in a guard fight only when it adds more than the caster's own attack", () => {
+    const { game, actor } = fightWith(["jester", "knight", "mage", "rogue"]);
+    actor.level = 45;
+    inGuardRoom(game);
+    const ballad = getEffectiveSkill(getSkill("battle-ballad"), actor.level);
+    expect(allyOffenseGain(ballad, actor, game.state.party)).toBeGreaterThan(0);
+    // A buff that also does something else is left to the general support rule.
+    expect(allyOffenseGain(getEffectiveSkill(getSkill("poison-coat"), 45), actor, game.state.party)).toBeNull();
+    expect(allyOffenseGain(getEffectiveSkill(getSkill("rally"), 45), actor, game.state.party)).toBeNull();
+    expect(skillOf(planTurn(game, actor, ["striker"]))).not.toBe("battle-ballad");
+    for (const ally of game.state.party.slice(1)) ally.attack = ally.magicPower = 5000;
+    // Round 1 with the guard's defense intact: a buff waits for an opening or a long enough gap.
+    expect(skillOf(planTurn(game, actor, ["striker"]))).not.toBe("battle-ballad");
+    game.state.combat!.roundNumber = 2 * BUFF_GAP_ROUNDS;
+    expect(skillOf(planTurn(game, actor, ["striker"]))).toBe("battle-ballad");
+  });
+
+  test("a single-target attack/magic buff goes on the hardest hitter and waits while that ally still has it", () => {
+    const { game, actor } = fightWith(["warlock", "archer", "knight", "acolyte"]);
+    inGuardRoom(game);
+    const [, archer, knight] = game.state.party;
+    archer!.attack = 9000;
+    knight!.hp = 1;
+    const pact = getEffectiveSkill(getSkill("blood-pact"), actor.level);
+    expect(mainStriker(pact, actor, game.state.party).id).toBe(archer!.id);
+    game.state.combat!.roundNumber = 2 * BUFF_GAP_ROUNDS;
+    const plan = planTurn(game, actor, ["striker"]);
+    expect(skillOf(plan)).toBe("blood-pact");
+    expect(plan.target?.id).toBe(archer!.id);
+    const statusId = pact.effects!.find((e) => e.kind === "applyStatusEffect")!.statusEffectId!;
+    archer!.activeStatusEffects.push({ statusEffectId: statusId, remainingTurns: 2 } as never);
+    expect(skillOf(planTurn(game, actor, ["striker"]))).not.toBe("blood-pact");
+  });
+
+  /** Debuffs on the strongest enemy holding its defense down by half. */
+  const openGuard = (game: Game) => {
+    const inFight = game.livingEnemyRefs().map((ref) => game.ctx.monsters.find((m) => m.id === ref.id)!);
+    const guard = inFight.sort((a, b) => b.maxHp - a.maxHp)[0]!;
+    guard.activeStatusEffects.push({ statusEffectId: "weakened", turnsRemaining: 2, appliedAmounts: { defense: -guard.defense } });
+    return guard;
+  };
+
+  test("a guard with its defense cut opens a window for buffs, and a buff is not repeated inside the gap", () => {
+    const { game, actor } = fightWith(["jester", "knight", "mage", "rogue"]);
+    actor.level = 45;
+    inGuardRoom(game);
+    for (const ally of game.state.party.slice(1)) ally.attack = ally.magicPower = 5000;
+    expect(defenseCut(openGuard(game))).toBeCloseTo(0.5);
+    const memory = newFightMemory();
+    expect(skillOf(planTurn(game, actor, ["striker"], memory))).toBe("battle-ballad");
+    delete actor.cooldownsRemaining["battle-ballad"];
+    game.state.combat!.roundNumber += 1;
+    expect(skillOf(planTurn(game, actor, ["striker"], memory))).not.toBe("battle-ballad");
+    game.state.combat!.roundNumber += BUFF_GAP_ROUNDS - 1;
+    expect(skillOf(planTurn(game, actor, ["striker"], memory))).toBe("battle-ballad");
+  });
+
+  test("a self buff that also raises attack is not held back for an opening", () => {
+    const { game, actor } = fightWith(["rogue", "knight", "mage", "acolyte"]);
+    actor.level = 45;
+    inGuardRoom(game);
+    expect(skillOf(planTurn(game, actor, ["striker"], newFightMemory()))).toBe("poison-coat");
+  });
+
+  test("an ally MP skill goes to the hardest hitter running dry, without waiting for an opening", () => {
+    const { game, actor } = fightWith(["warlock", "archer", "knight", "acolyte"]);
+    inGuardRoom(game);
+    const [, archer, knight] = game.state.party;
+    archer!.attack = 9000;
+    knight!.attack = 8000;
+    knight!.mp = 0;
+    const plan = planTurn(game, actor, ["striker"]);
+    expect(skillOf(plan)).toBe("blood-pact");
+    expect(plan.target?.id).toBe(knight!.id);
+  });
+
+  test("a single-target support that is not an attack/magic buff still goes on the weakest ally", () => {
+    const { game, actor } = fightWith(["paladin", "archer", "knight", "acolyte"]);
+    actor.level = 40;
+    inGuardRoom(game);
+    const [, archer, knight] = game.state.party;
+    archer!.attack = 9000;
+    knight!.hp = Math.floor(knight!.maxHp * 0.8);
+    for (const c of game.state.party) if (c !== knight) c.hp = c.maxHp;
+    actor.cooldownsRemaining["defiance"] = 9;
+    const plan = planTurn(game, actor, ["tank"]);
+    expect(skillOf(plan)).toBe("guardian-angel");
+    expect(plan.target?.id).toBe(knight!.id);
   });
 
   test("a tired party heads for the rest room and eats when hungry, talks when frightened", () => {
@@ -315,7 +392,7 @@ describe("random-play CLI", () => {
   }
 
   test("--report none prints the result, exits 0 when nothing failed and writes no report", () => {
-    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none", "--curve", "off");
+    const { exitCode, stdout, created } = cli("--runs", "1", "--max-steps", "60", "--report", "none");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("0 failures");
     expect(stdout).not.toContain("report:");
@@ -323,10 +400,10 @@ describe("random-play CLI", () => {
   }, 30000);
 
   test("--team plays that team alone, and --runs counts runs per team", () => {
-    const { stdout } = cli("--team", "oath", "--runs", "2", "--max-steps", "30", "--report", "none", "--curve", "off");
+    const { stdout } = cli("--team", "oath", "--runs", "2", "--max-steps", "30", "--report", "none");
     expect(stdout).toContain("run 2/2  Oath");
     expect(stdout).not.toContain("run 3/");
-    expect(cli("--runs", "1", "--max-steps", "1", "--report", "none", "--curve", "off").stdout).toContain(`run ${TEAMS.length}/${TEAMS.length}`);
+    expect(cli("--runs", "1", "--max-steps", "1", "--report", "none").stdout).toContain(`run ${TEAMS.length}/${TEAMS.length}`);
   }, 30000);
 
   test("an unknown team is refused before any run", () => {
@@ -334,12 +411,6 @@ describe("random-play CLI", () => {
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("--team must be one of");
     expect(stdout).not.toContain("run 1/");
-  });
-
-  test("an unknown --curve value is refused before any run", () => {
-    const { exitCode, stderr } = cli("--runs", "1", "--curve", "maybe");
-    expect(exitCode).not.toBe(0);
-    expect(stderr).toContain("--curve must be on or off");
   });
 
   test("an unknown --report value is refused before any run", () => {

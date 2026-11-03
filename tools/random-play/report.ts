@@ -1,6 +1,6 @@
 import { TextAttributes, type CapturedFrame } from "@opentui/core";
 import type { RunStats } from "./bot";
-import { MIN_GUARD_FIGHTS, type GuardTally, type GuardTier, type Row, type SurvivalTally } from "./curve";
+import type { GuardTally, GuardTier, SurvivalTally } from "./curve";
 
 type Rgba = [number, number, number, number];
 
@@ -117,15 +117,10 @@ export interface ReportInput {
   failures: ReportFinding[];
   warnings: ReportFinding[];
   gallery: GalleryEntry[];
-  /** Empty when the curve was skipped. */
-  curve: Row[];
   summary: RunSummary;
-  /** The guard win rate this command had to beat. */
-  requiredWinRate: number;
-  survivalOnTarget: boolean;
 }
 
-const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const css = ([r, g, b, a]: Rgba) => `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`;
 
@@ -177,7 +172,7 @@ function findingCard(group: FindingGroup, tone: "fail" | "warn"): string {
 </details>`;
 }
 
-function table(headers: string[], rows: (string | number)[][]): string {
+export function table(headers: string[], rows: (string | number)[][]): string {
   if (rows.length === 0) return '<p class="none">None.</p>';
   const cells = (tag: string, row: (string | number)[]) => `<tr>${row.map((c) => `<${tag}>${escapeHtml(String(c))}</${tag}>`).join("")}</tr>`;
   return `<table>${cells("th", headers)}${rows.map((r) => cells("td", r)).join("")}</table>`;
@@ -185,14 +180,11 @@ function table(headers: string[], rows: (string | number)[][]): string {
 
 const rate = (wins: number, fights: number) => (fights === 0 ? "-" : `${wins}/${fights} (${Math.round((wins / fights) * 100)}%)`);
 
-export function guardLine(input: Pick<ReportInput, "summary" | "requiredWinRate" | "survivalOnTarget">): string {
-  const { guards, survival } = input.summary;
-  const tiers = (Object.keys(guards) as GuardTier[]).map((tier) => {
-    const { wins, fights } = guards[tier];
-    return `${tier} ${rate(wins, fights)}${fights < MIN_GUARD_FIGHTS ? " not enough fights" : ""}`;
-  });
+export function guardLine(summary: RunSummary): string {
+  const { guards, survival } = summary;
+  const tiers = (Object.keys(guards) as GuardTier[]).map((tier) => `${tier} ${rate(guards[tier].wins, guards[tier].fights)}`);
   const samples = Math.max(1, survival.samples);
-  return `guards: ${tiers.join(", ")}, must beat ${input.requiredWinRate * 100}%; average highest fear ${(survival.fear / samples).toFixed(1)}, satiety ${(survival.satiety / samples).toFixed(1)}, ${input.survivalOnTarget ? "on target" : "off target"}`;
+  return `guards: ${tiers.join(", ")}; average highest fear ${(survival.fear / samples).toFixed(1)}, satiety ${(survival.satiety / samples).toFixed(1)}`;
 }
 
 export function renderReport(input: ReportInput): string {
@@ -230,7 +222,7 @@ export function renderReport(input: ReportInput): string {
 <p class="meta">${escapeHtml(input.generatedAt)} · ${input.runs} runs · ${input.steps} steps · ${input.durationSec.toFixed(0)} s · ${outcomes}</p>
 
 <h2>Teams</h2>
-<p class="meta">${escapeHtml(guardLine(input))}</p>
+<p class="meta">${escapeHtml(guardLine(input.summary))}</p>
 ${table(
   ["Team", "Runs", "Rooms", "Avg highest fear", "Avg satiety", "Guards won", "Items used", "Low-MP basic attacks"],
   input.summary.teams.map((t) => [t.team, t.runs, t.rooms, t.fear.toFixed(1), t.satiety.toFixed(1), rate(t.wins, t.fights), t.itemsUsed, t.starvedTurns])
@@ -238,12 +230,6 @@ ${table(
 
 <h2>Guard floors</h2>
 ${table(["Floor", "Tier", "Won"], input.summary.floors.map((f) => [f.depth, f.tier, rate(f.wins, f.fights)]))}
-
-<h2>Elite/boss curve</h2>
-${table(
-  ["Archetype", "Tier", "Depth", "Level", "Damage share %", "Rounds", "Win rate"],
-  input.curve.map((r) => [r.id, r.tier, r.depth, r.level.toFixed(1), r.dpr.toFixed(1), r.rounds.toFixed(1), r.winRate.toFixed(2)])
-)}
 
 <h2>Failures (${failureGroups.length} kinds, ${input.failures.length} total)</h2>
 ${failureGroups.map((g) => findingCard(g, "fail")).join("\n") || '<p class="none">None.</p>'}

@@ -1183,7 +1183,7 @@ function stackBurst(source: Character, target: Actor, combat: CombatState, ctx: 
 }
 
 /** A `coinFlip`'s win chance for this caster: its own, times every `coinFlipWinChanceMultiplier` status the caster carries, at most 1. */
-function coinFlipWinChance(skill: SkillDefinition, source: Actor): number {
+export function coinFlipWinChance(skill: SkillDefinition, source: Actor): number {
   const multiplier = source.activeStatusEffects.reduce((mult, s) => mult * (getStatusEffect(s.statusEffectId).coinFlipWinChanceMultiplier ?? 1), 1);
   return Math.min(1, skill.coinFlip!.winChance * multiplier);
 }

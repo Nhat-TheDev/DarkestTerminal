@@ -1,14 +1,15 @@
 import type { App } from "../../src/ui/app";
 import type { Game } from "../../src/engine/game";
-import { getActorByRef, channelStatus, checkSkillUsable, isCommandSkill } from "../../src/engine/combat";
+import { getActorByRef, channelStatus, checkSkillUsable, coinFlipWinChance, isCommandSkill } from "../../src/engine/combat";
 import { getRoom } from "../../src/engine/dungeon";
 import { getArtifact } from "../../src/data/artifacts";
 import { getStatusEffect } from "../../src/data/statusEffects";
 import { BALANCE } from "../../src/data/balanceConfig";
 import { CAMP_KIT_ITEM_ID } from "../../src/data/items";
+import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../src/data/summons";
 import { combatInventoryEntries, skillEntries } from "../../src/ui/state";
 import { ITEM_PAGE_SIZE } from "../../src/ui/pagination";
-import type { Character, CombatantRef, Id, ItemDefinition, Monster, Room, SkillDefinition, SkillEffect } from "../../src/types";
+import type { Character, CombatantRef, Id, ItemDefinition, Monster, Room, SkillDefinition, SkillEffect, StatusEffectDefinition } from "../../src/types";
 import type { FooterInfo } from "./checks";
 import { SATIETY_TARGET } from "./curve";
 
@@ -16,15 +17,16 @@ export type Role = "tank" | "healer" | "striker";
 
 export interface Team {
   name: string;
-  members: { classId: Id; role: Role }[];
+  /** A member does what each of its roles asks: a healer heals early and keeps MP for it, a tank opens with support. */
+  members: { classId: Id; roles: Role[] }[];
 }
 
 export const TEAMS: Team[] = [
-  { name: "Bulwark", members: [{ classId: "knight", role: "tank" }, { classId: "acolyte", role: "healer" }, { classId: "mage", role: "striker" }, { classId: "rogue", role: "striker" }] },
-  { name: "Oath", members: [{ classId: "paladin", role: "tank" }, { classId: "plague-doctor", role: "healer" }, { classId: "archer", role: "striker" }, { classId: "warlock", role: "striker" }] },
-  { name: "Conjurers", members: [{ classId: "viking", role: "tank" }, { classId: "acolyte", role: "healer" }, { classId: "summoner", role: "striker" }, { classId: "ninja", role: "striker" }] },
-  { name: "Blight", members: [{ classId: "knight", role: "tank" }, { classId: "plague-doctor", role: "healer" }, { classId: "rogue", role: "striker" }, { classId: "warlock", role: "striker" }] },
-  { name: "Tempo", members: [{ classId: "paladin", role: "tank" }, { classId: "jester", role: "striker" }, { classId: "mage", role: "striker" }, { classId: "archer", role: "striker" }] },
+  { name: "Bulwark", members: [{ classId: "knight", roles: ["tank"] }, { classId: "acolyte", roles: ["healer"] }, { classId: "mage", roles: ["striker"] }, { classId: "rogue", roles: ["striker"] }] },
+  { name: "Oath", members: [{ classId: "paladin", roles: ["tank"] }, { classId: "plague-doctor", roles: ["healer"] }, { classId: "archer", roles: ["striker"] }, { classId: "warlock", roles: ["striker"] }] },
+  { name: "Conjurers", members: [{ classId: "viking", roles: ["tank"] }, { classId: "acolyte", roles: ["healer"] }, { classId: "summoner", roles: ["striker"] }, { classId: "ninja", roles: ["striker"] }] },
+  { name: "Blight", members: [{ classId: "knight", roles: ["tank"] }, { classId: "plague-doctor", roles: ["healer"] }, { classId: "jester", roles: ["striker"] }, { classId: "warlock", roles: ["striker"] }] },
+  { name: "Tempo", members: [{ classId: "paladin", roles: ["tank", "healer"] }, { classId: "summoner", roles: ["striker", "healer"] }, { classId: "mage", roles: ["striker"] }, { classId: "archer", roles: ["striker"] }] },
 ];
 
 /** Below this share of max MP a character conserves: heals and fear relief only, or an item, or the free basic attack. */
@@ -56,6 +58,15 @@ function relievesFear(effect: SkillEffect): boolean {
 
 const helpsAllies = (skill: SkillDefinition) => skill.target === "singleAlly" || skill.target === "allAllies" || skill.target === "allAlliesAndEnemies" || skill.target === "self";
 const isHeal = (skill: SkillDefinition) => helpsAllies(skill) && has(skill.effects, "heal");
+/** The minion a skill calls up, when that minion has a healing skill of its own. */
+function healingMinionOf(skill: SkillDefinition): Id | null {
+  for (const e of skill.effects ?? []) {
+    if (e.kind !== "summon" || !e.summonCastId) continue;
+    const archetype = getSummonArchetype(getSummonCast(e.summonCastId).archetypeId);
+    if ((archetype.signatureSkillIds ?? []).some((id) => has(getSummonSkill(id).effects, "heal"))) return archetype.id;
+  }
+  return null;
+}
 const isFearRelief = (skill: SkillDefinition) => helpsAllies(skill) && (skill.effects ?? []).some(relievesFear);
 const hitsEnemies = (skill: SkillDefinition) => skill.target === "singleEnemy" || skill.target === "allEnemies" || skill.target === "allAlliesAndEnemies";
 const hitsAll = (skill: SkillDefinition) => skill.target === "allEnemies" || skill.target === "allAlliesAndEnemies";
@@ -72,7 +83,52 @@ export function skillPower(skill: SkillDefinition, actor: Character, enemyCount:
       power += offense * STATUS_VALUE;
     }
   }
-  return hitsAll(skill) ? power * enemyCount : power;
+  const total = hitsAll(skill) ? power * enemyCount : power;
+  return skill.coinFlip ? total * coinFlipWinChance(skill, actor) : total;
+}
+
+const raisesOffense = (e: StatusEffectDefinition["perTurnEffects"][number]) =>
+  e.kind === "modifyCombatStat" && (e.combatStat === "attack" || e.combatStat === "magicPower") && (e.amount ?? 0) > 0;
+
+/** An attack/magic buff for allies; a self buff (Poison Coat) is not timed, since its worth is often the rest of its kit. */
+const buffsOffense = (skill: SkillDefinition) =>
+  skill.target !== "self" &&
+  (skill.effects ?? []).some((e) => e.kind === "applyStatusEffect" && !!e.statusEffectId && getStatusEffect(e.statusEffectId).perTurnEffects.some(raisesOffense));
+
+/** The party member hitting hardest on its stronger stat: where a single-target attack/magic buff counts most. */
+export function mainStriker(skill: SkillDefinition, actor: Character, party: Character[]): Character {
+  const pool = party.filter((c) => !(skill.targetsOtherAlliesOnly && c.id === actor.id));
+  const offense = (c: Character) => Math.max(c.attack, c.magicPower);
+  return pool.reduce((top, c) => (offense(c) > offense(top) ? c : top), pool[0] ?? actor);
+}
+
+/**
+ * Points of attack or magic a pure offense buff adds, summed over the allies it lands on, each ally counted on
+ * its own stronger stat. Null for any skill that does anything else as well (fear relief, MP, an on-hit status),
+ * since its worth is then more than the raw stat points.
+ */
+export function allyOffenseGain(skill: SkillDefinition, actor: Character, party: Character[]): number | null {
+  const effects = skill.effects ?? [];
+  const pure =
+    effects.length > 0 &&
+    effects.every((e) => {
+      if (e.kind !== "applyStatusEffect" || !e.statusEffectId) return false;
+      const status = getStatusEffect(e.statusEffectId);
+      return !status.onHitStatusEffectId && status.perTurnEffects.length > 0 && status.perTurnEffects.every(raisesOffense);
+    });
+  if (!pure) return null;
+  let gain = 0;
+  for (const effect of effects) {
+    const raises = getStatusEffect(effect.statusEffectId!).perTurnEffects;
+    const targets = skill.target === "self" ? [actor] : party.filter((c) => !(effect.excludesCaster && c.id === actor.id));
+    const gains = targets.map((ally) => {
+      const stat = ally.attack >= ally.magicPower ? "attack" : "magicPower";
+      const e = raises.find((r) => r.combatStat === stat);
+      return e ? Math.max(effect.amount ?? e.amount ?? 0, (ally[stat] * (effect.minPercent ?? e.minPercent ?? 0)) / 100) : 0;
+    });
+    gain += skill.target === "singleAlly" ? Math.max(0, ...gains) : gains.reduce((x, y) => x + y, 0);
+  }
+  return gain;
 }
 
 function itemWith(game: Game, matches: (item: ItemDefinition) => boolean): ItemDefinition | undefined {
@@ -103,8 +159,29 @@ function chooseCombatItem(game: Game, actor: Character, party: Character[], enem
   );
 }
 
+/** A caster buffs attack or magic at most once in this many rounds, on top of the skill's cooldown. */
+export const BUFF_GAP_ROUNDS = 3;
+/** The guard is open when debuffs have cut at least this share of its defense: buffs are worth most then. */
+export const OPENING_DEFENSE_CUT = 0.1;
+/** Inside an opening, a pure attack/magic buff only has to add this share of the caster's own attack. */
+const OPENING_BUFF_BAR = 0.5;
+
+/** What one fight remembers between turns: the round each member last cast an attack/magic buff. */
+export interface FightMemory {
+  lastBuffRound: Map<Id, number>;
+}
+
+export const newFightMemory = (): FightMemory => ({ lastBuffRound: new Map() });
+
+/** Share of a monster's defense its statuses are holding down right now. */
+export function defenseCut(monster: Monster): number {
+  const cut = monster.activeStatusEffects.reduce((sum, s) => sum + Math.max(0, -(s.appliedAmounts?.defense ?? 0)), 0);
+  const base = monster.defense + cut;
+  return base > 0 ? cut / base : 0;
+}
+
 /** What `actor` does this round. Reads the game; the keypresses that carry it out are `TeamPolicy.chooseKey`'s. */
-export function planTurn(game: Game, actor: Character, role: Role): TurnPlan {
+export function planTurn(game: Game, actor: Character, roles: Role[], memory: FightMemory = newFightMemory()): TurnPlan {
   const party = game.state.party.filter((c) => c.isAlive);
   const enemyRefs = game.livingEnemyRefs();
   const enemies = enemyRefs.map((ref) => ({ ref, monster: getActorByRef(ref, game.ctx) as Monster }));
@@ -113,12 +190,22 @@ export function planTurn(game: Game, actor: Character, role: Role): TurnPlan {
 
   const known = skillEntries(actor);
   const usable = known.filter((s) => checkSkillUsable(actor, s) === null && !isCommandSkill(s));
-  const healCosts = known.filter(isHeal).map((s) => s.mpCost);
-  const healReserve = role === "healer" && healCosts.length > 0 ? Math.min(...healCosts) : 0;
+  const healer = roles.includes("healer");
+  // A healer counts calling up a healing minion as a heal, while that minion is not already on the field.
+  const minionHeals = (skills: SkillDefinition[]) =>
+    healer
+      ? skills.filter((s) => {
+          const minion = healingMinionOf(s);
+          return minion !== null && !game.ctx.summons.some((m) => m.ownerId === actor.id && m.archetypeId === minion && m.hp > 0);
+        })
+      : [];
+  const healsFor = (skills: SkillDefinition[]) => [...skills.filter(isHeal), ...minionHeals(skills)];
+  const healCosts = healsFor(known).map((s) => s.mpCost);
+  const healReserve = healer && healCosts.length > 0 ? Math.min(...healCosts) : 0;
   const lowMp = actor.mp < actor.maxMp * LOW_MP_SHARE;
 
-  const heals = usable.filter(isHeal);
-  const threshold = heals.length > 0 && role === "healer" ? HEALER_HP_SHARE : HURT_HP_SHARE;
+  const heals = healsFor(usable);
+  const threshold = heals.length > 0 && healer ? HEALER_HP_SHARE : HURT_HP_SHARE;
   const wounded = [...party].sort((a, b) => hpShare(a) - hpShare(b)).filter((c) => hpShare(c) < threshold);
   const skillOn = (skill: SkillDefinition, target: CombatantRef | null): TurnPlan => ({ kind: "skill", skill, target, starved: false });
   const allyTarget = (skill: SkillDefinition, ordered: Character[]): CombatantRef | null => {
@@ -134,11 +221,11 @@ export function planTurn(game: Game, actor: Character, role: Role): TurnPlan {
   if (wounded.length > 0) {
     const sweeping = heals.find((s) => s.target === "allAllies" || s.target === "allAlliesAndEnemies");
     const single = heals.find((s) => s.target === "singleAlly" || (s.target === "self" && wounded.includes(actor)));
-    const heal = wounded.length >= 2 ? sweeping ?? single : single ?? sweeping;
+    const heal = (wounded.length >= 2 ? sweeping ?? single : single ?? sweeping) ?? heals.find((s) => healingMinionOf(s) !== null);
     if (heal) return skillOn(heal, allyTarget(heal, wounded));
   }
 
-  const affordable = usable.filter((s) => actor.mp - s.mpCost >= (isHeal(s) ? 0 : healReserve));
+  const affordable = usable.filter((s) => actor.mp - s.mpCost >= (heals.includes(s) ? 0 : healReserve));
   const frightened = [...party].sort((a, b) => b.survival.fear - a.survival.fear).filter((c) => c.survival.fear >= FEAR_ACT_AT);
   if (frightened.length > 0) {
     const relief = affordable.find(isFearRelief);
@@ -153,13 +240,6 @@ export function planTurn(game: Game, actor: Character, role: Role): TurnPlan {
   const conserving = lowMp && !guardFight;
   const inDanger = party.some((c) => hpShare(c) < DANGER_HP_SHARE) || party.length < game.state.party.length;
 
-  if (!conserving && (role === "tank" || guardFight)) {
-    const support = affordable.find(
-      (s) => helpsAllies(s) && !isHeal(s) && !has(s.effects, "damage") && !actor.activeStatusEffects.some((a) => (s.effects ?? []).some((e) => e.statusEffectId === a.statusEffectId))
-    );
-    if (support) return skillOn(support, allyTarget(support, [...party].sort((a, b) => hpShare(a) - hpShare(b))));
-  }
-
   const costliest = Math.max(0, ...usable.map((s) => s.mpCost));
   const attacks = affordable
     .filter((s) => hitsEnemies(s) || s.slot === 0)
@@ -168,6 +248,56 @@ export function planTurn(game: Game, actor: Character, role: Role): TurnPlan {
   const best = attacks.reduce<SkillDefinition | undefined>((top, s) => (!top || skillPower(s, actor, enemyRefs.length) > skillPower(top, actor, enemyRefs.length) ? s : top), undefined);
   const basic = known[0]!;
   const chosen = best ?? basic;
+
+  if (!conserving && (roles.includes("tank") || guardFight)) {
+    // An attack/magic buff is worth a turn only when it adds more than the caster's own attack would; it is
+    // judged on its gain, since a buff that skips the caster never shows on the caster as already active.
+    const ownAttack = skillPower(chosen, actor, enemyRefs.length);
+    const weakestFirst = [...party].sort((a, b) => hpShare(a) - hpShare(b));
+    // A single-target attack/magic buff goes on the main striker; any other single-target support on the weakest.
+    const singleTarget = (s: SkillDefinition) => (buffsOffense(s) ? mainStriker(s, actor, party) : weakestFirst.find((c) => !(s.targetsOtherAlliesOnly && c.id === actor.id)) ?? actor);
+    const receivers = (s: SkillDefinition, e: SkillEffect) =>
+      s.target === "self" ? [actor] : s.target === "singleAlly" ? [singleTarget(s)] : party.filter((c) => !(e.excludesCaster && c.id === actor.id));
+    const alreadyOn = (s: SkillDefinition) =>
+      (s.effects ?? []).every(
+        (e) => e.kind !== "applyStatusEffect" || receivers(s, e).every((c) => c.activeStatusEffects.some((a) => a.statusEffectId === e.statusEffectId))
+      );
+    const round = game.state.combat?.roundNumber ?? 0;
+    const lastBuff = memory.lastBuffRound.get(actor.id);
+    const gapPassed = lastBuff === undefined || round - lastBuff >= BUFF_GAP_ROUNDS;
+    // Without an opening a buff still goes out now and then, counting from the start of the fight.
+    const longWait = round - (lastBuff ?? 0) >= 2 * BUFF_GAP_ROUNDS;
+    const guard = enemies.reduce<Monster | null>((top, e) => (!top || e.monster.maxHp > top.maxHp ? e.monster : top), null);
+    const opening = guard !== null && defenseCut(guard) >= OPENING_DEFENSE_CUT;
+    const buffed = (s: SkillDefinition, target: Character | null): TurnPlan => {
+      memory.lastBuffRound.set(actor.id, round);
+      return skillOn(s, target ? refOf(target) : null);
+    };
+
+    // MP for an ally is worth most to a hitter running dry: the hardest of them gets it, opening or not.
+    const restoresAllyMp = (s: SkillDefinition) => s.target === "singleAlly" && has(s.effects, "restoreMp");
+    const dry = party.filter((c) => c.mp < c.maxMp * LOW_MP_SHARE);
+    const refill = gapPassed ? affordable.find(restoresAllyMp) : undefined;
+    if (refill) {
+      const pool = dry.filter((c) => !(refill.targetsOtherAlliesOnly && c.id === actor.id));
+      if (pool.length > 0) return buffed(refill, mainStriker(refill, actor, pool));
+    }
+
+    const support = affordable.find((s) => {
+      if (!helpsAllies(s) || isHeal(s) || has(s.effects, "damage")) return false;
+      if (buffsOffense(s)) {
+        if (!gapPassed || !(opening || longWait)) return false;
+        const gain = allyOffenseGain(s, actor, party);
+        if (gain !== null) return gain > ownAttack * (opening ? OPENING_BUFF_BAR : 1);
+      }
+      return !alreadyOn(s);
+    });
+    if (support) {
+      const target = support.target === "singleAlly" ? singleTarget(support) : null;
+      return buffsOffense(support) ? buffed(support, target) : skillOn(support, target ? refOf(target) : null);
+    }
+  }
+
   return { kind: "skill", skill: chosen, target: chosen.target === "singleEnemy" ? focus : null, starved: lowMp && chosen.mpCost === 0 };
 }
 
@@ -206,18 +336,24 @@ export class TeamPolicy {
   itemsUsed = 0;
   starvedTurns = 0;
   private plan: { actorId: Id; turn: TurnPlan; counted: boolean } | null = null;
+  private memory = newFightMemory();
+  private memoryCombat: unknown = null;
   private itemPage = 0;
 
   constructor(private readonly team: Team) {}
 
-  private roleOf(actor: Character): Role {
-    return this.team.members.find((m) => m.classId === actor.classId)?.role ?? "striker";
+  private rolesOf(actor: Character): Role[] {
+    return this.team.members.find((m) => m.classId === actor.classId)?.roles ?? ["striker"];
   }
 
   private turnFor(game: Game, actorRef: CombatantRef): TurnPlan {
     if (this.plan?.actorId === actorRef.id) return this.plan.turn;
     const actor = getActorByRef(actorRef, game.ctx) as Character;
-    const turn = planTurn(game, actor, this.roleOf(actor));
+    if (game.state.combat !== this.memoryCombat) {
+      this.memoryCombat = game.state.combat;
+      this.memory = newFightMemory();
+    }
+    const turn = planTurn(game, actor, this.rolesOf(actor), this.memory);
     this.plan = { actorId: actorRef.id, turn, counted: false };
     this.itemPage = 0;
     return turn;

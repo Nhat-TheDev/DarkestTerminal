@@ -629,9 +629,9 @@ Rigged Game is the kit's magic skill (`isMagic`, `damageType: "magic"`), Loaded 
 
 | id | Name | Mechanics |
 |---|---|---|
-| `ballad` | Ballad | attack +6 (min 7.5%); magicPower +6 (min 7.5%) |
-| `ballad-ii` | Ballad | attack +8 (min 10%); magicPower +8 (min 10%); rankOf ballad; rankLevel 2 |
-| `ballad-iii` | Ballad | attack +10 (min 12.5%); magicPower +10 (min 12.5%); rankOf ballad; rankLevel 3 |
+| `ballad` | Ballad | attack +8 (min 9%); magicPower +8 (min 9%) |
+| `ballad-ii` | Ballad | attack +12 (min 12%); magicPower +12 (min 12%); rankOf ballad; rankLevel 2 |
+| `ballad-iii` | Ballad | attack +15 (min 15%); magicPower +15 (min 15%); rankOf ballad; rankLevel 3 |
 | `provoked` | Provoked | harmful; forcesTargetOnSource |
 | `confused` | Confused | harmful; redirectToAlliesChance 0.55 |
 | `rigged` | Rigged | coinFlipWinChanceMultiplier 2 |
