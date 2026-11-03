@@ -1200,9 +1200,13 @@ export interface GameState {
   /** In order; keeps an omen from repeating and lets one held back to its `maxFloor` show there. */
   shownFloorMilestoneIds: Id[];
   /** The journal line being argued over; the fragment that opened it, if any. Replaces that room's event reflection. */
-  pendingJournal: { lineId: Id; fragmentId: Id | null; voices?: JournalVoiceAssignment[] } | null;
+  pendingJournal: { lineId: Id; fragmentId: Id | null; voices?: JournalVoiceAssignment[]; showFragment?: boolean } | null;
+  /** Fragments a room clear or omen turned up, waiting on the party to look or move on; `characterId` noticed them. */
+  pendingJournalFind: { fragmentIds: Id[]; characterId: Id | null } | null;
   /** Lines that became choosable while another was on screen; drained one per room clear or floor clear. */
-  journalQueue: { lineId: Id; fragmentId: Id | null }[];
+  journalQueue: { lineId: Id; fragmentId: Id | null; showFragment?: boolean }[];
+  /** Readings each line has already offered this run; a scene never offers one twice in a run. */
+  journalOffered: Record<Id, Id[]>;
   /** Fragments seen this run, whether or not the slot already held them. */
   journalFragmentsSeen: Id[];
   /** Resolutions per event id this run, for `repeatInRun` fragment sources. */

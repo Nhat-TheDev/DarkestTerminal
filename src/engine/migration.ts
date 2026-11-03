@@ -261,6 +261,9 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (state.pendingJournal === undefined || (state.pendingJournal && !getJournalLine(state.pendingJournal.lineId))) state.pendingJournal = null;
   if (state.pendingJournal?.fragmentId && !getJournalFragment(state.pendingJournal.fragmentId)) state.pendingJournal.fragmentId = null;
   state.journalQueue = Array.isArray(state.journalQueue) ? state.journalQueue.filter((q) => getJournalLine(q.lineId)) : [];
+  const found = state.pendingJournalFind?.fragmentIds.filter((id) => getJournalFragment(id)) ?? [];
+  state.pendingJournalFind = found.length > 0 ? { ...state.pendingJournalFind!, fragmentIds: found } : null;
+  if (!state.journalOffered) state.journalOffered = {};
   state.journalFragmentsSeen = Array.isArray(state.journalFragmentsSeen) ? state.journalFragmentsSeen.filter((id) => getJournalFragment(id)) : [];
   if (!state.journalEventVisits) state.journalEventVisits = {};
   state.journalLeftBlank = Array.isArray(state.journalLeftBlank) ? state.journalLeftBlank.filter((id) => getJournalLine(id)) : [];

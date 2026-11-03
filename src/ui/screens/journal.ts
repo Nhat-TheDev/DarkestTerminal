@@ -1,6 +1,6 @@
 import type { Game } from "../../engine/game";
 import type { KeyEvent } from "@opentui/core";
-import type { DroppedJournal, Id, JournalLineState, JournalMergeStep, JournalVoiceAssignment, PersonalityLines, SlotJournal } from "../../types";
+import type { Id, JournalLineState, JournalMergeStep, JournalVoiceAssignment, PersonalityLines, SlotJournal } from "../../types";
 import { t } from "../../data/strings";
 import { getClass } from "../../data/classes";
 import { JOURNAL_FRAGMENTS, JOURNAL_PAGES, getJournalEcho, getJournalFragment, getJournalLine, journalPageOf } from "../../data/journal";
@@ -45,8 +45,15 @@ function optionRows(index: number, text: string): string[] {
   return [`${INDENT}[${index}] ${first}`, ...rest.map((l) => OPTION_INDENT + l)];
 }
 
+function handleFindKey(ctx: ScreenContext, digit: number): void {
+  if (digit !== 1 && digit !== 2) return;
+  for (const id of ctx.game.resolveJournalFind(digit === 1)) ctx.logInfo(getJournalFragment(id)!.text);
+  proceedAfterVictory(ctx);
+}
+
 export function handleDeductionKey(ctx: ScreenContext, digit: number | null): void {
   if (digit === null) return;
+  if (ctx.game.state.pendingJournalFind) return handleFindKey(ctx, digit);
   const pending = ctx.game.state.pendingJournal;
   const option = pending ? deductionOptions(pending.lineId, ctx.game.journal, ctx.game.state)[digit - 1] : undefined;
   if (ctx.game.resolveJournalDeduction(digit - 1)) return;
@@ -54,11 +61,18 @@ export function handleDeductionKey(ctx: ScreenContext, digit: number | null): vo
   proceedAfterVictory(ctx);
 }
 
+function renderFind(game: Game): string {
+  const find = game.state.pendingJournalFind!;
+  const who = game.state.party.find((c) => c.id === find.characterId);
+  const notice = who ? t("ui.journalFind", { speaker: getClass(who.classId).name }) : t("ui.journalFindMargin");
+  return [notice, "", `${INDENT}[1] ${t("ui.journalLook")}`, `${INDENT}[2] ${t("ui.journalMoveOn")}`].join("\n");
+}
+
 export function renderDeduction(game: Game): string {
+  if (game.state.pendingJournalFind) return renderFind(game);
   const pending = game.state.pendingJournal;
   const line = pending && getJournalLine(pending.lineId);
   if (!pending || !line) return "";
-  const page = journalPageOf(line.id);
   const fragment = pending.fragmentId ? getJournalFragment(pending.fragmentId) : undefined;
   const current = game.journal.lines[line.id]?.directionId;
   const options = deductionOptions(line.id, game.journal, game.state);
@@ -66,8 +80,8 @@ export function renderDeduction(game: Game): string {
   // A pending scene without stored voices is voiced here, without the fear cost.
   const voices = pending.voices ?? assignVoices(line.id, pending.fragmentId, game.journal, game.state);
   const remarkVoice = voices.find((v) => v.directionId === null);
-  const out = [t("ui.journalTitle", { page: (page?.title ?? "").toUpperCase(), subject: line.subject })];
-  if (fragment) out.push(t("ui.journalCopied", { text: fragment.text }));
+  const out = [line.subject];
+  if (fragment && pending.showFragment) out.push(...wrapText(fragment.text, JOURNAL_WIDTH));
   if (current) out.push(t("ui.journalCurrent", { label: line.directions.find((d) => d.id === current)?.label ?? "" }));
   if (remark) out.push(speechLine(remarkVoice?.classId ?? null, remarkVoice ? voicedText(remarkVoice, remark.personalities, remark.text) : remark.text));
   out.push("");
@@ -77,6 +91,7 @@ export function renderDeduction(game: Game): string {
 
 export function renderDeductionFooter(game: Game): string {
   const pending = game.state.pendingJournal;
+  if (game.state.pendingJournalFind) return digitHint("ui.footerChoose", 2);
   const count = pending ? deductionOptions(pending.lineId, game.journal, game.state).length : 0;
   return digitHint("ui.footerJournalWrite", count);
 }
@@ -91,12 +106,10 @@ function entryRows(entry: JournalLineState, lineId: Id, journal: SlotJournal, ru
   const rows: string[] = [];
   if (entry.split) {
     rows.push(...wrapped(t("ui.journalSplit", { first: label(entry.split[0]), second: label(entry.split[1]) }), INDENT));
-  } else if (entry.directionId) {
+  } else {
     const name = entry.writerClassId ? getClass(entry.writerClassId).name : "";
     const writer = name && entry.run !== undefined && entry.run !== run ? t("ui.journalWriterRun", { writer: name, run: entry.run }) : name;
-    rows.push(...wrapped(t("ui.journalReading", { label: label(entry.directionId), writer }).trimEnd(), INDENT));
-  } else {
-    rows.push(INDENT + t("ui.journalUnwritten"));
+    rows.push(...wrapped(t("ui.journalReading", { label: label(entry.directionId!), writer }).trimEnd(), INDENT));
   }
   for (const id of entry.struck) rows.push(...wrapped(t("ui.journalStruck", { label: label(id) }), INDENT));
   const readings = [entry.directionId, ...entry.struck, ...(entry.split ?? [])];
@@ -109,24 +122,22 @@ function entryRows(entry: JournalLineState, lineId: Id, journal: SlotJournal, ru
   return rows;
 }
 
-/** Each journal page's rows, split into screens of `JOURNAL_ROWS` with the page title on each; only pages the slot holds a fragment for. */
-export function journalPages(journal: SlotJournal, dropped: DroppedJournal | null, run: number): string[][] {
+/**
+ * Each journal page's rows, split into screens of `JOURNAL_ROWS` with the page title on each. A line goes onto its page only once a
+ * reading is written there, and a fragment only with a line it names.
+ */
+export function journalPages(journal: SlotJournal, run: number): string[][] {
   const screens: string[][] = [];
+  const namesLine = (fragmentId: Id, lineId: Id) => JOURNAL_FRAGMENTS.find((x) => x.id === fragmentId)?.lineIds.includes(lineId) ?? false;
   for (const page of JOURNAL_PAGES) {
-    const lineIds = page.lines.map((l) => l.id);
-    const held = journal.fragments.filter((f) => JOURNAL_FRAGMENTS.find((x) => x.id === f.id)?.lineIds.some((id) => lineIds.includes(id)));
-    if (held.length === 0) continue;
+    const written = page.lines.filter((l) => journal.lines[l.id]?.directionId || journal.lines[l.id]?.split);
+    const held = journal.fragments.filter((f) => written.some((l) => namesLine(f.id, l.id)));
+    if (written.length === 0) continue;
     const rows: string[] = [];
-    for (const line of page.lines) {
-      const seen = held.filter((f) => JOURNAL_FRAGMENTS.find((x) => x.id === f.id)?.lineIds.includes(line.id));
-      const entry = journal.lines[line.id];
-      const tornOut = !entry && dropped?.hands.some((h) => h.lines[line.id]);
-      if (seen.length === 0 && !entry && !tornOut) continue;
-      const depth = seen.length > 0 ? Math.min(...seen.map((f) => f.depth)) : undefined;
-      rows.push(depth !== undefined ? t("ui.journalLineHeading", { subject: line.subject, depth }) : line.subject);
-      if (entry) rows.push(...entryRows(entry, line.id, journal, run));
-      else if (tornOut) rows.push(INDENT + t("ui.journalTornOut", { depth: dropped!.depth }));
-      else rows.push(INDENT + t("ui.journalUnwritten"));
+    for (const line of written) {
+      const seen = held.filter((f) => namesLine(f.id, line.id));
+      rows.push(seen.length > 0 ? t("ui.journalLineHeading", { subject: line.subject, depth: Math.min(...seen.map((f) => f.depth)) }) : line.subject);
+      rows.push(...entryRows(journal.lines[line.id]!, line.id, journal, run));
     }
     rows.push("", t("ui.journalSeenHeading"));
     for (const f of held) rows.push(...wrapped(t("ui.journalSeen", { run: f.run, depth: f.depth, text: getJournalFragment(f.id)!.text }), INDENT));
