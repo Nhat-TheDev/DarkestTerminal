@@ -91,43 +91,33 @@ describe("curve check", () => {
   const founder = row(FINAL_BOSS_ARCHETYPE.id, "boss", FOUNDER_FLOOR_DEPTH, { winRate: 0.3, winLow: 0.25, winHigh: 0.35, hpLost: 0.8 });
   const passing = () => [row("a", "elite", 11), row("a", "boss", 15, { hpLost: 0.4 }), founder];
 
-  test("rows that keep every rule and match the baseline pass", () => {
-    expect(findCurveIssues(passing(), passing())).toEqual([]);
+  test("rows that keep every rule pass", () => {
+    expect(findCurveIssues(passing())).toEqual([]);
   });
 
   test("a guard whose whole interval sits below the minimum win rate fails, one that only reaches into it does not", () => {
     const rows = passing();
     rows[0] = { ...rows[0]!, winRate: MIN_GUARD_WIN_RATE - 0.01, winLow: 0.2, winHigh: MIN_GUARD_WIN_RATE + 0.02 };
     rows[2] = { ...founder, winRate: 0.2 };
-    expect(findCurveIssues(rows, rows)).toEqual([]);
+    expect(findCurveIssues(rows)).toEqual([]);
     rows[0] = { ...rows[0]!, winHigh: MIN_GUARD_WIN_RATE - 0.01 };
-    expect(findCurveIssues(rows, rows)).toEqual([expect.stringContaining("a elite 11 wins")]);
+    expect(findCurveIssues(rows)).toEqual([expect.stringContaining("a elite 11 wins")]);
   });
 
   test("a final boss won far more often than the hardest guard fails, one just above it does not", () => {
     const rows = passing();
     rows[1] = { ...rows[1]!, winRate: 0.3 - FOUNDER_WIN_RATE_SLACK / 2 };
-    expect(findCurveIssues(rows, rows)).toEqual([]);
+    expect(findCurveIssues(rows)).toEqual([]);
     rows[1] = { ...rows[1]!, winRate: 0.3 - 2 * FOUNDER_WIN_RATE_SLACK };
-    expect(findCurveIssues(rows, rows)).toEqual([expect.stringContaining("the final boss wins 30%")]);
+    expect(findCurveIssues(rows)).toEqual([expect.stringContaining("the final boss wins 30%")]);
   });
 
   test("a boss taking clearly less HP than its elite on the floors before it fails", () => {
     const rows = passing();
     rows[1] = { ...rows[1]!, hpLost: 0.3 - BOSS_HP_LOST_TOLERANCE / 2 };
-    expect(findCurveIssues(rows, rows)).toEqual([]);
+    expect(findCurveIssues(rows)).toEqual([]);
     rows[1] = { ...rows[1]!, hpLost: 0.3 - 2 * BOSS_HP_LOST_TOLERANCE };
-    expect(findCurveIssues(rows, rows)).toEqual([expect.stringContaining("less than its elite on floor 11")]);
-  });
-
-  test("a win rate that moved from the baseline, and a guard only one side holds, fail", () => {
-    const rows = passing();
-    const baseline = [{ ...rows[0]!, winRate: 0.8 }, rows[2]!, row("b", "elite", 21)];
-    expect(findCurveIssues(rows, baseline)).toEqual([
-      "a elite 11 win rate moved from 80% to 90% against the baseline",
-      "a boss 15 is missing from the baseline",
-      "b elite 21 is gone from the baseline",
-    ]);
+    expect(findCurveIssues(rows)).toEqual([expect.stringContaining("less than its elite on floor 11")]);
   });
 });
 

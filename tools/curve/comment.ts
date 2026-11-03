@@ -1,11 +1,11 @@
 // Turns `bun run curve` output into the pull request comment: the check result, and every change
 // from the base branch's own run.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { parseArgs } from "../dev-save-dump/args";
 import { getClass } from "../../src/data/classes";
 import { TEAMS, type Team } from "../random-play/team";
-import { compareToBaseline, findCurveIssues, rowKey, type BenchRow } from "./bench";
+import { compareToBaseline, findCurveIssues, mean, pct, rowKey, type BenchRow } from "./bench";
 
 export interface CurveRun {
   label: string;
@@ -16,13 +16,11 @@ const HARDEST_SHOWN = 5;
 /** The comment's first line, so CI finds and edits this comment rather than another bot comment. */
 export const CURVE_MARKER = "<!-- guard-curve -->";
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 const pctPrecise = (x: number) => `${(x * 100).toFixed(1)}%`;
 const signed = (x: number, digits = 0) => {
   const shown = Math.abs(x).toFixed(digits);
   return `${Number(shown) === 0 ? "±" : x > 0 ? "+" : "−"}${shown}`;
 };
-const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length);
 const table = (head: string[], rows: (string | number)[][]) =>
   [`| ${head.join(" | ")} |`, `|${head.map(() => "---").join("|")}|`, ...rows.map((r) => `| ${r.join(" | ")} |`)].join("\n");
 
@@ -143,6 +141,6 @@ if (import.meta.main) {
   if (!args.head || !args.out) throw new Error("usage: --head curve.json [--base curve.json] [--head-label X] [--base-label Y] --out comment.md");
   const head: CurveRun = { label: args["head-label"] ?? "", rows: read(args.head) };
   const base: CurveRun | null = args.base && existsSync(resolve(args.base)) ? { label: args["base-label"] ?? "", rows: read(args.base) } : null;
-  const findings = findCurveIssues(head.rows, read(join(import.meta.dir, "baseline.json")));
+  const findings = findCurveIssues(head.rows);
   writeFileSync(resolve(args.out), curveComment(head, base, findings));
 }

@@ -53,7 +53,8 @@ const SAVE_SLOT = "slot1";
 const RECENT_STEPS = 50;
 const SOFT_LOCK_STEPS = 300;
 const LOOP_BREAK_STEPS = 30;
-const SENSIBLE_CHANCE = 0.95;
+/** How often the bot plays the team's choice rather than a random footer key: high in a fight so guards get beaten, lower elsewhere so menus get mashed. */
+const SENSIBLE_CHANCE = { combat: 0.95, other: 0.7 };
 /** While looping: chance to back out of a screen that offers Esc, and how much likelier a digit or Enter is than any other footer key. */
 const LOOP_ESCAPE_CHANCE = 0.5;
 const LOOP_PROGRESS_WEIGHT = 8;
@@ -159,7 +160,7 @@ function watchRun(game: Game, stats: RunStats, watch: { room: string; guard: num
   }
   if (watch.guard === null && s.combat && !s.combat.outcome && room.type === "boss") watch.guard = depth;
   if (watch.guard === null) return;
-  const lost = s.combat?.outcome === "defeat" || s.gameOver !== null;
+  const lost = s.combat?.outcome === "defeat" || s.gameOver === "defeat";
   const won = s.combat?.outcome === "victory" || depth !== watch.guard;
   if (!lost && !won) return;
   stats.guards.push({ depth: watch.guard, tier: watch.guard % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite", won: !lost });
@@ -349,7 +350,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         if (step - lastProgressStep >= LOOP_BREAK_STEPS) {
           key = loopBreakKey(rng, footer);
         } else {
-          const wanted = rng.next() < SENSIBLE_CHANCE ? (policy.chooseKey(app, footer) ?? footer.keys.find((k) => k === "1" || k === "RETURN") ?? null) : null;
+          const wanted = rng.next() < (game.state.combat ? SENSIBLE_CHANCE.combat : SENSIBLE_CHANCE.other) ? (policy.chooseKey(app, footer) ?? footer.keys.find((k) => k === "1" || k === "RETURN") ?? null) : null;
           const sensible = wanted !== null && footer.keys.includes(wanted) ? wanted : null;
           key = sensible ?? (footer.keys.length > 0 ? pick(rng, footer.keys) : pick(rng, ["RETURN", "ESCAPE", "1"]));
         }

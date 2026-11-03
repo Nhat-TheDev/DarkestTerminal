@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -24,7 +25,7 @@ const named = args.team === undefined ? null : TEAMS.find((t) => t.name.toLowerC
 if (named === undefined) throw new Error(`--team must be one of ${TEAMS.map((t) => t.name).join(", ")}, not "${args.team}"`);
 const teams = named ? [named] : single ? TEAMS.slice(0, 1) : TEAMS;
 // Evidence runs start where each screen is reached: every room event, a rest room, both guard tiers,
-// a defeat and a fresh run with its opening scenes. Teams take turns, so their kits show up too.
+// a defeat and a fresh run with its opening scenes.
 const EVENT_FLOOR = 12;
 const levelOn = (depth: number) => Math.round(levelAt(depth));
 const SCENARIOS: Scenario[] = [
@@ -35,10 +36,15 @@ const SCENARIOS: Scenario[] = [
   { name: "boss guard", depth: 15, level: levelOn(15), roomArg: "boss" },
   { name: "defeat", depth: 95, level: 1, roomArg: "boss" },
 ];
-const schedule: { team: Team; scenario?: Scenario }[] = evidence
-  ? SCENARIOS.map((scenario, i) => ({ team: named ?? TEAMS[i % TEAMS.length]!, scenario }))
-  : teams.flatMap((team) => Array.from({ length: runsPerTeam }, () => ({ team })));
 const seedStart = Number(args["seed-start"] ?? 1);
+// A scenario's seed and team come from its name, so adding or dropping an event leaves every other scenario's screens as they were.
+const nameHash = (name: string) => createHash("sha1").update(name).digest().readUInt32BE(0);
+const schedule: { team: Team; scenario?: Scenario; gameSeed?: number }[] = evidence
+  ? SCENARIOS.map((scenario) => {
+      const hash = nameHash(scenario.name);
+      return { team: named ?? TEAMS[hash % TEAMS.length]!, scenario, gameSeed: seedStart + (hash % 1_000_000) };
+    })
+  : teams.flatMap((team) => Array.from({ length: runsPerTeam }, () => ({ team })));
 // "none" (CI) writes no files: the printed failures and exit code are the whole result.
 const reportMode = args.report ?? "html";
 if (reportMode !== "html" && reportMode !== "none") throw new Error(`--report must be html or none, not "${reportMode}"`);
@@ -58,8 +64,8 @@ const runStats: RunStats[] = [];
 const gallery = new Map<string, ReportInput["gallery"][number]>();
 const startedAt = performance.now();
 
-for (const [i, { team, scenario }] of schedule.entries()) {
-  const gameSeed = single ? Number(args["game-seed"]) : seedStart + i;
+for (const [i, { team, scenario, gameSeed: scenarioSeed }] of schedule.entries()) {
+  const gameSeed = single ? Number(args["game-seed"]) : (scenarioSeed ?? seedStart + i);
   const botSeed = single ? Number(args["bot-seed"] ?? gameSeed) : gameSeed * 7919 + 1;
   const result = await playRun({ gameSeed, botSeed, maxSteps, team, scenario });
   report.runs++;

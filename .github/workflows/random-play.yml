@@ -2,12 +2,15 @@ name: Random Play
 
 on:
   pull_request:
+  # A push to a base branch keeps its curve as the guard-curve artifact, which its pull requests compare against.
+  push:
+    branches: [main, "release/**"]
 
 permissions:
   contents: read
 
 concurrency:
-  group: random-play-${{ github.event.pull_request.number }}
+  group: random-play-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -15,41 +18,67 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: base
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # Fixed seeds, so a red check means the code changed, not the dice.
+      # Fixed seeds, so a red check means the code changed, not the dice. Checkout measures the pull request merged into its base.
       - id: check
         continue-on-error: true
         run: bun run curve --check --out curve-head
+      - name: Keep the curve as an artifact
+        if: always() && hashFiles('curve-head/curve.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: guard-curve
+          path: curve-head/
+          retention-days: 90
+      # The base commit's own artifact when its push run kept one; otherwise the base is checked out and measured here.
+      - name: Fetch the base branch's curve
+        id: base-artifact
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow random-play.yml --branch "$BASE_REF" --event push \
+            --commit "$BASE_SHA" --status completed --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          [ -n "$run_id" ] && gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n guard-curve -D curve-base
+          test -f curve-base/curve.json
+        shell: bash
+      - if: github.event_name == 'pull_request' && steps.base-artifact.outcome != 'success'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
       - name: Measure the base branch
+        if: github.event_name == 'pull_request' && steps.base-artifact.outcome != 'success'
         continue-on-error: true
         run: |
           if [ -f base/tools/curve/run.ts ]; then
             cd base && bun install --frozen-lockfile && bun run curve --out ../curve-base
           fi
       - name: Comment the curve on the pull request
-        if: always() && hashFiles('curve-head/curve.json') != ''
+        if: always() && github.event_name == 'pull_request' && hashFiles('curve-head/curve.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           bun run tools/curve/comment.ts --head curve-head/curve.json --base curve-base/curve.json \
-            --head-label "\`${HEAD_SHA::7}\`" --base-label "\`${BASE_SHA::7}\`" --out curve-comment.md
+            --head-label "\`${HEAD_SHA::7}\` merged into \`${BASE_SHA::7}\`" --base-label "\`${BASE_SHA::7}\`" --out curve-comment.md
           bash .github/scripts/upsert-comment.sh guard-curve ${{ github.event.pull_request.number }} curve-comment.md
         shell: bash
       - if: steps.check.outcome == 'failure'
         run: exit 1
 
   random-play:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

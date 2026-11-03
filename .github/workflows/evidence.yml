@@ -13,7 +13,8 @@ concurrency:
 
 jobs:
   evidence:
-    if: github.event.action != 'closed'
+    # A fork's token cannot push the evidence branch or comment.
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

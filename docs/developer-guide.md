@@ -33,8 +33,8 @@ seeds. It plays `--runs` runs (5 by default) for each team in `tools/random-play
 the one `--team` names; `--max-steps` defaults to 5000. A run ends once its party leaves the floor
 it started on, so it covers one guard and the screens after it, or on defeat. A quarter of the runs
 start fresh; the rest start, via `applyDump`, on a guard floor ending in 1 or 5 below the ending
-checkpoint, at that floor's average level. Nearly every key comes from the team's policy, the rest
-from the footer at random, so stray menus still get opened.
+checkpoint, at that floor's average level. In a fight nearly every key comes from the team's policy;
+outside one, close to a third come from the footer at random, so stray menus still get opened.
 
 The policy works from what each member's roles and skills allow. A member holds one or more roles: a
 healer heals from 70% HP rather than 50% and keeps the MP for its cheapest heal, a tank opens with
@@ -79,13 +79,15 @@ runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
 `bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
 find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
 event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room), an elite
-and a boss guard room, and a defeat. Teams take turns between scenarios, and a scenario plays at
+and a boss guard room, and a defeat. A scenario's seed and team come from its name, so adding an event
+leaves every other scenario's screens as they were, and a scenario plays at
 180×70 with no save round trips, resizes or hidden-key probes, so the same code captures the same
 screens. It still reports failures as above. Into `--out` it writes `screens/*.png` (each screen at
 180×70 and 150×45, drawn from the captured cells by `@resvg/resvg-js`, block glyphs as rectangles),
 `manifest.json` (each screen's key, size, file and a hash of its cells, plus the failure count) and
 a gallery `README.md` (`tools/random-play/evidence.ts`). On a pull request,
-`.github/workflows/evidence.yml` runs it on the branch and, when the base has it too, on the base;
+`.github/workflows/evidence.yml` runs it on the branch and, when the base has it too, on the base
+(a pull request from a fork skips it, since its token can neither push nor comment);
 publishes the branch's screens as a single orphan commit on `evidence/pr-<number>`, replaced on every
 push and deleted when the pull request closes; and keeps one comment on the pull request: the screen
 count, the room events with no screen, the screens new, gone or changed against the base (the first
@@ -114,17 +116,19 @@ artifacts are not modelled yet.
 `bun run curve --check` runs every guard with the default options and exits non-zero when a rule in
 `findCurveIssues` (`tools/curve/bench.ts`) fails: a guard whose whole win-rate interval sits below
 `MIN_GUARD_WIN_RATE`, a final boss won more than `FOUNDER_WIN_RATE_SLACK` more often than the hardest
-guard, a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on the
-floors just before it, or a guard whose win rate moved more than 5 points from the committed
-`tools/curve/baseline.json` (a guard added or removed counts too). Every pull request runs it. A change
-that moves the curve on purpose runs `bun run curve --update-baseline` and commits the rewritten
-baseline with it, one guard per line, so the diff shows which guards moved. On a pull request the `curve` job of
-`.github/workflows/random-play.yml` also measures the base branch with its own code and posts one
+guard, or a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on
+the floors just before it. A move from the base branch is reported, not failed: whether it is
+intended is the reviewer's call. The `curve` job of `.github/workflows/random-play.yml` runs the check
+on every pull request and on every push to `main` or a `release/**` branch, and keeps `curve.json`
+and `report.html` as the `guard-curve` artifact for 90 days. On a pull request it takes the base
+commit's own `guard-curve` artifact from that push run, or, when there is none (the run is missing,
+still going or expired), checks out the base and measures it with its own code. It then posts one
 comment on the pull request, edited on every push (`tools/curve/comment.ts`): the check result, a
 Teams table (win rate, HP lost, deaths and median rounds over every guard, base against branch, and
 each team's hardest guard) with each team's members and roles below it, every guard whose win rate moved more than 5
 points with its HP lost and median rounds, the hardest guards, and every guard in a collapsed table.
-A base without `bun run curve` gets the comment without the comparison. The base runs its own team
+To compare locally, download a run's artifact (`gh run download RUN -n guard-curve`) and pass its
+`curve.json` to `--baseline`. A base without `bun run curve` gets the comment without the comparison. The base runs its own team
 policy and bench, so a change to either shows in the comparison as well as a balance change.
 <!-- docs:intent-end -->
 
@@ -748,13 +752,13 @@ src/
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
-  curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, baseline comparison), run.ts (CLI, --check and --update-baseline), comment.ts (the pull request comment), baseline.json (the committed curve --check compares against)
+  curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, comparison with another run, the check's rules), run.ts (CLI, --check), comment.ts (the pull request comment)
   random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), evidence.ts (screen keys, PNGs, manifest and the evidence comment), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
   randomPlay.test.ts   # the random-play tool's checks, report rendering and screen evidence, plus one short bot run
-  curveBench.test.ts   # the guard bench's statistics, cases, stopping rule and baseline comparison, the curve check's rules, and the pull request comment
+  curveBench.test.ts   # the guard bench's statistics, cases, stopping rule and comparison with another run, the curve check's rules, and the pull request comment
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting
   resolver.test.ts     # the shared SkillEffect resolver + status-effect cleanup when a room is cleared

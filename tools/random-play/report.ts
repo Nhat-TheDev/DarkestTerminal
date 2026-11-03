@@ -191,6 +191,30 @@ export function guardLine(summary: RunSummary): string {
   return `guards: ${tiers.join(", ")}; average highest fear ${(survival.fear / samples).toFixed(1)}, satiety ${(survival.satiety / samples).toFixed(1)}`;
 }
 
+/** A dev tool's HTML page in the shared dark theme; `css` adds to the base styles. */
+export function htmlPage(title: string, css: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  :root { --bg:#14110f; --text:#d8cfc4; --dim:#8a8077; --line:#3a332d; }
+  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--text); font:14px/1.5 system-ui, sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:32px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .meta { color:var(--dim); margin:6px 0; } .none { color:var(--dim); }
+  table { border-collapse:collapse; } th, td { border:1px solid var(--line); padding:3px 8px; text-align:right; } th:first-child, td:first-child { text-align:left; }
+${css}
+</style>
+</head>
+<body>
+${body}
+</body>
+</html>
+`;
+}
+
 export function renderReport(input: ReportInput): string {
   const failureGroups = groupFindings(input.failures);
   const warningGroups = groupFindings(input.warnings);
@@ -199,30 +223,17 @@ export function renderReport(input: ReportInput): string {
   const sizes = [...new Set(gallery.map((g) => g.size))];
   const outcomes = Object.entries(input.outcomes).map(([k, v]) => `${escapeHtml(k)} ${v}`).join(" · ");
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Random-play report</title>
-<style>
-  :root { --bg:#14110f; --panel:#1e1a17; --text:#d8cfc4; --dim:#8a8077; --fail:#c0473a; --warn:#c9973a; --line:#3a332d; }
-  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--text); font:14px/1.5 system-ui, sans-serif; }
-  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:32px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
-  .meta { color:var(--dim); margin:6px 0; }
+  return htmlPage(
+    "Random-play report",
+    `  :root { --panel:#1e1a17; --fail:#c0473a; --warn:#c9973a; }
   .card { background:var(--panel); border-left:3px solid var(--line); margin:8px 0; padding:8px 12px; }
   .card.fail { border-left-color:var(--fail); } .card.warn { border-left-color:var(--warn); }
   summary { cursor:pointer; } .tag { font-family:monospace; font-weight:700; } .count { color:var(--dim); }
   pre { overflow-x:auto; } .cmd, .stack, .steps { background:#0e0c0a; padding:8px; font-size:12px; }
   .term { font:12px/1.2 Menlo, Consolas, "DejaVu Sans Mono", monospace; background:#0b0908; padding:8px; display:inline-block; max-width:100%; }
   .filters { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
-  .shot { margin:16px 0; } .shot h3 { font-size:14px; margin:0 0 4px; font-family:monospace; }
-  .none { color:var(--dim); }
-  table { border-collapse:collapse; } th, td { border:1px solid var(--line); padding:3px 8px; text-align:right; } th:first-child, td:first-child { text-align:left; }
-</style>
-</head>
-<body>
-<h1>Random-play report</h1>
+  .shot { margin:16px 0; } .shot h3 { font-size:14px; margin:0 0 4px; font-family:monospace; }`,
+    `<h1>Random-play report</h1>
 <p class="meta">${escapeHtml(input.generatedAt)} · ${input.runs} runs · ${input.steps} steps · ${input.durationSec.toFixed(0)} s · ${outcomes}</p>
 
 <h2>Teams</h2>
@@ -260,8 +271,6 @@ ${gallery
     el.hidden = (kind.value && el.dataset.kind !== kind.value) || (size.value && el.dataset.size !== size.value);
   });
   kind.addEventListener("change", apply); size.addEventListener("change", apply);
-</script>
-</body>
-</html>
-`;
+</script>`
+  );
 }

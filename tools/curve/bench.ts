@@ -30,6 +30,8 @@ export const BATCH_PER_TEAM = 20;
 export const NOTABLE_WIN_RATE_CHANGE = 0.05;
 const Z_95 = 1.96;
 
+export const pct = (x: number) => `${Math.round(x * 100)}%`;
+
 const tierAt = (depth: number): GuardTier => (depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite");
 
 /** Every guard on every start floor it can stand on, its first floor at each tier, and the final boss. */
@@ -96,7 +98,9 @@ export function guardFight(guard: GuardCase, team: Team, seed: number, level: nu
       const source = turn.kind === "skill" ? turn.skill : turn.item;
       const targets = turn.target ? [turn.target] : (game.autoTargets(source.target, ref) ?? [ref]);
       const err = turn.kind === "skill" ? game.queue(ref, turn.skill.id, targets) : game.queueItem(ref, turn.item.id, targets);
-      if (err) game.queue(ref, actor.unlockedSkillIds[0]!, game.livingEnemyRefs().slice(0, 1));
+      if (err && game.queue(ref, actor.unlockedSkillIds[0]!, game.livingEnemyRefs().slice(0, 1))) {
+        throw new Error(`${rowKey(guard)} ${team.name} seed ${seed}: ${actor.classId} could queue neither its planned turn (${err.reason}) nor a basic attack`);
+      }
     }
     if (!game.readyToResolve()) break;
     game.resolve();
@@ -133,7 +137,7 @@ export function quantile(values: number[], q: number): number {
   return values[Math.min(values.length - 1, Math.max(0, Math.ceil(q * values.length) - 1))]!;
 }
 
-const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length);
+export const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length);
 
 export interface TeamStats {
   team: string;
@@ -256,10 +260,9 @@ export const FOUNDER_WIN_RATE_SLACK = 0.2;
 /** A boss may take this much less of the party's HP than its elite on the floors just before it. */
 export const BOSS_HP_LOST_TOLERANCE = 0.02;
 
-/** What `bun run curve --check` fails on: the design rules on `rows`, then every notable change from `baseline`. */
-export function findCurveIssues(rows: BenchRow[], baseline: BenchRow[]): string[] {
+/** What `bun run curve --check` fails on: the design rules on `rows`. A move from the base is reported, not failed. */
+export function findCurveIssues(rows: BenchRow[]): string[] {
   const found: string[] = [];
-  const pct = (x: number) => `${Math.round(x * 100)}%`;
   for (const row of rows) {
     if (row.winHigh < MIN_GUARD_WIN_RATE) found.push(`${rowKey(row)} wins ${pct(row.winRate)}, its interval below ${pct(MIN_GUARD_WIN_RATE)}`);
   }
@@ -279,9 +282,5 @@ export function findCurveIssues(rows: BenchRow[], baseline: BenchRow[]): string[
     }
   }
 
-  for (const change of compareToBaseline(rows, baseline).filter((c) => c.notable)) {
-    if (!change.now || !change.before) found.push(`${change.key} is ${change.now ? "missing from" : "gone from"} the baseline`);
-    else found.push(`${change.key} win rate moved from ${pct(change.before.winRate)} to ${pct(change.now.winRate)} against the baseline`);
-  }
   return found;
 }

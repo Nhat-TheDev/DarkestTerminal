@@ -5,21 +5,18 @@ import { parseArgs } from "../dev-save-dump/args";
 
 // SAVE_DIR is read when the engine is first imported, so it must be set before anything from src/ loads.
 process.env.DARKEST_TERMINAL_SAVE_DIR = mkdtempSync(join(tmpdir(), "darkest-terminal-curve-saves-"));
-const { benchRow, compareToBaseline, findCurveIssues, guardCases } = await import("./bench");
+const { benchRow, compareToBaseline, findCurveIssues, guardCases, pct } = await import("./bench");
 const { TEAMS } = await import("../random-play/team");
-const { table, escapeHtml } = await import("../random-play/report");
+const { table, escapeHtml, htmlPage } = await import("../random-play/report");
 type BenchRow = import("./bench").BenchRow;
 type RowChange = import("./bench").RowChange;
 type LevelPick = import("./bench").LevelPick;
 
-const SWITCHES = ["--check", "--update-baseline"];
-const args = parseArgs(process.argv.slice(2).filter((a) => !SWITCHES.includes(a)));
+const args = parseArgs(process.argv.slice(2).filter((a) => a !== "--check"));
 const check = process.argv.includes("--check");
-const updateBaseline = process.argv.includes("--update-baseline");
-const BASELINE_PATH = join(import.meta.dir, "baseline.json");
-// The committed baseline is measured with the default options only, so a check compares like with like.
-if ((check || updateBaseline) && ["only", "tier", "teams", "level", "precision", "max-fights", "baseline"].some((k) => k in args)) {
-  throw new Error("--check and --update-baseline run every guard with the default options; drop the other flags");
+// The base's artifact is measured with the default options only, so a check compares like with like.
+if (check && ["only", "tier", "teams", "level", "precision", "max-fights"].some((k) => k in args)) {
+  throw new Error("--check runs every guard with the default options; drop the other flags");
 }
 
 const level = (args.level ?? "avg") as LevelPick;
@@ -34,13 +31,12 @@ const teams = args.teams === undefined ? TEAMS : args.teams.split(",").map((name
 });
 const precision = Number(args.precision ?? 0.05);
 const maxFights = Number(args["max-fights"] ?? 1000);
-const baselinePath = check ? BASELINE_PATH : args.baseline ? resolve(args.baseline) : null;
+const baselinePath = args.baseline ? resolve(args.baseline) : null;
 const baseline: BenchRow[] | null = baselinePath ? JSON.parse(readFileSync(baselinePath, "utf8")).rows : null;
 
 const cases = guardCases().filter((c) => (!only || only.includes(c.id)) && (!tier || c.tier === tier));
 if (cases.length === 0) throw new Error("no guard matches --only/--tier");
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 const startedAt = performance.now();
 const rows: BenchRow[] = [];
 for (const guard of cases) {
@@ -68,34 +64,16 @@ if (changes) {
 }
 
 const options = { level, precision, maxFights, teams: teams.map((t) => t.name), only: only ?? null, tier: tier ?? null };
-if (updateBaseline) {
-  // One row per line, so a balance change reads as a diff of the guards it moved.
-  const round = (_: string, v: unknown) => (typeof v === "number" ? Math.round(v * 10000) / 10000 : v);
-  writeFileSync(BASELINE_PATH, `{"options":${JSON.stringify(options)},"rows":[\n${rows.map((r) => JSON.stringify(r, round)).join(",\n")}\n]}\n`);
-  console.log(`baseline: ${BASELINE_PATH}`);
-}
 
 const outDir = args.out ? resolve(args.out) : mkdtempSync(join(tmpdir(), "darkest-terminal-curve-"));
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, "curve.json"), JSON.stringify({ generatedAt: new Date().toISOString(), options, rows }, null, 2));
 writeFileSync(
   join(outDir, "report.html"),
-  `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guard curve</title>
-<style>
-  :root { --bg:#14110f; --text:#d8cfc4; --dim:#8a8077; --line:#3a332d; }
-  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--text); font:14px/1.5 system-ui, sans-serif; }
-  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:32px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
-  .meta { color:var(--dim); margin:6px 0; } .none { color:var(--dim); } .wrap { overflow-x:auto; }
-  table { border-collapse:collapse; } th, td { border:1px solid var(--line); padding:3px 8px; text-align:right; white-space:nowrap; } th:first-child, td:first-child { text-align:left; }
-</style>
-</head>
-<body>
-<h1>Guard curve</h1>
+  htmlPage(
+    "Guard curve",
+    "  .wrap { overflow-x:auto; } th, td { white-space:nowrap; }",
+    `<h1>Guard curve</h1>
 <p class="meta">${escapeHtml(new Date().toISOString())} · ${rows.length} guards · ${fights} fights · ${durationSec.toFixed(0)} s · level ${level} · teams ${escapeHtml(options.teams.join(", "))}</p>
 <p class="meta">Real engine fights from full HP with the starting items and no artifacts, played by the random-play team policy. Rounds count won fights only.</p>
 ${changes ? `<h2>Against baseline</h2><div class="wrap">${table(
@@ -106,18 +84,15 @@ ${changes ? `<h2>Against baseline</h2><div class="wrap">${table(
 <div class="wrap">${table(
     ["Guard", "Tier", "Floor", "Level", "Fights", "Win", "95% interval", "Timed out", "Rounds p10", "Rounds median", "Rounds p90", "Hp lost", "Deaths", "Mp used", "Items used", ...teams.map((t) => t.name)],
     rows.map((r) => [r.id, r.tier, r.depth, r.level, r.fights, pct(r.winRate), `${pct(r.winLow)}-${pct(r.winHigh)}`, r.timedOut, r.roundsP10, r.roundsMedian, r.roundsP90, pct(r.hpLost), r.deaths.toFixed(2), pct(r.mpUsed), r.itemsUsed.toFixed(1), ...r.teams.map((t) => pct(t.winRate))])
-  )}</div>
-</body>
-</html>
-`
+  )}</div>`
+  )
 );
 console.log(`report: ${join(outDir, "report.html")}\ndata:   ${join(outDir, "curve.json")}`);
 
 if (check) {
-  const findings = findCurveIssues(rows, baseline!);
+  const findings = findCurveIssues(rows);
   for (const f of findings) console.log(`FAIL curve: ${f}`);
   console.log(`${findings.length} curve failures`);
-  if (findings.length > 0) console.log("If the change is intended, run `bun run curve --update-baseline` and commit tools/curve/baseline.json with it.");
   process.exit(findings.length > 0 ? 1 : 0);
 }
 process.exit(0);
