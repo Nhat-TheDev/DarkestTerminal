@@ -1,6 +1,6 @@
 import { CLASSES, getClass, getSkill, getEffectiveSkill } from "../../src/data/classes";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
-import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, EXECUTE_COOLDOWN_TURNS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
+import { MONSTER_ARCHETYPES, GUARD_ROOM_ARCHETYPES, getArchetype, spawnMonster, getMonsterSkill, MONSTER_SKILLS, MONSTER_TYPE_MULTIPLIER } from "../../src/data/monsters";
 import { resolveRaceProfile } from "../../src/data/monsterRaces";
 import {
   growthBonus,
@@ -23,9 +23,9 @@ import { mitigatedOffense, getFearTier, getFearAccuracyPenalty, getFearDamagePen
 import { createFloor } from "../../src/data/floor";
 import { Rng } from "../../src/engine/rng";
 import { STATUS_EFFECTS, getStatusEffect } from "../../src/data/statusEffects";
-import { BALANCE } from "../../src/data/balanceConfig";
+import { BALANCE, TARGETING_FACTORS } from "../../src/data/balanceConfig";
 import { t } from "../../src/data/strings";
-import type { CharacterClass, MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
+import type { CharacterClass, MonsterArchetype, MonsterPhase, MonsterTier, SkillDefinition, SkillEffect } from "../../src/types";
 
 const GROWTH_STATS: GrowthStat[] = ["attack", "defense", "maxHp", "maxMp", "magicPower"];
 
@@ -87,10 +87,10 @@ export function getCatalog() {
       bossMultiplier: BOSS_MULTIPLIER,
       expRewardDepthRate: EXP_REWARD_DEPTH_RATE,
       bossFloorInterval: BOSS_FLOOR_INTERVAL,
-      executeCooldownTurns: EXECUTE_COOLDOWN_TURNS,
       monsterTypeMultiplier: MONSTER_TYPE_MULTIPLIER,
     },
     balance: BALANCE,
+    targetingFactors: TARGETING_FACTORS,
     fearTiers: ([1, 2, 3, 4] as FearTier[]).map((tier) => ({
       tier,
       name: t(`ui.fearTier${tier}`),
@@ -191,10 +191,12 @@ export interface MonsterComputation {
     basicAttack: { amount: number };
     /** Skills at any tier; one is reachable at this tier only if `actionWeights` lists it. */
     skills: SkillDefinition[];
-    /** Outside the weighted roll: charges a turn, then always releases. Boss tier only. */
-    execute: SkillDefinition | null;
   };
   actionWeights: MonsterArchetype["actionWeights"] extends infer T ? (T extends object ? T[keyof T] : never) : never | null;
+  /** The phases of this tier, in the order they are entered. */
+  phases: MonsterPhase[];
+  /** Boss tier only: the telegraph its meter releases. */
+  bossTelegraph: MonsterArchetype["bossTelegraph"] | null;
 }
 
 export function computeMonster(archetypeId: string, depth: number, tier: MonsterTier): MonsterComputation | { error: string } {
@@ -238,9 +240,11 @@ export function computeMonster(archetypeId: string, depth: number, tier: Monster
     skillKit: {
       basicAttack: { amount: 0 },
       skills: archetype.skillIds.map(getMonsterSkill),
-      execute: archetype.executeSkillId ? getMonsterSkill(archetype.executeSkillId) : null,
     },
     actionWeights: (archetype.actionWeights?.[tier] as never) ?? null,
+    /** The phases this tier enters, in order: each one's weights replace the tier's table once HP falls below its threshold. */
+    phases: (archetype.phases ?? []).filter((p) => p.tier === tier),
+    bossTelegraph: tier === "boss" ? (archetype.bossTelegraph ?? null) : null,
   };
 }
 
@@ -334,13 +338,13 @@ export function previewSkillDamage(
   fearTier: FearTier,
   sourceIsCharacter: boolean
 ): SkillDamagePreview {
-  const baseOffense = skill.isMagic ? (source.magicPower ?? 0) : source.attack;
+  const offenseOf = (e: SkillEffect) => (e.scalesWithAttackAndMagic ? source.attack + (source.magicPower ?? 0) : skill.isMagic ? (source.magicPower ?? 0) : source.attack);
   const allDamageEffects = effectsOf(skill).filter((e) => e.kind === "damage");
   // Mirrors combat.ts isOverrideEffect: a "self" effect on a non-self skill hits only the caster.
   const selfDamageEffects = allDamageEffects.filter((e) => e.target === "self" && e.target !== skill.target);
   const damageEffects = allDamageEffects.filter((e) => !(e.target === "self" && e.target !== skill.target));
   const perEffect = damageEffects.map((e) => {
-    const offense = baseOffense * ((e.offenseMultiplierPercent ?? 100) / 100);
+    const offense = offenseOf(e) * ((e.offenseMultiplierPercent ?? 100) / 100);
     const breakdown = computeDamage({
       offense,
       defense: target.defense,
@@ -444,9 +448,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     if (!weights || weights[skill.id] === undefined) continue;
     incoming.push({ ...previewSkillDamage(skill, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: weightPercent(skill.id) });
   }
-  if (opts.tier === "boss" && monster.skillKit.execute) {
-    incoming.push({ ...previewSkillDamage(monster.skillKit.execute, monsterOffense, characterTarget, fearTier, false), actionWeightPercent: null });
-  }
 
   const rollingActions = incoming.filter((a) => a.actionWeightPercent !== null && a.actionWeightPercent > 0);
   const expectedDamagePerRoundFromRolling = rollingActions.reduce((sum, a) => sum + a.totalExpectedDamage * ((a.actionWeightPercent ?? 0) / 100), 0);
@@ -457,9 +458,6 @@ export function computeMatchup(opts: { classId: string; level: number; archetype
     outgoing,
     incoming,
     expectedDamagePerRoundFromRolling: Number(expectedDamagePerRoundFromRolling.toFixed(1)),
-    executeCycleNote: monster.skillKit.execute
-      ? `${monster.skillKit.execute.name} isn't part of the weighted roll — it fires once every ~${EXECUTE_COOLDOWN_TURNS + 2} rounds (1 charge turn + 1 release turn + ${EXECUTE_COOLDOWN_TURNS} cooldown turns), always for its own row's damage regardless of the roll above.`
-      : null,
   };
 }
 

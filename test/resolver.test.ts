@@ -1,12 +1,12 @@
 import { describe, test, expect } from "bun:test";
-import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory } from "../src/engine/resolver";
+import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory, isHelpfulStatusEffect } from "../src/engine/resolver";
 import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
 import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
-import { applySkillEffects, resolveRound, startCombat, acolyteDebuffResistPercent } from "../src/engine/combat";
+import { applySkillEffects, resolveRound, startCombat, passiveDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
+import { STATUS_EFFECTS, assertRankWeights, getStatusEffect } from "../src/data/statusEffects";
 import { BALANCE } from "../src/data/balanceConfig";
 
 describe("resolver", () => {
@@ -76,10 +76,15 @@ describe("resolver", () => {
     const { ctx } = makeCtx();
     const attacker = ctx.party[0]!;
     const target = ctx.party[1]!;
+    STATUS_EFFECTS.push({ id: "test-stacked", name: "Test Stacked", description: "x", perTurnEffects: [] } as StatusEffectDefinition);
     target.activeStatusEffects.push({ statusEffectId: "test-stacked", turnsRemaining: 3, stacks: 4 });
     const before = target.hp;
     const scalesWithStatusStacks = { statusEffectId: "test-stacked", percentPerStack: 5 };
-    resolveSkillEffect({ kind: "damage", amount: 0, scalesWithStatusStacks }, attacker, target, { log: [] });
+    try {
+      resolveSkillEffect({ kind: "damage", amount: 0, scalesWithStatusStacks }, attacker, target, { log: [] });
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === "test-stacked"), 1);
+    }
     const dealt = before - target.hp;
     // 4 stacks * 5%/stack = +20% on top of the normal 100% offense multiplier.
     const expected = Math.max(1, Math.round(mitigatedOffense(attacker.attack * 1.2, target.defense)));
@@ -165,64 +170,64 @@ describe("resolver", () => {
 
   test("modifyCombatStat buff installs immediately and undoes on expiry", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    const baseDef = vanguard.defense;
+    const knight = ctx.party[0]!;
+    const baseDef = knight.defense;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef + 6);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    expect(knight.defense).toBe(baseDef + 6);
 
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef);
-    expect(vanguard.activeStatusEffects).toHaveLength(0);
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(baseDef);
+    expect(knight.activeStatusEffects).toHaveLength(0);
   });
 
   test("modifyCombatStat debuff ticks down immediately, with no free round", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    const baseDef = vanguard.defense;
+    const knight = ctx.party[0]!;
+    const baseDef = knight.defense;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef - 6);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, knight, knight, { log });
+    expect(knight.defense).toBe(baseDef - 6);
 
     // Stat-mod ticks (unlike DoT/HoT and "special" statuses) decrement the very round they're cast in.
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef - 6);
-    expect(vanguard.activeStatusEffects[0]?.turnsRemaining).toBe(1);
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(baseDef - 6);
+    expect(knight.activeStatusEffects[0]?.turnsRemaining).toBe(1);
 
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(baseDef);
-    expect(vanguard.activeStatusEffects).toHaveLength(0);
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(baseDef);
+    expect(knight.activeStatusEffects).toHaveLength(0);
   });
 
   test("minPercent floors a buff's delta once the actor's stat has grown past where the flat amount matters", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    vanguard.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20, beats the flat 6
+    const knight = ctx.party[0]!;
+    knight.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20, beats the flat 6
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(220);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    expect(knight.defense).toBe(220);
 
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(200); // undoes the applied 20, not the flat 6
-    expect(vanguard.activeStatusEffects).toHaveLength(0);
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(200); // undoes the applied 20, not the flat 6
+    expect(knight.activeStatusEffects).toHaveLength(0);
   });
 
   test("refreshing a minPercent-floored status recomputes appliedAmounts instead of losing them, so expiry undoes the right amount", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    vanguard.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20
+    const knight = ctx.party[0]!;
+    knight.defense = 200; // guard: amount 6, minPercent 10 -> floor = round(200*0.1) = 20
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(220);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    expect(knight.defense).toBe(220);
 
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(220);
-    expect(vanguard.activeStatusEffects).toHaveLength(1);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    expect(knight.defense).toBe(220);
+    expect(knight.activeStatusEffects).toHaveLength(1);
 
-    tickStatModEffects(vanguard, { log });
+    tickStatModEffects(knight, { log });
     // Must undo the full +20 minPercent-floored delta, not the flat +6 `amount`.
-    expect(vanguard.defense).toBe(200);
-    expect(vanguard.activeStatusEffects).toHaveLength(0);
+    expect(knight.defense).toBe(200);
+    expect(knight.activeStatusEffects).toHaveLength(0);
   });
 
   test("reapplying a stackable status that actually gains a stack logs statusStack, not statusRefresh", () => {
@@ -246,58 +251,47 @@ describe("resolver", () => {
 
   test("reapplying a non-stackable status always logs a plain refresh, never statusStack", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
+    const knight = ctx.party[0]!;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
     expect(log.at(-1)!.text).toMatch(/refreshes/);
-    expect(vanguard.activeStatusEffects[0]!.stacks).toBeUndefined();
+    expect(knight.activeStatusEffects[0]!.stacks).toBeUndefined();
   });
 
   test("minPercent leaves a debuff's delta alone below the floor, and floors it once the target's stat is high enough", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
+    const knight = ctx.party[0]!;
     const log: LogEntry[] = [];
 
-    vanguard.defense = 50; // weakened: amount -6, minPercent -10 -> floor = round(50*-0.1) = -5, smaller magnitude than -6
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(44);
-    tickStatModEffects(vanguard, { log });
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(50);
+    knight.defense = 50; // weakened: amount -6, minPercent -10 -> floor = round(50*-0.1) = -5, smaller magnitude than -6
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, knight, knight, { log });
+    expect(knight.defense).toBe(44);
+    tickStatModEffects(knight, { log });
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(50);
 
-    vanguard.defense = 300; // floor = round(300*-0.1) = -30, beats the flat -6
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(270);
-    tickStatModEffects(vanguard, { log });
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(300); // undoes the applied -30, not the flat -6
+    knight.defense = 300; // floor = round(300*-0.1) = -30, beats the flat -6
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, knight, knight, { log });
+    expect(knight.defense).toBe(270);
+    tickStatModEffects(knight, { log });
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(300); // undoes the applied -30, not the flat -6
   });
 
   test("expiry undoes the exact stored delta even if the actor's stat moved in the meantime", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
-    vanguard.defense = 200; // guard applies floor(20) here, stored on the ActiveStatusEffect entry
+    const knight = ctx.party[0]!;
+    knight.defense = 200; // guard applies floor(20) here, stored on the ActiveStatusEffect entry
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, vanguard, vanguard, { log });
-    expect(vanguard.defense).toBe(220);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "guard" }, knight, knight, { log });
+    expect(knight.defense).toBe(220);
 
-    vanguard.defense += 500; // an unrelated change to the same stat; re-deriving the floor now would disagree with what was applied
+    knight.defense += 500; // an unrelated change to the same stat; re-deriving the floor now would disagree with what was applied
 
-    tickStatModEffects(vanguard, { log });
-    expect(vanguard.defense).toBe(700); // minus the stored 20, not a floor re-derived off 720
-    expect(vanguard.activeStatusEffects).toHaveLength(0);
-  });
-
-  test("a status effect's own damage tick (DoT) is flat (amount + maxHpPercent), not attack-minus-defense", () => {
-    // goblin has no physical resist/weak, so race doesn't perturb the untyped DoT tick.
-    const victim = spawnMonster("goblin", 1);
-    const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
-    const before = victim.hp;
-    tickDotEffects(victim, { log });
-    const expectedTick = Math.max(1, Math.round(4 + victim.maxHp * 0.025));
-    expect(before - victim.hp).toBe(expectedTick);
+    tickStatModEffects(knight, { log });
+    expect(knight.defense).toBe(700); // minus the stored 20, not a floor re-derived off 720
+    expect(knight.activeStatusEffects).toHaveLength(0);
   });
 
   test("statusCategory classifies a restoreMp per-turn effect as dot (MP-over-time), same schedule as damage/heal", () => {
@@ -318,13 +312,13 @@ describe("resolver", () => {
 
   test("re-applying an active status effect refreshes duration instead of stacking", () => {
     const { ctx } = makeCtx();
-    const vanguard = ctx.party[0]!;
+    const knight = ctx.party[0]!;
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, vanguard, vanguard, { log });
-    tickDotEffects(vanguard, { log });
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, vanguard, vanguard, { log });
-    expect(vanguard.activeStatusEffects).toHaveLength(1);
-    expect(vanguard.activeStatusEffects[0]!.turnsRemaining).toBe(2);
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, knight, knight, { log });
+    tickDotEffects(knight, { log });
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "burning", durationTurns: 2 }, knight, knight, { log });
+    expect(knight.activeStatusEffects).toHaveLength(1);
+    expect(knight.activeStatusEffects[0]!.turnsRemaining).toBe(2);
   });
 
   test("fear tiers", () => {
@@ -348,7 +342,7 @@ describe("resolver", () => {
 
 describe("room-clear status effect cleanup", () => {
   function setUpOneHpFight(seed: number) {
-    const game = new Game(seed, ["vanguard", "rogue", "viking"]);
+    const game = new Game(seed, ["knight", "rogue", "viking"]);
     const rat = spawnMonster("dungeon-rat", 1);
     rat.hp = 1;
     game.ctx.monsters.push(rat);
@@ -356,20 +350,20 @@ describe("room-clear status effect cleanup", () => {
     room.monsterIds = [rat.id];
     room.cleared = false;
     game.state.combat = startCombat(room.id, [rat.id], game.ctx, false);
-    const [vanguard, rogue, viking] = game.state.party;
-    return { game, vanguard: vanguard!, rogue: rogue!, viking: viking!, rat };
+    const [knight, rogue, viking] = game.state.party;
+    return { game, knight: knight!, rogue: rogue!, viking: viking!, rat };
   }
 
   test("multi-turn self-buffs are force-expired the instant the room is won", () => {
-    const { game, vanguard, rogue, viking, rat } = setUpOneHpFight(10);
+    const { game, knight, rogue, viking, rat } = setUpOneHpFight(10);
     const rogueRef: CombatantRef = { kind: "character", id: rogue.id };
     const vikingRef: CombatantRef = { kind: "character", id: viking.id };
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
 
     expect(game.queue(rogueRef, "poison-coat", [rogueRef])).toBeNull();
     expect(game.queue(vikingRef, "lightning-axe", [vikingRef])).toBeNull();
-    expect(game.queue(vanguardRef, "slash", [enemyRef])).toBeNull();
+    expect(game.queue(knightRef, "slash", [enemyRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
@@ -378,21 +372,21 @@ describe("room-clear status effect cleanup", () => {
   });
 
   test("a debuff survives a room win, keeping its duration and penalty", () => {
-    const { game, vanguard, rat } = setUpOneHpFight(11);
-    const baseDef = vanguard.defense;
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, vanguard, vanguard, { log: game.state.combat!.log });
-    expect(vanguard.defense).toBe(baseDef - 6);
+    const { game, knight, rat } = setUpOneHpFight(11);
+    const baseDef = knight.defense;
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "weakened", durationTurns: 2 }, knight, knight, { log: game.state.combat!.log });
+    expect(knight.defense).toBe(baseDef - 6);
 
-    const vanguardRef: CombatantRef = { kind: "character", id: vanguard.id };
+    const knightRef: CombatantRef = { kind: "character", id: knight.id };
     const enemyRef: CombatantRef = { kind: "monster", id: rat.id };
-    expect(game.queue(vanguardRef, "slash", [enemyRef])).toBeNull();
+    expect(game.queue(knightRef, "slash", [enemyRef])).toBeNull();
     game.resolve();
 
     expect(game.state.combat!.outcome).toBe("victory");
-    const weakened = vanguard.activeStatusEffects.find((a) => a.statusEffectId === "weakened");
+    const weakened = knight.activeStatusEffects.find((a) => a.statusEffectId === "weakened");
     expect(weakened).toBeDefined();
     expect(weakened!.turnsRemaining).toBe(2);
-    expect(vanguard.defense).toBe(baseDef - 6);
+    expect(knight.defense).toBe(baseDef - 6);
   });
 });
 
@@ -575,7 +569,7 @@ describe("Acolyte passive: own-healing-output boost", () => {
   });
 });
 
-describe("Acolyte passive: acolyteDebuffResistPercent", () => {
+describe("Acolyte passive: passiveDebuffResistPercent", () => {
   test("scales with the unlocked passive rank: 0/30/40/50 at rank 0/1/2/3", () => {
     const { ctx } = makeCtx();
     const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
@@ -586,7 +580,7 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
       [35, 50],
     ] as const) {
       acolyte.level = level;
-      expect(acolyteDebuffResistPercent(acolyte)).toBe(expected);
+      expect(passiveDebuffResistPercent(acolyte)).toBe(expected);
     }
   });
 
@@ -594,7 +588,7 @@ describe("Acolyte passive: acolyteDebuffResistPercent", () => {
     const { ctx } = makeCtx();
     const nonAcolyte = ctx.party.find((p) => p.classId !== "acolyte")!;
     nonAcolyte.level = 35;
-    expect(acolyteDebuffResistPercent(nonAcolyte)).toBe(0);
+    expect(passiveDebuffResistPercent(nonAcolyte)).toBe(0);
   });
 });
 
@@ -833,7 +827,7 @@ describe("crit and variance inside a cast", () => {
     ...extra,
   });
 
-  function cast(skill: SkillDefinition, rng: () => number, who: (ctx: ReturnType<typeof makeCtx>["ctx"]) => ReturnType<typeof makeCtx>["ctx"]["party"][number] = (ctx) => ctx.party.find((p) => p.classId === "vanguard")!) {
+  function cast(skill: SkillDefinition, rng: () => number, who: (ctx: ReturnType<typeof makeCtx>["ctx"]) => ReturnType<typeof makeCtx>["ctx"]["party"][number] = (ctx) => ctx.party.find((p) => p.classId === "knight")!) {
     const { ctx } = makeCtx();
     const source = who(ctx);
     const rat = spawnInto(ctx, "dungeon-rat");
@@ -886,7 +880,7 @@ describe("crit and variance inside a cast", () => {
 
     test("each hit of a multi-hit skill and each target rolls its own crit and variance", () => {
       const { ctx } = makeCtx(11);
-      const source = ctx.party.find((p) => p.classId === "vanguard")!;
+      const source = ctx.party.find((p) => p.classId === "knight")!;
       const rats = [spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat"), spawnInto(ctx, "dungeon-rat")];
       for (const r of rats) {
         r.hp = r.maxHp = 1_000_000;
@@ -1060,5 +1054,259 @@ describe("over-time ticks through a real round", () => {
       expect(heal.text.startsWith("Critical")).toBe(false);
       expect(heal.healCritOf).toBeUndefined();
     }
+  });
+});
+
+describe("harmful tags and reflect", () => {
+  function withStatus(def: object, body: () => void) {
+    STATUS_EFFECTS.push({ name: "x", description: "x", perTurnEffects: [], ...def } as unknown as StatusEffectDefinition);
+    try {
+      body();
+    } finally {
+      STATUS_EFFECTS.splice(STATUS_EFFECTS.findIndex((s) => s.id === (def as { id: string }).id), 1);
+    }
+  }
+  const status = (id: string) => ({ statusEffectId: id, turnsRemaining: 3 });
+
+  test("a status tagged harmful is not helpful, so a no-id cleanse removes it and keeps the buff", () => {
+    withStatus({ id: "fixture-mark", harmful: true }, () => {
+      expect(isHelpfulStatusEffect(getStatusEffect("fixture-mark"))).toBe(false);
+      const { ctx } = makeCtx();
+      const bearer = ctx.party[0]!;
+      bearer.activeStatusEffects.push(status("guard"), status("fixture-mark"));
+      resolveSkillEffect({ kind: "removeStatusEffect" }, ctx.party[1]!, bearer, { log: [] });
+      expect(bearer.activeStatusEffects.map((s) => s.statusEffectId)).toEqual(["guard"]);
+    });
+  });
+
+  test("a tag with no harmful flag still reads as helpful", () => {
+    withStatus({ id: "fixture-plain" }, () => {
+      expect(isHelpfulStatusEffect(getStatusEffect("fixture-plain"))).toBe(true);
+    });
+  });
+
+  test("a hit on a reflect bearer turns that share back on the attacker, once", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const attacker = ctx.party[0]!;
+      const bearer = spawnMonster("dungeon-rat", 1);
+      bearer.defense = 0;
+      bearer.hp = bearer.maxHp = 9999;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      const attackerBefore = attacker.hp;
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, attacker, bearer, { log });
+      const dealt = 9999 - bearer.hp;
+      expect(dealt).toBeGreaterThan(0);
+      expect(attackerBefore - attacker.hp).toBe(Math.round(dealt / 2));
+      expect(log.filter((l) => l.text.includes("turned back by")).length).toBe(1);
+    });
+  });
+
+  test("a damage-over-time tick on a reflect bearer reflects nothing", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const bearer = ctx.party[0]!;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      const before = bearer.hp;
+      resolveSkillEffect({ kind: "damage", amount: 10 }, bearer, bearer, { log });
+      expect(before - bearer.hp).toBe(10);
+      expect(log.some((l) => l.text.includes("turned back by"))).toBe(false);
+    });
+  });
+
+  test("a reflect that kills the attacker marks it dead and logs the defeat", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 100 }, () => {
+      const { ctx } = makeCtx();
+      const attacker = ctx.party[0]!;
+      attacker.hp = 1;
+      const bearer = spawnMonster("dungeon-rat", 1);
+      bearer.defense = 0;
+      bearer.hp = bearer.maxHp = 9999;
+      bearer.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, attacker, bearer, { log });
+      expect(attacker.hp).toBe(0);
+      expect(attacker.isAlive).toBe(false);
+      expect(log.some((l) => l.kind === "death" && l.text.includes(attacker.name))).toBe(true);
+    });
+  });
+
+  test("two reflect bearers hitting each other reflect once per hit, never in a chain", () => {
+    withStatus({ id: "fixture-riposte", reflectDamagePercent: 50 }, () => {
+      const { ctx } = makeCtx();
+      const a = ctx.party[0]!;
+      const b = ctx.party[1]!;
+      a.defense = 0;
+      b.defense = 0;
+      a.activeStatusEffects.push(status("fixture-riposte"));
+      b.activeStatusEffects.push(status("fixture-riposte"));
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, a, b, { log });
+      expect(log.filter((l) => l.text.includes("turned back by")).length).toBe(1);
+    });
+  });
+});
+
+describe("monster defense against status damage (combat.statusDamageDefensePercentByTier)", () => {
+  const poisonedGoblin = (tier: "normal" | "elite" | "boss", defense: number) => {
+    const goblin = spawnMonster("goblin", 30);
+    goblin.tier = tier;
+    goblin.defense = defense;
+    goblin.maxHp = 1000;
+    goblin.hp = 1000;
+    goblin.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
+    return goblin;
+  };
+  const tickOf = (actor: Parameters<typeof tickDotEffects>[0]) => {
+    const before = actor.hp;
+    tickDotEffects(actor, { log: [] });
+    return before - actor.hp;
+  };
+
+  test("a DoT tick on a monster is blunted by its tier's share of its defense", () => {
+    const rawTick = 4 + 1000 * 0.025;
+    const ticks = (["normal", "elite", "boss"] as const).map((tier) => {
+      const share = BALANCE.combat.statusDamageDefensePercentByTier[tier];
+      const dealt = tickOf(poisonedGoblin(tier, 100));
+      expect(dealt).toBe(Math.max(1, Math.round(mitigatedOffense(rawTick, (100 * share) / 100))));
+      return dealt;
+    });
+    expect(ticks[0]!).toBeGreaterThan(ticks[1]!);
+    expect(ticks[1]!).toBeGreaterThan(ticks[2]!);
+  });
+
+  test("a DoT tick still deals 1 when defense would take all of it", () => {
+    expect(tickOf(poisonedGoblin("boss", 100000))).toBe(1);
+  });
+
+  test("a party character takes the tick whole, whatever its defense", () => {
+    const { ctx } = makeCtx();
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.defense = 500;
+    knight.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
+    expect(tickOf(knight)).toBe(Math.round(4 + knight.maxHp * 0.025));
+  });
+
+  test("Deep Wound's extra damage is blunted the same way", () => {
+    const goblin = spawnMonster("goblin", 30);
+    goblin.tier = "boss";
+    goblin.defense = 100;
+    goblin.maxHp = 500;
+    goblin.hp = 500;
+    goblin.activeStatusEffects.push({ statusEffectId: "deep-wound", turnsRemaining: 3 });
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 1 }, { attack: 0, magicPower: 0 } as unknown as Parameters<typeof resolveSkillEffect>[1], goblin, { log });
+    const share = BALANCE.combat.statusDamageDefensePercentByTier.boss;
+    const hpAfterHit = 500 - 1;
+    const percent = 2 + (3 - 2) * ((1 - hpAfterHit / 500) / 0.8);
+    const expected = Math.max(1, Math.round(mitigatedOffense(4 + (500 * percent) / 100, (100 * share) / 100)));
+    expect(log.map((l) => l.text)).toContain(`Goblin's Deep Wound tears open for ${expected} damage.`);
+  });
+
+  test("a hit that ignores defense lets the Deep Wound it opens ignore the same share", () => {
+    const woundFrom = (ignoreDefensePercent: number) => {
+      const goblin = spawnMonster("goblin", 30);
+      goblin.tier = "boss";
+      goblin.defense = 100;
+      goblin.maxHp = 500;
+      goblin.hp = 500;
+      goblin.activeStatusEffects.push({ statusEffectId: "deep-wound", turnsRemaining: 3 });
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 1, ignoreDefensePercent }, { attack: 0, magicPower: 0 } as unknown as Parameters<typeof resolveSkillEffect>[1], goblin, { log });
+      return Number(log.find((l) => l.text.includes("Deep Wound tears open"))!.text.match(/for (\d+) damage/)![1]);
+    };
+    const share = BALANCE.combat.statusDamageDefensePercentByTier.boss;
+    const percent = 2 + (1 - 499 / 500) / 0.8;
+    expect(woundFrom(30)).toBe(Math.max(1, Math.round(mitigatedOffense(4 + (500 * percent) / 100, (100 * 0.7 * share) / 100))));
+    expect(woundFrom(30)).toBeGreaterThan(woundFrom(0));
+  });
+});
+
+describe("levels of one status family (rankOf)", () => {
+  const goblin = () => {
+    const g = spawnMonster("goblin", 30);
+    g.maxHp = 1000;
+    g.hp = 1000;
+    return g;
+  };
+  const apply = (actor: ReturnType<typeof goblin>, statusEffectId: string, durationTurns: number, log: LogEntry[] = []) =>
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns }, actor, actor, { log });
+  const ids = (actor: ReturnType<typeof goblin>) => actor.activeStatusEffects.map((s) => s.statusEffectId);
+
+  test("a higher level replaces a lower one and gives back the lower one's stat change", () => {
+    const g = goblin();
+    const defense = g.defense;
+    apply(g, "weakened", 2);
+    apply(g, "weakened-ii", 2);
+    expect(ids(g)).toEqual(["weakened-ii"]);
+    const onlyII = goblin();
+    apply(onlyII, "weakened-ii", 2);
+    expect(g.defense).toBe(onlyII.defense);
+    expect(g.defense).toBeLessThan(defense);
+  });
+
+  test("two levels of poison never tick together", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    apply(g, "poisoned", 3);
+    expect(ids(g)).toEqual(["poisoned-ii"]);
+  });
+
+  test("a lower level adds a turn to the higher one instead of refreshing it", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    g.activeStatusEffects[0]!.turnsRemaining = 1;
+    const log: LogEntry[] = [];
+    apply(g, "poisoned", 3, log);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(1 + BALANCE.combat.lowerRankStatusExtendTurns);
+    expect(log.map((l) => l.text)).toContain("Goblin's Poisoned II lingers a turn longer.");
+  });
+
+  test("at the higher level's own applied duration the extension stops, and the log reads a refresh", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    const log: LogEntry[] = [];
+    apply(g, "poisoned", 3, log);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
+    expect(log.map((l) => l.text)).toEqual(["Goblin refreshes the Poisoned II effect."]);
+  });
+
+  test("two levels already on a target (an older save) collapse to one when another level lands", () => {
+    const g = goblin();
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 }, { statusEffectId: "poisoned-ii", turnsRemaining: 2, durationTurns: 3 });
+    apply(g, "poisoned", 3);
+    expect(ids(g)).toEqual(["poisoned-ii"]);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 });
+    apply(g, "poisoned-iii", 3);
+    expect(ids(g)).toEqual(["poisoned-iii"]);
+  });
+
+  test("assertRankWeights refuses weights that are all 0 or name a missing level", () => {
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "poisoned", rankWeights: [0, 0, 0] })).toThrow("weight of 0");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 30, 20] })).toThrow("level 3");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 50, 0] })).not.toThrow();
+  });
+
+  test("an effect with its own target still rolls its level", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const skill = {
+      id: "test-self-weaken", name: "Test", description: "", target: "singleEnemy", slot: 1, unlockLevel: 1, mpCost: 0,
+      effects: [{ kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [0, 1], durationTurns: 2, target: "self" }],
+    } as unknown as SkillDefinition;
+    applySkillEffects(skill, rogue, [rat], combat, ctx, []);
+    expect(rogue.activeStatusEffects.map((s) => s.statusEffectId)).toContain("weakened-ii");
+  });
+
+  test("without a recorded duration the cap falls back to combat.lowerRankStatusExtendDefaultCapTurns", () => {
+    const g = goblin();
+    g.activeStatusEffects.push({ statusEffectId: "poisoned-ii", turnsRemaining: BALANCE.combat.lowerRankStatusExtendDefaultCapTurns });
+    apply(g, "poisoned", 3);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(BALANCE.combat.lowerRankStatusExtendDefaultCapTurns);
   });
 });

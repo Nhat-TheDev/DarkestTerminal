@@ -1,7 +1,7 @@
 import type { Character, ArtifactEffect, AbilityEffect, AbilityOnlyEffect } from "../types";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
-import { getClass, passiveRankDef } from "../data/classes";
+import { ownPassiveRank } from "../data/classes";
 import { getStatusEffect } from "../data/statusEffects";
 import type { Rng } from "./rng";
 
@@ -87,8 +87,7 @@ export function rollDodge(character: Character, rng: Rng): boolean {
     const percent = getStatusEffect(active.statusEffectId).dodgePercent ?? 0;
     if (percent > 0 && rng.chance(percent / 100)) return true;
   }
-  if (character.classId !== "ninja") return false;
-  const dodgePercent = passiveRankDef(getClass("ninja").passiveSkill, character.level)?.dodgePercent ?? 0;
+  const dodgePercent = ownPassiveRank(character)?.dodgePercent ?? 0;
   return dodgePercent > 0 && rng.chance(dodgePercent / 100);
 }
 

@@ -1,6 +1,7 @@
 import type { SummonArchetype, SkillDefinition, SummonCast } from "../types";
 import summonsJson from "../../data/summons.json";
-import { getStatusEffect } from "./statusEffects";
+import { assertRankWeights, getStatusEffect } from "./statusEffects";
+import { ATTACK_RANGES } from "./balanceConfig";
 
 const DATA = summonsJson as unknown as { archetypes: SummonArchetype[]; skills: SkillDefinition[]; casts: SummonCast[] };
 
@@ -32,6 +33,9 @@ export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts:
     if (typeof archetype.speed !== "number") {
       throw new Error(`data/summons.json: archetype "${archetype.id}" is missing a numeric "speed"`);
     }
+    if (!ATTACK_RANGES.includes(archetype.attackRange)) {
+      throw new Error(`data/summons.json: archetype "${archetype.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
+    }
     const declared = new Set(archetype.signatureSkillIds ?? []);
     for (const id of archetype.signatureSkillIds ?? []) getSummonSkill(id);
     if (archetype.basicAttackOnHit) getStatusEffect(archetype.basicAttackOnHit.statusEffectId);
@@ -42,6 +46,11 @@ export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts:
     }
   }
   for (const cast of casts) getSummonArchetype(cast.archetypeId);
+  for (const skill of SUMMON_SKILLS) {
+    for (const effect of [...(skill.effects ?? []), ...(skill.ranks ?? []).flatMap((r) => r.effects ?? [])]) {
+      assertRankWeights(`data/summons.json: skill "${skill.id}"`, effect);
+    }
+  }
 }
 
 assertSummonDataConsistent(SUMMON_ARCHETYPES, SUMMON_CASTS);

@@ -60,6 +60,8 @@ A dropped item is added directly to `GameState.inventory[itemId] += 1`. A room w
 
 Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
 
+Every new run also starts with the items listed in `party.startingItems` (`data/balance-config.json`), on top of its Exploration Kits. `src/engine/game.ts` adds them to the inventory as they are, so changing the list needs no code.
+
 By kind:
 
 - **Healing and mana potions** in 3 tiers each (the amounts are in `data/items.json`), plus `field-tonic` (heals the whole party) and `calming-draught` (fear).
@@ -174,7 +176,7 @@ ArtifactDefinition {
 
 ### 7.2.4 `autoDamage` trigger mechanism
 
-`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md`), picking 1 living monster **uniformly at random** (uniform, like the `opportunistic` pattern in `02-monster.md` section 2, not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn. An `autoDamage` with `offenseMultiplierPercent` (Abilities and the two `autoDamage` Artifacts) is resolved as a normal `damage` effect instead of a raw HP subtraction, so its log line reads like a skill hit and the target's defense applies.
+`autoDamage` triggers at the **start of every round** (before the player's command phase — the same round boundary that combat fear-gain also uses, `03-survival-stats.md`), picking 1 living monster **uniformly at random** (not based on `aggro`) — no MP cost, doesn't go through `queueAction`, doesn't appear in the skill selection list. Logged as its own separate event line, distinct from any character's turn. An `autoDamage` with `offenseMultiplierPercent` (Abilities and the two `autoDamage` Artifacts) is resolved as a normal `damage` effect instead of a raw HP subtraction, so its log line reads like a skill hit and the target's defense applies.
 
 ### 7.2.5 Engine hooks for the Group 2-4 effects
 

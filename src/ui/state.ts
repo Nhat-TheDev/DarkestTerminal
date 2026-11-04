@@ -1,15 +1,23 @@
-import type { Character, CombatantRef, SkillDefinition, ItemDefinition, Id } from "../types";
+import type { Character, CombatantRef, SkillDefinition, ItemDefinition, Id, CommandOrder } from "../types";
 import { getSkill, getEffectiveSkill } from "../data/classes";
 import { getItem } from "../data/items";
+import { withBasicAttackOverride } from "../engine/combat";
 import { getEvent } from "../data/events";
 
-export type PickTargetSource = { kind: "skill"; skill: SkillDefinition } | { kind: "item"; item: ItemDefinition };
+export type PickTargetSource =
+  | { kind: "skill"; skill: SkillDefinition }
+  | { kind: "item"; item: ItemDefinition }
+  /** A Command cast: `skill` is the minion skill as the caster casts it (`commandedSkill`), `commandSkillId` the Command itself. */
+  | { kind: "command"; skill: SkillDefinition; commandSkillId: Id; order: CommandOrder };
 
 export type ItemDetailOrigin = { kind: "combat"; actorRef: CombatantRef } | { kind: "outOfCombat" };
 
 export type ArtifactDetailOrigin = { kind: "owned"; characterId: Id };
 
 export type RewardEntry = { kind: "item"; id: Id; qty: number } | { kind: "artifact"; id: Id } | { kind: "ability"; id: Id };
+
+/** The two HP-paid event kinds share one screen. */
+export type HpGambleKind = "hpGamble" | "rescueGamble";
 
 export type UiState =
   | { kind: "room" }
@@ -23,6 +31,8 @@ export type UiState =
   | { kind: "pickItemInCombat"; actorRef: CombatantRef }
   | { kind: "pickTarget"; actorRef: CombatantRef; source: PickTargetSource; candidates: CombatantRef[] }
   | { kind: "skillDetail"; actorRef: CombatantRef; skill: SkillDefinition }
+  | { kind: "pickCommandMinion"; actorRef: CombatantRef; skill: SkillDefinition }
+  | { kind: "pickCommandSkill"; actorRef: CombatantRef; skill: SkillDefinition; summonId: Id }
   | { kind: "roundResolved" }
   | { kind: "combatOver" }
   | { kind: "pickItemOutOfCombat" }
@@ -36,20 +46,26 @@ export type UiState =
   | { kind: "fullLog"; previous: UiState }
   | { kind: "roomReward"; entries: RewardEntry[]; viewing: RewardEntry | null }
   | { kind: "campPrompt" }
-  | { kind: "eventOpenChest" }
-  | { kind: "eventMerchant"; viewingOfferIndex: number | null }
-  | { kind: "eventCursedShrine" }
-  | { kind: "eventTwinAltars" }
-  | { kind: "eventHpGamble"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventHpGamblePickPayer"; eventId: "blood-altar" | "collapsed-floor" }
-  | { kind: "eventArtifactPick"; eventId: "sacrificial-circle" }
-  | { kind: "eventGamblingDen" }
-  | { kind: "eventHermit" }
-  | { kind: "eventHermitPickArtifact" }
-  | { kind: "eventGuardianFight" }
+  | { kind: "eventInstantReward" }
+  | { kind: "eventArtifactShop"; viewingOfferIndex: number | null }
+  | { kind: "eventCursedOffer" }
+  | { kind: "eventPairedOffer" }
+  | { kind: "eventHpGamble"; gamble: HpGambleKind }
+  | { kind: "eventHpGamblePickPayer"; gamble: HpGambleKind }
+  | { kind: "eventArtifactSacrifice" }
+  | { kind: "eventCoinGamble" }
+  | { kind: "eventFortuneExchange" }
+  | { kind: "eventFortuneExchangePickArtifact" }
+  | { kind: "eventCombatReward" }
   | { kind: "eventReflection" }
   | { kind: "campReflection" }
   | { kind: "floorMilestone" }
+  | { kind: "memoryIntro" }
+  | { kind: "memory"; previous: UiState; previousPage: number; pages: string[][] }
+  | { kind: "journalDeduction" }
+  | { kind: "journal"; previous: UiState; previousPage: number; pages: string[][] }
+  | { kind: "journalPickup" }
+  | { kind: "journalLastPage" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
   | { kind: "gatekeeper" }
@@ -60,8 +76,10 @@ export type UiState =
 export const ARTIFACT_ICON = "✦";
 export const ABILITY_ICON = "◆";
 export const SUMMON_ICON = "☾";
+export const TROPHY_ICON = "⚱";
 
 export function itemIcon(item: ItemDefinition): string {
+  if (item.archetypeIds?.length) return TROPHY_ICON;
   if (item.target === "singleEnemy" || item.target === "allEnemies") return "⚔";
   if (item.effects.some((e) => e.kind === "heal" || e.kind === "restoreMp")) return "✚";
   return "↑";
@@ -71,6 +89,10 @@ export function inventoryEntries(inventory: Record<Id, number>): { item: ItemDef
   return Object.entries(inventory)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({ item: getItem(id), qty }));
+}
+
+export function combatInventoryEntries(inventory: Record<Id, number>): { item: ItemDefinition; qty: number }[] {
+  return inventoryEntries(inventory).filter(({ item }) => item.combatUsable !== false);
 }
 
 export function buildRewardEntries(drops: { itemIds: Id[]; artifactIds: Id[]; abilityIds: Id[] }): RewardEntry[] {
@@ -88,28 +110,34 @@ export function ownedArtifactEntries(party: Character[]): { character: Character
 }
 
 export function skillEntries(actor: Character): SkillDefinition[] {
-  return actor.unlockedSkillIds.map((id) => getEffectiveSkill(getSkill(id), actor.level));
+  return actor.unlockedSkillIds.map((id) => {
+    const skill = getEffectiveSkill(getSkill(id), actor.level);
+    return skill.slot === 0 ? withBasicAttackOverride(skill, actor) : skill;
+  });
 }
 
 export function eventUiState(eventId: Id): UiState {
   const event = getEvent(eventId);
   switch (event.kind) {
     case "instantReward":
-      return { kind: "eventOpenChest" };
-    case "merchant":
-      return { kind: "eventMerchant", viewingOfferIndex: null };
-    case "choiceReveal":
-      return eventId === "twin-altars" ? { kind: "eventTwinAltars" } : { kind: "eventCursedShrine" };
-    case "artifactExchange":
-      return eventId === "wandering-hermit" ? { kind: "eventHermit" } : { kind: "eventArtifactPick", eventId: "sacrificial-circle" };
+      return { kind: "eventInstantReward" };
+    case "artifactShop":
+      return { kind: "eventArtifactShop", viewingOfferIndex: null };
+    case "cursedOffer":
+      return { kind: "eventCursedOffer" };
+    case "pairedOffer":
+      return { kind: "eventPairedOffer" };
+    case "fortuneExchange":
+      return { kind: "eventFortuneExchange" };
+    case "artifactSacrifice":
+      return { kind: "eventArtifactSacrifice" };
     case "hpGamble":
-      return { kind: "eventHpGamble", eventId: "blood-altar" };
     case "rescueGamble":
-      return { kind: "eventHpGamble", eventId: "collapsed-floor" };
+      return { kind: "eventHpGamble", gamble: event.kind };
     case "coinGamble":
-      return { kind: "eventGamblingDen" };
+      return { kind: "eventCoinGamble" };
     case "combatReward":
-      return { kind: "eventGuardianFight" };
+      return { kind: "eventCombatReward" };
     default:
       return { kind: "room" };
   }

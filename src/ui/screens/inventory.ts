@@ -1,10 +1,10 @@
 import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
-import { formatItemEffect } from "../../data/items";
+import { describeItemEffects, formatItemEffect } from "../../data/items";
 import { t } from "../../data/strings";
 import type { UiState } from "../state";
 import { inventoryEntries, itemIcon } from "../state";
-import { paginate } from "../pagination";
+import { paginate, ITEM_PAGE_SIZE } from "../pagination";
 import { digitHint } from "../keyHints";
 import type { ScreenContext } from "./context";
 import { trySelectItem } from "./combat";
@@ -15,7 +15,7 @@ export function handleKey(ctx: ScreenContext, ui: InventoryUiState, _key: KeyEve
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
       if (digit === null) break;
-      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage());
+      const { pageItems } = paginate(inventoryEntries(ctx.game.state.inventory), ctx.getListPage(), ITEM_PAGE_SIZE);
       const entry = pageItems[digit - 1];
       if (!entry) break;
       ctx.setUi({ kind: "itemDetail", item: entry.item, origin: { kind: "outOfCombat" } });
@@ -38,10 +38,11 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
   const s = game.state;
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
-      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page);
+      const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page, ITEM_PAGE_SIZE);
       const lines = [t("ui.chooseItemToUse")];
       pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: `${itemIcon(item)} ${item.name}`, qty }));
+        lines.push(t("ui.inventoryEffectLine", { effect: describeItemEffects(item) }));
       });
       if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
       return lines.join("\n");
@@ -63,7 +64,7 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
 export function renderFooter(ui: InventoryUiState, game: Game, page = 0): string {
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
-      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page);
+      const { pageItems } = paginate(inventoryEntries(game.state.inventory), page, ITEM_PAGE_SIZE);
       return digitHint("ui.footerChooseItemEsc", pageItems.length);
     }
     case "itemDetail":

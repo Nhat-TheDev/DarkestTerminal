@@ -21,24 +21,44 @@ bun run start   # run the game from source
 bun test        # unit tests for the engine (resolver, combat, aggro, level, floor pattern, ...) +
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
-bun run game-editor  # dev tool: sprite editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
+bun run game-editor  # dev tool: sprite and backdrop editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
 bun run docs:sync    # rewrite the doc numbers that mirror data/balance-config.json (--check only verifies; bun test runs the check)
-bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/)
+bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/); --evidence captures every screen as PNG
 ```
 
 <!-- docs:intent-begin -->
-`bun run random-play` (`--runs N --seed-start S --max-steps M --out DIR --report html|none`)
+`bun run random-play` (`--runs N --team NAME --seed-start S --max-steps M --out DIR --report html|none`)
 drives the real `App` with simulated keypresses, the way `test/ui.test.ts` does, but for many
-seeds, a random 4-class party, a random start depth and party level (via `applyDump`), and a mix
-of cautious and random keys taken from the footer on screen. Once the run has not changed for a
-while it stops picking cautiously, backs out of any screen that offers Esc and favours digits and
+seeds. It plays `--runs` runs (5 by default) for each team in `tools/random-play/team.ts`, or for
+the one `--team` names; `--max-steps` defaults to 5000. A run ends once its party leaves the floor
+it started on, so it covers one guard and the screens after it, or on defeat. A quarter of the runs
+start fresh; the rest start, via `applyDump`, on a guard floor ending in 1 or 5 below the ending
+checkpoint, at that floor's average level. In a fight nearly every key comes from the team's policy;
+outside one, close to a third come from the footer at random, so stray menus still get opened.
+
+The policy works from what each member's roles and skills allow. A member holds one or more roles: a
+healer heals from 70% HP rather than 50% and keeps the MP for its cheapest heal, a tank opens with
+support skills, a striker attacks. A healer counts calling up a minion that has a healing skill as a
+heal while that minion is not on the field. An attack or magic buff for allies goes on the hardest
+hitter, at most once every 3 rounds per caster, and waits for an opening: the guard's defense held
+down by at least 10% by debuffs, or else 6 rounds without a buff. A buff that only raises attack or
+magic must add more than the caster's own attack would, or half of it inside an opening. A skill that
+gives an ally MP goes first to the hardest hitter below 35% MP, opening or not. It heals, relieves fear from the point where
+combat penalties start, then attacks, and holds the costliest skills and ultimates for the
+guard unless the party is in danger. Below 35% MP a character conserves: outside a guard fight it
+spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
+or the free basic attack, in that order. Mana potions wait for the guard, and a healer always keeps
+the MP for its cheapest heal. It takes a rest room when anyone is hurt, frightened, low on MP or
+satiety is at 50 or below, eats when hungry, talks when frightened, and camps on a kit when hungry.
+
+Once the run has not changed for a while it stops following the policy, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
 at a height of 70 rows and widths 150/180/220, so the whole party and every panel is visible; each
 new screen is also redrawn once at the minimum supported size, 150×45. Along the way it saves and
 reloads (more often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
-- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, a duplicate artifact or Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
+- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, two characters carrying one Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
 - **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 150×45;
@@ -46,25 +66,84 @@ reloads (more often mid-combat) and occasionally resizes. It reports:
 
 A digit that does nothing (re-picking the tab already shown) and text touching a panel's right
 border are warnings for a human look, not failures. Each finding carries the seeds, the last 50
-steps and a colour capture of the screen; `--game-seed X --bot-seed Y` replays one run exactly.
-`report.html` also holds a gallery of every screen reached, rarest first. The tool exits non-zero
+steps and a colour capture of the screen; `--game-seed X --bot-seed Y --team NAME` replays one run exactly.
+`report.html` also holds a gallery of every screen reached, rarest first: one capture per screen kind,
+event room and case (a fight's tier from its strongest monster, a fight's outcome, a reward or an empty
+one) at the size it was reached at, and again at 150×45. The tool exits non-zero
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
-and the exit code are the whole result. Every pull request runs 10 fixed seeds this way
-(`.github/workflows/random-play.yml`).
+and the exit code are the whole result. `report.html` also tabulates how each team played and the
+guards it met, for a look only: balance is measured by `bun run curve`, below. Every pull request
+runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
+
+`bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
+find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
+event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room), an elite
+and a boss guard room, and a defeat. A scenario's seed and team come from its name, so adding an event
+leaves every other scenario's screens as they were, and a scenario plays at
+180×70 with no save round trips, resizes or hidden-key probes, so the same code captures the same
+screens. It still reports failures as above. Into `--out` it writes `screens/*.png` (each screen at
+180×70 and 150×45, drawn from the captured cells by `@resvg/resvg-js`, block glyphs as rectangles),
+`manifest.json` (each screen's key, size, file and a hash of its cells, plus the failure count) and
+a gallery `README.md` (`tools/random-play/evidence.ts`). On a pull request,
+`.github/workflows/evidence.yml` runs it on the branch and, when the base has it too, on the base
+(a pull request from a fork skips it, since its token can neither push nor comment);
+publishes the branch's screens as a single orphan commit on `evidence/pr-<number>`, replaced on every
+push and deleted when the pull request closes; and keeps one comment on the pull request: the screen
+count, the room events with no screen, the screens new, gone or changed against the base (the first
+30 changed ones as images, linked by the evidence commit so an edit never shows a cached image), and
+a link to the gallery. A change that sends the bot down another path also changes the screens after
+it. The curve comment and this one each start with a marker that
+`.github/scripts/upsert-comment.sh` finds to edit them in place.
+
+`bun run curve` (`--only ID,ID --tier elite|boss --teams NAME,NAME --level min|avg|max --precision P
+--max-fights N --baseline FILE --out DIR`) measures elite and boss fights on the engine itself, with
+no UI. Each guard archetype is fought on every random-play start floor it can appear on, on its first
+elite and boss floors, and the final boss on its own floor. The party starts at full HP with the
+starting items and no artifacts, at that floor's average level from `simulateLevelByDepth`
+(`--level min|max` takes the floor's lowest or highest instead), and every member plays the
+random-play team policy. Fights come in batches of 20 per team until the 95% Wilson interval of the
+win rate is within `--precision` (0.05) on each side, or `--max-fights` (1000) is reached; a fight
+still going after 300 rounds counts as lost and is counted apart. Each guard reports its win rate
+with that interval and per team, the 10th, 50th and 90th percentile rounds of the fights won, the
+share of party HP lost, deaths, the share of MP spent and items used, on the console and in
+`curve.json` and `report.html`. Seeds are fixed, so the same data gives the same numbers;
+`--baseline` takes an earlier `curve.json` and lists every guard whose win rate moved more than 5
+points, which separates the effect of a data change from noise. The numbers describe that policy,
+not a skilled player: it never uses Command and always holds a channel, and floor attrition and
+artifacts are not modelled yet.
+
+`bun run curve --check` runs every guard with the default options and exits non-zero when a rule in
+`findCurveIssues` (`tools/curve/bench.ts`) fails: a guard whose whole win-rate interval sits below
+`MIN_GUARD_WIN_RATE`, a final boss won more than `FOUNDER_WIN_RATE_SLACK` more often than the hardest
+guard, or a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on
+the floors just before it. A move from the base branch is reported, not failed: whether it is
+intended is the reviewer's call. The `curve` job of `.github/workflows/random-play.yml` runs the check
+on every pull request and on every push to `main` or a `release/**` branch, and keeps `curve.json`
+and `report.html` as the `guard-curve` artifact for 90 days. On a pull request it takes the base
+commit's own `guard-curve` artifact from that push run, or, when there is none (the run is missing,
+still going or expired), checks out the base and measures it with its own code. It then posts one
+comment on the pull request, edited on every push (`tools/curve/comment.ts`): the check result, a
+Teams table (win rate, HP lost, deaths and median rounds over every guard, base against branch, and
+each team's hardest guard) with each team's members and roles below it, every guard whose win rate moved more than 5
+points with its HP lost and median rounds, the hardest guards, and every guard in a collapsed table.
+To compare locally, download a run's artifact (`gh run download RUN -n guard-curve`) and pass its
+`curve.json` to `--baseline`. A base without `bun run curve` gets the comment without the comparison. The base runs its own team
+policy and bench, so a change to either shows in the comparison as well as a balance change.
 <!-- docs:intent-end -->
 
 ## ✅ Implementation overview
 
 - **Multiple dungeon floors, with real floor descents** — each floor is generated by a runtime algorithm (see "Floor structure" below), always with 1 entrance and 1 guard room (elite/boss) at the end, no dead ends, every branch converging back to the boss. Defeating the monster guarding the final room of a floor → immediately generates the next floor — there's no fixed "you win the game" state, you just play as far as you can get — `src/data/floor.ts`, `src/data/floorPatterns.ts`, `src/engine/game.ts`
-- **9 classes** with 6 stats + a basic attack (slot 0, free) + 4 class-specific skills in slots 1-4 + a dedicated ultimate in slot 5 (Vanguard, Mage, Rogue, Acolyte, Viking, Plague Doctor, Archer, Ninja, Summoner) — `src/data/classes.ts`
-- **Party selection at game start + save/load** — a party of 4 different classes chosen from the 9 on the party select screen, which browses one class at a time (stats, passive, opening skills) and takes each recruit's Ability right after the pick; 5 fixed save slots — New Game picks a slot (an occupied one asks before it is overwritten), every save (`[q]`, `[s]`, the autosave on reaching a new floor) writes to the run's slot, Continue lists the occupied slots, and any ending other than `victory` clears the slot (permadeath). Playtime is stored per save in `meta.playTime` — `src/ui/partySelect.ts`, `src/ui/saveSelect.ts`, `src/engine/save.ts`
+- **12 classes** with 6 stats + a basic attack (slot 0, free) + 5 class-specific skills in slots 1-5 + a dedicated ultimate in slot 6 (Knight, Mage, Rogue, Acolyte, Viking, Plague Doctor, Archer, Ninja, Summoner, Jester, Paladin, Warlock) — `src/data/classes.ts`
+- **Party selection at game start + save/load** — a party of 4 different classes chosen from the 12 on the party select screen, which browses one class at a time (stats, passive, opening skills) and takes each recruit's Ability right after the pick; 5 fixed save slots — New Game picks a slot (one holding a run, a run that ended or a save that can't be loaded asks before it is overwritten, and overwriting starts the slot over), every save (`[q]`, `[s]`, the autosave on reaching a new floor) writes to the run's slot, Continue lists the slots holding a run plus those whose run ended (a slot with a profile but no run picks up at party select for its next run), and any ending other than `victory` clears the run but keeps the slot. Each slot has its own profile (`slotN.profile.json`: unlocked abilities, retired characters, run count, the last ended run's play time and end time) that survives permadeath; the game over screen's `[n] New Run` starts the next run in the same slot (overwriting a slot only clears it once the new party is picked; `Esc` with nobody picked leaves party select for the slot list, or for the main menu on New Run), and the slot list shows which run a slot is on. The slot's first boss-tier kill unlocks Memory (`memoryUnlocked` in the profile): a one-time intro (`memoryIntroShown`, also in the profile), then `[m]` opens a read-only list of the slot's non-common abilities from any dungeon screen — `src/ui/screens/memory.ts`. Playtime is stored per save in `meta.playTime`, and a wipe copies it to the profile's `lastRun` for the slot list's ended line — `src/ui/partySelect.ts`, `src/ui/saveSelect.ts`, `src/engine/save.ts`, `src/engine/profile.ts`, `src/main.ts`
+- **Journal** — a per-slot record of what the dungeon showed and what the party made of it (`data/journal.json`: pages of lines, each line with at least 2 directions, plus the fragments that open them and where each fragment comes from: an event resolution or a floor-milestone omen). A room clear or omen that turns up a fragment first holds it as a find (`GameState.pendingJournalFind`, in place of that visit's event reflection when looking would open a scene): a living member who would argue one of its readings has stopped to look at something, and the party looks or moves on. Moving on writes nothing; either way the fragment isn't found again that run. Looking copies it into the slot and opens a deduction scene under the line's subject (no page title): the fragment's text shows with the first scene it opens and never again that run (a look that opens no scene logs it), each reading offered as a living party member's line (an unmatched reading shows as a margin note with its default `speech`). A reading a scene has offered (`GameState.journalOffered`) isn't offered again that run, so a line reopens only with a reading it hasn't shown yet; a blank line that already had a scene reopens on one new reading. A new run starts with nothing offered. Every class carries a hidden personality (`personalityId`, `data/personalities.json`): what it notices, and `badWhen`, the conditions under which it speaks its bad side, a virtue pushed too far. A direction holds a `good` and a `bad` line per personality that would argue it; who speaks and in which face is fixed when the scene opens (`pendingJournal.voices`), and each bad-side line costs every other living member `journal.badFaceFearCost` fear, and the choice to write one, leave the line unwritten, or strike what was written. Fragments are picked in authoring order, never from the run's rng. A line that opens behind another scene waits in `GameState.journalQueue` for the next floor clear; a line left unwritten comes back only with a new fragment. A written reading whose own `requires` stops holding is struck. The journal lives in the slot profile (`journal`) and is written back on every change; a wipe moves the party's readings into `droppedJournal` at the death depth and keeps the fragments, and the game-over screen says which floor it lies on. A later run in the slot that arrives at that floor reads it before the entry room's ambush check (`startJournalPickup`, from `advanceToNextFloor`, `enterDungeon` and the floor-1 constructor path; never on the founder floor): their readings on lines this party left blank are offered a page at a time, each line read differently is offered as keep ours / take theirs / leave both, which writes a `split` line that counts for no condition until its next scene picks one, and a reading whose own gate fails for this party is shown but can't be taken; past `journal.maxMergeScreensPerFind` the rest merges silently. When the bundle holds several hands the newest wins each line. A run that dies without reaching it moves it up `journal.driftFloorsPerMissedRun`, never above `journal.driftMinDepth`, and adds its own readings as another hand. Echoes (`echoes` in `data/journal.json`) show only while the journal holds the reading they name: an event visit shows the first eligible one under its own text, once per run (`Room.journalEchoId`, picked in `Game.move`); an ending shows up to `journal.maxEndingEchoes`, one-sided lines first and at most one mirrored line, on a Last page the game-over screen opens with `[Enter]`. The loader rejects a line with echoes on some but not all of its readings, and a page where every line is one-sided. Every echo seen is kept and shown under its reading in the viewer as a `Since:` line. `[j]` opens a read-only viewer once the slot holds a written line; a line goes onto its page only once a reading is written there (or it is split), with the fragments that name it — `src/data/journal.ts`, `src/engine/journal.ts`, `src/ui/screens/journal.ts`
 - **33 regular monster types** (`COMBAT_ROOM_ARCHETYPES`) + **10 guard-room archetypes** (`GUARD_ROOM_ARCHETYPES`, one of which can also spawn as a regular monster) guarding the boss room of every floor, with 1 of the 10 picked at random each time, plus 1 scripted final boss (`FINAL_BOSS_ARCHETYPE`) excluded from that random pool — `src/data/monsters.ts`
-- **2-phase combat** (command all 4 characters → execute in speed order, monsters decide on the spot), `aggro`-based targeting (weighted random), retarget/cancel rule when a target dies before its turn — `src/engine/combat.ts`
-- **Dedicated Elite/Boss skill kit** (all 10 guard-room archetypes): a single-target strike + an AoE cleave for both tiers; the Boss additionally gets its own archetype-specific debuff and a charge-then-unleash mechanic for a very high fixed-damage attack (Finishing Blow) — `data/monster-skills.json`, `src/engine/combat.ts`
+- **2-phase combat** (command all 4 characters → execute in speed order, monsters decide on the spot), weighted-random targeting mixed per `aiPattern` from aggro, low HP, fear and damage taken (`src/engine/monsterAI.ts`, `02-monster.md`), retarget/cancel rule when a target dies before its turn — `src/engine/combat.ts`
+- **One Elite/Boss kit per guard-room archetype** (all 10, plus The Founder): data-declared skills with their own cooldowns, conditions, target rules and phases, plus a boss-only telegraph released by a meter; the elite tier runs a reduced subset of the boss kit. Built on a rules-aware monster AI and a few generic mechanics (summoning, riposte, a breakable shell, untargetable monsters) — `data/monster-skills.json`, `data/monsters.json`, `src/engine/monsterAI.ts`
 - **`SkillEffect` resolver** shared across skills/status-effects/items, buffs/debuffs via `modifyCombatStat`, DoT ticks at the end of every round — `src/engine/resolver.ts`
 - **Fear + Satiety survival stats**, HP=0 → true permadeath, fear affects combat back through 4 tiers — `src/engine/survival.ts`, `src/engine/resolver.ts`. Satiety is party-wide, draining once per room resolved (amount depends on room type); low satiety escalates through **Exhausted** (stats reduced) and **Dying** (a recurring HP tick on top of Exhausted). The rest room offers 3 recovery choices, and **Camp** — a post-victory option paid for with an Exploration Kit item — restores satiety outside the rest room. Details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)
-- **Level 1-100 system**: `attack`/`defense`/`maxHp`/`maxMp` grow through tapered tiers via `growthBonus()`, shared between characters (by `level`) and monsters (by `floorDepth`). Characters additionally apply their own class-specific `growthWeights` so the 9 classes don't converge to look the same at high levels. Character level (shared across the party, capped at 100, gained through EXP from killing monsters) is completely separate from dungeon floor level (`Floor.depth`, uncapped) — details in [`gameplay-decisions/06-level-system.md`](./gameplay-decisions/06-level-system.md)
+- **Level 1-100 system**: `attack`/`defense`/`maxHp`/`maxMp` grow through tapered tiers via `growthBonus()`, shared between characters (by `level`) and monsters (by `floorDepth`). Characters additionally apply their own class-specific `growthWeights` so the 12 classes don't converge to look the same at high levels. Character level (shared across the party, capped at 100, gained through EXP from killing monsters) is completely separate from dungeon floor level (`Floor.depth`, uncapped) — details in [`gameplay-decisions/06-level-system.md`](./gameplay-decisions/06-level-system.md)
 - **Consumable items + permanent, one-shot-decision Artifacts** — items dropped by monsters, usable in/out of combat unless flagged combat-only-off; artifacts are equipped on one specific character (max 3 per character) the instant they're picked up — the player decides equip-or-discard right then, with no free reassignment afterward (3 narrow exceptions) — effects only counting for whoever has it equipped — `src/data/items.ts`, `src/data/artifacts.ts`, `src/engine/artifacts.ts`, `src/engine/party.ts`, details in [`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)
 - **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), the Wandering Hermit's Exchange Fortune service, and the Merchant's Runner's shop (selling items back to him is a small coin source) — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
 - **Merchant's Runner** — a 50% chance on entering a Rest room: a notice screen, then a fourth **Trade** option that replaces the room's rest action. He runs a coin shop of consumables (5 rotating offers, singly or as lots of 3, refreshable, with tier odds that climb with floor depth), buys consumables and trophies back at a fifth of the single price, and takes a number of one effect-less monster trophy kind for a buff that waits for the floor's elite/boss fight — `src/engine/events/runner.ts`, `src/engine/events/barter.ts`, `src/data/shopStock.ts`, `src/ui/screens/runner.ts`, details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md) (flow, shop odds, barter), [`09-currency.md`](./gameplay-decisions/09-currency.md) and [`07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md) (tiers, trophies)
@@ -88,16 +167,19 @@ of the code doesn't need to know the data comes from JSON.
 
 | File | Contents | Loader |
 |---|---|---|
-| `data/classes.json` | 9 classes (Vanguard/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner): stats + all 6 skills per class | `src/data/classes.ts` |
+| `data/classes.json` | 12 classes (Knight/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner/Jester/Paladin/Warlock): stats + all 7 skills per class + the passive | `src/data/classes.ts` |
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rallied`, `poison-coated`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
 | `data/items.json` | Items: the general pool (consumables, incl. the combat-unusable Exploration Kit) and effect-less monster trophies, each with a `tier` that sets its drop weight | `src/data/items.ts` |
 | `data/floor-milestones.json` | The floor-milestone omen lines (one per milestone floor, banded by `maxFloor`): `id`, `maxFloor`, `text`, plus the milestone `interval` | `src/data/floorMilestones.ts` |
+| `data/personalities.json` | The 12 hidden personalities: `id`, `lens` (a writing note), `badWhen` (conditions on the character's own fear or an ally's, HP, an ally's HP, a death in the party, the party's coins and satiety, depth, artifacts worn) | `src/data/personalities.ts` |
+| `data/journal.json` | Journal pages (lines with a `subject`, optional `requires`/`minDepth`, and at least 2 directions: `label`, `speech`, optional `personalities` with a `good` and `bad` line each, optional `requires`) and fragments (`text`, `lineIds`, `sources`, optional `remark`) | `src/data/journal.ts` |
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
 | `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
-| `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event) | `src/data/floor.ts` |
+| `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event); each name links to the backdrop scene drawn behind its Battlefield | `src/data/roomNames.ts` |
+| `data/backdrops.json` | Battlefield backdrops: the global render settings, the wall/floor `bases`, the `props`, and one `scenes` entry per room name (a base plus placed props) | `src/data/backdrops.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` + `maxLevel` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts...) | `src/data/balanceConfig.ts` |
 | `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
@@ -108,9 +190,21 @@ of the code doesn't need to know the data comes from JSON.
 | `data/monster-traits.json` | Trait-level resist/weak modifiers composed into a monster's resolved race profile | `src/data/monsterRaces.ts` |
 | `data/summons.json` | Summon archetypes (stats, `speed`, passive behavior) spawned by summon skills | `src/data/summons.ts` |
 
-**Class passives — 2 shapes, no hardcoded ids in engine code.** A passive's mechanic always reads its magnitude off `PassiveRankDefinition`/`PassiveSkillDefinition` fields in `data/classes.json` (see `src/types.ts`) — never a number typed into TypeScript. Beyond that, a passive is one of 2 shapes:
-- **Pure stat math** (Vanguard, Rogue's bonus%, Acolyte, Archer, Ninja's dodge/clone%, Summoner): no status effect involved at all — the hook/helper in `src/engine/combat.ts`/`combatHooks.ts` just reads the rank's numeric field(s) and computes directly.
+**Class passives — 2 shapes, no hardcoded ids in engine code.** A passive's mechanic always reads its magnitude off `PassiveRankDefinition`/`PassiveSkillDefinition` fields in `data/classes.json` (see `src/types.ts`) — never a number typed into TypeScript. Every passive mechanic reads the character's own unlocked rank (`ownPassiveRank`, `src/data/classes.ts`) or passive and acts on the field it declares (`dodgePercent`, `reflectPercent`, `requiresTargetStatusId`, `debuffPool`...), never on the class id, so any class that declares the field gets the mechanic.
+
+**No content id in engine or UI code.** Code never compares against, or looks up, a specific record's id: it reads a field that record declares. The record that plays a fixed role carries a flag for it: the Camp kit (`campKit`, `data/items.json`), the final boss (`finalBoss`, `data/monsters.json`), the artifact that escapes the Leave ambush (`escapesLeaveAmbush`, `data/artifacts.json`), the retired-character event (`retiredCharacterEvent`), the event that never counts as lore (`noLoreExposure`) and the opening scene (the one `kind: "scripted"` event). Event rooms dispatch on `kind`, and an event's text escalation names its counter and thresholds in `escalation`. A unit's chip label and color is its `style`. `test/noContentIds.test.ts` fails when code in `src/` names an id from `data/*.json`, as a quoted literal in any quote style or as an unquoted object key; comments never count. A word a type union in `src/types.ts` also declares as a mechanic name (`heal`, `fire`) passes as that mechanic, but still fails where only an id fits: compared to an `id`, passed to a `get*` lookup or `includes`/`has`, or used as an index. Only `src/engine/migration.ts` is exempt, since a version remap must name the historical ids it rewrites. Beyond that, a passive is one of 2 shapes:
+- **Pure stat math** (Knight, Rogue's bonus%, Acolyte, Archer, Ninja's dodge/clone%, Summoner): no status effect involved at all — the hook/helper in `src/engine/combat.ts`/`combatHooks.ts` just reads the rank's numeric field(s) and computes directly.
 - **Applies a status effect**: the status id(s) a passive can apply must also come from JSON, never a literal string in engine code. 2 valid ways to do this, picked by whether the ranks genuinely need a distinct status identity: a JSON array/pool of ids picked from at runtime (Plague Doctor's `debuffPool`), a JSON field naming a different status id per rank, whose own magnitude is the whole effect (Mage's `onHitStatusEffectId` — "shredded"/"-ii"/"-iii", Viking's `thresholdStatusEffectId` — "bloodrage"/"-ii"/"-iii", same shape Rogue's own Poison Bomb skill uses for "poisoned"/"-ii"/"-iii"), or, when 3 near-duplicate statuses would be pure duplication, 1 status id whose `data/classes.json`-declared rank magnitude overrides the status's own placeholder value at apply time (Totem Recall's `totems-strength` — see `docs/gameplay-decisions/01-class-skill.md` §1.3.9.2's `minPercent`-override note). A passive never repeats a number its status already carries. A passive that needs to check the *target's* status (not apply one) reads a JSON `requiresTargetStatusId` the same way (Rogue) — matched via `statusSatisfiesRequirement`, which already understands a status's own `rankOf` family link, so no hardcoded array of that family's ids belongs in engine code either.
+
+**Status fields that bend a fight (Knight, Viking).** Each is declared on the status in `data/status-effects.json` and read by the engine; none names an id in code.
+- `interceptsForSource` (Interpose's `interposed`): a monster's single-target damaging attack aimed at the bearer goes to the status's source (the Knight) while the source is alive and not stunned. `interceptTarget` (`src/engine/interception.ts`) runs after the monster has picked a target and before the hit and dodge rolls, so the Knight is rolled against as if chosen. Area attacks and skills with no damage effect are never redirected.
+- `interceptWeakestChancePercent` (Watchful, a passive rank field): the same redirect, rolled per rank, for a hit aimed at the living party character with the lowest HP percentage. It fires at most once per round (`CombatState.watchfulRound`), never for the Knight itself, and yields to an `interposed` redirect.
+- `onLandedHitSourceStatus`: when the bearer's own action lands a damaging hit, the status's source gains the named status (`applyLandedHitFollowUps`, `src/engine/combat.ts`). A miss, a stun, a heal or a buff gives nothing.
+- `rankOf` / `rankLevel`: statuses sharing a `rankOf` are levels of one family (the base is level 1), and a target carries one of them at a time. A higher level replaces a lower one, undoing its stat deltas; a lower level landing on a higher one adds `combat.lowerRankStatusExtendTurns` to it, capped at the higher one's own applied duration (`ActiveStatusEffect.durationTurns`, falling back to `combat.lowerRankStatusExtendDefaultCapTurns`), and logs a refresh once it is at the cap. Levels already sitting side by side, as an older save can hold, collapse to the highest the next time one lands (`applyStatusEffectToActor`, `src/engine/resolver.ts`). `levelsStack: true` on a family's base status turns the rule off for that family, so its levels stack (the barter regeneration tiers). A skill's `applyStatusEffect` may carry `rankWeights` (Spreading Toxic Fog): once it lands, `applySkillEffects` (`src/engine/combat.ts`, `rollStatusLevel`) picks the family level per target by those weights, an effect with its own `target` included. `assertRankWeights` (`src/data/statusEffects.ts`) refuses, for class, monster and summon skills alike, a weight on a level the family lacks or weights that are all 0; an item effect may not carry `rankWeights`, since items do not roll it.
+- `damageTakenPercent` (Breach's `breached`): every direct hit on the bearer deals this percent more, whether it comes from a skill, a summon, an item, an artifact/ability's `autoDamage` or a reflect (`damageTakenMultiplier`, `src/engine/resolver.ts`). Status ticks are not raised.
+- `woundOnHit` (Viking's `deep-wound`): each direct hit the bearer survives deals `amount` + a percent of its max HP more, of `damageType`, on its own log line (`openWounds`, `src/engine/resolver.ts`). The percent climbs from `minMaxHpPercent` at full HP to `maxMaxHpPercent` at `fullAtHpPercent` HP or below. Crits and `damageTakenPercent` do not touch it; a monster's defense blunts it at its tier's share (`combat.statusDamageDefensePercentByTier`, `statusDamageAfterDefense`) as it does a DoT tick, less the triggering hit's own `ignoreDefensePercent` (the Viking's `storm-empowered` bonus included), the race's resist/weak for `damageType` applies, it never drops below 1 unless the race is immune, an intact shell blocks it like a tick, and a race fully resistant to `damageType` never takes the status. A killing hit, a status tick, an `autoDamage` or a reflect opens nothing.
+- `buffsAttackerOnHit` (Breach's `breached`): each party member's skill cast that lands a damaging hit on the bearer rolls `chance` once, however many damage effects it carries, to give that attacker the named status. Items, summons and artifacts/abilities never roll it, and the one who applied it never gains it (`applyAttackerBuffsOnHit`, `src/engine/combat.ts`).
+- `counterAttack.target` (Engage's `engaged`): `"attacker"` makes the counter strike only the monster that landed the blow; absent or `"allEnemies"` strikes every targetable enemy.
 
 ## 🗺️ Floor structure — generated at runtime
 
@@ -141,13 +235,15 @@ Before entering the game: title screen (`src/ui/mainMenu.ts`) → party
 select (`src/ui/partySelect.ts`) or save select (`src/ui/saveSelect.ts`).
 In-game: a dark color theme (background `#100d0a`/panel `#171310`), with each
 character/monster getting its own colored "chip" (a colored background chip +
-abbreviation, e.g. `VG` in steel blue for Vanguard, `GRD` in bone gray for
+abbreviation, e.g. `KN` in steel blue for Knight, `GRD` in bone gray for
 Skeleton Guard, bosses tinted red). HP changes color by threshold
 (green/yellow/red), and fear only shows a colored label from tier 2 onward.
 
 The smallest supported terminal is 150×45. At that size every screen must still show its whole <!-- docs:intent -->
 footer and at least one row of the main (Dungeon) panel; the party list may scroll.
-`bun run random-play` checks this on every screen it reaches.
+`bun run random-play` checks this on every screen it reaches. Every row of the combat skill menu fits
+one line at that size, so a skill's `shortDescription` is limited by what its name and MP cost leave;
+`test/skillShortDescription.test.ts` fails on one that doesn't fit, naming its limit.
 
 From top to bottom the screen is the header, the Path panel, a row holding the Battlefield and the
 Log beside it, the Party | Dungeon | Monsters row, and the key hints on the last line. The
@@ -173,7 +269,8 @@ lives in the "Expedition"/"Monsters" panels below. Sprite data lives in
 `src/ui/sprites.ts`, with its own tests (`test/sprites.test.ts`) that catch
 row/column misalignment or missing palette colors. Sprites are edited
 visually in the browser via `bun run game-editor` (`tools/game-editor/`,
-Sprite Editor tab) rather than by hand-editing the character grid in JSON.
+Sprite Editor tab) rather than by hand-editing the character grid in JSON. The same editor's
+Backdrops tab edits the scenes drawn behind the panel (see "Backdrops" below).
 
 Each unit's role icons sit one blank row above the tallest sprite its tier allows
 (`tierFrameHeight`, `src/ui/battlefieldFocus.ts`: characters and normal monsters share
@@ -240,7 +337,7 @@ landed on, its full damage and the overkill the actor had no HP left to take (`L
 52 on a unit with 24 HP left is `-52!`, not `-24!`. The hits of a multi-hit cast that come after the
 target has fallen are rolled for crit and variance like any other (`ResolveContext.unapplied`, set by
 the hit loop in `applySkillEffects`): nothing is dealt, healed or hooked for them, and each is logged
-after the "is defeated" line as `Overkill on Dungeon Rat: 49 from Vanguard's Frenzied Slash.` (with the
+after the "is defeated" line as `Overkill on Dungeon Rat: 49 from Knight's Frenzied Slash.` (with the
 crit prefix when it crit; the line never says the unit takes damage). The battlefield still reads every
 hit of the cast, `-52!`, `-49`, `-51`.
 `RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
@@ -280,13 +377,17 @@ lines tall** is recommended; a shorter terminal will clip the bottom of the
 frame (labels/HP).
 
 The target list (`pickTarget`, `src/ui/targetPicker.ts`) reads the picked skill's or item's effects.
-A heal (a `heal` effect, or a status that heals over time) lists each ally's HP; a stat buff lists
-the stats it raises instead (`ATK`, `DEF`, `SPD`, `MAG`, `AGG` — the unit's current value); a cure,
-a debuff or an attack lists plain HP. Only the HP figure is coloured, with the party panel's
-thresholds (`hpColorFor`); names are not. A trailing `*` flags the most hurt target, only when its
-HP is under half (`MOST_HURT_BELOW`) and the first of equally hurt targets: an ally for a heal, an
-enemy for an attack or a debuff once at least two stand. Each side is read from the effects that
-reach it, so a stat buff or a heal flags no enemy and Purify flags an enemy and no ally.
+Each ally's row lists every figure the effects touch, in a fixed order: HP for a heal (a `heal`
+effect, or a status that heals over time), MP for `restoreMp`, fear for a `modifyStat` on fear or a
+status with `fearResistPercent`, then the stats a buff raises (`ATK`, `DEF`, `SPD`, `MAG`, `AGG` —
+the unit's current value). Prayer reads `(Fear 52, DEF 11)`, Blood Pact `(10/30 MP, MAG 3)`. MP and
+fear exist only on characters, so a summon falls back to HP; a cure, a debuff or an attack lists
+plain HP. HP is coloured with the party panel's thresholds (`hpColorFor`), MP in the MP colour and
+fear by its tier (`fearColorFor`); names and stats are not. A trailing `*` flags the most hurt
+target, only when its HP is under half (`MOST_HURT_BELOW`) and the first of equally hurt targets: an
+ally for a heal, an enemy for an attack or a debuff once at least two stand. Each side is read from
+the effects that reach it, so a stat buff or a heal flags no enemy and Purify flags an enemy and no
+ally.
 
 The remaining panels:
 - **Expedition**: each character is trimmed down to 2 lines (name+chip, HP/MP/fear);
@@ -295,7 +396,9 @@ The remaining panels:
   line appears for an active status effect or equipped artifact. Party-wide
   Coins/Satiety are shown in the header instead of per character.
 - **Monsters**: the list of monsters currently in combat + their HP, hidden
-  when there are no monsters in the room
+  when there are no monsters in the room. A boss with a telegraph shows its meter on a
+  line under its HP (`◆` filled, `◇` empty, one icon per boss turn); a boss that fights in
+  HP bars (The Founder) shows `Phase n/total` as well, and each bar has its own meter.
 - **Log**: 8 lines tall, scrollable (`↑`/`↓`, `ScrollBoxRenderable`, sticks to the bottom).
   The box shows the **room log** — the latest 50 entries, cleared when the player enters
   another room. `[l]` opens the **run log** on its own screen (`fullLog`): the latest 500
@@ -312,9 +415,86 @@ The remaining panels:
   a line with no session's state with the line itself — so the screen is never ahead of the log.
   Any key skips straight to the end of the reveal, in one render.
 
-The full theme/color palette is defined in `src/ui/theme.ts` — to change the
-color scheme or add a new class/monster, edit `PALETTE`/`CLASS_STYLE`/
-`MONSTER_STYLE` there (and add the matching sprite in `src/ui/sprites.ts`).
+The UI palette is `PALETTE` in `src/ui/theme.ts`. A class's or monster's chip
+label and color is its `style` (`{ abbr, color }`) in `data/classes.json` /
+`data/monsters.json`; a new class or monster also needs its sprite in
+`data/sprites.json`.
+
+#### Backdrops
+
+Behind the Battlefield's pixel art sits a painted room scene, drawn in the same one-cell pixels.
+`data/backdrops.json` holds three catalogues and one render block, all read through
+`src/data/backdrops.ts`:
+
+- `bases` — a wall tile, a floor tile (each a character grid with its own palette, tiled across the
+  width) and a `baseboard` colour for the row where wall meets floor. A base is the material of a room.
+- `props` — small pixel-art objects (torches, pillars, an altar...) in the same grid-plus-palette
+  form as a sprite, where `.` is transparent. A prop may carry a `light` (`radius`, `color`,
+  `strength`) that tints the cells around it.
+- `scenes` — one entry per room name: a `base` plus placed `props` (`prop`, `x`, `y`, measured from
+  the left edge of the Battlefield's fixed-size content, so a scene lines up with the units however
+  wide the panel is), and an optional partial `render` that overrides the global one for that scene.
+  An optional `rightBase` (`x`, `base`) swaps in another base from that content column to the
+  panel's right edge, for a scene whose right side is one mass that must reach the edge at any
+  width (the Gatekeeper's mountain); props can't do that, since they end with the content.
+- `render` — the global settings: `floorRow` (where the wall ends), `brightness` and `jitter` (a
+  per-cell brightness noise that keeps flat tiles from looking printed), `edgeFade` (darkens the
+  columns at both sides), `topFade`, `dimFactor` and `unitShadow`.
+
+A room name reaches its scene through `data/room-names.json`: each entry is `{ name, backdrop }`
+and `backdrop` names a scene. The loader rejects a scene that uses an unknown base or prop, a ragged
+or palette-less grid, a bad colour, and a room name pointing at a missing scene. A room name with no
+scene draws the plain panel, so a name can ship before its art does. A new room name needs a scene;
+add both in the same change.
+
+An event that stands outside any room names its own scene in `backdrop` (`data/events.json`). The
+Gatekeeper, met at the cave mouth before the party enters, is the only one: while it is pending, the
+Battlefield shows its scene instead of the first room's. The loader rejects an event pointing at a
+missing scene.
+
+`paintBackdrop` (`src/ui/backdrop.ts`) builds the picture in layers, bottom to top: the base (wall
+rows above `floorRow`, the baseboard on it, floor rows below), then the props, then each prop's light
+as a radial tint, then the shading. `edgeFade` darkens toward the left and right edges and `topFade`
+is a brightness profile with one entry per backdrop row, so it scales every row, not just the top;
+the profile can darken the rows where units stand to keep dark sprites readable against the
+wall and floor. The backdrop fills the Battlefield panel's full inner width
+(`battlefieldInnerWidth`), not only the fixed-size content, and is repainted when the terminal
+resizes. The painted grid is cached in `App.backdropFor` per room name, width, content offset and dim
+state, so an ordinary render does not repaint it.
+
+`composeBattlefield` puts the units on top. Only the pixel cells of a sprite keep their own colour;
+every other cell of the backdrop rows (including the icon band above the tallest sprite) takes the
+backdrop colour as its background, so icons, markers and the gaps between units read over the scene.
+The backdrop covers the icon band, the shared sprite frame and one row below it; the label and
+status rows under each unit keep the panel colour so text stays on a flat ground. A unit shadow is
+available through the `render.unitShadow` switch (`enabled`, `reachCols`, `reachRows`, `darkness`): when on,
+backdrop cells within reach of a sprite are darkened. It is off by default and a scene can turn it on
+through its own `render.unitShadow`.
+
+The backdrop dims (`dimFactor`) whenever a unit is greyed during a narrated round, so the scene
+steps back with the units that are not acting; `renderBattlefield` reports that as `dimmed`.
+
+Art direction for a scene:
+
+- The scene's identity (the prop that says "shrine", "sunken chamber", "ritual chamber") goes in
+  the upper rows, above where regular units stand, so it reads at a glance and no sprite covers it.
+- A boss scene puts its identity behind and beside the boss, not in the middle of the enemy side:
+  a boss sprite covers almost the full height of its side, so a prop placed there is hidden or
+  merges with it.
+- Rest and event rooms draw a sprite on the enemy side too (the campfire, the treasure chest, the
+  event's figure), so props near it stay low or off to the side and do not merge with it.
+- No bright blue or red in a scene. The party is marked in blue and the monsters in red, and a
+  backdrop that uses them blurs who is who.
+- New pixel art (bases, props) is checked rendered at 1:2, the aspect a terminal cell has, never as a
+  square-pixel preview; the Backdrops tab of the game editor renders it that way.
+
+The Backdrops tab of `bun run game-editor` (`tools/game-editor/`, `backdropPreview.ts`) edits the
+room-name-to-scene links, the scenes (including an event's own scene, listed under the room names,
+and a scene's `rightBase`), bases and props (pixels and palette). It previews a scene with a sample
+party and monsters through the same `paintBackdrop` and `composeBattlefield` the game uses, with
+switches for the dimmed state and the unit shadow; the shadow switch starts at the scene's own
+setting. Saving checks the file with the game's loader, including every event's scene, and rejects a
+prop placed outside the backdrop (`propBoundsError`, `src/ui/backdrop.ts`).
 
 ### Key hints — where they live and how they're written
 
@@ -367,14 +547,17 @@ is a key hint and belongs in the footer.
 4. paging      [←/→] Page
 5. back        [Esc] Back
    │
-6. globals     [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit
+6. globals     [b] Party   [m] Memory   [j] Journal   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit   ([m] only once the slot has unlocked Memory, [j] once its journal holds a written line)
 ```
 
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
-`[b]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
-including where they are suppressed — `[q]` is off on `gameover`/`abilityBuyback`/
-`saveMenu`/`gatekeeper`, `[s]` is off on `gameover`/`abilityBuyback`/`gatekeeper`,
-`[b]` only opens party info from a fixed list of screen kinds. The footer's global group must be
+`[b]`, `[m]`, `[j]`, `[l]` and `[Ctrl+C]` are handled centrally in `App.handleKey` (`src/ui/app.ts`),
+including where they are suppressed — `[q]` is off on `gameover`/`journalLastPage`/`abilityBuyback`/
+`saveMenu`/`gatekeeper`, `[s]` is off on `gameover`/`journalLastPage`/`abilityBuyback`/`gatekeeper`,
+`[b]` only opens party info from a fixed list of screen kinds, `[m]` exists only once the
+slot has unlocked Memory and read its intro and is off on `fullLog`/`gameover`/`abilityBuyback`/
+`gatekeeper`/`memoryIntro`/`memory` (`canOpenMemory`, `src/ui/keyHints.ts`), `[j]` exists once the slot's journal
+holds a written line and is off on those same screens and on its own (`canOpenJournal`); it opens mid-combat too. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
 otherwise the two drift apart and the hint outlives the binding. On the log screen itself
 only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
@@ -417,6 +600,8 @@ screen contributes.
 | `pickAction` | `[1-2] Action` — "Use item" stays listed (tagged) even with an empty bag |
 | `pickSkill` | `[1-n] Skill   [Esc] Back` — n = the actor's skills |
 | `skillDetail` | `[Enter] Use   [Esc] Back` |
+| `pickCommandMinion` | `[1-n] Minion   [Esc] Back` — n = minions the Summoner can Command |
+| `pickCommandSkill` | `[1-n] Skill   [Esc] Back` — n = the minion's signature skills |
 | `pickItemInCombat` / `pickItemOutOfCombat` | `[1-n] Item   [Esc] Back` — n = items on this page |
 | `pickTarget` | `[1-n] Target   [Esc] Back` — n = candidates |
 | `roundResolved` / `combatOver` | `[Any] Continue` |
@@ -427,9 +612,9 @@ screen contributes.
 | `artifactDecisionPickReplace` | `[1-n] Artifact` — n = the character's non-cursed artifacts |
 | `roomReward` | `[1-n] Details   [Enter] Continue` — n = entries on this page |
 | `campPrompt` | `[1] Camp   [Enter] Skip` |
-| `eventMerchant` | `[1-9] Choose   [r] Refresh` (the `[r]` drops once the visit is out of refreshes; the offer detail shows `[1-2] Choose   [Esc] Back`) |
+| `eventArtifactShop` | `[1-9] Choose   [r] Refresh` (the `[r]` drops once the visit is out of refreshes; the offer detail shows `[1-2] Choose   [Esc] Back`) |
 | `eventHpGamblePickPayer` | `[1-n] Character` — n = party size |
-| `eventHermitPickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
+| `eventFortuneExchangePickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
 | other `event*` | `[1-n] Choose` — n counts the options that event actually offers (a forced guardian fight drops to `[1]`) |
 | `campReflection` | `[1-3] Choose` |
 | `floorMilestone` | `[Enter] Continue` |
@@ -439,12 +624,18 @@ screen contributes.
 | `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |
 | `abilityBuyback` | `[1-2] Choose` |
 | `saveMenu` | `[1-3] Choose   [Esc] Cancel` |
-| `gameover` | *(empty — only the global `[Ctrl+C] Quit` remains)* |
+| `gameover` | `[n] New Run   [Esc] Main Menu` — `[Enter] Last page   [n] New Run   [Esc] Main Menu` when the ending showed journal echoes |
+| `journalLastPage` | `[Esc] Back` |
+| `journalPickup` | `[Enter] Read it` on the first screen, `[1-2] Choose` (their page) or `[1-3] Choose` (a line read differently), `[Enter] Continue` on a reading that can't be taken |
+| `memoryIntro` | `[Enter] Continue` |
+| `memory` | `[←/→] Page   [Esc] Back` (`[←/→]` only with more than one page) |
+| `journalDeduction` | `[1-2] Choose` on a find (look / move on); `[1-n] Write` on a scene — n = the readings offered plus leave-unwritten, or keep/strike on a line already written |
+| `journal` | `[←/→] Page   [Esc] Back` (`[←/→]` only with more than one page) |
 | main menu, waiting for a key | `[Any] Continue` |
-| main menu, choosing | `[1] Start   [2] Continue` (`[2]` only when a slot is occupied) |
-| party select, browsing | `[Enter] Pick   [←/→] Browse` (+ `[Esc] Undo` once a recruit is in the party) |
+| main menu, choosing | `[1] Start   [2] Continue` (`[2]` only when a slot holds a run or an ended one) |
+| party select, browsing | `[Enter] Pick   [←/→] Browse   [Esc] Back` (`[Esc] Main Menu` on New Run, `[Esc] Undo` once a recruit is in the party) |
 | party select, choosing the recruit's ability | `[1-n] Choose   [0] Skip   [Esc] Back` (+ `[←/→] Page`); `[0] Skip   [Esc] Back` when the page is empty |
-| slot select | `[1-n] Choose   [Esc] Back` — New Game lists all 5 slots, Continue only the occupied ones |
+| slot select | `[1-n] Choose   [Esc] Back` — New Game lists all 5 slots, Continue only the ones holding a run or an ended one |
 | slot select, overwrite confirm | `[1] Overwrite   [Esc] Cancel` |
 
 The three pre-game screens (`src/ui/mainMenu.ts`, `partySelect.ts`,
@@ -456,7 +647,7 @@ same grammar, so the hint line never moves between screens.
 
 1. Write the option lines in `renderMain` with `  [n] Label` prefixes — content only.
 2. Write **one** contextual footer string in `data/strings.json` following R2–R4.
-   Use `[{{keys}}]` for the digit range, and do not list `[q]`/`[s]`/`[b]`/`[Ctrl+C]`
+   Use `[{{keys}}]` for the digit range, and do not list `[q]`/`[s]`/`[b]`/`[m]`/`[Ctrl+C]`
    there; R5 adds those.
 3. Return `digitHint(key, <options on screen>)` from the screen's `renderFooter`
    and wire the `ui.kind` into `App.renderFooter` (`src/ui/app.ts`).
@@ -508,6 +699,8 @@ data/                  # design data as JSON — see "Design data" above
   events.json
   room-names.json
   floor-milestones.json
+  journal.json
+  personalities.json
   level-growth.json
   balance-config.json
   sprites.json
@@ -520,6 +713,8 @@ src/
     statusEffects.ts     # data/status-effects.json loader — getStatusEffect
     items.ts             # data/items.json loader — getItem, rollItemDrop
     floorMilestones.ts   # data/floor-milestones.json loader — pickFloorMilestoneOmen (depth bands, no repeats, each line shown by its maxFloor)
+    journal.ts           # data/journal.json loader — validateJournal (ids, 2+ directions, gates and their cycles, sources, echoes, personality lines)
+    personalities.ts     # data/personalities.json loader — validatePersonalities (condition kinds, every class's personalityId)
     barter.ts            # data/barter.json loader — getBarterEntry (checks every trophy has an entry)
     shopStock.ts         # rollShopOffers/rollBarterOffers — the Runner's stock and barter offers, tier odds by floor depth
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity (rarity weights are a module-private const, not exported)
@@ -533,13 +728,16 @@ src/
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear + satiety mechanics: room-entry drain, Exhausted/Dying, Camp, rest room actions
-    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). A save loads if its version is an x.y.z version from `OLDEST_LOADABLE_SAVE_VERSION` (`save.ts`) up to the current app version. `VERSION_MIGRATIONS` holds one step per release that changed what a saved value means, oldest first; a save runs every step newer than its own version, in order, before the shape backfills (1.1.1 rescales `partyExp` to the new EXP curve, keeping the level and the share of the way to the next one). A release that changes a saved value's meaning adds its step there; a release that changes nothing needs no step. Renamed ids are not remapped by default: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over, so a release that renames an id an allowed version can hold remaps it in its step
+    journal.ts            # journal rules: conditions, fragment grants (no rng), the deduction queue, auto-strike, tear-out on a wipe
+    migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). A save loads if its version is an x.y.z version from `OLDEST_LOADABLE_SAVE_VERSION` (`save.ts`) up to the current app version. `VERSION_MIGRATIONS` holds one step per release that changed what a saved value means, oldest first; a save runs every step newer than its own version, in order, before the shape backfills (1.1.1 and 1.2.0 each rescale `partyExp` to that release's EXP curve, keeping the level and the share of the way to the next one, so a release that changes `expTiers[]` freezes its curve in `migration.ts` and adds a step, and `test/save.test.ts` fails until it does). A release that changes a saved value's meaning adds its step there; a release that changes nothing needs no step. Renamed ids are not remapped by default: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over, so a release that renames an id an allowed version can hold remaps it in its step
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
     events/runner.ts      # the Rest-room Merchant's Runner (not an event room): rollRestRunner, shop purchase/refresh, buyback
     events/barter.ts      # his trophy-for-buff barter: runnerBarter, and applyPendingBarterBuffs when the floor's elite/boss fight begins
     logSession.ts         # LogSession builder: runInSession/runTicksInSession tag each actor's turn (or tick block) and note who it attacked/debuffed/buffed/healed
     combatHooks.ts        # passive/on-hit hook helpers read by combat.ts (class passives that don't apply a status effect)
-    monsterAI.ts           # monster action/target selection (pickMonsterAction, resolveMonsterSkillTargets, Execute charge state machine)
+    monsterAI.ts           # monster turn flow: fill the telegraph meter and release it when full, enter a phase, filter/score/pick a skill, pick targets (pickMonsterAction, pickTargets)
+    monsterAiRules.ts      # pure predicate evaluation and weight scoring for aiCondition/aiRules/targetRules
+    monsterShell.ts        # the breakable-shell state machine (formShell, shellAdjustedDamage, noteShellHit, advanceShellAfterOwnTurn)
     paths.ts                # save-directory/file path resolution
     profile.ts               # run/profile-level stats tracked across saves
   ui/theme.ts          # color palette + StyledText helpers (chips, HP/fear-based coloring)
@@ -551,20 +749,22 @@ src/
   ui/layout.ts          # shared panel sizing/layout helpers for App.render
   ui/revealQueue.ts     # RevealQueue: the single clock pacing the combat log by session and driving the battlefield highlight
   ui/battlefieldFocus.ts # greying of bystanders, role icons and the icon band above the sprites
-  ui/targetPicker.ts    # the target list rows: coloured HP, the stats a buff raises, the most-hurt `*`
+  ui/targetPicker.ts    # the target list rows: coloured HP/MP/fear, the stats a buff raises, the most-hurt `*`
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → partySelect/saveSelect → App)
 tools/
-  game-editor/          # dev tool: sprites, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
+  game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the numbers in the docs in step with data/balance-config.json — pairs, generated blocks, reference check
-  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), bot.ts (one run), report.ts (report.html), run.ts (CLI)
+  curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, comparison with another run, the check's rules), run.ts (CLI, --check), comment.ts (the pull request comment)
+  random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), evidence.ts (screen keys, PNGs, manifest and the evidence comment), report.ts (report.html), run.ts (CLI)
 test/
   engine.test.ts       # engine unit tests, including one full-playthrough scenario
   ui.test.ts           # headless UI tests via simulated keyboard input: screens, paging, the post-victory artifact-decision/camp/floor-advance ordering (also across a reload) and the panel layout
-  randomPlay.test.ts   # the random-play tool's checks and report rendering, plus one short bot run
+  randomPlay.test.ts   # the random-play tool's checks, report rendering and screen evidence, plus one short bot run
+  curveBench.test.ts   # the guard bench's statistics, cases, stopping rule and comparison with another run, the curve check's rules, and the pull request comment
   character-skills.test.ts # per-class skill ranks, queued-action refund, conditionalBonus/lifesteal/accuracyPenalty effects
   combat-ranks.test.ts # combat round structure (command + speed-ordered execution) and aggro-weighted targeting
   resolver.test.ts     # the shared SkillEffect resolver + status-effect cleanup when a room is cleared

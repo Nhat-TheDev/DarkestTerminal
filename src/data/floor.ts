@@ -5,18 +5,10 @@ import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatt
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
-import roomNamesJson from "../../data/room-names.json";
-
-const ROOM_NAMES = roomNamesJson as Record<RoomType, string[]>;
-for (const type of ["combat", "rest", "boss", "event"] satisfies RoomType[]) {
-  const pool: unknown = ROOM_NAMES[type];
-  if (!Array.isArray(pool) || pool.length === 0 || pool.some((n) => typeof n !== "string")) {
-    throw new Error(`data/room-names.json: "${type}" must be a non-empty list of names`);
-  }
-}
+import { roomNamePool } from "./roomNames";
 
 function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
-  const pool = ROOM_NAMES[type];
+  const pool = roomNamePool(type);
   const fresh = pool.filter((n) => !used.has(n));
   const name = rng.pick(fresh.length > 0 ? fresh : pool);
   used.add(name);

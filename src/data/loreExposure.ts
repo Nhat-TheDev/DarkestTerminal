@@ -3,7 +3,7 @@ import { EVENTS } from "./events";
 import { BALANCE } from "./balanceConfig";
 import { t } from "./strings";
 
-export const LORE_EXPOSURE_EVENT_IDS: ReadonlySet<Id> = new Set(EVENTS.filter((e) => e.id !== "open-chest" && e.kind !== "scripted").map((e) => e.id));
+export const LORE_EXPOSURE_EVENT_IDS: ReadonlySet<Id> = new Set(EVENTS.filter((e) => !e.noLoreExposure && e.kind !== "scripted").map((e) => e.id));
 
 export type CampReflectionTier = 1 | 2 | 3 | 4;
 

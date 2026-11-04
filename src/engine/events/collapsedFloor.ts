@@ -4,7 +4,7 @@ import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { payHpPercent, closeEvent, findPartyMemberOrError } from "./shared";
+import { payHpPercent, closeEvent, recordEventOutcome, findPartyMemberOrError } from "./shared";
 
 export const COLLAPSED_FLOOR_HP_PERCENT = BALANCE.events.collapsedFloorHpPercent;
 const COLLAPSED_FLOOR_SUCCESS_CHANCE = BALANCE.events.collapsedFloorSuccessChance;
@@ -16,7 +16,7 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
   if (cost === null) return { reason: t("errors.notEnoughHpToPay") };
   state.narrativeCounters.altarPaymentsCount += 1; // counts the payment, not the rescue roll
   const rescued = ctx.rng.chance(COLLAPSED_FLOOR_SUCCESS_CHANCE);
-  state.eventOutcomes["collapsed-floor"] = rescued ? "rescued" : "failed";
+  recordEventOutcome(state, rescued ? "rescued" : "failed");
   if (rescued) {
     const artifactId = rollArtifact("boss", ctx.rng, state.floor.depth);
     state.message = t("game.collapsedFloorSuccess", { character: character.name, cost, artifact: getArtifact(artifactId).name });
@@ -30,6 +30,6 @@ export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, char
 
 export function collapsedFloorLeave(state: GameState): void {
   state.message = t("game.skippedAttempt");
-  state.eventOutcomes["collapsed-floor"] = "declined";
+  recordEventOutcome(state, "declined");
   closeEvent(state);
 }

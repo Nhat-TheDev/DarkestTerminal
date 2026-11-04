@@ -18,9 +18,9 @@ function setup() {
   const goblin = spawnInto(ctx, "goblin");
   const goblin2 = spawnInto(ctx, "goblin");
   const combat = startCombat("r1", [goblin.id, goblin2.id], ctx, false);
-  const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
+  const knight = ctx.party.find((p) => p.classId === "knight")!;
   const acolyte = ctx.party.find((p) => p.classId === "acolyte")!;
-  return { ctx, combat, goblin, goblin2, vanguard, acolyte };
+  return { ctx, combat, goblin, goblin2, knight, acolyte };
 }
 
 const damage: SkillEffect = { kind: "damage", amount: 1 };
@@ -30,65 +30,65 @@ const weakenDebuff: SkillEffect = { kind: "applyStatusEffect", statusEffectId: "
 
 describe("unitId", () => {
   test("a summon is drawn as its owner; everyone else as themselves", () => {
-    const { goblin, vanguard } = setup();
-    const summon = { id: "s1", ownerId: vanguard.id } as unknown as Actor;
-    expect(unitId(summon)).toBe(vanguard.id);
+    const { goblin, knight } = setup();
+    const summon = { id: "s1", ownerId: knight.id } as unknown as Actor;
+    expect(unitId(summon)).toBe(knight.id);
     expect(unitId(goblin)).toBe(goblin.id);
-    expect(unitId(vanguard)).toBe(vanguard.id);
+    expect(unitId(knight)).toBe(knight.id);
   });
 });
 
 describe("runInSession", () => {
   test("tags every entry logged by the body with one shared session whose id is the first tagged entry's index", () => {
-    const { combat, vanguard } = setup();
+    const { combat, knight } = setup();
     const before = combat.log.length;
-    runInSession(combat, vanguard.id, () => {
+    runInSession(combat, knight.id, () => {
       combat.log.push({ text: "a", kind: "info" });
       combat.log.push({ text: "b", kind: "info" });
     });
     const [a, b] = combat.log.slice(before);
     expect(a!.session).toBeDefined();
     expect(b!.session).toBe(a!.session);
-    expect(a!.session!.actorId).toBe(vanguard.id);
+    expect(a!.session!.actorId).toBe(knight.id);
     expect(a!.session!.id).toBe(before);
   });
 
   test("returns what the body returns", () => {
-    const { combat, vanguard } = setup();
-    expect(runInSession(combat, vanguard.id, () => 42)).toBe(42);
+    const { combat, knight } = setup();
+    expect(runInSession(combat, knight.id, () => 42)).toBe(42);
   });
 
   test("leaves no session behind when the body logs nothing, and clears the active session afterwards", () => {
-    const { combat, vanguard } = setup();
+    const { combat, knight } = setup();
     const before = combat.log.length;
-    runInSession(combat, vanguard.id, () => {});
+    runInSession(combat, knight.id, () => {});
     expect(combat.log.length).toBe(before);
     expect(combat.activeSession).toBeUndefined();
   });
 
   test("clears the active session even when the body throws", () => {
-    const { combat, vanguard } = setup();
-    expect(() => runInSession(combat, vanguard.id, () => { throw new Error("boom"); })).toThrow("boom");
+    const { combat, knight } = setup();
+    expect(() => runInSession(combat, knight.id, () => { throw new Error("boom"); })).toThrow("boom");
     expect(combat.activeSession).toBeUndefined();
   });
 
   test("a nested session keeps its own entries; the outer one does not overwrite them", () => {
-    const { combat, vanguard, acolyte } = setup();
-    runInSession(combat, vanguard.id, () => {
+    const { combat, knight, acolyte } = setup();
+    runInSession(combat, knight.id, () => {
       combat.log.push({ text: "outer-1", kind: "info" });
       runInSession(combat, acolyte.id, () => combat.log.push({ text: "inner", kind: "info" }));
       combat.log.push({ text: "outer-2", kind: "info" });
     });
     const byText = (text: string) => combat.log.find((e) => e.text === text)!;
-    expect(byText("outer-1").session!.actorId).toBe(vanguard.id);
+    expect(byText("outer-1").session!.actorId).toBe(knight.id);
     expect(byText("inner").session!.actorId).toBe(acolyte.id);
-    expect(byText("outer-2").session!.actorId).toBe(vanguard.id);
+    expect(byText("outer-2").session!.actorId).toBe(knight.id);
     expect(byText("inner").session!.id).not.toBe(byText("outer-1").session!.id);
   });
 
   test("session ids stay distinct when the nested session logs before the outer one does", () => {
-    const { combat, vanguard, acolyte } = setup();
-    runInSession(combat, vanguard.id, () => {
+    const { combat, knight, acolyte } = setup();
+    runInSession(combat, knight.id, () => {
       runInSession(combat, acolyte.id, () => combat.log.push({ text: "inner", kind: "info" }));
       combat.log.push({ text: "outer", kind: "info" });
     });
@@ -107,12 +107,12 @@ describe("runInSession", () => {
 
 describe("session snapshots and markers", () => {
   test("each run of a session carries the state as of its own end; a nested session does not leak into it", () => {
-    const { combat, vanguard, acolyte } = setup();
+    const { combat, knight, acolyte } = setup();
     let hp = 100;
     const snapshot = () => [{ id: "x", hp, maxHp: 100, isAlive: true }];
     runInSession(
       combat,
-      vanguard.id,
+      knight.id,
       () => {
         combat.log.push({ text: "outer-1", kind: "info" });
         hp = 90;
@@ -137,14 +137,14 @@ describe("session snapshots and markers", () => {
   });
 
   test("noteMiss records the missed target once, as its unit", () => {
-    const { combat, goblin, vanguard } = setup();
-    const summon = { id: "s1", ownerId: vanguard.id } as unknown as Actor;
+    const { combat, goblin, knight } = setup();
+    const summon = { id: "s1", ownerId: knight.id } as unknown as Actor;
     runInSession(combat, goblin.id, () => {
       noteMiss(combat, summon);
-      noteMiss(combat, vanguard);
+      noteMiss(combat, knight);
       combat.log.push({ text: "x", kind: "info" });
     });
-    expect(combat.log.at(-1)!.session!.missedIds).toEqual([vanguard.id]);
+    expect(combat.log.at(-1)!.session!.missedIds).toEqual([knight.id]);
   });
 
   test("an actor-less session carries its cause", () => {
@@ -156,14 +156,14 @@ describe("session snapshots and markers", () => {
 
 describe("runTicksInSession", () => {
   test("one session for the whole block, lighting only the units whose tick logged", () => {
-    const { combat, goblin, goblin2, vanguard } = setup();
-    runTicksInSession(combat, [goblin, goblin2, vanguard], (actor) => {
+    const { combat, goblin, goblin2, knight } = setup();
+    runTicksInSession(combat, [goblin, goblin2, knight], (actor) => {
       if (actor !== goblin2) combat.log.push({ text: `tick ${actor.id}`, kind: "info" });
     });
     const entries = combat.log.filter((e) => e.text.startsWith("tick "));
     expect(entries).toHaveLength(2);
     expect(entries[1]!.session).toBe(entries[0]!.session);
-    expect(entries[0]!.session).toMatchObject({ actorId: null, affectedIds: [goblin.id, vanguard.id] });
+    expect(entries[0]!.session).toMatchObject({ actorId: null, affectedIds: [goblin.id, knight.id] });
   });
 
   test("a block where nothing logged leaves nothing behind", () => {
@@ -176,23 +176,23 @@ describe("runTicksInSession", () => {
 
 describe("noteAffected", () => {
   test("adds a summon's owner, once", () => {
-    const { combat, vanguard } = setup();
-    const summon = { id: "s1", ownerId: vanguard.id } as unknown as Actor;
+    const { combat, knight } = setup();
+    const summon = { id: "s1", ownerId: knight.id } as unknown as Actor;
     runInSession(combat, null, () => {
       noteAffected(combat, summon);
-      noteAffected(combat, vanguard);
+      noteAffected(combat, knight);
       combat.log.push({ text: "x", kind: "info" });
     });
-    expect(combat.log.at(-1)!.session!.affectedIds).toEqual([vanguard.id]);
+    expect(combat.log.at(-1)!.session!.affectedIds).toEqual([knight.id]);
   });
 });
 
 describe("noteSkillTarget / noteBasicAttack", () => {
   function noted(effects: SkillEffect[], targetSide: "enemy" | "ally", skillDealsDamage = effects.some((e) => e.kind === "damage")) {
-    const { combat, vanguard, acolyte, goblin } = setup();
+    const { combat, knight, acolyte, goblin } = setup();
     const target = targetSide === "enemy" ? goblin : acolyte;
-    runInSession(combat, vanguard.id, () => {
-      noteSkillTarget(combat, vanguard, target, effects, skillDealsDamage);
+    runInSession(combat, knight.id, () => {
+      noteSkillTarget(combat, knight, target, effects, skillDealsDamage);
       combat.log.push({ text: "x", kind: "info" });
     });
     return { session: combat.log.at(-1)!.session!, target };
@@ -262,27 +262,27 @@ describe("noteSkillTarget / noteBasicAttack", () => {
   });
 
   test("noteBasicAttack records an attack on the target", () => {
-    const { combat, goblin, vanguard } = setup();
+    const { combat, goblin, knight } = setup();
     runInSession(combat, goblin.id, () => {
-      noteBasicAttack(combat, goblin, vanguard);
+      noteBasicAttack(combat, goblin, knight);
       combat.log.push({ text: "x", kind: "info" });
     });
-    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([vanguard.id]);
+    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([knight.id]);
   });
 
   test("a summon target is recorded as its owner", () => {
-    const { combat, goblin, vanguard } = setup();
-    const summon = { id: "s1", ownerId: vanguard.id, hp: 5, name: "Totem" } as unknown as Actor;
+    const { combat, goblin, knight } = setup();
+    const summon = { id: "s1", ownerId: knight.id, hp: 5, name: "Totem" } as unknown as Actor;
     runInSession(combat, goblin.id, () => {
       noteBasicAttack(combat, goblin, summon);
       combat.log.push({ text: "x", kind: "info" });
     });
-    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([vanguard.id]);
+    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([knight.id]);
   });
 
   test("notes outside any session are ignored", () => {
-    const { combat, goblin, vanguard } = setup();
-    expect(() => noteBasicAttack(combat, goblin, vanguard)).not.toThrow();
+    const { combat, goblin, knight } = setup();
+    expect(() => noteBasicAttack(combat, goblin, knight)).not.toThrow();
   });
 });
 
@@ -292,81 +292,81 @@ function skill(partial: Pick<SkillDefinition, "target" | "effects"> & Partial<Sk
 
 describe("applySkillEffects notes its targets", () => {
   test("single-target attack", () => {
-    const { ctx, combat, vanguard, goblin } = setup();
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), vanguard, [goblin], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ actorId: vanguard.id, attackedIds: [goblin.id], buffedIds: [], healedIds: [] });
+    const { ctx, combat, knight, goblin } = setup();
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), knight, [goblin], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ actorId: knight.id, attackedIds: [goblin.id], buffedIds: [], healedIds: [] });
   });
 
   test("a skill that lowers an ally's fear notes the change; one that leaves it at 0 does not", () => {
-    const { ctx, combat, acolyte, vanguard } = setup();
-    vanguard.survival.fear = 30;
+    const { ctx, combat, acolyte, knight } = setup();
+    knight.survival.fear = 30;
     const calm = skill({ target: "singleAlly", effects: [{ kind: "modifyStat", stat: "fear", amount: -15 }] });
-    runInSession(combat, acolyte.id, () => applySkillEffects(calm, acolyte, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([vanguard.id]);
-    expect(vanguard.survival.fear).toBe(15);
+    runInSession(combat, acolyte.id, () => applySkillEffects(calm, acolyte, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([knight.id]);
+    expect(knight.survival.fear).toBe(15);
     acolyte.survival.fear = 0;
     runInSession(combat, acolyte.id, () => applySkillEffects(calm, acolyte, [acolyte], combat, ctx, combat.log));
     expect(combat.log.filter((e) => e.session?.actorId === acolyte.id).at(-1)?.session?.fearChangedIds ?? []).not.toContain(acolyte.id);
   });
 
   test("a monster skill's damage that lands adds hit fear to the struck character and notes it", () => {
-    const { ctx, combat, goblin, vanguard } = setup();
+    const { ctx, combat, goblin, knight } = setup();
     const bite = skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 5 }] });
-    runInSession(combat, goblin.id, () => applySkillEffects(bite, goblin, [vanguard], combat, ctx, combat.log));
-    expect(vanguard.hp).toBeLessThan(vanguard.maxHp);
-    expect(vanguard.survival.fear).toBe(1);
-    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([vanguard.id]);
+    runInSession(combat, goblin.id, () => applySkillEffects(bite, goblin, [knight], combat, ctx, combat.log));
+    expect(knight.hp).toBeLessThan(knight.maxHp);
+    expect(knight.survival.fear).toBe(1);
+    expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([knight.id]);
   });
 
   test("a character hitting a monster gains no fear and notes none", () => {
-    const { ctx, combat, vanguard, goblin } = setup();
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), vanguard, [goblin], combat, ctx, combat.log));
+    const { ctx, combat, knight, goblin } = setup();
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [damage] }), knight, [goblin], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session!.fearChangedIds).toEqual([]);
-    expect(vanguard.survival.fear).toBe(0);
+    expect(knight.survival.fear).toBe(0);
   });
 
   test("area attack lists every enemy", () => {
-    const { ctx, combat, vanguard, goblin, goblin2 } = setup();
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "allEnemies", effects: [damage] }), vanguard, [goblin, goblin2], combat, ctx, combat.log));
+    const { ctx, combat, knight, goblin, goblin2 } = setup();
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "allEnemies", effects: [damage] }), knight, [goblin, goblin2], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session!.attackedIds).toEqual([goblin.id, goblin2.id]);
   });
 
   test("a missed attack still marks the target", () => {
-    const { ctx, combat, vanguard, goblin } = setup();
+    const { ctx, combat, knight, goblin } = setup();
     goblin.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
     ctx.rng.next = () => 0; // every accuracy roll fails against blinded's 60% penalty
     runInSession(combat, goblin.id, () =>
-      applySkillEffects(skill({ target: "singleEnemy", effects: [damage], isUltimate: false }), goblin, [vanguard], combat, ctx, combat.log)
+      applySkillEffects(skill({ target: "singleEnemy", effects: [damage], isUltimate: false }), goblin, [knight], combat, ctx, combat.log)
     );
     const entry = combat.log.at(-1)!;
     expect(entry.text.toLowerCase()).toContain("miss");
-    expect(entry.session!.attackedIds).toEqual([vanguard.id]);
-    expect(entry.session!.missedIds).toEqual([vanguard.id]);
+    expect(entry.session!.attackedIds).toEqual([knight.id]);
+    expect(entry.session!.missedIds).toEqual([knight.id]);
   });
 
   test("buff, heal and debuff-only", () => {
-    const { ctx, combat, vanguard, acolyte, goblin } = setup();
-    vanguard.hp = Math.max(1, vanguard.maxHp - 10);
-    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [guardBuff] }), acolyte, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ actorId: acolyte.id, buffedIds: [vanguard.id] });
-    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [heal] }), acolyte, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ healedIds: [vanguard.id], buffedIds: [] });
+    const { ctx, combat, knight, acolyte, goblin } = setup();
+    knight.hp = Math.max(1, knight.maxHp - 10);
+    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [guardBuff] }), acolyte, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ actorId: acolyte.id, buffedIds: [knight.id] });
+    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [heal] }), acolyte, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ healedIds: [knight.id], buffedIds: [] });
     runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [weakenDebuff] }), acolyte, [goblin], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session).toMatchObject({ debuffedIds: [goblin.id], attackedIds: [] });
   });
 
   test("a skill that damages one enemy and debuffs all of them is an attack on all of them", () => {
-    const { ctx, combat, vanguard, goblin, goblin2 } = setup();
+    const { ctx, combat, knight, goblin, goblin2 } = setup();
     const sweep = skill({ target: "singleEnemy", effects: [damage, { ...weakenDebuff, target: "allEnemies" }] });
-    runInSession(combat, vanguard.id, () => applySkillEffects(sweep, vanguard, [goblin], combat, ctx, combat.log));
+    runInSession(combat, knight.id, () => applySkillEffects(sweep, knight, [goblin], combat, ctx, combat.log));
     const session = combat.log.at(-1)!.session!;
     expect(session.attackedIds).toEqual(expect.arrayContaining([goblin.id, goblin2.id]));
     expect(session.debuffedIds).toEqual([]);
   });
 
   test("a skill with relation-scoped effects splits heal and damage by side", () => {
-    const { ctx, combat, acolyte, vanguard, goblin } = setup();
-    vanguard.hp = Math.max(1, vanguard.maxHp - 10);
+    const { ctx, combat, acolyte, knight, goblin } = setup();
+    knight.hp = Math.max(1, knight.maxHp - 10);
     const purify = skill({
       target: "allAlliesAndEnemies",
       effects: [
@@ -374,8 +374,8 @@ describe("applySkillEffects notes its targets", () => {
         { kind: "damage", amount: 1, appliesToRelation: "enemy" },
       ],
     });
-    runInSession(combat, acolyte.id, () => applySkillEffects(purify, acolyte, [vanguard, goblin], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ healedIds: [vanguard.id], attackedIds: [goblin.id] });
+    runInSession(combat, acolyte.id, () => applySkillEffects(purify, acolyte, [knight, goblin], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ healedIds: [knight.id], attackedIds: [goblin.id] });
   });
 
   test("a debuff the owner throws off keeps its icon when the same cast landed on its summon", () => {
@@ -399,35 +399,35 @@ describe("applySkillEffects notes its targets", () => {
   });
 
   test("a debuff the target throws off is a miss, not a debuff; one that lands stays a debuff", () => {
-    const { ctx, combat, goblin, vanguard } = setup();
-    vanguard.equippedArtifactIds.push("bitter-root-charm");
-    const resist = debuffResistPercent(vanguard);
+    const { ctx, combat, goblin, knight } = setup();
+    knight.equippedArtifactIds.push("bitter-root-charm");
+    const resist = debuffResistPercent(knight);
     expect(resist).toBeGreaterThan(0);
     const weaken = skill({ target: "singleEnemy", effects: [weakenDebuff] });
     const cast = (roll: number) => {
       ctx.rng.next = () => roll;
-      runInSession(combat, goblin.id, () => applySkillEffects(weaken, goblin, [vanguard], combat, ctx, combat.log));
+      runInSession(combat, goblin.id, () => applySkillEffects(weaken, goblin, [knight], combat, ctx, combat.log));
       return combat.log.at(-1)!;
     };
 
     // Inside the resisted band: the roll would land without the resist, and misses with it.
     const thrownOff = cast(1 - resist / 200);
     expect(thrownOff.text).toContain("throws off");
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
-    expect(thrownOff.session).toMatchObject({ debuffedIds: [], missedIds: [vanguard.id], affectedIds: [vanguard.id] });
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(false);
+    expect(thrownOff.session).toMatchObject({ debuffedIds: [], missedIds: [knight.id], affectedIds: [knight.id] });
 
     const landed = cast(0);
-    expect(vanguard.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
-    expect(landed.session).toMatchObject({ debuffedIds: [vanguard.id], missedIds: [] });
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "weakened")).toBe(true);
+    expect(landed.session).toMatchObject({ debuffedIds: [knight.id], missedIds: [] });
   });
 });
 
 describe("a status that lands on the opposing side", () => {
   const bleed: SkillEffect = { kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 2 };
   const cast = (effects: SkillEffect[]) => {
-    const { ctx, combat, vanguard, goblin } = setup();
+    const { ctx, combat, knight, goblin } = setup();
     ctx.rng.next = () => 0;
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects }), vanguard, [goblin], combat, ctx, combat.log));
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "singleEnemy", effects }), knight, [goblin], combat, ctx, combat.log));
     return { session: combat.log.at(-1)!.session!, goblin };
   };
 
@@ -442,11 +442,11 @@ describe("a status that lands on the opposing side", () => {
   });
 
   test("a damage-over-time status that stacks on a unit already carrying it is still noted", () => {
-    const { ctx, combat, vanguard, goblin } = setup();
+    const { ctx, combat, knight, goblin } = setup();
     ctx.rng.next = () => 0;
     const bleedSkill = skill({ target: "singleEnemy", effects: [bleed] });
-    runInSession(combat, vanguard.id, () => applySkillEffects(bleedSkill, vanguard, [goblin], combat, ctx, combat.log));
-    runInSession(combat, vanguard.id, () => applySkillEffects(bleedSkill, vanguard, [goblin], combat, ctx, combat.log));
+    runInSession(combat, knight.id, () => applySkillEffects(bleedSkill, knight, [goblin], combat, ctx, combat.log));
+    runInSession(combat, knight.id, () => applySkillEffects(bleedSkill, knight, [goblin], combat, ctx, combat.log));
     const second = combat.log.at(-1)!;
     expect(second.text).toContain("stacks to 2");
     expect(second.session).toMatchObject({ dotLandedIds: [goblin.id] });
@@ -458,31 +458,31 @@ describe("a status that lands on the opposing side", () => {
   });
 
   test("a debuff the target throws off is not noted", () => {
-    const { ctx, combat, goblin, vanguard } = setup();
-    vanguard.equippedArtifactIds.push("bitter-root-charm");
-    ctx.rng.next = () => 1 - debuffResistPercent(vanguard) / 200;
-    runInSession(combat, goblin.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [weakenDebuff] }), goblin, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ debuffLandedIds: [], missedIds: [vanguard.id] });
+    const { ctx, combat, goblin, knight } = setup();
+    knight.equippedArtifactIds.push("bitter-root-charm");
+    ctx.rng.next = () => 1 - debuffResistPercent(knight) / 200;
+    runInSession(combat, goblin.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [weakenDebuff] }), goblin, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ debuffLandedIds: [], missedIds: [knight.id] });
   });
 
   test("a debuff a skill puts on its own side is a cost, not a landed debuff", () => {
-    const { ctx, combat, vanguard } = setup();
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "self", effects: [weakenDebuff] }), vanguard, [vanguard], combat, ctx, combat.log));
+    const { ctx, combat, knight } = setup();
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "self", effects: [weakenDebuff] }), knight, [knight], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session).toMatchObject({ debuffLandedIds: [], dotLandedIds: [] });
   });
 
   test("a damage-over-time status the target is immune to is noted as immune, not landed", () => {
-    const { ctx, combat, vanguard } = setup();
+    const { ctx, combat, knight } = setup();
     const skeleton = spawnInto(ctx, "skeleton");
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [bleed] }), vanguard, [skeleton], combat, ctx, combat.log));
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [bleed] }), knight, [skeleton], combat, ctx, combat.log));
     expect(combat.log.at(-1)!.session).toMatchObject({ immuneIds: [skeleton.id], dotLandedIds: [] });
   });
 
   test("a dodge-chance status on an ally is a buff", () => {
-    const { ctx, combat, vanguard, acolyte } = setup();
+    const { ctx, combat, knight, acolyte } = setup();
     const smoke: SkillEffect = { kind: "applyStatusEffect", statusEffectId: "smoke-cover", durationTurns: 2 };
-    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [smoke] }), acolyte, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session).toMatchObject({ buffedIds: [vanguard.id] });
+    runInSession(combat, acolyte.id, () => applySkillEffects(skill({ target: "singleAlly", effects: [smoke] }), acolyte, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session).toMatchObject({ buffedIds: [knight.id] });
   });
 });
 
@@ -720,12 +720,12 @@ describe("sessions for the less common paths", () => {
 
   test("a missed override effect is noted as a miss", () => {
     const { ctx, combat, rats } = fight();
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
     ctx.rng.next = () => 0;
     const sweep = skill({ target: "self", effects: [{ kind: "damage", amount: 1, target: "allEnemies" }], isUltimate: false });
-    runInSession(combat, vanguard.id, () => {
-      applySkillEffects(sweep, vanguard, [vanguard], combat, ctx, combat.log);
+    runInSession(combat, knight.id, () => {
+      applySkillEffects(sweep, knight, [knight], combat, ctx, combat.log);
       combat.log.push({ text: "x", kind: "info" });
     });
     expect(combat.log.at(-1)!.session!.missedIds).toEqual(rats.map((r) => r.id));
@@ -746,15 +746,15 @@ describe("sessions for the less common paths", () => {
     for (const setupMiss of ["blind", "dodge"] as const) {
       const { ctx, combat, rats } = fight();
       const rat = rats[0]!;
-      const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-      for (const c of ctx.party) if (c !== vanguard) c.isAlive = false;
+      const knight = ctx.party.find((p) => p.classId === "knight")!;
+      for (const c of ctx.party) if (c !== knight) c.isAlive = false;
       if (setupMiss === "blind") rat.activeStatusEffects.push({ statusEffectId: "blinded", turnsRemaining: 2 });
-      else vanguard.equippedArtifactIds.push("featherweight-boots");
+      else knight.equippedArtifactIds.push("featherweight-boots");
       ctx.rng.next = () => 0;
       runInSession(combat, rat.id, () => runMonsterTurn({ kind: "monster", id: rat.id }, combat, ctx));
       const entry = combat.log.at(-1)!;
       expect(entry.text).toMatch(setupMiss === "blind" ? /misses/ : /dodge/i);
-      expect(entry.session!.missedIds).toEqual([vanguard.id]);
+      expect(entry.session!.missedIds).toEqual([knight.id]);
     }
   });
 });
@@ -879,23 +879,23 @@ describe("lifesteal is recorded by the engine", () => {
     const goblin = spawnInto(ctx, "goblin");
     goblin.hp = goblin.maxHp = 1;
     const combat = startCombat("r1", [goblin.id], ctx, false);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.equippedArtifactIds.push(artifactId);
-    vanguard.hp = 10;
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 50 }] }), vanguard, [goblin], combat, ctx, combat.log));
-    return { session: combat.log.at(-1)!.session!, vanguard };
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.equippedArtifactIds.push(artifactId);
+    knight.hp = 10;
+    runInSession(combat, knight.id, () => applySkillEffects(skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 50 }] }), knight, [goblin], combat, ctx, combat.log));
+    return { session: combat.log.at(-1)!.session!, knight };
   }
 
   test("an artifact's lifesteal marks the attacker", () => {
-    const { session, vanguard } = hit("vampiric-fang");
-    expect(session.lifestealIds).toEqual([vanguard.id]);
+    const { session, knight } = hit("vampiric-fang");
+    expect(session.lifestealIds).toEqual([knight.id]);
   });
 
   test("a heal on kill is not lifesteal", () => {
     ARTIFACTS.push({ id: "test-heal-on-kill", name: "Test", description: "", rarity: "common", effects: [{ kind: "healOnKill", amount: 25 }] } as (typeof ARTIFACTS)[number]);
     try {
-      const { session, vanguard } = hit("test-heal-on-kill");
-      expect(vanguard.hp).toBeGreaterThan(10);
+      const { session, knight } = hit("test-heal-on-kill");
+      expect(knight.hp).toBeGreaterThan(10);
       expect(session.lifestealIds).toEqual([]);
     } finally {
       ARTIFACTS.pop();
@@ -905,10 +905,10 @@ describe("lifesteal is recorded by the engine", () => {
 
 describe("a monster skill's damage is read relative to the caster", () => {
   test("damage scoped to the player's side, cast by a monster, is an attack on the party", () => {
-    const { ctx, combat, goblin, vanguard } = setup();
+    const { ctx, combat, goblin, knight } = setup();
     const partyOnly = skill({ target: "singleEnemy", effects: [{ kind: "damage", amount: 1, appliesToRelation: "ally" }] });
-    runInSession(combat, goblin.id, () => applySkillEffects(partyOnly, goblin, [vanguard], combat, ctx, combat.log));
-    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([vanguard.id]);
+    runInSession(combat, goblin.id, () => applySkillEffects(partyOnly, goblin, [knight], combat, ctx, combat.log));
+    expect(combat.log.at(-1)!.session!.attackedIds).toEqual([knight.id]);
   });
 });
 
@@ -949,33 +949,33 @@ describe("a heal-over-time and a damage-over-time tick on one unit are both reco
     rat.maxHp = rat.hp = 50000;
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.hp = Math.floor(vanguard.maxHp / 2);
-    vanguard.activeStatusEffects.push(...statuses);
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.hp = Math.floor(knight.maxHp / 2);
+    knight.activeStatusEffects.push(...statuses);
     const before = combat.log.length;
     resolveRound(combat, ctx);
     const session = combat.log.slice(before).find((e) => e.session?.cause === "dot")!.session!;
-    return { session, vanguard };
+    return { session, knight };
   }
   const mending = { statusEffectId: "mending", turnsRemaining: 2, sourceMagicPower: 100 };
   const poisoned = { statusEffectId: "poisoned", turnsRemaining: 2 };
 
   test("mending and poison on the same unit: it took damage and it was healed", () => {
-    const { session, vanguard } = tickBlock([mending, poisoned]);
-    expect(session.tickDamageIds).toContain(vanguard.id);
-    expect(session.healedIds).toContain(vanguard.id);
+    const { session, knight } = tickBlock([mending, poisoned]);
+    expect(session.tickDamageIds).toContain(knight.id);
+    expect(session.healedIds).toContain(knight.id);
   });
 
   test("mending alone: healed, not damaged", () => {
-    const { session, vanguard } = tickBlock([mending]);
-    expect(session.healedIds).toContain(vanguard.id);
-    expect(session.tickDamageIds).not.toContain(vanguard.id);
+    const { session, knight } = tickBlock([mending]);
+    expect(session.healedIds).toContain(knight.id);
+    expect(session.tickDamageIds).not.toContain(knight.id);
   });
 
   test("poison alone: damaged, not healed", () => {
-    const { session, vanguard } = tickBlock([poisoned]);
-    expect(session.tickDamageIds).toContain(vanguard.id);
-    expect(session.healedIds).not.toContain(vanguard.id);
+    const { session, knight } = tickBlock([poisoned]);
+    expect(session.tickDamageIds).toContain(knight.id);
+    expect(session.healedIds).not.toContain(knight.id);
   });
 
   test("a heal that changes nothing (full HP) is not recorded", () => {
@@ -984,12 +984,12 @@ describe("a heal-over-time and a damage-over-time tick on one unit are both reco
     rat.maxHp = rat.hp = 50000;
     rat.attack = 0;
     const combat = startCombat("r1", [rat.id], ctx, false);
-    const vanguard = ctx.party.find((p) => p.classId === "vanguard")!;
-    vanguard.hp = vanguard.maxHp;
-    vanguard.activeStatusEffects.push(mending);
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.hp = knight.maxHp;
+    knight.activeStatusEffects.push(mending);
     resolveRound(combat, ctx);
     const dot = combat.log.find((e) => e.session?.cause === "dot");
-    expect(dot?.session?.healedIds ?? []).not.toContain(vanguard.id);
+    expect(dot?.session?.healedIds ?? []).not.toContain(knight.id);
   });
 });
 
@@ -1116,7 +1116,7 @@ describe("a unit that loses its turn is recorded in its own session", () => {
 
   test.each(["stunned", "stagger", "deafening-charges-din"])("a character stunned by %s", (statusEffectId) => {
     const { ctx, combat, rat } = fight();
-    const hero = ctx.party.find((p) => p.classId === "vanguard")!;
+    const hero = ctx.party.find((p) => p.classId === "knight")!;
     queueAction(combat, { kind: "character", id: hero.id }, hero.unlockedSkillIds[0]!, [{ kind: "monster", id: rat.id }], ctx);
     hero.activeStatusEffects.push({ statusEffectId, turnsRemaining: 3 });
     resolveRound(combat, ctx);
@@ -1156,7 +1156,7 @@ describe("a unit that loses its turn is recorded in its own session", () => {
 
   test("a character too afraid to act", () => {
     const { ctx, combat, rat } = fight();
-    const hero = ctx.party.find((p) => p.classId === "vanguard")!;
+    const hero = ctx.party.find((p) => p.classId === "knight")!;
     hero.survival.fear = 100;
     ctx.rng.next = () => 0; // every control roll fails
     queueAction(combat, { kind: "character", id: hero.id }, hero.unlockedSkillIds[0]!, [{ kind: "monster", id: rat.id }], ctx);
@@ -1228,10 +1228,10 @@ describe("statusRole: a stat change or a dodge chance is a buff or a debuff", ()
 
 describe("noteSkillTarget reads statuses by what they change", () => {
   function noted(effects: SkillEffect[], side: "enemy" | "ally") {
-    const { combat, vanguard, acolyte, goblin } = setup();
+    const { combat, knight, acolyte, goblin } = setup();
     const target = side === "enemy" ? goblin : acolyte;
-    runInSession(combat, vanguard.id, () => {
-      noteSkillTarget(combat, vanguard, target, effects, false);
+    runInSession(combat, knight.id, () => {
+      noteSkillTarget(combat, knight, target, effects, false);
       combat.log.push({ text: "x", kind: "info" });
     });
     return { session: combat.log.at(-1)!.session!, target };
@@ -1288,11 +1288,11 @@ describe("a multi-hit skill, from the engine to the marker", () => {
   };
 
   test("the queue holds each hit and the marker reads them one by one, adding up to the net change", () => {
-    const { ctx, combat, goblin, vanguard } = setup();
+    const { ctx, combat, goblin, knight } = setup();
     goblin.hp = goblin.maxHp = 9999;
     goblin.defense = 0;
     const before = snapshotCombatants(combat, ctx);
-    runInSession(combat, vanguard.id, () => applySkillEffects(threeHits, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    runInSession(combat, knight.id, () => applySkillEffects(threeHits, knight, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
     const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
 
     const queue = new RevealQueue();
@@ -1318,18 +1318,18 @@ describe("a multi-hit skill that does more than the target had left", () => {
   });
 
   function run(skill: SkillDefinition, hp = 24) {
-    const { ctx, combat, goblin, vanguard } = setup();
+    const { ctx, combat, goblin, knight } = setup();
     goblin.maxHp = 9999;
     goblin.hp = hp;
     goblin.defense = 0;
-    vanguard.maxHp = 1000;
-    vanguard.hp = 500;
+    knight.maxHp = 1000;
+    knight.hp = 500;
     const before = snapshotCombatants(combat, ctx);
     const first = combat.log.length;
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    runInSession(combat, knight.id, () => applySkillEffects(skill, knight, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
     const entries = combat.log.slice(first);
     const net = hpDeltas(before, snapshotCombatants(combat, ctx)).get(goblin.id)!;
-    return { ctx, combat, goblin, vanguard, entries, net };
+    return { ctx, combat, goblin, knight, entries, net };
   }
 
   test("every hit of the cast is recorded at its full damage, the first with its overkill, the rest all of it", () => {
@@ -1344,7 +1344,7 @@ describe("a multi-hit skill that does more than the target had left", () => {
   });
 
   test("the hits after the kill are logged as overkill after the one defeated line, and nothing else of them takes effect", () => {
-    const { goblin, vanguard, entries } = run(cast(40, { lifestealPercent: 100 }));
+    const { goblin, knight, entries } = run(cast(40, { lifestealPercent: 100 }));
     const texts = entries.filter((e) => e.kind === "attack" || e.kind === "death").map((e) => e.text);
     expect(texts).toHaveLength(4);
     expect(texts[0]).toMatch(/^.+ takes \d+ damage from /);
@@ -1353,7 +1353,7 @@ describe("a multi-hit skill that does more than the target had left", () => {
     expect(entries.filter((e) => e.kind === "death")).toHaveLength(1);
     const firstHit = entries.find((e) => e.hit)!.hit!;
     // Lifesteal reads the damage of the one hit that landed, not of the three shown.
-    expect(vanguard.hp - 500).toBe(firstHit.amount);
+    expect(knight.hp - 500).toBe(firstHit.amount);
   });
 
   test("the marker reads all three at full damage, though the target only had 24", () => {
@@ -1379,7 +1379,7 @@ describe("the execute bonus of an overkill hit", () => {
 
   /** A 3-hit skill of 60 flat damage per hit with +20 flat under 30% HP, against a 100 max HP target at `hp`. */
   function amountsAt(hp: number): number[] {
-    const { ctx, combat, goblin, vanguard } = setup();
+    const { ctx, combat, goblin, knight } = setup();
     goblin.maxHp = 100;
     goblin.hp = hp;
     goblin.defense = 0;
@@ -1395,7 +1395,7 @@ describe("the execute bonus of an overkill hit", () => {
       unlockLevel: 1,
     };
     const first = combat.log.length;
-    runInSession(combat, vanguard.id, () => applySkillEffects(skill, vanguard, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
+    runInSession(combat, knight.id, () => applySkillEffects(skill, knight, [goblin], combat, ctx, combat.log), { snapshot: () => snapshotCombatants(combat, ctx) });
     return combat.log.slice(first).flatMap((e) => (e.hit ? [e.hit.amount] : []));
   }
 

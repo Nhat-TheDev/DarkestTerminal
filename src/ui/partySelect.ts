@@ -2,10 +2,11 @@ import { BoxRenderable, TextRenderable, type CliRenderer, type KeyEvent, type Te
 import type { AbilityDefinition, CharacterClass, Id, SkillDefinition } from "../types";
 import { ABILITIES, formatAbilityEffect, getAbility } from "../data/abilities";
 import { loadProfile } from "../engine/profile";
-import { PALETTE, CLASS_STYLE, chip, colorChunk, boldColorChunk, plainChunk, joinLines, highlightKeyHints } from "./theme";
+import { PALETTE, chip, colorChunk, boldColorChunk, plainChunk, joinLines, highlightKeyHints } from "./theme";
 import { joinHints, withPageHint, digitHint } from "./keyHints";
 import { spriteForClass, renderSpriteInSlot, spriteHeight } from "./sprites";
 import { wrapText } from "./layout";
+import { paginateByRows } from "./pagination";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 
@@ -29,9 +30,9 @@ export interface PartyPick {
 
 type Step = { kind: "browse"; index: number } | { kind: "ability"; classId: Id; page: number };
 
-/** Every `common` ability, plus every non-`common` id in the persistent profile, minus the ones already taken this screen — `11-abilities.md` §11.1. */
-function selectableAbilities(taken: Id[]): AbilityDefinition[] {
-  const profile = loadProfile();
+/** Every `common` ability, plus every non-`common` id in the slot's profile, minus the ones already taken this screen — `11-abilities.md` §11.1. */
+function selectableAbilities(slotId: Id | null, taken: Id[]): AbilityDefinition[] {
+  const profile = loadProfile(slotId);
   return ABILITIES.filter((a) => (a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id)) && !taken.includes(a.id));
 }
 
@@ -46,8 +47,7 @@ function partyLine(picks: PartyPick[], classes: CharacterClass[]): TextChunk[] {
       continue;
     }
     const cls = classes.find((c) => c.id === pick.classId)!;
-    const style = CLASS_STYLE[cls.id];
-    if (style) chunks.push(chip(style.abbr, style.color), plainChunk(" "));
+    chunks.push(chip(cls.style.abbr, cls.style.color), plainChunk(" "));
     const ability = pick.abilityId ? getAbility(pick.abilityId).name : t("partySelect.noAbility");
     chunks.push(colorChunk(t("partySelect.seat", { name: cls.name, ability }), PALETTE.text));
   }
@@ -155,22 +155,8 @@ function abilityEntry(ability: AbilityDefinition, i: number): TextChunk[][] {
   ];
 }
 
-/** `options` split into pages of at most `ABILITY_PAGE_SIZE` entries that fit `ABILITY_LIST_ROWS` rows; always at least one page. */
 function abilityPages(options: AbilityDefinition[]): AbilityDefinition[][] {
-  const pages: AbilityDefinition[][] = [[]];
-  let rows = 0;
-  for (const ability of options) {
-    const height = abilityEntry(ability, 0).length;
-    const page = pages[pages.length - 1]!;
-    if (page.length > 0 && (page.length >= ABILITY_PAGE_SIZE || rows + height > ABILITY_LIST_ROWS)) {
-      pages.push([ability]);
-      rows = height;
-    } else {
-      page.push(ability);
-      rows += height;
-    }
-  }
-  return pages;
+  return paginateByRows(options, (ability) => abilityEntry(ability, 0).length, ABILITY_PAGE_SIZE, ABILITY_LIST_ROWS);
 }
 
 /** The class header, then one page of Abilities and the skip/page line, at a fixed size. */
@@ -194,9 +180,10 @@ function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], pa
  * repeat until the party is full. A picked class leaves the browse list, so the party is always 4
  * different classes; an Ability is never offered twice either (an invariant the death flow relies on,
  * `11-abilities.md` §11.1). `Esc` steps back: out of the Ability list to the class it was for, or
- * from browsing to undo the last finished pick.
+ * from browsing to undo the last finished pick. With nobody picked it leaves the screen and resolves
+ * null; `exitHint` is the string key of the footer hint naming where that leads.
  */
-export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]): Promise<PartyPick[]> {
+export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[], slotId: Id | null, exitHint = "partySelect.abilityBackHint"): Promise<PartyPick[] | null> {
   return new Promise((resolve) => {
     const root = new BoxRenderable(renderer, {
       id: "partyselect-root",
@@ -218,7 +205,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     let step: Step = { kind: "browse", index: 0 };
 
     const available = () => classes.filter((c) => !picks.some((p) => p.classId === c.id));
-    const abilityOptions = () => selectableAbilities(picks.map((p) => p.abilityId).filter((id): id is Id => id !== null));
+    const abilityOptions = () => selectableAbilities(slotId, picks.map((p) => p.abilityId).filter((id): id is Id => id !== null));
 
     const renderBrowse = (index: number) => {
       const pool = available();
@@ -231,7 +218,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
         ...classDetail(cls, heights),
       ];
       body.content = joinLines(lines);
-      footer.content = joinLines([highlightKeyHints(joinHints(t("partySelect.browseHint"), picks.length > 0 ? t("partySelect.undoHint") : null))]);
+      footer.content = joinLines([highlightKeyHints(joinHints(t("partySelect.browseHint"), t(picks.length > 0 ? "partySelect.undoHint" : exitHint)))]);
     };
 
     const renderAbility = (classId: Id, page: number) => {
@@ -253,10 +240,12 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     const render = () => (step.kind === "browse" ? renderBrowse(step.index) : renderAbility(step.classId, step.page));
     render();
 
-    const finish = () => {
+    const finish = (result: PartyPick[] | null) => {
       renderer.keyInput.off("keypress", onKey);
       renderer.root.remove(root);
-      resolve(picks);
+      root.destroyRecursively();
+      // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
+      setTimeout(() => resolve(result), 0);
     };
 
     const onKey = (key: KeyEvent) => {
@@ -266,7 +255,8 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
           step = { kind: "browse", index: (step.index + (key.name === "right" ? 1 : -1) + pool.length) % pool.length };
         } else if (key.name === "return") {
           step = { kind: "ability", classId: pool[step.index]!.id, page: 0 };
-        } else if (key.name === "escape" && picks.length > 0) {
+        } else if (key.name === "escape") {
+          if (picks.length === 0) return finish(null);
           const undone = picks.pop()!;
           step = { kind: "browse", index: available().findIndex((c) => c.id === undone.classId) };
         } else return;
@@ -298,7 +288,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
       const pickedClassId = step.classId;
       const pickedIndex = classes.findIndex((c) => c.id === pickedClassId);
       picks.push({ classId: pickedClassId, abilityId });
-      if (picks.length >= PARTY_SIZE) return finish();
+      if (picks.length >= PARTY_SIZE) return finish(picks);
       // Land on the class that followed the one just picked, so browsing carries on where it left off.
       const pool = available();
       const next = pool.findIndex((c) => classes.indexOf(c) > pickedIndex);

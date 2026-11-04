@@ -6,9 +6,9 @@ import { ABILITIES } from "../src/data/abilities";
 import { BALANCE } from "../src/data/balanceConfig";
 import { loadProfile, saveProfile, unlockAbility } from "../src/engine/profile";
 
-async function openScreen() {
+async function openScreen(exitHint?: string) {
   const harness = await createTestRenderer({ width: 150, height: 45 });
-  const picked = showPartySelect(harness.renderer, CLASSES);
+  const picked = showPartySelect(harness.renderer, CLASSES, "slot1", exitHint);
   await harness.renderOnce();
   const press = async (key: string) => {
     if (key === "LEFT" || key === "RIGHT") harness.mockInput.pressArrow(key === "LEFT" ? "left" : "right");
@@ -70,10 +70,10 @@ describe("party select", () => {
   });
 
   test("the ability block keeps its size on every page, with every ability unlocked", async () => {
-    const profile = loadProfile();
+    const profile = loadProfile("slot1");
     const before = [...profile.unlockedAbilityIds];
     for (const a of ABILITIES) unlockAbility(profile, a.id);
-    saveProfile(profile);
+    saveProfile("slot1", profile);
     try {
       const { frame, press, renderer } = await openScreen();
       await press("RETURN");
@@ -96,7 +96,7 @@ describe("party select", () => {
       renderer.destroy();
     } finally {
       profile.unlockedAbilityIds = before;
-      saveProfile(profile);
+      saveProfile("slot1", profile);
     }
   });
 
@@ -127,7 +127,7 @@ describe("party select", () => {
     await press("0");
     await press("RETURN");
     await press("1");
-    const party = await picked;
+    const party = (await picked)!;
     expect(party.length).toBe(BALANCE.party.size);
     expect(new Set(party.map((p) => p.classId)).size).toBe(party.length);
     const abilities = party.map((p) => p.abilityId).filter((id) => id !== null);
@@ -153,7 +153,29 @@ describe("party select", () => {
       await press("RETURN");
       await press("0");
     }
-    const party = await picked;
+    const party = (await picked)!;
     expect(party.map((p) => p.classId)).toEqual(CLASSES.slice(0, 4).map((c) => c.id));
+  });
+
+  test("Esc with an empty party leaves the screen", async () => {
+    const { press, frame, picked } = await openScreen();
+    expect(frame()).toContain("[Esc] Back");
+    await press("ESCAPE");
+    expect(await picked).toBeNull();
+  });
+
+  test("the exit hint replaces [Esc] Back until a recruit is in the party", async () => {
+    const { press, frame, picked } = await openScreen("partySelect.mainMenuHint");
+    expect(frame()).toContain("[Esc] Main Menu");
+    expect(frame()).not.toContain("[Esc] Back");
+
+    await press("RETURN");
+    await press("0");
+    expect(frame()).toContain("[Esc] Undo");
+    expect(frame()).not.toContain("[Esc] Main Menu");
+
+    await press("ESCAPE");
+    await press("ESCAPE");
+    expect(await picked).toBeNull();
   });
 });

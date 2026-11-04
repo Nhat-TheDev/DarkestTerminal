@@ -3,7 +3,6 @@ import { RGBA } from "@opentui/core";
 import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, type Sprite } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
 import { MONSTER_ARCHETYPES, getArchetype, COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES, FINAL_BOSS_ARCHETYPE } from "../src/data/monsters";
-import { MONSTER_STYLE } from "../src/ui/theme";
 
 describe("sprite dimensions and palette consistency", () => {
   for (const { name, sprite, maxHeight } of ALL_SPRITES) {
@@ -68,15 +67,8 @@ describe("sprite dimensions and palette consistency", () => {
     }
   });
 
-  // `monsterStyle` falls back to "??" when this table drifts behind data/monsters.json.
-  test("every monster archetype has a MONSTER_STYLE entry", () => {
-    for (const archetype of MONSTER_ARCHETYPES) {
-      expect(MONSTER_STYLE[archetype.id]).toBeDefined();
-    }
-  });
-
-  test("MONSTER_STYLE abbreviations are unique and 3 characters wide", () => {
-    const abbrs = Object.values(MONSTER_STYLE).map((s) => s.abbr);
+  test("monster style abbreviations are unique", () => {
+    const abbrs = MONSTER_ARCHETYPES.map((a) => a.style.abbr);
     expect(new Set(abbrs).size).toBe(abbrs.length);
     for (const abbr of abbrs) expect(abbr).toMatch(/^[A-Z]{3}$/);
   });

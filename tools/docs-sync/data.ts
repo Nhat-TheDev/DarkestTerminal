@@ -12,7 +12,7 @@ import { SUMMON_ARCHETYPES, SUMMON_CASTS, SUMMON_SKILLS } from "../../src/data/s
 import type { DocsData } from "./types";
 
 const DATA_DIR = resolve(import.meta.dir, "../../data");
-const NOT_BALANCE = new Set(["sprites.json", "strings.json"]);
+const NOT_BALANCE = new Set(["sprites.json", "strings.json", "backdrops.json"]);
 
 /** Names too generic to say anything about which number a doc means. */
 const GENERIC = new Set(["amount", "percent", "chance", "base", "min", "max", "rank", "value", "kind"]);

@@ -1,12 +1,15 @@
 import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
-import { getStatusEffect, statusDisplayName, COMBAT_STAT_LABEL } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, statusFamilyOf, rankLevelOf, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
-import { getClass, passiveRankDef } from "../data/classes";
+import { getClass, ownPassiveRank, passiveRankDef } from "../data/classes";
 import { adjustFear, formatFear, resistedFearGain } from "./survival";
+import { noteShellHit, shellAdjustedDamage } from "./monsterShell";
+import { advanceBar } from "./monsterBars";
 
 export function isHelpfulStatusEffect(def: StatusEffectDefinition): boolean {
+  if (def.harmful) return false;
   if (def.stuns || def.vulnerableTo || def.accuracyPenaltyPercent) return false;
   if (def.perTurnEffects.some((e) => e.kind === "damage")) return false;
   if (def.perTurnEffects.some((e) => e.kind === "modifyCombatStat" && statDirection(e) < 0)) return false;
@@ -87,6 +90,16 @@ export function rollLosesControl(fear: number, roll: () => number): boolean {
   return getFearTier(fear) === 4 && roll() < BALANCE.combat.fearLoseControlChance;
 }
 
+/** Paladin's passive — fear still builds on the bearer, but none of its combat penalties apply. */
+export function ignoresFearEffects(actor: Actor): boolean {
+  return isCharacter(actor) && passiveRankDef(getClass(actor.classId).passiveSkill, actor.level) !== null && getClass(actor.classId).passiveSkill.ignoresFearEffects === true;
+}
+
+/** The fear tier whose combat penalties apply to `actor`: its own, or the calmest one if it ignores fear. */
+export function combatFearTier(actor: Character): FearTier {
+  return ignoresFearEffects(actor) ? 1 : getFearTier(actor.survival.fear);
+}
+
 function statusAccuracyPenaltyPercent(source: Actor): number {
   let total = 0;
   for (const active of source.activeStatusEffects) {
@@ -97,14 +110,23 @@ function statusAccuracyPenaltyPercent(source: Actor): number {
 }
 
 export function rollHits(source: Actor, roll: () => number): boolean {
-  const fearPenalty = isCharacter(source) ? getFearAccuracyPenalty(getFearTier(source.survival.fear)) : 0;
+  const fearPenalty = isCharacter(source) ? getFearAccuracyPenalty(combatFearTier(source)) : 0;
   const penalty = Math.min(1, fearPenalty + statusAccuracyPenaltyPercent(source) / 100);
   return roll() >= penalty;
 }
 
 function damageMultiplierFor(source: Actor): number {
   if (!isCharacter(source)) return 1;
-  return 1 - getFearDamagePenalty(getFearTier(source.survival.fear));
+  return 1 - getFearDamagePenalty(combatFearTier(source));
+}
+
+export function damageTakenMultiplier(target: Actor): number {
+  return 1 + target.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).damageTakenPercent ?? 0), 0) / 100;
+}
+
+function withPercentOfCurrent(effect: SkillEffect, current: number): number {
+  const amount = effect.amount ?? 0;
+  return amount + Math.sign(amount) * current * ((effect.percentOfCurrent ?? 0) / 100);
 }
 
 function applyCombatStatDelta(actor: Actor, stat: CombatStat, amount: number): void {
@@ -167,7 +189,8 @@ export interface ResolveContext {
   executeHpFraction?: number;
 }
 
-function offensiveStatFor(source: Actor, isMagic: boolean | undefined): number {
+function offensiveStatFor(source: Actor, isMagic: boolean | undefined, effect: SkillEffect): number {
+  if (effect.scalesWithAttackAndMagic && (isCharacter(source) || isSummon(source))) return source.attack + source.magicPower;
   if (isMagic && (isCharacter(source) || isSummon(source))) return source.magicPower;
   return source.attack;
 }
@@ -187,15 +210,24 @@ export function mitigatedOffense(off: number, def: number): number {
   return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
 }
 
+/** A monster's defense, at its tier's share, blunts damage a status deals it; anyone else takes it whole. */
+function statusDamageAfterDefense(actor: Actor, amount: number, ignoreDefensePercent = 0): number {
+  if (!isMonster(actor)) return amount;
+  const defense = actor.defense * (1 - ignoreDefensePercent / 100);
+  return mitigatedOffense(amount, (defense * BALANCE.combat.statusDamageDefensePercentByTier[actor.tier]) / 100);
+}
+
 function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   if (!isMonster(target)) return 1;
   const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);
   const resist = profile.resistPercent[damageType];
-  const weak = profile.weakPercent[damageType];
+  const statusWeak = target.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).weakPercent?.[damageType] ?? 0), 0);
+  const weak = clamp(profile.weakPercent[damageType] + statusWeak, 0, 100);
   return (1 - resist / 100) * (1 + weak / 100);
 }
 
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
+  if (effect.requiresTargetStatusId && !target.activeStatusEffects.some((s) => s.statusEffectId === effect.requiresTargetStatusId)) return 0;
   switch (effect.kind) {
     case "damage": {
       const isSelfTick = source === target;
@@ -206,7 +238,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ? target.activeStatusEffects.find((s) => s.statusEffectId === effect.scalesWithStatusStacks!.statusEffectId)?.stacks ?? 0
         : 0;
       const stackOffenseBonusPercent = effect.scalesWithStatusStacks ? stacks * effect.scalesWithStatusStacks.percentPerStack : 0;
-      const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent) / 100;
+      const debuffOffenseBonusPercent = effect.scalesWithDebuffCount ? harmfulStatusCount(target) * effect.scalesWithDebuffCount.percentPerDebuff : 0;
+      const offenseMultiplier = ((effect.offenseMultiplierPercent ?? 100) + stackOffenseBonusPercent + debuffOffenseBonusPercent) / 100;
       const isExecuteTarget =
         !isSelfTick && ctx.executeBonus !== undefined && (ctx.executeHpFraction ?? target.hp / target.maxHp) < ctx.executeBonus.hpPercentThreshold / 100;
       const executeMultiplier = isExecuteTarget && ctx.executeBonus?.bonusDamagePercent ? 1 + ctx.executeBonus.bonusDamagePercent / 100 : 1;
@@ -222,15 +255,17 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         : roundDamage(
             ((effect.amount ?? 0) +
               executeFlat +
-              mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic)) * offenseMultiplier, effectiveDefense)) *
+              mitigatedOffense((ctx.offensiveStatOverride ?? offensiveStatFor(source, ctx.isMagic, effect)) * offenseMultiplier, effectiveDefense)) *
               damageMultiplierFor(source) *
+              damageTakenMultiplier(target) *
               critMultiplier *
               executeMultiplier *
               bonusMultiplier *
               raceMultiplier *
               varianceMultiplier
           );
-      const finalDamage = raceMultiplier === 0 ? 0 : Math.max(1, rawDamage);
+      const isStatusTick = isSelfTick && ctx.statusEffectName !== undefined;
+      const finalDamage = shellAdjustedDamage(target, raceMultiplier === 0 ? 0 : Math.max(1, rawDamage), isStatusTick);
       const critMark = isCrit ? { crit: true as const } : {};
       if (ctx.unapplied && !isSelfTick) {
         const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
@@ -240,18 +275,24 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
+      if (!isSelfTick) noteShellHit(target, ctx);
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
       const damageText =
         !isSelfTick && ctx.skillName
           ? t(isCrit ? "resolver.damageWithSkillCrit" : "resolver.damageWithSkill", { target: nameOf(target), amount: finalDamage, source: sourceLabel, skill: ctx.skillName })
           : t(isCrit ? "resolver.damageCrit" : "resolver.damage", { target: nameOf(target), amount: finalDamage, source: sourceLabel });
       const hpLost = hpBefore - target.hp;
+      if (!isSelfTick) noteDamageTaken(target, source.id, hpLost);
       const overkill = finalDamage - hpLost;
       const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
       ctx.log.push({ text: damageText, kind: "attack", ...hit });
+      if (!isSelfTick && hpLost > 0 && target.hp > 0) openWounds(target, source, ctx, effect.ignoreDefensePercent ?? 0);
+      if (target.hp <= 0) reviveIfGuarded(target, ctx);
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
-      if (!isSelfTick && effect.lifestealPercent) {
+      else if (!isSelfTick && hpLost > 0) healOnHit(target, hpLost, ctx);
+      if (!isSelfTick && finalDamage > 0) reflectDamage(target, source, finalDamage, ctx);
+      if (!isSelfTick && effect.lifestealPercent && isActorAlive(source)) {
         const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
         if (healed > 0) {
           source.hp += healed;
@@ -264,14 +305,15 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const before = target.hp;
       const healPower =
         ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower * ((effect.offenseMultiplierPercent ?? 100) / 100) : 0;
-      const acolyteBoost =
-        ctx.castByOwnClassSkill && isCharacter(source) && source.classId === "acolyte"
-          ? 1 + (passiveRankDef(getClass("acolyte").passiveSkill, source.level)?.healBoostPercent ?? 0) / 100
-          : 1;
-      const baseHeal = Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100);
+      const passiveHealBoost = ctx.castByOwnClassSkill && isCharacter(source) ? 1 + (ownPassiveRank(source)?.healBoostPercent ?? 0) / 100 : 1;
+      const baseHeal =
+        Math.max(effect.amount ?? 0, (target.maxHp * (effect.maxHpPercent ?? 0)) / 100) +
+        (source.maxHp * (effect.casterMaxHpPercent ?? 0)) / 100;
+      const lowHpBoost = effect.lowHpHealBonus ? 1 + lowHpHealBonusPercent(target, effect.lowHpHealBonus) / 100 : 1;
+      const highFearBoost = effect.highFearHealBonus ? 1 + highFearHealBonusPercent(target, effect.highFearHealBonus) / 100 : 1;
       const crit = critRolled(ctx);
       const critMultiplier = crit ? critMultiplierOf(effect) : 1;
-      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * acolyteBoost * critMultiplier));
+      target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * passiveHealBoost * lowHpBoost * highFearBoost * critMultiplier));
       const healed = target.hp - before;
       ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
       return healed;
@@ -292,13 +334,19 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const linkedSummonId = effect.linksToCasterSummon ? ctx.linkedSummonId : undefined;
       const casterMagicPower = ctx.isMagic && (isCharacter(source) || isSummon(source)) ? source.magicPower : undefined;
       const landedOf = isPlayerSide(source) !== isPlayerSide(target) ? (isSummon(target) ? target.ownerId : target.id) : undefined;
-      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
+      applyStatusEffectToActor(target, effect.statusEffectId, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf, source.id);
       for (const id of effect.alsoApplyStatusEffectIds ?? [])
-        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf);
+        applyStatusEffectToActor(target, id, effect.durationTurns, ctx, magnitudeOverride, linkedSummonId, casterMagicPower, effect.onHitDurationTurns, landedOf, source.id);
       return 0;
     }
     case "removeStatusEffect": {
-      removeStatusEffectFromActor(target, effect.statusEffectId, ctx);
+      if (effect.removesHarmfulDots) {
+        for (const active of [...target.activeStatusEffects]) {
+          const def = getStatusEffect(active.statusEffectId);
+          if (def.perTurnEffects.some((e) => e.kind === "damage")) expireStatusEffect(target, active, ctx);
+        }
+      } else if (effect.stacks !== undefined && effect.statusEffectId) removeStatusStacks(target, effect.statusEffectId, effect.stacks, ctx);
+      else removeStatusEffectFromActor(target, effect.statusEffectId, ctx);
       return 0;
     }
     case "modifyStat": {
@@ -306,7 +354,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       if (effect.stat === "satiety") {
         if (!ctx.gameState) return 0;
         const before = ctx.gameState.satiety;
-        ctx.gameState.satiety = clamp(before + (effect.amount ?? 0), 0, 100);
+        ctx.gameState.satiety = clamp(before + Math.round(withPercentOfCurrent(effect, before)), 0, 100);
         const delta = ctx.gameState.satiety - before;
         if (delta !== 0) {
           const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
@@ -318,7 +366,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         return 0;
       }
       if (!isCharacter(target)) return 0;
-      const amount = effect.amount ?? 0;
+      const amount = withPercentOfCurrent(effect, target.survival.fear);
       const delta = adjustFear(target, amount > 0 ? resistedFearGain(target, amount) : amount);
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
@@ -342,11 +390,94 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       return 0;
     }
-    case "summon": {
-      // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register it.
+    case "summon":
+    case "summonMonster":
+    case "commandSummons":
+    case "throwDice": {
+      // Intercepted by `applySkillEffects` (combat.ts), which has the CombatState to register or run it.
       return 0;
     }
   }
+}
+
+/** Each `woundOnHit` status on a bearer that survived a direct hit tears it for more, the more so the lower its HP; the hit's own defense ignore carries over. */
+function openWounds(bearer: Actor, attacker: Actor, ctx: ResolveContext, ignoreDefensePercent: number): void {
+  for (const active of bearer.activeStatusEffects) {
+    const def = getStatusEffect(active.statusEffectId);
+    const wound = def.woundOnHit;
+    if (!wound || bearer.hp <= 0) continue;
+    const progress = Math.min(1, Math.max(0, (1 - bearer.hp / bearer.maxHp) / (1 - wound.fullAtHpPercent / 100)));
+    const percent = wound.minMaxHpPercent + (wound.maxMaxHpPercent - wound.minMaxHpPercent) * progress;
+    const raceMultiplier = raceMultiplierFor(bearer, wound.damageType);
+    const raw = raceMultiplier === 0 ? 0 : Math.max(1, Math.round(statusDamageAfterDefense(bearer, wound.amount + (bearer.maxHp * percent) / 100, ignoreDefensePercent) * raceMultiplier));
+    const amount = shellAdjustedDamage(bearer, raw, true);
+    if (amount <= 0) continue;
+    const hpBefore = bearer.hp;
+    bearer.hp = Math.max(0, bearer.hp - amount);
+    noteDamageTaken(bearer, attacker.id, hpBefore - bearer.hp);
+    ctx.log.push({ text: t("resolver.woundOnHit", { target: nameOf(bearer), status: statusDisplayName(def), amount }), kind: "attack" });
+  }
+}
+
+/** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
+function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
+  const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + passiveReflectPercent(bearer);
+  if (percent <= 0 || attacker === bearer) return;
+  const amount = Math.round(((damage * percent) / 100) * damageTakenMultiplier(attacker));
+  if (amount <= 0) return;
+  const hpBefore = attacker.hp;
+  attacker.hp = Math.max(0, attacker.hp - amount);
+  noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
+  ctx.log.push({ text: t("combat.statusReflectDamage", { attacker: nameOf(attacker), amount, bearer: nameOf(bearer) }), kind: "attack" });
+  if (attacker.hp <= 0) reviveIfGuarded(attacker, ctx);
+  if (attacker.hp <= 0 && isCharacter(attacker)) attacker.isAlive = false;
+  if (attacker.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(attacker) }), kind: "death" });
+}
+
+/** A `reviveHpPercent` status on a fallen actor spends itself to put the actor back up at that share of its max HP. */
+function reviveIfGuarded(actor: Actor, ctx: ResolveContext): void {
+  if (isMonster(actor) && advanceBar(actor)) return;
+  const guard = actor.activeStatusEffects.find((s) => getStatusEffect(s.statusEffectId).reviveHpPercent);
+  if (!guard) return;
+  const def = getStatusEffect(guard.statusEffectId);
+  actor.hp = Math.max(1, Math.round((actor.maxHp * def.reviveHpPercent!) / 100));
+  actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== guard);
+  ctx.log.push({ text: t("resolver.revived", { target: nameOf(actor), status: statusDisplayName(def), hp: actor.hp }), kind: "heal" });
+}
+
+/** A `healOnHitPercent` status heals the bearer for a share of the HP a hit it survived just took. */
+function healOnHit(actor: Actor, hpLost: number, ctx: ResolveContext): void {
+  const percent = actor.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).healOnHitPercent ?? 0), 0);
+  if (percent <= 0) return;
+  const before = actor.hp;
+  actor.hp = Math.min(actor.maxHp, actor.hp + Math.round((hpLost * percent) / 100));
+  if (actor.hp > before) ctx.log.push({ text: t("resolver.heal", { target: nameOf(actor), amount: actor.hp - before }), kind: "heal" });
+}
+
+/** A reflect passive (the Paladin's) — a share of every direct hit taken goes back to the attacker, unlocked at level 5/20/35. */
+function passiveReflectPercent(bearer: Actor): number {
+  if (!isCharacter(bearer)) return 0;
+  return ownPassiveRank(bearer)?.reflectPercent ?? 0;
+}
+
+/** Harmful statuses on `actor`, each counted once however many stacks it has. */
+export function harmfulStatusCount(actor: Actor): number {
+  return actor.activeStatusEffects.filter((s) => !isHelpfulStatusEffect(getStatusEffect(s.statusEffectId))).length;
+}
+
+/** `lowHpHealBonus`'s share for this recipient: 0 at full HP, rising evenly to `maxBonusPercent` at `fullBonusBelowHpPercent` of max HP and below. */
+export function lowHpHealBonusPercent(target: Actor, bonus: { maxBonusPercent: number; fullBonusBelowHpPercent: number }): number {
+  const hpPercent = (target.hp / target.maxHp) * 100;
+  const span = 100 - bonus.fullBonusBelowHpPercent;
+  const progress = span <= 0 ? 1 : clamp((100 - hpPercent) / span, 0, 1);
+  return bonus.maxBonusPercent * progress;
+}
+
+/** `highFearHealBonus`'s share for this recipient: 0 at no fear, rising evenly to `maxBonusPercent` at `fullBonusAtFear`. Only characters carry fear. */
+export function highFearHealBonusPercent(target: Actor, bonus: { maxBonusPercent: number; fullBonusAtFear: number }): number {
+  if (!isCharacter(target)) return 0;
+  const progress = bonus.fullBonusAtFear <= 0 ? 1 : clamp(target.survival.fear / bonus.fullBonusAtFear, 0, 1);
+  return bonus.maxBonusPercent * progress;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -370,10 +501,12 @@ function modifyCombatStatEffects(def: StatusEffectDefinition, override: StatusMa
 
 /** Only a status that does nothing but damage the race fully resists; one with any role still lands. */
 function isImmuneToStatus(actor: Actor, def: StatusEffectDefinition): boolean {
+  const resists = (type: DamageType) => raceMultiplierFor(actor, type) === 0;
   return (
     statusRole(def) === null &&
-    def.perTurnEffects.length > 0 &&
-    def.perTurnEffects.every((e) => e.kind === "damage" && raceMultiplierFor(actor, e.damageType ?? "physical") === 0)
+    (def.perTurnEffects.length > 0 || def.woundOnHit !== undefined) &&
+    def.perTurnEffects.every((e) => e.kind === "damage" && resists(e.damageType ?? "physical")) &&
+    (def.woundOnHit === undefined || resists(def.woundOnHit.damageType))
   );
 }
 
@@ -384,7 +517,28 @@ function statusLandedTag(def: StatusEffectDefinition, landedOf: Id | undefined):
   return {};
 }
 
-function applyStatusEffectToActor(
+/**
+ * Whether an applied status remembers who applied it: a taunt needs it to force the target, an
+ * intercept or a landed-hit or channel status to reach its source, a damage-over-time tick to credit the damage.
+ */
+function statusKeepsSource(def: StatusEffectDefinition): boolean {
+  return (
+    def.forcesTargetOnSource === true ||
+    def.interceptsForSource === true ||
+    def.onLandedHitSourceStatus !== undefined ||
+    def.buffsAttackerOnHit !== undefined ||
+    def.endsWithChannel === true ||
+    def.perTurnEffects.some((e) => e.kind === "damage")
+  );
+}
+
+/** Credits `attackerId` with HP it took off a monster, for the `damage` targeting factor. Nothing is kept for any other bearer, or for a monster's own damage to itself. */
+export function noteDamageTaken(target: Actor, attackerId: Id | undefined, hpLost: number): void {
+  if (!isMonster(target) || attackerId === undefined || attackerId === target.id || hpLost <= 0) return;
+  target.damageTakenFrom = { ...target.damageTakenFrom, [attackerId]: (target.damageTakenFrom?.[attackerId] ?? 0) + hpLost };
+}
+
+export function applyStatusEffectToActor(
   actor: Actor,
   statusEffectId: string,
   durationTurns: number | undefined,
@@ -393,9 +547,13 @@ function applyStatusEffectToActor(
   linkedSummonId?: Id,
   casterMagicPower?: number,
   onHitDurationTurns?: number,
-  landedOf?: Id
+  landedOf?: Id,
+  sourceId?: Id
 ): void {
   const def = getStatusEffect(statusEffectId);
+  if (def.eliteBossMaxTurns !== undefined && durationTurns !== undefined && isMonster(actor) && actor.tier !== "normal") {
+    durationTurns = Math.min(durationTurns, def.eliteBossMaxTurns);
+  }
   if (isImmuneToStatus(actor, def)) {
     ctx.log.push({
       text: t("resolver.statusImmune", { actor: nameOf(actor), effect: statusDisplayName(def) }),
@@ -405,6 +563,31 @@ function applyStatusEffectToActor(
     return;
   }
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
+  const family = statusFamilyOf(def);
+  const kin = getStatusEffect(family).levelsStack ? [] : actor.activeStatusEffects.filter((s) => statusFamilyOf(getStatusEffect(s.statusEffectId)) === family);
+  const highest = kin.reduce<ActiveStatusEffect | undefined>((top, s) => (!top || rankLevelOf(getStatusEffect(s.statusEffectId)) > rankLevelOf(getStatusEffect(top.statusEffectId)) ? s : top), undefined);
+  const keepHighest = highest !== undefined && rankLevelOf(getStatusEffect(highest.statusEffectId)) > rankLevelOf(def);
+  // Every other level goes; the new level's own entry stays only when it is the one being refreshed.
+  for (const s of kin) {
+    if (keepHighest ? s === highest : s.statusEffectId === statusEffectId) continue;
+    undoStatusDeltas(actor, s);
+    actor.activeStatusEffects = actor.activeStatusEffects.filter((other) => other !== s);
+  }
+  if (keepHighest) {
+    const highestDef = getStatusEffect(highest.statusEffectId);
+    const cap = highest.durationTurns ?? BALANCE.combat.lowerRankStatusExtendDefaultCapTurns;
+    const extended = Math.min(cap, highest.turnsRemaining + BALANCE.combat.lowerRankStatusExtendTurns);
+    const grew = extended > highest.turnsRemaining;
+    highest.turnsRemaining = Math.max(highest.turnsRemaining, extended);
+    ctx.log.push({
+      text: grew
+        ? t("resolver.statusExtendedByLowerRank", { actor: nameOf(actor), effect: statusDisplayName(highestDef) })
+        : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(highestDef) }),
+      kind: isHelpfulStatusEffect(highestDef) ? "buff" : "debuff",
+      ...statusLandedTag(highestDef, landedOf),
+    });
+    return;
+  }
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
@@ -426,11 +609,13 @@ function applyStatusEffectToActor(
     actor.activeStatusEffects[existingIndex] = {
       statusEffectId,
       turnsRemaining: durationTurns ?? existing.turnsRemaining,
+      durationTurns: durationTurns ?? existing.durationTurns,
       stacks: stackedAfter,
       appliedAmounts,
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
       sourceMagicPower: sourceMagicPower ?? existing.sourceMagicPower,
       onHitDurationTurns: onHitDurationTurns ?? existing.onHitDurationTurns,
+      ...(statusKeepsSource(def) ? { sourceId: sourceId ?? existing.sourceId } : {}),
     };
     ctx.log.push({
       text: gainedANewStack
@@ -439,6 +624,10 @@ function applyStatusEffectToActor(
       kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
       ...statusLandedTag(def, landedOf),
     });
+    if (def.onMaxStacks && gainedANewStack && stackedAfter === def.maxStacks) {
+      expireStatusEffect(actor, actor.activeStatusEffects[existingIndex]!, ctx);
+      applyStatusEffectToActor(actor, def.onMaxStacks.statusEffectId, def.onMaxStacks.durationTurns, ctx, undefined, undefined, undefined, undefined, landedOf, sourceId);
+    }
     return;
   }
   // All deltas computed before any lands, so one entry's delta never shifts another's minPercent floor.
@@ -447,11 +636,13 @@ function applyStatusEffectToActor(
   const entry: ActiveStatusEffect = {
     statusEffectId,
     turnsRemaining: durationTurns ?? 1,
+    durationTurns: durationTurns ?? 1,
     stacks: def.stackable ? 1 : undefined,
     appliedAmounts,
     linkedSummonId,
     sourceMagicPower,
     onHitDurationTurns,
+    ...(statusKeepsSource(def) && sourceId !== undefined ? { sourceId } : {}),
   };
   actor.activeStatusEffects.push(entry);
   for (const e of statEffects) applyCombatStatDelta(actor, e.combatStat!, appliedAmounts[e.combatStat!]!);
@@ -471,14 +662,41 @@ function removeStatusEffectFromActor(actor: Actor, statusEffectId: string | unde
   expireStatusEffect(actor, target, ctx);
 }
 
-export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
-  const def = getStatusEffect(active.statusEffectId);
-  for (const e of def.perTurnEffects) {
+/**
+ * Takes `count` stacks of a stackable status off `actor`, undoing the matching share of the stat
+ * deltas those stacks applied; taking off every stack expires the status.
+ */
+export function removeStatusStacks(actor: Actor, statusEffectId: Id, count: number, ctx: ResolveContext): void {
+  const active = actor.activeStatusEffects.find((s) => s.statusEffectId === statusEffectId);
+  if (!active || count <= 0) return;
+  const stacks = active.stacks ?? 1;
+  if (count >= stacks) {
+    expireStatusEffect(actor, active, ctx);
+    return;
+  }
+  const appliedAmounts = { ...active.appliedAmounts };
+  for (const stat of Object.keys(appliedAmounts) as CombatStat[]) {
+    const removed = Math.round((appliedAmounts[stat]! * count) / stacks);
+    applyCombatStatDelta(actor, stat, -removed);
+    appliedAmounts[stat] = appliedAmounts[stat]! - removed;
+  }
+  const index = actor.activeStatusEffects.indexOf(active);
+  actor.activeStatusEffects[index] = { ...active, stacks: stacks - count, appliedAmounts };
+  ctx.log.push({ text: t("resolver.statusStacksRemoved", { actor: nameOf(actor), effect: statusDisplayName(getStatusEffect(statusEffectId)), stacks: stacks - count }), kind: "info" });
+}
+
+function undoStatusDeltas(actor: Actor, active: ActiveStatusEffect): void {
+  for (const e of getStatusEffect(active.statusEffectId).perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
       // Undo the stored delta, not a recompute: the stat may have moved since it was applied.
       applyCombatStatDelta(actor, e.combatStat, -(active.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
     }
   }
+}
+
+export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
+  const def = getStatusEffect(active.statusEffectId);
+  undoStatusDeltas(actor, active);
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
   ctx.log.push({
     text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
@@ -491,7 +709,7 @@ function vulnerabilityMultiplier(actor: Actor, statusEffectId: string): number {
   let multiplier = 1;
   for (const active of actor.activeStatusEffects) {
     const def = getStatusEffect(active.statusEffectId);
-    if (def.vulnerableTo?.statusEffectId === statusEffectId) multiplier *= def.vulnerableTo.multiplier;
+    if (def.vulnerableTo && statusSatisfiesRequirement(statusEffectId, def.vulnerableTo.statusEffectId)) multiplier *= def.vulnerableTo.multiplier;
   }
   return multiplier;
 }
@@ -519,7 +737,7 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         if (e.kind === "damage") {
           if (e.maxHpPercent) amount += (actor.maxHp * e.maxHpPercent) / 100;
           if (def.stackable) amount *= 1 + ((active.stacks ?? 1) - 1) * ((def.perStackBonusPercent ?? 0) / 100);
-          if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= BALANCE.combat.eliteBossDotMultiplier;
+          amount = statusDamageAfterDefense(actor, amount);
           amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
         }
         // A heal keeps its maxHpPercent: the heal branch of resolveSkillEffect already takes the larger of the two.
@@ -528,6 +746,7 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         const effectToApply = e.kind === "heal" ? { ...e, amount, offenseMultiplierPercent: undefined } : { ...e, amount, maxHpPercent: undefined };
         const hpBefore = actor.hp;
         resolveSkillEffect(effectToApply, actor, actor, { log: ctx.log, statusEffectName: statusDisplayName(def) });
+        if (actor.hp < hpBefore) noteDamageTaken(actor, active.sourceId, hpBefore - actor.hp);
         if (actor.hp < hpBefore) ctx.onDotEffect?.("damage");
         else if (actor.hp > hpBefore) ctx.onDotEffect?.("heal");
       }

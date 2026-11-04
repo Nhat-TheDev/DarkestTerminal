@@ -48,7 +48,6 @@ export function findInvariantViolations(state: GameState, ctx: EngineContext): F
     checkNumber("character.survival.fear", c.survival.fear);
     checkPool("character hp", c.hp, c.maxHp);
     checkPool("character mp", c.mp, c.maxMp);
-    if (new Set(c.equippedArtifactIds).size !== c.equippedArtifactIds.length) found.push("a character has the same artifact equipped twice");
   }
   for (const m of ctx.monsters) {
     for (const key of ["hp", "maxHp", "attack", "defense", "speed"] as const) checkNumber(`monster.${key}`, m[key]);

@@ -1,5 +1,6 @@
 import type { SkillEffect } from "../../src/types";
 import { formatNumber, showValue } from "./format";
+import { rankNumeral } from "../../src/data/statusEffects";
 
 export function joinRanks(values: readonly string[]): string {
   return values.every((value) => value === values[0]) ? values[0]! : values.join(" / ");
@@ -31,7 +32,14 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     return joined === undefined ? undefined : label(joined);
   };
 
-  const amountOf = (key: "critMultiplierPercent" | "ignoreDefensePercent" | "lifestealPercent" | "maxHpPercent" | "minPercent", label: (joined: string) => string): string | undefined => {
+  const rankOdds = (): string | undefined => {
+    const joined = field("rankWeights", (weights) => weights.map(formatNumber).join("/"));
+    const levels = Math.max(0, ...ranks.map((effect) => effect.rankWeights?.length ?? 0));
+    const numerals = Array.from({ length: levels }, (_, index) => rankNumeral(index + 1)).join("/");
+    return joined === undefined ? undefined : `level ${numerals} odds ${joined}%`;
+  };
+
+  const amountOf = (key: "critMultiplierPercent" | "ignoreDefensePercent" | "lifestealPercent" | "maxHpPercent" | "minPercent" | "percentOfCurrent", label: (joined: string) => string): string | undefined => {
     used.add(key);
     const joined = across((effect) => (effect[key] === undefined ? undefined : formatNumber(effect[key])));
     return joined === undefined ? undefined : label(joined);
@@ -42,11 +50,16 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
   let head: string;
   switch (first.kind) {
     case "damage":
-      head = `damage ${amount()} + ${multiplier()}% ${offenseStat}`;
+      used.add("scalesWithAttackAndMagic");
+      head = `damage ${amount()} + ${multiplier()}% ${ranks.some((effect) => effect.scalesWithAttackAndMagic) ? "ATK+MAG" : offenseStat}`;
       break;
-    case "heal":
-      head = `heal ${amount()} + ${multiplier()}% MAG`;
+    case "heal": {
+      // Only a heal that names its offense multiplier scales off magic power; one without (or at 0) is a flat or max-HP heal.
+      const scales = ranks.some((effect) => (effect.offenseMultiplierPercent ?? 0) > 0);
+      head = scales ? `heal ${amount()} + ${multiplier()}% MAG` : `heal ${amount()}`;
+      if (!scales) used.add("offenseMultiplierPercent");
       break;
+    }
     case "applyStatusEffect": {
       used.add("statusEffectId").add("alsoApplyStatusEffectIds");
       const ids = across((effect) => [effect.statusEffectId, ...(effect.alsoApplyStatusEffectIds ?? [])].join(" + "));
@@ -60,10 +73,17 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
       head = `${field("combatStat", String)} ${field("amount", formatNumber)}`;
       break;
     case "removeStatusEffect":
-      head = `remove ${field("statusEffectId", String) ?? "one harmful status"}`;
+      used.add("removesHarmfulDots");
+      head = ranks.some((effect) => effect.removesHarmfulDots) ? "remove every harmful damage-over-time status" : `remove ${field("statusEffectId", String) ?? "one harmful status"}`;
       break;
     case "summon":
       head = `summon ${field("summonCastId", String)}`;
+      break;
+    case "commandSummons":
+      head = `cast one minion's signature skill as your own, off MAG, at ${field("powerPercent", formatNumber) ?? "100"}% of its damage and healing`;
+      break;
+    case "throwDice":
+      head = `every die in hand: ${amount()} + ${multiplier()}% ${offenseStat} each`;
       break;
     default:
       head = `${first.kind}${first.amount === undefined ? "" : ` ${amount()}`}`;
@@ -81,10 +101,23 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     rate("extraHitChance", (joined) => `${joined}% extra hit`),
     field("hitCountRange", ({ min, max }) => `${min}–${max} hits`),
     field("scalesWithStatusStacks", ({ statusEffectId, percentPerStack }) => `+${formatNumber(percentPerStack)}% per ${statusEffectId} stack`),
+    field("scalesWithDebuffCount", ({ percentPerDebuff }) => `+${formatNumber(percentPerDebuff)}% per debuff on the target`),
+    field("damageRollFaces", (faces) => `die faces ${faces.map((face) => `${formatNumber(face)}%`).join("/")}`),
+    rankOdds(),
+    field("excludesCaster", (value) => (value ? "not on the caster" : "")),
+    field("stackCount", ({ min, max }) => (min === max ? `${formatNumber(min)} stacks` : `${formatNumber(min)}–${formatNumber(max)} stacks`)),
+    field("overflowDamage", ({ amount, offenseMultiplierPercent, maxHitsPerTarget }) => `each stack past the cap strikes another enemy for ${formatNumber(amount)} + ${formatNumber(offenseMultiplierPercent)}% ${offenseStat}, at most ${formatNumber(maxHitsPerTarget)}× each`),
+    field("stacks", (value) => `${formatNumber(value)} stack`),
+    field("casterMaxHpPercent", (value) => `+${formatNumber(value)}% of the caster's max HP`),
+    field("lowHpHealBonus", ({ maxBonusPercent, fullBonusBelowHpPercent }) => `up to +${formatNumber(maxBonusPercent)}% as the target's HP falls to ${formatNumber(fullBonusBelowHpPercent)}%`),
+    field("highFearHealBonus", ({ maxBonusPercent, fullBonusAtFear }) => `up to +${formatNumber(maxBonusPercent)}% as the target's fear rises to ${formatNumber(fullBonusAtFear)}`),
     amountOf("ignoreDefensePercent", (joined) => `ignores ${joined}% defense`),
     amountOf("lifestealPercent", (joined) => `${joined}% lifesteal`),
+    field("lifestealPartySharePercent", (value) => `the rest of the party heals ${formatNumber(value)}% of the lifesteal`),
+    field("repeatsOnChannelPulse", (value) => (value ? "repeats on each channel pulse" : "")),
     amountOf("maxHpPercent", (joined) => `${joined}% max HP`),
     amountOf("minPercent", (joined) => `min ${joined}%`),
+    amountOf("percentOfCurrent", (joined) => `${joined}% of current`),
     field("excludesSummonTargets", (value) => (value ? "not on summons" : "")),
     field("linksToCasterSummon", (value) => (value ? "lasts while the summon lives" : "")),
   ];

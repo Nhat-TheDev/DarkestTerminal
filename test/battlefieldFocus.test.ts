@@ -313,7 +313,7 @@ describe("outcome markers and cause icons", () => {
 });
 
 describe("focusedUnit", () => {
-  const unit = { sprite: { rows: ["A"], palette: { A: "#ff0000" } }, label: "VG", labelColor: "#5b7fa6", statusText: "10/10", statusColor: "#5fa85f", frameHeight: MAX_UNIT_HEIGHT };
+  const unit = { sprite: { rows: ["A"], palette: { A: "#ff0000" } }, label: "KN", labelColor: "#5b7fa6", statusText: "10/10", statusColor: "#5fa85f", frameHeight: MAX_UNIT_HEIGHT };
   test("a lit unit keeps its colours and gains its icons", () => {
     const icons = [{ glyph: FOCUS_GLYPH.sword, color: FOCUS_COLOR.party }];
     expect(focusedUnit(unit, { dim: false, icons, marker: null })).toEqual({ ...unit, icons, marker: null });

@@ -135,32 +135,78 @@ Skeleton Guard (the roster's one triple-role archetype, in both the regular-comb
 pools) is the one strong-tier/guard-eligible archetype that has to stay at `minFloor: 0` to satisfy
 the guard-room side of this invariant.
 
-### Targeting by `aggro`
+### Targeting
 
-Default rule (used by `aggressive` and `defensive`): **weighted random** over every living character in the party, weighted by the character's current `Character.aggro`. The higher a character's `aggro`, the more likely it is to be picked as the target. `opportunistic` mirrors this rule rather than ignoring it — see below.
+A monster picks its target by **weighted random** over every living, targetable member of the party side (characters and summons). The weight comes from five factors, mixed by the archetype's `aiPattern` (`targetingWeight`, `src/engine/monsterAI.ts`):
 
-Formula: `P(target = X) = X.aggro / total aggro of all living characters`.
+| Factor | Score per candidate |
+|---|---|
+| `aggro` | the candidate's current `aggro` (at least 1) |
+| `lowHp` | by rank of `hp / maxHp`, lowest first |
+| `fear` | by rank of `survival.fear`, highest first; a summon has no fear and ranks as fearless |
+| `damage` | by rank of HP the candidate has taken off this monster, most first; anyone who has taken none scores the last rank's score |
+| `range` | `targeting.rangeScores.sameRange` when the candidate fights the way the attack reaches, `targeting.rangeScores.otherRange` when it does not |
+
+Each factor turns its scores into shares of 1 across the pool, and the pattern's weights, which sum to 1, mix those shares:
+
+```
+P(target = X) = Σ over factors of  weight(factor) × score(factor, X) / Σ score(factor, every candidate)
+```
+
+A factor that scores everyone the same spreads its weight evenly, so a party at full HP and no fear is picked by `aggro` and chance alone. The loader rejects a profile whose weights are negative or do not sum to 1, and an archetype whose `aiPattern` has no profile.
+
+**Rank scores.** Candidates that tie share a rank, and the next rank follows on without a gap (two candidates tied for lowest HP both take the first `lowHp` score, and the next take the second). Every rank past the end of the list takes its last score, which matters once summons push the pool past four.
+
+<!-- docs:begin targetingRankScores -->
+*Generated from `data/balance-config.json` (`targeting.lowHpRankScores`, `targeting.fearRankScores`, `targeting.damageRankScores`) by `bun run docs:sync`. Do not edit.*
+
+| Rank | lowHp (lowest HP share first) | fear (highest fear first) | damage (most HP taken off first) |
+|---|---|---|---|
+| 1 | 5 | 6 | 5 |
+| 2 | 3 | 4 | 3 |
+| 3 | 2 | 2 | 1 |
+| 4 and below | 1 | 1 | 1 |
+<!-- docs:end -->
+
+**Damage memory.** Every monster keeps its own record of who has hurt it (`Monster.damageTakenFrom`): the HP each attacker actually took off, direct hits and reflected damage alike, and every damage-over-time tick credited to whoever applied the status (`ActiveStatusEffect.sourceId`). A summon is credited as itself, not its owner. At the end of every round each amount is multiplied by `targeting.damageMemoryDecay` (0.5), so a monster turns on whoever has hurt it lately rather than whoever opened the fight. A monster summoned mid-combat starts with no record.
+
+Ranking reads only the order, not the distance: a character at 99% HP among three at full ranks first exactly as one at 10% would. A monster that hunts the wounded is pulled toward whoever is hurt, without locking onto them.
+
+**Attack range.** Every class (`data/classes.json`), summon archetype (`data/summons.json`) and monster archetype carries `attackRange`, `melee` or `ranged`. A monster's attack takes the archetype's `attackRange`, unless the skill it is using sets its own (`data/monster-skills.json`): Bone Throw is a ranged attack even from a Skeleton that walks up to you. The basic attack, and any skill without one, follows the archetype. A candidate whose `attackRange` matches the attack's scores `targeting.rangeScores.sameRange` (4), any other scores `targeting.rangeScores.otherRange` (1): a melee attack leans toward the front line, a ranged one toward whoever stands back. A party that all fights one way spreads the factor evenly.
+
+**Target pull.** A status with `targetPull` (0–1) takes its bearer's share of the pick before the profile has a say: with a total pull `P` over the living pool, each candidate's chance is its own pull plus `(1 − P)` of what the profile gives it. Pulls summing past 1 are scaled down to share the whole pick in proportion, leaving nothing to the profile. The pull works on every pattern, `opportunistic` included; it is how `taunt` (Engage) and `challenge` (Defiance) reach a monster that ignores `aggro`.
+
+A skill's own `targetRules` multiply the pulled weight (`06-level-system.md` §6.12). A `forcesTargetOnSource` status on the monster takes its first pick before any weighting, and an archetype with `targeting: "random"` picks the rest uniformly, ignoring both the pattern and the rules.
 
 ### AI patterns (`MonsterAiPattern`)
-- **`aggressive`**: uses the weighted-random-by-`aggro` rule above directly (`pickMonsterTarget`, `src/engine/monsterAI.ts`).
-- **`defensive`**: `runMonsterTurn` (`src/engine/monsterAI.ts`) intercepts before the normal `actionWeights` roll: for an archetype with `aiPattern: "defensive"` and at least 1 entry in `skillIds`, once the actor's HP drops below the threshold defined in code, it uses that skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and skill-selection logic rather than trusting a hand-copied number here. Targeting for `defensive` archetypes is the same weighted-by-`aggro` rule as `aggressive`; only skill choice differs.
 
-  This only takes effect for archetypes that (a) are `aiPattern: "defensive"` and (b) have at least 1 entry in `skillIds` — that's Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The branch looks for a skill whose `target` is `self`, not for the first entry in `skillIds` — since `skillIds` holds every skill an archetype can roll at any tier, a positional pick would have a normal-tier Skeleton Guard swinging its own Cleaving Strike at itself. The other `defensive` archetypes (Zombie Knight, Dark Knight, Skeleton Guard) own no self-targeted skill, so it's a no-op for them.
-- **`opportunistic`**: the **mirror** of the default rule. Every living character's `aggro` is reflected across the party's own current range — `weight = max(1, (highest aggro + lowest aggro) - X.aggro)` — so the quietest character is picked as often as the loudest would otherwise have been. `pickInverseAggroWeighted`, `src/engine/monsterAI.ts`.
+A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding one is a data change.
 
-  Reflecting rather than inverting (`1/aggro`) keeps whatever spread the party actually has, instead of flattening it to a fixed ratio however hard anyone taunts.
+<!-- docs:begin targetingProfiles -->
+*Generated from `data/balance-config.json` (`targeting.profiles`) and `data/monsters.json` by `bun run docs:sync`. Do not edit.*
 
-  **This makes taunting the wrong move against these archetypes, on purpose.** Shield Guard adds a large `aggro` bonus to a Vanguard whose base is already high; against an `opportunistic` monster that pushes the Vanguard almost out of the target pool and pulls the rest of the party in. Reading which enemies are in the room before holding aggro is the intended skill.
+| Pattern | aggro | lowHp | damage | range | fear | Archetypes |
+|---|---|---|---|---|---|---|
+| `aggressive` | 0.65 | 0.15 | 0.1 | 0.1 | 0 | Slime, Cultist Initiate, Skeleton, Lizard, Spider, Cultist Zealot, Swamp Slime, Fire Elemental, Orc Brute, Cave Bear, Mimic, Giant Spider, Dragon, Orc Chieftain, Void Amalgamation |
+| `defensive` | 0.3 | 0 | 0.5 | 0.2 | 0 | Toxic Toad, Zombie, Goblin Shaman, Lava Slime, Water Elemental, Gargoyle, Skeleton Warrior, Armored Beetle, Lesser Golem, Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem |
+| `opportunistic` | 0 | 0.65 | 0 | 0.15 | 0.2 | Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Snake |
+| `dread` | 0.1 | 0.1 | 0 | 0.1 | 0.7 | Ghost, Wraith, Lich, What's Left of Him |
+| `bloodthirsty` | 0.3 | 0.6 | 0 | 0.1 | 0 | Vampire Bat, Dire Wolf, Lesser Vampire, Vampire Lord |
+| `tactical` | 0.2 | 0.1 | 0.1 | 0.6 | 0 | Skeleton Mage, Skeleton Archer |
+<!-- docs:end -->
 
-  Same mechanism, opposite direction: `distracted` (a negative `aggro` modifier) is a debuff against everything else, but in front of an `opportunistic` archetype it *draws* attacks onto its bearer.
+- **`aggressive`** — goes at whatever is most in front of it: mindless, slow, or a straightforward brawler. Mostly `aggro`, so taunting works on it. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
+- **`defensive`** — owns a self-targeted skill and turtles with it, and turns on whoever has been hurting it (`damage`). `aggro` still counts.
 
-**Which pattern an archetype gets** (`data/monsters.json` field `aiPattern`) follows one rule, so the roster stays predictable as it grows:
+  `runMonsterTurn` (`src/engine/monsterAI.ts`) also intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below the threshold defined in code, it uses a self-targeted skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and chance rather than trusting a hand-copied number here. No other pattern has this branch.
 
-- **`opportunistic`** — it has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, it is incorporeal, or it is intelligent enough to choose. Dungeon Rat, Black Bat, Goblin, Ghoulish Crawler, Vampire Bat, Snake, Ghost, Skeleton Archer, Wraith, Vampire Lord, Lich.
-- **`aggressive`** — it goes at whatever is most in front of it: mindless, slow, or simply a straightforward brawler. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
-- **`defensive`** — it owns a self-targeted skill and turtles with it (see the low-HP branch above).
+  The branch looks for a skill whose `target` is `self` **and whose id is a key of the tier's own `actionWeights`** (a weight of 0 still counts: Zombie and Skeleton Warrior keep their skill at weight 0, so it fires only from this branch). It does not take the first entry of `skillIds`: that list holds every skill an archetype can roll at any tier, so a positional pick would reach into the guard-room kit. Skeleton Guard is the case that matters — its `skillIds` hold self-targeted guard-room skills (a guard stance, a riposte stance), but its normal weights name only the basic attack, so a normal-tier Skeleton Guard never reaches them. In practice the branch is live for Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The guard-room `defensive` archetypes (Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem) use their self-targeted skills through their elite/boss weights and AI rules instead (`06-level-system.md` §6.12).
+- **`opportunistic`** — has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, or it is clever enough to choose. It ignores `aggro` entirely, so only a taunt's `targetPull` reaches it, and it goes for the wounded and the frightened.
+- **`dread`** — feeds on fear. It finds whoever is shaking and stays on them; calming the party is the counter.
+- **`tactical`** — chooses its target by how it fights. `range` carries most of its weight: a melee one closes on the front line, a ranged one keeps to the archers and casters at the back, and the rest of the pick still answers `aggro`.
+- **`bloodthirsty`** — follows the smell of blood, but is still an animal or a hunger in front of a shield: `aggro` keeps a real share, so a taunt's aggro adds to its pull and can still drag it off a bleeding ally.
 
- Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between.
+ Action selection beyond plain targeting (basic attack vs. one of the archetype's skills) is driven separately by each archetype's `actionWeights` — `pickMonsterAction` in `src/engine/monsterAI.ts`. A weight key is either `"basicAttack"` or a skill id from that archetype's `skillIds`; there is no role name in between. An elite or boss adds cooldowns, conditions, per-skill rules and phases on top of the weights, and a boss adds a telegraph that never appears in the weights: a meter of diamond icons under its HP fills one per boss turn and the telegraph is released when it is full — `06-level-system.md` §6.12.
 
 ### Archetype roles — normal / guard / triple / final boss
 
@@ -197,65 +243,75 @@ Every monster skill in `data/monster-skills.json`, with the archetypes that carr
 | Skill id | Name | Target | Effects | Used by |
 |---|---|---|---|---|
 | `bite` | Bite | singleEnemy | damage 14 + 100% ATK | Dungeon Rat (opportunistic), Goblin (opportunistic), Ghoulish Crawler (opportunistic), Mimic (aggressive) |
-| `blood-drain` | Blood Drain | singleEnemy | damage 12 + 100% ATK (50% lifesteal) | Black Bat (opportunistic), Vampire Bat (opportunistic), Cultist Zealot (aggressive), Lesser Vampire (aggressive), Wraith (opportunistic) |
+| `blood-drain` | Blood Drain | singleEnemy | damage 12 + 100% ATK (50% lifesteal) | Black Bat (opportunistic), Vampire Bat (bloodthirsty), Cultist Zealot (aggressive), Lesser Vampire (bloodthirsty), Wraith (dread) |
 | `acid-spit` | Acid Spit | singleEnemy | damage 10 + 100% ATK; status acid-burn + corroded (2 turns, 50% chance) | Slime (aggressive), Goblin Shaman (defensive), Swamp Slime (aggressive) |
 | `whispered-name` | Whispered Name | singleEnemy | damage 15 + 100% ATK | Cultist Initiate (aggressive) |
 | `poison-bite` | Poison Bite | singleEnemy | damage 12 + 100% ATK; status poisoned (3 turns, 50% chance) | Toxic Toad (defensive), Snake (opportunistic) |
-| `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (defensive) |
-| `regeneration` | Regeneration | self | heal 15 + 100% MAG (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
-| `quick-bite` | Quick Bite | singleEnemy | damage 13 + 100% ATK | Lizard (aggressive), Dire Wolf (aggressive) |
+| `bone-throw` | Bone Throw | singleEnemy | damage 12 + 100% ATK | Skeleton (aggressive), Skeleton Mage (tactical) |
+| `regeneration` | Regeneration | self | heal 15 (20% max HP) | Zombie (defensive), Water Elemental (defensive) |
+| `quick-bite` | Quick Bite | singleEnemy | damage 13 + 100% ATK | Lizard (aggressive), Dire Wolf (bloodthirsty) |
 | `web-spit` | Web Spit | singleEnemy | damage 13 + 100% ATK; status webbed (2 turns, 50% chance) | Spider (aggressive) |
-| `grave-chill` | Grave Chill | singleEnemy | damage 13 + 100% ATK; status weakened (2 turns, 50% chance) | Ghost (opportunistic) |
+| `grave-chill` | Grave Chill | singleEnemy | damage 13 + 100% ATK; status weakened (2 turns, 50% chance) | Ghost (dread) |
 | `ember-lash` | Ember Lash | singleEnemy | damage 15 + 100% ATK; status burning (2 turns, 50% chance) | Fire Elemental (aggressive) |
 | `settle-into-stone` | Settle Into Stone | self | status guard (2 turns) | Gargoyle (defensive) |
-| `arrow-shot` | Arrow Shot | singleEnemy | damage 15 + 100% ATK | Skeleton Archer (opportunistic) |
+| `arrow-shot` | Arrow Shot | singleEnemy | damage 15 + 100% ATK | Skeleton Archer (tactical) |
 | `guard-stance` | Guard Stance | self | status guard (2 turns) | Skeleton Warrior (defensive), Armored Beetle (defensive), Lesser Golem (defensive) |
 | `bone-breaker` | Bone Breaker | singleEnemy | damage 14 + 100% ATK; status weakened (2 turns, 50% chance) | Orc Brute (aggressive) |
 | `maul` | Maul | singleEnemy | damage 13 + 100% ATK; status bleeding (3 turns, 50% chance) | Cave Bear (aggressive) |
-| `elite-strike-skeleton-guard` | Cleaving Strike | singleEnemy | damage 26 + 100% ATK | Skeleton Guard (defensive) |
-| `elite-cleave-skeleton-guard` | Sweeping Cleave | allEnemies | damage 13 + 100% ATK | Skeleton Guard (defensive) |
-| `boss-debuff-skeleton-guard` | Crush | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Skeleton Guard (defensive) |
-| `boss-execute-skeleton-guard` | Finishing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-giant-spider` | Venomous Bite | singleEnemy | damage 26 + 100% ATK | Giant Spider (aggressive) |
-| `elite-cleave-giant-spider` | Web Barrage | allEnemies | damage 13 + 100% ATK | Giant Spider (aggressive) |
-| `boss-debuff-giant-spider` | Web Trap | singleEnemy | damage 24 + 100% ATK; status poisoned (3 turns) | Giant Spider (aggressive) |
-| `boss-execute-giant-spider` | Death Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-dragon` | Claw Rake | singleEnemy | damage 26 + 100% ATK | Dragon (aggressive) |
-| `elite-cleave-dragon` | Fire Breath | allEnemies | damage 13 + 100% ATK | Dragon (aggressive) |
-| `boss-debuff-dragon` | Scorching Breath | singleEnemy | damage 24 + 100% ATK; status burning (2 turns) | Dragon (aggressive) |
-| `boss-execute-dragon` | Inferno Bite | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-zombie-knight` | Rusted Blade | singleEnemy | damage 26 + 100% ATK | Zombie Knight (defensive) |
-| `elite-cleave-zombie-knight` | Rotting Swing | allEnemies | damage 13 + 100% ATK | Zombie Knight (defensive) |
-| `boss-debuff-zombie-knight` | Diseased Strike | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Zombie Knight (defensive) |
-| `boss-execute-zombie-knight` | Grave Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-dark-knight` | Shadow Slash | singleEnemy | damage 26 + 100% ATK | Dark Knight (defensive) |
-| `elite-cleave-dark-knight` | Dark Wave | allEnemies | damage 13 + 100% ATK | Dark Knight (defensive) |
-| `boss-debuff-dark-knight` | Crushing Blow | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Dark Knight (defensive) |
-| `boss-execute-dark-knight` | Abyssal Judgment | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-orc-chieftain` | Skullsplitter | singleEnemy | damage 26 + 100% ATK | Orc Chieftain (aggressive) |
-| `elite-cleave-orc-chieftain` | Rout | allEnemies | damage 13 + 100% ATK | Orc Chieftain (aggressive) |
-| `boss-debuff-orc-chieftain` | Helm Crusher | singleEnemy | damage 24 + 100% ATK; status stunned (1 turn) | Orc Chieftain (aggressive) |
-| `boss-execute-orc-chieftain` | The Last Trophy | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-vampire-lord` | Crimson Talon | singleEnemy | damage 26 + 100% ATK | Vampire Lord (opportunistic) |
-| `elite-cleave-vampire-lord` | Scarlet Mist | allEnemies | damage 13 + 100% ATK | Vampire Lord (opportunistic) |
-| `boss-debuff-vampire-lord` | Opened Vein | singleEnemy | damage 24 + 100% ATK; status bleeding (3 turns) | Vampire Lord (opportunistic) |
-| `boss-execute-vampire-lord` | Final Draught | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-void` | Grasping Remnant | singleEnemy | damage 26 + 100% ATK | Void Amalgamation (aggressive) |
-| `elite-cleave-void` | Unravelling Tide | allEnemies | damage 13 + 100% ATK | Void Amalgamation (aggressive) |
-| `boss-debuff-void` | Dissolution | singleEnemy | damage 24 + 100% ATK; status corroded (2 turns) | Void Amalgamation (aggressive) |
-| `boss-execute-void` | Subsumed | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-ancient-golem` | Stoneshear | singleEnemy | damage 26 + 100% ATK | Ancient Golem (defensive) |
-| `elite-cleave-ancient-golem` | Tremor | allEnemies | damage 13 + 100% ATK | Ancient Golem (defensive) |
-| `boss-debuff-ancient-golem` | Grinding Weight | singleEnemy | damage 24 + 100% ATK; status weakened (2 turns) | Ancient Golem (defensive) |
-| `boss-execute-ancient-golem` | Sealing Blow | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-lich` | Withering Touch | singleEnemy | damage 26 + 100% ATK | Lich (opportunistic) |
-| `elite-cleave-lich` | Grave Wind | allEnemies | damage 13 + 100% ATK | Lich (opportunistic) |
-| `boss-debuff-lich` | Hollow Sight | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | Lich (opportunistic) |
-| `boss-execute-lich` | Name Struck Out | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
-| `elite-strike-the-founder` | Paid In Full | singleEnemy | damage 26 + 100% ATK | What's Left of Him (aggressive) |
-| `elite-cleave-the-founder` | The Same Price | allEnemies | damage 13 + 100% ATK | What's Left of Him (aggressive) |
-| `boss-debuff-the-founder` | What's Left Listening | singleEnemy | damage 24 + 100% ATK; status blinded (2 turns) | What's Left of Him (aggressive) |
-| `boss-execute-the-founder` | Everything You Asked For | singleEnemy | damage 60 + 100% ATK (ignores 50% defense) | — |
+| `hold-the-line` | Hold the Line | self | status held-ground (3 turns) | Skeleton Guard (defensive) |
+| `shield-bash` | Shield Bash | singleEnemy | damage 18 + 170% ATK; status enfeebled (2 turns, 50% chance) | Skeleton Guard (defensive) |
+| `riposte-stance` | Riposte Stance | self | status riposte (1 turn) | Skeleton Guard (defensive) |
+| `overhead-cut` | Overhead Cut | singleEnemy | damage 60 + 190% ATK (ignores 40% defense); status weakened (2 turns) | Skeleton Guard (defensive) |
+| `web-barrage` | Web Barrage | singleEnemy | damage 10 + 40% ATK; status webbed (2 turns, 60% chance) | Giant Spider (aggressive) |
+| `venom-bite` | Venom Bite | singleEnemy | damage 22 + 60% ATK; status poisoned-ii (3 turns) | Giant Spider (aggressive) |
+| `cocoon` | Cocoon | singleEnemy | damage 40 + 190% ATK; status cocooned (1 turn, requiresTargetStatusId webbed); status poisoned-iii (3 turns) | Giant Spider (aggressive) |
+| `feed` | Feed | singleEnemy | damage 24 + 110% ATK | Giant Spider (aggressive) |
+| `into-the-rafters` | Into the Rafters | self | status airborne (1 turn) | Giant Spider (aggressive) |
+| `claw-rake` | Claw Rake | singleEnemy | damage 14 + 65% ATK (1–2 hits) | Dragon (aggressive) |
+| `dragon-fire-breath` | Fire Breath | allEnemies | damage 10 + 55% ATK; status burning (2 turns, 50% chance) | Dragon (aggressive) |
+| `brand` | Brand | singleEnemy | damage 12 + 90% ATK; status burning-vulnerable (3 turns) | Dragon (aggressive) |
+| `inferno` | Inferno | allEnemies | damage 10 + 190% ATK; status burning (2 turns) | Dragon (aggressive) |
+| `old-fire-wakes` | Old Fire Wakes | self | status empower (99 turns) | Dragon (aggressive) |
+| `diseased-blade` | Diseased Blade | singleEnemy | damage 50 + 170% ATK; status enfeebled (2 turns) | Zombie Knight (defensive) |
+| `guard-position` | Guard Position | self | status guard-ii (2 turns) | Zombie Knight (defensive) |
+| `undying` | Undying | self | heal 0 (35% max HP) | Zombie Knight (defensive) |
+| `rotting-embrace` | Rotting Embrace | singleEnemy | damage 60 + 200% ATK; status agony (3 turns) | Zombie Knight (defensive) |
+| `salute` | Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
+| `measured-cut` | Measured Cut | singleEnemy | damage 50 + 170% ATK (crit 25%) | Dark Knight (defensive) |
+| `parry-stance` | Parry Stance | self | status fortify (2 turns) | Dark Knight (defensive) |
+| `dread-presence` | Dread Presence | allEnemies | fear 6 | Dark Knight (defensive) |
+| `abyssal-judgment` | Abyssal Judgment | singleEnemy | damage 70 + 200% ATK; status stunned (1 turn) | Dark Knight (defensive) |
+| `second-salute` | Second Salute | singleEnemy | status challenged (3 turns); fear 8 | Dark Knight (defensive) |
+| `skullsplitter` | Skullsplitter | singleEnemy | damage 28 + 120% ATK | Orc Chieftain (aggressive) |
+| `call-the-warband` | Call the Warband | self | summonMonster (monsterArchetypeId goblin, count 1) | Orc Chieftain (aggressive) |
+| `war-cry` | War Cry | allAllies | status rallied-ii (2 turns) | Orc Chieftain (aggressive) |
+| `rout` | Rout | singleEnemy | damage 16 + 70% ATK; status weakened (2 turns) | Orc Chieftain (aggressive) |
+| `gets-up` | Gets Up | self | status bloodrage (99 turns); summonMonster (monsterArchetypeId orc-brute, count 1) | Orc Chieftain (aggressive) |
+| `crimson-talon` | Crimson Talon | singleEnemy | damage 20 + 80% ATK; status bleeding (3 turns) | Vampire Lord (bloodthirsty) |
+| `drink` | Drink | singleEnemy | damage 16 + 85% ATK (+20% per bleeding stack, 60% lifesteal) | Vampire Lord (bloodthirsty) |
+| `bat-swarm` | Bat Swarm | self | summonMonster (monsterArchetypeId vampire-bat, count 2) | Vampire Lord (bloodthirsty) |
+| `final-draught` | Final Draught | singleEnemy | damage 10 + 190% ATK (100% lifesteal) | Vampire Lord (bloodthirsty) |
+| `grasping-remnants` | Grasping Remnants | singleEnemy | damage 14 + 70% ATK; status shredded (3 turns) | Void Amalgamation (aggressive) |
+| `unravelling-tide` | Unravelling Tide | allEnemies | damage 12 + 65% ATK; status corroded (2 turns, 50% chance) | Void Amalgamation (aggressive) |
+| `old-work` | Old Work | self | status regeneration (3 turns) | Void Amalgamation (aggressive) |
+| `subsume` | Subsume | singleEnemy | damage 40 + 145% ATK (50% lifesteal) | Void Amalgamation (aggressive) |
+| `stoneshear` | Stoneshear | singleEnemy | damage 70 + 170% ATK | Ancient Golem (defensive) |
+| `tremor` | Tremor | allEnemies | damage 20 + 110% ATK; status slowed (2 turns) | Ancient Golem (defensive) |
+| `sealing-blow` | Sealing Blow | singleEnemy | damage 90 + 210% ATK; status stunned (1 turn, target allEnemies, 60% chance) | Ancient Golem (defensive) |
+| `crumbling-shell` | Crumbling Shell | self | status empower (99 turns) | Ancient Golem (defensive) |
+| `withering-touch` | Withering Touch | singleEnemy | damage 22 + 135% ATK; status withered (3 turns) | Lich (dread) |
+| `raise-the-dead` | Raise the Dead | self | summonMonster (monsterArchetypeId skeleton-mage, count 1); summonMonster (monsterArchetypeId skeleton, count 1) | Lich (dread) |
+| `ledger-mark` | Ledger Mark | singleEnemy | status marked (4 turns) | Lich (dread) |
+| `name-struck-out` | Name Struck Out | singleEnemy | damage 65 + 280% ATK; remove marked | Lich (dread) |
+| `unhurried` | Unhurried | allEnemies | status marked (4 turns); summonMonster (monsterArchetypeId skeleton, count 2) | Lich (dread) |
+| `paid-in-full` | Paid In Full | singleEnemy | damage 20 + 115% ATK | What's Left of Him (dread) |
+| `the-same-price` | The Same Price | allEnemies | damage 16 + 100% ATK (ignores 100% defense) | What's Left of Him (dread) |
+| `whats-left-listening` | What's Left Listening | singleEnemy | damage 22 + 155% ATK; status blinded (2 turns); fear 8 | What's Left of Him (dread) |
+| `everything-you-asked-for` | Everything You Asked For | singleEnemy | damage 70 + 250% ATK (ignores 40% defense) | What's Left of Him (dread) |
+| `ask-properly` | Ask Properly | singleEnemy | damage 60 + 205% ATK (ignores 50% defense) | What's Left of Him (dread) |
+| `the-answer` | The Answer | allEnemies | damage 70 + 190% ATK (ignores 60% defense) | What's Left of Him (dread) |
+| `hung-lower` | Hung Lower | self | status knitting-ii (6 turns) | What's Left of Him (dread) |
+| `the-last-of-it` | The Last of It | allEnemies | fear 12 | What's Left of Him (dread) |
 | `self-destruct` | Self-Destruct | allEnemies | damage 30 + 200% ATK (ignores 30% defense); damage 99999 + 100% ATK (target self) | Lava Slime (defensive) |
 <!-- docs:end -->
 
@@ -324,16 +380,16 @@ only — what the thing looks or feels like. It must never contain:
   Every description must stand alone; the reader shouldn't need another skill's card in front of
   them to understand this one.
 - **Numbers, percentages, or a reference to another class/archetype's stat field** — e.g. "roughly
-  60% of the Vanguard's maxHp." Those belong in `effects`, in this document's prose, or in a code
+  60% of the Knight's maxHp." Those belong in `effects`, in this document's prose, or in a code
   comment — never inside the JSON `description` string.
 
 If a balance fact needs to be written down somewhere (e.g. "this execute hits for ~60% of a
-Vanguard's maxHp"), put it in this doc or a code comment next to the JSON, not in the string a
+Knight's maxHp"), put it in this doc or a code comment next to the JSON, not in the string a
 player will actually read.
 
 ### Guard-room archetypes (elite/boss)
 
-Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — currently 9: Giant Spider, Dragon, Zombie Knight, Dark Knight, Orc Chieftain, Vampire Lord, Void Amalgamation, Ancient Golem, and Lich — each with its own elite/boss skill kit (`skillIds` + `executeSkillId`, `data/monster-skills.json`) — full details, the Finishing Blow mechanic, and balance-verification approach are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
+Skeleton Guard (triple-role, shared with regular combat) plus the archetypes with `roles: ["elite","boss"]` — currently 9: Giant Spider, Dragon, Zombie Knight, Dark Knight, Orc Chieftain, Vampire Lord, Void Amalgamation, Ancient Golem, and Lich — each with its own elite/boss kit (`skillIds` + `actionWeights.elite`/`actionWeights.boss`, optional `phases`, `targeting`, `shell`; skills in `data/monster-skills.json`). The kit is built around what the archetype's `description` says it does, and the elite tier runs a reduced subset of its boss kit. The kits, the AI turn flow, the mechanics they use (telegraphs, phases, summoning, riposte, the breakable shell) and the difficulty curve by `minFloor` are in `06-level-system.md` §6.12. Again, treat `data/monsters.json`/`data/monster-skills.json` as the authoritative list, not this doc.
 
 ### Monster Balance Points
 

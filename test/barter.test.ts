@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Game } from "../src/engine/game";
 import { enterRoom, getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { tickDotEffects } from "../src/engine/resolver";
+import { resolveSkillEffect, tickDotEffects } from "../src/engine/resolver";
 import { barterBuffFor, barterCost, statBonus } from "../src/engine/events/barter";
 import { rollRestRunner } from "../src/engine/events/runner";
 import { rollBarterOffers } from "../src/data/shopStock";
@@ -15,6 +15,7 @@ import { ITEMS } from "../src/data/items";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { statusRole } from "../src/engine/resolver";
 import type { ItemTier } from "../src/types";
+import { makeCtx } from "./helpers";
 
 const TIERS: ItemTier[] = ["common", "uncommon", "rare", "unique", "epic", "legendary"];
 const BARTER_STATUS_IDS = [...Object.values(BALANCE.barter.statStatusIds), ...Object.values(BALANCE.barter.regenStatusIdByTier)];
@@ -70,6 +71,15 @@ describe("the statuses that carry a barter buff (data/balance-config.json)", () 
       expect(def.rankOf).toBe(root!.id);
       expect(Number(def.rankLevel)).toBe(i + 2);
     });
+  });
+
+  test("regeneration from trophies of different tiers stacks on one character", () => {
+    const { ctx } = makeCtx();
+    const knight = ctx.party[0]!;
+    for (const tier of ["common", "epic"] as const) {
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: BALANCE.barter.regenStatusIdByTier[tier], durationTurns: 5 }, knight, knight, { log: [] });
+    }
+    expect(knight.activeStatusEffects.map((s) => s.statusEffectId).sort()).toEqual([BALANCE.barter.regenStatusIdByTier.common, BALANCE.barter.regenStatusIdByTier.epic].sort());
   });
 
   test("no barter status id carries the name of its source", () => {

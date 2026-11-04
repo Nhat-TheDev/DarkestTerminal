@@ -1,4 +1,4 @@
-import type { EventDefinition, EventTier, Id } from "../types";
+import type { EventDefinition, EventTier, GameState, Id } from "../types";
 import eventsJson from "../../data/events.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
@@ -8,8 +8,24 @@ export const EVENTS = eventsJson as unknown as EventDefinition[];
 /** Outcomes written only when the party engaged, so the only ones `reflectionRequiresOutcome` can usefully name. */
 const ENGAGEMENT_OUTCOMES: ReadonlySet<string> = new Set(["paid", "sacrificed", "traded", "resolved"]);
 
+const NARRATIVE_COUNTERS: ReadonlySet<string> = new Set<keyof GameState["narrativeCounters"]>([
+  "guardianFightsSkipped",
+  "artifactsSacrificed",
+  "altarPaymentsCount",
+  "guardianGrudgeFiredCount",
+  "freeRewardsTakenCount",
+]);
+
 export function assertEventDataConsistent(events: EventDefinition[]): void {
   for (const event of events) {
+    if (event.escalation) {
+      if (!NARRATIVE_COUNTERS.has(event.escalation.counter)) throw new Error(`data/events.json: "${event.id}" escalation counter "${event.escalation.counter}" is not a narrative counter`);
+      for (const key of event.escalation.thresholds) {
+        if (typeof (BALANCE.events as Record<string, unknown>)[key] !== "number") {
+          throw new Error(`data/events.json: "${event.id}" escalation threshold "${key}" is not a number in balance-config events`);
+        }
+      }
+    }
     if (event.freeTake && (event.kind !== "instantReward" || event.noArtifactReward)) {
       throw new Error(`data/events.json: "${event.id}" sets freeTake but is not an instantReward that grants an artifact`);
     }
@@ -23,6 +39,18 @@ export function assertEventDataConsistent(events: EventDefinition[]): void {
 }
 
 assertEventDataConsistent(EVENTS);
+
+/** The event shown at a fixed point (the run's opening scene) instead of being rolled into a room. */
+const scriptedEvents = EVENTS.filter((e) => e.kind === "scripted");
+if (scriptedEvents.length !== 1) throw new Error(`data/events.json: exactly 1 event must have kind "scripted" (found ${scriptedEvents.length})`);
+export const SCRIPTED_EVENT_ID: Id = scriptedEvents[0]!.id;
+
+export const RETIRED_CHARACTER_EVENT_IDS: Id[] = EVENTS.filter((e) => e.retiredCharacterEvent).map((e) => e.id);
+
+/** The `events.*` balance value an escalation threshold names. */
+export function escalationThreshold(key: string): number {
+  return (BALANCE.events as unknown as Record<string, number>)[key]!;
+}
 
 export function getEvent(id: Id): EventDefinition {
   const found = EVENTS.find((e) => e.id === id);

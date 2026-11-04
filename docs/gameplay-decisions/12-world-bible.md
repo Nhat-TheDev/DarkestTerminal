@@ -364,6 +364,41 @@ reason it was, the setting has quietly drifted.
 - Depth = proximity to Sleeper's dreaming core. A floor-depth-gated reveal should read as "getting
   closer," not as "unlocking a new area."
 
+### Writing voice — line by line
+
+The rules above say what the text may reveal; these say how a line of it reads. They apply to every
+event description, reflection, Camp Reflection prompt and option, and outcome line.
+
+- **Length.** An event description runs to about 30 words at most, a reflection prompt about 20,
+  each option about 15. A repeat-visit or escalation variant adds one sentence at most.
+- **One observable detail per scene**, and never a second sentence explaining the first.
+- **Never name the player's feelings.** Describe what is seen, heard or touched, and let the player
+  supply the reaction.
+- **Show drift (§12.5) through physical evidence of repetition** — scars in the same place, worn
+  spots on the floor, a pack full of bundles tied the same way — never through "anymore", "this
+  time" or "before you decided". Evidence leaves the choosing with the party, which is what keeps
+  "agency stays real" (above) true on the page.
+- **Options are gestures, not opinions.** A reflection or Camp Reflection option says what the hand
+  does next (pockets a chip, wraps the cut, passes the bread). The three options stay three
+  distinct readings of the same moment.
+- **End on an object or an action.** At most one ending built on a negation per event, and no
+  closers that start with "Nobody…".
+- **No aphorism or summary endings, no "not X, Y" construction**, and no runs of clipped fragments.
+- **A repeat visit changes one detail instead of adding a feeling.** No two events share a text,
+  including their escalated variants.
+- **Mechanics live on the button.** Costs and odds belong to the option label; outcome lines report
+  what happened, plainly, without exclamation marks.
+- **Some outcomes can be nothing.** A room that gives no reward and explains nothing is a valid
+  room.
+
+Sources these draw on: Failbetter's writing guidelines, Darkest Dungeon's curios, the events in Slay
+the Spire and FTL, and Shattered Pixel Dungeon's strings.
+
+**Party voices in the journal.** Each class has a hidden personality (`data/personalities.json`), a virtue
+and the same virtue pushed too far. The party never names it; a reader learns it from what that person keeps
+noticing. A bad-side line still reads the clue, and is no likelier to be wrong than a good-side one: a flaw is
+never the game's signal that a reading is false.
+
 ## 12.12 Where each event sits in the Balance
 
 Not nineteen mechanics — nineteen different relationships to the same underlying tendency (§12.4).
@@ -404,10 +439,11 @@ consistently, not just where it's convenient.
 ## 12.13 Chain escalation tiers and reflection stances, resolved
 
 **Deeper chain escalation tiers** — a tier-2 escalation (past a chain's first threshold,
-§8.5) should read as a further step down §12.5's drift, from dependence toward unawareness: not
-just "the exchange no longer asks," but the encounter's *specificity* starting to erode, sounding
-less like something happening to this party in this place and more like a transaction being
-processed. Concrete draft lines per chain, and the reasoning behind each, are tracked in
+§8.5) should read as a further step down §12.5's drift, from dependence toward unawareness, shown
+through what the repetition has left behind rather than through anyone saying it: a palm that's
+more scar than skin, places on the floor worn to the shape of the party's knees, a threat that
+reaches further toward the door each time. Each tier stays specific to its own event and changes
+one detail, per the writing-voice rules in §12.11. Concrete draft lines per chain, and the reasoning behind each, are tracked in
 `10-event-narrative.md` rather than here — that's where implementation-facing drafts already
 live; this section only needs to state the direction, not the wording. Exact thresholds are a
 balance decision, not a lore one.
@@ -434,3 +470,30 @@ trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dun
 party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
 `EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
 Part B.3 for the full mechanical writeup.
+
+## 12.14 The Counter
+
+The one hidden truth the journal (`data/journal.json`, page "The Count") is written against. Nothing
+here reaches the player; the journal's readings are the party's, and only some of them are true.
+
+- One ordinary person from an expedition long before the party. No mark, no contact with whoever
+  cuts the spirals (§8.2's ordinary people). Sits in Thread 4 of `10-event-narrative.md`.
+- Their companions went deeper. They stayed at a dry spot to hold the supplies and counted
+  **sleeps**, one stroke each, rationing against the count (`old-count`).
+- They packed a bundle for the return with one portion set apart, for whoever came back first
+  (`waiting-supplies`). Who that turned out to be is open.
+- The last stroke stops because **they stood up and went down after them**, on their own feet. Why
+  is open. That nothing took them is settled, which keeps §12.11's "agency stays real".
+- The footprints that stop in an empty room (`doubled-back`) are **not theirs**.
+- The unfinished warning (`half-a-warning`) is **not their hand**: the count was cut slow and even,
+  the warning fast.
+- Whether they found anyone, or ever came back up, stays open under §12.9.
+
+**The wrong links are the bridges `10-event-narrative.md` A.3 keeps apart.** The world never
+connects Thread 4 to Threads 2, 3 or 5; the journal lets the party draw exactly those links (the
+counter cut the warning, the footprints are the counter's), and this section says they are wrong.
+The world still never crosses them; only the party's belief does.
+
+A journal line on one of §12.9's questions has no true reading at all. Any confirmation such a line
+ever gets has to agree with whichever reading the party wrote.
+

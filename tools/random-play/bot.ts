@@ -2,14 +2,13 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../../src/ui/app";
 import { Game } from "../../src/engine/game";
 import { Rng } from "../../src/engine/rng";
-import { getActorByRef } from "../../src/engine/combat";
+import { getRoom } from "../../src/engine/dungeon";
 import { saveRun, loadSave, gameFromSave } from "../../src/engine/save";
 import { SAVE_DIR } from "../../src/engine/paths";
-import { CLASSES, getSkill } from "../../src/data/classes";
 import { ABILITIES } from "../../src/data/abilities";
-import { MAX_LEVEL } from "../../src/data/levelGrowth";
+import { BOSS_FLOOR_INTERVAL } from "../../src/data/levelGrowth";
 import { t } from "../../src/data/strings";
-import type { Character, Id } from "../../src/types";
+import type { Id } from "../../src/types";
 import { applyDump } from "../dev-save-dump/applyDump";
 import { rmSync, mkdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -27,6 +26,9 @@ import {
   type LayoutRequirement,
 } from "./checks";
 import { toFrameCapture, type FrameCapture, type ReportFinding, type GalleryEntry } from "./report";
+import { levelAt, type GuardTier } from "./curve";
+import { TeamPolicy, type Team } from "./team";
+import { screenKeyOf, screenLabel } from "./evidence";
 
 export interface Size {
   width: number;
@@ -42,15 +44,17 @@ export const PLAY_SIZES: Size[] = [
 /** The smallest supported terminal; each new screen is also checked once at this size. */
 export const MIN_SIZE: Size = { width: 150, height: 45 };
 
-const START_DEPTHS = [1, 1, 1, 5, 15, 40, 80, 99];
-/** Party level relative to floor depth, spread so runs reach both deep content and defeat. */
-const LEVEL_OFFSETS = [-3, 0, 0, 10, 25];
-const PARTY_SIZE = 4;
+/** The first elite and first boss of each ten floors, below the ending checkpoint. */
+export const GUARD_FLOORS = Array.from({ length: 10 }, (_, i) => [i * 10 + 1, i * 10 + 5]).flat();
+/** Fresh runs keep the opening scenes in play; the rest start on a guard floor at that floor's average level. */
+const FRESH_RUN_CHANCE = 0.25;
+const ABILITY_SLOTS = 4;
 const SAVE_SLOT = "slot1";
 const RECENT_STEPS = 50;
 const SOFT_LOCK_STEPS = 300;
 const LOOP_BREAK_STEPS = 30;
-const SENSIBLE_CHANCE = 0.7;
+/** How often the bot plays the team's choice rather than a random footer key: high in a fight so guards get beaten, lower elsewhere so menus get mashed. */
+const SENSIBLE_CHANCE = { combat: 0.95, other: 0.7 };
 /** While looping: chance to back out of a screen that offers Esc, and how much likelier a digit or Enter is than any other footer key. */
 const LOOP_ESCAPE_CHANCE = 0.5;
 const LOOP_PROGRESS_WEIGHT = 8;
@@ -60,13 +64,56 @@ const RESIZE_CHANCE = 0.05;
 const MAX_REVEAL_TICKS = 1000;
 const ESCAPE_DELIVERY_MS = 40;
 
+export const FLOOR_CLEARED = "floor cleared";
+export const ROOM_LEFT = "room left";
+
+/** Evidence runs play at one size, so each screen is captured the same way every time. */
+export const EVIDENCE_SIZE: Size = { width: 180, height: 70 };
+/** A floor may lack the room a scenario asks for; this many floors further down are tried in turn. */
+const SCENARIO_FLOOR_TRIES = 20;
+
+/**
+ * A fixed start for an evidence run. It also turns off the random save round trips, resizes and
+ * hidden-key probes, so the same code captures the same screens.
+ */
+export interface Scenario {
+  name: string;
+  depth: number;
+  level: number;
+  roomArg: string;
+  forceEventId?: Id;
+  fresh?: boolean;
+  /** Ends the run once the party leaves the room it started in. */
+  stopOnLeavingRoom?: boolean;
+}
+
 export interface RunOptions {
   gameSeed: number;
   botSeed: number;
   maxSteps: number;
+  team: Team;
+  scenario?: Scenario;
+}
+
+export interface GuardResult {
+  depth: number;
+  tier: GuardTier;
+  won: boolean;
+}
+
+export interface RunStats {
+  team: string;
+  startDepth: number;
+  rooms: number;
+  guards: GuardResult[];
+  /** Each room entered: the party's highest fear, and satiety. */
+  samples: { fear: number; satiety: number }[];
+  itemsUsed: number;
+  starvedTurns: number;
 }
 
 export interface RunResult {
+  stats: RunStats;
   failures: ReportFinding[];
   warnings: ReportFinding[];
   gallery: GalleryEntry[];
@@ -98,20 +145,26 @@ function layoutRequirement(uiKind: string, atMinSize: boolean): LayoutRequiremen
   return { panelTitles: panels.map((key) => t(key)), mainPanelTitle: main, minMainRows: 1 };
 }
 
-function sensibleKey(app: App, footer: FooterInfo): string | null {
-  const ui = app.debugUiState;
-  const game = app.debugGame;
-  const offer = (key: string) => (footer.keys.includes(key) ? key : null);
-  if (ui.kind === "room") {
-    const idx = game.connectedRoomChoices().findIndex((r) => !r.cleared);
-    return offer(String((idx >= 0 ? idx : 0) + 1));
+export const hasLeftFloor = (game: Game, startDepth: number) => game.state.floor.depth !== startDepth;
+
+/** Called once per step: notes each new room and the end of each guard fight. */
+function watchRun(game: Game, stats: RunStats, watch: { room: string; guard: number | null }): void {
+  const s = game.state;
+  const depth = s.floor.depth;
+  const room = getRoom(s.floor, s.currentRoomId);
+  const roomKey = `${depth}/${room.id}`;
+  if (roomKey !== watch.room) {
+    watch.room = roomKey;
+    stats.rooms++;
+    stats.samples.push({ fear: Math.max(...s.party.filter((c) => c.isAlive).map((c) => c.survival.fear), 0), satiety: s.satiety });
   }
-  if (ui.kind === "pickSkill") {
-    const actor = getActorByRef(ui.actorRef, game.ctx) as Character;
-    const idx = actor.unlockedSkillIds.map(getSkill).findIndex((s) => s.target === "singleEnemy" && actor.mp >= s.mpCost);
-    if (idx >= 0 && offer(String(idx + 1))) return String(idx + 1);
-  }
-  return offer("1") ?? offer("RETURN");
+  if (watch.guard === null && s.combat && !s.combat.outcome && room.type === "boss") watch.guard = depth;
+  if (watch.guard === null) return;
+  const lost = s.combat?.outcome === "defeat" || s.gameOver === "defeat";
+  const won = s.combat?.outcome === "victory" || depth !== watch.guard;
+  if (!lost && !won) return;
+  stats.guards.push({ depth: watch.guard, tier: watch.guard % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite", won: !lost });
+  watch.guard = null;
 }
 
 /** A looping bot is usually stuck in a submenu, so it backs out and favours keys that move the run forward. */
@@ -137,21 +190,39 @@ function stateSignature(game: Game): string {
 }
 
 export async function playRun(options: RunOptions): Promise<RunResult> {
-  const { gameSeed, botSeed, maxSteps } = options;
+  const { gameSeed, botSeed, maxSteps, team, scenario } = options;
   const rng = new Rng(botSeed);
   rmSync(SAVE_DIR, { recursive: true, force: true });
   mkdirSync(SAVE_DIR, { recursive: true });
 
-  const classIds: Id[] = shuffled(rng, CLASSES.map((c) => c.id)).slice(0, PARTY_SIZE);
-  const abilityIds: (Id | null)[] = shuffled(rng, ABILITIES.map((a) => a.id)).slice(0, PARTY_SIZE).map((id) => (rng.next() < 0.5 ? id : null));
-  const floorDepth = pick(rng, START_DEPTHS);
-  const levelOffset = pick(rng, LEVEL_OFFSETS);
-  let size = pick(rng, PLAY_SIZES);
-  const start = floorDepth === 1 && levelOffset === 0 ? "fresh run" : `floor ${floorDepth}, level ${Math.max(1, Math.min(MAX_LEVEL, floorDepth + levelOffset))}`;
+  const classIds: Id[] = team.members.map((m) => m.classId);
+  const abilityIds: (Id | null)[] = shuffled(rng, ABILITIES.map((a) => a.id)).slice(0, ABILITY_SLOTS).map((id) => (rng.next() < 0.5 ? id : null));
+  const fresh = scenario ? !!scenario.fresh : rng.next() < FRESH_RUN_CHANCE;
+  let floorDepth = scenario ? scenario.depth : fresh ? 1 : pick(rng, GUARD_FLOORS);
+  const level = scenario ? scenario.level : Math.round(levelAt(floorDepth));
+  let size = scenario ? EVIDENCE_SIZE : pick(rng, PLAY_SIZES);
 
-  let game = new Game(gameSeed, classIds, undefined, abilityIds, start === "fresh run");
-  if (start !== "fresh run") applyDump(game, { level: floorDepth + levelOffset, floorDepth, roomArg: "entry" });
+  const startGame = (depth: number) => {
+    const g = new Game(gameSeed, classIds, undefined, abilityIds, fresh);
+    if (!fresh) applyDump(g, { level, floorDepth: depth, roomArg: scenario?.roomArg ?? "entry", forceEventId: scenario?.forceEventId });
+    return g;
+  };
+  let game: Game | null = null;
+  for (let tries = 0; !game; tries++) {
+    try {
+      game = startGame(floorDepth + tries);
+      floorDepth += tries;
+    } catch (error) {
+      if (!scenario || tries >= SCENARIO_FLOOR_TRIES) throw error;
+    }
+  }
   game.currentSaveSlot = SAVE_SLOT;
+  const start = scenario ? `${scenario.name}, floor ${floorDepth}, level ${level}` : fresh ? "fresh run" : `floor ${floorDepth}, level ${level}`;
+  const startRoomId = game.state.currentRoomId;
+
+  const policy = new TeamPolicy(team);
+  const stats: RunStats = { team: team.name, startDepth: floorDepth, rooms: 0, guards: [], samples: [], itemsUsed: 0, starvedTurns: 0 };
+  const watch = { room: "", guard: null as number | null };
 
   let setup = await createTestRenderer(size);
   let app = new App(setup.renderer, game, { autoReveal: false });
@@ -170,7 +241,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   const gallery = new Map<string, GalleryEntry>();
   const probedAtMinSize = new Set<string>();
   const recent: string[] = [];
-  const reproduce = `bun run random-play --game-seed ${gameSeed} --bot-seed ${botSeed} --max-steps ${maxSteps}`;
+  const reproduce = `bun run random-play --game-seed ${gameSeed} --bot-seed ${botSeed} --max-steps ${maxSteps} --team ${team.name}`;
 
   const record = (into: ReportFinding[], findings: Finding[], frame: FrameCapture | null, at: Size, uiKind: string, stack?: string) => {
     for (const f of findings) {
@@ -181,6 +252,15 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
     }
   };
   const capture = () => toFrameCapture(setup.captureSpans());
+  const screenContent = () => {
+    const rows = setup.captureCharFrame().split("\n");
+    const cut = (id: string) => {
+      const box = setup.renderer.root.findDescendantById(id)!;
+      return rows.slice(box.y, box.y + box.height).map((row) => Array.from(row).slice(box.x, box.x + box.width).join("").trimEnd());
+    };
+    const fullLog = setup.renderer.root.findDescendantById("full-log-box")!.visible;
+    return [...cut(fullLog ? "full-log-box" : "main-box"), ...cut("footer-box")].join("\n");
+  };
 
   // OpenTUI's KeyHandler catches anything a keypress handler throws and only logs it, so the
   // game carries on with a half-drawn screen; route those logs into findings instead.
@@ -201,14 +281,28 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   let step = 0;
   for (; step < maxSteps; step++) {
     try {
+      watchRun(game, stats, watch);
+      if (hasLeftFloor(game, floorDepth)) {
+        outcome = FLOOR_CLEARED;
+        break;
+      }
+      if (scenario?.stopOnLeavingRoom && game.state.currentRoomId !== startRoomId) {
+        outcome = ROOM_LEFT;
+        break;
+      }
       const kind = app.debugUiState.kind;
       const frameBefore = setup.captureCharFrame();
       const footer = parseFooter(footerText(frameBefore));
 
-      const galleryKey = `${kind}@${sizeLabel(size)}`;
-      const shot = gallery.get(galleryKey);
-      if (shot) shot.count++;
-      else gallery.set(galleryKey, { uiKind: kind, size: sizeLabel(size), count: 1, frame: capture() });
+      const screen = screenKeyOf(app.debugUiState, game);
+      const label = screenLabel(screen);
+      const roomCleared = getRoom(game.state.floor, game.state.currentRoomId).cleared;
+      const addShot = (at: Size, frame: () => FrameCapture) => {
+        const shot = gallery.get(`${label}@${sizeLabel(at)}`);
+        if (shot) shot.count++;
+        else gallery.set(`${label}@${sizeLabel(at)}`, { uiKind: kind, event: screen.event, screenCase: screen.screenCase, size: sizeLabel(at), count: 1, frame: frame(), content: screenContent(), roomCleared });
+      };
+      addShot(size, capture);
 
       const frameFindings = [...findTextLeaks(frameBefore), ...findLongDecimals(frameBefore), ...findFooterIssues(footer)];
       const layout = findLayoutIssues(frameBefore, layoutRequirement(kind, false));
@@ -218,13 +312,15 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       record(failures, [...frameFindings, ...layout.failures, ...stateFindings], evidence, size, kind);
       record(warnings, layout.warnings, evidence, size, kind);
 
-      if (!probedAtMinSize.has(kind)) {
-        probedAtMinSize.add(kind);
+      if (!probedAtMinSize.has(label)) {
+        probedAtMinSize.add(label);
         setup.resize(MIN_SIZE.width, MIN_SIZE.height);
         await setup.renderOnce();
         const small = setup.captureCharFrame();
+        const smallShot = capture();
+        addShot(MIN_SIZE, () => smallShot);
         const smallFindings = [...findFooterIssues(parseFooter(footerText(small))), ...findLayoutIssues(small, layoutRequirement(kind, true)).failures];
-        record(failures, smallFindings, smallFindings.length > 0 ? capture() : null, MIN_SIZE, kind);
+        record(failures, smallFindings, smallFindings.length > 0 ? smallShot : null, MIN_SIZE, kind);
         setup.resize(size.width, size.height);
         await setup.renderOnce();
       }
@@ -235,7 +331,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       }
 
       const saveAllowed = game.state.gameOver === null && kind !== "abilityBuyback" && kind !== "gameover";
-      if (saveAllowed && rng.next() < (game.state.combat ? SAVE_ROUND_TRIP_CHANCE.combat : SAVE_ROUND_TRIP_CHANCE.other)) {
+      if (saveAllowed && !scenario && rng.next() < (game.state.combat ? SAVE_ROUND_TRIP_CHANCE.combat : SAVE_ROUND_TRIP_CHANCE.other)) {
         recent.push(`[${kind}] save + reload${game.state.combat ? " (mid-combat)" : ""}`);
         saveRun(game);
         game = gameFromSave(loadSave(SAVE_SLOT), SAVE_SLOT, gameSeed);
@@ -247,7 +343,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
         continue;
       }
 
-      if (rng.next() < RESIZE_CHANCE) {
+      if (!scenario && rng.next() < RESIZE_CHANCE) {
         size = pick(rng, PLAY_SIZES);
         recent.push(`[${kind}] resize to ${sizeLabel(size)}`);
         setup.resize(size.width, size.height);
@@ -257,14 +353,15 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
 
       const maxDigit = Math.max(0, ...footer.digits);
       let key: string;
-      if (maxDigit > 0 && maxDigit < 9 && rng.next() < HIDDEN_KEY_PROBE_CHANCE) {
+      if (!scenario && maxDigit > 0 && maxDigit < 9 && rng.next() < HIDDEN_KEY_PROBE_CHANCE) {
         key = String(maxDigit + 1);
       } else {
         // The cautious choice can loop on a screen (re-picking the shown tab); once nothing has moved for a while, break out instead.
         if (step - lastProgressStep >= LOOP_BREAK_STEPS) {
           key = loopBreakKey(rng, footer);
         } else {
-          const sensible = rng.next() < SENSIBLE_CHANCE ? sensibleKey(app, footer) : null;
+          const wanted = rng.next() < (game.state.combat ? SENSIBLE_CHANCE.combat : SENSIBLE_CHANCE.other) ? (policy.chooseKey(app, footer) ?? footer.keys.find((k) => k === "1" || k === "RETURN") ?? null) : null;
+          const sensible = wanted !== null && footer.keys.includes(wanted) ? wanted : null;
           key = sensible ?? (footer.keys.length > 0 ? pick(rng, footer.keys) : pick(rng, ["RETURN", "ESCAPE", "1"]));
         }
       }
@@ -332,5 +429,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
 
   console.error = originalConsoleError;
   setup.renderer.destroy();
-  return { failures, warnings, gallery: [...gallery.values()], steps: step, outcome };
+  stats.itemsUsed = policy.itemsUsed;
+  stats.starvedTurns = policy.starvedTurns;
+  return { stats, failures, warnings, gallery: [...gallery.values()], steps: step, outcome };
 }

@@ -7,6 +7,15 @@ import { t } from "./strings";
 
 export const ITEMS = itemsJson as unknown as ItemDefinition[];
 
+const campKits = ITEMS.filter((i) => i.campKit);
+if (campKits.length !== 1) throw new Error(`data/items.json: exactly 1 item must set campKit (found ${campKits.length})`);
+export const CAMP_KIT_ITEM_ID: Id = campKits[0]!.id;
+
+for (const id of Object.keys(BALANCE.party.startingItems)) {
+  if (!ITEMS.some((i) => i.id === id)) throw new Error(`data/balance-config.json: party.startingItems names unknown item "${id}"`);
+  if (id === CAMP_KIT_ITEM_ID) throw new Error(`data/balance-config.json: party.startingItems must not list "${id}", set party.startingExplorationKits instead`);
+}
+
 export function getItem(id: Id): ItemDefinition {
   const found = ITEMS.find((i) => i.id === id);
   if (!found) throw new Error(`Unknown item: ${id}`);
@@ -78,6 +87,7 @@ const TIER_WEIGHTS = BALANCE.items.tierWeights;
 for (const item of ITEMS) {
   if (!(item.tier in TIER_WEIGHTS)) throw new Error(`data/items.json: "${item.id}" has an unknown tier "${item.tier}"`);
   if (item.archetypeIds?.length && item.effects.length > 0) throw new Error(`data/items.json: trophy "${item.id}" must have no effects`);
+  if (item.effects.some((e) => e.rankWeights)) throw new Error(`data/items.json: "${item.id}" sets rankWeights, which only rolls on skills`);
 }
 
 const TROPHIES = ITEMS.filter((i) => i.archetypeIds?.length);

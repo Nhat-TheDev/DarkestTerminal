@@ -53,6 +53,7 @@
   },
   {
     "id": "exploration-kit",
+    "campKit": true,
     "name": "Exploration Kit",
     "description": "Rope, chalk, and a map case gone soft at the corners from being opened with wet hands.",
     "target": "allAllies",

@@ -12,6 +12,7 @@ import { getClass } from "../data/classes";
 import { rollRestRunner } from "./events/runner";
 import { applyPendingBarterBuffs } from "./events/barter";
 import { applyBlessing, countBlessedRoom } from "./events/gatekeeper";
+import { escalationTier } from "./events/shared";
 
 export function getRoom(floor: Floor, roomId: string): Room {
   const room = floor.rooms.find((r) => r.id === roomId);
@@ -84,14 +85,6 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   if (blessingNote) state.message = `${blessingNote} ${state.message}`;
 }
 
-function isTier2Escalated(state: GameState, counter: number, threshold2: number): boolean {
-  return counter >= threshold2 && state.floor.depth >= BALANCE.events.chainTier2MinFloorDepth;
-}
-
-function isTier3Escalated(state: GameState, counter: number, threshold3: number): boolean {
-  return counter >= threshold3 && state.floor.depth >= BALANCE.events.chainTier3MinFloorDepth;
-}
-
 function pickCrossEventVariant(state: GameState, event: EventDefinition): string | undefined {
   if (!event.crossEventVariants) return undefined;
   for (const variant of event.crossEventVariants) {
@@ -126,7 +119,7 @@ function pickFallbackText(state: GameState, room: Room, event: EventDefinition):
 
 /** Pure: the events screen re-derives the same text on every re-render. */
 export function pickEventText(state: GameState, room: Room, event: EventDefinition): string {
-  if (event.id === "the-one-who-stayed") {
+  if (event.retiredCharacterEvent) {
     // The event can't roll without a recorded class; the fallback guards a raw "{{class}}" anyway.
     const who = state.retiredCharacterClassId ? getClass(state.retiredCharacterClassId).name : t("dungeon.retiredClassFallback");
     return event.description.replace("{{class}}", who);
@@ -139,27 +132,11 @@ export function pickEventText(state: GameState, room: Room, event: EventDefiniti
     return pickFallbackText(state, room, event);
   }
 
-  // These counters never reset, so no room-level flag is needed. Highest tier first: each implies the ones below.
-  if (event.id === "sacrificial-circle") {
-    const counter = state.narrativeCounters.artifactsSacrificed;
-    if (isTier3Escalated(state, counter, BALANCE.events.circleRemembersThreshold3)) {
-      return event.chainEscalated3Description ?? event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
-    }
-    if (isTier2Escalated(state, counter, BALANCE.events.circleRemembersThreshold2)) {
-      return event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
-    }
-    if (counter >= BALANCE.events.circleRemembersThreshold) return event.chainEscalatedDescription ?? event.description;
-  }
-  if (event.id === "blood-altar") {
-    const counter = state.narrativeCounters.altarPaymentsCount;
-    if (isTier3Escalated(state, counter, BALANCE.events.bloodDebtThreshold3)) {
-      return event.chainEscalated3Description ?? event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
-    }
-    if (isTier2Escalated(state, counter, BALANCE.events.bloodDebtThreshold2)) {
-      return event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
-    }
-    if (counter >= BALANCE.events.bloodDebtThreshold) return event.chainEscalatedDescription ?? event.description;
-  }
+  // Highest tier first: each implies the ones below.
+  const tier = escalationTier(state, event);
+  if (tier === 3) return event.chainEscalated3Description ?? event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
+  if (tier === 2) return event.chainEscalated2Description ?? event.chainEscalatedDescription ?? event.description;
+  if (tier === 1) return event.chainEscalatedDescription ?? event.description;
   if (
     event.freeTake &&
     state.narrativeCounters.freeRewardsTakenCount >= BALANCE.events.freeTakenThreshold &&
@@ -213,14 +190,14 @@ export function resolveEventEntry(state: GameState, room: Room, ctx: EngineConte
   }
 
   if (!state.activeEvent) {
-    if (event.id === "merchant") {
+    if (event.kind === "artifactShop") {
       const offerCount = BALANCE.events.merchantOfferCount;
       state.activeEvent = { eventId: event.id, offerArtifactIds: Array.from({ length: offerCount }, () => rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth)), refreshCount: 0 };
-    } else if (event.id === "cursed-shrine") {
+    } else if (event.kind === "cursedOffer") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifactOrCursed(ctx.rng, state.floor.depth)] };
-    } else if (event.id === "twin-altars") {
+    } else if (event.kind === "pairedOffer") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth), rollArtifact("treasureOrEvent", ctx.rng, state.floor.depth)] };
-    } else if (event.id === "gambling-den") {
+    } else if (event.kind === "coinGamble") {
       state.activeEvent = { eventId: event.id, offerArtifactIds: [] };
     }
   }

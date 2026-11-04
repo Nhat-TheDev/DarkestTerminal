@@ -1,10 +1,12 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, isCharacter, resolveSkillEffect } from "./resolver";
+import { type Actor, damageTakenMultiplier, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
 import type { EngineContext } from "./combat";
 import { characterBaseStats } from "./party";
+import { shellAdjustedDamage } from "./monsterShell";
+import { advanceBar } from "./monsterBars";
 import { getClass, passiveRankDef } from "../data/classes";
 
 export interface SkillEffectHooks {
@@ -26,13 +28,18 @@ export function applyOnHitRider(source: Character, target: Actor, log: LogEntry[
 
 export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, damageDealt: number, log: LogEntry[]): void {
   const percent = totalReflectDamagePercent(bearer);
-  const reflected = Math.round(damageDealt * (percent / 100));
+  // An intact shell caps what a reflect does to it, but a reflect is not a hit that wears it down.
+  const reflected = shellAdjustedDamage(attacker, Math.round(damageDealt * (percent / 100) * damageTakenMultiplier(attacker)), false);
   if (reflected <= 0) return;
+  const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);
+  noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
+  if (attacker.hp <= 0 && isMonster(attacker)) advanceBar(attacker);
   log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
 }
 
 export function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
+  if (!bearer.isAlive) return;
   const healed = Math.round(damageDealt * (totalLifestealPercent(bearer) / 100));
   if (healed <= 0) return;
   const before = bearer.hp;
@@ -81,10 +88,12 @@ const healOnKillHook: SkillEffectHooks = {
   },
 };
 
-const roguePoisonBonusHook: SkillEffectHooks = {
+// Class passives fire on the fields their class declares in data/classes.json, never on a class id.
+
+const targetStatusBonusHook: SkillEffectHooks = {
   onDamageDealt(source, target, damage, ctx, log) {
-    if (!isCharacter(source) || source.classId !== "rogue") return;
-    const passive = getClass("rogue").passiveSkill;
+    if (!isCharacter(source)) return;
+    const passive = getClass(source.classId).passiveSkill;
     if (!passive.requiresTargetStatusId) return;
     const targetHasRequiredStatus = target.activeStatusEffects.some((s) => statusSatisfiesRequirement(s.statusEffectId, passive.requiresTargetStatusId!));
     if (!targetHasRequiredStatus) return;
@@ -104,25 +113,26 @@ const roguePoisonBonusHook: SkillEffectHooks = {
   },
 };
 
-const mageShredHook: SkillEffectHooks = {
+const passiveOnHitStatusHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, _ctx, log) {
-    if (!isCharacter(source) || source.classId !== "mage") return;
-    const rankDef = passiveRankDef(getClass("mage").passiveSkill, source.level);
+    if (!isCharacter(source)) return;
+    const rankDef = passiveRankDef(getClass(source.classId).passiveSkill, source.level);
     if (!rankDef?.onHitStatusEffectId) return;
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.onHitStatusEffectId, durationTurns: rankDef.durationTurns }, source, target, { log });
   },
 };
 
-const plagueDoctorDebuffProcHook: SkillEffectHooks = {
+const debuffProcHook: SkillEffectHooks = {
   onDamageDealt(source, target, _damage, ctx, log) {
-    if (!isCharacter(source) || source.classId !== "plague-doctor") return;
-    const passive = getClass("plague-doctor").passiveSkill;
+    if (!isCharacter(source)) return;
+    const passive = getClass(source.classId).passiveSkill;
+    if (!passive.debuffPool?.length) return;
     const rankDef = passiveRankDef(passive, source.level);
     const chance = (rankDef?.procChancePercent ?? 0) / 100;
     if (chance === 0) return;
-    for (let roll = 0; roll < 2; roll++) {
+    for (let roll = 0; roll < (passive.procRolls ?? 1); roll++) {
       if (!ctx.rng.chance(chance)) continue;
-      const statusId = ctx.rng.pick(passive.debuffPool ?? []);
+      const statusId = ctx.rng.pick(passive.debuffPool);
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: statusId, durationTurns: rankDef?.durationTurns }, source, target, { log });
     }
   },
@@ -135,7 +145,7 @@ export const combatHooks: SkillEffectHooks[] = [
   lifestealHook,
   poisonOnHitHook,
   healOnKillHook,
-  roguePoisonBonusHook,
-  mageShredHook,
-  plagueDoctorDebuffProcHook,
+  targetStatusBonusHook,
+  passiveOnHitStatusHook,
+  debuffProcHook,
 ];

@@ -19,12 +19,12 @@ describe("formatPassiveEffect", () => {
   });
 
   test("mechanic text reflects the rank's actual fields, not placeholders", () => {
-    const vanguard = CLASSES.find((c) => c.id === "vanguard")!;
-    const rank3 = vanguard.passiveSkill.ranks.find((r) => r.rank === 3)!;
-    const text = formatPassiveEffect(vanguard.passiveSkill, rank3);
+    const knight = CLASSES.find((c) => c.id === "knight")!;
+    const rank3 = knight.passiveSkill.ranks.find((r) => r.rank === 3)!;
+    const text = formatPassiveEffect(knight.passiveSkill, rank3);
     expect(text).toContain(`+${rank3.maxHpPercent}%`);
     expect(text).toContain(`+${rank3.defensePercent}%`);
-    expect(text).toContain(`+${rank3.aggroFlat} aggro`);
+    expect(text).toContain(`${rank3.interceptWeakestChancePercent}% chance`);
   });
 
   test("Viking and Ninja text reflects the passive's own top-level fields, not a hand-typed number", () => {
@@ -106,15 +106,15 @@ describe("stat breakdown always adds up to the character's real stat", () => {
     }
   }
 
-  test("the screen shows the Vanguard passive as its own bracket", () => {
+  test("the screen shows the Knight passive as its own bracket", () => {
     const game = new Game(7);
-    const vanguard = game.state.party.find((p) => p.classId === "vanguard") ?? game.state.party[0]!;
-    vanguard.classId = "vanguard";
-    vanguard.level = 35;
-    recomputeCharacterStats(vanguard, game.state.satiety);
-    const passive = characterStatBreakdown(vanguard, game.state.satiety).defense.passive;
+    const knight = game.state.party.find((p) => p.classId === "knight") ?? game.state.party[0]!;
+    knight.classId = "knight";
+    knight.level = 35;
+    recomputeCharacterStats(knight, game.state.satiety);
+    const passive = characterStatBreakdown(knight, game.state.satiety).defense.passive;
     expect(passive).toBeGreaterThan(0);
-    const out = renderMain(game, { kind: "characterInfo", characterIndex: game.state.party.indexOf(vanguard), previousUi: { kind: "room" } as UiState });
+    const out = renderMain(game, { kind: "characterInfo", characterIndex: game.state.party.indexOf(knight), previousUi: { kind: "room" } as UiState });
     const chunks = typeof out === "string" ? [] : out.chunks;
     expect(chunks.some((ch) => ch.text === `(+${passive})`)).toBe(true);
   });

@@ -4,13 +4,13 @@ import type { EngineContext } from "../combat";
 import { pickArtifactOfRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { closeEvent } from "./shared";
+import { activeEventOfKind, closeEvent } from "./shared";
 
 const ROUNDS = BALANCE.events.gamblingDenRounds;
 
 function activeGambleOrError(state: GameState): PartyActionError | NonNullable<GameState["activeEvent"]> {
-  const active = state.activeEvent;
-  if (!active || active.eventId !== "gambling-den") return { reason: t("errors.noActiveChoice") };
+  const active = activeEventOfKind(state, "coinGamble");
+  if (!active) return { reason: t("errors.noActiveChoice") };
   return active;
 }
 

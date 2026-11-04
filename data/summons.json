@@ -4,6 +4,7 @@
       "id": "shadow-clone",
       "name": "Shadow Clone",
       "speed": 1,
+      "attackRange": "melee",
       "actionWeights": {
         "basicAttack": 1
       },
@@ -17,6 +18,7 @@
       "id": "goblin-thrower",
       "name": "Goblin Thrower",
       "speed": 12,
+      "attackRange": "ranged",
       "actionWeights": {
         "rock-throw": 40,
         "basicAttack": 60
@@ -29,6 +31,7 @@
       "id": "stone-golem",
       "name": "Stone Golem",
       "speed": 6,
+      "attackRange": "melee",
       "actionWeights": {
         "stomp": 40,
         "basicAttack": 60
@@ -41,6 +44,7 @@
       "id": "hellfire-imp",
       "name": "Hellfire Imp",
       "speed": 16,
+      "attackRange": "ranged",
       "actionWeights": {
         "hellfire-strike": 40,
         "basicAttack": 60
@@ -53,6 +57,7 @@
       "id": "healer-spirit",
       "name": "Healer Spirit",
       "speed": 10,
+      "attackRange": "ranged",
       "actionWeights": {
         "spirit-heal-single": 60,
         "spirit-heal-party": 40
@@ -66,6 +71,7 @@
       "id": "recall-totem",
       "name": "Recall Totem",
       "speed": 1,
+      "attackRange": "melee",
       "passive": true
     }
   ],

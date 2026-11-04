@@ -3,14 +3,16 @@ import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id,
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng } from "./rng";
 import { getItem } from "../data/items";
-import { getSkill } from "../data/classes";
+import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
+import { getClass, getSkill } from "../data/classes";
 import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
 import { ABILITIES } from "../data/abilities";
 import { BALANCE } from "../data/balanceConfig";
-import { getArchetype } from "../data/monsters";
+import { getArchetype, getBossTelegraph } from "../data/monsters";
 import { getFloorMilestoneOmen, pickFloorMilestoneOmen } from "../data/floorMilestones";
-import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
+import { getJournalEcho, getJournalFragment, getJournalLine } from "../data/journal";
+import { MAX_LEVEL } from "../data/levelGrowth";
 
 export function isVersion(version: string): boolean {
   return /^\d+\.\d+\.\d+$/.test(version);
@@ -28,7 +30,38 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** 1.1.0's per-level EXP cost for the levels 1.1.1 changed: a frozen record, never follows `data/level-growth.json`. */
+/** The EXP curve each release shipped: frozen records, never follow `data/level-growth.json`. */
+const V1_2_0_EXP_TIERS = [
+  { maxLevel: 5, expCost: 170 },
+  { maxLevel: 10, expCost: 185 },
+  { maxLevel: 15, expCost: 205 },
+  { maxLevel: 20, expCost: 225 },
+  { maxLevel: 25, expCost: 250 },
+  { maxLevel: 30, expCost: 260 },
+  { maxLevel: 35, expCost: 285 },
+  { maxLevel: 40, expCost: 330 },
+  { maxLevel: 45, expCost: 375 },
+  { maxLevel: 50, expCost: 430 },
+  { maxLevel: 55, expCost: 490 },
+  { maxLevel: 60, expCost: 555 },
+  { maxLevel: 65, expCost: 640 },
+  { maxLevel: 70, expCost: 730 },
+  { maxLevel: 75, expCost: 825 },
+  { maxLevel: 80, expCost: 945 },
+  { maxLevel: 85, expCost: 1080 },
+  { maxLevel: 90, expCost: 1230 },
+  { maxLevel: 95, expCost: 1410 },
+  { maxLevel: 100, expCost: 1605 },
+];
+
+const V1_1_1_EXP_TIERS = [
+  { maxLevel: 5, expCost: 200 },
+  { maxLevel: 10, expCost: 215 },
+  { maxLevel: 15, expCost: 230 },
+  { maxLevel: 20, expCost: 240 },
+  ...V1_2_0_EXP_TIERS.slice(4),
+];
+
 const V1_1_0_EXP_TIERS = [
   { maxLevel: 5, expCost: 115 },
   { maxLevel: 10, expCost: 135 },
@@ -36,27 +69,21 @@ const V1_1_0_EXP_TIERS = [
   { maxLevel: 20, expCost: 165 },
   { maxLevel: 25, expCost: 195 },
   { maxLevel: 30, expCost: 255 },
+  ...V1_2_0_EXP_TIERS.slice(6),
 ];
 
-let v1_1_0Costs: number[] | undefined;
-
-/** Cumulative EXP by level on 1.1.0's curve; levels past the tiers cost what they cost now. */
-function v1_1_0ExpCosts(): number[] {
-  if (v1_1_0Costs) return v1_1_0Costs;
+/** Cumulative EXP by level on a curve. */
+function expCosts(tiers: { maxLevel: number; expCost: number }[]): number[] {
   const costs = [0, 0];
-  for (let level = 2; level <= MAX_LEVEL; level++) {
-    const tier = V1_1_0_EXP_TIERS.find((t) => level <= t.maxLevel);
-    costs[level] = costs[level - 1]! + (tier ? tier.expCost : expCostForLevel(level) - expCostForLevel(level - 1));
-  }
-  return (v1_1_0Costs = costs);
+  for (let level = 2; level <= MAX_LEVEL; level++) costs[level] = costs[level - 1]! + (tiers.find((t) => level <= t.maxLevel) ?? tiers.at(-1)!).expCost;
+  return costs;
 }
 
 /**
- * Saves before 1.1.1, which raised the cost of levels 2-30. Progress into the level keeps its share
- * of that level's cost, clamped inside it. Each snapshot rescales at its own level, since one can predate a level-up.
+ * Moves a save onto a new EXP curve. Progress into the level keeps its share of that level's cost,
+ * clamped inside it. Each snapshot rescales at its own level, since one can predate a level-up.
  */
-function migrateToV1_1_1(state: GameState): void {
-  const oldCosts = v1_1_0ExpCosts();
+function rescalePartyExp(state: GameState, oldCosts: number[], newCosts: number[]): void {
   const oldLevel = (exp: number) => {
     let level = 1;
     while (level < MAX_LEVEL && exp >= oldCosts[level + 1]!) level++;
@@ -64,10 +91,10 @@ function migrateToV1_1_1(state: GameState): void {
   };
   const rescale = (exp: number, level: number) => {
     const into = exp - oldCosts[level]!;
-    if (level >= MAX_LEVEL) return expCostForLevel(level) + Math.max(0, into);
+    if (level >= MAX_LEVEL) return newCosts[level]! + Math.max(0, into);
     const oldSpan = oldCosts[level + 1]! - oldCosts[level]!;
-    const span = expCostForLevel(level + 1) - expCostForLevel(level);
-    return expCostForLevel(level) + Math.min(span - 1, Math.max(0, Math.floor((into * span) / oldSpan)));
+    const span = newCosts[level + 1]! - newCosts[level]!;
+    return newCosts[level]! + Math.min(span - 1, Math.max(0, Math.floor((into * span) / oldSpan)));
   };
   state.partyExp = rescale(state.partyExp, state.party[0]?.level ?? oldLevel(state.partyExp));
   const combat = state.combat;
@@ -76,8 +103,35 @@ function migrateToV1_1_1(state: GameState): void {
   for (const snapshot of snapshots) if (snapshot) snapshot.partyExp = rescale(snapshot.partyExp, oldLevel(snapshot.partyExp));
 }
 
+/** Saves before 1.1.1, which raised the cost of levels 2-30. */
+function migrateToV1_1_1(state: GameState): void {
+  rescalePartyExp(state, expCosts(V1_1_0_EXP_TIERS), expCosts(V1_1_1_EXP_TIERS));
+}
+
+/** Class ids 1.2.0 renamed, with the old display name a character carried: a frozen record, never follows `data/classes.json`. */
+const V1_2_0_CLASS_RENAMES: Record<Id, { id: Id; oldName: string }> = { vanguard: { id: "knight", oldName: "Vanguard" } };
+
+export function renamedClassId(id: Id): Id {
+  return V1_2_0_CLASS_RENAMES[id]?.id ?? id;
+}
+
+/** Saves before 1.2.0, which lowered the cost of levels 2-20 and renamed the Vanguard to the Knight. A character's name is its class name. */
+function migrateToV1_2_0(state: GameState): void {
+  rescalePartyExp(state, expCosts(V1_1_1_EXP_TIERS), expCosts(V1_2_0_EXP_TIERS));
+  for (const character of state.party) {
+    const rename = V1_2_0_CLASS_RENAMES[character.classId];
+    if (!rename) continue;
+    character.classId = rename.id;
+    if (character.name === rename.oldName) character.name = getClass(rename.id).name;
+  }
+  if (state.retiredCharacterClassId) state.retiredCharacterClassId = renamedClassId(state.retiredCharacterClassId);
+}
+
 /** One step per release that changed what a saved value means, oldest first. */
-const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [{ version: "1.1.1", migrate: migrateToV1_1_1 }];
+const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [
+  { version: "1.1.1", migrate: migrateToV1_1_1 },
+  { version: "1.2.0", migrate: migrateToV1_2_0 },
+];
 
 /**
  * A status whose id left the catalog would throw on its next lookup. Its stat change was applied
@@ -204,6 +258,20 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   }
   delete state.pendingFloorMilestoneMessage;
   if (!state.campReflectionChoices) state.campReflectionChoices = {};
+  if (state.pendingJournal === undefined || (state.pendingJournal && !getJournalLine(state.pendingJournal.lineId))) state.pendingJournal = null;
+  if (state.pendingJournal?.fragmentId && !getJournalFragment(state.pendingJournal.fragmentId)) state.pendingJournal.fragmentId = null;
+  state.journalQueue = Array.isArray(state.journalQueue) ? state.journalQueue.filter((q) => getJournalLine(q.lineId)) : [];
+  const found = state.pendingJournalFind?.fragmentIds.filter((id) => getJournalFragment(id)) ?? [];
+  state.pendingJournalFind = found.length > 0 ? { ...state.pendingJournalFind!, fragmentIds: found } : null;
+  if (!state.journalOffered) state.journalOffered = {};
+  state.journalFragmentsSeen = Array.isArray(state.journalFragmentsSeen) ? state.journalFragmentsSeen.filter((id) => getJournalFragment(id)) : [];
+  if (!state.journalEventVisits) state.journalEventVisits = {};
+  state.journalLeftBlank = Array.isArray(state.journalLeftBlank) ? state.journalLeftBlank.filter((id) => getJournalLine(id)) : [];
+  if (state.journalHandledRoomId === undefined) state.journalHandledRoomId = null;
+  if (state.pendingJournalPickup === undefined) state.pendingJournalPickup = null;
+  if (typeof state.journalPickupReached !== "boolean") state.journalPickupReached = false;
+  state.journalEchoesFired = Array.isArray(state.journalEchoesFired) ? state.journalEchoesFired.filter((id) => getJournalEcho(id)) : [];
+  state.journalEndingEchoIds = Array.isArray(state.journalEndingEchoIds) ? state.journalEndingEchoIds.filter((id) => getJournalEcho(id)) : [];
   if (typeof state.pendingEndingCheckpoint !== "boolean") state.pendingEndingCheckpoint = false;
   if (typeof state.continuedPastCheckpoint !== "boolean") state.continuedPastCheckpoint = false;
   if (typeof state.pendingFounderDialogue !== "boolean") state.pendingFounderDialogue = false;
@@ -213,8 +281,8 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (state.blessedRoomId === undefined) state.blessedRoomId = null;
   if (state.retiredCharacterClassId === undefined) state.retiredCharacterClassId = null;
   // Same ineligibility marker the Game constructor sets; without it the event renders a raw {{class}} placeholder.
-  if (!state.retiredCharacterClassId && !state.firedOnceEventIds.includes("the-one-who-stayed")) {
-    state.firedOnceEventIds.push("the-one-who-stayed");
+  if (!state.retiredCharacterClassId) {
+    for (const id of RETIRED_CHARACTER_EVENT_IDS) if (!state.firedOnceEventIds.includes(id)) state.firedOnceEventIds.push(id);
   }
   if (typeof state.runStardust !== "number") state.runStardust = 0;
   if (state.pendingAbilityBuyback === undefined) state.pendingAbilityBuyback = null;
@@ -264,6 +332,19 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
 export function migrateMonsters(monsters: Monster[]): Monster[] {
   for (const monster of monsters) {
     dropUnknownStatuses(monster);
+    const saved = monster as Monster & { charging?: unknown };
+    if (saved.charging !== undefined) {
+      monster.telegraphMeter = getBossTelegraph(getArchetype(monster.archetypeId))?.meterLength ?? 0;
+      delete saved.charging;
+    }
+    const bars = monster.tier === "boss" ? getArchetype(monster.archetypeId).bars : undefined;
+    if (bars && monster.barBaseHp === undefined) {
+      const ratio = Math.round(monster.maxHp * bars[0]!.hpMultiplier) / monster.maxHp;
+      monster.barBaseHp = monster.maxHp;
+      monster.barIndex = 0;
+      monster.maxHp = Math.round(monster.barBaseHp * bars[0]!.hpMultiplier);
+      monster.hp = monster.hp > 0 ? Math.max(1, Math.round(monster.hp * ratio)) : 0;
+    }
     if (monster.race !== undefined) continue;
     const archetype = getArchetype(monster.archetypeId);
     monster.race = archetype.race;
