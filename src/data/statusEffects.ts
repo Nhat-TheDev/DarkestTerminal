@@ -1,4 +1,4 @@
-import type { CombatStat, StatusEffectDefinition } from "../types";
+import type { CombatStat, SkillEffect, StatusEffectDefinition } from "../types";
 import statusEffectsJson from "../../data/status-effects.json";
 import { t } from "./strings";
 
@@ -32,6 +32,18 @@ export function statusFamilyOf(def: StatusEffectDefinition): string {
 /** The member of `baseId`'s family at `level`, or undefined when the family has none. */
 export function statusAtRankLevel(baseId: string, level: number): StatusEffectDefinition | undefined {
   return STATUS_EFFECTS.find((s) => statusFamilyOf(s) === baseId && rankLevelOf(s) === level);
+}
+
+/** A level a skill effect's `rankWeights` would roll must exist, and at least one must be possible, or the cast would fail mid-fight. */
+export function assertRankWeights(where: string, effect: SkillEffect): void {
+  const weights = effect.rankWeights;
+  if (!weights) return;
+  if (!weights.some((weight) => weight > 0)) throw new Error(`${where}: every level of "${effect.statusEffectId}" has a weight of 0`);
+  weights.forEach((weight, index) => {
+    if (weight > 0 && !statusAtRankLevel(effect.statusEffectId ?? "", index + 1)) {
+      throw new Error(`${where}: weights level ${index + 1} of "${effect.statusEffectId}", which has no such level`);
+    }
+  });
 }
 
 export function statusSatisfiesRequirement(activeId: string, requiredId: string): boolean {

@@ -87,6 +87,7 @@ const TIER_WEIGHTS = BALANCE.items.tierWeights;
 for (const item of ITEMS) {
   if (!(item.tier in TIER_WEIGHTS)) throw new Error(`data/items.json: "${item.id}" has an unknown tier "${item.tier}"`);
   if (item.archetypeIds?.length && item.effects.length > 0) throw new Error(`data/items.json: trophy "${item.id}" must have no effects`);
+  if (item.effects.some((e) => e.rankWeights)) throw new Error(`data/items.json: "${item.id}" sets rankWeights, which only rolls on skills`);
 }
 
 const TROPHIES = ITEMS.filter((i) => i.archetypeIds?.length);

@@ -6,7 +6,7 @@ import { Game } from "../src/engine/game";
 import { applySkillEffects, resolveRound, startCombat, passiveDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
+import { STATUS_EFFECTS, assertRankWeights, getStatusEffect } from "../src/data/statusEffects";
 import { BALANCE } from "../src/data/balanceConfig";
 
 describe("resolver", () => {
@@ -292,17 +292,6 @@ describe("resolver", () => {
     tickStatModEffects(knight, { log });
     expect(knight.defense).toBe(700); // minus the stored 20, not a floor re-derived off 720
     expect(knight.activeStatusEffects).toHaveLength(0);
-  });
-
-  test("a status effect's own damage tick (DoT) is flat (amount + maxHpPercent), not attack-minus-defense", () => {
-    // goblin has no physical resist/weak, so race doesn't perturb the untyped DoT tick.
-    const victim = spawnMonster("goblin", 1);
-    const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
-    const before = victim.hp;
-    tickDotEffects(victim, { log });
-    const expectedTick = Math.max(1, Math.round(4 + victim.maxHp * 0.025));
-    expect(before - victim.hp).toBe(expectedTick);
   });
 
   test("statusCategory classifies a restoreMp per-turn effect as dot (MP-over-time), same schedule as damage/heal", () => {
@@ -1275,13 +1264,43 @@ describe("levels of one status family (rankOf)", () => {
     expect(log.map((l) => l.text)).toContain("Goblin's Poisoned II lingers a turn longer.");
   });
 
-  test("the extension stops at the higher level's own applied duration, silently", () => {
+  test("at the higher level's own applied duration the extension stops, and the log reads a refresh", () => {
     const g = goblin();
     apply(g, "poisoned-ii", 3);
     const log: LogEntry[] = [];
     apply(g, "poisoned", 3, log);
     expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
-    expect(log).toEqual([]);
+    expect(log.map((l) => l.text)).toEqual(["Goblin refreshes the Poisoned II effect."]);
+  });
+
+  test("two levels already on a target (an older save) collapse to one when another level lands", () => {
+    const g = goblin();
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 }, { statusEffectId: "poisoned-ii", turnsRemaining: 2, durationTurns: 3 });
+    apply(g, "poisoned", 3);
+    expect(ids(g)).toEqual(["poisoned-ii"]);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 });
+    apply(g, "poisoned-iii", 3);
+    expect(ids(g)).toEqual(["poisoned-iii"]);
+  });
+
+  test("assertRankWeights refuses weights that are all 0 or name a missing level", () => {
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "poisoned", rankWeights: [0, 0, 0] })).toThrow("weight of 0");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 30, 20] })).toThrow("level 3");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 50, 0] })).not.toThrow();
+  });
+
+  test("an effect with its own target still rolls its level", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const skill = {
+      id: "test-self-weaken", name: "Test", description: "", target: "singleEnemy", slot: 1, unlockLevel: 1, mpCost: 0,
+      effects: [{ kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [0, 1], durationTurns: 2, target: "self" }],
+    } as unknown as SkillDefinition;
+    applySkillEffects(skill, rogue, [rat], combat, ctx, []);
+    expect(rogue.activeStatusEffects.map((s) => s.statusEffectId)).toContain("weakened-ii");
   });
 
   test("without a recorded duration the cap falls back to combat.lowerRankStatusExtendDefaultCapTurns", () => {

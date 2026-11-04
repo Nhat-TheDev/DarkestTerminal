@@ -564,22 +564,29 @@ export function applyStatusEffectToActor(
   }
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
   const family = statusFamilyOf(def);
-  const kin = getStatusEffect(family).levelsStack
-    ? undefined
-    : actor.activeStatusEffects.find((s) => s.statusEffectId !== statusEffectId && statusFamilyOf(getStatusEffect(s.statusEffectId)) === family);
-  if (kin) {
-    const kinDef = getStatusEffect(kin.statusEffectId);
-    if (rankLevelOf(kinDef) > rankLevelOf(def)) {
-      const cap = kin.durationTurns ?? BALANCE.combat.lowerRankStatusExtendDefaultCapTurns;
-      const extended = Math.min(cap, kin.turnsRemaining + BALANCE.combat.lowerRankStatusExtendTurns);
-      if (extended > kin.turnsRemaining) {
-        kin.turnsRemaining = extended;
-        ctx.log.push({ text: t("resolver.statusExtendedByLowerRank", { actor: nameOf(actor), effect: statusDisplayName(kinDef) }), kind: isHelpfulStatusEffect(kinDef) ? "buff" : "debuff", ...statusLandedTag(kinDef, landedOf) });
-      }
-      return;
-    }
-    undoStatusDeltas(actor, kin);
-    actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== kin);
+  const kin = getStatusEffect(family).levelsStack ? [] : actor.activeStatusEffects.filter((s) => statusFamilyOf(getStatusEffect(s.statusEffectId)) === family);
+  const highest = kin.reduce<ActiveStatusEffect | undefined>((top, s) => (!top || rankLevelOf(getStatusEffect(s.statusEffectId)) > rankLevelOf(getStatusEffect(top.statusEffectId)) ? s : top), undefined);
+  const keepHighest = highest !== undefined && rankLevelOf(getStatusEffect(highest.statusEffectId)) > rankLevelOf(def);
+  // Every other level goes; the new level's own entry stays only when it is the one being refreshed.
+  for (const s of kin) {
+    if (keepHighest ? s === highest : s.statusEffectId === statusEffectId) continue;
+    undoStatusDeltas(actor, s);
+    actor.activeStatusEffects = actor.activeStatusEffects.filter((other) => other !== s);
+  }
+  if (keepHighest) {
+    const highestDef = getStatusEffect(highest.statusEffectId);
+    const cap = highest.durationTurns ?? BALANCE.combat.lowerRankStatusExtendDefaultCapTurns;
+    const extended = Math.min(cap, highest.turnsRemaining + BALANCE.combat.lowerRankStatusExtendTurns);
+    const grew = extended > highest.turnsRemaining;
+    highest.turnsRemaining = Math.max(highest.turnsRemaining, extended);
+    ctx.log.push({
+      text: grew
+        ? t("resolver.statusExtendedByLowerRank", { actor: nameOf(actor), effect: statusDisplayName(highestDef) })
+        : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(highestDef) }),
+      kind: isHelpfulStatusEffect(highestDef) ? "buff" : "debuff",
+      ...statusLandedTag(highestDef, landedOf),
+    });
+    return;
   }
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);

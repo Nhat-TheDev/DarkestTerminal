@@ -1627,6 +1627,15 @@ export function applyMonsterHitFear(source: Actor, target: Actor, combat: Combat
   if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
 }
 
+/** Picks the family level a landed `rankWeights` status applies at; `assertRankWeights` vouches that every weighted level exists. */
+function rollStatusLevel(effect: SkillEffect, ctx: EngineContext): SkillEffect {
+  const weights = effect.rankWeights;
+  if (effect.kind !== "applyStatusEffect" || !weights?.length || !effect.statusEffectId) return effect;
+  const levels = weights.map((_, index) => index + 1).filter((level) => weights[level - 1]! > 0);
+  const level = ctx.rng.weightedPick(levels, (lvl) => weights[lvl - 1]!);
+  return { ...effect, statusEffectId: statusAtRankLevel(effect.statusEffectId, level)!.id, rankWeights: undefined };
+}
+
 export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
   const hasBonus = hasConditionalBonusStatus(skill, source);
   let landedDamageHit = false;
@@ -1692,7 +1701,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         const resistRoll = rollDebuffResist(effect, resolved, overrideEnemyFacing, ctx, log);
         if (resistRoll === null ? effect.chance !== undefined && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
         resolveOneDamageEffect(
-          effect,
+          rollStatusLevel(effect, ctx),
           skill,
           source,
           resolved,
@@ -1762,12 +1771,7 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
         rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollFaces: undefined };
       }
-      if (effect.kind === "applyStatusEffect" && effect.rankWeights?.length && effect.statusEffectId) {
-        const weights = effect.rankWeights;
-        const levels = weights.map((_, index) => index + 1).filter((lvl) => weights[lvl - 1]! > 0);
-        const level = ctx.rng.weightedPick(levels, (lvl) => weights[lvl - 1]!);
-        rolledEffect = { ...effect, statusEffectId: statusAtRankLevel(effect.statusEffectId, level)!.id, rankWeights: undefined };
-      }
+      if (effect.kind === "applyStatusEffect") rolledEffect = rollStatusLevel(effect, ctx);
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
 
       if (finalEffect.kind === "applyStatusEffect" && finalEffect.stackCount) {

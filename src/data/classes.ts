@@ -1,6 +1,6 @@
 import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
-import { STATUS_EFFECTS, statusAtRankLevel } from "./statusEffects";
+import { STATUS_EFFECTS, assertRankWeights } from "./statusEffects";
 import { SUMMON_CASTS } from "./summons";
 import { ATTACK_RANGES } from "./balanceConfig";
 
@@ -48,15 +48,8 @@ for (const cls of CLASSES) {
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
   for (const skill of cls.skills) {
-    for (const effect of (skill.ranks ?? []).flatMap((r) => r.effects ?? [])) {
-      if (effect.rankWeights && !effect.rankWeights.some((weight) => weight > 0)) {
-        throw new Error(`data/classes.json: skill "${skill.id}" gives every level of "${effect.statusEffectId}" a weight of 0`);
-      }
-      effect.rankWeights?.forEach((weight, index) => {
-        if (weight > 0 && !statusAtRankLevel(effect.statusEffectId ?? "", index + 1)) {
-          throw new Error(`data/classes.json: skill "${skill.id}" weights level ${index + 1} of "${effect.statusEffectId}", which has no such level`);
-        }
-      });
+    for (const effect of [...(skill.effects ?? []), ...(skill.ranks ?? []).flatMap((r) => r.effects ?? [])]) {
+      assertRankWeights(`data/classes.json: skill "${skill.id}"`, effect);
     }
   }
 
