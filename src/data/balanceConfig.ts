@@ -1,5 +1,5 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity, AttackRange, ItemTier } from "../types";
+import type { ArtifactRarity, AttackRange, ItemTier, MonsterTier } from "../types";
 
 /** The factors a monster weighs when it picks a target — `docs/gameplay-decisions/02-monster.md`, "Targeting". */
 export const TARGETING_FACTORS = ["aggro", "lowHp", "damage", "range", "fear"] as const;
@@ -40,7 +40,12 @@ interface BalanceConfig {
     defensiveLowHpThresholdFraction: number;
     /** Applies when the queued skill `isBuff` and is not a summon. */
     buffTurnOrderSpeedBonus: number;
-    eliteBossDotMultiplier: number;
+    /** Turns a lower level of a status family adds to a higher level already on the target, up to that level's own applied duration. */
+    lowerRankStatusExtendTurns: number;
+    /** That cap when the higher level's applied duration is not known. */
+    lowerRankStatusExtendDefaultCapTurns: number;
+    /** Share of a monster's defense, by tier, that blunts damage from a status: DoT ticks and `woundOnHit`. */
+    statusDamageDefensePercentByTier: Record<MonsterTier, number>;
     /** Fear values at which tiers 2, 3 and 4 begin. */
     fearTierThresholds: [number, number, number];
     /** Indexed by fear tier - 1. */

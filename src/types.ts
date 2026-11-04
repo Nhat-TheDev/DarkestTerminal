@@ -33,6 +33,8 @@ export interface SkillEffect {
   statusEffectId?: Id;
   /** Applied with `statusEffectId` under the same roll, so a multi-status proc lands or misses together. */
   alsoApplyStatusEffectIds?: Id[];
+  /** Once the status lands, picks the level of its `rankOf` family by these weights; index 0 is `statusEffectId` itself, index 1 its `rankLevel` 2, and so on. */
+  rankWeights?: number[];
   chance?: number;
   /** Skips this effect unless the target carries this status when it resolves. */
   requiresTargetStatusId?: Id;
@@ -405,6 +407,8 @@ export interface StatusEffectDefinition {
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
   rankOf?: Id;
   rankLevel?: 2 | 3 | 4 | 5 | 6;
+  /** On a family's base status: its levels sit side by side on one target instead of the higher replacing the lower. */
+  levelsStack?: boolean;
   /** Overrides the countdown schedule inferred from `perTurnEffects`' shape. */
   tickCategory?: "dot" | "statMod" | "special";
   stackable?: boolean;
@@ -458,6 +462,11 @@ export interface StatusEffectDefinition {
   debuffsAttackerOnHit?: { statusEffectIds: Id[]; durationTurns: number };
   /** Direct damage the bearer takes is raised by this percent. */
   damageTakenPercent?: number;
+  /**
+   * Each direct hit the bearer survives deals `amount` + a percent of its max HP more, of `damageType`, blunted by a monster's tier share of its defense.
+   * The percent climbs from `minMaxHpPercent` at full HP to `maxMaxHpPercent` once the bearer is at `fullAtHpPercent` HP or below.
+   */
+  woundOnHit?: { amount: number; minMaxHpPercent: number; maxMaxHpPercent: number; fullAtHpPercent: number; damageType: DamageType };
   /** When a character other than the one who applied it lands a damaging hit on the bearer, that character has `chance` (0–1) to get `statusEffectId`. */
   buffsAttackerOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
@@ -772,6 +781,8 @@ export interface EventDefinition {
 export interface ActiveStatusEffect {
   statusEffectId: Id;
   turnsRemaining: number;
+  /** The duration this level was applied with: how far a lower level of its family may extend it. */
+  durationTurns?: number;
   stacks?: number;
   /** Deltas actually applied by `modifyCombatStat`, undone exactly on expiry since the stat may have moved in between. */
   appliedAmounts?: Partial<Record<CombatStat, number>>;

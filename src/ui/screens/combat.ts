@@ -7,7 +7,7 @@ import { PALETTE, plainChunk, colorChunk, joinLines } from "../theme";
 import { t } from "../../data/strings";
 import { describeItemEffects, signed } from "../../data/items";
 import { BALANCE } from "../../data/balanceConfig";
-import { getStatusEffect, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
+import { getStatusEffect, rankNumeral, statusDisplayName, statusMechanicsParts } from "../../data/statusEffects";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../../data/summons";
 import type { UiState } from "../state";
 import { combatInventoryEntries, skillEntries, buildRewardEntries, itemIcon } from "../state";
@@ -161,6 +161,12 @@ export function skillMechanicLines(sk: SkillDefinition): string[] {
     if (e.ignoreDefensePercent) lines.push(t("ui.skillIgnoreDefenseLine", { percent: e.ignoreDefensePercent }));
     if (e.lifestealPercent) lines.push(t("ui.skillLifestealLine", { percent: e.lifestealPercent }));
     if (e.lifestealPercent && e.lifestealPartySharePercent) lines.push(t("ui.skillLifestealShareLine", { percent: e.lifestealPartySharePercent }));
+  }
+  for (const e of sk.effects ?? []) {
+    if (e.kind !== "applyStatusEffect" || !e.rankWeights?.length || !e.statusEffectId) continue;
+    const total = e.rankWeights.reduce((sum, w) => sum + w, 0);
+    const odds = e.rankWeights.flatMap((w, i) => (w > 0 ? [`${rankNumeral(i + 1)} ${Math.round((w / total) * 100)}%`] : [])).join(" · ");
+    lines.push(t("ui.skillRankOddsLine", { status: getStatusEffect(e.statusEffectId).name, odds }));
   }
   for (const e of sk.effects ?? []) {
     if (e.kind === "throwDice" && e.damageRollFaces?.length) lines.push(t("ui.skillDiceFacesLine", { faces: e.damageRollFaces.map((f) => `${f}%`).join(" / ") }));

@@ -44,12 +44,13 @@ describe("status effect turn-countdown timing, per category", () => {
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: knight.id };
 
-    knight.level = 10;
-    knight.unlockedSkillIds.push("rally");
+    knight.level = 25;
+    knight.unlockedSkillIds.push("engage");
     knight.mp = knight.maxMp;
-    queueAction(combat, self, "rally", [self], ctx);
+    queueAction(combat, self, "engage", [{ kind: "monster", id: rat.id }], ctx);
     resolveRound(combat, ctx);
-    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "rallied")).toBe(false);
+    expect(combat.log.some((l) => l.text.includes("gains the Taunt effect"))).toBe(true);
+    expect(knight.activeStatusEffects.some((s) => s.statusEffectId === "taunt")).toBe(false);
   });
 
   test("Stat-mod: a 2-turn debuff decrements every round-end with no free round", () => {

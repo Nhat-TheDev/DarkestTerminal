@@ -1,5 +1,5 @@
 import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
-import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, COMBAT_STAT_LABEL } from "../data/statusEffects";
+import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, statusFamilyOf, rankLevelOf, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { resolveRaceProfile } from "../data/monsterRaces";
@@ -210,6 +210,13 @@ export function mitigatedOffense(off: number, def: number): number {
   return off - off * (def / (BALANCE.combat.defenseMitigationX + def)) - def / BALANCE.combat.defenseMitigationY;
 }
 
+/** A monster's defense, at its tier's share, blunts damage a status deals it; anyone else takes it whole. */
+function statusDamageAfterDefense(actor: Actor, amount: number, ignoreDefensePercent = 0): number {
+  if (!isMonster(actor)) return amount;
+  const defense = actor.defense * (1 - ignoreDefensePercent / 100);
+  return mitigatedOffense(amount, (defense * BALANCE.combat.statusDamageDefensePercentByTier[actor.tier]) / 100);
+}
+
 function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   if (!isMonster(target)) return 1;
   const profile = resolveRaceProfile(target.race, target.subRace, target.traitIds ?? []);
@@ -279,6 +286,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const overkill = finalDamage - hpLost;
       const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
       ctx.log.push({ text: damageText, kind: "attack", ...hit });
+      if (!isSelfTick && hpLost > 0 && target.hp > 0) openWounds(target, source, ctx, effect.ignoreDefensePercent ?? 0);
       if (target.hp <= 0) reviveIfGuarded(target, ctx);
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
       if (target.hp <= 0) ctx.log.push({ text: t("resolver.defeated", { target: nameOf(target) }), kind: "death" });
@@ -392,6 +400,25 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
   }
 }
 
+/** Each `woundOnHit` status on a bearer that survived a direct hit tears it for more, the more so the lower its HP; the hit's own defense ignore carries over. */
+function openWounds(bearer: Actor, attacker: Actor, ctx: ResolveContext, ignoreDefensePercent: number): void {
+  for (const active of bearer.activeStatusEffects) {
+    const def = getStatusEffect(active.statusEffectId);
+    const wound = def.woundOnHit;
+    if (!wound || bearer.hp <= 0) continue;
+    const progress = Math.min(1, Math.max(0, (1 - bearer.hp / bearer.maxHp) / (1 - wound.fullAtHpPercent / 100)));
+    const percent = wound.minMaxHpPercent + (wound.maxMaxHpPercent - wound.minMaxHpPercent) * progress;
+    const raceMultiplier = raceMultiplierFor(bearer, wound.damageType);
+    const raw = raceMultiplier === 0 ? 0 : Math.max(1, Math.round(statusDamageAfterDefense(bearer, wound.amount + (bearer.maxHp * percent) / 100, ignoreDefensePercent) * raceMultiplier));
+    const amount = shellAdjustedDamage(bearer, raw, true);
+    if (amount <= 0) continue;
+    const hpBefore = bearer.hp;
+    bearer.hp = Math.max(0, bearer.hp - amount);
+    noteDamageTaken(bearer, attacker.id, hpBefore - bearer.hp);
+    ctx.log.push({ text: t("resolver.woundOnHit", { target: nameOf(bearer), status: statusDisplayName(def), amount }), kind: "attack" });
+  }
+}
+
 /** Statuses that turn part of a direct hit back on whoever landed it. Applied straight to HP, never through resolveSkillEffect, so a reflect can never be reflected again. */
 function reflectDamage(bearer: Actor, attacker: Actor, damage: number, ctx: ResolveContext): void {
   const percent = bearer.activeStatusEffects.reduce((sum, s) => sum + (getStatusEffect(s.statusEffectId).reflectDamagePercent ?? 0), 0) + passiveReflectPercent(bearer);
@@ -474,10 +501,12 @@ function modifyCombatStatEffects(def: StatusEffectDefinition, override: StatusMa
 
 /** Only a status that does nothing but damage the race fully resists; one with any role still lands. */
 function isImmuneToStatus(actor: Actor, def: StatusEffectDefinition): boolean {
+  const resists = (type: DamageType) => raceMultiplierFor(actor, type) === 0;
   return (
     statusRole(def) === null &&
-    def.perTurnEffects.length > 0 &&
-    def.perTurnEffects.every((e) => e.kind === "damage" && raceMultiplierFor(actor, e.damageType ?? "physical") === 0)
+    (def.perTurnEffects.length > 0 || def.woundOnHit !== undefined) &&
+    def.perTurnEffects.every((e) => e.kind === "damage" && resists(e.damageType ?? "physical")) &&
+    (def.woundOnHit === undefined || resists(def.woundOnHit.damageType))
   );
 }
 
@@ -534,6 +563,31 @@ export function applyStatusEffectToActor(
     return;
   }
   const sourceMagicPower = def.perTurnEffects.some((e) => e.kind === "heal" && e.offenseMultiplierPercent !== undefined) ? casterMagicPower : undefined;
+  const family = statusFamilyOf(def);
+  const kin = getStatusEffect(family).levelsStack ? [] : actor.activeStatusEffects.filter((s) => statusFamilyOf(getStatusEffect(s.statusEffectId)) === family);
+  const highest = kin.reduce<ActiveStatusEffect | undefined>((top, s) => (!top || rankLevelOf(getStatusEffect(s.statusEffectId)) > rankLevelOf(getStatusEffect(top.statusEffectId)) ? s : top), undefined);
+  const keepHighest = highest !== undefined && rankLevelOf(getStatusEffect(highest.statusEffectId)) > rankLevelOf(def);
+  // Every other level goes; the new level's own entry stays only when it is the one being refreshed.
+  for (const s of kin) {
+    if (keepHighest ? s === highest : s.statusEffectId === statusEffectId) continue;
+    undoStatusDeltas(actor, s);
+    actor.activeStatusEffects = actor.activeStatusEffects.filter((other) => other !== s);
+  }
+  if (keepHighest) {
+    const highestDef = getStatusEffect(highest.statusEffectId);
+    const cap = highest.durationTurns ?? BALANCE.combat.lowerRankStatusExtendDefaultCapTurns;
+    const extended = Math.min(cap, highest.turnsRemaining + BALANCE.combat.lowerRankStatusExtendTurns);
+    const grew = extended > highest.turnsRemaining;
+    highest.turnsRemaining = Math.max(highest.turnsRemaining, extended);
+    ctx.log.push({
+      text: grew
+        ? t("resolver.statusExtendedByLowerRank", { actor: nameOf(actor), effect: statusDisplayName(highestDef) })
+        : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(highestDef) }),
+      kind: isHelpfulStatusEffect(highestDef) ? "buff" : "debuff",
+      ...statusLandedTag(highestDef, landedOf),
+    });
+    return;
+  }
   const statEffects = modifyCombatStatEffects(def, magnitudeOverride);
   const existingIndex = actor.activeStatusEffects.findIndex((s) => s.statusEffectId === statusEffectId);
   if (existingIndex !== -1) {
@@ -555,6 +609,7 @@ export function applyStatusEffectToActor(
     actor.activeStatusEffects[existingIndex] = {
       statusEffectId,
       turnsRemaining: durationTurns ?? existing.turnsRemaining,
+      durationTurns: durationTurns ?? existing.durationTurns,
       stacks: stackedAfter,
       appliedAmounts,
       linkedSummonId: linkedSummonId ?? existing.linkedSummonId,
@@ -581,6 +636,7 @@ export function applyStatusEffectToActor(
   const entry: ActiveStatusEffect = {
     statusEffectId,
     turnsRemaining: durationTurns ?? 1,
+    durationTurns: durationTurns ?? 1,
     stacks: def.stackable ? 1 : undefined,
     appliedAmounts,
     linkedSummonId,
@@ -629,14 +685,18 @@ export function removeStatusStacks(actor: Actor, statusEffectId: Id, count: numb
   ctx.log.push({ text: t("resolver.statusStacksRemoved", { actor: nameOf(actor), effect: statusDisplayName(getStatusEffect(statusEffectId)), stacks: stacks - count }), kind: "info" });
 }
 
-export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
-  const def = getStatusEffect(active.statusEffectId);
-  for (const e of def.perTurnEffects) {
+function undoStatusDeltas(actor: Actor, active: ActiveStatusEffect): void {
+  for (const e of getStatusEffect(active.statusEffectId).perTurnEffects) {
     if (e.kind === "modifyCombatStat" && e.combatStat) {
       // Undo the stored delta, not a recompute: the stat may have moved since it was applied.
       applyCombatStatDelta(actor, e.combatStat, -(active.appliedAmounts?.[e.combatStat] ?? e.amount ?? 0));
     }
   }
+}
+
+export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx: ResolveContext): void {
+  const def = getStatusEffect(active.statusEffectId);
+  undoStatusDeltas(actor, active);
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== active);
   ctx.log.push({
     text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
@@ -677,7 +737,7 @@ function tickCategoryUnconditionally(actor: Actor, category: "dot" | "statMod", 
         if (e.kind === "damage") {
           if (e.maxHpPercent) amount += (actor.maxHp * e.maxHpPercent) / 100;
           if (def.stackable) amount *= 1 + ((active.stacks ?? 1) - 1) * ((def.perStackBonusPercent ?? 0) / 100);
-          if (isMonster(actor) && (actor.tier === "elite" || actor.tier === "boss")) amount *= BALANCE.combat.eliteBossDotMultiplier;
+          amount = statusDamageAfterDefense(actor, amount);
           amount *= vulnerabilityMultiplier(actor, active.statusEffectId);
         }
         // A heal keeps its maxHpPercent: the heal branch of resolveSkillEffect already takes the larger of the two.

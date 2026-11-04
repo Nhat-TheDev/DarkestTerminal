@@ -1,7 +1,7 @@
 import { describe, test, expect, afterAll } from "bun:test";
 import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank, SKILLS_PER_CLASS } from "../src/data/classes";
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
-import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
+import { STATUS_EFFECTS, getStatusEffect, statusDisplayName } from "../src/data/statusEffects";
 import { createCharacter } from "../src/engine/party";
 import { getActorByRef, startCombat, queueAction, resolveRound, autoResolveTargets, livingMonsterRefs, livingCharacterRefs, applySkillEffects, clearCombatResources, spawnAdditionalSummon } from "../src/engine/combat";
 import { mitigatedOffense, getFearTier, rollHits, getFearAccuracyPenalty, isHelpfulStatusEffect, resolveSkillEffect } from "../src/engine/resolver";
@@ -9,6 +9,7 @@ import type { CombatantRef, LogEntry, SkillDefinition, Character } from "../src/
 import type { Actor } from "../src/engine/resolver";
 import { makeCtx, spawnInto, pickAnyAction, withoutDamageRolls } from "./helpers";
 import { getSummonArchetype, getSummonSkill, getSummonCast, SUMMON_CASTS } from "../src/data/summons";
+import { spawnMonster } from "../src/data/monsters";
 
 // Tests below push mock entries onto STATUS_EFFECTS/CLASSES[0].skills; Bun shares module state across test files, so truncate back afterwards.
 const initialStatusEffectsCount = STATUS_EFFECTS.length;
@@ -728,11 +729,11 @@ describe("Knight skill ranks", () => {
     }
   });
 
-  test("Sword Judgment ranks resolve to dmg 30/40/50 at lv35/70/100", () => {
+  test("Sword Judgment ranks resolve to dmg 30/40/50 + weakened-ii at lv35/70/100", () => {
     const skill = getSkill("sword-judgment");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 85 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 95 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 110 }]);
+    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 95 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.4, durationTurns: 2 }]);
+    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 105 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.6, durationTurns: 2 }]);
+    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.8, durationTurns: 2 }]);
   });
 });
 
@@ -932,15 +933,15 @@ describe("Viking class", () => {
     expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120, damageType: "lightning" }]);
   });
 
-  test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+bleed%", () => {
+  test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+deep-wound%", () => {
     const slash = getSkill("frenzied-slash");
     expect(getEffectiveSkill(slash, 7).effects).toEqual([
-      { kind: "damage", amount: 12, offenseMultiplierPercent: 100 },
-      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6, durationTurns: 3 },
+      { kind: "damage", amount: 14, offenseMultiplierPercent: 100 },
+      { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.85, durationTurns: 3 },
     ]);
     expect(getEffectiveSkill(slash, 15).effects).toEqual([
-      { kind: "damage", amount: 15, offenseMultiplierPercent: 105 },
-      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.7, durationTurns: 3 },
+      { kind: "damage", amount: 17, offenseMultiplierPercent: 105 },
+      { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 1, durationTurns: 3 },
     ]);
 
     const throwAxe = getSkill("throw-axe");
@@ -950,21 +951,63 @@ describe("Viking class", () => {
     const spinAxe = getSkill("spinning-axe");
     expect(getEffectiveSkill(spinAxe, 50).effects).toEqual([
       { kind: "damage", amount: 20, offenseMultiplierPercent: 77 },
-      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.4, durationTurns: 3 },
+      { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.55, durationTurns: 3 },
     ]);
     expect(getEffectiveSkill(spinAxe, 75).effects).toEqual([
       { kind: "damage", amount: 30, offenseMultiplierPercent: 85 },
-      { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.5, durationTurns: 3 },
+      { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.7, durationTurns: 3 },
     ]);
   });
 
-  test("storm-empowered-ii/iii and bleeding statuses exist with the documented fields", () => {
+  test("storm-empowered-ii/iii, bleeding and deep-wound statuses exist with the documented fields", () => {
     expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, offenseMultiplierPercent: 90, ignoreDefensePercent: 30, damageType: "lightning" });
     expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, offenseMultiplierPercent: 100, ignoreDefensePercent: 30, damageType: "lightning" });
     expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2, damageType: "bleed" }]);
     expect(getStatusEffect("bleeding").stackable).toBe(true);
     expect(getStatusEffect("bleeding").maxStacks).toBe(5);
     expect(getStatusEffect("bleeding").perStackBonusPercent).toBe(100);
+    expect(getStatusEffect("deep-wound").woundOnHit).toEqual({ amount: 4, minMaxHpPercent: 2, maxMaxHpPercent: 3, fullAtHpPercent: 20, damageType: "bleed" });
+    expect(getStatusEffect("deep-wound").stackable).toBeUndefined();
+  });
+
+  describe("Deep Wound", () => {
+    const attacker = { attack: 0, magicPower: 0 } as unknown as Actor;
+    const woundedRat = (hp: number) => {
+      const rat = spawnMonster("dungeon-rat", 1);
+      rat.maxHp = 500;
+      rat.hp = hp;
+      rat.activeStatusEffects.push({ statusEffectId: "deep-wound", turnsRemaining: 3 });
+      return rat;
+    };
+    const woundLines = (log: LogEntry[]) => log.filter((l) => l.text.includes("Deep Wound tears open"));
+
+    test("a hit it survives at full HP tears it for 4 + 2% max HP, on its own log line", () => {
+      const rat = woundedRat(500);
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 1 }, attacker, rat as unknown as Actor, { log });
+      expect(woundLines(log).map((l) => l.text)).toEqual(["Dungeon Rat's Deep Wound tears open for 14 damage."]);
+      expect(rat.hp).toBe(500 - 1 - 14);
+    });
+
+    test("at 20% HP or below the wound reaches 3% max HP", () => {
+      const rat = woundedRat(101);
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 1 }, attacker, rat as unknown as Actor, { log });
+      expect(rat.hp).toBe(100 - 19);
+    });
+
+    test("a killing hit opens nothing", () => {
+      const rat = woundedRat(1);
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 1 }, attacker, rat as unknown as Actor, { log });
+      expect(woundLines(log)).toEqual([]);
+    });
+
+    test("a race fully resistant to bleed never takes the status", () => {
+      const skeleton = spawnMonster("skeleton", 1);
+      resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "deep-wound", durationTurns: 3 }, attacker, skeleton as unknown as Actor, { log: [] });
+      expect(skeleton.activeStatusEffects.some((s) => s.statusEffectId === "deep-wound")).toBe(false);
+    });
   });
 
   test("full combat sequence: Lightning Axe -> Frenzied Slash -> Thunder God's Fury", () => {
@@ -1022,8 +1065,8 @@ describe("Viking class", () => {
     expect(viking.activeStatusEffects.some((s) => s.statusEffectId === "storm-empowered-ii")).toBe(true);
 
     // storm-empowered's splash also hits this enemy, so check the direct hit's damage from the log, not the HP delta.
-    const withBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense * 0.7)));
-    const noBonusDamage = Math.max(1, Math.round(12 + mitigatedOffense(viking.attack, rat.defense)));
+    const withBonusDamage = Math.max(1, Math.round(14 + mitigatedOffense(viking.attack, rat.defense * 0.7)));
+    const noBonusDamage = Math.max(1, Math.round(14 + mitigatedOffense(viking.attack, rat.defense)));
     expect(withBonusDamage).toBeGreaterThan(noBonusDamage);
 
     const logBefore = combat.log.length;
@@ -1115,22 +1158,22 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
     const skill = getSkill("divine-descent");
     const consoled = { kind: "applyStatusEffect" as const, statusEffectId: "consoled", durationTurns: 2, appliesToRelation: "ally" as const, excludesSummonTargets: true };
     expect(getEffectiveSkill(skill, 35).effects).toEqual([
-      { kind: "heal", amount: 25, offenseMultiplierPercent: 70, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
+      { kind: "heal", amount: 25, offenseMultiplierPercent: 75, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -15, appliesToRelation: "ally" },
       consoled,
       { kind: "damage", amount: 20, offenseMultiplierPercent: 80, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 70).effects).toEqual([
-      { kind: "heal", amount: 30, offenseMultiplierPercent: 75, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
+      { kind: "heal", amount: 30, offenseMultiplierPercent: 85, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -20, appliesToRelation: "ally" },
       consoled,
-      { kind: "damage", amount: 25, offenseMultiplierPercent: 85, appliesToRelation: "enemy", damageType: "holy" },
+      { kind: "damage", amount: 25, offenseMultiplierPercent: 90, appliesToRelation: "enemy", damageType: "holy" },
     ]);
     expect(getEffectiveSkill(skill, 100).effects).toEqual([
-      { kind: "heal", amount: 40, offenseMultiplierPercent: 80, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
+      { kind: "heal", amount: 40, offenseMultiplierPercent: 95, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -25, appliesToRelation: "ally" },
       consoled,
-      { kind: "damage", amount: 30, offenseMultiplierPercent: 90, appliesToRelation: "enemy", damageType: "holy" },
+      { kind: "damage", amount: 30, offenseMultiplierPercent: 100, appliesToRelation: "enemy", damageType: "holy" },
     ]);
   });
 
@@ -1576,6 +1619,45 @@ describe("damageType tagging", () => {
   test("Plague Doctor's Fire Vial is fire, Spreading Toxic Fog is poison", () => {
     expect(damageEffectsOf("plague-doctor", "fire-vial").every((e) => e.damageType === "fire")).toBe(true);
     expect(damageEffectsOf("plague-doctor", "spreading-toxic-fog").every((e) => e.damageType === "poison")).toBe(true);
+  });
+
+  test("Spreading Toxic Fog rolls poison 85% and weakened 70%, leaning to higher levels each rank", () => {
+    const statuses = (level: number) => getEffectiveSkill(getSkill("spreading-toxic-fog"), level).effects!.filter((e) => e.kind === "applyStatusEffect");
+    expect(statuses(15).map((e) => [e.statusEffectId, e.chance, e.durationTurns, e.rankWeights])).toEqual([["poisoned", 0.85, 3, [70, 25, 5]], ["weakened", 0.7, 2, [80, 20]]]);
+    expect(statuses(40).map((e) => e.rankWeights)).toEqual([[40, 40, 20], [55, 45]]);
+    expect(statuses(65).map((e) => e.rankWeights)).toEqual([[15, 40, 45], [30, 70]]);
+  });
+
+  test("Spreading Toxic Fog lands Poisoned III far more often at rank 3 than at rank 1", () => {
+    const share = (level: number) => {
+      const { ctx } = makeCtx(7);
+      const doctor = ctx.party.find((c) => c.classId === "plague-doctor")!;
+      const rats = Array.from({ length: 4 }, () => spawnInto(ctx, "dungeon-rat"));
+      const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
+      let third = 0;
+      let poisoned = 0;
+      for (let i = 0; i < 150; i++) {
+        for (const rat of rats) {
+          rat.maxHp = 100000;
+          rat.hp = rat.maxHp;
+          rat.activeStatusEffects = [];
+        }
+        applySkillEffects(getEffectiveSkill(getSkill("spreading-toxic-fog"), level), doctor, rats, combat, ctx, []);
+        for (const rat of rats) {
+          const id = rat.activeStatusEffects.find((a) => a.statusEffectId.startsWith("poisoned"))?.statusEffectId;
+          if (id) poisoned++;
+          if (id === "poisoned-iii") third++;
+        }
+      }
+      return third / poisoned;
+    };
+    expect(share(15)).toBeLessThan(0.15);
+    expect(share(65)).toBeGreaterThan(0.3);
+  });
+
+  test("leveled Poisoned keeps its numeral in the display name", () => {
+    expect(statusDisplayName(getStatusEffect("poisoned-ii"))).toBe("Poisoned II");
+    expect(statusDisplayName(getStatusEffect("poisoned-iii"))).toBe("Poisoned III");
   });
 
   test("Acolyte's Purify/Divine Descent enemy-facing damage effect is holy", () => {

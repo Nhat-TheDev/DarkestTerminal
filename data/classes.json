@@ -159,7 +159,7 @@
         "target": "allAllies",
         "slot": 3,
         "isBuff": true,
-        "cooldownTurns": 2,
+        "cooldownTurns": 3,
         "ranks": [
           {
             "rank": 1,
@@ -175,7 +175,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "rallied",
-                "durationTurns": 1
+                "durationTurns": 2
               }
             ]
           },
@@ -188,12 +188,12 @@
                 "kind": "modifyStat",
                 "stat": "fear",
                 "amount": -10,
-                "percentOfCurrent": 10
+                "percentOfCurrent": 11
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "rallied-ii",
-                "durationTurns": 1
+                "durationTurns": 2
               }
             ]
           },
@@ -206,12 +206,12 @@
                 "kind": "modifyStat",
                 "stat": "fear",
                 "amount": -12,
-                "percentOfCurrent": 11
+                "percentOfCurrent": 14
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "rallied-iii",
-                "durationTurns": 1
+                "durationTurns": 2
               }
             ]
           }
@@ -235,6 +235,12 @@
                 "kind": "damage",
                 "amount": 20,
                 "offenseMultiplierPercent": 70
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stunned",
+                "chance": 0.4,
+                "durationTurns": 1
               }
             ]
           },
@@ -247,6 +253,12 @@
                 "kind": "damage",
                 "amount": 30,
                 "offenseMultiplierPercent": 80
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stunned",
+                "chance": 0.55,
+                "durationTurns": 1
               }
             ]
           },
@@ -259,6 +271,12 @@
                 "kind": "damage",
                 "amount": 40,
                 "offenseMultiplierPercent": 90
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "stunned",
+                "chance": 0.6,
+                "durationTurns": 1
               }
             ]
           }
@@ -365,7 +383,13 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 85
+                "offenseMultiplierPercent": 95
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "weakened-ii",
+                "chance": 0.4,
+                "durationTurns": 2
               }
             ]
           },
@@ -377,7 +401,13 @@
               {
                 "kind": "damage",
                 "amount": 40,
-                "offenseMultiplierPercent": 95
+                "offenseMultiplierPercent": 105
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "weakened-ii",
+                "chance": 0.6,
+                "durationTurns": 2
               }
             ]
           },
@@ -389,7 +419,13 @@
               {
                 "kind": "damage",
                 "amount": 50,
-                "offenseMultiplierPercent": 110
+                "offenseMultiplierPercent": 120
+              },
+              {
+                "kind": "applyStatusEffect",
+                "statusEffectId": "weakened-ii",
+                "chance": 0.8,
+                "durationTurns": 2
               }
             ]
           }
@@ -1787,7 +1823,7 @@
               {
                 "kind": "heal",
                 "amount": 25,
-                "offenseMultiplierPercent": 70,
+                "offenseMultiplierPercent": 75,
                 "highFearHealBonus": {
                   "maxBonusPercent": 40,
                   "fullBonusAtFear": 70
@@ -1824,7 +1860,7 @@
               {
                 "kind": "heal",
                 "amount": 30,
-                "offenseMultiplierPercent": 75,
+                "offenseMultiplierPercent": 85,
                 "highFearHealBonus": {
                   "maxBonusPercent": 40,
                   "fullBonusAtFear": 70
@@ -1847,7 +1883,7 @@
               {
                 "kind": "damage",
                 "amount": 25,
-                "offenseMultiplierPercent": 85,
+                "offenseMultiplierPercent": 90,
                 "appliesToRelation": "enemy",
                 "damageType": "holy"
               }
@@ -1861,7 +1897,7 @@
               {
                 "kind": "heal",
                 "amount": 40,
-                "offenseMultiplierPercent": 80,
+                "offenseMultiplierPercent": 95,
                 "highFearHealBonus": {
                   "maxBonusPercent": 40,
                   "fullBonusAtFear": 70
@@ -1884,7 +1920,7 @@
               {
                 "kind": "damage",
                 "amount": 30,
-                "offenseMultiplierPercent": 90,
+                "offenseMultiplierPercent": 100,
                 "appliesToRelation": "enemy",
                 "damageType": "holy"
               }
@@ -2026,7 +2062,7 @@
         "id": "frenzied-slash",
         "name": "Frenzied Slash",
         "description": "A slash with no guard behind it, thrown wide and wild.",
-        "shortDescription": "A wild slash, may cause Bleeding.",
+        "shortDescription": "A wild slash, may cause a Deep Wound.",
         "target": "singleEnemy",
         "slot": 2,
         "conditionalBonus": {
@@ -2041,13 +2077,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 9,
+                "amount": 10,
                 "offenseMultiplierPercent": 95
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.5,
+                "statusEffectId": "deep-wound",
+                "chance": 0.7,
                 "durationTurns": 3
               }
             ]
@@ -2059,13 +2095,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 12,
+                "amount": 14,
                 "offenseMultiplierPercent": 100
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.6,
+                "statusEffectId": "deep-wound",
+                "chance": 0.85,
                 "durationTurns": 3
               }
             ]
@@ -2077,13 +2113,13 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 15,
+                "amount": 17,
                 "offenseMultiplierPercent": 105
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.7,
+                "statusEffectId": "deep-wound",
+                "chance": 1,
                 "durationTurns": 3
               }
             ]
@@ -2166,8 +2202,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.3,
+                "statusEffectId": "deep-wound",
+                "chance": 0.4,
                 "durationTurns": 3
               }
             ]
@@ -2184,8 +2220,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.4,
+                "statusEffectId": "deep-wound",
+                "chance": 0.55,
                 "durationTurns": 3
               }
             ]
@@ -2202,8 +2238,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "bleeding",
-                "chance": 0.5,
+                "statusEffectId": "deep-wound",
+                "chance": 0.7,
                 "durationTurns": 3
               }
             ]
@@ -2235,7 +2271,7 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 14,
+                "amount": 15,
                 "offenseMultiplierPercent": 110
               }
             ]
@@ -2247,7 +2283,7 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 19,
+                "amount": 20,
                 "offenseMultiplierPercent": 125
               }
             ]
@@ -2259,7 +2295,7 @@
             "effects": [
               {
                 "kind": "damage",
-                "amount": 24,
+                "amount": 25,
                 "offenseMultiplierPercent": 140
               }
             ]
@@ -2544,7 +2580,7 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "blinded",
-                "chance": 0.7,
+                "chance": 0.8,
                 "durationTurns": 2
               }
             ]
@@ -2561,8 +2597,8 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "blinded",
-                "chance": 0.8,
+                "statusEffectId": "blinded-ii",
+                "chance": 0.85,
                 "durationTurns": 2
               }
             ]
@@ -2579,7 +2615,7 @@
               },
               {
                 "kind": "applyStatusEffect",
-                "statusEffectId": "blinded",
+                "statusEffectId": "blinded-iii",
                 "chance": 0.9,
                 "durationTurns": 2
               }
@@ -2611,14 +2647,23 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.6,
-                "durationTurns": 3
+                "chance": 0.85,
+                "durationTurns": 3,
+                "rankWeights": [
+                  70,
+                  25,
+                  5
+                ]
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.4,
-                "durationTurns": 2
+                "chance": 0.7,
+                "durationTurns": 2,
+                "rankWeights": [
+                  80,
+                  20
+                ]
               }
             ]
           },
@@ -2636,14 +2681,23 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.7,
-                "durationTurns": 3
+                "chance": 0.85,
+                "durationTurns": 3,
+                "rankWeights": [
+                  40,
+                  40,
+                  20
+                ]
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.5,
-                "durationTurns": 2
+                "chance": 0.7,
+                "durationTurns": 2,
+                "rankWeights": [
+                  55,
+                  45
+                ]
               }
             ]
           },
@@ -2661,14 +2715,23 @@
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "poisoned",
-                "chance": 0.8,
-                "durationTurns": 3
+                "chance": 0.85,
+                "durationTurns": 3,
+                "rankWeights": [
+                  15,
+                  40,
+                  45
+                ]
               },
               {
                 "kind": "applyStatusEffect",
                 "statusEffectId": "weakened",
-                "chance": 0.6,
-                "durationTurns": 2
+                "chance": 0.7,
+                "durationTurns": 2,
+                "rankWeights": [
+                  30,
+                  70
+                ]
               }
             ]
           }

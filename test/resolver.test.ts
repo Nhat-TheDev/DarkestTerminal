@@ -6,7 +6,7 @@ import { Game } from "../src/engine/game";
 import { applySkillEffects, resolveRound, startCombat, passiveDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
 import { spawnMonster } from "../src/data/monsters";
-import { STATUS_EFFECTS, getStatusEffect } from "../src/data/statusEffects";
+import { STATUS_EFFECTS, assertRankWeights, getStatusEffect } from "../src/data/statusEffects";
 import { BALANCE } from "../src/data/balanceConfig";
 
 describe("resolver", () => {
@@ -292,17 +292,6 @@ describe("resolver", () => {
     tickStatModEffects(knight, { log });
     expect(knight.defense).toBe(700); // minus the stored 20, not a floor re-derived off 720
     expect(knight.activeStatusEffects).toHaveLength(0);
-  });
-
-  test("a status effect's own damage tick (DoT) is flat (amount + maxHpPercent), not attack-minus-defense", () => {
-    // goblin has no physical resist/weak, so race doesn't perturb the untyped DoT tick.
-    const victim = spawnMonster("goblin", 1);
-    const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: "poisoned" }, victim, victim, { log });
-    const before = victim.hp;
-    tickDotEffects(victim, { log });
-    const expectedTick = Math.max(1, Math.round(4 + victim.maxHp * 0.025));
-    expect(before - victim.hp).toBe(expectedTick);
   });
 
   test("statusCategory classifies a restoreMp per-turn effect as dot (MP-over-time), same schedule as damage/heal", () => {
@@ -1157,5 +1146,167 @@ describe("harmful tags and reflect", () => {
       resolveSkillEffect({ kind: "damage", amount: 40, offenseMultiplierPercent: 0 }, a, b, { log });
       expect(log.filter((l) => l.text.includes("turned back by")).length).toBe(1);
     });
+  });
+});
+
+describe("monster defense against status damage (combat.statusDamageDefensePercentByTier)", () => {
+  const poisonedGoblin = (tier: "normal" | "elite" | "boss", defense: number) => {
+    const goblin = spawnMonster("goblin", 30);
+    goblin.tier = tier;
+    goblin.defense = defense;
+    goblin.maxHp = 1000;
+    goblin.hp = 1000;
+    goblin.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
+    return goblin;
+  };
+  const tickOf = (actor: Parameters<typeof tickDotEffects>[0]) => {
+    const before = actor.hp;
+    tickDotEffects(actor, { log: [] });
+    return before - actor.hp;
+  };
+
+  test("a DoT tick on a monster is blunted by its tier's share of its defense", () => {
+    const rawTick = 4 + 1000 * 0.025;
+    const ticks = (["normal", "elite", "boss"] as const).map((tier) => {
+      const share = BALANCE.combat.statusDamageDefensePercentByTier[tier];
+      const dealt = tickOf(poisonedGoblin(tier, 100));
+      expect(dealt).toBe(Math.max(1, Math.round(mitigatedOffense(rawTick, (100 * share) / 100))));
+      return dealt;
+    });
+    expect(ticks[0]!).toBeGreaterThan(ticks[1]!);
+    expect(ticks[1]!).toBeGreaterThan(ticks[2]!);
+  });
+
+  test("a DoT tick still deals 1 when defense would take all of it", () => {
+    expect(tickOf(poisonedGoblin("boss", 100000))).toBe(1);
+  });
+
+  test("a party character takes the tick whole, whatever its defense", () => {
+    const { ctx } = makeCtx();
+    const knight = ctx.party.find((p) => p.classId === "knight")!;
+    knight.defense = 500;
+    knight.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 3 });
+    expect(tickOf(knight)).toBe(Math.round(4 + knight.maxHp * 0.025));
+  });
+
+  test("Deep Wound's extra damage is blunted the same way", () => {
+    const goblin = spawnMonster("goblin", 30);
+    goblin.tier = "boss";
+    goblin.defense = 100;
+    goblin.maxHp = 500;
+    goblin.hp = 500;
+    goblin.activeStatusEffects.push({ statusEffectId: "deep-wound", turnsRemaining: 3 });
+    const log: LogEntry[] = [];
+    resolveSkillEffect({ kind: "damage", amount: 1 }, { attack: 0, magicPower: 0 } as unknown as Parameters<typeof resolveSkillEffect>[1], goblin, { log });
+    const share = BALANCE.combat.statusDamageDefensePercentByTier.boss;
+    const hpAfterHit = 500 - 1;
+    const percent = 2 + (3 - 2) * ((1 - hpAfterHit / 500) / 0.8);
+    const expected = Math.max(1, Math.round(mitigatedOffense(4 + (500 * percent) / 100, (100 * share) / 100)));
+    expect(log.map((l) => l.text)).toContain(`Goblin's Deep Wound tears open for ${expected} damage.`);
+  });
+
+  test("a hit that ignores defense lets the Deep Wound it opens ignore the same share", () => {
+    const woundFrom = (ignoreDefensePercent: number) => {
+      const goblin = spawnMonster("goblin", 30);
+      goblin.tier = "boss";
+      goblin.defense = 100;
+      goblin.maxHp = 500;
+      goblin.hp = 500;
+      goblin.activeStatusEffects.push({ statusEffectId: "deep-wound", turnsRemaining: 3 });
+      const log: LogEntry[] = [];
+      resolveSkillEffect({ kind: "damage", amount: 1, ignoreDefensePercent }, { attack: 0, magicPower: 0 } as unknown as Parameters<typeof resolveSkillEffect>[1], goblin, { log });
+      return Number(log.find((l) => l.text.includes("Deep Wound tears open"))!.text.match(/for (\d+) damage/)![1]);
+    };
+    const share = BALANCE.combat.statusDamageDefensePercentByTier.boss;
+    const percent = 2 + (1 - 499 / 500) / 0.8;
+    expect(woundFrom(30)).toBe(Math.max(1, Math.round(mitigatedOffense(4 + (500 * percent) / 100, (100 * 0.7 * share) / 100))));
+    expect(woundFrom(30)).toBeGreaterThan(woundFrom(0));
+  });
+});
+
+describe("levels of one status family (rankOf)", () => {
+  const goblin = () => {
+    const g = spawnMonster("goblin", 30);
+    g.maxHp = 1000;
+    g.hp = 1000;
+    return g;
+  };
+  const apply = (actor: ReturnType<typeof goblin>, statusEffectId: string, durationTurns: number, log: LogEntry[] = []) =>
+    resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns }, actor, actor, { log });
+  const ids = (actor: ReturnType<typeof goblin>) => actor.activeStatusEffects.map((s) => s.statusEffectId);
+
+  test("a higher level replaces a lower one and gives back the lower one's stat change", () => {
+    const g = goblin();
+    const defense = g.defense;
+    apply(g, "weakened", 2);
+    apply(g, "weakened-ii", 2);
+    expect(ids(g)).toEqual(["weakened-ii"]);
+    const onlyII = goblin();
+    apply(onlyII, "weakened-ii", 2);
+    expect(g.defense).toBe(onlyII.defense);
+    expect(g.defense).toBeLessThan(defense);
+  });
+
+  test("two levels of poison never tick together", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    apply(g, "poisoned", 3);
+    expect(ids(g)).toEqual(["poisoned-ii"]);
+  });
+
+  test("a lower level adds a turn to the higher one instead of refreshing it", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    g.activeStatusEffects[0]!.turnsRemaining = 1;
+    const log: LogEntry[] = [];
+    apply(g, "poisoned", 3, log);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(1 + BALANCE.combat.lowerRankStatusExtendTurns);
+    expect(log.map((l) => l.text)).toContain("Goblin's Poisoned II lingers a turn longer.");
+  });
+
+  test("at the higher level's own applied duration the extension stops, and the log reads a refresh", () => {
+    const g = goblin();
+    apply(g, "poisoned-ii", 3);
+    const log: LogEntry[] = [];
+    apply(g, "poisoned", 3, log);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
+    expect(log.map((l) => l.text)).toEqual(["Goblin refreshes the Poisoned II effect."]);
+  });
+
+  test("two levels already on a target (an older save) collapse to one when another level lands", () => {
+    const g = goblin();
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 }, { statusEffectId: "poisoned-ii", turnsRemaining: 2, durationTurns: 3 });
+    apply(g, "poisoned", 3);
+    expect(ids(g)).toEqual(["poisoned-ii"]);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(3);
+    g.activeStatusEffects.push({ statusEffectId: "poisoned", turnsRemaining: 2 });
+    apply(g, "poisoned-iii", 3);
+    expect(ids(g)).toEqual(["poisoned-iii"]);
+  });
+
+  test("assertRankWeights refuses weights that are all 0 or name a missing level", () => {
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "poisoned", rankWeights: [0, 0, 0] })).toThrow("weight of 0");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 30, 20] })).toThrow("level 3");
+    expect(() => assertRankWeights("test", { kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [50, 50, 0] })).not.toThrow();
+  });
+
+  test("an effect with its own target still rolls its level", () => {
+    const { ctx } = makeCtx();
+    const rogue = ctx.party.find((c) => c.classId === "rogue")!;
+    const rat = spawnInto(ctx, "dungeon-rat");
+    const combat = startCombat("r1", [rat.id], ctx, false);
+    const skill = {
+      id: "test-self-weaken", name: "Test", description: "", target: "singleEnemy", slot: 1, unlockLevel: 1, mpCost: 0,
+      effects: [{ kind: "applyStatusEffect", statusEffectId: "weakened", rankWeights: [0, 1], durationTurns: 2, target: "self" }],
+    } as unknown as SkillDefinition;
+    applySkillEffects(skill, rogue, [rat], combat, ctx, []);
+    expect(rogue.activeStatusEffects.map((s) => s.statusEffectId)).toContain("weakened-ii");
+  });
+
+  test("without a recorded duration the cap falls back to combat.lowerRankStatusExtendDefaultCapTurns", () => {
+    const g = goblin();
+    g.activeStatusEffects.push({ statusEffectId: "poisoned-ii", turnsRemaining: BALANCE.combat.lowerRankStatusExtendDefaultCapTurns });
+    apply(g, "poisoned", 3);
+    expect(g.activeStatusEffects[0]!.turnsRemaining).toBe(BALANCE.combat.lowerRankStatusExtendDefaultCapTurns);
   });
 });

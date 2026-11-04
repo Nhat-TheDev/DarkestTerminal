@@ -1,4 +1,4 @@
-import type { CombatStat, StatusEffectDefinition } from "../types";
+import type { CombatStat, SkillEffect, StatusEffectDefinition } from "../types";
 import statusEffectsJson from "../../data/status-effects.json";
 import { t } from "./strings";
 
@@ -14,6 +14,36 @@ const RANK_NUMERAL: Record<NonNullable<StatusEffectDefinition["rankLevel"]>, str
 
 export function statusDisplayName(def: StatusEffectDefinition): string {
   return def.rankLevel ? `${def.name} ${RANK_NUMERAL[def.rankLevel]}` : def.name;
+}
+
+export function rankNumeral(level: number): string {
+  return level === 1 ? "I" : RANK_NUMERAL[level as NonNullable<StatusEffectDefinition["rankLevel"]>] ?? String(level);
+}
+
+/** A status's level within its `rankOf` family; the family's base status is level 1. */
+export function rankLevelOf(def: StatusEffectDefinition): number {
+  return def.rankLevel ?? 1;
+}
+
+export function statusFamilyOf(def: StatusEffectDefinition): string {
+  return def.rankOf ?? def.id;
+}
+
+/** The member of `baseId`'s family at `level`, or undefined when the family has none. */
+export function statusAtRankLevel(baseId: string, level: number): StatusEffectDefinition | undefined {
+  return STATUS_EFFECTS.find((s) => statusFamilyOf(s) === baseId && rankLevelOf(s) === level);
+}
+
+/** A level a skill effect's `rankWeights` would roll must exist, and at least one must be possible, or the cast would fail mid-fight. */
+export function assertRankWeights(where: string, effect: SkillEffect): void {
+  const weights = effect.rankWeights;
+  if (!weights) return;
+  if (!weights.some((weight) => weight > 0)) throw new Error(`${where}: every level of "${effect.statusEffectId}" has a weight of 0`);
+  weights.forEach((weight, index) => {
+    if (weight > 0 && !statusAtRankLevel(effect.statusEffectId ?? "", index + 1)) {
+      throw new Error(`${where}: weights level ${index + 1} of "${effect.statusEffectId}", which has no such level`);
+    }
+  });
 }
 
 export function statusSatisfiesRequirement(activeId: string, requiredId: string): boolean {
@@ -110,6 +140,10 @@ export function statusMechanicsParts(def: StatusEffectDefinition, magnitude?: St
   if (def.targetPull) parts.push(t("item.effectTargetPull", { percent: Math.round(def.targetPull * 100) }));
   if (def.coinFlipWinChanceMultiplier) parts.push(t("item.effectCoinFlipWin", { multiplier: def.coinFlipWinChanceMultiplier }));
   if (def.damageTakenPercent) parts.push(t("item.effectDamageTaken", { percent: def.damageTakenPercent }));
+  if (def.woundOnHit) {
+    const w = def.woundOnHit;
+    parts.push(t("item.effectWoundOnHit", { amount: w.amount, min: w.minMaxHpPercent, max: w.maxMaxHpPercent, type: w.damageType, hp: w.fullAtHpPercent }));
+  }
   if (def.buffsAttackerOnHit) {
     const b = def.buffsAttackerOnHit;
     parts.push(t("item.effectBuffsAttackerOnHit", { percent: Math.round(b.chance * 100), status: getStatusEffect(b.statusEffectId).name, turns: b.durationTurns }));

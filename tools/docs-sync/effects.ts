@@ -1,5 +1,6 @@
 import type { SkillEffect } from "../../src/types";
 import { formatNumber, showValue } from "./format";
+import { rankNumeral } from "../../src/data/statusEffects";
 
 export function joinRanks(values: readonly string[]): string {
   return values.every((value) => value === values[0]) ? values[0]! : values.join(" / ");
@@ -29,6 +30,13 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     used.add(key);
     const joined = across((effect) => (effect[key] === undefined ? undefined : percent(effect[key])));
     return joined === undefined ? undefined : label(joined);
+  };
+
+  const rankOdds = (): string | undefined => {
+    const joined = field("rankWeights", (weights) => weights.map(formatNumber).join("/"));
+    const levels = Math.max(0, ...ranks.map((effect) => effect.rankWeights?.length ?? 0));
+    const numerals = Array.from({ length: levels }, (_, index) => rankNumeral(index + 1)).join("/");
+    return joined === undefined ? undefined : `level ${numerals} odds ${joined}%`;
   };
 
   const amountOf = (key: "critMultiplierPercent" | "ignoreDefensePercent" | "lifestealPercent" | "maxHpPercent" | "minPercent" | "percentOfCurrent", label: (joined: string) => string): string | undefined => {
@@ -95,6 +103,7 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
     field("scalesWithStatusStacks", ({ statusEffectId, percentPerStack }) => `+${formatNumber(percentPerStack)}% per ${statusEffectId} stack`),
     field("scalesWithDebuffCount", ({ percentPerDebuff }) => `+${formatNumber(percentPerDebuff)}% per debuff on the target`),
     field("damageRollFaces", (faces) => `die faces ${faces.map((face) => `${formatNumber(face)}%`).join("/")}`),
+    rankOdds(),
     field("excludesCaster", (value) => (value ? "not on the caster" : "")),
     field("stackCount", ({ min, max }) => (min === max ? `${formatNumber(min)} stacks` : `${formatNumber(min)}–${formatNumber(max)} stacks`)),
     field("overflowDamage", ({ amount, offenseMultiplierPercent, maxHitsPerTarget }) => `each stack past the cap strikes another enemy for ${formatNumber(amount)} + ${formatNumber(offenseMultiplierPercent)}% ${offenseStat}, at most ${formatNumber(maxHitsPerTarget)}× each`),

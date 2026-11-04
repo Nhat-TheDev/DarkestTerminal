@@ -148,10 +148,10 @@ name, no numbers/stat references) applies to every skill's `description` field, 
 |---|---|---|---|---|---|---|---|---|
 | 1 | `interpose` | Interpose | singleAlly | 3 | 6 / 7 / 8 | 1 / 7 / 15 | status interposed (2 / 3 / 4 turns); not on the caster | buff |
 | 2 | `breach` | Breach | singleEnemy | 3 | 5 / 6 / 7 | 1 / 7 / 15 | damage 6 / 9 / 12 + 70 / 80 / 90% ATK; status breached / breached-ii / breached-iii (1 turn); +15 speed for turn order this round | — |
-| 3 | `rally` | Rally | allAllies | 2 | 9 / 10 / 11 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 10 / 11% of current); status rallied / rallied-ii / rallied-iii (1 turn) | buff |
-| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK | — |
+| 3 | `rally` | Rally | allAllies | 3 | 9 / 10 / 11 | 10 / 25 / 45 | fear -8 / -10 / -12 (9 / 11 / 14% of current); status rallied / rallied-ii / rallied-iii (2 turns) | buff |
+| 4 | `heavy-charge` | Heavy Charge | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 20 / 30 / 40 + 70 / 80 / 90% ATK; status stunned (1 turn, 40 / 55 / 60% chance) | — |
 | 5 | `engage` | Engage | singleEnemy | 4 | 10 / 11 / 12 | 25 / 50 / 75 | damage 12 / 16 / 20 + 80 / 90 / 100% ATK; status taunt (1 turn, target self); status engaged / engaged-ii / engaged-iii (1 turn, target self) | — |
-| 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 85 / 95 / 110% ATK | ultimate |
+| 6 | `sword-judgment` | Sword Judgment | singleEnemy | 5 | 14 / 15 / 16 | 35 / 70 / 100 | damage 30 / 40 / 50 + 95 / 105 / 120% ATK; status weakened-ii (2 turns, 40 / 60 / 80% chance) | ultimate |
 <!-- docs:end -->
 
 How each skill works:
@@ -195,7 +195,7 @@ How each skill works:
 
 ### 1.3.3 Rogue — single-target burst, highest speed in the party
 
-The Rogue is the team's main damage source by design. Backstab and Flurry Assault are the burst; Poison Bomb and Poison Coat keep poison on the target, and Venomcraft adds to every hit on a poisoned target. Poison ticks off the target's max HP and skips defense (section 1.6, "Damage over time"), so the Rogue's lead over the rest of the party grows the deeper the run goes.
+The Rogue is the team's main damage source by design. Backstab and Flurry Assault are the burst; Poison Bomb and Poison Coat keep poison on the target, and Venomcraft adds to every hit on a poisoned target. Poison ticks off the target's max HP and meets only a share of a monster's defense (section 1.6, "Damage over time"), so the Rogue's lead over the rest of the party grows the deeper the run goes.
 
 <!-- docs:begin classSkills class=rogue -->
 *Generated from `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -235,7 +235,7 @@ How each skill works:
 | 3 | `purify` | Purify | singleAllyOrEnemy | 1 | 9 / 10 / 11 | 10 / 25 / 45 | remove one harmful status (on allies); status absolved / absolved-ii / absolved-iii (2 turns, on allies, not on summons); damage 15 / 20 / 27 + 100 / 110 / 120% MAG (on enemies, holy) | magic |
 | 4 | `mass-heal` | Mass Heal | allAllies | 2 | 10 / 11 / 12 | 15 / 40 / 65 | heal 20 / 25 / 35 + 60 / 70 / 85% MAG (up to +40% as the target's fear rises to 70); status consoled (2 turns, not on summons); remove every harmful damage-over-time status | magic |
 | 5 | `sanctuary` | Sanctuary | allAllies | 4 | 12 / 13 / 14 | 25 / 50 / 75 | status sanctified / sanctified-ii / sanctified-iii (3 turns); status steadfast (2 turns); status cleansing-light / cleansing-light-ii / cleansing-light-iii (2 turns, target self) | buff · magic |
-| 6 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 70 / 75 / 80% MAG (on allies, up to +40% as the target's fear rises to 70); fear -15 / -20 / -25 (on allies); status consoled (2 turns, on allies, not on summons); damage 20 / 25 / 30 + 80 / 85 / 90% MAG (on enemies, holy) | ultimate · magic |
+| 6 | `divine-descent` | Divine Descent | allAlliesAndEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | heal 25 / 30 / 40 + 75 / 85 / 95% MAG (on allies, up to +40% as the target's fear rises to 70); fear -15 / -20 / -25 (on allies); status consoled (2 turns, on allies, not on summons); damage 20 / 25 / 30 + 80 / 90 / 100% MAG (on enemies, holy) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
@@ -265,19 +265,21 @@ Basic attack (slot 0, same as every class — section 1.2): **Axe Slash** (`axe-
 | Slot | Skill id | Name | Target | Cooldown | MP cost (R1/R2/R3) | Unlock level (R1/R2/R3) | Effects (R1/R2/R3) | Flags |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `lightning-axe` | Lightning Axe | self | 4 | 8 / 9 / 10 | 1 / 7 / 15 | status storm-empowered / storm-empowered-ii / storm-empowered-iii (3 turns); status storm-recoil (1 turn) | buff |
-| 2 | `frenzied-slash` | Frenzied Slash | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 9 / 12 / 15 + 95 / 100 / 105% ATK; status bleeding (3 turns, 50 / 60 / 70% chance); with status storm-empowered: ignores 30% defense | — |
+| 2 | `frenzied-slash` | Frenzied Slash | singleEnemy | — | 5 / 6 / 7 | 1 / 7 / 15 | damage 10 / 14 / 17 + 95 / 100 / 105% ATK; status deep-wound (3 turns, 70 / 85 / 100% chance); with status storm-empowered: ignores 30% defense | — |
 | 3 | `throw-axe` | Throw Axe | singleEnemy | 2 | 9 / 10 / 11 | 10 / 25 / 45 | damage 16 / 20 / 25 + 100 / 107 / 115% ATK; with status storm-empowered: ignores 30% defense | — |
-| 4 | `spinning-axe` | Spinning Axe | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 15 / 20 / 30 + 70 / 77 / 85% ATK; status bleeding (3 turns, 30 / 40 / 50% chance); with status storm-empowered: ignores 30% defense | — |
-| 5 | `desperate-cleave` | Desperate Cleave | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 14 / 19 / 24 + 110 / 125 / 140% ATK; with status storm-empowered: ignores 30% defense; caster below 50% HP: +60% offense, 40% lifesteal | — |
+| 4 | `spinning-axe` | Spinning Axe | allEnemies | 3 | 14 / 15 / 16 | 15 / 40 / 65 | damage 15 / 20 / 30 + 70 / 77 / 85% ATK; status deep-wound (3 turns, 40 / 55 / 70% chance); with status storm-empowered: ignores 30% defense | — |
+| 5 | `desperate-cleave` | Desperate Cleave | singleEnemy | 3 | 12 / 13 / 14 | 25 / 50 / 75 | damage 15 / 20 / 25 + 110 / 125 / 140% ATK; with status storm-empowered: ignores 30% defense; caster below 50% HP: +60% offense, 40% lifesteal | — |
 | 6 | `thunder-gods-fury` | Thunder God's Fury | allEnemies | 5 | 20 / 21 / 22 | 35 / 70 / 100 | damage 30 / 40 / 50 + 80 / 100 / 120% ATK (lightning); with status storm-empowered: ignores 60% defense, consumes it | ultimate |
 <!-- docs:end -->
 
 How each skill works:
 
 - `lightning-axe` — `applyStatusEffect "storm-empowered"` + temporary defense debuff + temporary aggro buff
-- `frenzied-slash` — `damage` (physical) + chance to `applyStatusEffect "bleeding"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered`
+- `frenzied-slash` — `damage` (physical) + chance to `applyStatusEffect "deep-wound"` — **conditionalBonus**: extra `ignoreDefensePercent` if currently carrying `storm-empowered`
 - `throw-axe` — `damage` (physical) — same `storm-empowered` conditionalBonus
-- `spinning-axe` — `damage`/enemy + chance to `applyStatusEffect "bleeding"` — same `storm-empowered` conditionalBonus
+- `spinning-axe` — `damage`/enemy + chance to `applyStatusEffect "deep-wound"` — same `storm-empowered` conditionalBonus
+
+`deep-wound` has no tick of its own: each direct hit its bearer survives tears it for more `bleed` damage, a flat amount plus a share of its max HP that grows as its HP falls (`woundOnHit`, `docs/developer-guide.md`). A monster's defense blunts it the same way it blunts a DoT tick (section 1.6, "Damage over time"). It does not stack, and a race fully resistant to `bleed` never takes it.
 - `desperate-cleave` — heavy single-target `damage`; while the Viking is below its `casterHpBelowBonus` threshold the hit gains extra offense and lifesteal (section 1.3.13); under `storm-empowered` it also ignores part of the target's defense (`conditionalBonus`)
 - `thunder-gods-fury` — `damage`/enemy — **always hits** (isUltimate), a bigger `storm-empowered` conditionalBonus, **and consumes `storm-empowered`** after use
 
@@ -330,8 +332,8 @@ Basic attack (slot 0): **Vial Toss** (`vial-toss`), `isMagic: true` (see the foo
 |---|---|---|---|---|---|---|---|---|
 | 1 | `fire-vial` | Fire Vial | singleEnemy | — | 4 / 5 / 6 | 1 / 7 / 15 | damage 10 / 12 / 16 + 90 / 95 / 105% MAG (fire); status burning (2 turns, 60 / 70 / 80% chance) | magic |
 | 2 | `healing-draught` | Healing Draught | singleAlly | — | 6 / 7 / 8 | 1 / 7 / 15 | heal 7 / 10 / 15 + 40 / 45 / 50% MAG; status mending / mending-ii / mending-iii (2 turns) | magic |
-| 3 | `blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded (2 turns, 70 / 80 / 90% chance) | magic |
-| 4 | `spreading-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 60 / 70 / 80% chance); status weakened (2 turns, 40 / 50 / 60% chance) | magic |
+| 3 | `blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded / blinded-ii / blinded-iii (2 turns, 80 / 85 / 90% chance) | magic |
+| 4 | `spreading-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 85% chance, level I/II/III odds 70/25/5 / 40/40/20 / 15/40/45%); status weakened (2 turns, 70% chance, level I/II odds 80/20 / 55/45 / 30/70%) | magic |
 | 5 | `volatile-flask` | Volatile Flask | allEnemies | 4 | 14 / 15 / 16 | 25 / 50 / 75 | damage 3 / 4 / 5 + 20 / 23 / 26% MAG (fire, 2–6 hits, +10% per debuff on the target / +12% per debuff on the target / +15% per debuff on the target) | magic |
 | 6 | `total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies); damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance) | ultimate · magic |
 <!-- docs:end -->
@@ -341,7 +343,7 @@ How each skill works:
 - `fire-vial` — `damage` + chance to `applyStatusEffect "burning"`
 - `healing-draught` — `heal` on cast, plus `applyStatusEffect "mending"` (2 turns) that repeats the same heal at the start of each of the next 2 rounds — 3 heals in total. See `mending` below
 - `blinding-vial` — `damage` + chance to `applyStatusEffect "blinded"`
-- `spreading-toxic-fog` — `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"`
+- `spreading-toxic-fog` — `damage`/enemy + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "weakened"`, each landing at a level picked by its `rankWeights` (`poisoned`/`-ii`/`-iii`, `weakened`/`-ii`)
 - `volatile-flask` — `damage`/enemy struck 2-6 times each (`hitCountRange`), every strike growing with the number of debuffs on that enemy (`scalesWithDebuffCount`, section 1.3.13)
 - `total-plague` — allies → `heal` + `removeStatusEffect`; enemies → `damage` + chance to `applyStatusEffect "poisoned"` + chance to `applyStatusEffect "burning"` — **always hits** (isUltimate)
 
@@ -828,18 +830,18 @@ The class-specific skills whose `modifyCombatStat` status scales with rank (Knig
 
 `poison-coat`'s rank 2 `effects` apply `["poison-coated", "venom-edge"]`; rank 3 applies `["poison-coated", "venom-edge-ii"]`. The attack-bonus progression matches the step size used for `rallied-ii`/`rallied-iii` above, for consistency across all attack-buff statuses in this system. The on-hit poison rider itself (`poison-coated`'s `onHitStatusEffectId: "poisoned"`) is the same on every rank — rank-up only adds the attack buff, it does not touch the "poison level" applied on hit (that stays base `poisoned`, level 1, same as every other non-Poison-Bomb source per the note below).
 
-### Poison Bomb — poison potency scales via leveled `poisoned` variants (exclusive to this skill)
+### Poison Bomb and Spreading Toxic Fog — leveled `poisoned` variants
 
-Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison** — this is the one skill in the whole system where the applied status itself gets stronger per rank, via 2 rank-exclusive variants of `poisoned`. Shape (current magnitudes: `data/status-effects.json`):
+Unlike Poison Coat, **Poison Bomb's rank-up does scale its poison**: rank 2 applies `poisoned-ii` and rank 3 `poisoned-iii`, 2 leveled variants of `poisoned` (`rankOf: "poisoned"`, `rankLevel` 2/3). Shape (current magnitudes: `data/status-effects.json`):
 
 ```json
 [
-  { "id": "poisoned-ii", "name": "Poisoned II", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] },
-  { "id": "poisoned-iii", "name": "Poisoned III", "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] }
+  { "id": "poisoned-ii", "name": "Poisoned", "rankOf": "poisoned", "rankLevel": 2, "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] },
+  { "id": "poisoned-iii", "name": "Poisoned", "rankOf": "poisoned", "rankLevel": 3, "perTurnEffects": [{ "kind": "damage", "amount": "<see data/status-effects.json>" }] }
 ]
 ```
 
-**This scaling is exclusive to Poison Bomb.** Every other source of poison in the game — Poison Coat's on-hit rider, Snake's regular-monster skill (`02-monster.md`), and any future item/skill — keeps applying the plain, un-leveled `poisoned` ("poison level 1") regardless of the caster's rank in anything. There is no shared "global poison level"; `poisoned-ii`/`poisoned-iii` only ever come from Poison Bomb ranks 2/3.
+**Spreading Toxic Fog rolls the level instead.** Its `poisoned` and `weakened` effects carry `rankWeights`: once the status lands on a target, the level is picked by those weights (index 0 is the base status, index 1 its `rankLevel` 2, and so on), and each rank of the skill leans further toward the higher levels. The skill panel shows the odds ("Poisoned lands as I 70% · II 25% · III 5%"). Every other source of poison — Poison Coat's on-hit rider, Total Plague, Snake's regular-monster skill (`02-monster.md`) — applies the plain `poisoned`. How two levels of one family meet on a target is the family rule in section 1.6.
 
 ### Storm-Empowered — rank scaling (Viking)
 
@@ -856,7 +858,7 @@ The self-debuff piece of Lightning Axe (`defense`/`aggro`) and every skill's `co
 
 ### Blinded — rank scaling (Plague Doctor)
 
-No rank variants. `blinded` (Blinding Vial's debuff, section 1.3.6.2) follows the same pattern as Fireball/Lightning Bolt: only its proc-chance scales per rank, its magnitude (miss-chance percentage) stays fixed — it's an enemy-facing proc, not the caster's own signature buff, so it's treated like `burning`/`stunned`/`poisoned`, not like `guard`/`rallied`/`storm-empowered`. `poisoned`/`burning`/`weakened` procced by Toxic Fog/Total Plague stay the plain, un-leveled versions, consistent with the rule above that only Poison Bomb ever applies a leveled `poisoned` variant. Total Plague's `removeStatusEffect` (ally branch) is binary and unchanged at every rank, same treatment as Purify's ally branch.
+No rank variants. `blinded` (Blinding Vial's debuff, section 1.3.6.2) follows the same pattern as Fireball/Lightning Bolt: only its proc-chance scales per rank, its magnitude (miss-chance percentage) stays fixed — it's an enemy-facing proc, not the caster's own signature buff, so it's treated like `burning`/`stunned`/`poisoned`, not like `guard`/`rallied`/`storm-empowered`. `poisoned`/`burning`/`weakened` procced by Total Plague stay the plain versions; Spreading Toxic Fog rolls leveled `poisoned`/`weakened` (see Poison Bomb and Spreading Toxic Fog above). Total Plague's `removeStatusEffect` (ally branch) is binary and unchanged at every rank, same treatment as Purify's ally branch.
 
 ### Rank tables — every class skill
 
@@ -904,9 +906,11 @@ How each passive works:
 
 ## 1.6 Status effects
 
+**Levels of one family.** Statuses that share a `rankOf` are levels of one family (`poisoned`/`-ii`/`-iii`, `weakened`/`-ii`, and every other status that names a `rankOf`), and a target carries at most one of them. A higher level that lands replaces the lower one and gives back its stat changes. A lower level that lands on a higher one is not applied: the higher one gains `combat.lowerRankStatusExtendTurns` (1) turn, never past the duration it was applied with, or `combat.lowerRankStatusExtendDefaultCapTurns` (3) when that is not known, and the log says it lingers. The same level refreshes as usual (`applyStatusEffectToActor`, `src/engine/resolver.ts`). A family whose base status sets `levelsStack` keeps every level side by side instead: the barter regeneration tiers (`knitting` … `knitting-vi`) stack this way.
+
 The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English id/name, matching `data/status-effects.json`):
 
-<!-- docs:begin statusEffects ids=interposed,breached,through-the-breach,engaged,guard,taunt,challenge,rallied,poison-coated,poisoned,burning,stunned,weakened,bleeding,storm-empowered,blinded -->
+<!-- docs:begin statusEffects ids=interposed,breached,through-the-breach,engaged,guard,taunt,challenge,rallied,poison-coated,poisoned,burning,stunned,weakened,deep-wound,storm-empowered,blinded -->
 *Generated from `data/status-effects.json` by `bun run docs:sync`. Do not edit.*
 
 | id | Name | Mechanics |
@@ -918,13 +922,13 @@ The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English i
 | `guard` | Guard | defense +6 (min 10%) |
 | `taunt` | Taunt | aggro +40; targetPull 0.2 |
 | `challenge` | Challenge | aggro +60; targetPull 0.4 |
-| `rallied` | Rallied | attack +4 (min 5%); magicPower +4 (min 5%) |
+| `rallied` | Rallied | attack +6 (min 7.5%); magicPower +6 (min 7.5%) |
 | `poison-coated` | Poison-Coated | onHitStatusEffectId poisoned |
 | `poisoned` | Poisoned | damage 4 or 2.5% max HP per turn |
 | `burning` | Burning | damage 6 or 3% max HP per turn |
 | `stunned` | Stunned | stuns |
 | `weakened` | Weakened | defense -6 (min -10%) |
-| `bleeding` | Bleeding | damage 6 or 2% max HP per turn; stackable; maxStacks 5; perStackBonusPercent 100 |
+| `deep-wound` | Deep Wound | harmful; woundOnHit amount 4, minMaxHpPercent 2, maxMaxHpPercent 3, fullAtHpPercent 20, damageType bleed |
 | `storm-empowered` | Storm-Empowered | onHitAoeDamage amount 6, isMagic true, offenseMultiplierPercent 80, ignoreDefensePercent 30, damageType lightning |
 | `blinded` | Blinded | accuracyPenaltyPercent 60 |
 <!-- docs:end -->
@@ -944,7 +948,7 @@ What each is, and where it comes from:
 - `burning` — Debuff; used by Fireball, Fire Pillar (Mage); Fire Vial, Total Plague (Plague Doctor).
 - `stunned` — Control (debuff); used by Lightning Bolt, Lightning Storm (Mage). (see `docs/technical-decisions.md` §4.3)
 - `weakened` — Debuff; used by Toxic Fog (Plague Doctor); also used by Elite/Boss-exclusive skills (`06-level-system.md` §6.12).
-- `bleeding` — Debuff (physical DoT); used by Frenzied Slash, Spinning Axe (Viking).
+- `deep-wound` — Debuff (extra `bleed` damage on each hit taken); used by Frenzied Slash, Spinning Axe (Viking).
 - `storm-empowered` — Buff (rider, AoE-on-hit); used by Lightning Axe (Viking). (see section 1.3.5.1)
 - `blinded` — Debuff; used by Blinding Vial (Plague Doctor). (see section 1.3.6.2)
 
@@ -956,9 +960,9 @@ Exact magnitudes/durations/proc chances for every row above: `data/status-effect
 
 **Combat-stat buff/debuff floor (`minPercent`)**: a flat `modifyCombatStat` amount has the same problem a flat DoT tick would have (see "Damage over time" below) — it's a lot at level 1, negligible at level 100. Guard/-ii/-iii, Rally/-ii/-iii, Venom Edge/-ii, Overwatch/-ii/-iii, Weakened, Corroded, Agony, and Storm Recoil's defense debuff all carry a `minPercent` on their `modifyCombatStat` entry in `data/status-effects.json`, so the applied delta is whichever of the flat amount or a percent of the actor's own stat is larger in magnitude — see `docs/technical-decisions.md` §4.8. `aggro`-only buffs (Taunt, Storm Recoil's aggro line) deliberately have none: `aggro` doesn't grow with character level, so a flat aggro bonus never becomes relatively negligible.
 
-### Damage over time — `maxHpPercent`, Elite/Boss dampening, and "weak against X" vulnerability
+### Damage over time — `maxHpPercent`, monster defense, and "weak against X" vulnerability
 
-Every DoT (`perTurnEffects` with `kind: "damage"`) ticks for a flat `amount` plus a percentage of the target's `maxHp`, via an optional field on `SkillEffect`, `maxHpPercent?: number`, on the DoT's `perTurnEffects` damage entry — the tick formula in `tickCategoryUnconditionally` (`src/engine/resolver.ts`) folds `target.maxHp * (effect.maxHpPercent ?? 0) / 100` into the flat `amount` before the Elite/Boss dampening and vulnerability multiplier below are applied. This keeps DoTs relevant late-run, since character/monster `maxHp` keeps growing with level across the game's infinite dungeon floors (`06-level-system.md`). A `heal` entry in `perTurnEffects` (a heal over time) with a `maxHpPercent` heals at least that share of the bearer's `maxHp` each tick, taking the larger of the flat `amount` and the percentage; it is not reduced for Elite/Boss targets.
+Every DoT (`perTurnEffects` with `kind: "damage"`) ticks for a flat `amount` plus a percentage of the target's `maxHp`, via an optional field on `SkillEffect`, `maxHpPercent?: number`, on the DoT's `perTurnEffects` damage entry — the tick formula in `tickCategoryUnconditionally` (`src/engine/resolver.ts`) folds `target.maxHp * (effect.maxHpPercent ?? 0) / 100` into the flat `amount` before the monster-defense share and vulnerability multiplier below are applied. This keeps DoTs relevant late-run, since character/monster `maxHp` keeps growing with level across the game's infinite dungeon floors (`06-level-system.md`). A `heal` entry in `perTurnEffects` (a heal over time) with a `maxHpPercent` heals at least that share of the bearer's `maxHp` each tick, taking the larger of the flat `amount` and the percentage; it is not reduced for Elite/Boss targets.
 
 **The DoTs (`data/status-effects.json`)**:
 
@@ -968,8 +972,8 @@ Every DoT (`perTurnEffects` with `kind: "damage"`) ticks for a flat `amount` plu
 | id | Name | Mechanics |
 |---|---|---|
 | `poisoned` | Poisoned | damage 4 or 2.5% max HP per turn |
-| `poisoned-ii` | Poisoned II | damage 6 or 3% max HP per turn; rankOf poisoned |
-| `poisoned-iii` | Poisoned III | damage 8 or 4% max HP per turn; rankOf poisoned |
+| `poisoned-ii` | Poisoned | damage 6 or 3% max HP per turn; rankOf poisoned; rankLevel 2 |
+| `poisoned-iii` | Poisoned | damage 8 or 4% max HP per turn; rankOf poisoned; rankLevel 3 |
 | `burning` | Burning | damage 6 or 3% max HP per turn |
 | `bleeding` | Bleeding | damage 6 or 2% max HP per turn; stackable; maxStacks 5; perStackBonusPercent 100 |
 | `acid-burn` | Acid Burn | damage 5 or 2.5% max HP per turn |
@@ -982,15 +986,15 @@ Where each comes from:
 - `poisoned-ii` — Poison Bomb rank 2
 - `poisoned-iii` — Poison Bomb rank 3
 - `burning` — Fireball/Fire Pillar (Mage); Fire Vial/Total Plague (Plague Doctor)
-- `bleeding` — Frenzied Slash/Spinning Axe (Viking); Throwing Knives/Shuriken Storm/Death Mark/Barbed Net's `netted` (Ninja); Blood Pact, on the Warlock itself — see 1.7.4 for the stacking mechanic
+- `bleeding` — Throwing Knives/Shuriken Storm/Death Mark/Barbed Net's `netted` (Ninja); Blood Pact, on the Warlock itself — see 1.7.4 for the stacking mechanic
 - `acid-burn` — Acid Spit (Slime)
 - `hexed` — Hex/Bind Tongue/Withering Curse/Doom (Warlock); also lowers attack, stacks up to 4 times (section 1.3.12)
 
-**DoT carries the deep floors — by design.** A direct hit goes through the attack-vs-defense mitigation (`mitigatedOffense`, `src/engine/resolver.ts`), which takes a larger share of it as monster defense grows with depth (`06-level-system.md` §6.10). A DoT tick skips defense and grows with the target's max HP. The deeper the floor, the more of a party's damage comes from the classes that keep a DoT up: the Rogue first (poison plus Venomcraft, section 1.3.3), then the Ninja (stacking bleed), the Plague Doctor (poison and burn) and the Warlock (stacking Hexed); the Viking and the Mage only now and then, and the Knight, Archer and Acolyte not at all. This is intended: the Rogue is the party's main damage source, and the other classes are not given defense-ignoring scaling to close the gap.
+**DoT carries the deep floors — by design.** A direct hit goes through the attack-vs-defense mitigation (`mitigatedOffense`, `src/engine/resolver.ts`), which takes a larger share of it as monster defense grows with depth (`06-level-system.md` §6.10). A DoT tick grows with the target's max HP and meets only a share of a monster's defense (below), so it holds up better than a direct hit as defense climbs. The deeper the floor, the more of a party's damage comes from the classes that keep a DoT up: the Rogue first (poison plus Venomcraft, section 1.3.3), then the Ninja (stacking bleed), the Plague Doctor (poison and burn) and the Warlock (stacking Hexed); the Viking and the Mage only now and then, and the Knight, Archer and Acolyte not at all. This is intended: the Rogue is the party's main damage source, and the other classes are not given max-HP scaling to close the gap.
 
-**Elite/Boss dampening — every DoT's total tick (flat + `maxHpPercent`) is multiplied by `combat.eliteBossDotMultiplier` (0.8) when the target's `tier` is `"elite"` or `"boss"`** (`Monster.tier`, `02-monster.md` §2's tier system). The tick still deals at least 1 damage unless the target's race is immune to its damage type, the same floor every hit gets in `resolveSkillEffect`. Exists specifically to keep `maxHpPercent` from becoming disproportionately strong against Elite/Boss's much larger HP pools — a flat-rate `%maxHp` tick would otherwise scale up faster on high-HP targets than intended. A DoT's status line says "(less on Elites and Bosses)" without the number.
+**Monster defense against status damage — a monster's defense counts at a share set by its `tier` against every DoT tick (flat + `maxHpPercent`, after stacks) and against Deep Wound's `woundOnHit`: `combat.statusDamageDefensePercentByTier.normal` (10)% for a normal monster, `combat.statusDamageDefensePercentByTier.elite` (20)% for an Elite, `combat.statusDamageDefensePercentByTier.boss` (40)% for a Boss** (`Monster.tier`, `02-monster.md` §2's tier system). The damage goes through the same `mitigatedOffense` a direct hit uses, against that share of the monster's current defense, so a debuff that lowers defense (Weakened) also raises it (`statusDamageAfterDefense`, `src/engine/resolver.ts`). It still deals at least 1 damage unless the target's race is immune to its damage type, the same floor every hit gets in `resolveSkillEffect`. Party characters and summons take status damage whole. It keeps `maxHpPercent` from outgrowing Elite and Boss HP pools, which are both larger and better armored. A status line says "(blunted by a monster's defense)" without the numbers.
 
-**"Weak against X" vulnerability — one shared multiplier for every DoT**: a status carrying `StatusEffectDefinition.vulnerableTo: { statusEffectId: Id; multiplier: number }` (`vulnerabilityMultiplier()` in `src/engine/resolver.ts`) multiplies the named DoT's ticks on its bearer by `multiplier` (a target carrying "Weak Against Poison" takes its `poisoned` ticks multiplied by it), applied **after** the Elite/Boss dampening above. 4 statuses share this shape, all at the same `multiplier`: `poison-vulnerable`, `burning-vulnerable`, `bleeding-vulnerable`, `acid-burn-vulnerable`. The match follows a status's `rankOf` family (`statusSatisfiesRequirement`), so "Weak Against Poison" raises `poisoned-ii`/`-iii` ticks too. Rogue's Venom Brand is the party's one source of `poison-vulnerable` (section 1.3.13).
+**"Weak against X" vulnerability — one shared multiplier for every DoT**: a status carrying `StatusEffectDefinition.vulnerableTo: { statusEffectId: Id; multiplier: number }` (`vulnerabilityMultiplier()` in `src/engine/resolver.ts`) multiplies the named DoT's ticks on its bearer by `multiplier` (a target carrying "Weak Against Poison" takes its `poisoned` ticks multiplied by it), applied **after** the monster-defense share above. 4 statuses share this shape, all at the same `multiplier`: `poison-vulnerable`, `burning-vulnerable`, `bleeding-vulnerable`, `acid-burn-vulnerable`. The match follows a status's `rankOf` family (`statusSatisfiesRequirement`), so "Weak Against Poison" raises `poisoned-ii`/`-iii` ticks too. Rogue's Venom Brand is the party's one source of `poison-vulnerable` (section 1.3.13).
 
 ## 1.7 Shared engine mechanics
 
@@ -1024,7 +1028,7 @@ Optional fields on `StatusEffectDefinition`: `stackable?: boolean`, `maxStacks?:
 
 **`bleeding`'s concrete values** are in `data/status-effects.json` (`maxStacks`, `perStackBonusPercent`) — i.e. **plain linear/additive stacking**, each additional stack is worth one more full base tick (not a softened diminishing bonus). With the base tick from 1.6 (before Elite/Boss dampening and "weak against" vulnerability), the cap is exactly `maxStacks × base tick` per turn.
 
-Stacking belongs to the **shared** `bleeding` status (Viking, section 1.3.5; Ninja, section 1.3.8) rather than a Ninja-exclusive copy, so every bleed source stacks — Viking's Frenzied Slash/Spinning Axe as well as Ninja's skills and the monster skills that apply it.
+Stacking belongs to the **shared** `bleeding` status (Ninja, section 1.3.8) rather than a Ninja-exclusive copy, so every bleed source stacks — Ninja's skills as well as the monster skills that apply it.
 
 `SkillEffect.scalesWithStatusStacks?: { statusEffectId: Id; percentPerStack: number }` lets a skill **read** a target's current stack count to scale its own damage — Ninja's Death Mark uses it (the Ninja table in section 1.3.8, "per existing bleeding stack"), and so does Warlock's Soul Rend for `hexed` stacks (section 1.3.12). Every other conditional mechanic (`conditionalBonus`, Viking) only checks presence/absence of a status, not a magnitude.
 

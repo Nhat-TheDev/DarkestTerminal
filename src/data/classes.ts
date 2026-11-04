@@ -1,6 +1,6 @@
 import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
-import { STATUS_EFFECTS } from "./statusEffects";
+import { STATUS_EFFECTS, assertRankWeights } from "./statusEffects";
 import { SUMMON_CASTS } from "./summons";
 import { ATTACK_RANGES } from "./balanceConfig";
 
@@ -47,6 +47,11 @@ for (const cls of CLASSES) {
     throw new Error(`data/classes.json: class "${cls.id}" needs a "style" with a 2-letter uppercase "abbr" and a "#rrggbb" "color"`);
   }
   cls.skills = cls.skills.map(normalizeRankedSkill);
+  for (const skill of cls.skills) {
+    for (const effect of [...(skill.effects ?? []), ...(skill.ranks ?? []).flatMap((r) => r.effects ?? [])]) {
+      assertRankWeights(`data/classes.json: skill "${skill.id}"`, effect);
+    }
+  }
 
   const passiveRanks = cls.passiveSkill.ranks.map((r) => r.rank);
   if (passiveRanks.length !== 3 || ![1, 2, 3].every((rank) => passiveRanks.includes(rank as 1 | 2 | 3))) {
