@@ -361,9 +361,9 @@ describe("consumable catalog data", () => {
 describe("status effect mechanics text", () => {
   // What formatStatusEffectMechanics reads, and the fields that are only bookkeeping. A status that
   // gains a field in neither list fails the first test until someone decides which it is.
-  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "dodgePercent", "triggersOverwatch", "interruptChance", "overwatchShot", "stackable", "maxStacks", "perStackBonusPercent", "reflectDamagePercent", "counterAttack", "fearResistPercent", "debuffResistPercent", "onActStatus", "silences", "eliteBossMaxTurns", "forcesTargetOnSource", "interceptsForSource", "onLandedHitSourceStatus", "redirectToAlliesChance", "targetPull", "coinFlipWinChanceMultiplier", "endsWithCombat", "debuffsAttackerOnHit", "damageTakenPercent", "buffsAttackerOnHit", "reviveHpPercent", "healOnHitPercent", "channelSkillId", "basicAttackOverride", "onMaxStacks", "weakPercent", "endsWithChannel"];
+  const SHOWN = ["perTurnEffects", "onHitStatusEffectId", "onHitAoeDamage", "accuracyPenaltyPercent", "vulnerableTo", "stuns", "untargetable", "breakBonus", "dodgePercent", "triggersOverwatch", "interruptChance", "overwatchShot", "stackable", "maxStacks", "perStackBonusPercent", "reflectDamagePercent", "counterAttack", "fearResistPercent", "debuffResistPercent", "onActStatus", "silences", "eliteBossMaxTurns", "forcesTargetOnSource", "interceptsForSource", "onLandedHitSourceStatus", "redirectToAlliesChance", "targetPull", "coinFlipWinChanceMultiplier", "endsWithCombat", "debuffsAttackerOnHit", "damageTakenPercent", "woundOnHit", "buffsAttackerOnHit", "reviveHpPercent", "healOnHitPercent", "channelSkillId", "basicAttackOverride", "onMaxStacks", "weakPercent", "endsWithChannel"];
   // `harmful` only decides whether the status reads as a debuff and is cleansable; it carries no number or rule of its own.
-  const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "tickCategory", "harmful"];
+  const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "levelsStack", "tickCategory", "harmful"];
   const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent", "offenseMultiplierPercent"];
   const PER_TURN_BOOKKEEPING = ["damageType"];
   const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
@@ -390,7 +390,7 @@ describe("status effect mechanics text", () => {
       for (const e of def.perTurnEffects) {
         if (e.kind === "modifyCombatStat" && e.minPercent) has(`${Math.abs(e.minPercent)}%`);
         if ((e.kind === "damage" || e.kind === "heal") && e.maxHpPercent) has(`${e.maxHpPercent}% of max HP`);
-        if (e.kind === "damage") has("less on Elites and Bosses");
+        if (e.kind === "damage") has("blunted by a monster's defense");
         if (e.amount) has(`${Math.abs(e.amount)} `);
         if (e.kind === "heal" && e.offenseMultiplierPercent !== undefined) has(`${e.offenseMultiplierPercent}% of the caster's magic power`);
       }

@@ -200,14 +200,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 4,
-        "minPercent": 5
+        "amount": 6,
+        "minPercent": 7.5
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 4,
-        "minPercent": 5
+        "amount": 6,
+        "minPercent": 7.5
       }
     ]
   },
@@ -219,14 +219,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 6,
-        "minPercent": 7.5
+        "amount": 9,
+        "minPercent": 11
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 6,
-        "minPercent": 7.5
+        "amount": 9,
+        "minPercent": 11
       }
     ]
   },
@@ -238,14 +238,14 @@
       {
         "kind": "modifyCombatStat",
         "combatStat": "attack",
-        "amount": 8,
-        "minPercent": 10
+        "amount": 12,
+        "minPercent": 15
       },
       {
         "kind": "modifyCombatStat",
         "combatStat": "magicPower",
-        "amount": 8,
-        "minPercent": 10
+        "amount": 12,
+        "minPercent": 15
       }
     ]
   },
@@ -299,7 +299,7 @@
   },
   {
     "id": "poisoned-ii",
-    "name": "Poisoned II",
+    "name": "Poisoned",
     "description": "Moderately drains HP per turn.",
     "perTurnEffects": [
       {
@@ -309,11 +309,12 @@
         "damageType": "poison"
       }
     ],
-    "rankOf": "poisoned"
+    "rankOf": "poisoned",
+    "rankLevel": 2
   },
   {
     "id": "poisoned-iii",
-    "name": "Poisoned III",
+    "name": "Poisoned",
     "description": "Sharply drains HP per turn.",
     "perTurnEffects": [
       {
@@ -323,7 +324,8 @@
         "damageType": "poison"
       }
     ],
-    "rankOf": "poisoned"
+    "rankOf": "poisoned",
+    "rankLevel": 3
   },
   {
     "id": "burning",
@@ -350,6 +352,21 @@
         "minPercent": -10
       }
     ]
+  },
+  {
+    "id": "weakened-ii",
+    "name": "Weakened",
+    "description": "Lowers defense for a few turns.",
+    "perTurnEffects": [
+      {
+        "kind": "modifyCombatStat",
+        "combatStat": "defense",
+        "amount": -9,
+        "minPercent": -15
+      }
+    ],
+    "rankOf": "weakened",
+    "rankLevel": 2
   },
   {
     "id": "stunned",
@@ -610,6 +627,36 @@
     "perStackBonusPercent": 100
   },
   {
+    "id": "deep-wound",
+    "name": "Deep Wound",
+    "description": "Cut to the bone. Every hit that lands tears it wider, and wider still the less the bearer has left.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "woundOnHit": {
+      "amount": 4,
+      "minMaxHpPercent": 2,
+      "maxMaxHpPercent": 3,
+      "fullAtHpPercent": 20,
+      "damageType": "bleed"
+    }
+  },
+  {
+    "id": "deep-wound-ii",
+    "name": "Deep Wound",
+    "description": "Cut to the bone. Every hit that lands tears it wider, and wider still the less the bearer has left.",
+    "perTurnEffects": [],
+    "harmful": true,
+    "woundOnHit": {
+      "amount": 8,
+      "minMaxHpPercent": 2.5,
+      "maxMaxHpPercent": 4,
+      "fullAtHpPercent": 20,
+      "damageType": "bleed"
+    },
+    "rankOf": "deep-wound",
+    "rankLevel": 2
+  },
+  {
     "id": "stealthed",
     "name": "Stealthed",
     "description": "Untargetable by enemies until the next attack breaks it — a basic attack lands a guaranteed critical hit, a skill deals a mild damage bonus.",
@@ -764,6 +811,24 @@
     "description": "The bearer's own attacks/skills miss more often for the duration.",
     "perTurnEffects": [],
     "accuracyPenaltyPercent": 60
+  },
+  {
+    "id": "blinded-ii",
+    "name": "Blinded",
+    "description": "The bearer's own attacks/skills miss more often for the duration.",
+    "perTurnEffects": [],
+    "accuracyPenaltyPercent": 70,
+    "rankOf": "blinded",
+    "rankLevel": 2
+  },
+  {
+    "id": "blinded-iii",
+    "name": "Blinded",
+    "description": "The bearer's own attacks/skills miss more often for the duration.",
+    "perTurnEffects": [],
+    "accuracyPenaltyPercent": 80,
+    "rankOf": "blinded",
+    "rankLevel": 3
   },
   {
     "id": "agony",
@@ -1201,6 +1266,8 @@
         "maxHpPercent": 2.5
       }
     ]
+,
+    "levelsStack": true
   },
   {
     "id": "knitting-ii",
@@ -1369,8 +1436,8 @@
     "perTurnEffects": [
       {
         "kind": "heal",
-        "amount": 6,
-        "offenseMultiplierPercent": 35
+        "amount": 7,
+        "offenseMultiplierPercent": 40
       }
     ]
   },
@@ -1381,8 +1448,8 @@
     "perTurnEffects": [
       {
         "kind": "heal",
-        "amount": 9,
-        "offenseMultiplierPercent": 40
+        "amount": 10,
+        "offenseMultiplierPercent": 45
       }
     ],
     "rankOf": "sanctified",
@@ -1395,8 +1462,8 @@
     "perTurnEffects": [
       {
         "kind": "heal",
-        "amount": 12,
-        "offenseMultiplierPercent": 45
+        "amount": 14,
+        "offenseMultiplierPercent": 50
       }
     ],
     "rankOf": "sanctified",

@@ -25,7 +25,7 @@ import { classGrowthBonus } from "../data/levelGrowth";
 import { GROWTH_WEIGHTS } from "../data/growthWeights";
 import { characterBaseStats, activeStatusCombatStatSum } from "./party";
 import { getItem } from "../data/items";
-import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName, COMBAT_STAT_LABEL } from "../data/statusEffects";
+import { getStatusEffect, statusSatisfiesRequirement, statusDisplayName, statusAtRankLevel, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { getSummonArchetype, getSummonSkill, getSummonCast } from "../data/summons";
 import { spawnMonster } from "../data/monsters";
 import { formShell } from "./monsterShell";
@@ -1761,6 +1761,12 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
         if (casterLowHp) offense += skill.casterHpBelowBonus!.offenseMultiplierPercentBonus;
         const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
         rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollFaces: undefined };
+      }
+      if (effect.kind === "applyStatusEffect" && effect.rankWeights?.length && effect.statusEffectId) {
+        const weights = effect.rankWeights;
+        const levels = weights.map((_, index) => index + 1).filter((lvl) => weights[lvl - 1]! > 0);
+        const level = ctx.rng.weightedPick(levels, (lvl) => weights[lvl - 1]!);
+        rolledEffect = { ...effect, statusEffectId: statusAtRankLevel(effect.statusEffectId, level)!.id, rankWeights: undefined };
       }
       const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
 

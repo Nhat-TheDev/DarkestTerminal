@@ -10,7 +10,13 @@
     "damageVariancePercent": 3,
     "defensiveLowHpThresholdFraction": 0.4,
     "buffTurnOrderSpeedBonus": 20,
-    "eliteBossDotMultiplier": 0.8,
+    "lowerRankStatusExtendTurns": 1,
+    "lowerRankStatusExtendDefaultCapTurns": 3,
+    "statusDamageDefensePercentByTier": {
+      "normal": 10,
+      "elite": 20,
+      "boss": 40
+    },
     "fearTierThresholds": [
       40,
       70,
