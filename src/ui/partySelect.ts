@@ -169,7 +169,7 @@ function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], ta
   const list = pageOptions.flatMap((ability, i) => abilityEntry(ability, i, cls, taken));
   if (pageOptions.length === 0) list.push([colorChunk(t("partySelect.noAbilities"), PALETTE.dim)]);
   const skip = t("partySelect.skipAbility");
-  const legend = `${t("partySelect.recommendedLegend")}   `;
+  const legend = cls.recommendedAbilityIds.length > 0 ? `${t("partySelect.recommendedLegend")}   ` : "";
   const pageTag = totalPages > 1 ? `${t("partySelect.pageTag", { page: page + 1, total: totalPages })} ` : "";
   const gap = " ".repeat(Math.max(1, BLOCK_INNER_WIDTH - skip.length - legend.length - pageTag.length));
   return [

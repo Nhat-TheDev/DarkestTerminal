@@ -237,7 +237,7 @@ straight to that recruit's ability, before the next class is browsed:
 1. List every `common` ability, plus every non-common ability currently in
    `unlockedAbilityIds` — tagged with its rarity. Abilities the class lists
    in `recommendedAbilityIds` (`data/classes.json`) carry a `*`, explained
-   under the list.
+   under the list; a class that lists none shows neither.
 2. Player picks exactly 1 (number key), or explicitly skips (dedicated
    key, `0`) — a character can enter the run with no ability equipped.
 3. **No 2 characters in the party may end the screen with the same

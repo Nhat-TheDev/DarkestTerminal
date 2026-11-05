@@ -167,6 +167,20 @@ describe("party select", () => {
     renderer.destroy();
   });
 
+  test("a class that recommends nothing shows no * and no legend", async () => {
+    const classes = CLASSES.map((c, i) => (i === 0 ? { ...c, recommendedAbilityIds: [] } : c));
+    const harness = await createTestRenderer({ width: 150, height: 45 });
+    showPartySelect(harness.renderer, classes, "slot1");
+    await harness.renderOnce();
+    harness.mockInput.pressKey("RETURN");
+    await harness.renderOnce();
+    const shown = harness.captureCharFrame();
+    expect(shown).toContain("Choose an ability for the");
+    expect(shown).not.toContain(") *");
+    expect(shown).not.toContain(STRINGS["partySelect.recommendedLegend"]!);
+    harness.renderer.destroy();
+  });
+
   test("Esc backs out of the ability list, and from browsing undoes the last pick", async () => {
     const { press, frame, picked } = await openScreen();
     await press("RETURN");
