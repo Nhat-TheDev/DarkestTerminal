@@ -157,6 +157,28 @@ describe("the blessing's room count", () => {
 });
 
 describe("the Gatekeeper screen", () => {
+  test("hands over the map after a refusal too, and only moves on with [1]", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
+    const game = newRun();
+    new App(renderer, game, { autoReveal: false });
+    await renderOnce();
+    mockInput.pressKey("2");
+    await renderOnce();
+    let frame = captureCharFrame();
+    expect(frame).toContain("'Good luck, then.'");
+    expect(frame).toContain("[1] Take the map");
+    mockInput.pressKey("2");
+    await renderOnce();
+    frame = captureCharFrame();
+    expect(frame).toContain("[1] Take the map");
+    mockInput.pressKey("1");
+    await renderOnce();
+    frame = captureCharFrame();
+    expect(frame).toContain("Paths:");
+    expect(frame).toContain("[1] Move");
+    expect(game.state.pendingGatekeeper).toBe(true);
+  });
+
   test("shows the gate, takes an answer, then enters the dungeon", async () => {
     const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 130, height: 45 });
     const game = newRun();
@@ -180,6 +202,18 @@ describe("the Gatekeeper screen", () => {
     await renderOnce();
     frame = captureCharFrame();
     expect(game.state.gatekeeperAnswer).toBe("paid");
+    expect(frame).toContain("He doesn't count them.");
+    expect(frame).toContain("a square of hide");
+    expect(frame).toContain("[1] Take the map");
+    expect(frame).toContain("[1] Take   │");
+    expect(frame).not.toContain("Paths:");
+    expect(frame).toContain("Blessed: +");
+
+    mockInput.pressKey("1");
+    await renderOnce();
+    frame = captureCharFrame();
+    expect(game.state.pendingGatekeeper).toBe(true);
+    expect(frame).toContain("folded along creases");
     const entry = getRoom(game.state.floor, game.state.floor.entryRoomId);
     const pathLine = `[1] ${entry.name} (${entry.type})`;
     expect(frame).toContain("Paths:");
@@ -188,7 +222,6 @@ describe("the Gatekeeper screen", () => {
     expect(frame).not.toContain("[i] Items");
     expect(frame).not.toContain("[q] Save");
     expect(frame).not.toContain("[s] Quicksave");
-    expect(frame).toContain("Blessed: +");
 
     mockInput.pressKey("1");
     await renderOnce();
