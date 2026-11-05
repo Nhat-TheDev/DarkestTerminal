@@ -30,10 +30,10 @@ export interface PartyPick {
 
 type Step = { kind: "browse"; index: number } | { kind: "ability"; classId: Id; page: number };
 
-/** Every `common` ability, plus every non-`common` id in the slot's profile, minus the ones already taken this screen — `11-abilities.md` §11.1. */
-function selectableAbilities(slotId: Id | null, taken: Id[]): AbilityDefinition[] {
+/** Every `common` ability, plus every non-`common` id in the slot's profile — `11-abilities.md` §11.1. One taken this screen stays listed but can't be chosen. */
+function offeredAbilities(slotId: Id | null): AbilityDefinition[] {
   const profile = loadProfile(slotId);
-  return ABILITIES.filter((a) => (a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id)) && !taken.includes(a.id));
+  return ABILITIES.filter((a) => a.rarity === "common" || profile.unlockedAbilityIds.includes(a.id));
 }
 
 /** The party so far, one bracket per seat: class and ability for a filled one, empty for the rest. */
@@ -148,29 +148,35 @@ function classDetail(cls: CharacterClass, heights: ReturnType<typeof panelHeight
   ];
 }
 
-function abilityEntry(ability: AbilityDefinition, i: number): TextChunk[][] {
+function abilityEntry(ability: AbilityDefinition, i: number, cls: CharacterClass, taken: Id[]): TextChunk[][] {
+  const isTaken = taken.includes(ability.id);
+  const line =
+    t("partySelect.abilityLine", { i: i + 1, name: ability.name, rarity: ability.rarity }) +
+    (cls.recommendedAbilityIds.includes(ability.id) ? t("partySelect.recommendedTag") : "") +
+    (isTaken ? t("partySelect.takenTag") : "");
   return [
-    [colorChunk(t("partySelect.abilityLine", { i: i + 1, name: ability.name, rarity: ability.rarity }), PALETTE.text)],
-    ...panelText(formatAbilityEffect(ability), PALETTE.dim, BLOCK_INNER_WIDTH, "     "),
+    [colorChunk(line, isTaken ? PALETTE.disabled : PALETTE.text)],
+    ...panelText(formatAbilityEffect(ability), isTaken ? PALETTE.disabled : PALETTE.dim, BLOCK_INNER_WIDTH, "     "),
   ];
 }
 
-function abilityPages(options: AbilityDefinition[]): AbilityDefinition[][] {
-  return paginateByRows(options, (ability) => abilityEntry(ability, 0).length, ABILITY_PAGE_SIZE, ABILITY_LIST_ROWS);
+function abilityPages(options: AbilityDefinition[], cls: CharacterClass): AbilityDefinition[][] {
+  return paginateByRows(options, (ability) => abilityEntry(ability, 0, cls, []).length, ABILITY_PAGE_SIZE, ABILITY_LIST_ROWS);
 }
 
 /** The class header, then one page of Abilities and the skip/page line, at a fixed size. */
-function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], page: number, totalPages: number): TextChunk[][] {
-  const list = pageOptions.flatMap((ability, i) => abilityEntry(ability, i));
+function abilityDetail(cls: CharacterClass, pageOptions: AbilityDefinition[], taken: Id[], page: number, totalPages: number): TextChunk[][] {
+  const list = pageOptions.flatMap((ability, i) => abilityEntry(ability, i, cls, taken));
   if (pageOptions.length === 0) list.push([colorChunk(t("partySelect.noAbilities"), PALETTE.dim)]);
   const skip = t("partySelect.skipAbility");
+  const legend = `${t("partySelect.recommendedLegend")}   `;
   const pageTag = totalPages > 1 ? `${t("partySelect.pageTag", { page: page + 1, total: totalPages })} ` : "";
-  const gap = " ".repeat(Math.max(1, BLOCK_INNER_WIDTH - skip.length - pageTag.length));
+  const gap = " ".repeat(Math.max(1, BLOCK_INNER_WIDTH - skip.length - legend.length - pageTag.length));
   return [
     ...classHeader(cls),
     ...framed(list, ABILITY_LIST_ROWS),
     fullRule("├", "┤"),
-    ...framed([[colorChunk(skip, PALETTE.dim), plainChunk(gap), colorChunk(pageTag, PALETTE.dim)]], 1),
+    ...framed([[colorChunk(skip, PALETTE.dim), plainChunk(gap), colorChunk(legend, PALETTE.dim), colorChunk(pageTag, PALETTE.dim)]], 1),
     fullRule("└", "┘"),
   ];
 }
@@ -205,7 +211,8 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
     let step: Step = { kind: "browse", index: 0 };
 
     const available = () => classes.filter((c) => !picks.some((p) => p.classId === c.id));
-    const abilityOptions = () => selectableAbilities(slotId, picks.map((p) => p.abilityId).filter((id): id is Id => id !== null));
+    const abilityOptions = () => offeredAbilities(slotId);
+    const takenAbilityIds = () => picks.map((p) => p.abilityId).filter((id): id is Id => id !== null);
 
     const renderBrowse = (index: number) => {
       const pool = available();
@@ -223,14 +230,14 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
 
     const renderAbility = (classId: Id, page: number) => {
       const cls = classes.find((c) => c.id === classId)!;
-      const pages = abilityPages(abilityOptions());
+      const pages = abilityPages(abilityOptions(), cls);
       const totalPages = pages.length;
       const pageOptions = pages[page] ?? [];
       const lines: TextChunk[][] = [
         [colorChunk(t("partySelect.abilityTitle", { name: cls.name, count: picks.length + 1, total: PARTY_SIZE }), PALETTE.title)],
         partyLine(picks, classes),
         [],
-        ...abilityDetail(cls, pageOptions, page, totalPages),
+        ...abilityDetail(cls, pageOptions, takenAbilityIds(), page, totalPages),
       ];
       body.content = joinLines(lines);
       const contextual = joinHints(digitHint("partySelect.abilityHint", pageOptions.length, "partySelect.abilityHintSkipOnly"), t("partySelect.abilityBackHint"));
@@ -264,7 +271,8 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
         return;
       }
 
-      const pages = abilityPages(abilityOptions());
+      const abilityClassId = step.classId;
+      const pages = abilityPages(abilityOptions(), classes.find((c) => c.id === abilityClassId)!);
       const totalPages = pages.length;
       if ((key.name === "left" || key.name === "right") && totalPages > 1) {
         step = { ...step, page: (step.page + (key.name === "right" ? 1 : -1) + totalPages) % totalPages };
@@ -282,7 +290,7 @@ export function showPartySelect(renderer: CliRenderer, classes: CharacterClass[]
       else {
         const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
         const chosen = digit !== null ? pages[step.page]?.[digit - 1] : undefined;
-        if (!chosen) return;
+        if (!chosen || takenAbilityIds().includes(chosen.id)) return;
         abilityId = chosen.id;
       }
       const pickedClassId = step.classId;

@@ -3,6 +3,7 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { showPartySelect } from "../src/ui/partySelect";
 import { CLASSES } from "../src/data/classes";
 import { ABILITIES } from "../src/data/abilities";
+import { STRINGS } from "../src/data/strings";
 import { BALANCE } from "../src/data/balanceConfig";
 import { loadProfile, saveProfile, unlockAbility } from "../src/engine/profile";
 
@@ -121,12 +122,12 @@ describe("party select", () => {
     await press("RETURN");
     await press("1");
     await press("RETURN");
-    await press("1");
+    await press("2");
     await press("RIGHT");
     await press("RETURN");
     await press("0");
     await press("RETURN");
-    await press("1");
+    await press("3");
     const party = (await picked)!;
     expect(party.length).toBe(BALANCE.party.size);
     expect(new Set(party.map((p) => p.classId)).size).toBe(party.length);
@@ -134,6 +135,36 @@ describe("party select", () => {
     expect(new Set(abilities).size).toBe(abilities.length);
     expect(party[2]!.abilityId).toBeNull();
     for (const id of abilities) expect(ABILITIES.some((a) => a.id === id)).toBe(true);
+  });
+
+  test("a taken ability stays in place, dimmed and marked taken, and its digit does nothing", async () => {
+    const { frame, press, renderer } = await openScreen();
+    await press("RETURN");
+    const first = frame().match(/\[1\] ([^(]+) \(/)![1]!.trim();
+    await press("1");
+    await press("RETURN");
+    expect(frame()).toContain(`[1] ${first} (common) (taken)`);
+    await press("1");
+    expect(frame()).toContain("Choose an ability for the");
+    expect(frame()).toContain("Party:");
+    expect(frame()).toContain(`(${first})`);
+    renderer.destroy();
+  });
+
+  test("each class marks its recommended abilities with * and explains the mark", async () => {
+    const { frame, press, renderer } = await openScreen();
+    const cls = CLASSES[0]!;
+    await press("RETURN");
+    const shown = frame();
+    for (const id of cls.recommendedAbilityIds) {
+      const ability = ABILITIES.find((a) => a.id === id)!;
+      expect(shown).toContain(`${ability.name} (${ability.rarity}) *`);
+    }
+    const other = ABILITIES.find((a) => a.rarity === "common" && !cls.recommendedAbilityIds.includes(a.id))!;
+    expect(shown).toContain(`${other.name} (${other.rarity})`);
+    expect(shown).not.toContain(`${other.name} (${other.rarity}) *`);
+    expect(shown).toContain(STRINGS["partySelect.recommendedLegend"]!);
+    renderer.destroy();
   });
 
   test("Esc backs out of the ability list, and from browsing undoes the last pick", async () => {

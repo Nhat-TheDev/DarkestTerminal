@@ -3,7 +3,8 @@ import { Rng } from "../src/engine/rng";
 import { startCombat, queueItemAction, checkItemUsable, resolveRound, autoResolveTargets } from "../src/engine/combat";
 import { resolveSkillEffect, tickDotEffects, expireStatusEffect } from "../src/engine/resolver";
 import { recomputeCharacterStats } from "../src/engine/party";
-import { rollItemDrop, getItem, ITEMS, formatItemEffect } from "../src/data/items";
+import { rollItemDrop, getItem, ITEMS, formatItemEffect, describeItemEffects } from "../src/data/items";
+import { t } from "../src/data/strings";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getArchetype } from "../src/data/monsters";
 import type { CombatantRef, ItemDefinition, StatusEffectDefinition } from "../src/types";
@@ -105,9 +106,10 @@ describe("items", () => {
     expect(combat.log.some((l) => l.text.includes("recovers 30 HP"))).toBe(true);
   });
 
-  test("a trophy shows 'No effect.' in item text", () => {
-    expect(formatItemEffect(getItem("rat-tail"))).toBe("No effect.");
-    expect(formatItemEffect(getItem("small-health-potion"))).not.toBe("No effect.");
+  test("a trophy's item text hints that it is worth something to someone else", () => {
+    expect(formatItemEffect(getItem("rat-tail"))).toBe(t("item.trophyHint"));
+    expect(describeItemEffects(getItem("rat-tail"))).toBe(t("item.trophyHint"));
+    expect(formatItemEffect(getItem("small-health-potion"))).not.toBe(t("item.trophyHint"));
   });
 
   test("using a trophy in combat spends it and logs that it has no effect", () => {

@@ -362,6 +362,8 @@ export interface CharacterClass {
   attackRange: AttackRange;
   /** Its hidden personality (`data/personalities.json`): what it notices, and when its bad side shows in the journal. */
   personalityId: Id;
+  /** Abilities the party-select screen marks as a good fit for this class. */
+  recommendedAbilityIds: Id[];
   skills: SkillDefinition[];
   passiveSkill: PassiveSkillDefinition;
   /** A hand of dice the class carries through a fight: `startCount` at the start of every combat, at most `maxCount`; a `throwDice` effect lands at most `maxPerTarget` of them on one enemy. */

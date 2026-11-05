@@ -167,7 +167,7 @@ of the code doesn't need to know the data comes from JSON.
 
 | File | Contents | Loader |
 |---|---|---|
-| `data/classes.json` | 12 classes (Knight/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner/Jester/Paladin/Warlock): stats + all 7 skills per class + the passive | `src/data/classes.ts` |
+| `data/classes.json` | 12 classes (Knight/Mage/Rogue/Acolyte/Viking/Plague Doctor/Archer/Ninja/Summoner/Jester/Paladin/Warlock): stats + all 7 skills per class + the passive, and `recommendedAbilityIds` (the abilities party select marks with `*`) | `src/data/classes.ts` |
 | `data/monsters.json` | 43 monster archetypes (32 trash + 1 triple-role + 9 guard-only + 1 final boss): base stats + AI pattern + `roles` | `src/data/monsters.ts` |
 | `data/monster-skills.json` | Elite/Boss skill kits (strike/cleave/execute/debuff × 10 guard-room archetypes) + regular-monster skills (per-archetype, e.g. Acid Spit, Web Spit, Blood Drain) | `src/data/monsters.ts` |
 | `data/status-effects.json` | Buffs/debuffs (`guard`, `taunt`, `rallied`, `poison-coated`, `poisoned`, `burning`, `stunned`, `weakened`, ...) | `src/data/statusEffects.ts` |
