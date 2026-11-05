@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
+import type { CombatantRef, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -35,13 +35,13 @@ import {
   clearCombatResources,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
-import { CAMP_KIT_ITEM_ID, getItem, rollItemDrop } from "../data/items";
+import { CAMP_KIT_ITEM_ID, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
 import { ABILITIES, rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter, markRetiredCharacterEventShown } from "./profile";
-import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
+import { expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
 import { getStatusEffect } from "../data/statusEffects";
 import { getEvent, RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { t } from "../data/strings";
@@ -517,36 +517,6 @@ export class Game {
   queueItem(actorRef: CombatantRef, itemId: Id, targets: CombatantRef[]): QueueActionError | null {
     if (!this.state.combat) return { reason: t("errors.notInCombat") };
     return queueItemAction(this.state.combat, actorRef, itemId, targets, this.ctx);
-  }
-
-  useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
-    const item = getItem(itemId);
-    if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
-    // Enemy-targeted items and status effects that count down in combat turns exist only for a fight; used beforehand they would be a free pre-buff.
-    if (item.target === "singleEnemy" || item.target === "allEnemies" || item.effects.some((e) => e.kind === "applyStatusEffect")) return { reason: t("errors.itemNotUsableOutOfCombat") };
-
-    const log: LogEntry[] = [];
-    // Satiety is party-wide, so apply it once rather than once per character.
-    const partyWideEffects = item.effects.filter((e) => e.kind === "modifyStat" && e.stat === "satiety");
-    const perCharacterEffects = item.effects.filter((e) => !(e.kind === "modifyStat" && e.stat === "satiety"));
-    const applyTo = (character: (typeof this.state.party)[number]) => {
-      for (const effect of perCharacterEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
-    };
-
-    if (item.target === "allAllies") {
-      for (const c of this.state.party) if (c.isAlive) applyTo(c);
-      const anyAlive = this.state.party.find((c) => c.isAlive);
-      if (anyAlive) for (const effect of partyWideEffects) resolveSkillEffect(effect, anyAlive, anyAlive, { log, gameState: this.state });
-    } else {
-      const character = this.state.party.find((c) => c.id === characterId && c.isAlive);
-      if (!character) return { reason: t("errors.needLivingCharacter") };
-      applyTo(character);
-      for (const effect of partyWideEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
-    }
-
-    this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
-    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t(item.effects.length === 0 ? "game.itemNoEffect" : "game.usedItem", { item: item.name });
-    return null;
   }
 
   readyToResolve(): boolean {

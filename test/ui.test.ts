@@ -26,6 +26,12 @@ import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
 import * as inventoryScreen from "../src/ui/screens/inventory";
+import * as artifactDecisionScreen from "../src/ui/screens/artifactDecision";
+import * as roomScreen from "../src/ui/screens/room";
+import * as eventsScreen from "../src/ui/screens/events";
+import * as campScreen from "../src/ui/screens/camp";
+import * as abilityBuybackScreen from "../src/ui/screens/abilityBuyback";
+import { formatArtifactEffect } from "../src/data/artifacts";
 import { TROPHY_ICON } from "../src/ui/state";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
@@ -497,6 +503,119 @@ describe("list paging", () => {
   });
 });
 
+describe("playtest fixes", () => {
+  test("Twin Altars shows each artifact's effect, not its lore", () => {
+    const game = new Game(1);
+    forceTwinAltars(game);
+    const text = eventsScreen.renderMain(game, { kind: "eventPairedOffer" }) as string;
+    for (const [i, id] of game.state.activeEvent!.offerArtifactIds.entries()) {
+      const a = ARTIFACTS.find((x) => x.id === id)!;
+      expect(text).toContain(`[${i + 1}] ${a.name} (${a.rarity}) — ${formatArtifactEffect(a)}`);
+    }
+  });
+
+  test("ability buyback: Reclaim is locked and [1] does nothing without enough Stardust", () => {
+    const game = new Game(1);
+    const ability = ABILITIES.find((a) => a.rarity === "rare")!;
+    const cost = BALANCE.abilities.stardustCostByRarity.rare;
+    game.state.pendingAbilityBuyback = { entries: [{ characterId: game.state.party[0]!.id, lostAbilityId: ability.id, rarity: "rare" }], resolvedIndex: 0 };
+    game.state.runStardust = cost - 1;
+    expect(abilityBuybackScreen.renderMain(game)).toContain(t("ui.abilityBuybackReclaimLocked", { cost, current: cost - 1 }));
+    expect(abilityBuybackScreen.renderMain(game)).not.toContain("[1]");
+    expect(abilityBuybackScreen.renderFooter(game)).toBe(t("ui.footerAbilityBuybackSkipOnly"));
+    let synced = 0;
+    const ctx = { game, syncUiToGameState: () => synced++, reportUnusable: () => synced++ } as unknown as Parameters<typeof abilityBuybackScreen.handleKey>[0];
+    abilityBuybackScreen.handleKey(ctx, { kind: "abilityBuyback" }, {} as KeyEvent, 1);
+    expect(game.state.pendingAbilityBuyback).not.toBeNull();
+    expect(synced).toBe(0);
+
+    game.state.runStardust = cost;
+    expect(abilityBuybackScreen.renderMain(game)).toContain(t("ui.abilityBuybackReclaimOption", { cost }));
+    expect(abilityBuybackScreen.renderFooter(game)).toBe(t("ui.footerAbilityBuyback"));
+  });
+
+  test("the artifact list and the wearer/replace pickers advertise [Esc] Back", () => {
+    const game = new Game(1);
+    const c = game.state.party[0]!;
+    c.equippedArtifactIds = ARTIFACTS.filter((a) => !a.isCursed).slice(0, 3).map((a) => a.id);
+    expect(artifactsScreen.renderFooter({ kind: "artifactMenu" }, game)).toContain("[Esc] Back");
+    game.state.pendingArtifactDecision = { artifactId: ARTIFACTS[5]!.id, forceEquip: false };
+    expect(artifactDecisionScreen.renderFooter({ kind: "artifactDecisionPickCharacter" }, game)).toContain("[Esc] Back");
+    expect(artifactDecisionScreen.renderFooter({ kind: "artifactDecisionPickReplace", characterId: c.id }, game)).toContain("[Esc] Back");
+  });
+
+  test("the Camp option reads its satiety from the balance config", () => {
+    const game = new Game(1);
+    const original = BALANCE.survival.campSatietyRestore;
+    (BALANCE.survival as { campSatietyRestore: number }).campSatietyRestore = 17;
+    try {
+      expect(campScreen.renderMain(game, { kind: "campPrompt" })).toContain("restore 17 satiety");
+    } finally {
+      (BALANCE.survival as { campSatietyRestore: number }).campSatietyRestore = original;
+    }
+  });
+});
+
+describe("rest room options", () => {
+  test("Eat and Talk read their numbers from the balance config", () => {
+    const game = new Game(1);
+    game.state.combat = null;
+    const survival = BALANCE.survival as { eatDrinkRestoreFraction: number; eatDrinkSatietyRestore: number; chatRestoreFraction: number; chatFearRelief: number };
+    const original = { ...survival };
+    Object.assign(survival, { eatDrinkRestoreFraction: 0.25, eatDrinkSatietyRestore: 35, chatRestoreFraction: 0.15, chatFearRelief: 12 });
+    try {
+      const text = roomScreen.renderMain(game, { kind: "rest" }) as string;
+      expect(text).toContain("restore 25% max HP/MP and 35 satiety");
+      expect(text).toContain("restore 15% max HP/MP, reduce the party's fear by 12");
+    } finally {
+      Object.assign(survival, original);
+    }
+  });
+});
+
+function forceTwinAltars(game: Game): void {
+  const room = getRoom(game.state.floor, game.state.currentRoomId);
+  room.type = "event";
+  room.rolledEventId = "twin-altars";
+  game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: [ARTIFACTS[0]!.id, ARTIFACTS[1]!.id] };
+}
+
+describe("room screen", () => {
+  test("the first line names the room, and an event room adds the event's name", () => {
+    const game = new Game(1);
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.cleared = true;
+    const firstLine = () => {
+      const out = roomScreen.renderMain(game, { kind: "room" });
+      return (typeof out === "string" ? out : out.chunks.map((c) => c.text).join("")).split("\n")[0];
+    };
+    room.type = "combat";
+    room.rolledEventId = undefined;
+    expect(firstLine()).toBe(room.name);
+    room.type = "event";
+    room.rolledEventId = "merchant";
+    expect(firstLine()).toBe(`${room.name} — ${getEvent("merchant").name}`);
+  });
+});
+
+describe("artifact decision", () => {
+  test("choosing a wearer lists only living characters, numbered in that order", () => {
+    const game = new Game(1);
+    const fallen = game.state.party[1];
+    fallen!.isAlive = false;
+    fallen!.hp = 0;
+    game.state.pendingArtifactDecision = { artifactId: ARTIFACTS[0]!.id, forceEquip: true };
+    const ui = { kind: "artifactDecisionPickCharacter" } as const;
+    const text = artifactDecisionScreen.renderMain(game, ui);
+    const living = game.state.party.filter((c) => c.isAlive);
+    expect(living).toHaveLength(game.state.party.length - 1);
+    expect(text).not.toContain(`${fallen!.name} (`);
+    living.forEach((c, i) => expect(text).toContain(`[${i + 1}] ${c.name} (`));
+    expect(artifactDecisionScreen.renderFooter(ui, game)).toContain(`[1-${living.length}]`);
+  });
+});
+
 describe("item lists", () => {
   test("each item shows its effect summary on a second line", () => {
     const game = new Game(1);
@@ -517,6 +636,18 @@ describe("item lists", () => {
     const inCombat = renderCombat(game, { kind: "pickItemInCombat", actorRef }) as string;
     expect(inCombat).not.toContain(kit.name);
     expect(inCombat).toContain(getItem("small-health-potion").name);
+  });
+
+  test("out of combat an item can only be viewed: the camp kit says Camp spends it, the rest say combat", () => {
+    const game = new Game(1);
+    const kit = ITEMS.find((i) => i.campKit)!;
+    const potion = getItem("small-health-potion");
+    game.state.inventory = { [kit.id]: 1, [potion.id]: 1 };
+    expect(inventoryScreen.renderMain(game, { kind: "pickItemOutOfCombat" }).split("\n")[0]).toBe(t("ui.inventoryTitle"));
+    const detail = (item: typeof kit) => inventoryScreen.renderMain(game, { kind: "itemDetail", item, origin: { kind: "outOfCombat" } });
+    expect(detail(kit)).toContain(t("ui.itemCampKitHint"));
+    expect(detail(potion)).toContain(t("ui.itemOutOfCombatViewOnlyHint"));
+    expect(detail(potion)).not.toContain(t("ui.itemDetailUseOption"));
   });
 
   test("a trophy is marked with its own icon", () => {

@@ -39,7 +39,7 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
   switch (ui.kind) {
     case "pickItemOutOfCombat": {
       const { pageItems, page: p, pages } = paginate(inventoryEntries(s.inventory), page, ITEM_PAGE_SIZE);
-      const lines = [t("ui.chooseItemToUse")];
+      const lines = [t("ui.inventoryTitle")];
       pageItems.forEach(({ item, qty }, i) => {
         lines.push(t("ui.inventoryLine", { i: i + 1, name: `${itemIcon(item)} ${item.name}`, qty }));
         lines.push(t("ui.inventoryEffectLine", { effect: describeItemEffects(item) }));
@@ -52,7 +52,7 @@ export function renderMain(game: Game, ui: InventoryUiState, page = 0): string {
       const { item, origin } = ui;
       const lines = [`${itemIcon(item)} ${item.name}`, "", t("ui.effectLabel"), formatItemEffect(item), "", t("ui.descriptionLabel"), item.description, ""];
       if (origin.kind === "outOfCombat") {
-        lines.push(t("ui.itemOutOfCombatViewOnlyHint"), "", t("ui.itemDetailBackOnlyOption"));
+        lines.push(t(item.campKit ? "ui.itemCampKitHint" : "ui.itemOutOfCombatViewOnlyHint"), "", t("ui.itemDetailBackOnlyOption"));
       } else {
         lines.push(t("ui.itemDetailUseOption"), t("ui.itemDetailBackOption"));
       }

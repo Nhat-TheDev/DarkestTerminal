@@ -6,7 +6,6 @@ import { recomputeCharacterStats } from "../src/engine/party";
 import { rollItemDrop, getItem, ITEMS, formatItemEffect } from "../src/data/items";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getArchetype } from "../src/data/monsters";
-import { Game } from "../src/engine/game";
 import type { CombatantRef, ItemDefinition, StatusEffectDefinition } from "../src/types";
 import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
 import { STATUS_EFFECTS, COMBAT_STAT_LABEL, formatStatusEffectMechanics, statusMechanicsParts } from "../src/data/statusEffects";
@@ -125,14 +124,6 @@ describe("items", () => {
     expect(combat.log.some((l) => l.text === "It has no effect at all. Strange.")).toBe(true);
   });
 
-  test("using a trophy outside combat spends it and says it has no effect", () => {
-    const game = new Game(4);
-    game.state.inventory["rat-tail"] = 1;
-    expect(game.useItemOutOfCombat("rat-tail", game.state.party[0]!.id)).toBeNull();
-    expect(game.state.inventory["rat-tail"]).toBe(0);
-    expect(game.state.message).toBe("It has no effect at all. Strange.");
-  });
-
   test("checkItemUsable rejects when inventory has 0 of the item", () => {
     const { ctx } = makeCtx();
     const knight = ctx.party[0]!;
@@ -160,33 +151,6 @@ describe("items", () => {
     tickDotEffects(target, { log: [] });
     const expectedTick = Math.max(1, Math.round((4 + target.maxHp * 0.025) * 1.6));
     expect(before - target.hp).toBe(expectedTick);
-  });
-
-  test("Game.useItemOutOfCombat heals outside combat, decrements inventory, and rejects singleEnemy items", () => {
-    const game = new Game(1);
-    const c = game.state.party[0]!;
-    c.hp = 1;
-    game.state.inventory["small-health-potion"] = 1;
-    expect(game.useItemOutOfCombat("small-health-potion", c.id)).toBeNull();
-    expect(c.hp).toBe(61);
-    expect(game.state.inventory["small-health-potion"]).toBe(0);
-
-    const bomb: ItemDefinition = { id: "test-enemy-item", name: "Test", description: "", target: "singleEnemy", effects: [], tier: "common" };
-    ITEMS.push(bomb);
-    try {
-      game.state.inventory[bomb.id] = 1;
-      expect(game.useItemOutOfCombat(bomb.id, c.id)).not.toBeNull();
-    } finally {
-      ITEMS.splice(ITEMS.indexOf(bomb), 1);
-    }
-  });
-
-  test("Exploration Kit (allAllies satiety) is applied once outside combat, not once per party member", () => {
-    const game = new Game(2);
-    game.state.satiety = 40;
-    game.state.inventory["exploration-kit"] = 1;
-    expect(game.useItemOutOfCombat("exploration-kit")).toBeNull();
-    expect(game.state.satiety).toBe(70);
   });
 
   test("a magic power status raises magicPower, survives a stat recompute and is undone on expiry", () => {
@@ -229,7 +193,7 @@ describe("items", () => {
     expect(formatItemEffect(cure)).toBe("Removes Poisoned. (choose 1 ally)");
   });
 
-  test("an allEnemies item is rejected outside combat and damages every enemy in combat", () => {
+  test("an allEnemies item damages every enemy in combat", () => {
     const bomb: ItemDefinition = {
       id: "test-bomb",
       name: "Test Bomb",
@@ -240,11 +204,6 @@ describe("items", () => {
     };
     ITEMS.push(bomb);
     try {
-      const game = new Game(6);
-      game.state.inventory[bomb.id] = 1;
-      expect(game.useItemOutOfCombat(bomb.id)).not.toBeNull();
-      expect(game.state.inventory[bomb.id]).toBe(1);
-
       const { ctx } = makeCtx();
       const ratA = spawnInto(ctx, "dungeon-rat");
       const ratB = spawnInto(ctx, "dungeon-rat");
@@ -326,13 +285,7 @@ describe("consumable catalog data", () => {
     }
   });
 
-  test("a magic power item raises the user's magicPower in combat and is refused outside it", () => {
-    const game = new Game(8);
-    const outside = game.state.party[0]!;
-    game.state.inventory["spark-salt"] = 1;
-    expect(game.useItemOutOfCombat("spark-salt", outside.id)).not.toBeNull();
-    expect(game.state.inventory["spark-salt"]).toBe(1);
-
+  test("a magic power item raises the user's magicPower in combat", () => {
     const { ctx } = makeCtx();
     const mage = ctx.party.find((c) => c.classId === "mage")!;
     const rat = spawnInto(ctx, "dungeon-rat");
@@ -344,17 +297,6 @@ describe("consumable catalog data", () => {
     expect(queueItemAction(combat, self, "spark-salt", [self], ctx)).toBeNull();
     resolveRound(combat, ctx);
     expect(mage.magicPower).toBe(before + 5);
-  });
-
-  test("every item that applies a status is refused outside combat", () => {
-    const game = new Game(9);
-    const statusItems = ITEMS.filter((i) => i.effects.some((e) => e.kind === "applyStatusEffect"));
-    expect(statusItems.length).toBeGreaterThan(0);
-    for (const item of statusItems) {
-      game.state.inventory[item.id] = 1;
-      expect(game.useItemOutOfCombat(item.id, game.state.party[0]!.id)).not.toBeNull();
-      expect(game.state.inventory[item.id]).toBe(1);
-    }
   });
 });
 

@@ -1455,7 +1455,7 @@ export class App implements ScreenContext {
       case "gatekeeper":
         return gatekeeperScreen.renderFooter(this.ui, this.game);
       case "abilityBuyback":
-        return abilityBuybackScreen.renderFooter();
+        return abilityBuybackScreen.renderFooter(this.game);
       case "gameover":
         return gameoverScreen.renderFooter(this.game);
       case "fullLog":

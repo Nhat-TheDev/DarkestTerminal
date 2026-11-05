@@ -178,7 +178,7 @@ export function startCombat(roomId: string, monsterIds: string[], ctx: EngineCon
     turnQueue: [],
     activeTurnIndex: 0,
     isBossFight,
-    log: [{ text: t("combat.started", { roomId }), kind: "info" }],
+    log: [{ text: t("combat.started"), kind: "info" }],
   };
 }
 

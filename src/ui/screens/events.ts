@@ -2,7 +2,7 @@ import type { StyledText, KeyEvent } from "@opentui/core";
 import type { Character, GameState } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
-import { getArtifact } from "../../data/artifacts";
+import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
 import { getEvent } from "../../data/events";
 import { getRoom, pickEventText } from "../../engine/dungeon";
 import { getJournalEcho } from "../../data/journal";
@@ -296,7 +296,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const lines = [currentEventDescription(s), "", t("ui.twinAltarsIntro")];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
-        lines.push(`  [${i + 1}] ${a.name} (${a.rarity}) — ${truncateText(a.description, 40)}`);
+        lines.push(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, effect: formatArtifactEffect(a) }));
       });
       return lines.join("\n");
     }

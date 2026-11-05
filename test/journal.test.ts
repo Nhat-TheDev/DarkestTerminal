@@ -12,7 +12,8 @@ import { JOURNAL_PAGES, validateJournal, type JournalData } from "../src/data/jo
 import { maybeTriggerReflection } from "../src/engine/events/shared";
 import { migrateGameState } from "../src/engine/migration";
 import { availableDirections, deductionOptions, faceOf, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
-import { getJournalLine } from "../src/data/journal";
+import { getJournalFragment, getJournalLine } from "../src/data/journal";
+import { CLASSES } from "../src/data/classes";
 import { journalPages, renderDeduction } from "../src/ui/screens/journal";
 import journalJson from "../data/journal.json";
 import type { Character } from "../src/types";
@@ -186,6 +187,22 @@ describe("journal find", () => {
     expect(game.journal.fragments).toEqual([]);
     const who = game.state.party.find((c) => c.id === game.state.pendingJournalFind?.characterId);
     expect(who).toBeDefined();
+  });
+
+  test("when no living member would argue the fragment, nobody is named as the one who noticed it", () => {
+    const game = slotGame();
+    forceEventRoom(game, "old-count");
+    game.state.journalHandledRoomId = null;
+    const fragmentId = grantFragments({ kind: "eventResolved", eventId: "old-count", outcome: undefined, baseTextShown: true }, { ...game.state, pendingJournalFind: null })[0]!;
+    const voiced = new Set(
+      getJournalFragment(fragmentId)!.lineIds.flatMap((id) => getJournalLine(id)!.directions.flatMap((d) => Object.keys(d.personalities ?? {})))
+    );
+    const silent = CLASSES.find((c) => !voiced.has(c.personalityId));
+    expect(silent).toBeDefined();
+    for (const c of game.state.party.slice(1)) c.isAlive = false;
+    game.state.party[0]!.classId = silent!.id;
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingJournalFind?.characterId).toBeNull();
   });
 
   test("moving on writes nothing, and the fragment isn't found again this run", () => {
