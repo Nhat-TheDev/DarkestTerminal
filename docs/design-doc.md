@@ -42,7 +42,7 @@ with the description of existing gameplay.
 - Full stat tables + skill content for each class, plus the 3-rank skill power-scaling system: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1 (all 12 classes)
 
 ### 1.6 Item & Artifact
-- **Consumable items**: restore HP/MP/fear/satiety, usable in or out of combat unless flagged `combatUsable: false` (e.g. the Camp-only Exploration Kit), dropped randomly by monsters
+- **Consumable items**: restore HP/MP/fear, usable only in combat (outside it they can only be viewed), dropped randomly by monsters; the Exploration Kit (`combatUsable: false`) is spent by Camp instead
 - **Artifact**: a relic **equipped** on one specific character (a limited number of slots per character, `data/balance-config.json` field `party.maxEquippedArtifacts`), effects only apply to whoever has it equipped, **permanent for the run once equipped — no manual unequip** beyond 3 narrow exceptions, with multiple rarity tiers, dropped by Elites/Bosses/event rooms. Every pickup is a single immediate decision: equip now (on a chosen character, replacing 1 of their own artifacts if full) or discard for good.
 - Full spec (decision flow, item/artifact list, drop rates, rarity tiers): **[`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)** §7
 

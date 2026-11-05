@@ -22,6 +22,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "humble",
+    "recommendedAbilityIds": ["iron-skin", "hardy-constitution", "unshaken-resolve"],
     "skills": [
       {
         "id": "slash",
@@ -484,6 +485,7 @@
     "baseMagicPower": 16,
     "attackRange": "ranged",
     "personalityId": "gentle",
+    "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "hardy-constitution"],
     "skills": [
       {
         "id": "arcane-bolt",
@@ -961,6 +963,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "patient",
+    "recommendedAbilityIds": ["battle-instinct", "leechs-thirst", "sidestep"],
     "skills": [
       {
         "id": "stab",
@@ -1386,6 +1389,7 @@
     "baseMagicPower": 10,
     "attackRange": "ranged",
     "personalityId": "blunt",
+    "recommendedAbilityIds": ["deep-reserves", "arcane-aptitude", "unshaken-resolve"],
     "skills": [
       {
         "id": "smite",
@@ -1978,6 +1982,7 @@
     "baseMagicPower": 8,
     "attackRange": "melee",
     "personalityId": "craft-pride",
+    "recommendedAbilityIds": ["battle-instinct", "leechs-thirst", "hardy-constitution"],
     "skills": [
       {
         "id": "axe-slash",
@@ -2409,6 +2414,7 @@
     "baseMagicPower": 13,
     "attackRange": "ranged",
     "personalityId": "seeks-meaning",
+    "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "stubborn-blood"],
     "skills": [
       {
         "id": "vial-toss",
@@ -2992,6 +2998,7 @@
     "baseMagicPower": 0,
     "attackRange": "ranged",
     "personalityId": "bold",
+    "recommendedAbilityIds": ["battle-instinct", "sidestep", "deep-reserves"],
     "skills": [
       {
         "id": "quick-shot",
@@ -3391,6 +3398,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "inquisitive",
+    "recommendedAbilityIds": ["sidestep", "battle-instinct", "leechs-thirst"],
     "skills": [
       {
         "id": "kunai-strike",
@@ -3894,6 +3902,7 @@
     "baseMagicPower": 12,
     "attackRange": "ranged",
     "personalityId": "loyal",
+    "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "hardy-constitution"],
     "skills": [
       {
         "id": "hollow-pulse",
@@ -4373,6 +4382,7 @@
     "baseMagicPower": 10,
     "attackRange": "ranged",
     "personalityId": "practical",
+    "recommendedAbilityIds": ["sidestep", "battle-instinct", "arcane-aptitude"],
     "dice": {
       "startCount": 3,
       "maxCount": 12,
@@ -4882,6 +4892,7 @@
     "baseMagicPower": 8,
     "attackRange": "melee",
     "personalityId": "dry-wit",
+    "recommendedAbilityIds": ["iron-skin", "hardy-constitution", "deep-reserves"],
     "skills": [
       {
         "id": "mace-strike",
@@ -5418,6 +5429,7 @@
     "baseMagicPower": 15,
     "attackRange": "ranged",
     "personalityId": "cautious",
+    "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "stubborn-blood"],
     "skills": [
       {
         "id": "eldritch-bolt",

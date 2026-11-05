@@ -4,6 +4,7 @@ import { createFloor } from "../src/data/floor";
 import { createCharacter } from "../src/engine/party";
 import { Rng } from "../src/engine/rng";
 import { connectedRooms } from "../src/engine/dungeon";
+import { STRINGS, t } from "../src/data/strings";
 
 describe("floor layout", () => {
   test("every room is reachable from the entry room", () => {
@@ -55,3 +56,16 @@ describe("character creation", () => {
   });
 });
 
+describe("strings", () => {
+  test("{{n|one|many}} picks the singular form only for exactly 1", () => {
+    expect(t("errors.skillOnCooldown", { turns: 1 })).toBe("Still on cooldown (1 turn left).");
+    expect(t("errors.skillOnCooldown", { turns: 2 })).toBe("Still on cooldown (2 turns left).");
+    expect(t("game.coinsEarned", { amount: 1 })).toBe("The party earns 1 coin.");
+    expect(t("game.coinsEarned", { amount: 0 })).toBe("The party earns 0 coins.");
+  });
+
+  test("no string writes a count straight before a plural noun without the plural form", () => {
+    const bare = /\{\{(?!actor\}\})\w+\}\} (turns|coins|stacks|uses|rooms|minions|actions|counters|hits|dice)\b/;
+    expect(Object.entries(STRINGS).filter(([, text]) => bare.test(text)).map(([key]) => key)).toEqual([]);
+  });
+});

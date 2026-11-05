@@ -2,6 +2,8 @@ import { StyledText, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { getRoom } from "../../engine/dungeon";
 import { t } from "../../data/strings";
+import { getEvent } from "../../data/events";
+import { BALANCE } from "../../data/balanceConfig";
 import type { Room } from "../../types";
 import type { UiState } from "../state";
 import { inventoryEntries } from "../state";
@@ -57,7 +59,12 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
       const room = getRoom(s.floor, s.currentRoomId);
       const choices = game.connectedRoomChoices();
       const lines: TextChunk[][] = [
-        [colorChunk(t("ui.roomTypeLine", { type: room.type, clearedTag: room.cleared ? t("ui.clearedTag") : "" }), PALETTE.text)],
+        [
+          colorChunk(
+            room.rolledEventId ? t("ui.roomEventTitleLine", { room: room.name, event: getEvent(room.rolledEventId).name }) : t("ui.roomTitleLine", { room: room.name }),
+            PALETTE.text
+          ),
+        ],
         [],
         [colorChunk(t("ui.pathsLabel"), PALETTE.text)],
       ];
@@ -68,7 +75,10 @@ export function renderMain(game: Game, ui: RoomUiState): string | StyledText {
     case "rest": {
       const room = getRoom(s.floor, s.currentRoomId);
       const trade = s.restRunner ? [t("ui.restOptTrade")] : [];
-      return [t("dungeon.restEnter", { room: room.name }), "", t("ui.restOptEat"), t("ui.restOptChat"), ...trade, t("ui.restOptSkip")].join("\n");
+      const rest = BALANCE.survival;
+      const eat = t("ui.restOptEat", { percent: Math.round(rest.eatDrinkRestoreFraction * 100), satiety: rest.eatDrinkSatietyRestore });
+      const chat = t("ui.restOptChat", { percent: Math.round(rest.chatRestoreFraction * 100), fear: rest.chatFearRelief });
+      return [t("dungeon.restEnter", { room: room.name }), "", eat, chat, ...trade, t("ui.restOptSkip")].join("\n");
     }
   }
 }

@@ -196,6 +196,7 @@ export function resolveArtifactEquip(state: GameState, characterId: Id, replaceA
   if (!pending) return { reason: t("errors.noPendingArtifactDecision") };
   const character = state.party.find((c) => c.id === characterId);
   if (!character) return { reason: t("errors.characterNotFound") };
+  if (!character.isAlive) return { reason: t("errors.needLivingCharacter") };
 
   let replacedName: string | null = null;
   if (character.equippedArtifactIds.length >= MAX_EQUIPPED_ARTIFACTS) {

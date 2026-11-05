@@ -72,13 +72,17 @@ const TARGET_NOTE: Record<string, string> = {
   allEnemies: t("item.targetNoteAllEnemies"),
 };
 
+function noEffectText(item: ItemDefinition): string {
+  return t(item.archetypeIds?.length ? "item.trophyHint" : "item.effectNone");
+}
+
 export function describeItemEffects(item: ItemDefinition): string {
-  if (item.effects.length === 0) return t("item.effectNone");
+  if (item.effects.length === 0) return noEffectText(item);
   return item.effects.map(itemEffectSummary).join(". ") + ".";
 }
 
 export function formatItemEffect(item: ItemDefinition): string {
-  if (item.effects.length === 0) return t("item.effectNone");
+  if (item.effects.length === 0) return noEffectText(item);
   return describeItemEffects(item) + (TARGET_NOTE[item.target] ?? "");
 }
 

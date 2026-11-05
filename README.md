@@ -57,6 +57,8 @@ bun install
 bun run start
 ```
 
+It plays best in a terminal of at least 150×70; 150×45 is the smallest it fits.
+
 ## 🎮 How to Play
 
 **Starting up.** You'll first see the title (splash) screen — press any key

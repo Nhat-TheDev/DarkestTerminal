@@ -102,6 +102,19 @@ describe("artifacts", () => {
     expect(c.equippedArtifactIds).toEqual(["iron-gauntlet", "ancient-sword", "heart-of-stone"]);
   });
 
+  test("a fallen character can't take an artifact; it stays pending for a living one", () => {
+    const game = new Game(1);
+    const [fallen, living] = game.state.party;
+    fallen!.isAlive = false;
+    fallen!.hp = 0;
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: true };
+    expect(game.resolveArtifactEquip(fallen!.id)).toEqual({ reason: t("errors.needLivingCharacter") });
+    expect(fallen!.equippedArtifactIds).toEqual([]);
+    expect(game.state.pendingArtifactDecision).not.toBeNull();
+    expect(game.resolveArtifactEquip(living!.id)).toBeNull();
+    expect(living!.equippedArtifactIds).toEqual(["iron-gauntlet"]);
+  });
+
   test("discarding a pending ordinary artifact leaves no trace; a forceEquip one can't be discarded", () => {
     const game = new Game(1);
     game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false };

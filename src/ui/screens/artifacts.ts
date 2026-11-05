@@ -65,7 +65,7 @@ export function renderFooter(ui: ArtifactsUiState, game: Game, page = 0): string
   switch (ui.kind) {
     case "artifactMenu": {
       const { pageItems } = paginate(ownedArtifactEntries(game.state.party), page);
-      return digitHint("ui.footerChooseArtifact", pageItems.length);
+      return digitHint("ui.footerChooseArtifactEsc", pageItems.length);
     }
     case "artifactDetail":
       return digitHint("ui.detailFooter", 1);

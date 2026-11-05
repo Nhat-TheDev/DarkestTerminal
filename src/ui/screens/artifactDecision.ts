@@ -28,7 +28,7 @@ export function handleKey(ctx: ScreenContext, ui: ArtifactDecisionUiState, _key:
     }
     case "artifactDecisionPickCharacter": {
       if (digit === null) break;
-      const character = ctx.game.state.party[digit - 1];
+      const character = ctx.game.state.party.filter((c) => c.isAlive)[digit - 1];
       if (!character) break;
       if (character.equippedArtifactIds.length < MAX_EQUIPPED_ARTIFACTS) {
         const err = ctx.game.resolveArtifactEquip(character.id);
@@ -81,7 +81,7 @@ export function renderMain(game: Game, ui: ArtifactDecisionUiState): string {
     case "artifactDecisionPickCharacter": {
       const artifact = getArtifact(pending.artifactId);
       const lines = [t("ui.artifactForcedEquipChooseCharacter", { artifact: artifact.name }), "", formatArtifactEffect(artifact), ""];
-      s.party.forEach((c, i) =>
+      s.party.filter((c) => c.isAlive).forEach((c, i) =>
         lines.push(`  [${i + 1}] ${c.name} (${game.className(c.classId)}) ${t("ui.artifactSlotsTag", { count: c.equippedArtifactIds.length, max: MAX_EQUIPPED_ARTIFACTS })}`)
       );
       return lines.join("\n");
@@ -106,11 +106,11 @@ export function renderFooter(ui: ArtifactDecisionUiState, game: Game): string {
     case "artifactDecision":
       return digitHint("ui.footerArtifactDecision", game.state.pendingArtifactDecision?.forceEquip ? 1 : 2);
     case "artifactDecisionPickCharacter":
-      return digitHint("ui.footerChooseCharacter", game.state.party.length);
+      return digitHint("ui.footerChooseCharacterEsc", game.state.party.filter((c) => c.isAlive).length);
     case "artifactDecisionPickReplace": {
       const character = game.state.party.find((c) => c.id === ui.characterId);
       const ordinary = character?.equippedArtifactIds.filter((id) => !getArtifact(id).isCursed) ?? [];
-      return digitHint("ui.footerChooseArtifact", ordinary.length);
+      return digitHint("ui.footerChooseArtifactEsc", ordinary.length);
     }
   }
 }
