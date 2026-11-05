@@ -79,6 +79,7 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
   state.currentRoomId = targetRoomId;
   state.roomPath.push(targetRoomId);
   const room = getRoom(state.floor, targetRoomId);
+  delete room.hidden;
   // Counted before the room's own effects, so a fight that starts on arrival is already blessed.
   const blessingNote = countBlessedRoom(state, room);
   enterRoom(state, room, ctx);

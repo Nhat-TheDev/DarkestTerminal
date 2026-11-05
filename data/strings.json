@@ -260,6 +260,7 @@
   "ui.roomTitleLine": "{{room}}",
   "ui.roomEventTitleLine": "{{room}} — {{event}}",
   "ui.pathsLabel": "Paths:",
+  "ui.unknownRoomChoice": "??? (unknown)",
   "ui.artifactsListTitle": "Artifacts:",
   "ui.noArtifactsYet": "  (No artifacts yet — picked up from Elites/Bosses.)",
   "ui.artifactDecisionTitle": "You receive the artifact {{artifact}} ({{rarity}}).",
