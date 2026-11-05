@@ -228,18 +228,27 @@ interface BalanceConfig {
     stardustCostByRarity: Record<Exclude<ArtifactRarity, "common">, number>;
   };
   floorGeneration: {
-    minPathRooms: number;
-    maxPathRooms: number;
-    maxBranches: number;
-    minBranchStartStage: number;
-    minBranchSpacing: number;
-    maxEventRoomsPerPath: number;
-    minEventRoomsPerFloor: number;
-    minStandaloneEventRooms: number;
-    maxStandaloneEventRooms: number;
-    minStandaloneEventStage: number;
-    minRestRoomsPerPath: number;
-    maxRestRoomsPerPath: number;
+    minRouteRooms: number;
+    maxRouteRooms: number;
+    minRestRoomsPerRoute: number;
+    maxRestRoomsPerRoute: number;
+    minEventRoomsPerRoute: number;
+    /** The event cap on most floors; a floor rolls `manyEventsFloorChance` to raise it to `maxEventRoomsPerRoute`. */
+    commonMaxEventRoomsPerRoute: number;
+    maxEventRoomsPerRoute: number;
+    manyEventsFloorChance: number;
+    maxParallelLanes: number;
+    minLaneRooms: number;
+    splitChance: number;
+    nestedSplitChance: number;
+    eventRoomWeight: number;
+    restRoomWeight: number;
+    generationAttempts: number;
+    unknownRoomsMeanAtFirstFloor: number;
+    unknownRoomsMeanGrowthPerFloor: number;
+    /** Depth past which the unknown-room mean stops growing. */
+    unknownRoomsMeanCapDepth: number;
+    unknownRoomsSpread: number;
     /** Each template is one possible combat room's monster tiers. */
     roomCompositionTemplates: ("weak" | "medium" | "strong")[][];
   };

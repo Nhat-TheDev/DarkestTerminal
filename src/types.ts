@@ -833,6 +833,8 @@ export interface Room {
   connectedRoomIds: Id[];
   monsterIds: Id[];
   cleared: boolean;
+  /** Shown as unknown until the party enters it; absent means visible. */
+  hidden?: boolean;
   rolledEventId?: Id;
   chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
   /** Index into `[event.description, ...event.descriptionVariants]`; undefined when the event has no variants. */

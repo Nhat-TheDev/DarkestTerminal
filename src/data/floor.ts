@@ -1,7 +1,7 @@
 import type { Floor, Monster, Room, RoomType, MonsterArchetype } from "../types";
 import { spawnMonster } from "./monsters";
 import { COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES } from "./monsters";
-import { generateFloorLayout, roomTypeForTag, type RoomToken } from "./floorPatterns";
+import { generateFloorLayout, type LayoutRoom } from "./floorPatterns";
 import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
@@ -74,45 +74,27 @@ const ROOM_SPAWN_STRATEGIES: Partial<Record<RoomType, RoomSpawnFn>> = {
   boss: spawnBossRoomMonsters,
 };
 
-export function buildFloorFromStages(stages: RoomToken[][], rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
+export function buildFloorFromLayout(layout: LayoutRoom[], rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const monsters: Monster[] = [];
   const usedNames = new Set<string>();
 
-  const rooms: Room[] = [];
-  for (let stageIdx = 0; stageIdx < stages.length; stageIdx++) {
-    const stage = stages[stageIdx]!;
-    const nextStage = stages[stageIdx + 1];
-    const nextIds = nextStage ? nextStage.map((r) => `r${r.roomId}`) : [];
+  const rooms: Room[] = layout.map((token) => {
+    const roomMonsters = ROOM_SPAWN_STRATEGIES[token.type]?.(rng, depth) ?? [];
+    monsters.push(...roomMonsters);
+    return {
+      id: token.id,
+      name: pickRoomName(token.type, usedNames, rng),
+      type: token.type,
+      connectedRoomIds: [...token.next],
+      monsterIds: roomMonsters.map((m) => m.id),
+      cleared: false,
+      ...(token.hidden ? { hidden: true } : {}),
+    };
+  });
 
-    for (const token of stage) {
-      const type = roomTypeForTag(token.tag);
-      const id = `r${token.roomId}`;
-
-      const roomMonsters = ROOM_SPAWN_STRATEGIES[type]?.(rng, depth) ?? [];
-      monsters.push(...roomMonsters);
-      const monsterIds = roomMonsters.map((m) => m.id);
-
-      rooms.push({
-        id,
-        name: pickRoomName(type, usedNames, rng),
-        type,
-        connectedRoomIds: nextIds,
-        monsterIds,
-        cleared: false,
-      });
-    }
-  }
-
-  const floor: Floor = {
-    depth,
-    rooms,
-    entryRoomId: rooms[0]!.id,
-  };
-
-  return { floor, monsters };
+  return { floor: { depth, rooms, entryRoomId: rooms[0]!.id }, monsters };
 }
 
 export function createFloor(rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
-  const stages = generateFloorLayout(rng);
-  return buildFloorFromStages(stages, rng, depth);
+  return buildFloorFromLayout(generateFloorLayout(rng, depth), rng, depth);
 }

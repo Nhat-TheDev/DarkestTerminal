@@ -143,7 +143,7 @@ describe("the blessing's room count", () => {
   });
 
   test("moving into the next room counts it and blesses a fight that starts there", () => {
-    const game = newRun();
+    const game = newRun(1);
     game.answerGatekeeper("paid");
     game.enterDungeon();
     game.state.combat = null;
