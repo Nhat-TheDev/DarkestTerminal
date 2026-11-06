@@ -61,7 +61,7 @@ import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 import { maybeTriggerReflection } from "./events/shared";
-import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, findOpensScene, grantFragments, lookAtFind, mergedHands, passFind, recordEcho, resolveDeduction, showsBaseText, tearOut } from "./journal";
+import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, findOpensScene, grantFragments, type JournalTrigger, lookAtFind, mergedHands, passFind, recordEcho, resolveDeduction, showsBaseText, tearOut } from "./journal";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
@@ -74,8 +74,8 @@ export class Game {
   public memoryIntroShown = false;
   /** The slot's journal, kept here and written back to the profile on every change; a run with no slot keeps it only in memory. */
   public journal: SlotJournal;
-  /** Set when a room copies a fragment without opening a scene; the UI logs it once. */
-  public journalNoticePending = false;
+  /** Fragments copied without opening a scene, with who noticed them; the UI shows them once. */
+  private journalNotice: { fragmentIds: Id[]; characterId: Id | null } | null = null;
   /** The slot's run count when this run began; journal entries and echoes are stamped with it. */
   readonly runNumber: number;
   /** The slot's dropped journal, kept in step with the profile so screens don't read the file to show it. */
@@ -202,10 +202,17 @@ export class Game {
     let journalFind = false;
     if (room.cleared && room.rolledEventId && this.state.journalHandledRoomId !== room.id) {
       this.state.journalHandledRoomId = room.id;
-      grantFragments({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown }, this.state);
-      journalFind = findOpensScene(this.journal, this.state);
+      journalFind = this.grantJournalFind({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown });
     }
     maybeTriggerReflection(this.state, this.ctx, journalFind);
+  }
+
+  /** Holds the trigger's fragments as a find only when looking would open a scene; otherwise copies them straight in. */
+  private grantJournalFind(trigger: JournalTrigger): boolean {
+    grantFragments(trigger, this.state);
+    if (findOpensScene(this.journal, this.state)) return true;
+    this.resolveJournalFind(true);
+    return false;
   }
 
   /** Looks at the pending find, or moves on from it. Returns the fragments looked at that opened no scene. */
@@ -215,8 +222,11 @@ export class Game {
       passFind(this.state);
       return [];
     }
+    const characterId = this.state.pendingJournalFind.characterId;
     const unshown = lookAtFind(this.journal, this.state, this.runNumber);
-    if (unshown.length > 0) this.journalNoticePending = true;
+    if (unshown.length > 0) {
+      this.journalNotice = { fragmentIds: [...(this.journalNotice?.fragmentIds ?? []), ...unshown], characterId: this.journalNotice?.characterId ?? characterId };
+    }
     this.saveJournal();
     return unshown;
   }
@@ -254,10 +264,15 @@ export class Game {
     return this.dropped;
   }
 
-  takeJournalNotice(): boolean {
-    const pending = this.journalNoticePending;
-    this.journalNoticePending = false;
-    return pending;
+  journalNoticeView(): { fragmentIds: Id[]; characterId: Id | null } | null {
+    return this.journalNotice;
+  }
+
+  /** Closes the notice and returns the fragments it showed. */
+  dismissJournalNotice(): Id[] {
+    const ids = this.journalNotice?.fragmentIds ?? [];
+    this.journalNotice = null;
+    return ids;
   }
 
   playTimeSec(): number {
@@ -844,7 +859,7 @@ export class Game {
       const omen = pickFloorMilestoneOmen(this.state.floor.depth, this.state.shownFloorMilestoneIds, this.ctx.rng);
       this.state.shownFloorMilestoneIds.push(omen.id);
       this.state.pendingFloorMilestoneOmenId = omen.id;
-      grantFragments({ kind: "omen", omenId: omen.id }, this.state);
+      this.grantJournalFind({ kind: "omen", omenId: omen.id });
     }
     if (wasBossRoomVictory) {
       drainAtFloorClear(this.journal, this.state);
