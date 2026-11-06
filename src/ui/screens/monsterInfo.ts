@@ -111,7 +111,7 @@ function skillLines(skills: SkillDefinition[], head: (skill: SkillDefinition) =>
     const effects = [...(skill.effects ?? []).map((e) => skillEffectLine(e, skill, MONSTER_TARGET_SUFFIX)), ...skillMechanicLines(skill)];
     for (const effect of effects) {
       if (effect === null) continue;
-      for (const line of effect.split("\n")) lines.push([colorChunk(`  ${line}`, PALETTE.dim)]);
+      for (const line of effect.split("\n")) lines.push([colorChunk(line, PALETTE.dim)]);
     }
     lines.push(...detail(skill.description, width));
   }

@@ -377,7 +377,6 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
-    this.game.noteSeenMonsters();
     if (this.game.takeJournalNotice()) this.logInfo(t("ui.journalNoted"));
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
