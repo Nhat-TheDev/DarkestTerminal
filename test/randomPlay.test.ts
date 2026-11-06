@@ -400,6 +400,16 @@ describe("random-play teams", () => {
     expect(chooseRoom(game)).toBe(2);
     expect(chooseRest(game)).toBe("2");
   });
+
+  test("an unknown room is chosen by what the player sees, not by what is inside", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const rooms = [{ type: "rest", cleared: false, hidden: true }, { type: "event", cleared: false }] as Room[];
+    game.connectedRoomChoices = () => rooms;
+    game.state.satiety = 50;
+    expect(chooseRoom(game)).toBe(2);
+    rooms[0]!.hidden = undefined;
+    expect(chooseRoom(game)).toBe(1);
+  });
 });
 
 describe("random-play CLI", () => {

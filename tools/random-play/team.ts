@@ -315,11 +315,11 @@ function partyNeedsRest(game: Game): boolean {
 const ROOM_ORDER_RESTED: Room["type"][] = ["combat", "event", "rest", "boss"];
 const ROOM_ORDER_TIRED: Room["type"][] = ["rest", "event", "combat", "boss"];
 
-/** 1-based choice on the room screen. */
+/** 1-based choice on the room screen. An unknown room is ranked by what the player sees, after every known type. */
 export function chooseRoom(game: Game): number {
   const choices = game.connectedRoomChoices();
   const order = partyNeedsRest(game) ? ROOM_ORDER_TIRED : ROOM_ORDER_RESTED;
-  const rank = (room: Room) => (room.cleared ? order.length : order.indexOf(room.type));
+  const rank = (room: Room) => (room.cleared ? order.length + 1 : room.hidden ? order.length : order.indexOf(room.type));
   return choices.reduce((best, room, i) => (rank(room) < rank(choices[best]!) ? i : best), 0) + 1;
 }
 

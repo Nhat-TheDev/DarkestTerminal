@@ -27,6 +27,11 @@ function shuffle<T>(items: T[], rng: Rng): T[] {
   return items;
 }
 
+/** How many lanes run side by side at the widest point of a sequence, cross branches included. */
+function shapeWidth(seq: Shape[]): number {
+  return Math.max(1, ...seq.map((item) => (item.kind === "room" ? 1 : item.lanes.reduce((sum, lane) => sum + shapeWidth(lane), 0) + (item.cross ? 1 : 0))));
+}
+
 /** `span` columns of rooms and splits. Inside a lane the first and last items are rooms, so the lane's own split and join stay apart from the outer ones. */
 function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape[] {
   const items: Shape[] = [];
@@ -37,8 +42,7 @@ function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape
     if (canSplit && rng.chance(inLane ? CONFIG.nestedSplitChance : CONFIG.splitChance)) {
       const splitSpan = rng.int(CONFIG.minLaneRooms, maxSplitSpan);
       const laneCount = rng.int(2, Math.min(CONFIG.maxLanesPerSplit, width));
-      const wantsCross = width > laneCount && rng.chance(CONFIG.crossMergeChance);
-      let spareWidth = width - laneCount - (wantsCross ? 1 : 0);
+      let spareWidth = width - laneCount;
       const lanes: Shape[][] = [];
       for (let i = 0; i < laneCount; i++) {
         const extraWidth = i === laneCount - 1 ? spareWidth : rng.int(0, spareWidth);
@@ -47,7 +51,8 @@ function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape
         lanes.push(shapeSeq(length, 1 + extraWidth, true, rng));
       }
       shuffle(lanes, rng);
-      const cross = wantsCross ? pickCrossBranch(lanes, rng) : undefined;
+      const unusedWidth = width - lanes.reduce((sum, lane) => sum + shapeWidth(lane), 0);
+      const cross = unusedWidth > 0 && rng.chance(CONFIG.crossMergeChance) ? pickCrossBranch(lanes, rng) : undefined;
       items.push({ kind: "split", lanes, ...(cross ? { cross } : {}) });
       col += splitSpan;
     } else {
