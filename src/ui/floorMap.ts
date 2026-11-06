@@ -253,15 +253,15 @@ function legendLine(): TextChunk[] {
   ]);
 }
 
-/** The whole floor as a block of rows sharing one left edge: title, map, legend. */
-export function renderFloorMap(floor: Floor, roomPath: Id[], currentRoomId: Id): { rows: TextChunk[][]; width: number } {
+/** The whole floor as a block of rows sharing one left edge: title, map, legend. Exits carry their digit only where pressing it moves the party. */
+export function renderFloorMap(floor: Floor, roomPath: Id[], currentRoomId: Id, exitKeys = true): { rows: TextChunk[][]; width: number } {
   const graph = new FloorGraph(
     floor.rooms.map((r) => ({ id: r.id, type: r.type, next: r.connectedRoomIds })),
     floor.entryRoomId
   );
   const byId = new Map(floor.rooms.map((r) => [r.id, r]));
   const current = byId.get(currentRoomId)!;
-  const keys = new Map(current.connectedRoomIds.map((id, i) => [id, i + 1]));
+  const keys = new Map(exitKeys ? current.connectedRoomIds.map((id, i) => [id, i + 1]) : []);
   const canvas = new MapCanvas(graph, new Set(roomPath));
 
   const rows: TextChunk[][] = [

@@ -47,7 +47,7 @@ import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHe
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { canOpenJournal, canOpenMemory, composeFooter } from "./keyHints";
+import { VIEWER_KINDS, canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -69,6 +69,8 @@ import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
 import * as abilityBuybackScreen from "./screens/abilityBuyback";
 import * as characterInfoScreen from "./screens/characterInfo";
+import * as floorMapViewScreen from "./screens/floorMapView";
+import * as monsterInfoScreen from "./screens/monsterInfo";
 import * as runnerScreen from "./screens/runner";
 
 const ROOM_LOG_SIZE = 50;
@@ -120,6 +122,11 @@ export class App implements ScreenContext {
   private fullLogJustOpened = false;
   private fullLogBuiltFrom = -1;
   private fullLogBuiltWidth = -1;
+  /** The full-screen viewers (map, monsters, bestiary) share one scrolling box. */
+  private viewerBox: BoxRenderable;
+  private viewerText: TextRenderable;
+  private viewerScroll: ScrollBoxRenderable;
+  private viewerShownKey: string | null = null;
   private lastLogLength = 0;
   private observedCombat: CombatState | null = null;
   /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
@@ -262,6 +269,13 @@ export class App implements ScreenContext {
     this.fullLogBox.add(this.fullLogScroll);
     this.root.add(this.fullLogBox);
 
+    this.viewerBox = new BoxRenderable(renderer, { id: "viewer-box", ...panel, flexGrow: 1, visible: false });
+    this.viewerScroll = new ScrollBoxRenderable(renderer, { id: "viewer-scroll", width: "100%", height: "100%", scrollX: false, scrollY: true });
+    this.viewerText = new TextRenderable(renderer, { id: "viewer", content: "", fg: PALETTE.text });
+    this.viewerScroll.add(this.viewerText);
+    this.viewerBox.add(this.viewerScroll);
+    this.root.add(this.viewerBox);
+
     this.footer = new TextRenderable(renderer, { id: "footer", content: "", fg: PALETTE.dim });
     const footerBox = new BoxRenderable(renderer, { id: "footer-box", height: 1, backgroundColor: PALETTE.bg });
     footerBox.add(this.footer);
@@ -351,6 +365,8 @@ export class App implements ScreenContext {
       case "memory":
       case "journal":
         return ui.pages.length;
+      case "bestiary":
+        return ui.viewingId === null ? monsterInfoScreen.bestiaryEntries(this.game).length : null;
       default:
         return null;
     }
@@ -361,6 +377,7 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
+    this.game.noteSeenMonsters();
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
       return;
@@ -519,6 +536,11 @@ export class App implements ScreenContext {
         return;
       }
     }
+    if (VIEWER_KINDS.includes(this.ui.kind) && (key.name === "up" || key.name === "down" || key.name === "pageup" || key.name === "pagedown")) {
+      this.viewerScroll.handleKeyPress(key);
+      this.render();
+      return;
+    }
     // The log panel claims left/right, up/down, h/k, pageup/pagedown and home/end, so any of those a screen needs must be handled above this. `j` and `l` are taken above.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
@@ -533,6 +555,23 @@ export class App implements ScreenContext {
       ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
+      this.render();
+      return;
+    }
+    if (key.name === "p" && canOpenMap(this.ui.kind)) {
+      this.openViewer((previous, previousPage) => ({ kind: "floorMap", previous, previousPage }));
+      return;
+    }
+    if (key.name === "v" && canOpenMonsters(this.ui.kind) && this.monstersAvailable()) {
+      const monsters = monsterInfoScreen.fightMonsters(this.game);
+      this.openViewer((previous, previousPage) =>
+        monsters.length > 0
+          ? { kind: "monsterInfo", previous, previousPage, monsterIndex: Math.max(0, monsters.findIndex((m) => m.hp > 0)) }
+          : { kind: "bestiary", previous, previousPage, viewingId: null }
+      );
+      return;
+    }
+    if (VIEWER_KINDS.includes(this.ui.kind) && this.viewerScroll.handleKeyPress(key)) {
       this.render();
       return;
     }
@@ -619,6 +658,14 @@ export class App implements ScreenContext {
       case "characterInfo":
         characterInfoScreen.handleKey(this, this.ui, key, digit);
         break;
+      case "floorMap":
+        break;
+      case "monsterInfo":
+        monsterInfoScreen.handleKey(this, this.ui, digit);
+        break;
+      case "bestiary":
+        monsterInfoScreen.handleBestiaryKey(this, this.ui, digit);
+        break;
       case "endingCheckpoint":
         endingScreen.handleKey(this, this.ui, key, digit);
         break;
@@ -688,8 +735,17 @@ export class App implements ScreenContext {
         return true;
       case "memory":
       case "journal":
+      case "floorMap":
+      case "monsterInfo":
         this.listPage = this.ui.previousPage;
         this.ui = this.ui.previous;
+        return true;
+      case "bestiary":
+        if (this.ui.viewingId !== null) this.ui = { ...this.ui, viewingId: null };
+        else {
+          this.listPage = this.ui.previousPage;
+          this.ui = this.ui.previous;
+        }
         return true;
       case "journalLastPage":
         this.ui = { kind: "gameover" };
@@ -705,9 +761,47 @@ export class App implements ScreenContext {
     }
   }
 
+  /** A viewer opened from another viewer replaces it, so `[Esc]` always returns to the screen the first one was opened from. */
+  private openViewer(build: (previous: UiState, previousPage: number) => UiState): void {
+    const from = this.ui;
+    const next =
+      from.kind === "floorMap" || from.kind === "monsterInfo" || from.kind === "bestiary" ? build(from.previous, from.previousPage) : build(from, this.listPage);
+    this.listPage = 0;
+    this.ui = next;
+    this.render();
+  }
+
+  /** A fight to inspect, or a bestiary entry to read. */
+  private monstersAvailable(): boolean {
+    return monsterInfoScreen.fightMonsters(this.game).length > 0 || this.game.seenMonsterIds.length > 0;
+  }
+
   /** Unlocked, and the intro that introduces it has been read. */
   private memoryAvailable(): boolean {
     return this.game.memoryUnlocked && this.game.memoryIntroShown;
+  }
+
+  private renderViewer(): void {
+    const width = this.renderer.width - 3;
+    const ui = this.ui;
+    let rows: TextChunk[][];
+    if (ui.kind === "floorMap") {
+      this.viewerBox.title = t("ui.panelFloorMap");
+      rows = floorMapViewScreen.renderPage(this.game);
+    } else if (ui.kind === "monsterInfo") {
+      this.viewerBox.title = t("ui.panelMonsterInfo");
+      rows = monsterInfoScreen.renderPage(this.game, ui, width);
+    } else if (ui.kind === "bestiary") {
+      this.viewerBox.title = t("ui.panelBestiary");
+      rows = monsterInfoScreen.renderBestiary(this.game, ui, this.listPage, width);
+    } else return;
+    const shownKey = ui.kind === "monsterInfo" ? `${ui.kind}:${ui.monsterIndex}` : ui.kind === "bestiary" ? `${ui.kind}:${ui.viewingId}:${this.listPage}` : ui.kind;
+    if (this.viewerShownKey !== shownKey) this.viewerScroll.scrollTop = 0;
+    this.viewerShownKey = shownKey;
+    this.viewerText.content = joinLines(rows);
+    this.footer.content = joinLines([
+      highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())),
+    ]);
   }
 
   /** Hands the renderer back to `main`, which starts the next run or shows the menu. */
@@ -801,8 +895,14 @@ export class App implements ScreenContext {
     const shownCombat = this.narratedCombat ?? combat;
     const focus = this.reveal.focus;
     const inFullLog = this.ui.kind === "fullLog";
-    for (const box of this.chrome) box.visible = !inFullLog;
+    const inViewer = VIEWER_KINDS.includes(this.ui.kind);
+    for (const box of this.chrome) box.visible = !inFullLog && !inViewer;
     this.fullLogBox.visible = inFullLog;
+    this.viewerBox.visible = inViewer;
+    if (inViewer) {
+      this.renderViewer();
+      return;
+    }
     if (inFullLog) {
       const fullLogWidth = this.renderer.width - 3;
       if (this.fullLogBuiltFrom !== this.runLogVersion || this.fullLogBuiltWidth !== fullLogWidth) {
@@ -890,7 +990,9 @@ export class App implements ScreenContext {
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
       this.main.content = this.renderMain();
-      this.footer.content = joinLines([highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries()))]);
+      this.footer.content = joinLines([
+        highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())),
+      ]);
     }
     this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
@@ -1387,6 +1489,11 @@ export class App implements ScreenContext {
       case "characterInfo":
         return characterInfoScreen.renderMain(this.game, this.ui);
 
+      case "floorMap":
+      case "monsterInfo":
+      case "bestiary":
+        return "";
+
       case "endingCheckpoint":
         return endingScreen.renderMain(this.game, this.ui);
 
@@ -1487,6 +1594,12 @@ export class App implements ScreenContext {
         return gameoverScreen.renderFooter(this.game);
       case "fullLog":
         return t("ui.footerBackOnly");
+      case "floorMap":
+        return floorMapViewScreen.renderFooter();
+      case "monsterInfo":
+        return monsterInfoScreen.renderFooter(this.game);
+      case "bestiary":
+        return monsterInfoScreen.renderBestiaryFooter(this.game, this.ui, this.listPage);
     }
   }
 }

@@ -42,16 +42,25 @@ const TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
   allEnemies: t("ui.targetSuffixAllEnemies"),
 };
 
+/** The same targets read from a monster's side, for the monster info screens. */
+export const MONSTER_TARGET_SUFFIX: Partial<Record<SkillTarget, string>> = {
+  self: t("ui.monsterTargetSuffixSelf"),
+  singleAlly: t("ui.monsterTargetSuffixSingleAlly"),
+  allAllies: t("ui.monsterTargetSuffixAllAllies"),
+  singleEnemy: t("ui.monsterTargetSuffixSingleEnemy"),
+  allEnemies: t("ui.monsterTargetSuffixAllEnemies"),
+};
+
 /** An effect may override the skill's target or narrow it with `appliesToRelation`; plurality still follows the skill's target, since `appliesToRelation` only filters. */
-function targetSuffixFor(e: SkillEffect, sk: SkillDefinition): string {
-  if (e.target) return TARGET_SUFFIX[e.target] ?? "";
+function targetSuffixFor(e: SkillEffect, sk: SkillDefinition, suffixes: Partial<Record<SkillTarget, string>>): string {
+  if (e.target) return suffixes[e.target] ?? "";
   if (e.appliesToRelation) {
     const isAllTargets = sk.target.startsWith("all");
     const target: SkillTarget =
       e.appliesToRelation === "ally" ? (isAllTargets ? "allAllies" : "singleAlly") : isAllTargets ? "allEnemies" : "singleEnemy";
-    return TARGET_SUFFIX[target]!;
+    return suffixes[target]!;
   }
-  return TARGET_SUFFIX[sk.target] ?? "";
+  return suffixes[sk.target] ?? "";
 }
 
 export function skillMenuHead(option: number, sk: SkillDefinition, usesSuffix = ""): string {
@@ -59,8 +68,8 @@ export function skillMenuHead(option: number, sk: SkillDefinition, usesSuffix = 
 }
 
 /** Damage reads as its formula (offenseMultiplierPercent of Attack, absent meaning 100, plus flat `amount`), not a trigger chance; other kinds lead with their trigger chance. */
-export function skillEffectLine(e: SkillEffect, sk: SkillDefinition): string | null {
-  const targetSuffix = targetSuffixFor(e, sk);
+export function skillEffectLine(e: SkillEffect, sk: SkillDefinition, suffixes: Partial<Record<SkillTarget, string>> = TARGET_SUFFIX): string | null {
+  const targetSuffix = targetSuffixFor(e, sk, suffixes);
   if (e.kind === "damage") {
     const statLabel = e.scalesWithAttackAndMagic ? "(Attack + Magic Power)" : sk.isMagic ? "Magic Power" : "Attack";
     const percent = e.offenseMultiplierPercent ?? 100;
