@@ -1,7 +1,7 @@
 import type { RoomType } from "../types";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
-import { FloorGraph, laneWidth, type GraphRoom, type LaneItem } from "../engine/floorGraph";
+import { FloorGraph, type GraphRoom } from "../engine/floorGraph";
 
 export interface LayoutRoom extends GraphRoom {
   hidden: boolean;
@@ -9,7 +9,15 @@ export interface LayoutRoom extends GraphRoom {
 
 const CONFIG = BALANCE.floorGeneration;
 
-type Shape = { kind: "room" } | { kind: "split"; lanes: Shape[][] };
+/** A cross branch leaves lane `lane` after its item `from` and merges into lane `lane + 1` at its item `to`. */
+interface CrossBranch {
+  lane: number;
+  from: number;
+  rooms: number;
+  to: number;
+}
+
+type Shape = { kind: "room" } | { kind: "split"; lanes: Shape[][]; cross?: CrossBranch };
 
 function shuffle<T>(items: T[], rng: Rng): T[] {
   for (let i = items.length - 1; i > 0; i--) {
@@ -28,8 +36,9 @@ function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape
     const canSplit = !(inLane && col === 0) && width >= 2 && maxSplitSpan >= CONFIG.minLaneRooms;
     if (canSplit && rng.chance(inLane ? CONFIG.nestedSplitChance : CONFIG.splitChance)) {
       const splitSpan = rng.int(CONFIG.minLaneRooms, maxSplitSpan);
-      const laneCount = rng.int(2, width);
-      let spareWidth = width - laneCount;
+      const laneCount = rng.int(2, Math.min(CONFIG.maxLanesPerSplit, width));
+      const wantsCross = width > laneCount && rng.chance(CONFIG.crossMergeChance);
+      let spareWidth = width - laneCount - (wantsCross ? 1 : 0);
       const lanes: Shape[][] = [];
       for (let i = 0; i < laneCount; i++) {
         const extraWidth = i === laneCount - 1 ? spareWidth : rng.int(0, spareWidth);
@@ -37,7 +46,9 @@ function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape
         const length = i === 0 ? splitSpan : rng.int(CONFIG.minLaneRooms, splitSpan);
         lanes.push(shapeSeq(length, 1 + extraWidth, true, rng));
       }
-      items.push({ kind: "split", lanes: shuffle(lanes, rng) });
+      shuffle(lanes, rng);
+      const cross = wantsCross ? pickCrossBranch(lanes, rng) : undefined;
+      items.push({ kind: "split", lanes, ...(cross ? { cross } : {}) });
       col += splitSpan;
     } else {
       items.push({ kind: "room" });
@@ -47,26 +58,56 @@ function shapeSeq(span: number, width: number, inLane: boolean, rng: Rng): Shape
   return items;
 }
 
-function flatten(seq: Shape[], rooms: LayoutRoom[]): { first: string[]; last: string[] } {
+/** A random adjacent pair of all-room lanes where the branch leaves each lane at least `minLaneRooms` rooms of its own. */
+function pickCrossBranch(lanes: Shape[][], rng: Rng): CrossBranch | undefined {
+  const min = CONFIG.minLaneRooms;
+  const allRooms = (lane: Shape[]) => lane.every((item) => item.kind === "room");
+  const pairs = lanes.slice(0, -1).flatMap((lane, i) => (allRooms(lane) && allRooms(lanes[i + 1]!) && lane.length >= min + 1 && lanes[i + 1]!.length > min ? [i] : []));
+  if (pairs.length === 0) return undefined;
+  const lane = rng.pick(pairs);
+  return {
+    lane,
+    from: rng.int(0, lanes[lane]!.length - min - 1),
+    rooms: rng.int(min, min + 1),
+    to: rng.int(min, lanes[lane + 1]!.length - 1),
+  };
+}
+
+function newRoom(rooms: LayoutRoom[]): LayoutRoom {
+  const room: LayoutRoom = { id: `r${rooms.length + 1}`, type: "combat", next: [], hidden: false };
+  rooms.push(room);
+  return room;
+}
+
+/** `ids[i]` is the room made for `seq[i]`, or null for a split. */
+function flatten(seq: Shape[], rooms: LayoutRoom[]): { first: string[]; last: string[]; ids: (string | null)[] } {
   let first: string[] | null = null;
   let prevLast: string[] = [];
+  const ids: (string | null)[] = [];
   for (const item of seq) {
     let itemFirst: string[];
     let itemLast: string[];
     if (item.kind === "room") {
-      const id = `r${rooms.length + 1}`;
-      rooms.push({ id, type: "combat", next: [], hidden: false });
+      const id = newRoom(rooms).id;
       itemFirst = itemLast = [id];
+      ids.push(id);
     } else {
       const parts = item.lanes.map((lane) => flatten(lane, rooms));
       itemFirst = parts.flatMap((p) => p.first);
       itemLast = parts.flatMap((p) => p.last);
+      ids.push(null);
+      if (item.cross) {
+        const { lane, from, to } = item.cross;
+        const branch = Array.from({ length: item.cross.rooms }, () => newRoom(rooms));
+        branch.forEach((room, i) => room.next.push(branch[i + 1]?.id ?? parts[lane + 1]!.ids[to]!));
+        rooms.find((r) => r.id === parts[lane]!.ids[from])!.next.push(branch[0]!.id);
+      }
     }
     for (const id of prevLast) rooms.find((r) => r.id === id)!.next.push(...itemFirst);
     first ??= itemFirst;
     prevLast = itemLast;
   }
-  return { first: first ?? [], last: prevLast };
+  return { first: first ?? [], last: prevLast, ids };
 }
 
 function buildShape(rng: Rng): LayoutRoom[] {
@@ -82,12 +123,29 @@ function predecessors(rooms: LayoutRoom[]): Map<string, LayoutRoom[]> {
   return preds;
 }
 
-/** Rooms are in walking order, so every room's predecessors already have their type. */
+/** Every room after all the rooms leading into it; a cross branch is made after the room it merges into. */
+function walkingOrder(rooms: LayoutRoom[]): LayoutRoom[] {
+  const preds = predecessors(rooms);
+  const left = new Map(rooms.map((r) => [r.id, preds.get(r.id)!.length]));
+  const byId = new Map(rooms.map((r) => [r.id, r]));
+  const order: LayoutRoom[] = [];
+  const ready = [rooms[0]!];
+  while (ready.length > 0) {
+    const room = ready.shift()!;
+    order.push(room);
+    for (const n of room.next) {
+      left.set(n, left.get(n)! - 1);
+      if (left.get(n) === 0) ready.push(byId.get(n)!);
+    }
+  }
+  return order;
+}
+
 function assignTypes(rooms: LayoutRoom[], rng: Rng): void {
   const preds = predecessors(rooms);
-  rooms.forEach((room, i) => {
-    if (i === 0) room.type = "combat";
-    else if (i === rooms.length - 1) room.type = "boss";
+  walkingOrder(rooms).forEach((room) => {
+    if (room.next.length === 0) room.type = "boss";
+    else if (room === rooms[0]) room.type = "combat";
     else {
       const before = preds.get(room.id)!;
       const options: [RoomType, number][] = [["combat", 1 - CONFIG.eventRoomWeight - CONFIG.restRoomWeight]];
@@ -174,20 +232,35 @@ export function generateFloorLayout(rng: Rng, depth = 1): LayoutRoom[] {
   return layout;
 }
 
-function laneRuleError(seq: LaneItem[], graph: FloorGraph): string | null {
-  for (const item of seq) {
-    if (item.kind === "room") continue;
-    for (const lane of item.lanes) {
-      const first = lane[0];
-      const last = lane.at(-1);
-      if (first?.kind !== "room" || last?.kind !== "room") return "a lane must start and end with a room";
-      const rooms = graph.routeBounds(first.id, new Set([last.id])).rooms.min;
-      if (rooms < CONFIG.minLaneRooms) return `a lane holds ${rooms} rooms before it joins, need >= ${CONFIG.minLaneRooms}`;
-      const inner = laneRuleError(lane, graph);
-      if (inner) return inner;
-    }
+/** Lanes side by side at a column: its rooms, plus every room whose line runs across it to a later column. */
+function lanesAtColumns(rooms: LayoutRoom[], columns: Map<string, number>): number[] {
+  const lanes: number[] = [];
+  for (const room of rooms) {
+    const col = columns.get(room.id)!;
+    lanes[col] = (lanes[col] ?? 0) + 1;
+    const skipped = new Set<number>();
+    for (const n of room.next) for (let c = col + 1; c < columns.get(n)!; c++) skipped.add(c);
+    for (const c of skipped) lanes[c] = (lanes[c] ?? 0) + 1;
   }
-  return null;
+  return lanes.map((n) => n ?? 0);
+}
+
+export function lanesSideBySide(rooms: LayoutRoom[]): number {
+  return Math.max(...lanesAtColumns(rooms, new FloorGraph(rooms, rooms[0]!.id).columns()));
+}
+
+/** The fewest rooms on a lane from `startId` before it reaches a room more than one route leads into. */
+function laneRooms(startId: string, byId: Map<string, LayoutRoom>, incoming: Map<string, number>): number {
+  const memo = new Map<string, number>();
+  const visit = (id: string): number => {
+    const known = memo.get(id);
+    if (known !== undefined) return known;
+    const next = byId.get(id)!.next;
+    const rest = next.length === 0 ? 0 : Math.min(...next.map((n) => (incoming.get(n)! > 1 ? 0 : visit(n))));
+    memo.set(id, 1 + rest);
+    return 1 + rest;
+  };
+  return visit(startId);
 }
 
 /** Checks every rule over the room graph rather than listing routes, since nested splits multiply them. */
@@ -225,10 +298,16 @@ export function validateFloorLayout(rooms: LayoutRoom[]): void {
   const ruleError = routeRuleError(rooms, CONFIG.maxEventRoomsPerRoute);
   if (ruleError) throw new Error(ruleError);
 
-  const graph = new FloorGraph(rooms, entry.id);
-  const tree = graph.laneTree();
-  const width = laneWidth(tree);
+  const width = lanesSideBySide(rooms);
   if (width > CONFIG.maxParallelLanes) throw new Error(`${width} lanes run side by side, max allowed is ${CONFIG.maxParallelLanes}`);
-  const laneError = laneRuleError(tree, graph);
-  if (laneError) throw new Error(laneError);
+  const incoming = new Map(rooms.map((r) => [r.id, 0]));
+  for (const room of rooms) for (const n of room.next) incoming.set(n, incoming.get(n)! + 1);
+  for (const room of rooms) {
+    if (room.next.length > CONFIG.maxLanesPerSplit) throw new Error(`room ${room.id} splits into ${room.next.length} lanes, max allowed is ${CONFIG.maxLanesPerSplit}`);
+    if (room.next.length < 2) continue;
+    for (const n of room.next) {
+      const held = laneRooms(n, byId, incoming);
+      if (held < CONFIG.minLaneRooms) throw new Error(`a lane holds ${held} rooms before it joins, need >= ${CONFIG.minLaneRooms}`);
+    }
+  }
 }

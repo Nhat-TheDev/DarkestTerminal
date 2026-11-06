@@ -128,3 +128,49 @@ describe("the floor map", () => {
     expect(lines.some((line) => /rooms?\b/.test(line))).toBe(false);
   });
 });
+
+describe("a branch that merges into the lane below", () => {
+  const ROOMS: [Id, RoomType, Id[]][] = [
+    ["e", "combat", ["u"]],
+    ["u", "combat", ["a", "p", "m"]],
+    ["a", "combat", ["b", "s1"]],
+    ["b", "combat", ["c"]],
+    ["c", "combat", ["d"]],
+    ["d", "combat", ["j"]],
+    ["s1", "event", ["s2"]],
+    ["s2", "combat", ["x"]],
+    ["p", "combat", ["q"]],
+    ["q", "rest", ["x"]],
+    ["x", "combat", ["y"]],
+    ["y", "combat", ["j"]],
+    ["m", "event", ["n"]],
+    ["n", "combat", ["o"]],
+    ["o", "combat", ["w"]],
+    ["w", "combat", ["j"]],
+    ["j", "combat", ["guard"]],
+    ["guard", "boss", []],
+  ];
+
+  test("draws the branch between the two lanes and turns it down into the lower one", () => {
+    const rooms: Room[] = ROOMS.map(([id, type, next]) => ({ id, name: id, type, connectedRoomIds: next, monsterIds: [], cleared: false }));
+    const { rows } = renderFloorMap({ depth: 4, rooms, entryRoomId: "e" }, ["e", "u"], "u");
+    expect(text(rows).slice(0, 9)).toEqual([
+      "Floor 4",
+      "",
+      "[ · ]━━[ ■ ]┳━[1 ·]┳━[ · ]━━[ · ]━━[ · ]━━━━━━━┳━[ · ]━━[ ☠ ]",
+      "            ┃      ┃                           ┃",
+      "            ┃      ┗━[ ○ ]━━[ · ]┓             ┃",
+      "            ┃                    ┃             ┃",
+      "            ┣━[2 ·]━━[ △ ]━━━━━━━┻━[ · ]━━[ · ]┫",
+      "            ┃                                  ┃",
+      "            ┗━[3 ○]━━[ · ]━━[ · ]━━[ · ]━━━━━━━┛",
+    ]);
+  });
+
+  test("generated maps never cross two lines", () => {
+    for (let seed = 1; seed < 300; seed++) {
+      const { floor } = createFloor(new Rng(seed), 1 + (seed % 120));
+      expect(text(renderFloorMap(floor, [floor.entryRoomId], floor.entryRoomId).rows).join("\n")).not.toContain("╋");
+    }
+  });
+});

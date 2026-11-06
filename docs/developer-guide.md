@@ -210,9 +210,11 @@ of the code doesn't need to know the data comes from JSON.
 
 Floors are generated directly by a runtime algorithm (`generateFloorLayout`,
 `src/data/floorPatterns.ts`). A floor is a graph from 1 entrance room to 1
-guard room: the route splits into lanes (at least 2 rooms each, nested
-splits allowed, a limited number side by side) that join again, and a join
-can split again at once. There are no dead ends and no way back. Every route
+guard room: the route splits into at most
+`floorGeneration.maxLanesPerSplit` (3) lanes (at least 2 rooms each) that
+join again; a lane can split again inside itself, or send a branch that
+merges into the lane below, a limited number side by side, and a join can
+split again at once. There are no dead ends and no way back. Every route
 stays within the `floorGeneration` bounds on rooms, rests and events, and
 never passes two events or two rests in a row. Some rooms are hidden as
 `[?]` until entered, more often deeper down.

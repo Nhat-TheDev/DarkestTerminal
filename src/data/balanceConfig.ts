@@ -238,6 +238,10 @@ interface BalanceConfig {
     maxEventRoomsPerRoute: number;
     manyEventsFloorChance: number;
     maxParallelLanes: number;
+    /** The most lanes a single split opens; a lane can still split again inside up to `maxParallelLanes`. */
+    maxLanesPerSplit: number;
+    /** Chance a split with spare width gets a branch that leaves one lane and merges into the lane below it. */
+    crossMergeChance: number;
     minLaneRooms: number;
     splitChance: number;
     nestedSplitChance: number;

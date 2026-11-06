@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { generateFloorLayout, validateFloorLayout, fallbackLayout, unknownRoomsMean, type LayoutRoom } from "../src/data/floorPatterns";
+import { generateFloorLayout, validateFloorLayout, fallbackLayout, unknownRoomsMean, lanesSideBySide, type LayoutRoom } from "../src/data/floorPatterns";
 import { buildFloorFromLayout, createFloor } from "../src/data/floor";
-import { FloorGraph, laneWidth } from "../src/engine/floorGraph";
+import { FloorGraph } from "../src/engine/floorGraph";
 import { BALANCE } from "../src/data/balanceConfig";
 import { Rng } from "../src/engine/rng";
 
@@ -25,9 +25,21 @@ describe("generateFloorLayout", () => {
   });
 
   test("most floors split, and some run 4 lanes side by side", () => {
-    const widths = layoutsAt(10).map((l) => laneWidth(new FloorGraph(l, l[0]!.id).laneTree()));
+    const widths = layoutsAt(10).map(lanesSideBySide);
     expect(widths.filter((w) => w > 1).length).toBeGreaterThan(SEEDS.length * 0.8);
     expect(widths).toContain(CONFIG.maxParallelLanes);
+  });
+
+  test("a split opens at most 3 lanes, and some floors open exactly 3", () => {
+    const widest = layoutsAt(10).map((l) => Math.max(...l.map((r) => r.next.length)));
+    expect(Math.max(...widest)).toBe(CONFIG.maxLanesPerSplit);
+  });
+
+  // Rooms are numbered as they are made, and a cross branch is made after the room it merges into.
+  const hasCrossBranch = (l: LayoutRoom[]) => l.some((r) => r.next.some((n) => Number(n.slice(1)) < Number(r.id.slice(1))));
+
+  test("some floors have a branch that merges into the lane below", () => {
+    expect(layoutsAt(10).filter(hasCrossBranch).length).toBeGreaterThan(SEEDS.length * 0.05);
   });
 
   test("routes on one floor differ in length", () => {
@@ -131,6 +143,27 @@ describe("validateFloorLayout rejects layouts that break the rules", () => {
     const layout = valid();
     layout.push({ id: "r11", type: "combat", next: ["r4"], hidden: false });
     layout[1]!.next.push("r11");
+    expect(() => validateFloorLayout(layout)).toThrow(/lane holds 1 rooms/);
+  });
+
+  const lateEvent = () => line(["combat", "event", "combat", "combat", "combat", "rest", "event", "combat", "combat", "boss"]);
+
+  test("4 lanes from one split", () => {
+    const layout = lateEvent();
+    for (const lane of ["a", "b", "c"]) {
+      layout.push({ id: `${lane}1`, type: "combat", next: [`${lane}2`], hidden: false }, { id: `${lane}2`, type: "combat", next: ["r5"], hidden: false });
+      layout[1]!.next.push(`${lane}1`);
+    }
+    layout[3]!.next = ["r5"];
+    expect(() => validateFloorLayout(layout)).toThrow(/splits into 4 lanes/);
+  });
+
+  test("a branch of 1 room that merges into the lane below", () => {
+    const layout = lateEvent();
+    layout.push({ id: "p1", type: "combat", next: ["p2"], hidden: false }, { id: "p2", type: "combat", next: ["r5"], hidden: false });
+    layout[1]!.next.push("p1");
+    layout.push({ id: "x1", type: "combat", next: ["p2"], hidden: false });
+    layout[2]!.next.push("x1");
     expect(() => validateFloorLayout(layout)).toThrow(/lane holds 1 rooms/);
   });
 

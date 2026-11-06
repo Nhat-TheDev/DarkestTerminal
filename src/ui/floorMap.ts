@@ -1,6 +1,6 @@
 import type { TextChunk } from "@opentui/core";
 import type { Floor, Id, Room, RoomType } from "../types";
-import { FloorGraph, type LaneItem } from "../engine/floorGraph";
+import { FloorGraph } from "../engine/floorGraph";
 import { t } from "../data/strings";
 import { PALETTE, boldColorChunk, colorChunk, plainChunk } from "./theme";
 
@@ -54,13 +54,23 @@ function chunkLength(chunks: TextChunk[]): number {
   return chunks.reduce((sum, c) => sum + Array.from(c.text).length, 0);
 }
 
-function firstRoomIds(item: LaneItem): Id[] {
-  return item.kind === "room" ? [item.id] : item.lanes.flatMap((lane) => firstRoomIds(lane[0]!));
+/** A chain of rooms drawn on one row, each the first next room of the one before. */
+interface Track {
+  rooms: Id[];
+  start: number;
+  /** Where the track's line begins and ends on its row. */
+  fromX: number;
+  toX: number;
+  row: number;
+  children: Track[];
+  /** Orders tracks that end at the same x: the column they leave from, then the order of the choices there. */
+  spawnKey: [number, number];
 }
 
 class MapCanvas {
   private readonly columns: Map<Id, number>;
-  private readonly heights = new Map<LaneItem[], number>();
+  private readonly trackOf = new Map<Id, Track>();
+  private readonly occupied = new Map<number, [number, number][]>();
   private readonly lines = new Map<string, LineMark>();
   private readonly rooms: { id: Id; x: number; y: number }[] = [];
   width = 0;
@@ -71,9 +81,17 @@ class MapCanvas {
     private readonly visited: ReadonlySet<Id>
   ) {
     this.columns = graph.columns();
-    const tree = graph.laneTree();
-    this.height = this.heightOf(tree) * 2 - 1;
-    this.drawSeq(tree, 0);
+    const root = this.buildTracks();
+    this.claim(0, root.fromX, root.toX);
+    this.placeChildren(root);
+    for (const room of graph.byId.values()) {
+      const x = this.x(room.id);
+      const y = this.y(room.id);
+      this.rooms.push({ id: room.id, x, y });
+      this.width = Math.max(this.width, x + CELL_WIDTH);
+      this.height = Math.max(this.height, y + 1);
+      for (const next of room.next) this.drawEdge(room.id, next);
+    }
   }
 
   render(currentId: Id, keys: Map<Id, number>, byId: Map<Id, Room>): TextChunk[][] {
@@ -117,16 +135,75 @@ class MapCanvas {
     });
   }
 
-  private heightOf(seq: LaneItem[]): number {
-    const known = this.heights.get(seq);
-    if (known !== undefined) return known;
-    const h = Math.max(1, ...seq.map((item) => (item.kind === "room" ? 1 : item.lanes.reduce((sum, lane) => sum + this.heightOf(lane), 0))));
-    this.heights.set(seq, h);
-    return h;
+  private x(id: Id): number {
+    return this.columns.get(id)! * COLUMN_STEP;
   }
 
-  private passed(ids: Id[]): boolean {
-    return ids.some((id) => this.visited.has(id));
+  private y(id: Id): number {
+    return this.trackOf.get(id)!.row * 2;
+  }
+
+  /** A room joins the track of a room it is the first choice of, the one that started furthest left; otherwise it starts a track. */
+  private buildTracks(): Track {
+    const order = [...this.graph.byId.keys()].sort((a, b) => this.columns.get(a)! - this.columns.get(b)!);
+    let root: Track | null = null;
+    for (const id of order) {
+      const col = this.columns.get(id)!;
+      const preds = this.graph.preds.get(id) ?? [];
+      const leftmost = (ids: Id[]) => ids.reduce((best, p) => (this.trackOf.get(p)!.start < this.trackOf.get(best)!.start ? p : best));
+      const leading = preds.filter((p) => this.graph.room(p).next[0] === id);
+      if (leading.length > 0) {
+        const track = this.trackOf.get(leftmost(leading))!;
+        track.rooms.push(id);
+        this.trackOf.set(id, track);
+        continue;
+      }
+      const parentRoom = preds.length > 0 ? leftmost(preds) : null;
+      const track: Track = {
+        rooms: [id],
+        start: col,
+        fromX: parentRoom === null ? 0 : col * COLUMN_STEP - 2,
+        toX: 0,
+        row: 0,
+        children: [],
+        spawnKey: parentRoom === null ? [0, 0] : [this.columns.get(parentRoom)!, this.graph.room(parentRoom).next.indexOf(id)],
+      };
+      if (parentRoom === null) root = track;
+      else this.trackOf.get(parentRoom)!.children.push(track);
+      this.trackOf.set(id, track);
+    }
+    for (const track of new Set(this.trackOf.values())) {
+      const last = this.graph.room(track.rooms.at(-1)!);
+      track.toX =
+        last.next.length === 0 ? this.x(last.id) + CELL_WIDTH - 1 : Math.min(...last.next.map((n) => this.x(n) - 2));
+    }
+    return root!;
+  }
+
+  private claim(row: number, fromX: number, toX: number): void {
+    const spans = this.occupied.get(row) ?? [];
+    spans.push([fromX, toX]);
+    this.occupied.set(row, spans);
+  }
+
+  private isFree(row: number, fromX: number, toX: number): boolean {
+    return (this.occupied.get(row) ?? []).every(([a, b]) => b < fromX || a > toX);
+  }
+
+  /** Tracks that end sooner sit closer to their parent, and each track's own children stack right under it. */
+  private placeChildren(parent: Track): void {
+    const children = [...parent.children].sort((a, b) => a.toX - b.toX || a.spawnKey[0] - b.spawnKey[0] || a.spawnKey[1] - b.spawnKey[1]);
+    for (const child of children) {
+      let row = parent.row + 1;
+      while (!this.isFree(row, child.fromX, child.toX)) row++;
+      child.row = row;
+      this.claim(row, child.fromX, child.toX);
+      this.placeChildren(child);
+    }
+  }
+
+  private passed(fromId: Id, toId: Id): boolean {
+    return this.visited.has(fromId) && this.visited.has(toId);
   }
 
   private mark(x: number, y: number, dirs: number, passed: boolean): void {
@@ -141,71 +218,22 @@ class MapCanvas {
     for (let x = x0; x < x1; x++) this.mark(x, y, LEFT | RIGHT, passed);
   }
 
-  private vline(x: number, y0: number, y1: number, passed: boolean): void {
-    for (let y = y0; y <= y1; y++) this.mark(x, y, (y > y0 ? UP : 0) | (y < y1 ? DOWN : 0), passed);
-  }
-
-  private firstCol(item: LaneItem): number {
-    return item.kind === "room" ? this.columns.get(item.id)! : this.firstCol(item.lanes[0]![0]!);
-  }
-
-  private lastCol(item: LaneItem): number {
-    return item.kind === "room" ? this.columns.get(item.id)! : Math.max(...item.lanes.map((lane) => this.lastCol(lane.at(-1)!)));
-  }
-
-  private entryX(item: LaneItem): number {
-    return this.firstCol(item) * COLUMN_STEP - (item.kind === "room" ? 0 : 2);
-  }
-
-  private joinX(split: LaneItem, next: LaneItem | undefined): number {
-    return next ? this.firstCol(next) * COLUMN_STEP - 2 : this.lastCol(split) * COLUMN_STEP + CELL_WIDTH;
-  }
-
-  private exitX(item: LaneItem, next: LaneItem | undefined): number {
-    return item.kind === "room" ? this.columns.get(item.id)! * COLUMN_STEP + CELL_WIDTH : this.joinX(item, next) + 1;
-  }
-
-  private drawSeq(seq: LaneItem[], row: number): void {
-    seq.forEach((item, i) => {
-      const next = seq[i + 1];
-      if (item.kind === "room") {
-        const x = this.columns.get(item.id)! * COLUMN_STEP;
-        this.rooms.push({ id: item.id, x, y: row * 2 });
-        this.width = Math.max(this.width, x + CELL_WIDTH);
-      } else {
-        this.drawSplit(item, row, next);
-      }
-      if (next) this.hline(this.exitX(item, next), this.entryX(next), row * 2, this.passed(firstRoomIds(next)));
-    });
-  }
-
-  private drawSplit(split: Extract<LaneItem, { kind: "split" }>, row: number, next: LaneItem | undefined): void {
-    const splitX = this.entryX(split);
-    const joinX = this.joinX(split, next);
-    const laneRows: number[] = [];
-    let r = row;
-    for (const lane of split.lanes) {
-      laneRows.push(r);
-      r += this.heightOf(lane);
+  /** Along the source's row to the gap before the target, up or down there, then into the target. */
+  private drawEdge(fromId: Id, toId: Id): void {
+    const passed = this.passed(fromId, toId);
+    const startX = this.x(fromId) + CELL_WIDTH;
+    const turnX = this.x(toId) - 2;
+    const fromY = this.y(fromId);
+    const toY = this.y(toId);
+    if (fromY === toY) {
+      this.hline(startX, this.x(toId), fromY, passed);
+      return;
     }
-    const top = row * 2;
-    const bottom = laneRows.at(-1)! * 2;
-    const entered = this.passed(firstRoomIds(split));
-    const left = next !== undefined && this.passed(firstRoomIds(next));
-    this.mark(splitX, top, LEFT, entered);
-    this.vline(splitX, top, bottom, entered);
-    this.vline(joinX, top, bottom, left);
-    if (next) this.mark(joinX, top, RIGHT, left);
-    split.lanes.forEach((lane, i) => {
-      const y = laneRows[i]! * 2;
-      const lanePassed = this.passed(firstRoomIds(lane[0]!));
-      this.mark(splitX, y, RIGHT, lanePassed);
-      this.hline(splitX + 1, this.entryX(lane[0]!), y, lanePassed);
-      this.drawSeq(lane, laneRows[i]!);
-      this.hline(this.exitX(lane.at(-1)!, undefined), joinX, y, left);
-      this.mark(joinX, y, LEFT, left);
-    });
-    this.width = Math.max(this.width, joinX + 1);
+    this.hline(startX, turnX, fromY, passed);
+    this.mark(turnX, fromY, LEFT | (toY > fromY ? DOWN : UP), passed);
+    for (let y = Math.min(fromY, toY) + 1; y < Math.max(fromY, toY); y++) this.mark(turnX, y, UP | DOWN, passed);
+    this.mark(turnX, toY, RIGHT | (toY > fromY ? UP : DOWN), passed);
+    this.mark(turnX + 1, toY, LEFT | RIGHT, passed);
   }
 }
 

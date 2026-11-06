@@ -26,14 +26,20 @@ A *route* is any walk from the entrance to the guard room. Every rule below
 holds for every route of every floor.
 
 ### Shape: lanes, splits and joins
-A floor is a sequence of rooms and *splits*. A split sends the route into 2 or
-more *lanes* that join again further on:
-- A lane holds at least `floorGeneration.minLaneRooms` rooms before it joins.
+A floor is a sequence of rooms and *splits*. A split sends the route into 2 to
+`floorGeneration.maxLanesPerSplit` *lanes* that join again further on:
+- A lane holds at least `floorGeneration.minLaneRooms` rooms before it joins
+  or merges.
 - A lane may split again inside itself. Its first and last items are always
   rooms, so its sub-lanes join before the lane itself does, and its own split
   and join never merge with the outer ones.
+- A *cross branch* leaves a lane and merges into the lane below it instead of
+  rejoining its own. A split with spare width rolls `crossMergeChance` for
+  one; the lanes it links hold only rooms, and the branch leaves each of them
+  at least `minLaneRooms` rooms of their own. Where it leaves, how long it is
+  and where it merges are random.
 - At any point along the floor, at most `floorGeneration.maxParallelLanes`
-  lanes run side by side, nested lanes included.
+  lanes run side by side, nested lanes and cross branches included.
 - A join may also be a split: lanes meet and part again at the same point,
   with no shared room between. In the graph, every last room of the joining
   lanes links to every first room of the next split.
@@ -73,9 +79,12 @@ Route checks never list routes, since nested splits multiply them.
 keeps, per room, the minimum and maximum number of rooms, events and rests on
 the routes from there to the guard. The "in a row" rules are checked per edge.
 
-`validateFloorLayout(rooms)` re-checks every rule (route bounds, edges, lane
-lengths, side-by-side lanes, reachability, no dead ends, unique ids, a visible
-entrance and guard). The property test runs it over many seeds and depths.
+`validateFloorLayout(rooms)` re-checks every rule on the graph alone, so it
+holds for cross branches too: route bounds, edges, at most `maxLanesPerSplit`
+next rooms per room, lanes side by side per column (its rooms, plus the rooms
+whose lines run across it), at least `minLaneRooms` rooms on every lane a
+split opens before it reaches a room more than one route leads into,
+reachability, no dead ends, unique ids, a visible entrance and guard. The property test runs it over many seeds and depths.
 
 ### Unknown rooms
 Some rooms show as `[?]` until the party enters them. A room's real type is
@@ -102,20 +111,26 @@ While the party chooses its next room (the `room` screen, with no Gatekeeper
 pending), the Battlefield shows the whole floor instead of the sprites, on
 the plain panel background. Every other screen keeps the normal Battlefield.
 - The map is drawn from the room graph alone (`connectedRoomIds`), never from
-  stored coordinates, so a floor from an older save still draws.
-  `FloorGraph` puts a virtual junction wherever a room has several next rooms
-  or its next room has several rooms leading in; rooms that lead to the same
-  set share one. The lane tree (`laneTree`) is read off those junctions, and a
-  split's join is the first junction every one of its lanes reaches.
+  stored coordinates, so a floor from an older save still draws. Rooms are
+  laid out in *tracks*, one per row segment: a room joins the track of the
+  room it is the first choice of; when several lead into it, the track that
+  started furthest left wins, which is what ends a cross branch at the lane it
+  merges into.
 - A room's column is its longest walk from the entrance, so a lane shorter
   than its neighbours keeps its rooms in the first columns of the split and
   runs its line on to the join. Cells are 5 characters wide and 7 apart; a
   route of `maxRouteRooms` rooms fits the Battlefield at the smallest
   supported terminal.
-- The first lane of a split continues on the row it came from; the others
-  stack below it, one blank connector row apart. Junction glyphs are built
-  from the directions that meet in a cell, which is how a join that is also a
-  split merges into `┣`, `┫` or `╋`.
+- The first lane of a split continues on the row it came from; every other
+  track takes the first free row below its parent, one blank connector row
+  apart. Tracks that end sooner are placed first and each track's own
+  branches go right under it, so nested lanes and cross branches sit between
+  their lane and the next, pushing later lanes down.
+- Every connection is drawn the same way: along the source's row to the gap
+  before the target, up or down there, then into the target. Junction glyphs
+  are built from the directions that meet in a cell, so a join that is also a
+  split merges into `┣` or `┫`, and a cross branch turns down with `┓` into
+  `┻`. Generated maps never cross two lines.
 - Above the map, only the floor number; below it, a legend. The map counts
   nothing for the player: route lengths are read off the map itself.
 - Passed rooms and the lines into them are dimmed; the rooms the party can

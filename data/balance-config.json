@@ -420,6 +420,8 @@
     "maxEventRoomsPerRoute": 6,
     "manyEventsFloorChance": 0.15,
     "maxParallelLanes": 4,
+    "maxLanesPerSplit": 3,
+    "crossMergeChance": 0.35,
     "minLaneRooms": 2,
     "splitChance": 0.4,
     "nestedSplitChance": 0.25,
