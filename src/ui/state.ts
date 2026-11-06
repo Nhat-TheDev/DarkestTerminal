@@ -68,7 +68,7 @@ export type UiState =
   | { kind: "journalLastPage" }
   | { kind: "endingCheckpoint" }
   | { kind: "founderDialogue" }
-  | { kind: "gatekeeper" }
+  | { kind: "gatekeeper"; mapTaken?: boolean }
   | { kind: "abilityBuyback" }
   | { kind: "characterInfo"; characterIndex: number; previousUi: UiState }
   | { kind: "gameover" };

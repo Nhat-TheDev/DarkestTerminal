@@ -400,9 +400,22 @@ describe("random-play teams", () => {
     expect(chooseRoom(game)).toBe(2);
     expect(chooseRest(game)).toBe("2");
   });
+
+  test("an unknown room is chosen by what the player sees, not by what is inside", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const rooms = [{ type: "rest", cleared: false, hidden: true }, { type: "event", cleared: false }] as Room[];
+    game.connectedRoomChoices = () => rooms;
+    game.state.satiety = 50;
+    expect(chooseRoom(game)).toBe(2);
+    rooms[0]!.hidden = undefined;
+    expect(chooseRoom(game)).toBe(1);
+  });
 });
 
 describe("random-play CLI", () => {
+  // Each test starts a whole process, whose start-up builds a level curve from real floors.
+  const CLI_TIMEOUT_MS = 30000;
+
   function cli(...args: string[]) {
     const tmp = mkdtempSync(join(tmpdir(), "random-play-cli-"));
     const run = Bun.spawnSync(["bun", "run", "tools/random-play/run.ts", ...args], { env: { ...process.env, TMPDIR: tmp }, stdout: "pipe", stderr: "pipe" });
@@ -417,14 +430,14 @@ describe("random-play CLI", () => {
     expect(stdout).not.toContain("run 3/");
     expect(stdout).not.toContain("report:");
     expect(created.every((name) => name.startsWith("darkest-terminal-random-play-saves-"))).toBe(true);
-  });
+  }, CLI_TIMEOUT_MS);
 
   test("an unknown team is refused before any run", () => {
     const { exitCode, stdout, stderr } = cli("--team", "nobody");
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("--team must be one of");
     expect(stdout).not.toContain("run 1/");
-  });
+  }, CLI_TIMEOUT_MS);
 });
 
 describe("random-play evidence", () => {

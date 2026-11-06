@@ -34,6 +34,7 @@ function roomHasLivingMonsters(room: Room, ctx: EngineContext): boolean {
 
 /** Also used by the dev save dump to jump to a room, so it gets the same side effects as a real arrival. */
 export function enterRoom(state: GameState, room: Room, ctx: EngineContext): void {
+  delete room.hidden;
   // A room that starts a fight drains satiety on victory, not on the ambush itself.
   if ((room.type === "combat" || room.type === "boss") && !room.cleared && roomHasLivingMonsters(room, ctx)) {
     state.combat = startCombat(room.id, room.monsterIds, ctx, room.type === "boss");

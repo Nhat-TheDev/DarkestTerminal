@@ -235,14 +235,18 @@ run's first floor generates and `Game`'s constructor runs
 straight to that recruit's ability, before the next class is browsed:
 
 1. List every `common` ability, plus every non-common ability currently in
-   `unlockedAbilityIds` — tagged with its rarity.
+   `unlockedAbilityIds` — tagged with its rarity. Abilities the class lists
+   in `recommendedAbilityIds` (`data/classes.json`) carry a `*`, explained
+   under the list; a class that lists none shows neither.
 2. Player picks exactly 1 (number key), or explicitly skips (dedicated
    key, `0`) — a character can enter the run with no ability equipped.
 3. **No 2 characters in the party may end the screen with the same
    ability id equipped** (commons included — a party can't stack 4 copies
-   of `battle-instinct` either). Once a character locks in an id, it drops
-   out of every later character's list for this screen. Backing out of a
-   recruit (`Esc`) gives its ability back to the list. This applies only
+   of `battle-instinct` either). Once a character locks in an id, every
+   later character's list still shows it in the same place, dimmed and
+   marked taken, and its number does nothing, so the numbering never shifts
+   between recruits. Backing out of a recruit (`Esc`) frees its ability
+   again. This applies only
    to *this run's* equip choices — it has no effect on `unlockedAbilityIds`
    itself, which stays a plain set with no notion of "who owns what."
 

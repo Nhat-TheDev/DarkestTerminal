@@ -31,6 +31,7 @@ function withOverride<T extends object, K extends keyof T>(obj: T, key: K, value
 describe("Rogue passive: bonus poison damage vs. poisoned targets", () => {
   test("a Rogue's hit on a poisoned target deals bonus poison-type damage", () => {
     const { ctx } = makeCtx();
+    ctx.rng.next = () => 0.5; // no damage variance, no crit
     const rogue = ctx.party.find((p) => p.classId === "rogue")!;
     rogue.level = 35; // rank 3: +30% + 20 flat
     const target = spawnMonster("goblin", 1); // no poison resist, safe baseline
@@ -219,6 +220,7 @@ describe("Class passive hooks fire on the declared fields, not the class id", ()
   test("a Knight given the Rogue's passive deals its bonus on a poisoned target", () => {
     withOverride(getClass("knight"), "passiveSkill", getClass("rogue").passiveSkill, () => {
       const { ctx } = makeCtx();
+      ctx.rng.next = () => 0.5; // no damage variance, no crit
       const knight = ctx.party.find((p) => p.classId === "knight")!;
       knight.level = 35;
       const target = spawnMonster("goblin", 1);

@@ -15,6 +15,7 @@ export function handleKey(ctx: ScreenContext, _ui: AbilityBuybackUiState, _key: 
     return;
   }
   if (digit === 1) {
+    if (!canAffordReclaim(ctx.game)) return;
     const err = ctx.game.resolveAbilityBuyback("reclaim");
     if (err) {
       ctx.reportUnusable(err.reason);
@@ -26,6 +27,17 @@ export function handleKey(ctx: ScreenContext, _ui: AbilityBuybackUiState, _key: 
     return;
   }
   ctx.syncUiToGameState();
+}
+
+function reclaimCost(game: Game): number | null {
+  const pending = game.state.pendingAbilityBuyback;
+  const entry = pending?.entries[pending.resolvedIndex];
+  return entry ? BALANCE.abilities.stardustCostByRarity[entry.rarity] : null;
+}
+
+function canAffordReclaim(game: Game): boolean {
+  const cost = reclaimCost(game);
+  return cost !== null && game.state.runStardust >= cost;
 }
 
 export function renderMain(game: Game): string {
@@ -47,11 +59,11 @@ export function renderMain(game: Game): string {
   lines.push("");
   lines.push(t("ui.abilityBuybackStardust", { current: s.runStardust }));
   lines.push("");
-  lines.push(t("ui.abilityBuybackReclaimOption", { cost }));
+  lines.push(s.runStardust >= cost ? t("ui.abilityBuybackReclaimOption", { cost }) : t("ui.abilityBuybackReclaimLocked", { cost, current: s.runStardust }));
   lines.push(t("ui.abilityBuybackSkipOption"));
   return lines.join("\n");
 }
 
-export function renderFooter(): string {
-  return t("ui.footerAbilityBuyback");
+export function renderFooter(game: Game): string {
+  return t(canAffordReclaim(game) || reclaimCost(game) === null ? "ui.footerAbilityBuyback" : "ui.footerAbilityBuybackSkipOnly");
 }
