@@ -330,7 +330,7 @@ export function chooseRest(game: Game): "1" | "2" {
 }
 
 /** Backs out of the screens only a stray key opens. */
-const SIDE_SCREENS = new Set(["characterInfo", "fullLog", "saveMenu", "memory", "journal", "artifactMenu", "artifactDetail", "pickItemOutOfCombat"]);
+const SIDE_SCREENS = new Set(["characterInfo", "fullLog", "saveMenu", "memory", "journal", "artifactMenu", "artifactDetail", "pickItemOutOfCombat", "floorMap", "monsterInfo", "bestiary"]);
 
 export class TeamPolicy {
   itemsUsed = 0;

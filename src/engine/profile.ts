@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { join } from "node:path";
 import type { Id, AbilityProfile, DroppedJournal, JournalLineState, SlotJournal } from "../types";
 import { ABILITIES } from "../data/abilities";
+import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { JOURNAL_LINES, getJournalEcho, getJournalFragment } from "../data/journal";
 import { SAVE_DIR } from "./paths";
 import { renamedClassId } from "./migration";
@@ -37,6 +38,8 @@ export interface Profile extends AbilityProfile {
   droppedJournal: DroppedJournal | null;
   /** Written as a wipe deletes the save, which held the run's play time. */
   lastRun: LastRun | null;
+  /** Monster archetypes the slot has fought, in the order first met; the bestiary lists these. */
+  seenMonsterIds: Id[];
 }
 
 export function profileFilename(slotId: Id): string {
@@ -48,7 +51,11 @@ function profilePath(slotId: Id): string {
 }
 
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] };
+}
+
+function isKnownArchetype(id: unknown): id is Id {
+  return MONSTER_ARCHETYPES.some((a) => a.id === id);
 }
 
 function isKnownAbility(id: Id): boolean {
@@ -110,6 +117,7 @@ export function parseProfile(text: string): Profile {
     journal: parseJournal(raw.journal),
     droppedJournal: parseDroppedJournal(raw.droppedJournal),
     lastRun: parseLastRun(raw.lastRun),
+    seenMonsterIds: Array.isArray(raw.seenMonsterIds) ? [...new Set(raw.seenMonsterIds.filter(isKnownArchetype))] : [],
   };
 }
 

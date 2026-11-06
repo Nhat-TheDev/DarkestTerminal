@@ -80,6 +80,8 @@ export class Game {
   readonly runNumber: number;
   /** The slot's dropped journal, kept in step with the profile so screens don't read the file to show it. */
   private dropped: DroppedJournal | null;
+  /** Archetypes the slot has fought, kept in step with the profile; the bestiary lists them. */
+  public seenMonsterIds: Id[];
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -99,6 +101,7 @@ export class Game {
     this.memoryIntroShown = profile.memoryIntroShown;
     this.journal = profile.journal;
     this.dropped = profile.droppedJournal;
+    this.seenMonsterIds = profile.seenMonsterIds;
     this.runNumber = profile.runCount;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
@@ -247,6 +250,23 @@ export class Game {
   /** The viewer is offered once the slot holds a written line. */
   hasJournalEntries(): boolean {
     return Object.values(this.journal.lines).some((e) => e.directionId || e.split);
+  }
+
+  /** Adds every monster of the current fight to the slot's bestiary; writes the profile only when one is new. */
+  noteSeenMonsters(): void {
+    const combat = this.state.combat;
+    if (!combat) return;
+    const fresh: Id[] = [];
+    for (const c of combat.combatants) {
+      if (c.ref.kind !== "monster") continue;
+      const monster = this.ctx.monsters.find((m) => m.id === c.ref.id);
+      if (monster && !this.seenMonsterIds.includes(monster.archetypeId) && !fresh.includes(monster.archetypeId)) fresh.push(monster.archetypeId);
+    }
+    if (fresh.length === 0) return;
+    this.seenMonsterIds = [...this.seenMonsterIds, ...fresh];
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.seenMonsterIds = this.seenMonsterIds;
+    saveProfile(this.currentSaveSlot, profile);
   }
 
   /** The torn-out readings still lying somewhere in the dungeon, for the viewer. */
